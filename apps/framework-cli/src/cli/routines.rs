@@ -94,7 +94,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::{interval, sleep, Duration as TokioDuration};
+use tokio::time::{interval, sleep, Duration};
 
 use crate::cli::routines::openapi::openapi;
 use crate::framework::controller::RouteMeta;
@@ -292,7 +292,7 @@ async fn process_pubsub_message(
 
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
-        let mut interval = interval(TokioDuration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
+        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
         let cron_registry = CronRegistry::new().await.unwrap();
 
@@ -610,8 +610,11 @@ fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
                     break;
                 }
                 Err(err) => {
-                    error!("Connection monitor panicked: {:?}. Restarting...", err);
-                    sleep(TokioDuration::from_secs(1)).await;
+                    error!(
+                        "Connection monitor panicked: {:#?}. Restarting in 1 second...",
+                        err
+                    );
+                    sleep(Duration::from_secs(1)).await;
                 }
             }
         }

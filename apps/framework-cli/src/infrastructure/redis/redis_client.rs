@@ -409,6 +409,10 @@ impl RedisClient {
     pub async fn check_connection(&mut self) -> Result<()> {
         retry(
             || async {
+                // We wrap the Redis ping in catch_unwind because the Redis client can sometimes panic
+                // instead of returning an error when the connection is severely disrupted (e.g., network
+                // partition or Redis server crash). This ensures we handle both error returns and panics
+                // gracefully, preventing the panic from propagating and potentially crashing our service.
                 let result = std::panic::AssertUnwindSafe(async {
                     redis::cmd("PING")
                         .query_async::<_, String>(&mut *self.connection.lock().await)

@@ -614,6 +614,7 @@ impl Project {
         Ok(old_base_path)
     }
 
+    /// Returns the current version
     pub fn cur_version(&self) -> &Version {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
@@ -621,6 +622,7 @@ impl Project {
         }
     }
 
+    /// Returns all versions including current
     pub fn versions(&self) -> Vec<String> {
         vec![self.cur_version().to_string()]
     }

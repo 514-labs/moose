@@ -355,6 +355,19 @@ pub async fn check_ready(
     .await
 }
 
+/// Fetches tables matching a specific version pattern
+///
+/// # Arguments
+/// * `configured_client` - The configured client to use
+/// * `version` - The version pattern to match against table names
+///
+/// # Returns
+/// * `Result<Vec<ClickHouseSystemTable>, clickhouse::error::Error>` - List of matching tables
+///
+/// # Details
+/// - Filters tables by database name and version pattern
+/// - Returns full table metadata
+/// - Uses parameterized query for safety
 pub async fn fetch_tables_with_version(
     configured_client: &ConfiguredDBClient,
     version: &str,
@@ -377,6 +390,26 @@ pub async fn fetch_tables_with_version(
     Ok(tables)
 }
 
+/// Gets the number of rows in a table
+///
+/// # Arguments
+/// * `table_name` - Name of the table to check
+/// * `config` - ClickHouse configuration
+/// * `clickhouse` - Client handle for database operations
+///
+/// # Returns
+/// * `Result<i64, clickhouse_rs::errors::Error>` - Number of rows in the table
+///
+/// # Details
+/// - Uses COUNT(*) for accurate row count
+/// - Properly escapes table and database names
+/// - Handles empty tables correctly
+///
+/// # Example
+/// ```rust
+/// let size = check_table_size("users_1_0_0", &config, &mut client).await?;
+/// println!("Table has {} rows", size);
+/// ```
 pub async fn check_table_size(
     table_name: &str,
     config: &ClickHouseConfig,
@@ -400,6 +433,14 @@ pub async fn check_table_size(
     Ok(result as i64)
 }
 
+/// Represents details about a table in ClickHouse
+///
+/// # Fields
+/// * `engine` - The table's engine type
+/// * `total_rows` - Optional count of rows in the table
+///
+/// # Usage
+/// Used internally for table metadata operations and checks
 #[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]
 struct TableDetail {
     pub engine: String,

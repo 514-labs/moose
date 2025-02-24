@@ -17,6 +17,14 @@ impl SupportedLanguages {
             SupportedLanguages::Python => constants::PYTHON_FILE_EXTENSION,
         }
     }
+
+    pub fn from_proto(language: String) -> Self {
+        match language.as_str() {
+            "ts" => SupportedLanguages::Typescript,
+            "python" => SupportedLanguages::Python,
+            _ => panic!("Unsupported language: {}", language),
+        }
+    }
 }
 
 impl std::fmt::Display for SupportedLanguages {

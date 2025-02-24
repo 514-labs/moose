@@ -40,6 +40,8 @@ pub struct StorageConfig {
     pub order_by_fields: Vec<String>,
     #[serde(default)]
     pub deduplicate: bool,
+    #[serde(default)]
+    pub name: Option<String>,
 }
 
 impl Default for StorageConfig {
@@ -48,6 +50,7 @@ impl Default for StorageConfig {
             enabled: true,
             order_by_fields: vec![],
             deduplicate: false,
+            name: None,
         }
     }
 }

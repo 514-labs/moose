@@ -6,12 +6,12 @@ import { FileTree, Tabs } from "nextra/components";
 
 <LanguageSwitcher />
 
+Moose Data Models serve as the foundational blueprint for your application's data architecture. By defining the schema and structure of your data, Moose derives the underlying infrastructure to needed to support the data typed to the schema. This includes REST APIs for data ingestion, Redpanda topics for streaming, and ClickHouse tables for storage.
 
-Moose Data Models allow you to define the schema and shape of your data and automatically provision ingest APIs, streaming topics, and OLAP-backed storage tables—all from simple type definitions.
-
+These models can be imported into various parts of your application, allowing you to utilize these strongly-typed data objects in transformations, APIs, and custom logic, so you can ensure consistent and reliable data pipelines without needing to maintain repetitive boilerplate code and manage the complexities of data infrastructure.
 
 <TypeScript>
-```typescript filename="datamodels/MyDataModel.ts" copy
+```typescript filename="app/datamodels/MyDataModel.ts" copy
 import { Key } from "moose-lib";
 
 export interface MyDataModel {
@@ -26,10 +26,11 @@ export interface MyDataModel {
 </TypeScript>
 
 <Python>
-```python filename="datamodels/MyDataModel.py" copy
+```python filename="app/datamodels/MyDataModel.py" copy
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
+
 @moose_data_model
 @dataclass
 class MyDataModel:
@@ -400,7 +401,7 @@ export interface ExtendedDataModel extends BaseDataModel {
 
 ```py filename="datamodels/models.py" copy
 from dataclasses import dataclass
-from moose_lib import moose_data_model, Key
+from moose_lib import Key, moose_data_model
 from typing import Optional
 
 @dataclass
@@ -551,7 +552,7 @@ class DefaultDataModel:
 </Python>
 
 ### Enabling Batch Ingestion
-Set the `ingestion` parameter to `IngestionFormat.JSON_ARRAY` to enable batch ingestion:
+Batch ingestion allows you to send multiple records in a single request by setting the `ingestion` parameter to `IngestionFormat.JSON_ARRAY`. Instead of sending individual JSON objects, you can send an array of objects that match your data model schema:
 
 <TypeScript>
 ```ts filename="datamodels/models.ts"
@@ -601,7 +602,7 @@ class BatchDataModel:
 </Python>
 
 ### Disabling Storage
-If you do not want to persist the data in OLAP storage, disable storage with the `storage` parameter. This will prevent Moose from creating a table in ClickHouse, but the ingestion endpoint and streaming topic will still be created. This is useful for ephemeral or streaming-only use cases:
+If you want to process upstream data using an ETL approach—cleaning it with a Streaming function before landing it in OLAP storage—disable storage with the `storage` parameter. This prevents Moose from creating a table in ClickHouse while still provisioning the ingestion endpoint and streaming topic for further processing.
 
 <TypeScript>
 ```ts filename="datamodels/NoStorageModel.ts"
@@ -642,6 +643,10 @@ class NoStorageModel:
 </Python>
 ### Setting Up Deduplication
 Use the `deduplicate` parameter to enable deduplication. This will remove duplicate data from the table with the same `order_by_fields`.
+
+<Callout type="warning" title="Disclaimer">
+  NOTE: There are significant caveats when enabling deduplication. This feature uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning that duplicate records may not be removed immediately—this process can take days or, in some cases, might not occur at all. Be aware that turning on this property changes the underlying ClickHouse engine. For more details, please see the ClickHouse documentation on ReplacingMergeTree deduplication: https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree
+</Callout>
 
 <Callout type="warning" title="Important">
   You must use the `order_by_fields` parameter to specify the columns that will be used for deduplication. Moose will preserve the latest inserted row using the `order_by_fields` as the sort key.
@@ -693,7 +698,13 @@ class DeduplicatedModel:
 
 ### Specifying `ORDER BY` Fields
 
-When you want to optimize queries on specific columns, set `order_by_fields`. If you don’t have a `Key`, specifying `order_by_fields` is required to avoid ingesting data with no indexing.
+The `order_by_fields` parameter determines how data is physically sorted and indexed in ClickHouse. When you specify `order_by_fields`, ClickHouse will:
+
+1. Sort data by these columns on disk, enabling efficient range queries
+2. Create sparse primary indexes on these columns to accelerate data lookups
+3. Use these columns as the sorting key in the underlying MergeTree engine
+
+If you don't have a `Key` field in your model, specifying `order_by_fields` is required to ensure your data has proper indexing. Choose columns that you frequently filter or sort by in your queries. Common choices include timestamps, categorical fields, or business identifiers.
 
 <TypeScript>
 ```ts filename="datamodels/OrderedModel.ts"

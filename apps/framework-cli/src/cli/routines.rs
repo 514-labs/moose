@@ -124,7 +124,6 @@ pub mod initialize;
 pub mod logs;
 pub mod ls;
 pub mod metrics_console;
-pub mod migrate;
 pub mod openapi;
 pub mod peek;
 pub mod ps;
@@ -133,7 +132,6 @@ pub mod streaming;
 pub mod templates;
 mod util;
 pub mod validate;
-pub mod version;
 
 const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
 const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
@@ -358,7 +356,17 @@ async fn leadership_tasks(
     Ok(())
 }
 
-// Starts the file watcher and the webserver
+/// Starts the application in development mode.
+/// This mode is optimized for development workflows and includes additional debugging features.
+///
+/// # Arguments
+/// * `project` - Arc wrapped Project instance containing configuration
+/// * `metrics` - Arc wrapped Metrics instance for monitoring
+/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+/// * `settings` - Reference to application Settings
+///
+/// # Returns
+/// * `anyhow::Result<()>` - Success or error result
 pub async fn start_development_mode(
     project: Arc<Project>,
     metrics: Arc<Metrics>,
@@ -463,7 +471,17 @@ pub async fn start_development_mode(
     Ok(())
 }
 
-// Starts the webserver in production mode
+/// Starts the application in production mode.
+/// This mode is optimized for production use with appropriate security and performance settings.
+///
+/// # Arguments
+/// * `settings` - Reference to application Settings
+/// * `project` - Arc wrapped Project instance containing configuration
+/// * `metrics` - Arc wrapped Metrics instance for monitoring
+/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+///
+/// # Returns
+/// * `anyhow::Result<()>` - Success or error result
 pub async fn start_production_mode(
     settings: &Settings,
     project: Arc<Project>,

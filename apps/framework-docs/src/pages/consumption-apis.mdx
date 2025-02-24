@@ -4,11 +4,14 @@ import { Tabs, FileTree } from "nextra/components";
 # Introduction to Consumption APIs
 <LanguageSwitcher />
 
-Consumption APIs make it easy to build type-safe endpoints for surfacing data from your OLAP database. As a developer, you'll write simple, strongly-typed functions that automatically handle:
+Consumption APIs make it easy to build type-safe endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
+
+As a developer, you'll write simple, strongly-typed functions that automatically handle:
 - URL parameter parsing and type conversion
 - SQL query construction and execution
 - Response formatting
 - Automatically generated OpenAPI documentation
+
 
 No need to write boilerplate for parameter validation, type conversion, or error handling - the framework handles these for you.
 
@@ -33,8 +36,8 @@ Create your API endpoints by adding <TypeScript NodeType="span">`.ts`</TypeScrip
 <FileTree>
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="apis" open>
-<FileTree.File name="getFoo.py" />
-<FileTree.File name="getBar.py" />
+<FileTree.File name="get_foo.py" />
+<FileTree.File name="get_bar.py" />
 </FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
@@ -42,8 +45,14 @@ Create your API endpoints by adding <TypeScript NodeType="span">`.ts`</TypeScrip
 
 <Callout type="info" title="Automatic Endpoint Mapping">
 Your files are automatically mapped to `/consumption/` endpoints:
-- <TypeScript NodeType="span">`getFoo.ts`</TypeScript><Python NodeType="span">`get_foo.py`</Python> → `/consumption/getFoo`
-- <TypeScript NodeType="span">`getBar.ts`</TypeScript><Python NodeType="span">`get_bar.py`</Python> → `/consumption/getBar`
+<TypeScript>
+- `getFoo.ts` → `/consumption/getFoo`
+- `getBar.ts` → `/consumption/getBar`
+</TypeScript>
+<Python>
+- `get_foo.py` → `/consumption/get_foo`
+- `get_bar.py` → `/consumption/get_bar`
+</Python>
 </Callout>
 
 ### Creating a New API Endpoint
@@ -51,13 +60,13 @@ Your files are automatically mapped to `/consumption/` endpoints:
 The fastest way to create a new Consumption API endpoint is using the Moose CLI:
 
 <TypeScript>
-```bash
+```bash filename="Terminal" copy
 npx moose-cli consumption init getBar
 ```
 </TypeScript>
 
 <Python>
-```bash
+```bash filename="Terminal" copy
 moose-cli consumption init get_bar
 ```
 </Python>
@@ -93,10 +102,10 @@ export default createConsumptionApi<QueryParams>(
 # This file is where you can define your API templates for consuming your data
 # All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
 
+from pydantic import BaseModel, Field
 from moose_lib import MooseClient
 
-@dataclass
-class QueryParams:
+class QueryParams(BaseModel):
     ## Define your query parameters here
 
 def run(client: MooseClient, params: QueryParams):
@@ -156,13 +165,12 @@ Key components:
 
 <Python>
 ```python filename="/apis/getBar.py"
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from moose_lib import MooseClient
 
-@dataclass
-class QueryParams:
-    n_days: int = 10  # Number of top days to return
-    sort_by: str = "total_value"  # Either "total_value" or "unique_ids"
+class QueryParams(BaseModel):
+    n_days: int = Field(default=10)  # Number of top days to return
+    sort_by: str = Field(default="total_value")  # Either "total_value" or "unique_ids"
 
 def run(client: MooseClient, params: QueryParams):
     # Define the base query to get aggregated metrics
@@ -192,7 +200,7 @@ def run(client: MooseClient, params: QueryParams):
 ```
 
 Key components:
-1. `QueryParams` dataclass defines the expected URL parameters and their types
+1. `QueryParams` class defines the expected URL parameters and their types
 2. Type hints and default values provide automatic parameter parsing
 3. Built-in `MooseClient` for database interactions
 4. Safe query construction using parameterized queries
@@ -229,19 +237,20 @@ Benefits:
 </TypeScript>
 
 <Python>
-Python Consumption APIs use dataclasses to define and validate query parameters:
+Python Consumption APIs use Pydantic to define and validate query parameters:
 
 ```python
-@dataclass
-class QueryParams:
-    n_days: int = 10  # Optional with default value
-    sort_by: str = "total_value"  # Optional with default value
+from pydantic import BaseModel, Field
+
+class QueryParams(BaseModel):
+    n_days: int = Field(default=10)  # Optional with default value
+    sort_by: str = Field(default="total_value")  # Optional with default value
 
 # URL: /consumption/getBar?n_days=5&sort_by=unique_ids
 # Automatically provides:
 params = QueryParams(
-    n_days=5,           # Converted to int
-    sort_by="unique_ids"  # Validated as str
+    n_days=5,           ## Converted to int
+    sort_by="unique_ids"  ## Validated as str
 )
 ```
 
@@ -253,14 +262,11 @@ Benefits:
 - Clean, declarative parameter definition
 </Python>
 
+
+#### Advanced: Query Parameter Validation
+
 <TypeScript>
-#### Advanced: Query Parameter Validation with Typia Tags
-
 Moose leverages [Typia](https://typia.io/) to enforce runtime validation on query parameters using plain TypeScript interfaces. This enables you to use [**all the advanced Typia tags**](https://typia.io/docs/validators/tags/) in your query parameter interfaces to enhance your type definitions and enforce runtime validations.
-
-<Callout type="warning">
-Note: This section applies only to TypeScript projects. Python support for advanced validation using Pydantic will be available soon.
-</Callout>
 
 ##### How It Works
 
@@ -305,6 +311,41 @@ export default createConsumptionApi<QueryParams>(
 );
 ```
 </TypeScript>
+
+<Python>
+Moose supports runtime validation of query parameters using Pydantic. 
+
+You can use the `Field` class to specify default values and validations:
+```python
+from pydantic import BaseModel, Field
+
+class QueryParams(BaseModel):
+    n_days: int = Field(default=10, gt=0) # Must be greater than 0
+    sort_by: str = Field(default="total_value", pattern=r"^(total_value|unique_ids)$") # Must be either "total_value" or "unique_ids"
+```
+
+You can import Pydantic types to use in your query parameters:
+
+```python
+from pydantic import BaseModel, Field, PositiveInt
+
+class QueryParams(BaseModel):
+    n_days: PositiveInt = Field(default=10) # Must be a positive integer
+    sort_by: str = Field(default="total_value")
+
+# URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+# Automatically provides:
+params = QueryParams(n_days=5, sort_by="unique_ids")
+```
+
+<Callout type="info" title="Pydantic Docs">
+For more information on Pydantic, see the [Pydantic documentation](https://docs.pydantic.dev/latest/).
+</Callout>
+
+</Python>
+
+
+
 ### Safe SQL Construction
 
 <TypeScript>

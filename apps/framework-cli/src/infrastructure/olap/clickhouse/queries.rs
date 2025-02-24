@@ -88,16 +88,6 @@ pub fn update_view_query(
     Ok(reg.render_template(UPDATE_VIEW_TEMPLATE, &context)?)
 }
 
-// This is used when a new table doesn't have a different schema from the old table
-// so we use a view to alias the old table to the new table name
-pub fn create_alias_query_from_table(
-    db_name: &str,
-    old_table: &ClickHouseTable,
-    new_table: &ClickHouseTable,
-) -> Result<String, ClickhouseError> {
-    create_alias_query(db_name, &new_table.name, &old_table.name)
-}
-
 pub fn create_alias_for_table(
     db_name: &str,
     alias_name: &str,

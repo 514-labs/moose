@@ -58,12 +58,8 @@ pub enum Commands {
     Dev {},
     /// Start a remote environment for use in cloud deployments
     Prod {},
-    /// Generates missing migration files
+    /// Generates helpers for your data models (i.e. sdk, api tokens)
     Generate(GenerateArgs),
-    /// Bumps the version of the project
-    BumpVersion {
-        new_version: Option<String>,
-    },
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
@@ -139,7 +135,6 @@ pub struct GenerateArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
-    Migrations {},
     Sdk {
         /// Language of the SDK to be generated
         #[arg(default_value_t = SupportedLanguages::Typescript, value_enum, short, long)]

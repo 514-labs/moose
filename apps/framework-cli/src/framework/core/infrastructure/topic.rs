@@ -131,4 +131,15 @@ impl Topic {
     pub fn default_partition_count() -> usize {
         1
     }
+
+    pub fn from_proto(proto: ProtoTopic) -> Self {
+        Topic {
+            version: Version::from_string(proto.version),
+            name: proto.name,
+            retention_period: proto.retention_period.unwrap().into(),
+            partition_count: proto.partition_count.unwrap_or(1) as usize,
+            columns: proto.columns.into_iter().map(Column::from_proto).collect(),
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+        }
+    }
 }

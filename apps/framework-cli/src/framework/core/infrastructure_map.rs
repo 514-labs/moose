@@ -14,12 +14,23 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to convert infrastructure map from proto")]
+#[non_exhaustive]
+pub enum InfraMapProtoError {
+    #[error("Failed to parse proto message")]
+    ProtoParseError(#[from] protobuf::Error),
+
+    #[error("Missing required field: {field_name}")]
+    MissingField { field_name: String },
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
@@ -43,6 +54,13 @@ impl PrimitiveSignature {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::PrimitiveSignature) -> Self {
+        PrimitiveSignature {
+            name: proto.name,
+            primitive_type: PrimitiveTypes::from_proto(proto.primitive_type.unwrap()),
+        }
+    }
 }
 
 impl PrimitiveTypes {
@@ -58,22 +76,35 @@ impl PrimitiveTypes {
             }
         }
     }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::PrimitiveTypes) -> Self {
+        match proto {
+            crate::proto::infrastructure_map::PrimitiveTypes::DATA_MODEL => {
+                PrimitiveTypes::DataModel
+            }
+            crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION => PrimitiveTypes::Function,
+            crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK => PrimitiveTypes::DBBlock,
+            crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API => {
+                PrimitiveTypes::ConsumptionAPI
+            }
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ColumnChange {
     Added(Column),
     Removed(Column),
     Updated { before: Column, after: Column },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OrderByChange {
     pub before: Vec<String>,
     pub after: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
@@ -87,15 +118,15 @@ pub enum TableChange {
     },
 }
 
-#[derive(Debug, Clone)]
-pub enum Change<T> {
+#[derive(Debug, Clone, Serialize)]
+pub enum Change<T: Serialize> {
     Added(Box<T>),
     Removed(Box<T>),
     Updated { before: Box<T>, after: Box<T> },
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum InfraChange {
     Olap(OlapChange),
     Streaming(StreamingChange),
@@ -103,24 +134,24 @@ pub enum InfraChange {
     Process(ProcessChange),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum StreamingChange {
     Topic(Change<Topic>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ApiChange {
     ApiEndpoint(Change<ApiEndpoint>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
     TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
@@ -157,6 +188,8 @@ impl InfraChanges {
     }
 }
 
+// TODO we should not expose the internals of the infrastructure map.
+// We should have apis to be able to change it.
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
@@ -200,6 +233,15 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
+    /// Compare tables between two infrastructure maps and compute the differences.
+    /// This function identifies added, removed, and updated tables by comparing
+    /// the source and target table maps. Changes are collected in the provided
+    /// changes vector.
+    ///
+    /// # Arguments
+    /// * `source_tables` - HashMap of source tables to compare from
+    /// * `target_tables` - HashMap of target tables to compare against
+    /// * `changes` - Mutable vector to collect the identified changes
     pub fn diff_tables(
         self_tables: &HashMap<String, Table>,
         target_tables: &HashMap<String, Table>,
@@ -208,17 +250,77 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
+                    // Debug logging to identify what's different
+                    if table.name != target_table.name {
+                        log::debug!(
+                            "Table {} differs in name: {} vs {}",
+                            id,
+                            table.name,
+                            target_table.name
+                        );
+                    }
+                    if table.columns != target_table.columns {
+                        log::debug!("Table {} differs in columns", id);
+                    }
+                    if table.order_by != target_table.order_by {
+                        log::debug!(
+                            "Table {} differs in order_by: {:?} vs {:?}",
+                            id,
+                            table.order_by,
+                            target_table.order_by
+                        );
+                    }
+                    if table.deduplicate != target_table.deduplicate {
+                        log::debug!(
+                            "Table {} differs in deduplicate: {} vs {}",
+                            id,
+                            table.deduplicate,
+                            target_table.deduplicate
+                        );
+                    }
+                    if table.version != target_table.version {
+                        log::debug!(
+                            "Table {} differs in version: {} vs {}",
+                            id,
+                            table.version,
+                            target_table.version
+                        );
+                    }
+                    if table.source_primitive != target_table.source_primitive {
+                        log::debug!(
+                            "Table {} differs in source_primitive: {:?} vs {:?}",
+                            id,
+                            table.source_primitive,
+                            target_table.source_primitive
+                        );
+                    }
+
                     let column_changes = compute_table_diff(table, target_table);
-                    olap_changes.push(OlapChange::Table(TableChange::Updated {
-                        name: table.name.clone(),
-                        column_changes,
-                        order_by_change: OrderByChange {
+                    let order_by_change = if table.order_by != target_table.order_by {
+                        OrderByChange {
                             before: table.order_by.clone(),
                             after: target_table.order_by.clone(),
-                        },
-                        before: table.clone(),
-                        after: target_table.clone(),
-                    }));
+                        }
+                    } else {
+                        OrderByChange {
+                            before: vec![],
+                            after: vec![],
+                        }
+                    };
+
+                    // Only push changes if there are actual differences to report
+                    if !column_changes.is_empty()
+                        || table.order_by != target_table.order_by
+                        || table.deduplicate != target_table.deduplicate
+                    {
+                        olap_changes.push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change,
+                            before: table.clone(),
+                            after: target_table.clone(),
+                        }));
+                    }
                 }
             } else {
                 olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
@@ -302,9 +404,13 @@ impl InfrastructureMap {
         let mut function_processes = HashMap::new();
         let mut initial_data_loads = HashMap::new();
 
-        let mut data_models_that_have_not_changed_with_new_version = Vec::new();
+        // Process data models that have changes in their latest version
+        // This ensures we create new infrastructure for updated data models first
+        let mut data_models_that_have_not_changed_with_new_version = vec![];
 
+        // Iterate through data models and process those that have changes
         for data_model in primitive_map.data_models_iter() {
+            // Check if the data model has changed compared to its previous version
             if primitive_map
                 .datamodels
                 .has_data_model_changed_with_previous_version(
@@ -315,6 +421,7 @@ impl InfrastructureMap {
                 let topic = Topic::from_data_model(data_model);
                 let api_endpoint = ApiEndpoint::from_data_model(data_model, &topic);
 
+                // If storage is enabled for this data model, create necessary infrastructure
                 if data_model.config.storage.enabled {
                     let table = data_model.to_table();
                     let topic_to_table_sync_process = TopicToTableSyncProcess::new(&topic, &table);
@@ -326,20 +433,21 @@ impl InfrastructureMap {
                     );
                 }
 
+                // If streaming engine is enabled, create topics and API endpoints
                 if project.features.streaming_engine {
                     topics.insert(topic.id(), topic);
                     api_endpoints.insert(api_endpoint.id(), api_endpoint);
                 }
             } else {
-                // We wait to have processed all the datamodels to process the ones that don't have changes
-                // That way we can refer to infrastructure that was created by those older versions.
+                // Store unchanged data models for later processing
+                // This allows us to reference infrastructure created by older versions
                 data_models_that_have_not_changed_with_new_version.push(data_model);
             }
         }
 
-        // We process the data models that have not changed with their registered versions.
-        // For the ones that require storage, we have views that points to the oldest table that has the data
-        // with the same schema. We also reused the same topic that was created for the previous version.
+        // Process data models that haven't changed with their registered versions
+        // For those requiring storage, we create views pointing to the oldest table
+        // that has the data with the same schema. We also reuse existing topics.
         for data_model in data_models_that_have_not_changed_with_new_version {
             match primitive_map
                 .datamodels
@@ -415,7 +523,6 @@ impl InfrastructureMap {
                         InitialDataLoad {
                             table: function.source_data_model.to_table(),
                             topic: source_topic.name.clone(),
-                            // it doesn't mean it is completed, it means the desired state is Completed
                             status: InitialDataLoadStatus::Completed,
                         },
                     );
@@ -702,18 +809,17 @@ impl InfrastructureMap {
                 None => changes
                     .initial_data_loads
                     .push(InitialDataLoadChange::Addition(load.clone())),
-                Some(existing) => {
-                    match existing.status {
-                        InitialDataLoadStatus::InProgress(resume_from) => changes
+                Some(existing) => match existing.status {
+                    InitialDataLoadStatus::InProgress(resume_from) => {
+                        changes
                             .initial_data_loads
                             .push(InitialDataLoadChange::Resumption {
                                 resume_from,
                                 load: load.clone(),
-                            }),
-                        // nothing to do
-                        InitialDataLoadStatus::Completed => {}
+                            });
                     }
-                }
+                    InitialDataLoadStatus::Completed => {}
+                },
             }
         }
 
@@ -897,7 +1003,6 @@ impl InfrastructureMap {
             .values()
             .map(|load| {
                 InitialDataLoadChange::Addition(InitialDataLoad {
-                    // if existing deployment is empty, there is no initial data to load
                     status: InitialDataLoadStatus::Completed,
                     ..load.clone()
                 })
@@ -917,7 +1022,6 @@ impl InfrastructureMap {
     }
 
     pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
-        use anyhow::Context;
         let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
         redis_client
             .set_with_service_prefix("infrastructure_map", &encoded)
@@ -925,6 +1029,18 @@ impl InfrastructureMap {
             .context("Failed to store InfrastructureMap in Redis")?;
 
         Ok(())
+    }
+
+    pub async fn get_from_redis(redis_client: &RedisClient) -> Result<Self> {
+        let encoded = redis_client
+            .get_with_service_prefix("infrastructure_map")
+            .await
+            .context("Failed to get InfrastructureMap from Redis")?
+            .ok_or_else(|| anyhow::anyhow!("InfrastructureMap not found in Redis"))?;
+
+        let decoded = InfrastructureMap::from_proto(encoded)
+            .map_err(|e| anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e))?;
+        Ok(decoded)
     }
 
     pub fn to_proto(&self) -> ProtoInfrastructureMap {
@@ -980,6 +1096,60 @@ impl InfrastructureMap {
 
     pub fn to_proto_bytes(&self) -> Vec<u8> {
         self.to_proto().write_to_bytes().unwrap()
+    }
+
+    pub fn from_proto(bytes: Vec<u8>) -> Result<Self, InfraMapProtoError> {
+        let proto = ProtoInfrastructureMap::parse_from_bytes(&bytes)?;
+
+        Ok(InfrastructureMap {
+            topics: proto
+                .topics
+                .into_iter()
+                .map(|(k, v)| (k, Topic::from_proto(v)))
+                .collect(),
+            api_endpoints: proto
+                .api_endpoints
+                .into_iter()
+                .map(|(k, v)| (k, ApiEndpoint::from_proto(v)))
+                .collect(),
+            tables: proto
+                .tables
+                .into_iter()
+                .map(|(k, v)| (k, Table::from_proto(v)))
+                .collect(),
+            views: proto
+                .views
+                .into_iter()
+                .map(|(k, v)| (k, View::from_proto(v)))
+                .collect(),
+            topic_to_table_sync_processes: proto
+                .topic_to_table_sync_processes
+                .into_iter()
+                .map(|(k, v)| (k, TopicToTableSyncProcess::from_proto(v)))
+                .collect(),
+            topic_to_topic_sync_processes: proto
+                .topic_to_topic_sync_processes
+                .into_iter()
+                .map(|(k, v)| (k, TopicToTopicSyncProcess::from_proto(v)))
+                .collect(),
+            function_processes: proto
+                .function_processes
+                .into_iter()
+                .map(|(k, v)| (k, FunctionProcess::from_proto(v)))
+                .collect(),
+            initial_data_loads: proto
+                .initial_data_loads
+                .into_iter()
+                .map(|(k, v)| (k, InitialDataLoad::from_proto(v)))
+                .collect(),
+            orchestration_workers: proto
+                .orchestration_workers
+                .into_iter()
+                .map(|(k, v)| (k, OrchestrationWorker::from_proto(v)))
+                .collect(),
+            consumption_api_web_server: ConsumptionApiWebServer {},
+            block_db_processes: OlapProcess {},
+        })
     }
 }
 

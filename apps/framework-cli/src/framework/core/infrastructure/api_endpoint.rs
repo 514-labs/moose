@@ -124,6 +124,22 @@ impl ApiEndpoint {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoApiEndpoint) -> Self {
+        ApiEndpoint {
+            name: proto.name,
+            api_type: APIType::from_proto(proto.api_type.unwrap()),
+            path: PathBuf::from(proto.path),
+            method: Method::from_proto(
+                proto
+                    .method
+                    .enum_value()
+                    .expect("Invalid method enum value"),
+            ),
+            version: Version::from_string(proto.version),
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+        }
+    }
 }
 
 impl From<EndpointFile> for ApiEndpoint {
@@ -210,6 +226,31 @@ impl APIType {
             _ => serde_json::from_value(json).map_err(D::Error::custom),
         }
     }
+
+    pub fn from_proto(proto: ProtoApiType) -> Self {
+        match proto {
+            ProtoApiType::Ingress(details) => APIType::INGRESS {
+                target_topic: details.target_topic,
+                data_model: None,
+                format: match details
+                    .format
+                    .enum_value()
+                    .expect("Invalid format enum value")
+                {
+                    ProtoIngressFormat::JSON => EndpointIngestionFormat::Json,
+                    ProtoIngressFormat::JSON_ARRAY => EndpointIngestionFormat::JsonArray,
+                },
+            },
+            ProtoApiType::Egress(details) => APIType::EGRESS {
+                query_params: details
+                    .query_params
+                    .into_iter()
+                    .map(ConsumptionQueryParam::from_proto)
+                    .collect(),
+                output_schema: serde_json::from_str(&details.output_schema).unwrap_or_default(),
+            },
+        }
+    }
 }
 
 impl Method {
@@ -219,6 +260,15 @@ impl Method {
             Method::POST => ProtoMethod::POST,
             Method::PUT => ProtoMethod::PUT,
             Method::DELETE => ProtoMethod::DELETE,
+        }
+    }
+
+    pub fn from_proto(proto: ProtoMethod) -> Self {
+        match proto {
+            ProtoMethod::GET => Method::GET,
+            ProtoMethod::POST => Method::POST,
+            ProtoMethod::PUT => Method::PUT,
+            ProtoMethod::DELETE => Method::DELETE,
         }
     }
 }

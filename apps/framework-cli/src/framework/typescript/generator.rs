@@ -342,36 +342,9 @@ pub fn generate_sdk(
         )?;
     }
 
-    for version in project.supported_old_versions.keys() {
-        let ts_objects = collect_ts_objects_from_primitive_map(primitive_map, version.as_str())?;
-        let version_enums = collect_enums_from_primitive_map(primitive_map, version.as_str());
-        if ts_objects.is_empty() {
-            continue;
-        }
-
-        let version_dir = sdk_dir.join(version.as_str());
-        fs::create_dir_all(&version_dir)?;
-
-        if !version_enums.is_empty() {
-            let enums_code = typescript::templates::render_enums(version_enums)?;
-            fs::write(version_dir.join("enums.ts"), enums_code)?;
-        }
-
-        let client_code =
-            typescript::templates::render_ingest_client(version.as_str(), &ts_objects)?;
-        fs::write(version_dir.join("index.ts"), client_code)?;
-
-        for obj in ts_objects.iter() {
-            let interface_code = typescript::templates::render_interface(&obj.interface)?;
-            fs::write(
-                version_dir.join(obj.interface.file_name_with_extension()),
-                interface_code,
-            )?;
-        }
-    }
-
     Ok(())
 }
+
 fn collect_ts_objects_from_primitive_map(
     primitive_map: &PrimitiveMap,
     version: &str,

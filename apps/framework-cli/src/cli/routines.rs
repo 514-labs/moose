@@ -124,7 +124,6 @@ pub mod initialize;
 pub mod logs;
 pub mod ls;
 pub mod metrics_console;
-pub mod migrate;
 pub mod openapi;
 pub mod peek;
 pub mod ps;
@@ -133,7 +132,6 @@ pub mod streaming;
 pub mod templates;
 mod util;
 pub mod validate;
-pub mod version;
 
 const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
 const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval

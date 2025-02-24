@@ -2,11 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
-use git2::{
-    BranchType, Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions,
-    Signature,
-};
-use log::warn;
+use git2::{Error, Repository, RepositoryInitOptions, Signature};
 use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
@@ -118,81 +114,4 @@ pub fn create_init_commit(project: Arc<Project>, dir_path: &Path) {
     // empty parent because it's the first commit
     repo.commit(Some("HEAD"), &author, &author, "Initial commit", &tree, &[])
         .expect("Failed to create initial commit");
-}
-
-pub fn dump_old_version_schema(
-    project: &Project,
-    commit_hash: String,
-    dest: &Path,
-) -> Result<(), Error> {
-    let repo = Repository::discover(project.project_location.clone())?;
-
-    let schema_dir = project.data_models_dir();
-    let schema_relative_path_from_repo_root = schema_dir
-        .strip_prefix(repo.path().parent().unwrap())
-        .unwrap();
-
-    let commit = repo.revparse_single(&commit_hash)?;
-    let commit = commit.as_commit().ok_or(Error::from_str(&format!(
-        "Object {} is not a commit",
-        commit_hash
-    )))?;
-
-    let tree = commit
-        .tree()?
-        .get_path(schema_relative_path_from_repo_root)?
-        .to_object(&repo)?;
-    let tree = tree.as_tree().ok_or(Error::from_str(&format!(
-        "Object {} is not a tree",
-        tree.id()
-    )))?;
-
-    recursive_dump_tree_content(&repo, tree, dest)?;
-    Ok(())
-}
-
-fn recursive_dump_tree_content(
-    repo: &Repository,
-    tree: &git2::Tree,
-    dest: &Path,
-) -> Result<(), Error> {
-    for entry in tree.iter() {
-        let entry_name = entry.name().ok_or(Error::from_str(&format!(
-            "Invalid UTF-8 filename {:?}",
-            entry.name_bytes()
-        )))?;
-        let entry_dest = dest.join(entry_name);
-
-        match entry.kind() {
-            Some(ObjectType::Tree) => {
-                let tree = repo.find_tree(entry.id())?;
-                std::fs::create_dir_all(&entry_dest).map_err(file_system_error_to_git_error)?;
-                recursive_dump_tree_content(repo, &tree, &entry_dest)?;
-            }
-            Some(ObjectType::Blob) => {
-                let blob = repo.find_blob(entry.id())?;
-                std::fs::write(entry_dest, blob.content())
-                    .map_err(file_system_error_to_git_error)?;
-            }
-            kind => warn!("Unknown kind: {:?} for entry name {:?}", kind, entry_name),
-        }
-    }
-    Ok(())
-}
-
-pub fn current_commit_hash(project: &Project) -> Result<String, Error> {
-    let repo = Repository::discover(project.project_location.clone())?;
-    let branch = repo.find_branch(&project.git_config.main_branch_name, BranchType::Local)?;
-    let head = branch.get();
-    let mut hash = head.target().unwrap().to_string();
-    hash.truncate(7);
-    Ok(hash)
-}
-
-fn file_system_error_to_git_error(err: std::io::Error) -> Error {
-    Error::new(
-        ErrorCode::GenericError,
-        ErrorClass::Filesystem,
-        err.to_string(),
-    )
 }

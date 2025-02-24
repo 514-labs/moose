@@ -36,20 +36,16 @@ use routines::scripts::{
 };
 
 use settings::{read_settings, Settings};
-use std::cmp::Ordering;
 use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 
-use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
-use crate::cli::routines::migrate::generate_migration;
 use crate::cli::routines::peek::peek;
 use crate::cli::routines::setup_redis_client;
 use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
-use crate::cli::routines::version::bump_version;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::settings::user_directory;
 use crate::cli::{
@@ -64,7 +60,6 @@ use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
-use crate::framework::versions::version_to_string;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
@@ -313,16 +308,6 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            // Remove versions directory so only the relevant versions will be populated
-            project_arc.delete_old_versions().map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Build".to_string(),
-                    details: format!("Failed to delete old versions: {:?}", e),
-                })
-            })?;
-
-            copy_old_schema(&project_arc)?.show();
-
             // docker flag is true then build docker images
             if *docker {
                 let capture_handle = crate::utilities::capture::capture_usage(
@@ -431,30 +416,6 @@ async fn top_command_handler(
                 Ok(RoutineSuccess::success(Message::new(
                     "Token".to_string(),
                     "Success".to_string(),
-                )))
-            }
-            Some(GenerateCommand::Migrations {}) => {
-                info!("Running generate migration command");
-                let project = load_project()?;
-                let project_arc = Arc::new(project);
-
-                let capture_handle = crate::utilities::capture::capture_usage(
-                    ActivityType::GenerateMigrations,
-                    Some(project_arc.name()),
-                    &settings,
-                );
-
-                check_project_name(&project_arc.name())?;
-                copy_old_schema(&project_arc)?.show();
-                generate_migration(&project_arc, project_arc.language)
-                    .await?
-                    .show();
-
-                wait_for_usage_capture(capture_handle).await;
-
-                Ok(RoutineSuccess::success(Message::new(
-                    "Generated".to_string(),
-                    "migrations".to_string(),
                 )))
             }
             Some(GenerateCommand::Sdk {
@@ -620,43 +581,6 @@ async fn top_command_handler(
                 "Plan".to_string(),
                 "Successfully planned changes to the infrastructure".to_string(),
             )))
-        }
-        Commands::BumpVersion { new_version } => {
-            let project = load_project()?;
-            let project_arc = Arc::new(project);
-
-            let capture_handle = crate::utilities::capture::capture_usage(
-                ActivityType::BumpVersionCommand,
-                Some(project_arc.name()),
-                &settings,
-            );
-
-            check_project_name(&project_arc.name())?;
-
-            let new_version = match new_version {
-                None => {
-                    let current = project_arc.cur_version().parsed();
-                    let bump_location = if current.len() > 1 { 1 } else { 0 };
-
-                    let new_version = current
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| match i.cmp(&bump_location) {
-                            Ordering::Less => *v,
-                            Ordering::Equal => v + 1,
-                            Ordering::Greater => 0,
-                        })
-                        .collect::<Vec<i32>>();
-                    version_to_string(&new_version)
-                }
-                Some(new_version) => new_version.clone(),
-            };
-
-            let result = bump_version(&project_arc, new_version);
-
-            wait_for_usage_capture(capture_handle).await;
-
-            result
         }
         Commands::Clean {} => {
             let project = load_project()?;

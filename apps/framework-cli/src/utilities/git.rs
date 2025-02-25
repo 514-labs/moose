@@ -42,7 +42,7 @@ pub fn create_init_commit(project: Arc<Project>, dir_path: &Path) {
     let mut git_ignore_entries = vec![CLI_USER_DIRECTORY];
     git_ignore_entries.append(&mut match project.language {
         SupportedLanguages::Typescript => {
-            vec!["node_modules", "dist", "coverage"]
+            vec!["node_modules", "dist", "coverage", ".ts-node"]
         }
         SupportedLanguages::Python => vec![
             "__pycache__",

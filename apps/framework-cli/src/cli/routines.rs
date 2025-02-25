@@ -94,7 +94,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::{interval, Duration};
+use tokio::time::{interval, sleep, Duration};
 
 use crate::cli::routines::openapi::openapi;
 use crate::framework::controller::RouteMeta;
@@ -204,6 +204,8 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
+    spawn_connection_monitor(redis_client.clone());
+
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
         (
@@ -232,7 +234,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         let redis_client = redis_client_clone.clone();
         tokio::spawn(async move {
             if let Err(e) = process_pubsub_message(message, redis_client).await {
-                error!("Error processing pubsub message: {}", e);
+                error!("<RedisClient> Error processing pubsub message: {}", e);
             }
         });
     });
@@ -593,4 +595,28 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
+    tokio::spawn(async move {
+        loop {
+            let handle = {
+                let client = redis_client.lock().await;
+                client.start_connection_monitor()
+            };
+            match handle.await {
+                Ok(_) => {
+                    info!("Connection monitor exited gracefully");
+                    break;
+                }
+                Err(err) => {
+                    error!(
+                        "Connection monitor panicked: {:#?}. Restarting in 1 second...",
+                        err
+                    );
+                    sleep(Duration::from_secs(1)).await;
+                }
+            }
+        }
+    });
 }

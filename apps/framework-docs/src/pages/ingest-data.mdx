@@ -201,6 +201,12 @@ def generate():  # The name of your script
             headers={'Content-Type': 'application/json'}
         )
         urllib.request.urlopen(req)
+    return {
+      "task_id": "generate",
+      "data": {
+          "completed_at": datetime.now().isoformat()
+      }
+    }
 ```
 </Python>
 

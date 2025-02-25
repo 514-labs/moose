@@ -1,5 +1,5 @@
 ---
-description: Rust Langauge best practice
+description: Rust Language best practice
 globs: **/*.rs
 alwaysApply: false
 ---

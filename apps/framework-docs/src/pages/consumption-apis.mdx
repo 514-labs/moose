@@ -250,19 +250,19 @@ Use an interface to define the expected parameters and their types. You can use 
 ```ts
 // Define expected parameters and their types
 interface QueryParams {
-  order_by?: "total_rows" | "rows_with_text" | "max_text_length" | "total_text_length";  // String union type
+  order_by: "total_rows" | "rows_with_text" | "max_text_length" | "total_text_length";  // String union type
   limit?: number;          // Optional number parameter
   start_day?: number;      // Optional number parameter
   end_day?: number;        // Optional number parameter
 }
 
-// URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+// URL: /consumption/getBar?order_by=total_rows&limit=5&start_day=1&end_day=31 OR /consumption/getBar
 // Automatically provides:
 {
-  order_by: "total_rows",               // Converted to number
-  limit: 5,               // Converted to number
-  start_day: 1,      // Type-checked
-  end_day: 31        // Type-checked
+  order_by: "total_rows",           
+  limit: 5,              
+  start_day: 1,      
+  end_day: 31        
 }
 ```
 
@@ -286,6 +286,10 @@ class QueryParams(BaseModel):
     limit: Optional[int] = 5
     start_day: Optional[int] = 1
     end_day: Optional[int] = 31
+
+# URL: /consumption/get_bar?order_by=total_rows&limit=5&start_day=1&end_day=31 OR /consumption/get_bar
+# Automatically provides:
+params = QueryParams(order_by="total_rows", limit=5, start_day=1, end_day=31)
 ```
 
 Benefits:
@@ -319,19 +323,24 @@ import typia from "typia";
 
 interface QueryParams {
   orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
-  limit?: number & tags.Type<"int32"> & tags.Minimum<1>;
-  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
-  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  limit?: number & tags.Type<"int32"> & tags.Minimum<1>; // limit must be a 32-bit integer greater than 0
+  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>; // startDay must be a 32-bit integer between 1 and 31
+  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>; // endDay must be a 32-bit integer between 1 and 31
 }
 
 ```
 Other examples of Typia tags:
-- `tags.Format<"email">` ensures the parameter is a valid email address
-- `tags.Format<"uuid">` ensures the parameter is a valid UUID
-- `tags.ExclusiveMinimum<17>` ensures the parameter is greater than 17
-- `tags.Minimum<1>` and `tags.Maximum<31>` ensure the parameter is within the specified range
-- `tags.Type<"uint32">` ensures the parameter is a 32-bit unsigned integer
-- `tags.Type<"double">` ensures the parameter is a double
+```typescript
+import { tags } from "typia";
+interface MoreExamples {
+  email: string & tags.Format<"email"> // ensures the parameter is a valid email address
+  uuid: string & tags.Format<"uuid"> // ensures the parameter is a valid UUID
+  exclusiveMinimum: number & tags.ExclusiveMinimum<17> // ensures the parameter is greater than 17
+  minimum: number & tags.Minimum<1> and tags.Maximum<31> // ensure the parameter is within the specified range
+  uint32: number & tags.Type<"uint32"> // ensures the parameter is a 32-bit unsigned integer
+  double: number & tags.Type<"double"> // ensures the parameter is a double
+}
+```
 
 View the [Typia documentation](https://typia.io/docs/validators/tags/) for more information on the available tags.
 
@@ -374,7 +383,7 @@ class QueryParams(BaseModel):
 You can import Pydantic types to use in your query parameters:
 
 ```python
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field, PositiveInt ## Import PositiveInt to ensure the parameter is a positive integer
 
 class QueryParams(BaseModel):
     order_by: Optional[str] = Field(
@@ -401,16 +410,11 @@ class QueryParams(BaseModel):
         description="Must be between 1 and 31"
     )
     
-    
-# URL: /consumption/getBar?order_by=total_rows&limit=5&start_day=1&end_day=31
-# Automatically provides:
-params = QueryParams(order_by="total_rows", limit=5, start_day=1, end_day=31)
 ```
 
 <Callout type="info" title="Pydantic Docs">
 For more information on Pydantic, see the [Pydantic documentation](https://docs.pydantic.dev/latest/).
 </Callout>
-
 </Python>
 
 

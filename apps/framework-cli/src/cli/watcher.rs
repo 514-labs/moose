@@ -76,7 +76,7 @@ impl EventBuckets {
             | EventKind::Other => {}
         };
         for path in event.paths {
-            if !path.ext_is_supported_lang() {
+            if !path.ext_is_supported_lang() && !path.ext_is_script_config() {
                 continue;
             }
 

@@ -124,7 +124,7 @@ You can then customize this template by:
 Each API endpoint is defined by a single function that handles incoming requests. This function receives typed query parameters and returns database query results.
 
 <TypeScript>
-```ts filename="/apis/getBar.ts"
+```ts filename="/apis/getBar.ts" copy
 import {
   createConsumptionApi,
   ConsumptionHelpers as CH,
@@ -179,7 +179,7 @@ Key components:
 </TypeScript>
 
 <Python>
-```python filename="/apis/getBar.py"
+```python filename="/apis/getBar.py" copy
 from moose_lib import MooseClient
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -247,7 +247,7 @@ Query parameters allow your APIs to accept dynamic inputs through URL parameters
 <Callout type="info" title="Query Parameter Interface">
 Use an interface to define the expected parameters and their types. You can use Union types to allow multiple valid values or define more complex types.
 </Callout>
-```ts
+```ts filename="/apis/getBar.ts" copy
 // Define expected parameters and their types
 interface QueryParams {
   order_by: "total_rows" | "rows_with_text" | "max_text_length" | "total_text_length";  // String union type
@@ -276,7 +276,7 @@ Benefits:
 <Python>
 Python Consumption APIs use Pydantic to define and validate query parameters:
 
-```python
+```python filename="/apis/get_bar.py" copy
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -317,7 +317,7 @@ Moose leverages [Typia](https://typia.io/) to enforce runtime validation on quer
 
 Below is a practical example demonstrating how to use Typia tags within your consumption API endpoint to enforce validations on query parameters:
 
-```ts
+```ts filename="/apis/getBar.ts" copy
 import { createConsumptionApi } from "@514labs/moose-lib";
 import typia from "typia";
 
@@ -330,7 +330,7 @@ interface QueryParams {
 
 ```
 Other examples of Typia tags:
-```typescript
+```typescript filename="/apis/getBar.ts" copy
 import { tags } from "typia";
 interface MoreExamples {
   email: string & tags.Format<"email"> // ensures the parameter is a valid email address
@@ -350,7 +350,7 @@ View the [Typia documentation](https://typia.io/docs/validators/tags/) for more 
 Moose supports runtime validation of query parameters using Pydantic. 
 
 You can use the `Field` class to specify default values and validations:
-```python
+```python filename="/apis/get_bar.py" copy
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -382,7 +382,7 @@ class QueryParams(BaseModel):
 
 You can import Pydantic types to use in your query parameters:
 
-```python
+```python filename="/apis/get_bar.py" copy
 from pydantic import BaseModel, Field, PositiveInt ## Import PositiveInt to ensure the parameter is a positive integer
 
 class QueryParams(BaseModel):
@@ -424,7 +424,7 @@ For more information on Pydantic, see the [Pydantic documentation](https://docs.
 <TypeScript>
 The framework provides utilities for safely constructing SQL queries with dynamic parameters:
 
-```ts
+```ts filename="/apis/getBar.ts" copy
 import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
 
 // Using template literals with the sql helper
@@ -448,7 +448,7 @@ CH.column(orderBy)  // Safely interpolates column names
 <Python>
 The framework provides safe query construction through parameterization:
 
-```python
+```python filename="/apis/get_bar.py" copy
 ## The run function is where you can define your API logic
 def run(client: MooseClient, params: QueryParams):
     

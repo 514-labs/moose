@@ -612,7 +612,7 @@ pub async fn remote_plan(
     // Determine the target URL
     let target_url = match url {
         Some(u) => format!("{}/admin/plan", u.trim_end_matches('/')),
-        None => format!("http://localhost:4000/admin/plan"),
+        None => "http://localhost:4000/admin/plan".to_string(),
     };
 
     display::show_message_wrapper(

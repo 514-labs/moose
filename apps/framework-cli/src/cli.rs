@@ -568,7 +568,7 @@ async fn top_command_handler(
 
             check_project_name(&project.name())?;
 
-            let result = routines::remote_plan(&project, &url, &token).await;
+            let result = routines::remote_plan(&project, url, token).await;
 
             result.map_err(|e| {
                 RoutineFailure::error(Message {

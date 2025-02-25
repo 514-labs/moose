@@ -425,6 +425,8 @@ For more information on Pydantic, see the [Pydantic documentation](https://docs.
 The framework provides utilities for safely constructing SQL queries with dynamic parameters:
 
 ```ts
+import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
 // Using template literals with the sql helper
 const query = sql`
       SELECT 

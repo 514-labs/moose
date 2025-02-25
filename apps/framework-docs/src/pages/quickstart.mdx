@@ -49,36 +49,21 @@ To create and activate a virtual environment, you can run the following commands
   You can alternatively use your preferred Python package manager (e.g. `conda`, `uv`, `pyenv`, etc.) to create and activate a virtual environment.
 </Callout>
 </Python>
-### Install the Moose CLI
+
+### Initialize a New Moose Project
 
 <Python>
-Moose is installed as a Python package, so you can install it using pip:
+Install the Moose CLI and run the `init` command to create a new project:
 
 ```bash filename="Terminal" copy
-pip install moose-cli
+pip install moose-cli && moose-cli init my-moose-app python
 ```
 </Python>
 
 <TypeScript>
-Moose is installed as a Node package, so you can install it using npm:
-
+Use the `create-moose-app` command to create a new project:
 ```bash filename="Terminal" copy
-npm install -g @514labs/moose-cli
-```
-</TypeScript>
-
-### Initialize a New Moose Project via the CLI
-
-<Python>
-```bash filename="Terminal" copy
-moose-cli init my-moose-app python
-```
-
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli init my-moose-app ts 
+npx create-moose-app my-moose-app ts
 ```
 </TypeScript>
 

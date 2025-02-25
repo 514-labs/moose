@@ -82,7 +82,7 @@ Go to the `/apis` folder and open <TypeScript NodeType="span">`rankedLanguages.t
 import { ConsumptionUtil } from "@514labs-moose-lib";
 // This file is where you can define your API templates for consuming your data
 // All query_params are passed in as strings, and are used within the sql tag to parameterize your queries
-export interface QueryParams {}
+interface QueryParams {}
 
 export default async function handle(
   {}: QueryParams,
@@ -124,11 +124,17 @@ def run(client: MooseClient, params, jwt: Optional[dict] = None):
 
 This interface should contain one key: `rankBy`. This key should be a string and have a value of either `total_projects`, `total_repo_size_kb`, or `average_repo_size_kb`. The specified value will determine the ranking criteria for the results.
 
-```ts filename="app/apis/mostUsedLanguages.ts" copy {5-6}
-import { ConsumptionUtil } from "@514labs/moose-lib";
+<Callout type="info" title="Query Parameters">
+You can use a Union type to specify the possible values for the `rankBy` parameter. Moose will automatically infer the type validation and parsing for the `rankBy` parameter based on the value you provide.
+</Callout>
 
-export interface QueryParams {
-  rankBy: string; // paste this into your file
+```ts filename="app/apis/mostUsedLanguages.ts" copy {5-6}
+import { createConsumptionApi, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { tags } from "typia";
+
+interface QueryParams {
+  rankBy: "total_projects" | "total_repo_size_kb" | "average_repo_size_kb";
+  limit: number & tags.Minimum<1> & tags.Type<"int32">;
 }
 ```
 
@@ -139,23 +145,16 @@ These parameters are set in the request URL as key-value pairs, and their values
 ### Implement the `handle()` Function
 
 ```ts filename="/app/apis/rankedLanguages.ts" copy {9-37}
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { createConsumptionApi, ConsumptionUtil, ConsumptionHelpers as CH } from "@514labs/moose-lib";
 
 export interface QueryParams {
-  rankBy: string;
+  rankBy: "total_projects" | "total_repo_size_kb" | "average_repo_size_kb";
 }
 
-export default async function handle(
+export default createConsumptionApi<QueryParams>(
   { rankBy = "total_projects" }: QueryParams,
   { client, sql }: ConsumptionUtil
 ) {
-  if (
-    rankBy !== "total_projects" &&
-    rankBy !== "total_repo_size_kb" &&
-    rankBy !== "average_repo_size_kb"
-  ) {
-    throw new Error("Invalid rankBy value");
-  }
   return client.query(
     sql`SELECT 
           language, 
@@ -164,7 +163,7 @@ export default async function handle(
           avgMerge(average_repo_size_kb) AS average_repo_size_kb 
         FROM TopLanguages 
         GROUP BY language 
-        ORDER BY ${rankBy} DESC`
+        ORDER BY ${CH.column(rankBy)} DESC`
   );
 }
 ```

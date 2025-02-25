@@ -161,7 +161,7 @@ moose-cli ls
 ```
 </Python>
 
-You should see the following ouput, which shows the ingestion points and tables that have been created for your project: 
+You should see the following ouput, which shows the ingestion points and tables that have been created for your project:
 
 | Data Model | Ingestion Point | Table |
 | :--- | :--- | :--- |
@@ -218,6 +218,7 @@ from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
 @moose_data_model
 @dataclass
 class Foo:
@@ -277,13 +278,13 @@ Open the `OpenAPI (Swagger) Editor` extension and navigate to the `Try it out` t
 Alternatively, you can use the following curl command:
 <TypeScript>
 ```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primaryKey": "1234567890", "timestamp": "2019-01-01 00:00:01", "optionalString": "hello world"}'
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primaryKey": "1234567890", "timestamp": 1546300801.0, "optionalString": "hello world"}'
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primary_key": "1234567890", "timestamp": "2019-01-01 00:00:01", "optional_string": "hello world"}'
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primary_key": "1234567890", "timestamp": 1546300801.0, "optional_string": "hello world"}'
 ```
 </Python>
 

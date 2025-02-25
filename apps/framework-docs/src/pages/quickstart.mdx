@@ -9,7 +9,7 @@ import { RectangleEllipsis, Square, Workflow } from "lucide-react";
 <Callout type="info" title="Prerequisites:">
   - [Git](https://git-scm.com/)
   <TypeScript>
-    - [Node](https://nodejs.org/en/)
+    - [Node version 20+](https://nodejs.org/en/)
   </TypeScript>
   <Python>
     - [Python version 3.12+](https://www.python.org/downloads/)
@@ -49,36 +49,21 @@ To create and activate a virtual environment, you can run the following commands
   You can alternatively use your preferred Python package manager (e.g. `conda`, `uv`, `pyenv`, etc.) to create and activate a virtual environment.
 </Callout>
 </Python>
-### Install the Moose CLI
+
+### Initialize a New Moose Project
 
 <Python>
-Moose is installed as a Python package, so you can install it using pip:
+Install the Moose CLI and run the `init` command to create a new project:
 
 ```bash filename="Terminal" copy
-pip install moose-cli
+pip install moose-cli && moose-cli init my-moose-app python
 ```
 </Python>
 
 <TypeScript>
-Moose is installed as a Node package, so you can install it using npm:
-
+Use the `create-moose-app` command to create a new project:
 ```bash filename="Terminal" copy
-npm install -g @514labs/moose-cli
-```
-</TypeScript>
-
-### Initialize a New Moose Project via the CLI
-
-<Python>
-```bash filename="Terminal" copy
-moose-cli init my-moose-app python
-```
-
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli init my-moose-app ts 
+npx create-moose-app my-moose-app ts
 ```
 </TypeScript>
 
@@ -161,7 +146,7 @@ moose-cli ls
 ```
 </Python>
 
-You should see the following ouput, which shows the ingestion points and tables that have been created for your project: 
+You should see the following ouput, which shows the ingestion points and tables that have been created for your project:
 
 | Data Model | Ingestion Point | Table |
 | :--- | :--- | :--- |
@@ -218,6 +203,7 @@ from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
 @moose_data_model
 @dataclass
 class Foo:
@@ -277,13 +263,13 @@ Open the `OpenAPI (Swagger) Editor` extension and navigate to the `Try it out` t
 Alternatively, you can use the following curl command:
 <TypeScript>
 ```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primaryKey": "1234567890", "timestamp": "2019-01-01 00:00:01", "optionalString": "hello world"}'
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primaryKey": "1234567890", "timestamp": 1546300801.0, "optionalString": "hello world"}'
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primary_key": "1234567890", "timestamp": "2019-01-01 00:00:01", "optional_string": "hello world"}'
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primary_key": "1234567890", "timestamp": 1546300801.0, "optional_string": "hello world"}'
 ```
 </Python>
 
@@ -313,13 +299,13 @@ You should see the following output:
 
 <TypeScript>
 ```txt filename="Terminal"
-{"primaryKey": "1234567890", "timestamp": "2019-01-01 00:00:01", "optionalString": "hello world"}
+{"primaryKey": "1234567890", "timestamp": 1546300801.0, "optionalString": "hello world"}
 ```
 </TypeScript>
 
 <Python>
 ```txt filename="Terminal"
-{"primary_key": "1234567890", "timestamp": "2019-01-01 00:00:01", "optional_string": "hello world"}
+{"primary_key": "1234567890", "timestamp": 1546300801.0, "optional_string": "hello world"}
 ```
 </Python>
 

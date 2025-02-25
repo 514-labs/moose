@@ -16,13 +16,20 @@ The following is the basic structure of a Moose project:
       <FileTree.File name="models.ts" />
     </FileTree.Folder>
     <FileTree.Folder name="functions" defaultOpen>
-      <FileTree.File name="sourceModel__destinationModel.ts" />
+      <FileTree.File name="SourceModel__DestinationModel.ts" />
     </FileTree.Folder>
     <FileTree.Folder name="blocks" defaultOpen>
       <FileTree.File name="aggregation.ts" />
     </FileTree.Folder>
     <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="data-api.ts" />
+      <FileTree.File name="dataApi.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="scripts" defaultOpen>
+      <FileTree.Folder name="ExampleWorkflow" defaultOpen>
+        <FileTree.File name="1.firstTask.ts" />
+        <FileTree.File name="2.secondTask.ts" />
+        <FileTree.File name="config.toml" />
+      </FileTree.Folder>
     </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="package.json" />
@@ -32,19 +39,28 @@ The following is the basic structure of a Moose project:
 
 <Python>
 <FileTree>
-  <FileTree.Folder name=".moose" />
+  <FileTree.Folder name=".moose" defaultOpen>
+    <FileTree.File name="openapi.yaml" />
+  </FileTree.Folder>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.Folder name="datamodels" defaultOpen>
       <FileTree.File name="models.py" />
     </FileTree.Folder>
     <FileTree.Folder name="functions" defaultOpen>
-      <FileTree.File name="sourceModel__destinationModel.py" />
+      <FileTree.File name="SourceModel__DestinationModel.py" />
     </FileTree.Folder>
     <FileTree.Folder name="blocks" defaultOpen>
       <FileTree.File name="aggregation.py" />
     </FileTree.Folder>
     <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="data-api.py" />
+      <FileTree.File name="data_api.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="scripts" defaultOpen>
+      <FileTree.Folder name="ExampleWorkflow" defaultOpen>
+        <FileTree.File name="1.first_task.py" />
+        <FileTree.File name="2.second_task.py" />
+        <FileTree.File name="config.toml" />
+      </FileTree.Folder>
     </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="moose.config.toml" />
@@ -56,7 +72,7 @@ The following is the basic structure of a Moose project:
 |                   |                                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------- |
 | app               | The main folder for your application.                                                                |
-| .moose            | Moose internals. You shouldn't ever have to touch anything in here.                                  |
+| .moose            | Moose internals. Your auto-generated project documentation is stored here.                               |
 | package.json      | The default [npm package manifest file](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
 | moose.config.toml | Configuration file specific to Moose for your application.                                           |
 
@@ -68,3 +84,4 @@ The following is the basic structure of a Moose project:
 | functions  | The folder where you define your [Streaming Functions](../stream-processing) |
 | blocks     | The folder where you define your [Blocks](../db-processing)                     |
 | apis       | The folder where you define your [Consumption APIs](../consumption-apis)       |
+| scripts    | The folder where you define your [Workflows](../workflows)                     |

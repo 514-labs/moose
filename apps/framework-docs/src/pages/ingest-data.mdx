@@ -14,7 +14,7 @@ http://localhost:4000/ingest/<DataModelName>
 For example, if you have a Data Model named `Foo`, the ingestion endpoint will be `http://localhost:4000/ingest/Foo`.
 
 <Python>
-```python filename="app/datamodels/Foo.py"
+```python filename="app/datamodels/Foo.py" copy
 from moose_lib import moose_data_model, Key
 from dataclasses import dataclass
 
@@ -28,7 +28,7 @@ class Foo:
 </Python>
 
 <TypeScript>
-```typescript filename="app/datamodels/Foo.ts"
+```typescript filename="app/datamodels/Foo.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 export interface Foo {
@@ -90,7 +90,7 @@ The OpenAPI spec includes example data for each Data Model schema, which can be 
 Here is an example of an ingestion workflow that generates 1000 rows of data and ingests it into the `Foo` Data Model:
 
 <Python>
-```python filename="app/datamodels/Foo.py"
+```python filename="app/datamodels/Foo.py" copy
 from moose_lib import moose_data_model, Key
 from dataclasses import dataclass
 
@@ -104,7 +104,7 @@ class Foo:
 </Python>
 
 <TypeScript>
-```typescript filename="app/datamodels/Foo.ts"
+```typescript filename="app/datamodels/Foo.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 export interface Foo {
@@ -161,7 +161,7 @@ This will generate a new directory in the `scripts` directory called `ExampleIng
 <Python>
 Paste the following code into the `1.ingest.py` file:
 
-```python filename="app/scripts/example_ingest_script/1.ingest.py"
+```python filename="app/scripts/example_ingest_script/1.ingest.py" copy
 from moose_lib import task  
 import random
 import time
@@ -171,7 +171,7 @@ import urllib.request
 from datetime import datetime
 
 @task
-def generate(data: dict):  # The name of your script
+def generate():  # The name of your script
     """
     Description of what this script does
     """
@@ -201,13 +201,19 @@ def generate(data: dict):  # The name of your script
             headers={'Content-Type': 'application/json'}
         )
         urllib.request.urlopen(req)
+    return {
+      "task_id": "generate",
+      "data": {
+          "completed_at": datetime.now().isoformat()
+      }
+    }
 ```
 </Python>
 
 <TypeScript>
 Paste the following code into the `1.ingest.ts` file:
 
-```typescript filename="app/scripts/ExampleIngestWorkflow/1.ingest.ts"
+```typescript filename="app/scripts/ExampleIngestWorkflow/1.ingest.ts" copy
 import { TaskDefinition, TaskFunction } from "@514labs/moose-lib";
 import { Foo } from "../../datamodels/models";
 import fs from "fs";
@@ -279,7 +285,7 @@ npx moose-cli workflow run ExampleIngestWorkflow
 
 ### Example Snippets
 <TypeScript>
-```typescript filename="app/datamodels/Foo.ts"
+```typescript filename="app/datamodels/Foo.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 export interface Foo {
@@ -300,7 +306,7 @@ export interface Foo {
     ```bash filename="Terminal" copy
     curl -X POST \
       -H "Content-Type: application/json" \
-      -d '{"key": "exampleKey", "value": 1, "timestamp": "2023-01-01T00:00:00Z"}' \
+      -d '{"key": "exampleKey", "value": 1, "timestamp": 1672531200}' \
       http://localhost:4000/ingest/YourDataModel
     ```
   </Tabs.Tab>
@@ -314,7 +320,7 @@ export interface Foo {
     body: JSON.stringify({
       key: 'exampleKey',
       value: 1,
-      timestamp: '2023-01-01T00:00:00Z'
+      timestamp: 1672531200
     })
   })
   ```
@@ -326,7 +332,7 @@ export interface Foo {
   requests.post('http://localhost:4000/ingest/YourDataModel', json={
     'key': 'exampleKey',
     'value': 1,
-    'timestamp': '2023-01-01T00:00:00Z'
+    'timestamp': 1672531200
   })
   ```
   </Tabs.Tab>

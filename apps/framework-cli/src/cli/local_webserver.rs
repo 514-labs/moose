@@ -1713,7 +1713,7 @@ async fn admin_plan_route(
             // Prepare the response
             let response = PlanResponse {
                 status: "success".to_string(),
-                changes: changes,
+                changes,
             };
 
             // Serialize the response to JSON

@@ -36,6 +36,7 @@ pub enum WorkflowExecutionError {
 
 /// Execute a specific script
 pub(crate) async fn execute_workflow(
+    temporal_url: &str,
     language: SupportedLanguages,
     workflow_id: &str,
     execution_path: &Path,
@@ -53,6 +54,7 @@ pub(crate) async fn execute_workflow(
     match language {
         SupportedLanguages::Python => {
             let run_id = execute_workflow_for_language(
+                temporal_url,
                 workflow_id,
                 execution_path,
                 &config,
@@ -64,6 +66,7 @@ pub(crate) async fn execute_workflow(
         }
         SupportedLanguages::Typescript => {
             let run_id = execute_workflow_for_language(
+                temporal_url,
                 workflow_id,
                 execution_path,
                 &config,
@@ -77,14 +80,14 @@ pub(crate) async fn execute_workflow(
 }
 
 async fn execute_workflow_for_language(
+    temporal_url: &str,
     workflow_id: &str,
     execution_path: &Path,
     config: &WorkflowConfig,
     input: Option<String>,
     task_queue_name: &str,
 ) -> Result<String, TemporalExecutionError> {
-    // TODO: Make this configurable
-    let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
+    let endpoint = tonic::transport::Endpoint::from_shared(temporal_url.to_string())?;
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
 
     let mut payloads = vec![Payload {

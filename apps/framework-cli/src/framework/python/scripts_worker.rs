@@ -62,7 +62,10 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     )?;
 
     let mut worker_process = run_python_program(PythonProgram::OrchestrationWorker {
-        args: vec![scripts_dir.to_string_lossy().to_string()],
+        args: vec![
+            project.temporal_config.temporal_url(),
+            scripts_dir.to_string_lossy().to_string(),
+        ],
     })?;
 
     let stdout = worker_process

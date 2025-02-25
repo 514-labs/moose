@@ -87,15 +87,18 @@ pub async fn run_workflow(
         )
     })?;
 
-    let run_id: String = workflow.start(input).await.map_err(|e| {
-        RoutineFailure::new(
-            Message {
-                action: "Workflow".to_string(),
-                details: format!("Could not start workflow '{}': {}\n", name, e),
-            },
-            e,
-        )
-    })?;
+    let run_id: String = workflow
+        .start(&project.temporal_config.temporal_url_with_scheme(), input)
+        .await
+        .map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Workflow".to_string(),
+                    details: format!("Could not start workflow '{}': {}\n", name, e),
+                },
+                e,
+            )
+        })?;
 
     // Check if run_id is empty or invalid
     if run_id.is_empty() {
@@ -123,24 +126,25 @@ pub async fn run_workflow(
 }
 
 pub async fn list_workflows(
-    _project: &Project,
+    project: &Project,
     status: Option<String>,
     limit: u32,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut table_data = Vec::new();
 
-    let mut client = match get_temporal_client().await {
-        Ok(client) => client,
-        Err(e) => {
-            return Err(RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: "Could not connect to Temporal.\n".to_string(),
-                },
-                e,
-            ));
-        }
-    };
+    let mut client =
+        match get_temporal_client(&project.temporal_config.temporal_url_with_scheme()).await {
+            Ok(client) => client,
+            Err(e) => {
+                return Err(RoutineFailure::new(
+                    Message {
+                        action: "Workflow".to_string(),
+                        details: "Could not connect to Temporal.\n".to_string(),
+                    },
+                    e,
+                ));
+            }
+        };
 
     // Convert status string to Temporal status enum
     let status_filter = if let Some(status_str) = status {
@@ -221,15 +225,17 @@ pub async fn list_workflows(
 }
 
 pub async fn terminate_workflow(
-    _project: &Project,
+    project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client().await.map_err(|_e| {
-        RoutineFailure::error(Message {
-            action: "Workflow".to_string(),
-            details: "Could not connect to Temporal.\n".to_string(),
-        })
-    })?;
+    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
+        .await
+        .map_err(|_e| {
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: "Could not connect to Temporal.\n".to_string(),
+            })
+        })?;
 
     let request = TerminateWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -267,18 +273,20 @@ pub async fn terminate_workflow(
 }
 
 pub async fn pause_workflow(
-    _project: &Project,
+    project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client().await.map_err(|e| {
-        RoutineFailure::new(
-            Message {
-                action: "Workflow".to_string(),
-                details: "Could not connect to Temporal.\n".to_string(),
-            },
-            e,
-        )
-    })?;
+    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
+        .await
+        .map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Workflow".to_string(),
+                    details: "Could not connect to Temporal.\n".to_string(),
+                },
+                e,
+            )
+        })?;
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -313,18 +321,20 @@ pub async fn pause_workflow(
 }
 
 pub async fn unpause_workflow(
-    _project: &Project,
+    project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client().await.map_err(|e| {
-        RoutineFailure::new(
-            Message {
-                action: "Workflow".to_string(),
-                details: "Could not connect to Temporal.\n".to_string(),
-            },
-            e,
-        )
-    })?;
+    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
+        .await
+        .map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Workflow".to_string(),
+                    details: "Could not connect to Temporal.\n".to_string(),
+                },
+                e,
+            )
+        })?;
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -359,18 +369,20 @@ pub async fn unpause_workflow(
 }
 
 pub async fn get_workflow_status(
-    _project: &Project,
+    project: &Project,
     name: &str,
     run_id: Option<String>,
     verbose: bool,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client().await.map_err(|_| {
-        RoutineFailure::error(Message {
-            action: "Workflow".to_string(),
-            details: "Could not connect to Temporal.\n".to_string(),
-        })
-    })?;
+    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
+        .await
+        .map_err(|_| {
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: "Could not connect to Temporal.\n".to_string(),
+            })
+        })?;
 
     // If no run_id provided, get the most recent one
     let execution_id = if let Some(id) = run_id {

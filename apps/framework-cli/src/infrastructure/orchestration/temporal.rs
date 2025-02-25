@@ -13,6 +13,8 @@ pub struct TemporalConfig {
     pub db_password: String,
     #[serde(default = "default_db_port")]
     pub db_port: u16,
+    #[serde(default = "default_temporal_host")]
+    pub temporal_host: String,
     #[serde(default = "default_temporal_port")]
     pub temporal_port: u16,
     #[serde(default = "default_temporal_version")]
@@ -41,6 +43,10 @@ fn default_db_password() -> String {
 
 fn default_db_port() -> u16 {
     5432
+}
+
+fn default_temporal_host() -> String {
+    "localhost".to_string()
 }
 
 fn default_temporal_port() -> u16 {
@@ -103,6 +109,21 @@ impl TemporalConfig {
             ),
         ]
     }
+
+    /// Temporal TS/PY sdk expects a url without a scheme
+    pub fn temporal_url(&self) -> String {
+        format!("{}:{}", self.temporal_host, self.temporal_port)
+    }
+
+    /// Temporal Rust sdk expects a scheme for the temporal url
+    pub fn temporal_url_with_scheme(&self) -> String {
+        let scheme = if self.temporal_host == "localhost" {
+            "http"
+        } else {
+            "https"
+        };
+        format!("{}://{}:{}", scheme, self.temporal_host, self.temporal_port)
+    }
 }
 
 impl Default for TemporalConfig {
@@ -111,6 +132,7 @@ impl Default for TemporalConfig {
             db_user: default_db_user(),
             db_password: default_db_password(),
             db_port: default_db_port(),
+            temporal_host: default_temporal_host(),
             temporal_port: default_temporal_port(),
             temporal_version: default_temporal_version(),
             admin_tools_version: default_admin_tools_version(),
@@ -123,15 +145,15 @@ impl Default for TemporalConfig {
     }
 }
 
-async fn connect_to_temporal() -> Result<WorkflowServiceClient<Channel>> {
-    let endpoint: Uri = "http://localhost:7233".parse().unwrap();
+async fn connect_to_temporal(temporal_url: &str) -> Result<WorkflowServiceClient<Channel>> {
+    let endpoint: Uri = temporal_url.parse().unwrap();
     WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
         Error::msg("Could not connect to Temporal. Please ensure the Temporal server is running.")
     })
 }
 
-pub async fn get_temporal_client() -> Result<WorkflowServiceClient<Channel>> {
-    connect_to_temporal().await.map_err(|e| {
+pub async fn get_temporal_client(temporal_url: &str) -> Result<WorkflowServiceClient<Channel>> {
+    connect_to_temporal(temporal_url).await.map_err(|e| {
         eprintln!("{}", e);
         Error::msg(format!("{}", e))
     })

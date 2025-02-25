@@ -156,8 +156,15 @@ impl Workflow {
     }
 
     /// Start the workflow execution locally
-    pub async fn start(&self, input: Option<String>) -> Result<String, anyhow::Error> {
-        Ok(executor::execute_workflow(self.language, &self.name, &self.path, input).await?)
+    pub async fn start(
+        &self,
+        temporal_url: &str,
+        input: Option<String>,
+    ) -> Result<String, anyhow::Error> {
+        Ok(
+            executor::execute_workflow(temporal_url, self.language, &self.name, &self.path, input)
+                .await?,
+        )
     }
 }
 

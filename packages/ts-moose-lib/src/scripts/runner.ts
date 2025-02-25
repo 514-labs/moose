@@ -46,6 +46,7 @@ function collectActivities(
 
 async function registerWorkflows(
   logger: DefaultLogger,
+  temporalUrl: string,
   scriptDir: string,
 ): Promise<Worker | null> {
   logger.info(`Registering workflows from ${scriptDir}`);
@@ -97,7 +98,7 @@ async function registerWorkflows(
     // TODO: Make this configurable
     logger.info("Connecting to Temporal server...");
     const connection = await NativeConnection.connect({
-      address: "localhost:7233",
+      address: temporalUrl,
     });
 
     const worker = await Worker.create({
@@ -130,13 +131,16 @@ async function registerWorkflows(
  * @returns The started Temporal worker instance
  * @throws ValueError if no scripts are found to register
  */
-export async function runScripts(scriptDir: string): Promise<Worker | null> {
+export async function runScripts(
+  temporalUrl: string,
+  scriptDir: string,
+): Promise<Worker | null> {
   // Not sure why temporal doesn't like importing the logger
   // so have to pass it around
   const logger = initializeLogger();
 
   logger.info(`Starting worker for script directory: ${scriptDir}`);
-  const worker = await registerWorkflows(logger, scriptDir);
+  const worker = await registerWorkflows(logger, temporalUrl, scriptDir);
 
   if (!worker) {
     const msg = `No scripts found to register in ${scriptDir}`;

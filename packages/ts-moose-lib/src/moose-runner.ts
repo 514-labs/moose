@@ -61,7 +61,7 @@ switch (process.argv[2]) {
     runConsumptionTypeSerializer();
     break;
   case "scripts":
-    runScripts(process.argv[3]);
+    runScripts(process.argv[3], process.argv[4]);
     break;
   default:
     console.error(`Invalid argument: ${process.argv[2]}`);

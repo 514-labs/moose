@@ -6,11 +6,12 @@ import asyncio
 
 def main():
     log.info("Starting worker")
+    temporal_url = sys.argv[1]
     # The root script where all the scripts are located
-    script_root = sys.argv[1]
+    script_root = sys.argv[2]
 
     try:
-        asyncio.run(start_worker(script_root))
+        asyncio.run(start_worker(temporal_url, script_root))
     except KeyboardInterrupt:
         # Ignore error messages when user force kills the program
         # In the future, we might want to terminate all running workflows

@@ -20,9 +20,10 @@ const SCRIPTS_BIN: &str = "scripts";
 
 pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError> {
     let project_path = project.project_location.clone();
+    let temporal_url = project.temporal_config.temporal_url();
     let scripts_dir = project.scripts_dir();
 
-    let args: Vec<&str> = vec![scripts_dir.to_str().unwrap()];
+    let args: Vec<&str> = vec![temporal_url.as_str(), scripts_dir.to_str().unwrap()];
 
     let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args)?;
 

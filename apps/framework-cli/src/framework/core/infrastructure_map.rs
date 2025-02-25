@@ -91,20 +91,20 @@ impl PrimitiveTypes {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ColumnChange {
     Added(Column),
     Removed(Column),
     Updated { before: Column, after: Column },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderByChange {
     pub before: Vec<String>,
     pub after: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
@@ -118,7 +118,7 @@ pub enum TableChange {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Change<T: Serialize> {
     Added(Box<T>),
     Removed(Box<T>),
@@ -126,7 +126,7 @@ pub enum Change<T: Serialize> {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InfraChange {
     Olap(OlapChange),
     Streaming(StreamingChange),
@@ -134,24 +134,24 @@ pub enum InfraChange {
     Process(ProcessChange),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StreamingChange {
     Topic(Change<Topic>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApiChange {
     ApiEndpoint(Change<ApiEndpoint>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
     TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
@@ -161,7 +161,7 @@ pub enum ProcessChange {
     OrchestrationWorker(Change<OrchestrationWorker>),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InfraChanges {
     pub olap_changes: Vec<OlapChange>,
     pub processes_changes: Vec<ProcessChange>,
@@ -170,7 +170,7 @@ pub struct InfraChanges {
     pub initial_data_loads: Vec<InitialDataLoadChange>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InitialDataLoadChange {
     Addition(InitialDataLoad),
     Resumption {
@@ -188,8 +188,6 @@ impl InfraChanges {
     }
 }
 
-// TODO we should not expose the internals of the infrastructure map.
-// We should have apis to be able to change it.
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
@@ -247,55 +245,142 @@ impl InfrastructureMap {
         target_tables: &HashMap<String, Table>,
         olap_changes: &mut Vec<OlapChange>,
     ) {
+        log::info!(
+            "Analyzing table differences between {} source tables and {} target tables",
+            self_tables.len(),
+            target_tables.len()
+        );
+
+        let mut table_updates = 0;
+        let mut table_removals = 0;
+        let mut table_additions = 0;
+
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
                     // Debug logging to identify what's different
+                    log::debug!("Table '{}' has differences:", id);
                     if table.name != target_table.name {
                         log::debug!(
-                            "Table {} differs in name: {} vs {}",
-                            id,
+                            "  - Name changed: '{}' -> '{}'",
                             table.name,
                             target_table.name
                         );
                     }
                     if table.columns != target_table.columns {
-                        log::debug!("Table {} differs in columns", id);
+                        log::debug!("  - Column differences detected");
+                        // Detail column differences
+                        for col in &table.columns {
+                            if !target_table
+                                .columns
+                                .iter()
+                                .any(|c| c.name == col.name && c == col)
+                            {
+                                if target_table.columns.iter().any(|c| c.name == col.name) {
+                                    log::debug!("    * Column '{}' modified", col.name);
+                                } else {
+                                    log::debug!("    * Column '{}' removed", col.name);
+                                }
+                            }
+                        }
+                        for col in &target_table.columns {
+                            if !table.columns.iter().any(|c| c.name == col.name) {
+                                log::debug!("    * Column '{}' added", col.name);
+                            }
+                        }
                     }
                     if table.order_by != target_table.order_by {
                         log::debug!(
-                            "Table {} differs in order_by: {:?} vs {:?}",
-                            id,
+                            "  - Order by changed: {:?} -> {:?}",
                             table.order_by,
                             target_table.order_by
                         );
                     }
                     if table.deduplicate != target_table.deduplicate {
                         log::debug!(
-                            "Table {} differs in deduplicate: {} vs {}",
-                            id,
+                            "  - Deduplicate changed: {} -> {}",
                             table.deduplicate,
                             target_table.deduplicate
                         );
                     }
                     if table.version != target_table.version {
                         log::debug!(
-                            "Table {} differs in version: {} vs {}",
-                            id,
+                            "  - Version changed: {} -> {}",
                             table.version,
                             target_table.version
                         );
                     }
                     if table.source_primitive != target_table.source_primitive {
                         log::debug!(
-                            "Table {} differs in source_primitive: {:?} vs {:?}",
-                            id,
+                            "  - Source primitive changed: {:?} -> {:?}",
                             table.source_primitive,
                             target_table.source_primitive
                         );
                     }
 
                     let column_changes = compute_table_diff(table, target_table);
+
+                    // Log column change details
+                    if !column_changes.is_empty() {
+                        log::debug!("Column changes for table '{}':", table.name);
+                        for change in &column_changes {
+                            match change {
+                                ColumnChange::Added(col) => {
+                                    log::debug!(
+                                        "  - Added column: {} ({})",
+                                        col.name,
+                                        col.data_type
+                                    );
+                                }
+                                ColumnChange::Removed(col) => {
+                                    log::debug!(
+                                        "  - Removed column: {} ({})",
+                                        col.name,
+                                        col.data_type
+                                    );
+                                }
+                                ColumnChange::Updated { before, after } => {
+                                    log::debug!("  - Updated column: {}", before.name);
+                                    if before.data_type != after.data_type {
+                                        log::debug!(
+                                            "    * Type changed: {:?} -> {:?}",
+                                            before.data_type,
+                                            after.data_type
+                                        );
+                                    }
+                                    if before.required != after.required {
+                                        log::debug!(
+                                            "    * Required changed: {:?} -> {:?}",
+                                            before.required,
+                                            after.required
+                                        );
+                                    }
+                                    if before.unique != after.unique {
+                                        log::debug!(
+                                            "    * Unique changed: {:?} -> {:?}",
+                                            before.unique,
+                                            after.unique
+                                        );
+                                    }
+                                    if before.primary_key != after.primary_key {
+                                        log::debug!(
+                                            "    * Primary key changed: {:?} -> {:?}",
+                                            before.primary_key,
+                                            after.primary_key
+                                        );
+                                    }
+                                    if before.default != after.default {
+                                        log::debug!(
+                                            "    * Default value changed: {:?} -> {:?}",
+                                            before.default,
+                                            after.default
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     let order_by_change = if table.order_by != target_table.order_by {
                         OrderByChange {
                             before: table.order_by.clone(),
@@ -313,6 +398,7 @@ impl InfrastructureMap {
                         || table.order_by != target_table.order_by
                         || table.deduplicate != target_table.deduplicate
                     {
+                        table_updates += 1;
                         olap_changes.push(OlapChange::Table(TableChange::Updated {
                             name: table.name.clone(),
                             column_changes,
@@ -323,15 +409,33 @@ impl InfrastructureMap {
                     }
                 }
             } else {
+                log::debug!("Table '{}' removed", table.name);
+                table_removals += 1;
                 olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
             }
         }
 
         for (id, table) in target_tables {
             if !self_tables.contains_key(id) {
+                log::debug!(
+                    "Table '{}' added with {} columns",
+                    table.name,
+                    table.columns.len()
+                );
+                for col in &table.columns {
+                    log::trace!("  - Column: {} ({})", col.name, col.data_type);
+                }
+                table_additions += 1;
                 olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
             }
         }
+
+        log::info!(
+            "Table changes: {} added, {} removed, {} updated",
+            table_additions,
+            table_removals,
+            table_updates
+        );
     }
 
     // we want to add the prefix as soon as possible
@@ -545,7 +649,8 @@ impl InfrastructureMap {
         // consumption api endpoints
         let consumption_api_web_server = ConsumptionApiWebServer {};
         for api_endpoint in primitive_map.consumption.endpoint_files {
-            api_endpoints.insert(api_endpoint.id(), api_endpoint.into());
+            let api_endpoint_infra = ApiEndpoint::from(api_endpoint);
+            api_endpoints.insert(api_endpoint_infra.id(), api_endpoint_infra);
         }
 
         // Orchestration workers
@@ -579,10 +684,16 @@ impl InfrastructureMap {
         // =================================================================
         //                              Topics
         // =================================================================
+        log::info!("Analyzing changes in Topics...");
+        let mut topic_updates = 0;
+        let mut topic_removals = 0;
+        let mut topic_additions = 0;
 
         for (id, topic) in &self.topics {
             if let Some(target_topic) = target_map.topics.get(id) {
                 if topic != target_topic {
+                    log::debug!("Topic updated: {} ({})", topic.name, id);
+                    topic_updates += 1;
                     changes
                         .streaming_engine_changes
                         .push(StreamingChange::Topic(Change::<Topic>::Updated {
@@ -591,6 +702,8 @@ impl InfrastructureMap {
                         }));
                 }
             } else {
+                log::debug!("Topic removed: {} ({})", topic.name, id);
+                topic_removals += 1;
                 changes
                     .streaming_engine_changes
                     .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
@@ -601,6 +714,8 @@ impl InfrastructureMap {
 
         for (id, topic) in &target_map.topics {
             if !self.topics.contains_key(id) {
+                log::debug!("Topic added: {} ({})", topic.name, id);
+                topic_additions += 1;
                 changes
                     .streaming_engine_changes
                     .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
@@ -609,13 +724,26 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "Topic changes: {} added, {} removed, {} updated",
+            topic_additions,
+            topic_removals,
+            topic_updates
+        );
+
         // =================================================================
         //                              API Endpoints
         // =================================================================
+        log::info!("Analyzing changes in API Endpoints...");
+        let mut api_updates = 0;
+        let mut api_removals = 0;
+        let mut api_additions = 0;
 
         for (id, api_endpoint) in &self.api_endpoints {
             if let Some(target_api_endpoint) = target_map.api_endpoints.get(id) {
                 if api_endpoint != target_api_endpoint {
+                    log::debug!("API Endpoint updated: {}", id);
+                    api_updates += 1;
                     changes.api_changes.push(ApiChange::ApiEndpoint(
                         Change::<ApiEndpoint>::Updated {
                             before: Box::new(api_endpoint.clone()),
@@ -624,6 +752,8 @@ impl InfrastructureMap {
                     ));
                 }
             } else {
+                log::debug!("API Endpoint removed: {}", id);
+                api_removals += 1;
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Removed(
@@ -634,6 +764,8 @@ impl InfrastructureMap {
 
         for (id, api_endpoint) in &target_map.api_endpoints {
             if !self.api_endpoints.contains_key(id) {
+                log::debug!("API Endpoint added: {}", id);
+                api_additions += 1;
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
@@ -642,19 +774,35 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "API Endpoint changes: {} added, {} removed, {} updated",
+            api_additions,
+            api_removals,
+            api_updates
+        );
+
         // =================================================================
         //                              Tables
         // =================================================================
-
+        log::info!("Analyzing changes in Tables...");
+        let olap_changes_len_before = changes.olap_changes.len();
         Self::diff_tables(&self.tables, &target_map.tables, &mut changes.olap_changes);
+        let table_changes = changes.olap_changes.len() - olap_changes_len_before;
+        log::info!("Table changes detected: {}", table_changes);
 
         // =================================================================
         //                              Views
         // =================================================================
+        log::info!("Analyzing changes in Views...");
+        let mut view_updates = 0;
+        let mut view_removals = 0;
+        let mut view_additions = 0;
 
         for (id, view) in &self.views {
             if let Some(target_view) = target_map.views.get(id) {
                 if view != target_view {
+                    log::debug!("View updated: {}", view.name);
+                    view_updates += 1;
                     changes
                         .olap_changes
                         .push(OlapChange::View(Change::<View>::Updated {
@@ -663,6 +811,8 @@ impl InfrastructureMap {
                         }));
                 }
             } else {
+                log::debug!("View removed: {}", view.name);
+                view_removals += 1;
                 changes
                     .olap_changes
                     .push(OlapChange::View(Change::<View>::Removed(Box::new(
@@ -673,6 +823,8 @@ impl InfrastructureMap {
 
         for (id, view) in &target_map.views {
             if !self.views.contains_key(id) {
+                log::debug!("View added: {}", view.name);
+                view_additions += 1;
                 changes
                     .olap_changes
                     .push(OlapChange::View(Change::<View>::Added(Box::new(
@@ -681,15 +833,28 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "View changes: {} added, {} removed, {} updated",
+            view_additions,
+            view_removals,
+            view_updates
+        );
+
         // =================================================================
         //                              Topic to Table Sync Processes
         // =================================================================
+        log::info!("Analyzing changes in Topic to Table Sync Processes...");
+        let mut t2t_sync_updates = 0;
+        let mut t2t_sync_removals = 0;
+        let mut t2t_sync_additions = 0;
 
         for (id, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
             if let Some(target_topic_to_table_sync_process) =
                 target_map.topic_to_table_sync_processes.get(id)
             {
                 if topic_to_table_sync_process != target_topic_to_table_sync_process {
+                    log::debug!("Topic to Table Sync Process updated: {}", id);
+                    t2t_sync_updates += 1;
                     changes
                         .processes_changes
                         .push(ProcessChange::TopicToTableSyncProcess(Change::<
@@ -700,6 +865,8 @@ impl InfrastructureMap {
                         }));
                 }
             } else {
+                log::debug!("Topic to Table Sync Process removed: {}", id);
+                t2t_sync_removals += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
@@ -712,6 +879,8 @@ impl InfrastructureMap {
 
         for (id, topic_to_table_sync_process) in &target_map.topic_to_table_sync_processes {
             if !self.topic_to_table_sync_processes.contains_key(id) {
+                log::debug!("Topic to Table Sync Process added: {}", id);
+                t2t_sync_additions += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
@@ -722,15 +891,28 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "Topic to Table Sync Process changes: {} added, {} removed, {} updated",
+            t2t_sync_additions,
+            t2t_sync_removals,
+            t2t_sync_updates
+        );
+
         // =================================================================
         //                              Topic to Topic Sync Processes
         // =================================================================
+        log::info!("Analyzing changes in Topic to Topic Sync Processes...");
+        let mut t2t_topic_sync_updates = 0;
+        let mut t2t_topic_sync_removals = 0;
+        let mut t2t_topic_sync_additions = 0;
 
         for (id, topic_to_topic_sync_process) in &self.topic_to_topic_sync_processes {
             if let Some(target_topic_to_topic_sync_process) =
                 target_map.topic_to_topic_sync_processes.get(id)
             {
                 if topic_to_topic_sync_process != target_topic_to_topic_sync_process {
+                    log::debug!("Topic to Topic Sync Process updated: {}", id);
+                    t2t_topic_sync_updates += 1;
                     changes
                         .processes_changes
                         .push(ProcessChange::TopicToTopicSyncProcess(Change::<
@@ -741,6 +923,8 @@ impl InfrastructureMap {
                         }));
                 }
             } else {
+                log::debug!("Topic to Topic Sync Process removed: {}", id);
+                t2t_topic_sync_removals += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
@@ -753,6 +937,8 @@ impl InfrastructureMap {
 
         for (id, topic_to_topic_sync_process) in &target_map.topic_to_topic_sync_processes {
             if !self.topic_to_topic_sync_processes.contains_key(id) {
+                log::debug!("Topic to Topic Sync Process added: {}", id);
+                t2t_topic_sync_additions += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
@@ -763,9 +949,20 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "Topic to Topic Sync Process changes: {} added, {} removed, {} updated",
+            t2t_topic_sync_additions,
+            t2t_topic_sync_removals,
+            t2t_topic_sync_updates
+        );
+
         // =================================================================
         //                             Function Processes
         // =================================================================
+        log::info!("Analyzing changes in Function Processes...");
+        let mut function_updates = 0;
+        let mut function_removals = 0;
+        let mut function_additions = 0;
 
         for (id, function_process) in &self.function_processes {
             if let Some(target_function_process) = target_map.function_processes.get(id) {
@@ -773,6 +970,8 @@ impl InfrastructureMap {
                 // dependendant on changing one file, but also on its dependencies. Untill we are able to
                 // properly compare the function processes wholisticaly (File + Dependencies), we will just
                 // assume that the function process has changed.
+                log::debug!("Function Process updated: {}", id);
+                function_updates += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
@@ -782,6 +981,8 @@ impl InfrastructureMap {
                         },
                     ));
             } else {
+                log::debug!("Function Process removed: {}", id);
+                function_removals += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
@@ -792,6 +993,8 @@ impl InfrastructureMap {
 
         for (id, function_process) in &target_map.function_processes {
             if !self.function_processes.contains_key(id) {
+                log::debug!("Function Process added: {}", id);
+                function_additions += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
@@ -800,17 +1003,37 @@ impl InfrastructureMap {
             }
         }
 
+        log::info!(
+            "Function Process changes: {} added, {} removed, {} updated",
+            function_additions,
+            function_removals,
+            function_updates
+        );
+
         // =================================================================
         //                             Initial Data Loads
         // =================================================================
+        log::info!("Analyzing changes in Initial Data Loads...");
+        let mut data_load_changes = 0;
+
         for (id, load) in &target_map.initial_data_loads {
             let existing = self.initial_data_loads.get(id);
             match existing {
-                None => changes
-                    .initial_data_loads
-                    .push(InitialDataLoadChange::Addition(load.clone())),
+                None => {
+                    log::debug!("Initial Data Load added: {}", id);
+                    data_load_changes += 1;
+                    changes
+                        .initial_data_loads
+                        .push(InitialDataLoadChange::Addition(load.clone()));
+                }
                 Some(existing) => match existing.status {
                     InitialDataLoadStatus::InProgress(resume_from) => {
+                        log::debug!(
+                            "Initial Data Load resumption: {} (from {})",
+                            id,
+                            resume_from
+                        );
+                        data_load_changes += 1;
                         changes
                             .initial_data_loads
                             .push(InitialDataLoadChange::Resumption {
@@ -818,14 +1041,19 @@ impl InfrastructureMap {
                                 load: load.clone(),
                             });
                     }
-                    InitialDataLoadStatus::Completed => {}
+                    InitialDataLoadStatus::Completed => {
+                        log::debug!("Initial Data Load already completed: {}", id);
+                    }
                 },
             }
         }
 
+        log::info!("Initial Data Load changes: {}", data_load_changes);
+
         // =================================================================
         //                             Blocks Processes
         // =================================================================
+        log::info!("Analyzing changes in OLAP Processes...");
 
         // Until we refactor to have multiple processes, we will consider that we need to restart
         // the process all the times and the blocks changes all the time.
@@ -833,6 +1061,7 @@ impl InfrastructureMap {
         // the process if there are changes
 
         // currently we assume there is always a change and restart the processes
+        log::debug!("OLAP Process updated (assumed for now)");
         changes.processes_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Updated {
                 before: Box::new(OlapProcess {}),
@@ -843,12 +1072,13 @@ impl InfrastructureMap {
         // =================================================================
         //                          Consumption Process
         // =================================================================
+        log::info!("Analyzing changes in Consumption API Web Server...");
 
         // We are currently not tracking individual consumption endpoints, so we will just restart
         // the consumption web server when something changed. we might want to change that in the future
         // to be able to only make changes when something in the dependency tree of a consumption api has
         // changed.
-
+        log::debug!("Consumption API Web Server updated (assumed for now)");
         changes
             .processes_changes
             .push(ProcessChange::ConsumptionApiWebServer(Change::<
@@ -861,10 +1091,16 @@ impl InfrastructureMap {
         // =================================================================
         //                      Orchestration Workers
         // =================================================================
+        log::info!("Analyzing changes in Orchestration Workers...");
+        let mut worker_updates = 0;
+        let mut worker_removals = 0;
+        let mut worker_additions = 0;
 
         for (id, orchestration_worker) in &self.orchestration_workers {
             if let Some(target_orchestration_worker) = target_map.orchestration_workers.get(id) {
                 // Until we track individual files changes, we want workers to be restarted for every change
+                log::debug!("Orchestration Worker updated: {}", id);
+                worker_updates += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::OrchestrationWorker(Change::<
@@ -874,6 +1110,8 @@ impl InfrastructureMap {
                         after: Box::new(target_orchestration_worker.clone()),
                     }));
             } else {
+                log::debug!("Orchestration Worker removed: {}", id);
+                worker_removals += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::OrchestrationWorker(Change::<
@@ -886,6 +1124,8 @@ impl InfrastructureMap {
 
         for (id, orchestration_worker) in &target_map.orchestration_workers {
             if !self.orchestration_workers.contains_key(id) {
+                log::debug!("Orchestration Worker added: {}", id);
+                worker_additions += 1;
                 changes
                     .processes_changes
                     .push(ProcessChange::OrchestrationWorker(Change::<
@@ -895,6 +1135,23 @@ impl InfrastructureMap {
                     )));
             }
         }
+
+        log::info!(
+            "Orchestration Worker changes: {} added, {} removed, {} updated",
+            worker_additions,
+            worker_removals,
+            worker_updates
+        );
+
+        // Summarize total changes
+        log::info!(
+            "Total changes: {} OLAP, {} Process, {} API, {} Streaming, {} Initial Data Load",
+            changes.olap_changes.len(),
+            changes.processes_changes.len(),
+            changes.api_changes.len(),
+            changes.streaming_engine_changes.len(),
+            changes.initial_data_loads.len()
+        );
 
         changes
     }
@@ -1154,6 +1411,7 @@ impl InfrastructureMap {
 }
 
 pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
+    log::debug!("Computing detailed diff for table '{}'", before.name);
     let mut diff = Vec::new();
 
     // Check for added or modified columns
@@ -1161,6 +1419,44 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
         match before.columns.iter().find(|c| c.name == after_col.name) {
             // If the column is in the before table, but different, then it is modified
             Some(before_col) if before_col != after_col => {
+                log::trace!("Column '{}' has been modified", before_col.name);
+                // Log specific differences
+                if before_col.data_type != after_col.data_type {
+                    log::trace!(
+                        "  - Type changed: {:?} -> {:?}",
+                        before_col.data_type,
+                        after_col.data_type
+                    );
+                }
+                if before_col.required != after_col.required {
+                    log::trace!(
+                        "  - Required changed: {} -> {}",
+                        before_col.required,
+                        after_col.required
+                    );
+                }
+                if before_col.unique != after_col.unique {
+                    log::trace!(
+                        "  - Unique changed: {} -> {}",
+                        before_col.unique,
+                        after_col.unique
+                    );
+                }
+                if before_col.primary_key != after_col.primary_key {
+                    log::trace!(
+                        "  - Primary key changed: {} -> {}",
+                        before_col.primary_key,
+                        after_col.primary_key
+                    );
+                }
+                if before_col.default != after_col.default {
+                    log::trace!(
+                        "  - Default value changed: {:?} -> {:?}",
+                        before_col.default,
+                        after_col.default
+                    );
+                }
+
                 diff.push(ColumnChange::Updated {
                     before: before_col.clone(),
                     after: after_col.clone(),
@@ -1168,19 +1464,32 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
             }
             // If the column is not in the before table, then it is added
             None => {
+                log::trace!(
+                    "Column '{}' has been added with type {:?}",
+                    after_col.name,
+                    after_col.data_type
+                );
                 diff.push(ColumnChange::Added(after_col.clone()));
             }
-            _ => {}
+            _ => {
+                log::trace!("Column '{}' unchanged", after_col.name);
+            }
         }
     }
 
     // Check for dropped columns
     for before_col in &before.columns {
         if !after.columns.iter().any(|c| c.name == before_col.name) {
+            log::trace!("Column '{}' has been removed", before_col.name);
             diff.push(ColumnChange::Removed(before_col.clone()));
         }
     }
 
+    log::debug!(
+        "Found {} column changes for table '{}'",
+        diff.len(),
+        before.name
+    );
     diff
 }
 

@@ -100,7 +100,6 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::controller::RouteMeta;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::framework::core::plan::plan_changes;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
@@ -108,10 +107,14 @@ use crate::project::Project;
 
 use super::super::metrics::Metrics;
 use super::display;
-use super::local_webserver::Webserver;
+use super::local_webserver::{PlanRequest, PlanResponse, Webserver};
 use super::settings::Settings;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
+
+use crate::framework::core::plan::plan_changes;
+use crate::framework::core::plan::InfraPlan;
+use crate::framework::core::primitive_map::PrimitiveMap;
 
 pub mod auth;
 pub mod block;
@@ -171,7 +174,7 @@ impl RoutineSuccess {
     }
 
     pub fn show(&self) {
-        show_message!(self.message_type, self.message);
+        display::show_message_wrapper(self.message_type, self.message.clone());
     }
 }
 
@@ -214,12 +217,12 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         )
     };
 
-    show_message!(
+    display::show_message_wrapper(
         MessageType::Info,
         Message {
             action: "Node Id:".to_string(),
             details: format!("{}::{}", service_name, instance_id),
-        }
+        },
     );
 
     // Register the leadership lock
@@ -373,12 +376,12 @@ pub async fn start_development_mode(
     redis_client: Arc<Mutex<RedisClient>>,
     settings: &Settings,
 ) -> anyhow::Result<()> {
-    show_message!(
+    display::show_message_wrapper(
         MessageType::Info,
         Message {
             action: "Starting".to_string(),
             details: "development mode".to_string(),
-        }
+        },
     );
 
     let server_config = project.http_server_config.clone();
@@ -488,12 +491,12 @@ pub async fn start_production_mode(
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
-    show_message!(
+    display::show_message_wrapper(
         MessageType::Success,
         Message {
             action: "Starting".to_string(),
             details: "production mode".to_string(),
-        }
+        },
     );
 
     if std::env::var("MOOSE_TEST__CRASH").is_ok() {
@@ -577,22 +580,118 @@ pub async fn start_production_mode(
     Ok(())
 }
 
-pub async fn plan(project: &Project) -> anyhow::Result<()> {
-    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+/// Authentication for remote plan requests:
+///
+/// When making requests to a remote Moose instance, authentication is required for admin operations.
+/// The authentication token is sent as a Bearer token in the Authorization header.
+///
+/// The token is determined in the following order of precedence:
+/// 1. Command line parameter: `--token <value>`
+/// 2. Environment variable: `MOOSE_ADMIN_TOKEN`
+/// 3. Project configuration: `authentication.admin_api_key` in moose.yaml
+///
+/// Note that the admin_api_key in the project configuration is typically stored in hashed form,
+/// so options 1 or 2 are recommended for remote plan operations.
+///
+/// Simulates a plan command against a remote Moose instance
+///
+/// # Arguments
+/// * `project` - Reference to the project
+/// * `url` - Optional URL of the remote Moose instance (default: http://localhost:4000)
+/// * `token` - Optional API token for authentication (overrides MOOSE_ADMIN_TOKEN env var)
+///
+/// # Returns
+/// * Result indicating success or failure
+pub async fn remote_plan(
+    project: &Project,
+    url: &Option<String>,
+    token: &Option<String>,
+) -> anyhow::Result<()> {
+    // Build the inframap from the local project
+    let primitive_map = PrimitiveMap::load(project).await?;
+    let local_infra_map = InfrastructureMap::new(project, primitive_map);
 
-    let plan_results = plan_changes(&mut client, project).await?;
+    // Determine the target URL
+    let target_url = match url {
+        Some(u) => format!("{}/admin/plan", u.trim_end_matches('/')),
+        None => "http://localhost:4000/admin/plan".to_string(),
+    };
 
-    display::show_changes(&plan_results);
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: format!(
+                "Comparing local project code with remote instance at {}",
+                target_url
+            ),
+        },
+    );
 
-    if plan_results.changes.is_empty() {
-        show_message!(
+    let request_body = PlanRequest {
+        infra_map: local_infra_map,
+    };
+
+    // Get authentication token - prioritize command line parameter, then env var, then project config
+    let auth_token = token
+        .clone()
+        .or_else(|| std::env::var("MOOSE_ADMIN_TOKEN").ok())
+        .ok_or_else(|| anyhow::anyhow!("Authentication token required. Please provide token via --token parameter or MOOSE_ADMIN_TOKEN environment variable"))?;
+
+    // Create HTTP client
+    let client = reqwest::Client::new();
+    let mut request_builder = client
+        .post(&target_url)
+        .header("Content-Type", "application/json")
+        .json(&request_body);
+
+    // Add authorization header if token is available
+    request_builder = request_builder.header("Authorization", format!("Bearer {}", auth_token));
+
+    // Send request
+    let response = request_builder.send().await?;
+
+    // Check response status
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        return Err(anyhow::anyhow!(
+            "Failed to get plan from remote instance: {}",
+            error_text
+        ));
+    }
+
+    // Parse response
+    let plan_response: PlanResponse = response.json().await?;
+
+    // Display results
+    display::show_message_wrapper(
+        MessageType::Success,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: "Retrieved plan from remote instance".to_string(),
+        },
+    );
+
+    // Check if there are any changes to display
+    if plan_response.changes.is_empty() {
+        display::show_message_wrapper(
             MessageType::Info,
             Message {
-                action: "No".to_string(),
-                details: "changes detected".to_string(),
-            }
+                action: "No Changes".to_string(),
+                details: "No changes detected".to_string(),
+            },
         );
+        return Ok(());
     }
+
+    // Create a temporary InfraPlan to use with the show_changes function
+    let temp_plan = InfraPlan {
+        changes: plan_response.changes,
+        target_infra_map: InfrastructureMap::new(project, PrimitiveMap::default()),
+    };
+
+    // Use the existing display method to show the changes
+    display::show_changes(&temp_plan);
 
     Ok(())
 }

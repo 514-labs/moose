@@ -9,14 +9,9 @@ use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
-use crate::framework::core::infrastructure::topic::Topic;
-use crate::framework::core::infrastructure::view::View;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
-use crate::framework::core::infrastructure_map::{
-    ColumnChange, InfraChanges, InitialDataLoadChange, OlapChange, ProcessChange, StreamingChange,
-    TableChange,
-};
+use crate::framework::core::infrastructure_map::{InfraChanges, OlapChange, TableChange};
 use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
@@ -78,7 +73,6 @@ use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
-use crate::framework::core::infrastructure::api_endpoint::ApiEndpoint;
 use crate::framework::core::infrastructure::table::Table;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 

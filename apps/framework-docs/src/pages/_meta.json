@@ -21,7 +21,7 @@
   "ingest-data": "Ingesting Data",
   "stream-processing": "Stream Processing",
   "db-processing": "Database Processing",
-  "consumption-apis": "Consuming Data",
+  "consumption-apis": "Analytics APIs",
   "workflows": "Orchestrating Workflows",
   "metrics-console": "Monitoring Performance",
   "--Deploy--": {

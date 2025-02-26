@@ -88,7 +88,7 @@
 
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -207,7 +207,11 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
-    spawn_connection_monitor(redis_client.clone());
+    if redis_client.lock().await.is_connected() {
+        spawn_connection_monitor(redis_client.clone());
+    } else {
+        warn!("Redis connection is not available. Some features will be limited.");
+    }
 
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
@@ -703,10 +707,16 @@ fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
                 let client = redis_client.lock().await;
                 client.start_connection_monitor()
             };
-            match handle.await {
-                Ok(_) => {
+
+            // Handle the result directly without using catch_unwind
+            let result = handle.await;
+
+            match result {
+                Ok(()) => {
                     info!("Connection monitor exited gracefully");
-                    break;
+                    // Even if it exited gracefully, we should restart it
+                    warn!("Restarting connection monitor in 1 second...");
+                    sleep(Duration::from_secs(1)).await;
                 }
                 Err(err) => {
                     error!(
@@ -715,6 +725,13 @@ fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
                     );
                     sleep(Duration::from_secs(1)).await;
                 }
+            }
+
+            // Update the connection state to false since we're restarting
+            let client = redis_client.lock().await;
+            if client.is_connected() {
+                warn!("Setting Redis connection state to disconnected during monitor restart");
+                client.set_connection_state(false);
             }
         }
     });

@@ -8,7 +8,7 @@
 use crate::utilities::retry::retry;
 use anyhow::{Context, Result};
 use futures::FutureExt;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, Client, FromRedisValue, RedisError, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,8 @@ use uuid::Uuid; // for catch_unwind
 // Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
 const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
+const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
+const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
 
 // type alias for the callback function
 use std::future::Future;
@@ -78,20 +80,47 @@ pub struct RedisClient {
     message_callbacks: Arc<Mutex<Vec<MessageCallback>>>,
     listener_task: Mutex<Option<JoinHandle<()>>>,
     connection_state: Arc<AtomicBool>,
+    client: Client,
 }
 
 impl RedisClient {
     pub async fn new(service_name: String, redis_config: RedisConfig) -> Result<Self> {
-        let client =
-            Client::open(redis_config.url.clone()).context("Failed to create Redis client")?;
+        info!(
+            "<RedisClient> Initializing Redis client for {} at {}",
+            service_name, redis_config.url
+        );
 
-        let mut connection = ConnectionManager::new(client.clone())
-            .await
-            .context("Failed to create Redis connection manager")?;
+        let client = match Self::create_client(&redis_config.url) {
+            Ok(client) => client,
+            Err(e) => {
+                error!("<RedisClient> Failed to create Redis client: {}", e);
+                // Instead of returning an error, create a mock client
+                warn!("<RedisClient> Falling back to mock Redis client");
+                return Self::new_mock(service_name, redis_config).await;
+            }
+        };
 
-        let pub_sub = ConnectionManager::new(client)
-            .await
-            .context("Failed to create Redis pub/sub connection manager")?;
+        // Create connection managers with timeouts to prevent hanging
+        let connection = match Self::create_connection_with_timeout(&client).await {
+            Ok(conn) => Arc::new(Mutex::new(conn)),
+            Err(e) => {
+                error!("<RedisClient> Failed to create connection manager: {}", e);
+                warn!("<RedisClient> Falling back to mock Redis client");
+                return Self::new_mock(service_name, redis_config).await;
+            }
+        };
+
+        let pub_sub = match Self::create_connection_with_timeout(&client).await {
+            Ok(ps) => Arc::new(Mutex::new(ps)),
+            Err(e) => {
+                error!(
+                    "<RedisClient> Failed to create pub/sub connection manager: {}",
+                    e
+                );
+                warn!("<RedisClient> Falling back to mock Redis client");
+                return Self::new_mock(service_name, redis_config).await;
+            }
+        };
 
         let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
@@ -100,20 +129,31 @@ impl RedisClient {
             service_name, instance_id
         );
 
-        // Test Redis connection
-        match redis::cmd("PING")
-            .query_async::<_, String>(&mut connection)
-            .await
+        // Test Redis connection with timeout but don't fail if it doesn't work
+        let connection_state = Arc::new(AtomicBool::new(true)); // Assume connected initially
+        match tokio::time::timeout(
+            Duration::from_secs(2),
+            std::panic::AssertUnwindSafe(async {
+                redis::cmd("PING")
+                    .query_async::<_, String>(&mut *connection.lock().await)
+                    .await
+            })
+            .catch_unwind(),
+        )
+        .await
         {
-            Ok(response) => info!("<RedisClient> Redis connection successful: {}", response),
-            Err(e) => error!("<RedisClient> Redis connection failed: {}", e),
+            Ok(Ok(Ok(response))) => {
+                info!("<RedisClient> Redis connection successful: {}", response)
+            }
+            _ => {
+                error!("<RedisClient> Redis connection failed or timed out");
+                connection_state.store(false, Ordering::SeqCst);
+            }
         }
 
-        let connection_state = Arc::new(AtomicBool::new(true));
-
-        let client = Self {
-            connection: Arc::new(Mutex::new(connection)),
-            pub_sub: Arc::new(Mutex::new(pub_sub)),
+        let redis_client = Self {
+            connection,
+            pub_sub,
             redis_config,
             instance_id,
             service_name,
@@ -122,21 +162,25 @@ impl RedisClient {
             message_callbacks: Arc::new(Mutex::new(Vec::new())),
             listener_task: Mutex::new(None),
             connection_state,
+            client,
         };
 
         // Start the message listener as part of initialization
-        match client.start_message_listener().await {
+        match redis_client.start_message_listener().await {
             Ok(_) => info!("<RedisClient> Successfully started message listener"),
             Err(e) => error!("<RedisClient> Failed to start message listener: {}", e),
         }
 
+        // Start the connection monitor to handle reconnections
+        let _monitor_handle = redis_client.start_connection_monitor();
+
         info!(
             "<RedisClient> Started {}::{}",
-            client.get_service_name(),
-            client.get_instance_id()
+            redis_client.get_service_name(),
+            redis_client.get_instance_id()
         );
 
-        Ok(client)
+        Ok(redis_client)
     }
 
     pub fn service_prefix(&self, keys: &[&str]) -> String {
@@ -148,6 +192,76 @@ impl RedisClient {
     }
 
     pub async fn presence_update(&mut self) -> Result<()> {
+        // Skip if Redis is not connected
+        if !self.connection_state.load(Ordering::SeqCst) {
+            debug!("<RedisClient> Skipping presence update as Redis is not connected");
+
+            // Try to reconnect if Redis might be available now
+            // This is an additional safety measure to ensure we reconnect as soon as possible
+            let now = std::time::Instant::now();
+            static mut LAST_RECONNECT_CHECK: Option<std::time::Instant> = None;
+
+            // Only check every 5 seconds to avoid too many reconnection attempts
+            let should_check = unsafe {
+                match LAST_RECONNECT_CHECK {
+                    Some(last) if now.duration_since(last) < Duration::from_secs(5) => false,
+                    _ => {
+                        LAST_RECONNECT_CHECK = Some(now);
+                        true
+                    }
+                }
+            };
+
+            if should_check {
+                debug!("<RedisClient> Checking if Redis is available now");
+                // Use the actual Redis URL from the config
+                let reconnect_client = match Self::create_client(&self.redis_config.url) {
+                    Ok(client) => client,
+                    Err(_) => {
+                        return Ok(());
+                    }
+                };
+
+                // Try a quick ping to see if Redis is available
+                match tokio::time::timeout(Duration::from_millis(500), async {
+                    match reconnect_client.get_async_connection().await {
+                        Ok(mut conn) => redis::cmd("PING")
+                            .query_async::<_, String>(&mut conn)
+                            .await
+                            .is_ok(),
+                        Err(_) => false,
+                    }
+                })
+                .await
+                {
+                    Ok(true) => {
+                        info!("<RedisClient> Redis is now available, triggering reconnection");
+                        // Trigger reconnection
+                        RedisClient::attempt_reconnection(
+                            &reconnect_client,
+                            &self.connection,
+                            &self.pub_sub,
+                            &self.connection_state,
+                            &self.redis_config,
+                        )
+                        .await;
+
+                        // If reconnection was successful, try the presence update again
+                        if self.connection_state.load(Ordering::SeqCst) {
+                            info!("<RedisClient> Reconnected successfully, updating presence");
+                        } else {
+                            return Ok(());
+                        }
+                    }
+                    _ => {
+                        return Ok(());
+                    }
+                }
+            } else {
+                return Ok(());
+            }
+        }
+
         let key = self.instance_prefix("presence");
 
         let now = SystemTime::now()
@@ -156,12 +270,20 @@ impl RedisClient {
             .as_secs()
             .to_string();
 
-        self.connection
+        match self
+            .connection
             .lock()
             .await
-            .set_ex(&key, &now, KEY_EXPIRATION_TTL)
+            .set_ex::<_, _, ()>(&key, &now, KEY_EXPIRATION_TTL)
             .await
-            .context("Failed to update presence")
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("<RedisClient> Failed to update presence: {}", e);
+                self.connection_state.store(false, Ordering::SeqCst);
+                Ok(()) // Return Ok to prevent cascading failures
+            }
+        }
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
@@ -173,6 +295,12 @@ impl RedisClient {
     }
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
+        // If Redis is not connected, we can't acquire locks
+        if !self.connection_state.load(Ordering::SeqCst) {
+            debug!("<RedisClient> Skipping lock attempt as Redis is not connected");
+            return Ok(false);
+        }
+
         if let Some(lock) = self.locks.get(name) {
             // This script atomically:
             // 1. Checks if the key exists
@@ -198,15 +326,20 @@ impl RedisClient {
             "#,
             );
 
-            let result: i32 = script
+            match script
                 .key(&lock.key)
                 .arg(&self.instance_id)
                 .arg(lock.ttl)
-                .invoke_async(&mut *self.connection.lock().await)
+                .invoke_async::<_, i32>(&mut *self.connection.lock().await)
                 .await
-                .context("Failed to attempt lock")?;
-
-            Ok(result == 1)
+            {
+                Ok(result) => Ok(result == 1),
+                Err(e) => {
+                    error!("<RedisClient> Failed to attempt lock: {}", e);
+                    self.connection_state.store(false, Ordering::SeqCst);
+                    Ok(false) // Return false to indicate we don't have the lock
+                }
+            }
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }
@@ -479,6 +612,12 @@ impl RedisClient {
     }
 
     async fn start_message_listener(&self) -> Result<(), RedisError> {
+        // If Redis is not connected, don't try to start the listener
+        if !self.connection_state.load(Ordering::SeqCst) {
+            warn!("<RedisClient> Not starting message listener as Redis is not connected");
+            return Ok(());
+        }
+
         let instance_channel = self.instance_prefix("msgchannel");
         let broadcast_channel = self.service_prefix(&["msgchannel"]);
 
@@ -492,49 +631,193 @@ impl RedisClient {
             Ok(client) => client,
             Err(e) => {
                 error!("<RedisClient> Failed to open Redis client: {}", e);
+                self.connection_state.store(false, Ordering::SeqCst);
                 return Err(e);
             }
         };
 
-        let pubsub_conn = match client.get_async_connection().await {
-            Ok(conn) => conn,
-            Err(e) => {
+        // Use a timeout to prevent hanging during connection
+        let pubsub_conn = match tokio::time::timeout(
+            Duration::from_secs(5),
+            std::panic::AssertUnwindSafe(client.get_async_connection()).catch_unwind(),
+        )
+        .await
+        {
+            Ok(Ok(Ok(conn))) => conn,
+            Ok(Ok(Err(e))) => {
                 error!(
                     "<RedisClient> Failed to get async connection for PubSub: {}",
                     e
                 );
+                self.connection_state.store(false, Ordering::SeqCst);
                 return Err(e);
+            }
+            Ok(Err(_)) => {
+                error!("<RedisClient> Panic while getting async connection for PubSub");
+                self.connection_state.store(false, Ordering::SeqCst);
+                return Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Panic while getting async connection for PubSub",
+                )));
+            }
+            Err(_) => {
+                error!("<RedisClient> Timeout while getting async connection for PubSub");
+                self.connection_state.store(false, Ordering::SeqCst);
+                return Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout while getting async connection for PubSub",
+                )));
             }
         };
 
         let mut pubsub = pubsub_conn.into_pubsub();
 
-        pubsub
-            .subscribe(&[&instance_channel, &broadcast_channel])
-            .await
-            .map_err(|e| {
+        // Use a timeout for the subscribe operation as well
+        match tokio::time::timeout(
+            Duration::from_secs(5),
+            std::panic::AssertUnwindSafe(
+                pubsub.subscribe(&[&instance_channel, &broadcast_channel]),
+            )
+            .catch_unwind(),
+        )
+        .await
+        {
+            Ok(Ok(Ok(_))) => {}
+            Ok(Ok(Err(e))) => {
                 error!("<RedisClient> Failed to subscribe to channels: {}", e);
-                e
-            })?;
+                self.connection_state.store(false, Ordering::SeqCst);
+                return Err(e);
+            }
+            Ok(Err(_)) => {
+                error!("<RedisClient> Panic while subscribing to channels");
+                self.connection_state.store(false, Ordering::SeqCst);
+                return Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Panic while subscribing to channels",
+                )));
+            }
+            Err(_) => {
+                error!("<RedisClient> Timeout while subscribing to channels");
+                self.connection_state.store(false, Ordering::SeqCst);
+                return Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout while subscribing to channels",
+                )));
+            }
+        }
 
         let callback = self.message_callbacks.clone();
+        let connection_state = self.connection_state.clone();
+        let redis_config = self.redis_config.clone();
+        let instance_channel_clone = instance_channel.clone();
+        let broadcast_channel_clone = broadcast_channel.clone();
 
         let listener_task = tokio::spawn(async move {
             loop {
-                let mut pubsub_stream = pubsub.on_message();
+                // If Redis is disconnected, sleep and try again
+                if !connection_state.load(Ordering::SeqCst) {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    continue;
+                }
 
-                while let Some(msg) = pubsub_stream.next().await {
-                    if let Ok(payload) = msg.get_payload::<String>() {
-                        info!("<RedisClient> Received pubsub message: {}", payload);
-                        let callbacks = callback.lock().await.clone();
-                        for cb in callbacks {
-                            cb(payload.clone()).await;
+                // Wrap the entire message processing in catch_unwind to prevent panics
+                let result = std::panic::AssertUnwindSafe(async {
+                    // Use a timeout for getting the message stream
+                    let pubsub_stream_result = tokio::time::timeout(
+                        Duration::from_secs(2),
+                        std::panic::AssertUnwindSafe(async { pubsub.on_message() }).catch_unwind(),
+                    )
+                    .await;
+
+                    let mut pubsub_stream = match pubsub_stream_result {
+                        Ok(Ok(stream)) => stream,
+                        _ => {
+                            return Err::<(), _>(redis::RedisError::from(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Failed to get pubsub stream",
+                            )));
                         }
-                    } else {
-                        warn!("<RedisClient> Failed to get payload from message");
+                    };
+
+                    while let Some(msg) = pubsub_stream.next().await {
+                        if let Ok(payload) = msg.get_payload::<String>() {
+                            info!("<RedisClient> Received pubsub message: {}", payload);
+                            let callbacks = callback.lock().await.clone();
+                            for cb in callbacks {
+                                cb(payload.clone()).await;
+                            }
+                        } else {
+                            warn!("<RedisClient> Failed to get payload from message");
+                        }
+                    }
+
+                    // If we exit the loop, the connection might be broken
+                    Err::<(), _>(redis::RedisError::from(std::io::Error::new(
+                        std::io::ErrorKind::ConnectionAborted,
+                        "PubSub stream ended unexpectedly",
+                    )))
+                })
+                .catch_unwind()
+                .await;
+
+                match result {
+                    Ok(Err(_)) | Err(_) => {
+                        // Connection failed or panicked
+                        error!("<RedisClient> PubSub connection lost or panicked, will retry");
+                        connection_state.store(false, Ordering::SeqCst);
+
+                        // Wait before trying to reconnect
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+
+                        // Try to reestablish the connection with improved error handling
+                        if let Ok(client) = Client::open(redis_config.url.clone()) {
+                            // Use a timeout for reconnection
+                            let reconnect_result = tokio::time::timeout(
+                                Duration::from_secs(5),
+                                std::panic::AssertUnwindSafe(client.get_async_connection())
+                                    .catch_unwind(),
+                            )
+                            .await;
+
+                            match reconnect_result {
+                                Ok(Ok(Ok(conn))) => {
+                                    pubsub = conn.into_pubsub();
+
+                                    // Use a timeout for resubscribing
+                                    let resubscribe_result = tokio::time::timeout(
+                                        Duration::from_secs(5),
+                                        std::panic::AssertUnwindSafe(pubsub.subscribe(&[
+                                            &instance_channel_clone,
+                                            &broadcast_channel_clone,
+                                        ]))
+                                        .catch_unwind(),
+                                    )
+                                    .await;
+
+                                    match resubscribe_result {
+                                        Ok(Ok(Ok(_))) => {
+                                            info!("<RedisClient> Successfully reconnected PubSub");
+                                            connection_state.store(true, Ordering::SeqCst);
+                                        }
+                                        _ => {
+                                            error!(
+                                                "<RedisClient> Failed to resubscribe to channels"
+                                            );
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    error!("<RedisClient> Failed to reestablish PubSub connection");
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        // This shouldn't happen, but just in case
+                        warn!("<RedisClient> PubSub stream ended unexpectedly");
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     }
                 }
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
 
@@ -579,63 +862,556 @@ impl RedisClient {
         }
     }
 
+    pub async fn restart_redis_tasks(&mut self) -> Result<(), RedisError> {
+        info!("<RedisClient> Restarting Redis-dependent tasks after reconnection");
+
+        // Stop any existing tasks
+        if let Err(e) = self.stop_periodic_tasks() {
+            warn!("<RedisClient> Error stopping periodic tasks: {}", e);
+        }
+
+        // Restart presence updates
+        self.start_periodic_tasks();
+
+        // Restart message listener
+        if let Err(e) = self.start_message_listener().await {
+            warn!("<RedisClient> Error restarting message listener: {}", e);
+            return Err(e);
+        }
+
+        // Re-register leadership lock if it was previously registered
+        if self.locks.contains_key("leadership") {
+            if let Err(e) = self
+                .register_lock("leadership", LEADERSHIP_LOCK_TTL as i64)
+                .await
+            {
+                warn!("<RedisClient> Error re-registering leadership lock: {}", e);
+            } else {
+                info!("<RedisClient> Successfully re-registered leadership lock");
+            }
+        }
+
+        info!("<RedisClient> Successfully restarted Redis-dependent tasks");
+        Ok(())
+    }
+
     pub fn start_connection_monitor(&self) -> tokio::task::JoinHandle<()> {
+        let client = self.client.clone();
         let connection = self.connection.clone();
+        let pub_sub = self.pub_sub.clone();
         let connection_state = self.connection_state.clone();
         let redis_config = self.redis_config.clone();
+        let service_name = self.service_name.clone();
+        let instance_id = self.instance_id.clone();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            // Start with a 5 second interval, but use exponential backoff when disconnected
+            let base_interval = 5;
+            let mut consecutive_failures: u32 = 0;
+            let mut was_disconnected = !connection_state.load(Ordering::SeqCst);
+
             loop {
-                interval.tick().await;
+                // Calculate backoff interval (5s, 10s, 20s, 40s, max 60s)
+                let backoff_secs = if consecutive_failures > 0 {
+                    std::cmp::min(base_interval * 2u64.pow(consecutive_failures), 60)
+                } else {
+                    base_interval
+                };
 
-                let ping_result = std::panic::AssertUnwindSafe(async {
-                    let mut conn = connection.lock().await;
-                    redis::cmd("PING")
-                        .query_async::<_, String>(&mut *conn)
-                        .await
-                })
-                .catch_unwind()
-                .await;
+                // Sleep for the calculated interval
+                tokio::time::sleep(Duration::from_secs(backoff_secs)).await;
 
-                match ping_result {
-                    Ok(Ok(_)) => {
-                        if !connection_state.load(Ordering::SeqCst) {
-                            info!("<RedisClient> Redis connection restored");
-                            connection_state.store(true, Ordering::SeqCst);
-                        }
-                    }
-                    Ok(Err(_)) | Err(_) => {
-                        error!("<RedisClient> Redis connection lost, attempting reconnect");
-                        connection_state.store(false, Ordering::SeqCst);
+                // Track the current connection state
+                let is_connected = connection_state.load(Ordering::SeqCst);
 
-                        // Try to establish a new connection
-                        if let Ok(client) = Client::open(redis_config.url.clone()) {
-                            match ConnectionManager::new(client).await {
-                                Ok(new_manager) => {
-                                    *connection.lock().await = new_manager;
-                                    info!("<RedisClient> Successfully reconnected");
-                                }
-                                Err(e) => {
-                                    error!(
-                                        "<RedisClient> Reconnection manager creation failed: {}",
-                                        e
-                                    );
-                                }
+                // Only log connection checks if we're disconnected to avoid spamming logs
+                if !is_connected {
+                    info!(
+                        "<RedisClient> Checking Redis connection for {}::{} (attempt: {}, backoff: {}s)",
+                        service_name, instance_id, consecutive_failures + 1, backoff_secs
+                    );
+                }
+
+                // Always attempt to reconnect, regardless of current connection state
+                // This ensures that mock clients will also try to connect to a real Redis server
+                match tokio::time::timeout(
+                    Duration::from_secs(3), // Longer timeout for reconnection attempts
+                    Self::attempt_reconnection(
+                        &client,
+                        &connection,
+                        &pub_sub,
+                        &connection_state,
+                        &redis_config,
+                    ),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        // Check if we've transitioned from disconnected to connected
+                        let is_connected_now = connection_state.load(Ordering::SeqCst);
+
+                        if is_connected_now {
+                            // Reset failure counter on successful connection
+                            consecutive_failures = 0;
+
+                            if was_disconnected {
+                                info!(
+                                    "<RedisClient> Successfully reconnected to Redis for {}::{}",
+                                    service_name, instance_id
+                                );
                             }
                         } else {
-                            error!("<RedisClient> Failed to open new client for reconnection");
+                            // Increment failure counter on failed connection attempt
+                            consecutive_failures = consecutive_failures.saturating_add(1);
                         }
 
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        was_disconnected = !is_connected_now;
+                    }
+                    Err(e) => {
+                        // Timeout occurred
+                        consecutive_failures = consecutive_failures.saturating_add(1);
+
+                        if is_connected {
+                            warn!(
+                                "<RedisClient> Reconnection attempt timed out for {}::{}: {}",
+                                service_name, instance_id, e
+                            );
+                            // Mark as disconnected since we couldn't verify the connection
+                            connection_state.store(false, Ordering::SeqCst);
+                            was_disconnected = true;
+                        }
                     }
                 }
             }
         })
     }
 
+    async fn attempt_reconnection(
+        client: &Client,
+        connection: &Arc<Mutex<ConnectionManager>>,
+        pub_sub: &Arc<Mutex<ConnectionManager>>,
+        connection_state: &Arc<AtomicBool>,
+        redis_config: &RedisConfig,
+    ) {
+        // First, check if we're already connected - if so, just verify the connection
+        if connection_state.load(Ordering::SeqCst) {
+            // Verify the connection is still good with a ping
+            let ping_result = std::panic::AssertUnwindSafe(async {
+                matches!(
+                    tokio::time::timeout(Duration::from_millis(500), async {
+                        // Use try_lock instead of lock to avoid deadlocks
+                        match connection.try_lock() {
+                            Ok(mut conn) => {
+                                redis::cmd("PING")
+                                    .query_async::<_, String>(&mut *conn)
+                                    .await
+                            }
+                            Err(_) => {
+                                // If we can't get the lock, assume the connection is still good
+                                Ok("LOCKED".to_string())
+                            }
+                        }
+                    })
+                    .await,
+                    Ok(Ok(_))
+                )
+            })
+            .catch_unwind()
+            .await;
+
+            match ping_result {
+                Ok(true) => {
+                    // Connection is still good, nothing to do
+                    return;
+                }
+                _ => {
+                    // Connection is not good, mark as disconnected and continue with reconnection
+                    connection_state.store(false, Ordering::SeqCst);
+                    debug!("<RedisClient> Connection verification failed, attempting reconnection");
+                }
+            }
+        }
+
+        debug!(
+            "<RedisClient> Attempting to reconnect to Redis at {}",
+            redis_config.url
+        );
+
+        // Try to establish a new connection with a more cautious approach
+        // First, check if Redis is actually available with a simple ping
+        let ping_result = std::panic::AssertUnwindSafe(async {
+            (tokio::time::timeout(Duration::from_secs(2), async {
+                match client.get_async_connection().await {
+                    Ok(mut conn) => {
+                        match redis::cmd("PING").query_async::<_, String>(&mut conn).await {
+                            Ok(_) => {
+                                debug!("<RedisClient> Redis server is available");
+                                // Explicitly close the connection to avoid leaking file descriptors
+                                drop(conn);
+                                true
+                            }
+                            Err(e) => {
+                                debug!("<RedisClient> Redis ping failed: {}", e);
+                                // Explicitly close the connection to avoid leaking file descriptors
+                                drop(conn);
+                                false
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("<RedisClient> Failed to get connection for ping: {}", e);
+                        false
+                    }
+                }
+            })
+            .await)
+                .unwrap_or_default()
+        })
+        .catch_unwind()
+        .await;
+
+        // If Redis is not available, don't waste time trying to create connection managers
+        let redis_available = match ping_result {
+            Ok(true) => true,
+            _ => {
+                debug!(
+                    "<RedisClient> Redis server is not available, skipping reconnection attempt"
+                );
+                connection_state.store(false, Ordering::SeqCst);
+                return;
+            }
+        };
+
+        if !redis_available {
+            return;
+        }
+
+        // Redis is available, so create new connections
+        info!("<RedisClient> Redis server is available, creating new connections");
+
+        // Create new connections with a longer timeout
+        let new_connection_result = tokio::time::timeout(
+            Duration::from_secs(5),
+            Self::create_connection_safely(client),
+        )
+        .await
+        .ok()
+        .and_then(|r| r.ok());
+
+        let new_pubsub_result = tokio::time::timeout(
+            Duration::from_secs(5),
+            Self::create_connection_safely(client),
+        )
+        .await
+        .ok()
+        .and_then(|r| r.ok());
+
+        // Use a match statement to avoid moving values
+        match (new_connection_result, new_pubsub_result) {
+            (Some(new_conn), Some(new_pubsub)) => {
+                // Replace the connections - IMPORTANT: properly close old connections first
+                let conn_replaced = match connection.try_lock() {
+                    Ok(mut conn_guard) => {
+                        // Explicitly drop the old connection before replacing it
+                        let old_conn = std::mem::replace(&mut *conn_guard, new_conn);
+                        drop(old_conn);
+                        true
+                    }
+                    Err(_) => {
+                        warn!(
+                            "<RedisClient> Could not acquire lock on connection, will retry later"
+                        );
+                        // Drop the new connection to avoid leaking resources
+                        drop(new_conn);
+                        false
+                    }
+                };
+
+                let pubsub_replaced = match pub_sub.try_lock() {
+                    Ok(mut pubsub_guard) => {
+                        // Explicitly drop the old connection before replacing it
+                        let old_pubsub = std::mem::replace(&mut *pubsub_guard, new_pubsub);
+                        drop(old_pubsub);
+                        true
+                    }
+                    Err(_) => {
+                        warn!("<RedisClient> Could not acquire lock on pub_sub, will retry later");
+                        // Drop the new connection to avoid leaking resources
+                        drop(new_pubsub);
+                        false
+                    }
+                };
+
+                // Only proceed if we successfully replaced both connections
+                if conn_replaced && pubsub_replaced {
+                    info!("<RedisClient> Successfully replaced Redis connections");
+                    // IMPORTANT: Update the connection state AFTER successfully replacing connections
+                    connection_state.store(true, Ordering::SeqCst);
+                } else {
+                    error!("<RedisClient> Could not replace all connections");
+                    connection_state.store(false, Ordering::SeqCst);
+                }
+            }
+            (Some(conn), None) => {
+                error!("<RedisClient> Failed to create new pub/sub connection");
+                connection_state.store(false, Ordering::SeqCst);
+                // Drop the connection to avoid leaking resources
+                drop(conn);
+            }
+            (None, Some(pubsub)) => {
+                error!("<RedisClient> Failed to create new connection");
+                connection_state.store(false, Ordering::SeqCst);
+                // Drop the pub/sub connection to avoid leaking resources
+                drop(pubsub);
+            }
+            (None, None) => {
+                error!("<RedisClient> Failed to create new connections");
+                connection_state.store(false, Ordering::SeqCst);
+            }
+        }
+    }
+
+    // Helper method to create a connection with timeout
+    async fn create_connection_with_timeout(
+        client: &Client,
+    ) -> Result<ConnectionManager, RedisError> {
+        // First try to get a simple connection to verify Redis is available
+        // This helps prevent resource leaks by failing fast if Redis is unavailable
+        match tokio::time::timeout(Duration::from_secs(2), client.get_async_connection()).await {
+            Ok(Ok(conn)) => {
+                // Successfully connected, explicitly drop the connection
+                drop(conn);
+            }
+            Ok(Err(e)) => {
+                error!("<RedisClient> Failed to establish test connection: {}", e);
+                return Err(e);
+            }
+            Err(_) => {
+                error!("<RedisClient> Timeout while establishing test connection");
+                return Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout while establishing test connection",
+                )));
+            }
+        }
+
+        // Now create the actual connection manager
+        match tokio::time::timeout(
+            Duration::from_secs(5),
+            std::panic::AssertUnwindSafe(ConnectionManager::new(client.clone())).catch_unwind(),
+        )
+        .await
+        {
+            Ok(Ok(Ok(conn))) => Ok(conn),
+            Ok(Ok(Err(e))) => {
+                error!("<RedisClient> Error creating connection: {}", e);
+                Err(e)
+            }
+            Ok(Err(_)) => {
+                error!("<RedisClient> Panic while creating connection");
+                Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Panic while creating connection",
+                )))
+            }
+            Err(_) => {
+                error!("<RedisClient> Timeout while creating connection");
+                Err(RedisError::from(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout while creating connection",
+                )))
+            }
+        }
+    }
+
+    // Helper method to create a connection with timeout
+    async fn create_connection_safely(client: &Client) -> Result<ConnectionManager, RedisError> {
+        Self::create_connection_with_timeout(client).await
+    }
+
+    // Helper method to test a connection with a PING
+    #[allow(dead_code)]
+    async fn test_connection(connection: &Arc<Mutex<ConnectionManager>>) -> bool {
+        let ping_result = std::panic::AssertUnwindSafe(async {
+            matches!(
+                tokio::time::timeout(Duration::from_secs(2), async {
+                    let mut conn = connection.lock().await;
+                    redis::cmd("PING")
+                        .query_async::<_, String>(&mut *conn)
+                        .await
+                })
+                .await,
+                Ok(Ok(_))
+            )
+        })
+        .catch_unwind()
+        .await;
+
+        ping_result.unwrap_or_default()
+    }
+
     pub fn is_connected(&self) -> bool {
         self.connection_state.load(Ordering::SeqCst)
+    }
+
+    pub fn set_connection_state(&self, connected: bool) {
+        self.connection_state.store(connected, Ordering::SeqCst);
+        if connected {
+            info!("<RedisClient> Connection state manually set to connected");
+        } else {
+            warn!("<RedisClient> Connection state manually set to disconnected");
+        }
+    }
+
+    // Create a mock Redis client that doesn't require an actual Redis connection
+    pub async fn new_mock(service_name: String, redis_config: RedisConfig) -> Result<Self> {
+        info!(
+            "<RedisClient> Creating mock Redis client for {}",
+            service_name
+        );
+
+        let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
+
+        // Create a dummy client just to satisfy the type system
+        let client = match Client::open("redis://localhost:6379") {
+            Ok(client) => client,
+            Err(e) => {
+                warn!("<RedisClient> Failed to create dummy client: {}", e);
+                // Create a client with a different URL as a fallback
+                Client::open("redis://127.0.0.1:6379").unwrap_or_else(|_| {
+                    // This should never fail, but just in case
+                    Client::open("redis://localhost:6379/").expect("Failed to create dummy client")
+                })
+            }
+        };
+
+        // Create dummy connection managers that will never be used for real operations
+        // We'll create empty connection managers and set connection_state to false
+        let connection = Arc::new(Mutex::new(
+            match ConnectionManager::new(client.clone()).await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    // If we can't create a connection manager, log the error and create a safer fallback
+                    warn!(
+                        "<RedisClient> Failed to create mock connection manager: {}",
+                        e
+                    );
+                    // Create a completely new client as a fallback
+                    let fallback_client =
+                        Client::open("redis://localhost:6379").unwrap_or_else(|_| {
+                            Client::open("redis://127.0.0.1:6379").unwrap_or_else(|_| {
+                                // Last resort - create an in-memory client that will never connect
+                                warn!("<RedisClient> Creating last-resort in-memory client");
+                                Client::open("redis://127.0.0.1:1")
+                                    .expect("Failed to create in-memory client")
+                            })
+                        });
+
+                    // Try to create a connection manager with the fallback client
+                    match ConnectionManager::new(fallback_client).now_or_never() {
+                        Some(Ok(conn)) => conn,
+                        _ => {
+                            warn!("<RedisClient> Using emergency fallback for connection manager");
+                            // Create a minimal ConnectionManager that won't panic but will fail operations
+                            ConnectionManager::new(
+                                Client::open("redis://127.0.0.1:1")
+                                    .expect("Failed to create in-memory client"),
+                            )
+                            .now_or_never()
+                            .unwrap()
+                            .expect("Failed to create fallback connection manager")
+                        }
+                    }
+                }
+            },
+        ));
+
+        // Create a separate pub_sub connection manager to avoid lock contention
+        let pub_sub = Arc::new(Mutex::new(
+            match ConnectionManager::new(client.clone()).await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    // If we can't create a connection manager, log the error and create a safer fallback
+                    warn!(
+                        "<RedisClient> Failed to create mock pub/sub connection manager: {}",
+                        e
+                    );
+                    // Create a completely new client as a fallback
+                    let fallback_client = Client::open("redis://localhost:6379").unwrap_or_else(|_| {
+                        Client::open("redis://127.0.0.1:6379").unwrap_or_else(|_| {
+                            // Last resort - create an in-memory client that will never connect
+                            warn!("<RedisClient> Creating last-resort in-memory client for pub/sub");
+                            Client::open("redis://127.0.0.1:1").expect("Failed to create in-memory client")
+                        })
+                    });
+
+                    // Try to create a connection manager with the fallback client
+                    match ConnectionManager::new(fallback_client).now_or_never() {
+                        Some(Ok(conn)) => conn,
+                        _ => {
+                            warn!("<RedisClient> Using emergency fallback for pub/sub connection manager");
+                            // Create a minimal ConnectionManager that won't panic but will fail operations
+                            ConnectionManager::new(
+                                Client::open("redis://127.0.0.1:1")
+                                    .expect("Failed to create in-memory client"),
+                            )
+                            .now_or_never()
+                            .unwrap()
+                            .expect("Failed to create fallback pub/sub connection manager")
+                        }
+                    }
+                }
+            },
+        ));
+
+        // IMPORTANT: Create a client with the ACTUAL Redis URL from the config
+        // This ensures that when Redis becomes available, we can connect to it
+        let real_client = match Self::create_client(&redis_config.url) {
+            Ok(client) => client,
+            Err(_) => {
+                // If we can't create a client with the real URL, fall back to the dummy client
+                warn!("<RedisClient> Failed to create client with real URL, using dummy client");
+                client.clone()
+            }
+        };
+
+        let connection_state = Arc::new(AtomicBool::new(false)); // Mark as disconnected
+
+        let redis_client = Self {
+            connection,
+            pub_sub,
+            redis_config,
+            instance_id,
+            service_name,
+            locks: HashMap::new(),
+            presence_task: None,
+            message_callbacks: Arc::new(Mutex::new(Vec::new())),
+            listener_task: Mutex::new(None),
+            connection_state,
+            client: real_client, // Use the real client for reconnection attempts
+        };
+
+        info!(
+            "<RedisClient> Created mock client {}::{}",
+            redis_client.get_service_name(),
+            redis_client.get_instance_id()
+        );
+
+        // Start the connection monitor to periodically check if Redis becomes available
+        let _monitor_handle = redis_client.start_connection_monitor();
+
+        Ok(redis_client)
+    }
+
+    // Helper method to create a client with proper error handling
+    fn create_client(url: &str) -> Result<Client, RedisError> {
+        match Client::open(url) {
+            Ok(client) => Ok(client),
+            Err(e) => {
+                error!("<RedisClient> Failed to create Redis client: {}", e);
+                Err(e)
+            }
+        }
     }
 }
 
@@ -656,6 +1432,7 @@ impl Clone for RedisClient {
             message_callbacks: Arc::clone(&self.message_callbacks),
             listener_task: Mutex::new(None),
             connection_state: Arc::clone(&self.connection_state),
+            client: self.client.clone(),
         }
     }
 }

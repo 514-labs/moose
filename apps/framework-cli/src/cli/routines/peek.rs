@@ -1,11 +1,15 @@
+//! Module for examining data in the Moose framework.
+//!
+//! This module provides functionality to retrieve and display sample data from
+//! either database tables or streaming topics for debugging and exploration purposes.
+
 use crate::cli::display::Message;
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::infrastructure::olap::clickhouse::mapper::std_table_to_clickhouse_table;
-use crate::infrastructure::olap::clickhouse_alt_client::{
-    get_pool, retrieve_infrastructure_map, select_some_as_json,
-};
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, select_some_as_json};
 use crate::project::Project;
 
-use super::{RoutineFailure, RoutineSuccess};
+use super::{setup_redis_client, RoutineFailure, RoutineSuccess};
 
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::stream::redpanda::create_consumer;
@@ -21,6 +25,23 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio_stream::StreamExt;
 
+/// Retrieves and displays a sample of data from either a database table or streaming topic.
+///
+/// Allows users to examine the actual data contents of resources in the Moose framework
+/// by querying either the ClickHouse database tables or Redpanda streaming topics.
+/// Results can be displayed to the console or written to a file.
+///
+/// # Arguments
+///
+/// * `project` - The project configuration to use
+/// * `data_model_name` - Name of the data model to peek
+/// * `limit` - Maximum number of records to retrieve
+/// * `file` - Optional file path to save the output instead of displaying to console
+/// * `topic` - Whether to peek at a topic (true) or a table (false)
+///
+/// # Returns
+///
+/// * `Result<RoutineSuccess, RoutineFailure>` - Success or failure of the operation
 pub async fn peek(
     project: Arc<Project>,
     data_model_name: &str,
@@ -36,7 +57,16 @@ pub async fn peek(
         ))
     })?;
 
-    let infra = retrieve_infrastructure_map(&mut client, &project.clickhouse_config)
+    let redis_client = setup_redis_client(project.clone()).await.map_err(|e| {
+        RoutineFailure::error(Message {
+            action: "Prod".to_string(),
+            details: format!("Failed to setup redis client: {:?}", e),
+        })
+    })?;
+
+    let redis_guard = redis_client.lock().await;
+
+    let infra = InfrastructureMap::load_from_redis(&redis_guard)
         .await
         .map_err(|_| {
             RoutineFailure::error(Message::new(

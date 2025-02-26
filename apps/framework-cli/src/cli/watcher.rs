@@ -1,3 +1,22 @@
+/// # File Watcher Module
+///
+/// This module provides functionality for watching file changes in the project directory
+/// and triggering infrastructure updates based on those changes. It monitors files in specific
+/// directories like functions, blocks, data models, consumption, and scripts.
+///
+/// The watcher uses the `notify` crate to detect file system events and processes them
+/// to update the infrastructure map, which is then used to apply changes to the system.
+///
+/// ## Main Components:
+/// - `FileWatcher`: The main struct that initializes and starts the file watching process
+/// - `EventListener`: Handles file system events and forwards them to the processing pipeline
+/// - `EventBuckets`: Categorizes file changes by their directory type
+///
+/// ## Process Flow:
+/// 1. The watcher monitors the project directory for file changes
+/// 2. When changes are detected, they are categorized by directory type
+/// 3. After a short delay, changes are processed to update the infrastructure
+/// 4. The updated infrastructure is applied to the system
 use crate::framework;
 use log::info;
 use notify::event::ModifyKind;
@@ -17,7 +36,6 @@ use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use super::display::{self, with_spinner_async, Message, MessageType};
 
 use crate::cli::routines::openapi::openapi;
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::redis::redis_client::RedisClient;
@@ -28,6 +46,8 @@ use crate::utilities::constants::{
 };
 use crate::utilities::PathExt;
 
+/// Event listener that receives file system events and forwards them to the event processing pipeline.
+/// It uses a watch channel to communicate with the main processing loop.
 struct EventListener {
     tx: tokio::sync::watch::Sender<EventBuckets>,
 }
@@ -48,6 +68,8 @@ impl EventHandler for EventListener {
     }
 }
 
+/// Container for categorizing file system events by directory type.
+/// This helps organize changes for more efficient processing.
 #[derive(Default, Debug)]
 struct EventBuckets {
     functions: HashSet<PathBuf>,
@@ -58,6 +80,7 @@ struct EventBuckets {
 }
 
 impl EventBuckets {
+    /// Checks if all buckets are empty
     pub fn is_empty(&self) -> bool {
         self.functions.is_empty()
             && self.blocks.is_empty()
@@ -66,6 +89,11 @@ impl EventBuckets {
             && self.scripts.is_empty()
     }
 
+    /// Processes a file system event and categorizes it into the appropriate bucket
+    /// based on the directory path.
+    ///
+    /// Only processes events that are relevant (create, modify, remove) and
+    /// ignores metadata changes and access events.
     pub fn insert(&mut self, event: Event) {
         match event.kind {
             EventKind::Access(_) | EventKind::Modify(ModifyKind::Metadata(_)) => return,
@@ -116,6 +144,20 @@ impl EventBuckets {
     }
 }
 
+/// Main watching function that monitors the project directory for changes and
+/// processes them to update the infrastructure.
+///
+/// This function runs in a loop, waiting for file system events, then after a short delay
+/// processes them to update the infrastructure map and apply changes to the system.
+///
+/// # Arguments
+/// * `project` - The project configuration
+/// * `route_update_channel` - Channel for sending API route updates
+/// * `infrastructure_map` - The current infrastructure map
+/// * `syncing_process_registry` - Registry for syncing processes
+/// * `project_registries` - Registry for project processes
+/// * `metrics` - Metrics collection
+/// * `redis_client` - Redis client for state management
 async fn watch(
     project: Arc<Project>,
     route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
@@ -125,8 +167,6 @@ async fn watch(
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
 ) -> Result<(), anyhow::Error> {
-    let mut clickhouse_client_v2 = get_pool(&project.clickhouse_config).get_handle().await?;
-
     let (tx, mut rx) = tokio::sync::watch::channel(EventBuckets::default());
     let receiver_ack = tx.clone();
 
@@ -156,7 +196,7 @@ async fn watch(
             "Processing Infrastructure changes from file watcher",
             async {
                 let plan_result =
-                    framework::core::plan::plan_changes(&mut clickhouse_client_v2, &project).await;
+                    framework::core::plan::plan_changes(&redis_client, &project).await;
 
                 match plan_result {
                     Ok(plan_result) => {
@@ -176,16 +216,10 @@ async fn watch(
                         .await
                         {
                             Ok(_) => {
-                                store_infrastructure_map(
-                                    &mut clickhouse_client_v2,
-                                    &project.clickhouse_config,
-                                    &plan_result.target_infra_map,
-                                )
-                                .await?;
-
+                                let redis_guard = redis_client.lock().await;
                                 plan_result
                                     .target_infra_map
-                                    .store_in_redis(&*redis_client.lock().await)
+                                    .store_in_redis(&redis_guard)
                                     .await?;
 
                                 let _openapi_file =
@@ -239,13 +273,30 @@ async fn watch(
     Ok(())
 }
 
+/// File watcher that monitors project files for changes and triggers infrastructure updates.
+///
+/// This struct provides the main interface for starting the file watching process.
 pub struct FileWatcher;
 
 impl FileWatcher {
+    /// Creates a new FileWatcher instance
     pub fn new() -> Self {
         Self {}
     }
 
+    /// Starts the file watching process.
+    ///
+    /// This method initializes the watcher and spawns a background task to monitor
+    /// file changes and process them.
+    ///
+    /// # Arguments
+    /// * `project` - The project configuration
+    /// * `route_update_channel` - Channel for sending API route updates
+    /// * `infrastructure_map` - The current infrastructure map
+    /// * `syncing_process_registry` - Registry for syncing processes
+    /// * `project_registries` - Registry for project processes
+    /// * `metrics` - Metrics collection
+    /// * `redis_client` - Redis client for state management
     #[allow(clippy::too_many_arguments)]
     pub fn start(
         &self,

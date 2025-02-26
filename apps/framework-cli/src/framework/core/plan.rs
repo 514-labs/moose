@@ -1,49 +1,77 @@
+/// # Infrastructure Planning Module
+///
+/// This module is responsible for planning infrastructure changes by comparing the current
+/// infrastructure state with the target state. It generates a plan that describes the
+/// changes needed to transition from the current state to the target state.
+///
+/// The planning process involves:
+/// 1. Loading the current infrastructure map from Redis
+/// 2. Building the target infrastructure map from the project configuration
+/// 3. Computing the difference between the current and target maps
+/// 4. Creating a plan that describes the changes to be applied
+///
+/// The resulting plan is then used by the execution module to apply the changes.
 use super::{
     infrastructure_map::{InfraChanges, InfrastructureMap},
     primitive_map::PrimitiveMap,
 };
-use crate::cli::display::show_olap_changes;
-use crate::framework::controller::{
-    check_topic_fully_populated, InitialDataLoad, InitialDataLoadStatus,
-};
-use crate::{
-    infrastructure::olap::clickhouse_alt_client::{retrieve_infrastructure_map, StateStorageError},
-    project::Project,
-};
-use clickhouse_rs::ClientHandle;
+use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::project::Project;
 use log::error;
 use rdkafka::error::KafkaError;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+use tokio::sync::Mutex;
 
+/// Errors that can occur during the planning process.
 #[derive(Debug, thiserror::Error)]
 pub enum PlanningError {
-    #[error("Failed to communicate with state storage")]
-    StateStorage(#[from] StateStorageError),
-
+    /// Error occurred while loading the primitive map
     #[error("Failed to load primitive map")]
     PrimitiveMapLoading(#[from] crate::framework::core::primitive_map::PrimitiveMapLoadingError),
 
+    /// Error occurred while connecting to the Clickhouse database
     #[error("Failed to connect to state storage")]
     Clickhouse(#[from] clickhouse_rs::errors::Error),
 
+    /// Error occurred while connecting to Kafka
     #[error("Failed to connect to streaming engine")]
     Kafka(#[from] KafkaError),
 
+    /// Other unspecified errors
     // TODO: refactor the called functions
     #[error("Unknown error")]
     Other(#[from] anyhow::Error),
 }
 
+/// Represents a plan for infrastructure changes.
+///
+/// This struct contains the target infrastructure map and the changes needed
+/// to transition from the current state to the target state.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InfraPlan {
-    // pub current_infra_map: Option<InfrastructureMap>,
+    /// The target infrastructure map that we want to achieve
     pub target_infra_map: InfrastructureMap,
 
+    /// The changes needed to transition from the current state to the target state
     pub changes: InfraChanges,
 }
 
+/// Plans infrastructure changes by comparing the current state with the target state.
+///
+/// This function loads the current infrastructure map from Redis and compares it with
+/// the target infrastructure map derived from the project configuration. It then
+/// generates a plan that describes the changes needed to transition from the current
+/// state to the target state.
+///
+/// # Arguments
+/// * `client` - Redis client for loading the current infrastructure map
+/// * `project` - Project configuration for building the target infrastructure map
+///
+/// # Returns
+/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
 pub async fn plan_changes(
-    client: &mut ClientHandle,
+    client: &Mutex<RedisClient>,
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
     let json_path = Path::new(".moose/infrastructure_map.json");
@@ -60,84 +88,39 @@ pub async fn plan_changes(
     target_infra_map.with_topic_namespace(&project.redpanda_config);
 
     let current_infra_map = {
-        // in the rest of this block of code,
-        // we check the actual configurations and compare it to the stored state
-        let mut current = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;
-
-        // currently we check only
-        // - the initial data load statuses and,
-        // - table changes
-
-        let existing_data_loads: &mut HashMap<String, InitialDataLoad> = match &mut current {
-            None => &mut HashMap::new(),
-            Some(existing) => &mut existing.initial_data_loads,
-        };
-
-        for (id, load) in target_infra_map.initial_data_loads.iter() {
-            match existing_data_loads.get(id) {
-                Some(load) if matches!(load.status, InitialDataLoadStatus::Completed) => {}
-                // there might be existing loads that is not written to the DB
-                _ => {
-                    match check_topic_fully_populated(
-                        &load.table.name,
-                        &project.clickhouse_config,
-                        client,
-                        &load.topic,
-                        &project.redpanda_config,
-                    )
-                    .await?
-                    {
-                        None => {
-                            // None means completed
-                            existing_data_loads.insert(id.clone(), load.clone());
-                        }
-                        Some(progress) => {
-                            existing_data_loads.insert(
-                                id.clone(),
-                                InitialDataLoad {
-                                    status: InitialDataLoadStatus::InProgress(progress),
-                                    ..load.clone()
-                                },
-                            );
-                        }
-                    };
-                }
-            };
-        }
-
-        if let Some(current) = &mut current {
-            let real_current_table =
-                crate::infrastructure::olap::clickhouse_alt_client::check_table(
-                    client,
-                    &project.clickhouse_config.db_name,
-                    &current.tables,
-                )
-                .await?;
-
-            let mut detected_table_changes = vec![];
-            InfrastructureMap::diff_tables(
-                &current.tables,
-                &real_current_table,
-                &mut detected_table_changes,
-            );
-
-            if !detected_table_changes.is_empty() {
-                print!("Detected changes not reflected in the latest infrastructure map:");
-                show_olap_changes(&detected_table_changes);
-            }
-        }
-
-        current
+        let redis_guard = client.lock().await;
+        InfrastructureMap::load_from_redis(&redis_guard).await?
     };
 
-    let changes = match &current_infra_map {
-        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
+    plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
+}
+
+/// Plans infrastructure changes using provided infrastructure maps.
+///
+/// This function compares the current infrastructure map with the target infrastructure map
+/// and generates a plan that describes the changes needed to transition from the current
+/// state to the target state.
+///
+/// # Arguments
+/// * `project` - Project configuration
+/// * `current_infra_map` - The current infrastructure map (if any)
+/// * `target_infra_map` - The target infrastructure map
+///
+/// # Returns
+/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
+pub async fn plan_changes_from_infra_map(
+    project: &Project,
+    current_infra_map: &Option<InfrastructureMap>,
+    target_infra_map: &InfrastructureMap,
+) -> Result<InfraPlan, PlanningError> {
+    let changes = match current_infra_map {
+        Some(current_infra_map) => current_infra_map.diff(target_infra_map),
         None => target_infra_map.init(project),
     };
 
     Ok(InfraPlan {
         // current_infra_map,
-        target_infra_map,
+        target_infra_map: target_infra_map.clone(),
         changes,
     })
 }

@@ -1,10 +1,15 @@
+//! Module for listing available resources in the Moose framework.
+//!
+//! This module provides functionality to list database resources (tables, views)
+//! and streaming resources (topics) based on the project configuration.
+
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
 
-use super::{RoutineFailure, RoutineSuccess};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, retrieve_infrastructure_map};
+use super::{setup_redis_client, RoutineFailure, RoutineSuccess};
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
@@ -14,6 +19,20 @@ use crate::{
     project::Project,
 };
 
+/// Lists database resources for a given project and version.
+///
+/// Retrieves and displays information about API endpoints, tables, and views
+/// that are available in the project's current state.
+///
+/// # Arguments
+///
+/// * `project` - The project to list database resources for
+/// * `version` - Optional specific version to list resources for; defaults to current version
+/// * `limit` - Maximum number of resources to display
+///
+/// # Returns
+///
+/// * `Result<RoutineSuccess, RoutineFailure>` - Success or failure of the operation
 pub async fn list_db(
     project: Arc<Project>,
     version: &Option<String>,
@@ -23,17 +42,15 @@ pub async fn list_db(
         .clone()
         .unwrap_or_else(|| project.cur_version().to_string());
 
-    let pool = get_pool(&project.clickhouse_config);
-    let mut client = pool.get_handle().await.map_err(|e| {
-        RoutineFailure::new(
-            Message {
-                action: "Fail".to_string(),
-                details: "to connect to state storage".to_string(),
-            },
-            e,
-        )
+    let redis_client = setup_redis_client(project.clone()).await.map_err(|e| {
+        RoutineFailure::error(Message {
+            action: "Prod".to_string(),
+            details: format!("Failed to setup redis client: {:?}", e),
+        })
     })?;
-    let infra = retrieve_infrastructure_map(&mut client, &project.clickhouse_config)
+
+    let redis_guard = redis_client.lock().await;
+    let infra = InfrastructureMap::load_from_redis(&redis_guard)
         .await
         // temporarily have some duplicate code with get_current_state
         .map_err(|e| {
@@ -91,6 +108,19 @@ pub async fn list_db(
     )))
 }
 
+/// Lists streaming resources (topics) for a given project.
+///
+/// Retrieves and displays information about Redpanda topics that are
+/// available in the project.
+///
+/// # Arguments
+///
+/// * `project` - The project to list streaming resources for
+/// * `limit` - Maximum number of resources to display
+///
+/// # Returns
+///
+/// * `Result<RoutineSuccess, RoutineFailure>` - Success or failure of the operation
 pub async fn list_streaming(
     project: Arc<Project>,
     limit: &u16,
@@ -112,6 +142,16 @@ pub async fn list_streaming(
     )))
 }
 
+/// Sorts a table by the first column and limits the number of rows.
+///
+/// # Arguments
+///
+/// * `output_table` - HashMap with keys as first column and values as remaining columns
+/// * `limit` - Maximum number of rows to include in output
+///
+/// # Returns
+///
+/// * `Vec<Vec<String>>` - Sorted and limited table data
 fn sort_and_limit(output_table: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
     let mut table_array: Vec<Vec<String>> = output_table
         .into_iter()
@@ -131,6 +171,16 @@ fn sort_and_limit(output_table: HashMap<String, Vec<String>>, limit: &u16) -> Ve
     table_array
 }
 
+/// Retrieves system tables from ClickHouse for a given version.
+///
+/// # Arguments
+///
+/// * `project` - The project configuration
+/// * `target_version` - The version to get tables for
+///
+/// # Returns
+///
+/// * `HashMap<String, ClickHouseSystemTable>` - Map of table names to table information
 async fn get_system_tables(
     project: &Project,
     target_version: &str,
@@ -148,6 +198,15 @@ async fn get_system_tables(
     .collect::<HashMap<_, _>>()
 }
 
+/// Removes version suffix from table names.
+///
+/// # Arguments
+///
+/// * `table_name` - The table name with suffix
+///
+/// # Returns
+///
+/// * `String` - Table name without version suffix
 fn remove_suffix(table_name: &str) -> String {
     let parts: Vec<&str> = table_name.split('_').collect();
     if parts.len() > 2 {
@@ -157,6 +216,13 @@ fn remove_suffix(table_name: &str) -> String {
     }
 }
 
+/// Adds table and view information to the output table.
+///
+/// # Arguments
+///
+/// * `project` - The project configuration
+/// * `target_version` - The version to get tables and views for
+/// * `output_table` - HashMap to update with table and view information
 async fn add_tables_views(
     project: &Project,
     target_version: &str,
@@ -195,6 +261,15 @@ async fn add_tables_views(
     }
 }
 
+/// Retrieves a set of topic names from Redpanda, filtering out internal topics.
+///
+/// # Arguments
+///
+/// * `project` - The project configuration
+///
+/// # Returns
+///
+/// * `HashSet<String>` - Set of topic names
 async fn get_topics(project: &Project) -> HashSet<String> {
     let topic_blacklist = HashSet::<String>::from_iter(vec!["__consumer_offsets".to_string()]);
     HashSet::<String>::from_iter(
@@ -207,6 +282,15 @@ async fn get_topics(project: &Project) -> HashSet<String> {
     )
 }
 
+/// Groups topics by their prefix (the part before the first underscore).
+///
+/// # Arguments
+///
+/// * `topics` - Set of topic names to group
+///
+/// # Returns
+///
+/// * `HashMap<String, Vec<String>>` - Map of prefixes to lists of topic names
 fn group_topics_by_prefix(topics: HashSet<String>) -> HashMap<String, Vec<String>> {
     topics.into_iter().fold(HashMap::new(), |mut group, topic| {
         let mut parts = topic.splitn(2, '_');
@@ -217,6 +301,17 @@ fn group_topics_by_prefix(topics: HashSet<String>) -> HashMap<String, Vec<String
     })
 }
 
+/// Formats topics for display, grouped by data model.
+///
+/// # Arguments
+///
+/// * `project` - The project configuration
+/// * `grouped_topics` - Topics grouped by prefix
+/// * `limit` - Maximum number of data models to display
+///
+/// # Returns
+///
+/// * `Vec<Vec<String>>` - Formatted table data for display
 fn format_topics(
     project: &Project,
     grouped_topics: HashMap<String, Vec<String>>,

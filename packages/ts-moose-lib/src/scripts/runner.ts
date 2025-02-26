@@ -1,4 +1,9 @@
-import { DefaultLogger, NativeConnection, Worker } from "@temporalio/worker";
+import {
+  DefaultLogger,
+  NativeConnection,
+  NativeConnectionOptions,
+  Worker,
+} from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
 import { createActivityForScript } from "./activity";
@@ -95,14 +100,40 @@ async function registerWorkflows(
 
     logger.info(`Found ${dynamicActivities.length} task(s) in ${scriptDir}`);
 
-    // TODO: Make this configurable
-    logger.info("Connecting to Temporal server...");
-    const connection = await NativeConnection.connect({
+    let connectionOptions: NativeConnectionOptions = {
       address: temporalUrl,
-    });
+    };
+
+    if (!temporalUrl.includes("localhost")) {
+      const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
+      const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
+      const cert = await fs.readFileSync(certPath);
+      const key = await fs.readFileSync(keyPath);
+
+      connectionOptions.tls = {
+        clientCertPair: {
+          crt: cert,
+          key: key,
+        },
+      };
+    }
+
+    const connection = await NativeConnection.connect(connectionOptions);
+
+    let namespace = "default";
+    if (!temporalUrl.includes("localhost")) {
+      // Remove port
+      const hostPart = temporalUrl.split(":")[0];
+      const match = hostPart.match(/^([^.]+\.[^.]+)/);
+      if (match && match[1]) {
+        namespace = match[1];
+      }
+    }
+    logger.info(`Using namespace from URL: ${namespace}`);
 
     const worker = await Worker.create({
       connection,
+      namespace: namespace,
       taskQueue: "typescript-script-queue",
       workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
       activities: {

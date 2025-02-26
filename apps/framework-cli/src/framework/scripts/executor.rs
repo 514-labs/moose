@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::info;
 use std::collections::HashMap;
 use std::path::Path;
 use toml;
@@ -87,8 +88,71 @@ async fn execute_workflow_for_language(
     input: Option<String>,
     task_queue_name: &str,
 ) -> Result<String, TemporalExecutionError> {
-    let endpoint = tonic::transport::Endpoint::from_shared(temporal_url.to_string())?;
-    let mut client = WorkflowServiceClient::connect(endpoint).await?;
+    let is_local = temporal_url.contains("localhost");
+    info!("temporal_url: {} | is_local: {}", temporal_url, is_local);
+
+    let namespace = if is_local {
+        DEFAULT_TEMPORTAL_NAMESPACE.to_string()
+    } else {
+        let domain_name = temporal_url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split(':')
+            .next()
+            .unwrap_or("");
+
+        domain_name
+            .strip_suffix(".tmprl.cloud")
+            .unwrap_or(domain_name)
+            .to_string()
+    };
+
+    info!("Using namespace: {}", namespace);
+
+    let channel = if is_local {
+        let endpoint = tonic::transport::Channel::from_shared(temporal_url.to_string())
+            .map_err(|e| TemporalExecutionError::TimeoutError(e.to_string()))?;
+
+        endpoint.connect().await?
+    } else {
+        let domain_name = temporal_url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split(':')
+            .next()
+            .unwrap_or("");
+
+        info!("Using domain name for TLS: {}", domain_name);
+
+        let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
+        let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
+        let client_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
+        let client_key_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
+
+        let client_identity = tonic::transport::Identity::from_pem(
+            std::fs::read(client_cert_path)
+                .map_err(|e| TemporalExecutionError::TimeoutError(e.to_string()))?,
+            std::fs::read(client_key_path)
+                .map_err(|e| TemporalExecutionError::TimeoutError(e.to_string()))?,
+        );
+
+        let ca_certificate = tonic::transport::Certificate::from_pem(
+            std::fs::read(ca_cert_path)
+                .map_err(|e| TemporalExecutionError::TimeoutError(e.to_string()))?,
+        );
+
+        let tls_config = tonic::transport::ClientTlsConfig::new()
+            .identity(client_identity)
+            .ca_certificate(ca_certificate)
+            .domain_name(domain_name);
+
+        let endpoint = tonic::transport::Channel::from_shared(temporal_url.to_string())
+            .map_err(|e| TemporalExecutionError::TimeoutError(e.to_string()))?;
+
+        endpoint.tls_config(tls_config)?.connect().await?
+    };
+
+    let mut client = WorkflowServiceClient::new(channel);
 
     let mut payloads = vec![Payload {
         metadata: HashMap::from([(
@@ -115,7 +179,7 @@ async fn execute_workflow_for_language(
 
     // Test workflow executor from consumption api if this changes significantly
     let request = tonic::Request::new(StartWorkflowExecutionRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace: namespace.to_string(),
         workflow_id: workflow_id.to_string(),
         workflow_type: Some(WorkflowType {
             name: WORKFLOW_TYPE.to_string(),

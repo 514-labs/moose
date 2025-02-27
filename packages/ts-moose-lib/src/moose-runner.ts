@@ -10,7 +10,7 @@ import { register } from "ts-node";
 if (
   process.argv[2] == "consumption-apis" ||
   process.argv[2] == "consumption-type-serializer" ||
-  process.argv[2] == "dm-serializer"
+  process.argv[2] == "dmv2-serializer"
 ) {
   register({
     esm: true,
@@ -48,7 +48,7 @@ import { loadIndex } from "./dmv2/internal";
 import process from "process";
 
 switch (process.argv[2]) {
-  case "dm-serializer":
+  case "dmv2-serializer":
     loadIndex();
     break;
   case "export-serializer":

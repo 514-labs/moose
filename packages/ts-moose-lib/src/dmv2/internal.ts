@@ -15,8 +15,8 @@ export const loadIndex = async () => {
   await require(`${process.cwd()}/app/index.ts`);
 
   console.log(
-    "___MOOSE_TABLES___",
+    "___MOOSE_TABLES___start",
     JSON.stringify(Object.fromEntries(getMooseInternal().tables)),
-    "___MOOSE_TABLES___",
+    "end___MOOSE_TABLES___",
   );
 };

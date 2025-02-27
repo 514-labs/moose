@@ -4,8 +4,17 @@ use log::info;
 use tokio::process::Child;
 
 use crate::{
-    framework::{core::infrastructure::function_process::FunctionProcess, python, typescript},
-    infrastructure::stream::redpanda::RedpandaConfig,
+    framework::{
+        core::{
+            infrastructure::function_process::FunctionProcess,
+            infrastructure_map::InfrastructureMap,
+        },
+        python, typescript,
+    },
+    infrastructure::stream::{
+        redpanda::models::{RedpandaConfig, RedpandaStreamConfig},
+        StreamConfig,
+    },
     utilities::system::{kill_child, KillProcessError},
 };
 
@@ -19,6 +28,9 @@ pub enum FunctionRegistryError {
 
     #[error("Cannot run function_process {file_name}. Unsupported function_process type")]
     UnsupportedFunctionLanguage { file_name: String },
+
+    #[error("Topic not found in the infrastructure map")]
+    TopicNotFound { topic_id: String },
 }
 
 pub struct FunctionProcessRegistry {
@@ -38,40 +50,59 @@ impl FunctionProcessRegistry {
 
     pub fn start(
         &mut self,
+        infra_map: &InfrastructureMap,
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
-        let child = if function_process.is_py_function_process() {
-            Ok(python::streaming::run(
-                &self.kafka_config,
-                &function_process.source_topic,
-                &function_process.target_topic,
-                &function_process.target_topic_config_json(),
-                &function_process.executable,
-            )?)
-        } else if function_process.is_ts_function_process() {
-            Ok(typescript::streaming::run(
-                &self.kafka_config,
-                &function_process.source_topic,
-                &function_process.target_topic,
-                &function_process.target_topic_config_json(),
-                &function_process.executable,
-                &self.project_path,
-                function_process.parallel_process_count,
-            )?)
-        } else {
-            Err(FunctionRegistryError::UnsupportedFunctionLanguage {
-                file_name: function_process
-                    .executable
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string(),
-            })
-        }?;
+        match (
+            infra_map.get_topic_by_id(&function_process.source_topic_id),
+            infra_map.get_topic_by_id(&function_process.target_topic_id),
+        ) {
+            (Some(source_topic), Some(target_topic)) => {
+                // TODO This will need to be made generic
+                let source_topic = StreamConfig::Redpanda(RedpandaStreamConfig::from_topic(
+                    &self.kafka_config,
+                    source_topic,
+                ));
+                let target_topic = StreamConfig::Redpanda(RedpandaStreamConfig::from_topic(
+                    &self.kafka_config,
+                    target_topic,
+                ));
 
-        self.registry.insert(function_process.id(), child);
+                let child = if function_process.is_py_function_process() {
+                    Ok(python::streaming::run(
+                        &self.kafka_config,
+                        &source_topic,
+                        &target_topic,
+                        &function_process.executable,
+                    )?)
+                } else if function_process.is_ts_function_process() {
+                    Ok(typescript::streaming::run(
+                        &self.kafka_config,
+                        &source_topic,
+                        &target_topic,
+                        &function_process.executable,
+                        &self.project_path,
+                        function_process.parallel_process_count,
+                    )?)
+                } else {
+                    Err(FunctionRegistryError::UnsupportedFunctionLanguage {
+                        file_name: function_process
+                            .executable
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string(),
+                    })
+                }?;
 
-        Ok(())
+                self.registry.insert(function_process.id(), child);
+
+                Ok(())
+            }
+            _ => Err(FunctionRegistryError::TopicNotFound {
+                topic_id: function_process.source_topic_id.clone(),
+            }),
+        }
     }
 
     pub async fn stop(

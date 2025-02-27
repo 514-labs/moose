@@ -11,6 +11,14 @@ import time
 
 from moose_lib import cli_log, CliLogData
 
+@dataclasses.dataclass
+class KafkaTopicConfig:
+    name: str
+    partition_count: int
+    retention_ms: int
+    max_message_bytes: int
+
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -24,9 +32,8 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 
 parser = argparse.ArgumentParser(description='Run a streaming function')
 
-parser.add_argument('source_topic', type=str, help='The source topic for the streaming function')
-parser.add_argument('target_topic', type=str, help='The target topic for the streaming function')
-parser.add_argument('target_topic_config', type=str, help='The streaming server config for target topic')
+parser.add_argument('source_topic_json', type=str, help='The source topic for the streaming function')
+parser.add_argument('target_topic_json', type=str, help='The target topic for the streaming function')
 parser.add_argument('function_file_dir', type=str, help='The dir of the streaming function file')
 parser.add_argument('function_file_name', type=str, help='The file name of the streaming function without the .py extension')
 parser.add_argument('broker', type=str, help='The broker to use for the streaming function')
@@ -38,9 +45,8 @@ parser.add_argument('--security_protocol', type=str, help='The security protocol
 
 args = parser.parse_args()
 
-source_topic = args.source_topic
-target_topic = args.target_topic
-target_topic_config = args.target_topic_config
+source_topic = KafkaTopicConfig(**json.loads(args.source_topic_json))
+target_topic = KafkaTopicConfig(**json.loads(args.target_topic_json))
 function_file_dir = args.function_file_dir
 function_file_name = args.function_file_name
 broker = args.broker
@@ -61,29 +67,12 @@ sasl_config = {
     'mechanism': args.sasl_mechanism
 }
 
-log_prefix = f"{args.source_topic} -> {args.target_topic}"
+log_prefix = f"{source_topic.name} -> {target_topic.name}"
 def log(msg):
     print(f"{log_prefix}: {msg}")
 
 def error(msg):
     raise Exception(f"{log_prefix}: {msg}")
-
-
-# message.max.bytes is a broker setting that applies to all topics.
-# max.message.bytes is a per-topic setting.
-# 
-# In general, max.message.bytes should be less than or equal to message.max.bytes.
-# If max.message.bytes is larger than message.max.bytes, the broker will still reject
-# any message that is larger than message.max.bytes, even if it's sent to a topic
-# where max.message.bytes is larger. So we take the minimum of the two values,
-# or default to 1MB if either value is not set. 1MB is the server's default.
-def get_max_message_size(config_json: str) -> int:
-    config = json.loads(config_json)
-    
-    max_message_bytes = int(config.get("max.message.bytes", 1024 * 1024))
-    message_max_bytes = int(config.get("message.max.bytes", 1024 * 1024))
-
-    return min(max_message_bytes, message_max_bytes)
 
 
 sys.path.append(args.function_file_dir)
@@ -132,11 +121,10 @@ def parse_input(json_input):
 
 # This format is used in ACLs
 flow_id = f'flow-{source_topic}-{target_topic}'
-max_message_size = get_max_message_size(target_topic_config)
 
 if sasl_config['mechanism'] is not None:
     consumer = KafkaConsumer(
-        source_topic,
+        source_topic.name,
         client_id= "python_flow_consumer",
         group_id=flow_id,
         bootstrap_servers=broker,
@@ -150,7 +138,7 @@ if sasl_config['mechanism'] is not None:
 else:
     log("No sasl mechanism specified. Using default consumer.")
     consumer = KafkaConsumer(
-        source_topic,
+        source_topic.name,
         client_id= "python_flow_consumer",
         group_id=flow_id,
         bootstrap_servers=broker,
@@ -166,17 +154,17 @@ if sasl_config['mechanism'] is not None:
         sasl_plain_password=sasl_config['password'],
         sasl_mechanism=sasl_config['mechanism'],
         security_protocol=args.security_protocol,
-        max_request_size=max_message_size
+        max_request_size=target_topic.max_message_bytes
     )
 else:
     log("No sasl mechanism specified. Using default producer.")
     producer = KafkaProducer(
         bootstrap_servers=broker,
         max_in_flight_requests_per_connection=1,
-        max_request_size=max_message_size
+        max_request_size=target_topic.max_message_bytes
     )
 
-consumer.subscribe([source_topic])
+consumer.subscribe([source_topic.name])
 
 thread_running = True
 count_in = 0
@@ -188,7 +176,7 @@ def send_message_metrics_in():
     global bytes_count
     while True:
         time.sleep(1)
-        requests.post("http://localhost:5001/metrics-logs", json={'count_in': count_in, 'count_out': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}'})
+        requests.post("http://localhost:5001/metrics-logs", json={'count_in': count_in, 'count_out': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic.name} -> {target_topic.name}'})
         count_in = 0
         count_out = 0
         bytes_count = 0
@@ -213,7 +201,7 @@ for message in consumer:
 
         count_in += len(output_data_list)
         
-        cli_log(CliLogData(action="Received", message=f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'))
+        cli_log(CliLogData(action="Received", message=f'{source_topic.name} -> {target_topic.name} {len(output_data_list)} message(s)'))
 
         for item in output_data_list:
             # Ignore flow function returning null
@@ -221,7 +209,7 @@ for message in consumer:
                 # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
                 # and immediately returns. This allows the producer to batch together individual records
                 bytes_count += len(json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
-                producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
+                producer.send(target_topic.name, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
                 
                 count_out += 1
     except Exception as e:

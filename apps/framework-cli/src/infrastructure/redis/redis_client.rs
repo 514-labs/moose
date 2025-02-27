@@ -24,7 +24,7 @@ use tokio_stream::StreamExt;
 use uuid::Uuid; // for catch_unwind
 
 // Internal constants that we don't expose to the user
-const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
+const KEY_EXPIRATION_TTL: u64 = 10; // Increased to 10 seconds for more forgiving presence updates
 const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
 const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
 const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
@@ -935,7 +935,7 @@ impl RedisClient {
                 // Always attempt to reconnect, regardless of current connection state
                 // This ensures that mock clients will also try to connect to a real Redis server
                 match tokio::time::timeout(
-                    Duration::from_secs(3), // Longer timeout for reconnection attempts
+                    Duration::from_secs(5), // Increased timeout to 5 seconds for reconnection attempts
                     Self::attempt_reconnection(
                         &client,
                         &connection,
@@ -998,7 +998,7 @@ impl RedisClient {
             // Verify the connection is still good with a ping
             let ping_result = std::panic::AssertUnwindSafe(async {
                 matches!(
-                    tokio::time::timeout(Duration::from_millis(500), async {
+                    tokio::time::timeout(Duration::from_secs(4), async {
                         // Use try_lock instead of lock to avoid deadlocks
                         match connection.try_lock() {
                             Ok(mut conn) => {
@@ -1040,7 +1040,7 @@ impl RedisClient {
         // Try to establish a new connection with a more cautious approach
         // First, check if Redis is actually available with a simple ping
         let ping_result = std::panic::AssertUnwindSafe(async {
-            (tokio::time::timeout(Duration::from_secs(2), async {
+            (tokio::time::timeout(Duration::from_secs(4), async {
                 match client.get_async_connection().await {
                     Ok(mut conn) => {
                         match redis::cmd("PING").query_async::<_, String>(&mut conn).await {
@@ -1092,19 +1092,39 @@ impl RedisClient {
         // Create new connections with a longer timeout
         let new_connection_result = tokio::time::timeout(
             Duration::from_secs(5),
-            Self::create_connection_safely(client),
+            std::panic::AssertUnwindSafe(Self::create_connection_safely(client)).catch_unwind(),
         )
         .await
         .ok()
-        .and_then(|r| r.ok());
+        .and_then(|res| match res {
+            Ok(conn) => conn.ok(),
+            Err(err) => {
+                error!(
+                    "<RedisClient> Panic caught during new connection creation: {:?}",
+                    err
+                );
+                connection_state.store(false, Ordering::SeqCst);
+                None
+            }
+        });
 
         let new_pubsub_result = tokio::time::timeout(
             Duration::from_secs(5),
-            Self::create_connection_safely(client),
+            std::panic::AssertUnwindSafe(Self::create_connection_safely(client)).catch_unwind(),
         )
         .await
         .ok()
-        .and_then(|r| r.ok());
+        .and_then(|res| match res {
+            Ok(conn) => conn.ok(),
+            Err(err) => {
+                error!(
+                    "<RedisClient> Panic caught during new pub/sub connection creation: {:?}",
+                    err
+                );
+                connection_state.store(false, Ordering::SeqCst);
+                None
+            }
+        });
 
         // Use a match statement to avoid moving values
         match (new_connection_result, new_pubsub_result) {

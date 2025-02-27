@@ -100,29 +100,9 @@ async function registerWorkflows(
 
     logger.info(`Found ${dynamicActivities.length} task(s) in ${scriptDir}`);
 
-    let connectionOptions: NativeConnectionOptions = {
-      address: temporalUrl,
-    };
-
-    if (!temporalUrl.includes("localhost")) {
-      const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
-      const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
-      const cert = await fs.readFileSync(certPath);
-      const key = await fs.readFileSync(keyPath);
-
-      connectionOptions.tls = {
-        clientCertPair: {
-          crt: cert,
-          key: key,
-        },
-      };
-    }
-
-    const connection = await NativeConnection.connect(connectionOptions);
-
     let namespace = "default";
     if (!temporalUrl.includes("localhost")) {
-      // Remove port
+      // Remove port and just get <namespace>.<account>
       const hostPart = temporalUrl.split(":")[0];
       const match = hostPart.match(/^([^.]+\.[^.]+)/);
       if (match && match[1]) {
@@ -130,6 +110,41 @@ async function registerWorkflows(
       }
     }
     logger.info(`Using namespace from URL: ${namespace}`);
+
+    let connectionOptions: NativeConnectionOptions = {
+      address: temporalUrl,
+    };
+
+    if (!temporalUrl.includes("localhost")) {
+      logger.info("Using TLS for non-local Temporal");
+      // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
+      const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
+      const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
+      const apiKey = process.env.MOOSE_TEMPORAL_CONFIG__API_KEY || "";
+
+      if (certPath && keyPath) {
+        const cert = await fs.readFileSync(certPath);
+        const key = await fs.readFileSync(keyPath);
+
+        connectionOptions.tls = {
+          clientCertPair: {
+            crt: cert,
+            key: key,
+          },
+        };
+      } else if (apiKey) {
+        logger.info(`Using API key for non-local Temporal`);
+        // URL with API key uses gRPC regional endpoint
+        connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
+        connectionOptions.apiKey = apiKey;
+        connectionOptions.tls = {};
+        connectionOptions.metadata = {
+          "temporal-namespace": namespace,
+        };
+      }
+    }
+
+    const connection = await NativeConnection.connect(connectionOptions);
 
     const worker = await Worker.create({
       connection,

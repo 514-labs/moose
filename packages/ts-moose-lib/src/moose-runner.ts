@@ -9,7 +9,8 @@ import { register } from "ts-node";
 // We register ts-node to be able to interpret TS user code.
 if (
   process.argv[2] == "consumption-apis" ||
-  process.argv[2] == "consumption-type-serializer"
+  process.argv[2] == "consumption-type-serializer" ||
+  process.argv[2] == "dm-serializer"
 ) {
   register({
     esm: true,
@@ -19,7 +20,7 @@ if (
       plugins: [
         {
           transform:
-            "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
+            "./node_modules/@514labs/moose-lib/dist/dmv2/compilerPlugin.js",
           transformProgram: true,
         },
         {
@@ -43,8 +44,13 @@ import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
 import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
 import { runScripts } from "./scripts/runner";
+import { loadIndex } from "./dmv2/internal";
+import process from "process";
 
 switch (process.argv[2]) {
+  case "dm-serializer":
+    loadIndex();
+    break;
   case "export-serializer":
     runExportSerializer();
     break;

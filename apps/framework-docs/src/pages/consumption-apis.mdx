@@ -124,34 +124,49 @@ You can then customize this template by:
 Each API endpoint is defined by a single function that handles incoming requests. This function receives typed query parameters and returns database query results.
 
 <TypeScript>
-```ts filename="/apis/getBar.ts"
+```ts filename="/apis/getBar.ts" copy
 import {
   createConsumptionApi,
   ConsumptionHelpers as CH,
 } from "@514labs/moose-lib";
+import { tags } from "typia";
 
+// Define expected parameters and their types
 interface QueryParams {
-  n_days?: number;
-  sort_by?: "total_value" | "unique_ids";
+  orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
+  limit?: number;
+  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
 }
 
+// createConsumptionApi uses compile time code generation to generate a parser for QueryParams
 export default createConsumptionApi<QueryParams>(
   async (
-    { n_days = 10, sort_by = "total_value" }: QueryParams,
+    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
     { client, sql }
   ) => {
     const query = sql`
-        SELECT 
-            date,
-            sumMerge(total_value) as total_value,
-            uniqMerge(unique_ids) as unique_ids
-        FROM BarAggregated
-        GROUP BY date
-        ORDER BY 
-            ${CH.column(sort_by)} DESC
-        LIMIT ${n_days}
-        `;
-    return client.query(query);
+      SELECT 
+        dayOfMonth,
+        ${CH.column(orderBy)}
+      FROM BarAggregated_MV
+      WHERE 
+        dayOfMonth >= ${startDay} 
+        AND dayOfMonth <= ${endDay}
+      ORDER BY ${CH.column(orderBy)} DESC
+      LIMIT ${limit}
+    `;
+
+    // Set return type to the expected query result shape
+    const data = await client.query<{
+      dayOfMonth: number;
+      totalRows?: number;
+      rowsWithText?: number;
+      maxTextLength?: number;
+      totalTextLength?: number;
+    }>(query);
+
+    return data;
   }
 );
 ```
@@ -164,39 +179,57 @@ Key components:
 </TypeScript>
 
 <Python>
-```python filename="/apis/getBar.py"
-from pydantic import BaseModel, Field
+```python filename="/apis/getBar.py" copy
 from moose_lib import MooseClient
+from pydantic import BaseModel, Field
+from typing import Optional
 
+# Query params are defined as Pydantic models and are validated automatically
 class QueryParams(BaseModel):
-    n_days: int = Field(default=10)  # Number of top days to return
-    sort_by: str = Field(default="total_value")  # Either "total_value" or "unique_ids"
-
+    order_by: Optional[str] = Field(
+        default="total_rows",
+        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
+        description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
+    )
+    limit: Optional[int] = Field(
+        default=5,
+        gt=0,
+        le=100,
+        description="Must be between 1 and 100"
+    )
+    start_day: Optional[int] = Field(
+        default=1,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    end_day: Optional[int] = Field(
+        default=31,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    
+## The run function is where you can define your API logic
 def run(client: MooseClient, params: QueryParams):
-    # Define the base query to get aggregated metrics
-    base_query = """
-    SELECT 
-        date,
-        sumMerge(total_value) as total_value,
-        uniqMerge(unique_ids) as unique_ids
-    FROM BarAggregated
-    GROUP BY date
-    """
     
-    # Define sort order based on params
-    sort_orders = {
-        "total_value": "ORDER BY total_value DESC, unique_ids DESC",
-        "unique_ids": "ORDER BY unique_ids DESC, total_value DESC"
-    }
+    start_day = params.start_day
+    end_day = params.end_day
+    limit = params.limit
+    order_by = params.order_by
     
-    # Construct final query with sort order and limit
     query = f"""
-    {base_query}
-    {sort_orders[params.sort_by]}
-    LIMIT {params.n_days}
-    """
-    
-    return client.query.execute(query, {"n_days": params.n_days})
+    SELECT 
+        day_of_month,
+        {order_by}
+    FROM BarAggregated_MV 
+    WHERE day_of_month >= {start_day} 
+    AND day_of_month <= {end_day} 
+    ORDER BY {order_by} DESC
+    LIMIT {limit}
+    """    
+   
+    return client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
 ```
 
 Key components:
@@ -214,18 +247,22 @@ Query parameters allow your APIs to accept dynamic inputs through URL parameters
 <Callout type="info" title="Query Parameter Interface">
 Use an interface to define the expected parameters and their types. You can use Union types to allow multiple valid values or define more complex types.
 </Callout>
-```ts
+```ts filename="/apis/getBar.ts" copy
 // Define expected parameters and their types
 interface QueryParams {
-  n_days?: number;          // Optional number parameter
-  sort_by?: "total_value" | "unique_ids";  // String union type
+  order_by: "total_rows" | "rows_with_text" | "max_text_length" | "total_text_length";  // String union type
+  limit?: number;          // Optional number parameter
+  start_day?: number;      // Optional number parameter
+  end_day?: number;        // Optional number parameter
 }
 
-// URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+// URL: /consumption/getBar?order_by=total_rows&limit=5&start_day=1&end_day=31 OR /consumption/getBar
 // Automatically provides:
 {
-  n_days: 5,               // Converted to number
-  sort_by: "unique_ids"    // Type-checked
+  order_by: "total_rows",           
+  limit: 5,              
+  start_day: 1,      
+  end_day: 31        
 }
 ```
 
@@ -239,19 +276,20 @@ Benefits:
 <Python>
 Python Consumption APIs use Pydantic to define and validate query parameters:
 
-```python
+```python filename="/apis/get_bar.py" copy
 from pydantic import BaseModel, Field
+from typing import Optional
 
+# Query params are defined as Pydantic models and are validated automatically
 class QueryParams(BaseModel):
-    n_days: int = Field(default=10)  # Optional with default value
-    sort_by: str = Field(default="total_value")  # Optional with default value
+    order_by: Optional[str] = "total_rows"
+    limit: Optional[int] = 5
+    start_day: Optional[int] = 1
+    end_day: Optional[int] = 31
 
-# URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+# URL: /consumption/get_bar?order_by=total_rows&limit=5&start_day=1&end_day=31 OR /consumption/get_bar
 # Automatically provides:
-params = QueryParams(
-    n_days=5,           ## Converted to int
-    sort_by="unique_ids"  ## Validated as str
-)
+params = QueryParams(order_by="total_rows", limit=5, start_day=1, end_day=31)
 ```
 
 Benefits:
@@ -262,8 +300,7 @@ Benefits:
 - Clean, declarative parameter definition
 </Python>
 
-
-#### Advanced: Query Parameter Validation
+### Advanced Type Validation
 
 <TypeScript>
 Moose leverages [Typia](https://typia.io/) to enforce runtime validation on query parameters using plain TypeScript interfaces. This enables you to use [**all the advanced Typia tags**](https://typia.io/docs/validators/tags/) in your query parameter interfaces to enhance your type definitions and enforce runtime validations.
@@ -280,68 +317,104 @@ Moose leverages [Typia](https://typia.io/) to enforce runtime validation on quer
 
 Below is a practical example demonstrating how to use Typia tags within your consumption API endpoint to enforce validations on query parameters:
 
-```ts
+```ts filename="/apis/getBar.ts" copy
 import { createConsumptionApi } from "@514labs/moose-lib";
 import typia from "typia";
 
-// Define an interface strictly for query parameters using Typia tags for validation.
 interface QueryParams {
-  // Validate that `userId` is a 32-bit unsigned integer.
-  userId: number & typia.tags.Type<"uint32">;
-
-  // Ensure that `email` is formatted correctly as an email address.
-  email: string & typia.tags.Format<"email">;
-
-  // Optional `age`: if provided, it must be greater than 17.
-  age?: number & typia.tags.ExclusiveMinimum<17>;
+  orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
+  limit?: number & tags.Type<"int32"> & tags.Minimum<1>; // limit must be a 32-bit integer greater than 0
+  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>; // startDay must be a 32-bit integer between 1 and 31
+  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>; // endDay must be a 32-bit integer between 1 and 31
 }
 
-export default createConsumptionApi<QueryParams>(
-  async (params, { client, sql }) => {
-    // The query parameters are auto-validated against the Typia constraints.
-    const query = sql`
-      SELECT *
-      FROM Users
-      WHERE userId = ${params.userId}
-        AND email = ${params.email}
-        ${params.age ? sql`AND age > ${params.age}` : sql``}
-    `;
-    return client.query(query);
-  }
-);
 ```
+Other examples of Typia tags:
+```typescript filename="/apis/getBar.ts" copy
+import { tags } from "typia";
+interface MoreExamples {
+  email: string & tags.Format<"email"> // ensures the parameter is a valid email address
+  uuid: string & tags.Format<"uuid"> // ensures the parameter is a valid UUID
+  exclusiveMinimum: number & tags.ExclusiveMinimum<17> // ensures the parameter is greater than 17
+  minimum: number & tags.Minimum<1> and tags.Maximum<31> // ensure the parameter is within the specified range
+  uint32: number & tags.Type<"uint32"> // ensures the parameter is a 32-bit unsigned integer
+  double: number & tags.Type<"double"> // ensures the parameter is a double
+}
+```
+
+View the [Typia documentation](https://typia.io/docs/validators/tags/) for more information on the available tags.
+
 </TypeScript>
 
 <Python>
 Moose supports runtime validation of query parameters using Pydantic. 
 
 You can use the `Field` class to specify default values and validations:
-```python
+```python filename="/apis/get_bar.py" copy
 from pydantic import BaseModel, Field
+from typing import Optional
 
 class QueryParams(BaseModel):
-    n_days: int = Field(default=10, gt=0) # Must be greater than 0
-    sort_by: str = Field(default="total_value", pattern=r"^(total_value|unique_ids)$") # Must be either "total_value" or "unique_ids"
+    order_by: Optional[str] = Field(
+        default="total_rows",
+        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
+        description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
+    )
+    limit: Optional[int] = Field(
+        default=5,
+        gt=0,
+        le=100,
+        description="Must be between 1 and 100"
+    )
+    start_day: Optional[int] = Field(
+        default=1,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    end_day: Optional[int] = Field(
+        default=31,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
 ```
 
 You can import Pydantic types to use in your query parameters:
 
-```python
-from pydantic import BaseModel, Field, PositiveInt
+```python filename="/apis/get_bar.py" copy
+from pydantic import BaseModel, Field, PositiveInt ## Import PositiveInt to ensure the parameter is a positive integer
 
 class QueryParams(BaseModel):
-    n_days: PositiveInt = Field(default=10) # Must be a positive integer
-    sort_by: str = Field(default="total_value")
-
-# URL: /consumption/getBar?n_days=5&sort_by=unique_ids
-# Automatically provides:
-params = QueryParams(n_days=5, sort_by="unique_ids")
+    order_by: Optional[str] = Field(
+        default="total_rows",
+        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
+        description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
+    )
+    limit: Optional[PositiveInt] = Field(
+        default=5,
+        gt=0,
+        le=100,
+        description="Must be between 1 and 100"
+    )
+    start_day: Optional[PositiveInt] = Field(
+        default=1,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    end_day: Optional[PositiveInt] = Field(
+        default=31,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    
 ```
 
 <Callout type="info" title="Pydantic Docs">
 For more information on Pydantic, see the [Pydantic documentation](https://docs.pydantic.dev/latest/).
 </Callout>
-
 </Python>
 
 
@@ -351,40 +424,52 @@ For more information on Pydantic, see the [Pydantic documentation](https://docs.
 <TypeScript>
 The framework provides utilities for safely constructing SQL queries with dynamic parameters:
 
-```ts
+```ts filename="/apis/getBar.ts" copy
+import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
 // Using template literals with the sql helper
 const query = sql`
-    SELECT *
-    FROM MyTable
-    ORDER BY ${CH.column(sort_by)} DESC
-    LIMIT ${n_days}
-`;
+      SELECT 
+        dayOfMonth,
+        ${CH.column(orderBy)}
+      FROM BarAggregated_MV
+      WHERE 
+        dayOfMonth >= ${startDay} 
+        AND dayOfMonth <= ${endDay}
+      ORDER BY ${CH.column(orderBy)} DESC
+      LIMIT ${limit}
+    `;
 
 // ConsumptionHelpers (CH) prevent SQL injection
-CH.column(sort_by)  // Safely interpolates column names
+CH.column(orderBy)  // Safely interpolates column names
 ```
 </TypeScript>
 
 <Python>
 The framework provides safe query construction through parameterization:
 
-```python
-# Define valid sort orders
-sort_orders = {
-    "total_value": "ORDER BY total_value DESC",
-    "unique_ids": "ORDER BY unique_ids DESC"
-}
+```python filename="/apis/get_bar.py" copy
+## The run function is where you can define your API logic
+def run(client: MooseClient, params: QueryParams):
+    
+    start_day = params.start_day
+    end_day = params.end_day
+    limit = params.limit
+    order_by = params.order_by
+    
+    query = f"""
+    SELECT 
+        day_of_month,
+        {order_by}
+    FROM BarAggregated_MV 
+    WHERE day_of_month >= {start_day} 
+    AND day_of_month <= {end_day} 
+    ORDER BY {order_by} DESC
+    LIMIT {limit}
+    """    
+   
+    return client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
 
-# Safe query construction using f-strings for structure
-# and parameterized values for user input
-query = f"""
-    {base_query}
-    {sort_orders[params.sort_by]}
-    LIMIT {params.n_days}
-"""
-
-# Execute with parameters
-client.query.execute(query, {"n_days": params.n_days})
 ```
 </Python>
 

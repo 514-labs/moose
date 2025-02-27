@@ -439,6 +439,7 @@ schedule = "0 12 * * *" # Runs at 12:00 PM every day
 ```
 </TypeScript>
 
+```text
 |------------------------------- Minute (0-59)
 |     |------------------------- Hour (0-23)
 |     |     |------------------- Day of the month (1-31)
@@ -447,6 +448,7 @@ schedule = "0 12 * * *" # Runs at 12:00 PM every day
 |     |     |     |     |
 |     |     |     |     |
 *     *     *     *     *
+```
 
 Below are some example cron expressions along with their scheduling details:
 
@@ -473,7 +475,7 @@ This feature is not yet available for TypeScript.
 <Python>
 You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
 
-```python filename="app/apis/trigger_workflow.py"
+```python filename="app/apis/trigger_workflow.py" copy
 from moose_lib import MooseClient
 from pydantic import BaseModel, Field
 
@@ -506,7 +508,7 @@ Moose automatically catches any runtime errors during workflow execution. Errors
 In your workflow's `config.toml` file, you can configure the following options to control workflow behavior, including timeouts and retries:
 
 <Python>
-```toml filename="app/scripts/example_workflow/config.toml" {2-3}
+```toml filename="app/scripts/example_workflow/config.toml" {2-3} copy
 name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
 timeout = "1h" # Required. Default: 1 hour
 retries = 3 # Required. Default: 3 retries
@@ -516,7 +518,7 @@ tasks = [first_task, second_task] # Required. The list of tasks to execute. Matc
 </Python>
 
 <TypeScript>
-```toml filename="app/scripts/example_workflow/config.toml" {2-3} 
+```toml filename="app/scripts/example_workflow/config.toml" {2-3} copy
 name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
 timeout = "1h" # Required. Default: 1 hour
 retries = 3 # Required. Default: 3 retries
@@ -541,7 +543,7 @@ For more granular control over task-level errors and retries, you can configure 
 <Python>
 To configure a task to have its own retry behavior, you can use the `retries` parameter in the `@task` decorator:
 
-```python filename="app/scripts/example_workflow/1.first_task.py" {3}
+```python filename="app/scripts/example_workflow/1.first_task.py" {3} copy
 from moose_lib import task
 
 @task(retries=3) 
@@ -557,7 +559,7 @@ def first_task(input: dict):
 <TypeScript>
 To configure a task to have its own retry behavior, you can add a `config` object to the task definition, and specify a number of `retries` within that object:
 
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18}
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18} copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 const firstTask: TaskFunction = async () => {
@@ -609,7 +611,7 @@ retries = 2
 ```
 
 - **Task Retry Policy**: 3 attempts
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18}
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18} copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 const firstTask: TaskFunction = async () => {

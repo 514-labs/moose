@@ -387,16 +387,16 @@ pub async fn start_development_mode(
         Box::leak(Box::new(RwLock::new(route_table)));
 
     let route_update_channel = web_server
-        .spawn_api_update_listener(route_table, consumption_apis)
+        .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
     let plan = plan_changes(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
-    plan_validator::validate(&plan)?;
+    plan_validator::validate(&project, &plan)?;
 
     let api_changes_channel = web_server
-        .spawn_api_update_listener(route_table, consumption_apis)
+        .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
     let (syncing_registry, process_registry) = execute_initial_infra_change(
@@ -509,10 +509,10 @@ pub async fn start_production_mode(
     let plan = plan_changes(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
-    plan_validator::validate(&plan)?;
+    plan_validator::validate(&project, &plan)?;
 
     let api_changes_channel = web_server
-        .spawn_api_update_listener(route_table, consumption_apis)
+        .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
     execute_initial_infra_change(

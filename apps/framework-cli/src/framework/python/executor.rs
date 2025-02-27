@@ -131,7 +131,7 @@ pub fn add_optional_arg(args: &mut Vec<String>, flag: &str, value: &Option<Strin
 mod tests {
     use std::path::Path;
 
-    use crate::infrastructure::stream::redpanda::RedpandaConfig;
+    use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
 
     use super::*;
 

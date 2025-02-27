@@ -3,7 +3,8 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
+use crate::infrastructure::stream::StreamConfig;
 
 use super::bin;
 
@@ -14,9 +15,8 @@ const FUNCTION_RUNNER_BIN: &str = "streaming-functions";
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     redpanda_config: &RedpandaConfig,
-    source_topic: &str,
-    target_topic: &str,
-    target_topic_config: &str,
+    source_topic: &StreamConfig,
+    target_topic: &StreamConfig,
     streaming_function_file: &Path,
     project_path: &Path,
     max_subscriber_count: usize,
@@ -25,10 +25,13 @@ pub fn run(
 ) -> Result<Child, std::io::Error> {
     let subscriber_count_str = max_subscriber_count.to_string();
     let is_dmv2_str = is_dmv2.to_string();
-    let mut args = vec![
-        source_topic,
-        target_topic,
-        target_topic_config,
+
+    let source_topic_config_str = source_topic.as_json_string();
+    let target_topic_config_str = target_topic.as_json_string();
+
+    let mut args: Vec<&str> = vec![
+        source_topic_config_str.as_str(),
+        target_topic_config_str.as_str(),
         streaming_function_file.to_str().unwrap(),
         &redpanda_config.broker,
         &subscriber_count_str,

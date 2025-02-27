@@ -1,3 +1,38 @@
+//! # Infrastructure Map Module
+//!
+//! This module is a cornerstone of the Moose framework, providing a comprehensive representation
+//! of all infrastructure components and their relationships. It serves as the source of truth for
+//! the entire system architecture and enables infrastructure-as-code capabilities.
+//!
+//! ## Overview
+//!
+//! The `InfrastructureMap` tracks all components of the system:
+//! - Data storage components (tables, views)
+//! - Streaming components (topics)
+//! - API components (endpoints)
+//! - Process components (synchronization processes, function processes, etc.)
+//!
+//! This map enables the framework to:
+//! 1. Generate a complete representation of the required infrastructure
+//! 2. Compare infrastructure states to determine necessary changes
+//! 3. Apply changes to actual infrastructure components
+//! 4. Persist infrastructure state for later reference
+//!
+//! ## Key Components
+//!
+//! - `InfrastructureMap`: The main struct containing all infrastructure components
+//! - `InfraChanges`: Represents changes between two infrastructure states
+//! - Change enums: Various enums representing specific types of changes to components
+//!
+//! ## Usage Flow
+//!
+//! 1. Generate an `InfrastructureMap` from primitive components
+//! 2. Compare maps to determine changes using `diff()`
+//! 3. Apply changes to actual infrastructure
+//! 4. Store the updated map for future reference
+//!
+//! This module is essential for maintaining consistency between the defined infrastructure
+//! and the actual deployed components.
 use super::infrastructure::api_endpoint::{APIType, ApiEndpoint, Method};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
@@ -14,7 +49,6 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::datamodel_config::load_main_py;
 use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::{Context, Result};
@@ -27,32 +61,53 @@ use std::path::{Path, PathBuf};
 use tokio::io::AsyncReadExt;
 use tokio::process::Child;
 
+/// Error types for InfrastructureMap protocol buffer operations
+///
+/// This enum defines errors that can occur when converting between protocol
+/// buffer representations and Rust representations of the infrastructure map.
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to convert infrastructure map from proto")]
 #[non_exhaustive]
 pub enum InfraMapProtoError {
+    /// Error occurred during protobuf parsing
     #[error("Failed to parse proto message")]
     ProtoParseError(#[from] protobuf::Error),
 
+    /// A required field was missing in the protobuf message
     #[error("Missing required field: {field_name}")]
     MissingField { field_name: String },
 }
 
+/// Types of primitives that can be represented in the infrastructure
+///
+/// These represent the core building blocks of the system that can be
+/// transformed into infrastructure components.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
+    /// A data model that defines the structure of data
     DataModel,
+    /// A function that processes data
     Function,
+    /// A database block for OLAP operations
     DBBlock,
+    /// An API for consumption of data
     ConsumptionAPI,
 }
 
+/// Signature that uniquely identifies a primitive component
+///
+/// This combines the name and type of a primitive to provide a consistent
+/// way to reference primitives throughout the system.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PrimitiveSignature {
+    /// Name of the primitive component
     pub name: String,
+    /// Type of the primitive component
     pub primitive_type: PrimitiveTypes,
 }
 
 impl PrimitiveSignature {
+    /// Converts this signature to its protocol buffer representation
     pub fn to_proto(&self) -> crate::proto::infrastructure_map::PrimitiveSignature {
         crate::proto::infrastructure_map::PrimitiveSignature {
             name: self.name.clone(),
@@ -70,6 +125,12 @@ impl PrimitiveSignature {
 }
 
 impl PrimitiveTypes {
+    /// Converts this primitive type to its protocol buffer representation
+    ///
+    /// Maps each variant of the enum to the corresponding protocol buffer enum value.
+    ///
+    /// # Returns
+    /// The protocol buffer enum value corresponding to this primitive type
     fn to_proto(&self) -> crate::proto::infrastructure_map::PrimitiveTypes {
         match self {
             PrimitiveTypes::DataModel => {
@@ -83,6 +144,15 @@ impl PrimitiveTypes {
         }
     }
 
+    /// Creates a primitive type from its protocol buffer representation
+    ///
+    /// Maps each protocol buffer enum value to the corresponding Rust enum variant.
+    ///
+    /// # Arguments
+    /// * `proto` - The protocol buffer enum value to convert
+    ///
+    /// # Returns
+    /// The corresponding PrimitiveTypes variant
     pub fn from_proto(proto: crate::proto::infrastructure_map::PrimitiveTypes) -> Self {
         match proto {
             crate::proto::infrastructure_map::PrimitiveTypes::DATA_MODEL => {
@@ -97,85 +167,156 @@ impl PrimitiveTypes {
     }
 }
 
+/// Represents a change to a database column
+///
+/// This enum captures the three possible states of change for a column:
+/// addition, removal, or update with before and after states.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ColumnChange {
+    /// A new column has been added
     Added(Column),
+    /// An existing column has been removed
     Removed(Column),
+    /// An existing column has been modified
     Updated { before: Column, after: Column },
 }
 
+/// Represents changes to the order_by configuration of a table
+///
+/// Tracks the before and after states of the ordering columns.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderByChange {
+    /// Previous ordering columns
     pub before: Vec<String>,
+    /// New ordering columns
     pub after: Vec<String>,
 }
 
+/// Represents a change to a database table
+///
+/// This captures the complete picture of table changes, including additions,
+/// removals, and detailed updates with column-level changes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum TableChange {
+    /// A new table has been added
     Added(Table),
+    /// An existing table has been removed
     Removed(Table),
+    /// An existing table has been modified
     Updated {
+        /// Name of the table that was updated
         name: String,
+        /// List of column-level changes
         column_changes: Vec<ColumnChange>,
+        /// Changes to the ordering columns
         order_by_change: OrderByChange,
+        /// Complete representation of the table before changes
         before: Table,
+        /// Complete representation of the table after changes
         after: Table,
     },
 }
 
+/// Generic representation of a change to any infrastructure component
+///
+/// This type-parametrized enum can represent changes to any serializable
+/// component type in a consistent way.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Change<T: Serialize> {
+    /// A new component has been added
     Added(Box<T>),
+    /// An existing component has been removed
     Removed(Box<T>),
+    /// An existing component has been modified
     Updated { before: Box<T>, after: Box<T> },
 }
 
+/// High-level categories of infrastructure changes
+///
+/// This enum categorizes changes by the part of the infrastructure they affect.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InfraChange {
+    /// Changes to OLAP (Online Analytical Processing) components
     Olap(OlapChange),
+    /// Changes to streaming components
     Streaming(StreamingChange),
+    /// Changes to API components
     Api(ApiChange),
+    /// Changes to process components
     Process(ProcessChange),
 }
 
+/// Changes to OLAP (database) components
+///
+/// This includes changes to tables and views.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
+    /// Change to a database table
     Table(TableChange),
+    /// Change to a database view
     View(Change<View>),
 }
 
+/// Changes to streaming components
+///
+/// Currently only includes changes to topics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StreamingChange {
+    /// Change to a streaming topic
     Topic(Change<Topic>),
 }
 
+/// Changes to API components
+///
+/// Currently only includes changes to API endpoints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApiChange {
+    /// Change to an API endpoint
     ApiEndpoint(Change<ApiEndpoint>),
 }
 
+/// Changes to process components
+///
+/// This includes various types of processes that operate on the infrastructure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessChange {
+    /// Change to a process that syncs data from a topic to a table
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
+    /// Change to a process that syncs data between topics
     TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
+    /// Change to a function process
     FunctionProcess(Change<FunctionProcess>),
+    /// Change to an OLAP process
     OlapProcess(Change<OlapProcess>),
+    /// Change to a consumption API web server
     ConsumptionApiWebServer(Change<ConsumptionApiWebServer>),
+    /// Change to an orchestration worker
     OrchestrationWorker(Change<OrchestrationWorker>),
 }
 
+/// Collection of all changes detected between two infrastructure states
+///
+/// This struct aggregates changes across all parts of the infrastructure
+/// and is the primary output of the difference calculation.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InfraChanges {
+    /// Changes to OLAP (database) components
     pub olap_changes: Vec<OlapChange>,
+    /// Changes to process components
     pub processes_changes: Vec<ProcessChange>,
+    /// Changes to API components
     pub api_changes: Vec<ApiChange>,
+    /// Changes to streaming components
     pub streaming_engine_changes: Vec<StreamingChange>,
 }
 
 impl InfraChanges {
+    /// Checks if there are any changes in this collection
+    ///
+    /// Returns true if all change vectors are empty, false otherwise.
     pub fn is_empty(&self) -> bool {
         self.olap_changes.is_empty()
             && self.processes_changes.is_empty()
@@ -185,6 +326,17 @@ impl InfraChanges {
 }
 
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
+///
+/// The `InfrastructureMap` is the central data structure of the Moose framework's infrastructure management.
+/// It contains a comprehensive representation of all infrastructure components and their relationships,
+/// serving as the source of truth for the entire system architecture.
+///
+/// Components are organized by type and indexed by appropriate identifiers for efficient lookup.
+/// The map can be serialized to/from various formats (JSON, Protocol Buffers) for persistence
+/// and can be compared with other maps to detect changes.
+///
+/// The relationship between the components is maintained by reference rather than by value.
+/// Helper methods facilitate navigating the map and finding related components.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
     /// Collection of topics indexed by topic ID
@@ -224,268 +376,24 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
-    /// Compare tables between two infrastructure maps and compute the differences.
-    /// This function identifies added, removed, and updated tables by comparing
-    /// the source and target table maps. Changes are collected in the provided
-    /// changes vector.
+    /// Creates a new infrastructure map from a project and primitive map
+    ///
+    /// This is the primary constructor for creating an infrastructure map. It transforms
+    /// the high-level primitives (data models, functions, blocks, etc.) into concrete
+    /// infrastructure components and their relationships.
+    ///
+    /// The method handles complex logic like:
+    /// - Processing data models with version changes first
+    /// - Creating appropriate infrastructure for each primitive type
+    /// - Setting up relationships between components
+    /// - Handling special cases for unchanged components with version changes
     ///
     /// # Arguments
-    /// * `source_tables` - HashMap of source tables to compare from
-    /// * `target_tables` - HashMap of target tables to compare against
-    /// * `changes` - Mutable vector to collect the identified changes
-    pub fn diff_tables(
-        self_tables: &HashMap<String, Table>,
-        target_tables: &HashMap<String, Table>,
-        olap_changes: &mut Vec<OlapChange>,
-    ) {
-        log::info!(
-            "Analyzing table differences between {} source tables and {} target tables",
-            self_tables.len(),
-            target_tables.len()
-        );
-
-        let mut table_updates = 0;
-        let mut table_removals = 0;
-        let mut table_additions = 0;
-
-        for (id, table) in self_tables {
-            if let Some(target_table) = target_tables.get(id) {
-                if table != target_table {
-                    // Debug logging to identify what's different
-                    log::debug!("Table '{}' has differences:", id);
-                    if table.name != target_table.name {
-                        log::debug!(
-                            "  - Name changed: '{}' -> '{}'",
-                            table.name,
-                            target_table.name
-                        );
-                    }
-                    if table.columns != target_table.columns {
-                        log::debug!("  - Column differences detected");
-                        // Detail column differences
-                        for col in &table.columns {
-                            if !target_table
-                                .columns
-                                .iter()
-                                .any(|c| c.name == col.name && c == col)
-                            {
-                                if target_table.columns.iter().any(|c| c.name == col.name) {
-                                    log::debug!("    * Column '{}' modified", col.name);
-                                } else {
-                                    log::debug!("    * Column '{}' removed", col.name);
-                                }
-                            }
-                        }
-                        for col in &target_table.columns {
-                            if !table.columns.iter().any(|c| c.name == col.name) {
-                                log::debug!("    * Column '{}' added", col.name);
-                            }
-                        }
-                    }
-                    if table.order_by != target_table.order_by {
-                        log::debug!(
-                            "  - Order by changed: {:?} -> {:?}",
-                            table.order_by,
-                            target_table.order_by
-                        );
-                    }
-                    if table.deduplicate != target_table.deduplicate {
-                        log::debug!(
-                            "  - Deduplicate changed: {} -> {}",
-                            table.deduplicate,
-                            target_table.deduplicate
-                        );
-                    }
-                    if table.version != target_table.version {
-                        log::debug!(
-                            "  - Version changed: {} -> {}",
-                            table.version,
-                            target_table.version
-                        );
-                    }
-                    if table.source_primitive != target_table.source_primitive {
-                        log::debug!(
-                            "  - Source primitive changed: {:?} -> {:?}",
-                            table.source_primitive,
-                            target_table.source_primitive
-                        );
-                    }
-
-                    let column_changes = compute_table_diff(table, target_table);
-
-                    // Log column change details
-                    if !column_changes.is_empty() {
-                        log::debug!("Column changes for table '{}':", table.name);
-                        for change in &column_changes {
-                            match change {
-                                ColumnChange::Added(col) => {
-                                    log::debug!(
-                                        "  - Added column: {} ({})",
-                                        col.name,
-                                        col.data_type
-                                    );
-                                }
-                                ColumnChange::Removed(col) => {
-                                    log::debug!(
-                                        "  - Removed column: {} ({})",
-                                        col.name,
-                                        col.data_type
-                                    );
-                                }
-                                ColumnChange::Updated { before, after } => {
-                                    log::debug!("  - Updated column: {}", before.name);
-                                    if before.data_type != after.data_type {
-                                        log::debug!(
-                                            "    * Type changed: {:?} -> {:?}",
-                                            before.data_type,
-                                            after.data_type
-                                        );
-                                    }
-                                    if before.required != after.required {
-                                        log::debug!(
-                                            "    * Required changed: {:?} -> {:?}",
-                                            before.required,
-                                            after.required
-                                        );
-                                    }
-                                    if before.unique != after.unique {
-                                        log::debug!(
-                                            "    * Unique changed: {:?} -> {:?}",
-                                            before.unique,
-                                            after.unique
-                                        );
-                                    }
-                                    if before.primary_key != after.primary_key {
-                                        log::debug!(
-                                            "    * Primary key changed: {:?} -> {:?}",
-                                            before.primary_key,
-                                            after.primary_key
-                                        );
-                                    }
-                                    if before.default != after.default {
-                                        log::debug!(
-                                            "    * Default value changed: {:?} -> {:?}",
-                                            before.default,
-                                            after.default
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let order_by_change = if table.order_by != target_table.order_by {
-                        OrderByChange {
-                            before: table.order_by.clone(),
-                            after: target_table.order_by.clone(),
-                        }
-                    } else {
-                        OrderByChange {
-                            before: vec![],
-                            after: vec![],
-                        }
-                    };
-
-                    // Only push changes if there are actual differences to report
-                    if !column_changes.is_empty()
-                        || table.order_by != target_table.order_by
-                        || table.deduplicate != target_table.deduplicate
-                    {
-                        table_updates += 1;
-                        olap_changes.push(OlapChange::Table(TableChange::Updated {
-                            name: table.name.clone(),
-                            column_changes,
-                            order_by_change,
-                            before: table.clone(),
-                            after: target_table.clone(),
-                        }));
-                    }
-                }
-            } else {
-                log::debug!("Table '{}' removed", table.name);
-                table_removals += 1;
-                olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
-            }
-        }
-
-        for (id, table) in target_tables {
-            if !self_tables.contains_key(id) {
-                log::debug!(
-                    "Table '{}' added with {} columns",
-                    table.name,
-                    table.columns.len()
-                );
-                for col in &table.columns {
-                    log::trace!("  - Column: {} ({})", col.name, col.data_type);
-                }
-                table_additions += 1;
-                olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
-            }
-        }
-
-        log::info!(
-            "Table changes: {} added, {} removed, {} updated",
-            table_additions,
-            table_removals,
-            table_updates
-        );
-    }
-
-    // we want to add the prefix as soon as possible
-    // to avoid worrying whether the topic name is prefixed
-    // we dump the infra map during build, when the prefix is unavailable
-    // so the prefix adding has to be written as a mutation
-    //
-    // an alternative is to dump the PrimitiveMap during build,
-    // and add `RedpandaConfig` param to the `new(PrimitiveMap)->InfrastructureMap` function.
-    pub fn with_topic_namespace(&mut self, redpanda_config: &RedpandaConfig) {
-        let topics = std::mem::take(&mut self.topics);
-        for mut topic in topics.into_values() {
-            topic.name = redpanda_config.prefix_with_namespace(&topic.name);
-            self.topics.insert(topic.id(), topic);
-        }
-
-        let api_endpoints = std::mem::take(&mut self.api_endpoints);
-        for mut api_endpoint in api_endpoints.into_values() {
-            match api_endpoint.api_type {
-                APIType::INGRESS {
-                    ref mut target_topic,
-                    ..
-                } => *target_topic = redpanda_config.prefix_with_namespace(target_topic),
-                APIType::EGRESS { .. } => {}
-            }
-            self.api_endpoints.insert(api_endpoint.id(), api_endpoint);
-        }
-
-        let topic_to_table_sync_processes = std::mem::take(&mut self.topic_to_table_sync_processes);
-        for mut process in topic_to_table_sync_processes.into_values() {
-            process.source_topic_id =
-                redpanda_config.prefix_with_namespace(&process.source_topic_id);
-            self.topic_to_table_sync_processes
-                .insert(process.id(), process);
-        }
-
-        let topic_to_topic_sync_processes = std::mem::take(&mut self.topic_to_topic_sync_processes);
-        for mut process in topic_to_topic_sync_processes.into_values() {
-            process.source_topic_id =
-                redpanda_config.prefix_with_namespace(&process.source_topic_id);
-            process.target_topic_id =
-                redpanda_config.prefix_with_namespace(&process.target_topic_id);
-
-            self.topic_to_topic_sync_processes
-                .insert(process.id(), process);
-        }
-
-        let function_processes = std::mem::take(&mut self.function_processes);
-        for mut process in function_processes.into_values() {
-            process.source_topic = redpanda_config.prefix_with_namespace(&process.source_topic);
-            if !process.target_topic.is_empty() {
-                process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
-            }
-            self.function_processes.insert(process.id(), process);
-        }
-    }
-
+    /// * `project` - The project context with configuration and features
+    /// * `primitive_map` - The map of primitives to transform into infrastructure
+    ///
+    /// # Returns
+    /// A complete infrastructure map with all components and their relationships
     pub fn new(project: &Project, primitive_map: PrimitiveMap) -> InfrastructureMap {
         let mut tables = HashMap::new();
         let mut views = HashMap::new();
@@ -626,10 +534,155 @@ impl InfrastructureMap {
         }
     }
 
-    // The current implementation is simple in which it goes over some of the
-    // changes several times. Something could be done to optimize this.
-    // There is probably a way to make this also more generic so that we don't have very
-    // similar code for each type of change.
+    /// Generates all the changes needed for initial infrastructure deployment
+    ///
+    /// This method creates a complete set of changes representing the creation of
+    /// all components in this infrastructure map. It's used when deploying to an
+    /// environment with no existing infrastructure.
+    ///
+    /// # Arguments
+    /// * `project` - The project context with configuration and features
+    ///
+    /// # Returns
+    /// An `InfraChanges` object containing all components marked as additions
+    pub fn init(&self, project: &Project) -> InfraChanges {
+        let olap_changes = self.init_tables();
+        let processes_changes = self.init_processes(project);
+        let api_changes = self.init_api_endpoints();
+        let streaming_engine_changes = self.init_topics();
+
+        InfraChanges {
+            olap_changes,
+            processes_changes,
+            api_changes,
+            streaming_engine_changes,
+        }
+    }
+
+    /// Creates changes for initial topic deployment
+    ///
+    /// Generates changes representing the creation of all topics in this map.
+    ///
+    /// # Returns
+    /// A vector of `StreamingChange` objects for topic creation
+    pub fn init_topics(&self) -> Vec<StreamingChange> {
+        self.topics
+            .values()
+            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(Box::new(topic.clone()))))
+            .collect()
+    }
+
+    /// Creates changes for initial API endpoint deployment
+    ///
+    /// Generates changes representing the creation of all API endpoints in this map.
+    ///
+    /// # Returns
+    /// A vector of `ApiChange` objects for endpoint creation
+    pub fn init_api_endpoints(&self) -> Vec<ApiChange> {
+        self.api_endpoints
+            .values()
+            .map(|api_endpoint| {
+                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(Box::new(api_endpoint.clone())))
+            })
+            .collect()
+    }
+
+    /// Creates changes for initial table deployment
+    ///
+    /// Generates changes representing the creation of all tables in this map.
+    ///
+    /// # Returns
+    /// A vector of `OlapChange` objects for table creation
+    pub fn init_tables(&self) -> Vec<OlapChange> {
+        self.tables
+            .values()
+            .map(|table| OlapChange::Table(TableChange::Added(table.clone())))
+            .collect()
+    }
+
+    /// Creates changes for initial process deployment
+    ///
+    /// Generates changes representing the creation of all processes in this map.
+    ///
+    /// # Arguments
+    /// * `project` - The project context with configuration and features
+    ///
+    /// # Returns
+    /// A vector of `ProcessChange` objects for process creation
+    pub fn init_processes(&self, project: &Project) -> Vec<ProcessChange> {
+        let mut process_changes: Vec<ProcessChange> = self
+            .topic_to_table_sync_processes
+            .values()
+            .map(|topic_to_table_sync_process| {
+                ProcessChange::TopicToTableSyncProcess(Change::<TopicToTableSyncProcess>::Added(
+                    Box::new(topic_to_table_sync_process.clone()),
+                ))
+            })
+            .collect();
+
+        let mut topic_to_topic_process_changes: Vec<ProcessChange> = self
+            .topic_to_topic_sync_processes
+            .values()
+            .map(|topic_to_table_sync_process| {
+                ProcessChange::TopicToTopicSyncProcess(Change::<TopicToTopicSyncProcess>::Added(
+                    Box::new(topic_to_table_sync_process.clone()),
+                ))
+            })
+            .collect();
+        process_changes.append(&mut topic_to_topic_process_changes);
+
+        let mut function_process_changes: Vec<ProcessChange> = self
+            .function_processes
+            .values()
+            .map(|function_process| {
+                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(Box::new(
+                    function_process.clone(),
+                )))
+            })
+            .collect();
+
+        process_changes.append(&mut function_process_changes);
+
+        // TODO Change this when we have multiple processes for blocks
+        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
+            Box::new(OlapProcess {}),
+        )));
+
+        process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
+            ConsumptionApiWebServer,
+        >::Added(
+            Box::new(ConsumptionApiWebServer {}),
+        )));
+
+        process_changes.push(ProcessChange::OrchestrationWorker(Change::<
+            OrchestrationWorker,
+        >::Added(
+            Box::new(OrchestrationWorker {
+                supported_language: project.language,
+            }),
+        )));
+
+        process_changes
+    }
+
+    /// Compares this infrastructure map with a target map to determine changes
+    ///
+    /// This is a central method of the infrastructure management system. It performs a
+    /// comprehensive comparison between this map (representing the current state) and
+    /// a target map (representing the desired state), calculating all changes needed
+    /// to transform the current state into the desired state.
+    ///
+    /// The method:
+    /// - Analyzes each component type separately (topics, API endpoints, tables, views, etc.)
+    /// - Identifies additions, removals, and modifications
+    /// - For complex components like tables, calculates detailed changes (column additions, etc.)
+    /// - Logs detailed information about the detected changes
+    ///
+    /// # Arguments
+    /// * `target_map` - The target infrastructure map to compare against
+    ///
+    /// # Returns
+    /// An `InfraChanges` object containing all detected changes
     pub fn diff(&self, target_map: &InfrastructureMap) -> InfraChanges {
         let mut changes = InfraChanges::default();
 
@@ -1067,114 +1120,252 @@ impl InfrastructureMap {
         changes
     }
 
-    /**
-     * Generates all the changes that need to be made to the infrastructure in the case of the
-     * infrastructure not having anything in place. ie everything needs to be created.
-     */
-    pub fn init(&self, project: &Project) -> InfraChanges {
-        let olap_changes = self.init_tables();
-        let processes_changes = self.init_processes(project);
-        let api_changes = self.init_api_endpoints();
-        let streaming_engine_changes = self.init_topics();
+    /// Compare tables between two infrastructure maps and compute the differences
+    ///
+    /// This method identifies added, removed, and updated tables by comparing
+    /// the source and target table maps. For updated tables, it performs a detailed
+    /// analysis of column-level changes.
+    ///
+    /// Changes are collected in the provided changes vector with detailed logging
+    /// of what has changed.
+    ///
+    /// # Arguments
+    /// * `self_tables` - HashMap of source tables to compare from
+    /// * `target_tables` - HashMap of target tables to compare against
+    /// * `olap_changes` - Mutable vector to collect the identified changes
+    pub fn diff_tables(
+        self_tables: &HashMap<String, Table>,
+        target_tables: &HashMap<String, Table>,
+        olap_changes: &mut Vec<OlapChange>,
+    ) {
+        log::info!(
+            "Analyzing table differences between {} source tables and {} target tables",
+            self_tables.len(),
+            target_tables.len()
+        );
 
-        InfraChanges {
-            olap_changes,
-            processes_changes,
-            api_changes,
-            streaming_engine_changes,
+        let mut table_updates = 0;
+        let mut table_removals = 0;
+        let mut table_additions = 0;
+
+        for (id, table) in self_tables {
+            if let Some(target_table) = target_tables.get(id) {
+                if table != target_table {
+                    // Debug logging to identify what's different
+                    log::debug!("Table '{}' has differences:", id);
+                    if table.name != target_table.name {
+                        log::debug!(
+                            "  - Name changed: '{}' -> '{}'",
+                            table.name,
+                            target_table.name
+                        );
+                    }
+                    if table.columns != target_table.columns {
+                        log::debug!("  - Column differences detected");
+                        // Detail column differences
+                        for col in &table.columns {
+                            if !target_table
+                                .columns
+                                .iter()
+                                .any(|c| c.name == col.name && c == col)
+                            {
+                                if target_table.columns.iter().any(|c| c.name == col.name) {
+                                    log::debug!("    * Column '{}' modified", col.name);
+                                } else {
+                                    log::debug!("    * Column '{}' removed", col.name);
+                                }
+                            }
+                        }
+                        for col in &target_table.columns {
+                            if !table.columns.iter().any(|c| c.name == col.name) {
+                                log::debug!("    * Column '{}' added", col.name);
+                            }
+                        }
+                    }
+                    if table.order_by != target_table.order_by {
+                        log::debug!(
+                            "  - Order by changed: {:?} -> {:?}",
+                            table.order_by,
+                            target_table.order_by
+                        );
+                    }
+                    if table.deduplicate != target_table.deduplicate {
+                        log::debug!(
+                            "  - Deduplicate changed: {} -> {}",
+                            table.deduplicate,
+                            target_table.deduplicate
+                        );
+                    }
+                    if table.version != target_table.version {
+                        log::debug!(
+                            "  - Version changed: {} -> {}",
+                            table.version,
+                            target_table.version
+                        );
+                    }
+                    if table.source_primitive != target_table.source_primitive {
+                        log::debug!(
+                            "  - Source primitive changed: {:?} -> {:?}",
+                            table.source_primitive,
+                            target_table.source_primitive
+                        );
+                    }
+
+                    let column_changes = compute_table_diff(table, target_table);
+
+                    // Log column change details
+                    if !column_changes.is_empty() {
+                        log::debug!("Column changes for table '{}':", table.name);
+                        for change in &column_changes {
+                            match change {
+                                ColumnChange::Added(col) => {
+                                    log::debug!(
+                                        "  - Added column: {} ({})",
+                                        col.name,
+                                        col.data_type
+                                    );
+                                }
+                                ColumnChange::Removed(col) => {
+                                    log::debug!(
+                                        "  - Removed column: {} ({})",
+                                        col.name,
+                                        col.data_type
+                                    );
+                                }
+                                ColumnChange::Updated { before, after } => {
+                                    log::debug!("  - Updated column: {}", before.name);
+                                    if before.data_type != after.data_type {
+                                        log::debug!(
+                                            "    * Type changed: {:?} -> {:?}",
+                                            before.data_type,
+                                            after.data_type
+                                        );
+                                    }
+                                    if before.required != after.required {
+                                        log::debug!(
+                                            "    * Required changed: {:?} -> {:?}",
+                                            before.required,
+                                            after.required
+                                        );
+                                    }
+                                    if before.unique != after.unique {
+                                        log::debug!(
+                                            "    * Unique changed: {:?} -> {:?}",
+                                            before.unique,
+                                            after.unique
+                                        );
+                                    }
+                                    if before.primary_key != after.primary_key {
+                                        log::debug!(
+                                            "    * Primary key changed: {:?} -> {:?}",
+                                            before.primary_key,
+                                            after.primary_key
+                                        );
+                                    }
+                                    if before.default != after.default {
+                                        log::debug!(
+                                            "    * Default value changed: {:?} -> {:?}",
+                                            before.default,
+                                            after.default
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let order_by_change = if table.order_by != target_table.order_by {
+                        OrderByChange {
+                            before: table.order_by.clone(),
+                            after: target_table.order_by.clone(),
+                        }
+                    } else {
+                        OrderByChange {
+                            before: vec![],
+                            after: vec![],
+                        }
+                    };
+
+                    // Only push changes if there are actual differences to report
+                    if !column_changes.is_empty()
+                        || table.order_by != target_table.order_by
+                        || table.deduplicate != target_table.deduplicate
+                    {
+                        table_updates += 1;
+                        olap_changes.push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change,
+                            before: table.clone(),
+                            after: target_table.clone(),
+                        }));
+                    }
+                }
+            } else {
+                log::debug!("Table '{}' removed", table.name);
+                table_removals += 1;
+                olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
+            }
         }
+
+        for (id, table) in target_tables {
+            if !self_tables.contains_key(id) {
+                log::debug!(
+                    "Table '{}' added with {} columns",
+                    table.name,
+                    table.columns.len()
+                );
+                for col in &table.columns {
+                    log::trace!("  - Column: {} ({})", col.name, col.data_type);
+                }
+                table_additions += 1;
+                olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
+            }
+        }
+
+        log::info!(
+            "Table changes: {} added, {} removed, {} updated",
+            table_additions,
+            table_removals,
+            table_updates
+        );
     }
 
-    pub fn init_topics(&self) -> Vec<StreamingChange> {
-        self.topics
-            .values()
-            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(Box::new(topic.clone()))))
-            .collect()
-    }
-
-    pub fn init_api_endpoints(&self) -> Vec<ApiChange> {
-        self.api_endpoints
-            .values()
-            .map(|api_endpoint| {
-                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(Box::new(api_endpoint.clone())))
-            })
-            .collect()
-    }
-
-    pub fn init_tables(&self) -> Vec<OlapChange> {
-        self.tables
-            .values()
-            .map(|table| OlapChange::Table(TableChange::Added(table.clone())))
-            .collect()
-    }
-
-    pub fn init_processes(&self, project: &Project) -> Vec<ProcessChange> {
-        let mut process_changes: Vec<ProcessChange> = self
-            .topic_to_table_sync_processes
-            .values()
-            .map(|topic_to_table_sync_process| {
-                ProcessChange::TopicToTableSyncProcess(Change::<TopicToTableSyncProcess>::Added(
-                    Box::new(topic_to_table_sync_process.clone()),
-                ))
-            })
-            .collect();
-
-        let mut topic_to_topic_process_changes: Vec<ProcessChange> = self
-            .topic_to_topic_sync_processes
-            .values()
-            .map(|topic_to_table_sync_process| {
-                ProcessChange::TopicToTopicSyncProcess(Change::<TopicToTopicSyncProcess>::Added(
-                    Box::new(topic_to_table_sync_process.clone()),
-                ))
-            })
-            .collect();
-        process_changes.append(&mut topic_to_topic_process_changes);
-
-        let mut function_process_changes: Vec<ProcessChange> = self
-            .function_processes
-            .values()
-            .map(|function_process| {
-                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(Box::new(
-                    function_process.clone(),
-                )))
-            })
-            .collect();
-
-        process_changes.append(&mut function_process_changes);
-
-        // TODO Change this when we have multiple processes for blocks
-        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
-            Box::new(OlapProcess {}),
-        )));
-
-        process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
-            ConsumptionApiWebServer,
-        >::Added(
-            Box::new(ConsumptionApiWebServer {}),
-        )));
-
-        process_changes.push(ProcessChange::OrchestrationWorker(Change::<
-            OrchestrationWorker,
-        >::Added(
-            Box::new(OrchestrationWorker {
-                supported_language: project.language,
-            }),
-        )));
-
-        process_changes
-    }
-
+    /// Serializes the infrastructure map to JSON and saves it to a file
+    ///
+    /// # Arguments
+    /// * `path` - The path where the JSON file should be saved
+    ///
+    /// # Returns
+    /// A Result indicating success or an IO error
     pub fn save_to_json(&self, path: &Path) -> Result<(), std::io::Error> {
         let json = serde_json::to_string(self)?;
         fs::write(path, json)
     }
 
+    /// Loads an infrastructure map from a JSON file
+    ///
+    /// # Arguments
+    /// * `path` - The path to the JSON file
+    ///
+    /// # Returns
+    /// A Result containing either the loaded map or an IO error
     pub fn load_from_json(path: &Path) -> Result<Self, std::io::Error> {
         let json = fs::read_to_string(path)?;
         let infra_map = serde_json::from_str(&json)?;
         Ok(infra_map)
     }
 
+    /// Stores the infrastructure map in Redis for persistence and sharing
+    ///
+    /// Serializes the map to protocol buffers and stores it in Redis using
+    /// a service-specific prefix.
+    ///
+    /// # Arguments
+    /// * `redis_client` - The Redis client to use for storage
+    ///
+    /// # Returns
+    /// A Result indicating success or an error
     pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
         let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
         redis_client
@@ -1185,6 +1376,17 @@ impl InfrastructureMap {
         Ok(())
     }
 
+    /// Loads an infrastructure map from Redis
+    ///
+    /// Attempts to retrieve the map from Redis and deserialize it from
+    /// protocol buffers.
+    ///
+    /// # Arguments
+    /// * `redis_client` - The Redis client to use for retrieval
+    ///
+    /// # Returns
+    /// A Result containing either the loaded map (if found) or None (if not found),
+    /// or an error if retrieval or deserialization failed
     pub async fn load_from_redis(redis_client: &RedisClient) -> Result<Option<Self>> {
         let encoded = redis_client
             .get_with_service_prefix("infrastructure_map")
@@ -1201,6 +1403,13 @@ impl InfrastructureMap {
         }
     }
 
+    /// Converts the infrastructure map to its protocol buffer representation
+    ///
+    /// This creates a complete protocol buffer representation of the map
+    /// for serialization and transport.
+    ///
+    /// # Returns
+    /// A protocol buffer representation of the infrastructure map
     pub fn to_proto(&self) -> ProtoInfrastructureMap {
         ProtoInfrastructureMap {
             topics: self
@@ -1249,10 +1458,21 @@ impl InfrastructureMap {
         }
     }
 
+    /// Serializes the infrastructure map to protocol buffer bytes
+    ///
+    /// # Returns
+    /// A byte vector containing the serialized map
     pub fn to_proto_bytes(&self) -> Vec<u8> {
         self.to_proto().write_to_bytes().unwrap()
     }
 
+    /// Creates an infrastructure map from its protocol buffer representation
+    ///
+    /// # Arguments
+    /// * `bytes` - The byte vector containing the serialized map
+    ///
+    /// # Returns
+    /// A Result containing either the deserialized map or a proto error
     pub fn from_proto(bytes: Vec<u8>) -> Result<Self, InfraMapProtoError> {
         let proto = ProtoInfrastructureMap::parse_from_bytes(&bytes)?;
 
@@ -1302,18 +1522,40 @@ impl InfrastructureMap {
         })
     }
 
+    /// Adds a table to the infrastructure map
+    ///
+    /// # Arguments
+    /// * `table` - The table to add
     pub fn add_table(&mut self, table: Table) {
         self.tables.insert(table.id(), table);
     }
 
+    /// Finds a table by name
+    ///
+    /// # Arguments
+    /// * `name` - The name of the table to find
+    ///
+    /// # Returns
+    /// An Option containing a reference to the table if found
     pub fn find_table_by_name(&self, name: &str) -> Option<&Table> {
         self.tables.values().find(|table| table.name == name)
     }
 
+    /// Adds a topic to the infrastructure map
+    ///
+    /// # Arguments
+    /// * `topic` - The topic to add
     pub fn add_topic(&mut self, topic: Topic) {
         self.topics.insert(topic.id(), topic);
     }
 
+    /// Loads an infrastructure map from user code
+    ///
+    /// # Arguments
+    /// * `project` - The project to load the infrastructure map from
+    ///
+    /// # Returns
+    /// A Result containing the infrastructure map or an error
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
         let partial = if project.language == SupportedLanguages::Typescript {
             let process = crate::framework::typescript::export_collectors::collect_from_index(
@@ -1325,6 +1567,28 @@ impl InfrastructureMap {
             load_main_py().await?
         };
         Ok(partial.into_infra_map(project.language))
+    }
+
+    /// Gets a topic by its ID
+    ///
+    /// # Arguments
+    /// * `id` - The ID of the topic to get
+    ///
+    /// # Returns
+    /// An Option containing a reference to the topic if found
+    pub fn get_topic_by_id(&self, id: &str) -> Option<&Topic> {
+        self.topics.get(id)
+    }
+
+    /// Gets a topic by its name
+    ///
+    /// # Arguments
+    /// * `name` - The name of the topic to get
+    ///
+    /// # Returns
+    /// An Option containing a reference to the topic if found
+    pub fn get_topic_by_name(&self, name: &str) -> Option<&Topic> {
+        self.topics.values().find(|topic| topic.name == name)
     }
 
     pub fn from_json_value(
@@ -1692,6 +1956,18 @@ impl PartialInfrastructureMap {
     }
 }
 
+/// Computes the detailed differences between two table versions
+///
+/// This function performs a column-by-column comparison between two tables
+/// and identifies added, removed, and modified columns. For modified columns,
+/// it logs the specific attributes that have changed.
+///
+/// # Arguments
+/// * `before` - The original table
+/// * `after` - The modified table
+///
+/// # Returns
+/// A vector of `ColumnChange` objects describing the differences
 pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
     log::debug!("Computing detailed diff for table '{}'", before.name);
     let mut diff = Vec::new();
@@ -1776,6 +2052,13 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
 }
 
 impl Default for InfrastructureMap {
+    /// Creates a default empty infrastructure map
+    ///
+    /// This creates an infrastructure map with empty collections for all component types.
+    /// Useful for testing or as a starting point for building a map programmatically.
+    ///
+    /// # Returns
+    /// An empty infrastructure map
     fn default() -> Self {
         Self {
             topics: HashMap::new(),

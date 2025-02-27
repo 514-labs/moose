@@ -21,6 +21,8 @@ pub struct Topic {
     #[serde(default = "Topic::default_partition_count")]
     pub partition_count: usize,
 
+    pub max_message_bytes: usize,
+
     pub columns: Vec<Column>,
 
     pub source_primitive: PrimitiveSignature,
@@ -35,6 +37,7 @@ impl Topic {
             retention_period: Topic::default_duration(),
             partition_count: data_model.config.parallelism,
             columns: data_model.columns.clone(),
+            max_message_bytes: 1024 * 1024,
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -58,6 +61,7 @@ impl Topic {
             version: function.source_data_model.version.clone(),
             partition_count: function.source_data_model.config.parallelism,
             retention_period: Topic::default_duration(),
+            max_message_bytes: 1024 * 1024,
             columns: function.source_data_model.columns.clone(),
             source_primitive: PrimitiveSignature {
                 name: function.id(),
@@ -73,6 +77,7 @@ impl Topic {
                 version: target_data_model.version.clone(),
                 partition_count: target_data_model.config.parallelism,
                 retention_period: Topic::default_duration(),
+                max_message_bytes: 1024 * 1024,
                 columns: target_data_model.columns.clone(),
                 source_primitive: PrimitiveSignature {
                     name: function.id(),
@@ -129,6 +134,7 @@ impl Topic {
             partition_count: Some(self.partition_count as i32),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            max_message_bytes: Some(self.max_message_bytes as i32),
             special_fields: Default::default(),
         }
     }
@@ -144,6 +150,7 @@ impl Topic {
             retention_period: proto.retention_period.unwrap().into(),
             partition_count: proto.partition_count.unwrap_or(1) as usize,
             columns: proto.columns.into_iter().map(Column::from_proto).collect(),
+            max_message_bytes: proto.max_message_bytes.unwrap_or(1024 * 1024) as usize,
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }

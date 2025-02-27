@@ -29,9 +29,9 @@ use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseRecord, ClickHouseRuntimeEnum, ClickHouseValue,
 };
-use crate::infrastructure::stream::redpanda::create_subscriber;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
-use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
+use crate::infrastructure::stream::redpanda::client::create_subscriber;
+use crate::infrastructure::stream::redpanda::client::{create_producer, send_with_back_pressure};
+use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
 use crate::metrics::{MetricEvent, Metrics};
 use tokio::select;
 

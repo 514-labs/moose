@@ -56,13 +56,19 @@ type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
  */
 type SlimKafkaMessage = { value: string };
 
+interface TopicConfig {
+  name: string;
+  partitions: number;
+  retentionPeriod: number;
+  maxMessageBytes: number;
+}
+
 /**
  * Configuration interface for streaming function arguments
  */
 interface StreamingFunctionArgs {
-  sourceTopic: string;
-  targetTopic: string;
-  targetTopicConfig: string;
+  sourceTopic: TopicConfig;
+  targetTopic?: TopicConfig;
   functionFilePath: string;
   broker: string;
   maxSubscriberCount: number;
@@ -72,12 +78,6 @@ interface StreamingFunctionArgs {
   saslMechanism?: string;
   securityProtocol?: string;
 }
-
-/**
- * Checks if streaming function has no output topic configured
- */
-const has_no_output_topic = (args: StreamingFunctionArgs) =>
-  args.targetTopic === "";
 
 /**
  * Interface for logging functionality
@@ -102,20 +102,22 @@ const MAX_STREAMING_CONCURRENCY = process.env.MAX_STREAMING_CONCURRENCY
 const parseArgs = (): StreamingFunctionArgs => {
   const SOURCE_TOPIC = process.argv[3];
   const TARGET_TOPIC = process.argv[4];
-  const TARGET_TOPIC_CONFIG = process.argv[5];
-  const FUNCTION_FILE_PATH = process.argv[6];
-  const BROKER = process.argv[7];
-  const MAX_SUBCRIBER_COUNT = process.argv[8];
-  const IS_DMV2 = process.argv[9];
-  const SASL_USERNAME = process.argv[10];
-  const SASL_PASSWORD = process.argv[11];
-  const SASL_MECHANISM = process.argv[12];
-  const SECURITY_PROTOCOL = process.argv[13];
+  const FUNCTION_FILE_PATH = process.argv[5];
+  const BROKER = process.argv[6];
+  const MAX_SUBCRIBER_COUNT = process.argv[7];
+  const IS_DMV2 = process.argv[8];
+  const SASL_USERNAME = process.argv[9];
+  const SASL_PASSWORD = process.argv[10];
+  const SASL_MECHANISM = process.argv[11];
+  const SECURITY_PROTOCOL = process.argv[12];
+
+  const sourceTopic: TopicConfig = JSON.parse(SOURCE_TOPIC);
+  const targetTopic: TopicConfig | undefined =
+    TARGET_TOPIC && TARGET_TOPIC !== "" ? JSON.parse(TARGET_TOPIC) : undefined;
 
   return {
-    sourceTopic: SOURCE_TOPIC,
-    targetTopic: TARGET_TOPIC,
-    targetTopicConfig: TARGET_TOPIC_CONFIG,
+    sourceTopic,
+    targetTopic,
     functionFilePath: FUNCTION_FILE_PATH,
     broker: BROKER,
     saslUsername: SASL_USERNAME,
@@ -296,10 +298,9 @@ const handleMessage = async (
 const sendMessages = async (
   logger: Logger,
   metrics: Metrics,
-  args: StreamingFunctionArgs,
+  targetTopic: TopicConfig,
   producer: Producer,
   messages: SlimKafkaMessage[],
-  maxMessageSize: number,
 ): Promise<void> => {
   try {
     let chunks: SlimKafkaMessage[] = [];
@@ -310,15 +311,15 @@ const sendMessages = async (
         Buffer.byteLength(message.value, "utf8") +
         KAFKAJS_BYTE_MESSAGE_OVERHEAD;
 
-      if (chunkSize + messageSize > maxMessageSize) {
+      if (chunkSize + messageSize > targetTopic.maxMessageBytes) {
         logger.log(
-          `Sending ${chunkSize} bytes of a transformed record batch to ${args.targetTopic}`,
+          `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
         );
         // Send the current chunk before adding the new message
         // We are not setting the key, so that should not take any size in the payload
-        await producer.send({ topic: args.targetTopic, messages: chunks });
+        await producer.send({ topic: targetTopic.name, messages: chunks });
         logger.log(
-          `Sent ${chunks.length} transformed records to ${args.targetTopic}`,
+          `Sent ${chunks.length} transformed records to ${targetTopic.name}`,
         );
 
         // Start a new chunk
@@ -339,11 +340,11 @@ const sendMessages = async (
     // Send the last chunk
     if (chunks.length > 0) {
       logger.log(
-        `Sending ${chunkSize} bytes of a transformed record batch to ${args.targetTopic}`,
+        `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
       );
-      await producer.send({ topic: args.targetTopic, messages: chunks });
+      await producer.send({ topic: targetTopic.name, messages: chunks });
       logger.log(
-        `Sent final ${chunks.length} transformed data to ${args.targetTopic}`,
+        `Sent final ${chunks.length} transformed data to ${targetTopic.name}`,
       );
     }
   } catch (e) {
@@ -396,11 +397,11 @@ const sendMessageMetrics = (logger: Logger, metrics: Metrics) => {
  * const result = await fn(data);
  * ```
  */
-function loadStreamingFunction(args: StreamingFunctionArgs) {
+function loadStreamingFunction(functionFilePath: string) {
   let streamingFunctionImport;
   try {
     streamingFunctionImport = require(
-      args.functionFilePath.substring(0, args.functionFilePath.length - 3),
+      functionFilePath.substring(0, functionFilePath.length - 3),
     );
   } catch (e) {
     cliLog({ action: "Function", message: `${e}`, message_type: "Error" });
@@ -409,9 +410,9 @@ function loadStreamingFunction(args: StreamingFunctionArgs) {
   return streamingFunctionImport.default;
 }
 
-async function loadStreamingFunctionV2(args: StreamingFunctionArgs) {
+async function loadStreamingFunctionV2(sourceTopic: TopicConfig, targetTopic?: TopicConfig) {
   const transformFunctions = await getStreamingFunctions();
-  const transformFunctionKey = `${args.sourceTopic}_${args.targetTopic}`;
+  const transformFunctionKey = `${sourceTopic.name}_${targetTopic?.name}`;
   return transformFunctions.get(transformFunctionKey);
 }
 
@@ -436,28 +437,30 @@ async function loadStreamingFunctionV2(args: StreamingFunctionArgs) {
  * 5. Commit offsets after successful processing
  */
 const startConsumer = async (
+  isDmv2: boolean,
   logger: Logger,
   metrics: Metrics,
   parallelism: number,
-  args: StreamingFunctionArgs,
+  functionFilePath: string,
+  sourceTopic: TopicConfig,
   consumer: Consumer,
   producer: Producer,
   streamingFuncId: string,
-  maxMessageSize: number,
+  targetTopic?: TopicConfig,
 ): Promise<void> => {
   await consumer.connect();
 
   logger.log(
-    `Starting consumer group '${streamingFuncId}' with source topic: ${args.sourceTopic} and target topic: ${args.targetTopic}`,
+    `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic.name} and target topic: ${targetTopic?.name}`,
   );
 
   // We preload the function to not have to load it for each message
-  const streamingFunction: StreamingFunction = args.isDmv2
-    ? await loadStreamingFunctionV2(args)
-    : loadStreamingFunction(args);
+  const streamingFunction: StreamingFunction = isDmv2
+    ? await loadStreamingFunctionV2(sourceTopic, targetTopic)
+    : loadStreamingFunction(functionFilePath);
 
   await consumer.subscribe({
-    topics: [args.sourceTopic],
+    topics: [sourceTopic.name],
     // to read records sent before subscriber is created for when the groupId is new
     // and there are no committed offsets. If the groupId is not new, it will start
     // from the last committed offset.
@@ -507,7 +510,7 @@ const startConsumer = async (
         .flat()
         .filter((msg) => msg !== undefined);
 
-      if (has_no_output_topic(args) || processedMessages.length === 0) {
+      if (targetTopic === undefined || processedMessages.length === 0) {
         return;
       }
 
@@ -517,35 +520,15 @@ const startConsumer = async (
         await sendMessages(
           logger,
           metrics,
-          args,
+          targetTopic,
           producer,
           filteredMessages as SlimKafkaMessage[],
-          maxMessageSize,
         );
       }
     },
   });
 
   logger.log("Consumer is running...");
-};
-
-/**
- * message.max.bytes is a broker setting that applies to all topics.
- * max.message.bytes is a per-topic setting.
- *
- * In general, max.message.bytes should be less than or equal to message.max.bytes.
- * If max.message.bytes is larger than message.max.bytes, the broker will still reject
- * any message that is larger than message.max.bytes, even if it's sent to a topic
- * where max.message.bytes is larger. So we take the minimum of the two values,
- * or default to 1MB if either value is not set. 1MB is the server's default.
- */
-const getMaxMessageSize = (config: Record<string, unknown>): number => {
-  const maxMessageBytes =
-    (config["max.message.bytes"] as number) || 1024 * 1024;
-  const messageMaxBytes =
-    (config["message.max.bytes"] as number) || 1024 * 1024;
-
-  return Math.min(maxMessageBytes, messageMaxBytes);
 };
 
 /**
@@ -660,31 +643,26 @@ export const runStreamingFunctions = async (): Promise<void> => {
       });
 
       try {
-        const targetTopicConfig = JSON.parse(args.targetTopicConfig) as Record<
-          string,
-          unknown
-        >;
-
-        const maxMessageSize = getMaxMessageSize(targetTopicConfig);
-
         producer.on(producer.events.REQUEST, (event) => {
           logger.log(`Sending message size with ${event.payload.size}`);
         });
 
-        if (!has_no_output_topic(args)) {
+        if (args.targetTopic !== undefined) {
           await startProducer(logger, producer);
         }
 
         try {
           await startConsumer(
+            args.isDmv2,
             logger,
             metrics,
             parallelism,
-            args,
+            args.functionFilePath,
+            args.sourceTopic,
             consumer,
             producer,
             streamingFuncId,
-            maxMessageSize,
+            args.targetTopic,
           );
         } catch (e) {
           logger.error("Failed to start kafka consumer: ");

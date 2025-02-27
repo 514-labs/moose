@@ -14,7 +14,7 @@ use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
         olap::{self, clickhouse::model::ClickHouseSystemTable},
-        stream::redpanda::{self, RedpandaConfig},
+        stream::redpanda::{self},
     },
     project::Project,
 };
@@ -278,12 +278,12 @@ async fn add_tables_views(
 async fn get_topics(project: &Project) -> HashSet<String> {
     let topic_blacklist = HashSet::<String>::from_iter(vec!["__consumer_offsets".to_string()]);
     HashSet::<String>::from_iter(
-        redpanda::fetch_topics(&project.redpanda_config)
+        redpanda::client::fetch_topics(&project.redpanda_config)
             .await
             .unwrap()
             .into_iter()
-            .map(|topic| RedpandaConfig::get_topic_without_namespace(&topic))
-            .filter(|topic| !topic_blacklist.contains(topic)),
+            .filter(|topic| !topic_blacklist.contains(&topic.name))
+            .map(|topic| topic.get_topic_name_without_namespace()),
     )
 }
 

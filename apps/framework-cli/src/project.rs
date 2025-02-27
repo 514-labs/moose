@@ -41,7 +41,7 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
 use crate::utilities::constants::SCRIPTS_DIR;

@@ -81,3 +81,19 @@ pub fn parse_timeout_to_seconds(timeout: &str) -> Result<i64, TemporalExecutionE
 
     Ok(seconds as i64)
 }
+
+pub fn get_temporal_domain_name(temporal_url: &str) -> &str {
+    temporal_url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .split(':')
+        .next()
+        .unwrap_or("")
+}
+
+pub fn get_temporal_namespace(domain_name: &str) -> String {
+    domain_name
+        .strip_suffix(".tmprl.cloud")
+        .unwrap_or(domain_name)
+        .to_string()
+}

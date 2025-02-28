@@ -1,7 +1,10 @@
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
+
+use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
 
 pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
 
@@ -145,6 +148,30 @@ impl Default for TemporalConfig {
     }
 }
 
+pub struct ApiKeyInterceptor {
+    api_key: String,
+    namespace: String,
+}
+
+impl tonic::service::Interceptor for ApiKeyInterceptor {
+    fn call(
+        &mut self,
+        mut request: tonic::Request<()>,
+    ) -> Result<tonic::Request<()>, tonic::Status> {
+        request.metadata_mut().insert(
+            "authorization",
+            tonic::metadata::MetadataValue::try_from(format!("Bearer {}", self.api_key))
+                .map_err(|_| tonic::Status::internal("Invalid metadata value"))?,
+        );
+        request.metadata_mut().insert(
+            "temporal-namespace",
+            tonic::metadata::MetadataValue::try_from(&self.namespace)
+                .map_err(|_| tonic::Status::internal("Invalid metadata value"))?,
+        );
+        Ok(request)
+    }
+}
+
 async fn connect_to_temporal(temporal_url: &str) -> Result<WorkflowServiceClient<Channel>> {
     let endpoint: Uri = temporal_url.parse().unwrap();
     WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
@@ -157,4 +184,71 @@ pub async fn get_temporal_client(temporal_url: &str) -> Result<WorkflowServiceCl
         eprintln!("{}", e);
         Error::msg(format!("{}", e))
     })
+}
+
+pub async fn get_temporal_client_mtls(
+    temporal_url: &str,
+) -> Result<WorkflowServiceClient<Channel>> {
+    let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
+    let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
+    let client_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
+    let client_key_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
+
+    let domain_name = get_temporal_domain_name(temporal_url);
+
+    let client_identity = tonic::transport::Identity::from_pem(
+        std::fs::read(client_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+        std::fs::read(client_key_path).map_err(|e| Error::msg(e.to_string()))?,
+    );
+
+    let ca_certificate = tonic::transport::Certificate::from_pem(
+        std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+    );
+
+    let tls_config = tonic::transport::ClientTlsConfig::new()
+        .identity(client_identity)
+        .ca_certificate(ca_certificate)
+        .domain_name(domain_name);
+
+    let endpoint = tonic::transport::Channel::from_shared(temporal_url.to_string())
+        .map_err(|e| Error::msg(e.to_string()))?;
+
+    let client = WorkflowServiceClient::new(endpoint.tls_config(tls_config)?.connect().await?);
+
+    Ok(client)
+}
+
+pub async fn get_temporal_client_api_key(
+    temporal_url: &str,
+) -> Result<WorkflowServiceClient<InterceptedService<Channel, ApiKeyInterceptor>>> {
+    let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
+    let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
+    let api_key = get_env_var("MOOSE_TEMPORAL_CONFIG__API_KEY");
+
+    let domain_name = get_temporal_domain_name(temporal_url);
+
+    let namespace = get_temporal_namespace(domain_name);
+
+    let ca_certificate = tonic::transport::Certificate::from_pem(
+        std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+    );
+
+    let endpoint =
+        tonic::transport::Channel::from_shared("https://us-west1.gcp.api.temporal.io:7233")
+            .map_err(|e| Error::msg(e.to_string()))?
+            .tls_config(
+                tonic::transport::ClientTlsConfig::new()
+                    .domain_name("us-west1.gcp.api.temporal.io")
+                    .ca_certificate(ca_certificate),
+            )
+            .map_err(|e| Error::msg(e.to_string()))?;
+
+    let interceptor = ApiKeyInterceptor {
+        api_key: api_key.to_string(),
+        namespace: namespace.clone(),
+    };
+
+    let client = WorkflowServiceClient::with_interceptor(endpoint.connect_lazy(), interceptor);
+
+    Ok(client)
 }

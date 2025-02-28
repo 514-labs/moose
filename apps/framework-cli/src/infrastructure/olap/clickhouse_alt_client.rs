@@ -1,6 +1,17 @@
+/// # ClickHouse Alternative Client Module
+///
+/// This module provides an alternative client implementation for interacting with ClickHouse.
+/// It focuses on JSON serialization of query results and table structure inspection.
+///
+/// The module includes functionality for:
+/// - Converting ClickHouse data types to JSON
+/// - Querying tables and returning results as JSON
+/// - Inspecting table structures
+/// - Converting between ClickHouse and standard column types
+///
+/// This client is used primarily for data exploration and infrastructure validation.
 use std::collections::HashMap;
 use std::num::TryFromIntError;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -13,19 +24,23 @@ use futures::stream::BoxStream;
 use futures::StreamExt;
 use itertools::Either;
 use log::{info, warn};
+use serde::Serialize;
 use serde::__private::from_utf8_lossy;
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::core::infrastructure::table::{Column, EnumValue, Table};
-use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
 
+/// Creates a ClickHouse connection pool with the provided configuration.
+///
+/// # Arguments
+/// * `click_house_config` - ClickHouse configuration
+///
+/// # Returns
+/// * `clickhouse_rs::Pool` - Connection pool for ClickHouse
 pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
     let address = format!(
         "tcp://{}:{}",
@@ -49,6 +64,7 @@ pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
     )
 }
 
+/// Wrapper for ValueRef to implement FromSql trait.
 struct ValueRefWrapper<'a>(ValueRef<'a>);
 impl<'a> FromSql<'a> for ValueRefWrapper<'a> {
     fn from_sql(value: ValueRef<'a>) -> FromSqlResult<ValueRefWrapper<'a>> {
@@ -56,6 +72,17 @@ impl<'a> FromSql<'a> for ValueRefWrapper<'a> {
     }
 }
 
+/// Converts a ClickHouse ValueRef to a JSON Value.
+///
+/// This function handles all ClickHouse data types and converts them to appropriate
+/// JSON representations. It also handles enum mappings for string enums.
+///
+/// # Arguments
+/// * `value_ref` - ClickHouse value reference
+/// * `enum_mapping` - Optional mapping for enum values
+///
+/// # Returns
+/// * `Result<Value, clickhouse_rs::errors::Error>` - JSON value or error
 fn value_to_json(
     value_ref: &ValueRef,
     enum_mapping: &Option<Vec<&str>>,
@@ -126,6 +153,17 @@ fn value_to_json(
     Ok(result)
 }
 
+/// Converts an enum value to a JSON value.
+///
+/// This function handles both integer and string enums. For string enums,
+/// it uses the provided mapping to convert the integer value to a string.
+///
+/// # Arguments
+/// * `i` - Enum integer value
+/// * `enum_mapping` - Optional mapping for enum values
+///
+/// # Returns
+/// * `Value` - JSON value for the enum
 fn convert_enum<I>(i: I, enum_mapping: &Option<Vec<&str>>) -> Value
 where
     I: Serialize,
@@ -139,11 +177,17 @@ where
     }
 }
 
-/// enum_mappings[i] is None if the column is not an enum, or
-/// is a TS enum that has integer values.
-/// In other words, it's Some only when it is an enum that has string values
+/// Converts a ClickHouse row to a JSON object.
 ///
-/// If the enum has int values, the JSON representation will be integers as well, so no need to map.
+/// This function converts each column in the row to a JSON value and
+/// combines them into a JSON object.
+///
+/// # Arguments
+/// * `row` - ClickHouse row
+/// * `enum_mappings` - Enum mappings for each column
+///
+/// # Returns
+/// * `Result<Value, clickhouse_rs::errors::Error>` - JSON object or error
 fn row_to_json<C>(
     row: &Row<'_, C>,
     enum_mappings: &[Option<Vec<&str>>],
@@ -162,6 +206,16 @@ where
     Ok(Value::Object(result))
 }
 
+/// Converts a ClickHouse column type to an enum mapping.
+///
+/// This function extracts the enum mapping from a ClickHouse column type
+/// if it's an enum with string values.
+///
+/// # Arguments
+/// * `t` - ClickHouse column type
+///
+/// # Returns
+/// * `Option<Vec<&str>>` - Enum mapping or None
 fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
     match t {
         ClickHouseColumnType::String
@@ -194,6 +248,16 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
     }
 }
 
+/// Executes a SELECT query and returns the results as a stream of JSON objects.
+///
+/// # Arguments
+/// * `db_name` - Database name
+/// * `table` - Table to query
+/// * `client` - ClickHouse client
+/// * `limit_offset_clause` - LIMIT/OFFSET clause for the query
+///
+/// # Returns
+/// * `Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>` - Stream of JSON objects or error
 async fn select_as_json<'a>(
     db_name: &str,
     table: &'a ClickHouseTable,
@@ -238,6 +302,16 @@ async fn select_as_json<'a>(
     Ok(Box::pin(stream))
 }
 
+/// Executes a SELECT query with an OFFSET clause and returns the results as a stream of JSON objects.
+///
+/// # Arguments
+/// * `db_name` - Database name
+/// * `table` - Table to query
+/// * `client` - ClickHouse client
+/// * `offset` - Offset for the query
+///
+/// # Returns
+/// * `Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>` - Stream of JSON objects or error
 pub async fn select_all_as_json<'a>(
     db_name: &str,
     table: &'a ClickHouseTable,
@@ -248,6 +322,16 @@ pub async fn select_all_as_json<'a>(
     select_as_json(db_name, table, client, &format!("offset {}", offset)).await
 }
 
+/// Executes a SELECT query with a LIMIT clause and returns the results as a stream of JSON objects.
+///
+/// # Arguments
+/// * `db_name` - Database name
+/// * `table` - Table to query
+/// * `client` - ClickHouse client
+/// * `limit` - Limit for the query
+///
+/// # Returns
+/// * `Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>` - Stream of JSON objects or error
 pub async fn select_some_as_json<'a>(
     db_name: &str,
     table: &'a ClickHouseTable,
@@ -258,179 +342,18 @@ pub async fn select_some_as_json<'a>(
     select_as_json(db_name, table, client, &format!("limit {}", limit)).await
 }
 
-async fn create_state_table(
-    client: &mut ClientHandle,
-    click_house_config: &ClickHouseConfig,
-) -> Result<(), clickhouse_rs::errors::Error> {
-    let sql = format!(
-        r#"CREATE TABLE IF NOT EXISTS "{}"._MOOSE_STATE(
-    timestamp DateTime('UTC') DEFAULT now(),
-    state String
-)ENGINE = MergeTree
-PRIMARY KEY timestamp
-ORDER BY timestamp"#,
-        click_house_config.db_name
-    );
-    client.execute(sql).await
-}
-
-pub async fn store_current_state(
-    client: &mut ClientHandle,
-    framework_object_versions: &FrameworkObjectVersions,
-    click_house_config: &ClickHouseConfig,
-) -> Result<(), StateStorageError> {
-    create_state_table(client, click_house_config).await?;
-
-    let data = clickhouse_rs::Block::new().column(
-        "state",
-        vec![serde_json::to_string(&ApplicationState::from(
-            framework_object_versions,
-        ))?],
-    );
-    client
-        .insert(
-            format!("\"{}\"._MOOSE_STATE", click_house_config.db_name),
-            data,
-        )
-        .await?;
-    Ok(())
-}
-
-pub async fn get_state(
-    click_house_config: &ClickHouseConfig,
-) -> Result<Option<ApplicationState>, StateStorageError> {
-    let pool = get_pool(click_house_config);
-    let mut client = pool.get_handle().await?;
-    retrieve_current_state(&mut client, click_house_config).await
-}
-
-pub async fn retrieve_current_state(
-    client: &mut ClientHandle,
-    click_house_config: &ClickHouseConfig,
-) -> Result<Option<ApplicationState>, StateStorageError> {
-    create_state_table(client, click_house_config).await?;
-    let block = client
-        .query(format!(
-            "SELECT state from \"{}\"._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
-            click_house_config.db_name
-        ))
-        .fetch_all()
-        .await?;
-
-    let state_str = block
-        .rows()
-        .map(|row| row.get(0).unwrap())
-        .collect::<Vec<String>>();
-    match state_str.len() {
-        0 => Ok(None),
-        1 => Ok(serde_json::from_str(state_str.first().unwrap())?),
-        len => panic!("LIMIT 1 but got {} rows: {:?}", len, state_str),
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
-pub enum StateStorageError {
-    #[error("Failed to (de)serialize the state")]
-    SerdeError(#[from] serde_json::Error),
-    #[error("Clickhouse error")]
-    ClickhouseError(#[from] clickhouse_rs::errors::Error),
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApplicationState {
-    pub models: Vec<(String, Vec<Model>)>,
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Model {
-    pub data_model: DataModel,
-    pub original_file_path: PathBuf,
-}
-
-impl From<&FrameworkObjectVersions> for ApplicationState {
-    fn from(versions: &FrameworkObjectVersions) -> Self {
-        let models = versions
-            .previous_version_models
-            .iter()
-            .chain(std::iter::once((
-                &versions.current_version,
-                &versions.current_models,
-            )))
-            .map(|(version, schema_version)| {
-                let models = schema_version
-                    .models
-                    .values()
-                    .map(|model| Model {
-                        data_model: model.data_model.clone(),
-                        original_file_path: model.original_file_path.clone(),
-                    })
-                    .collect();
-                (version.clone(), models)
-            })
-            .collect();
-        ApplicationState { models }
-    }
-}
-
-pub async fn store_infrastructure_map(
-    client: &mut ClientHandle,
-    clickhouse_config: &ClickHouseConfig,
-    infrastructure_map: &InfrastructureMap,
-) -> Result<(), StateStorageError> {
-    let data = clickhouse_rs::Block::new().column(
-        "infra_map",
-        vec![serde_json::to_string(infrastructure_map)?],
-    );
-    client
-        .insert(
-            format!("\"{}\"._MOOSE_STATE_V2", clickhouse_config.db_name),
-            data,
-        )
-        .await?;
-    Ok(())
-}
-
-async fn create_infrastructure_map_table(
-    client: &mut ClientHandle,
-    click_house_config: &ClickHouseConfig,
-) -> Result<(), clickhouse_rs::errors::Error> {
-    let sql = format!(
-        r#"CREATE TABLE IF NOT EXISTS "{}"._MOOSE_STATE_V2 (
-            timestamp DateTime('UTC') DEFAULT now(),
-            infra_map String
-        ) ENGINE = MergeTree
-        PRIMARY KEY timestamp
-        ORDER BY timestamp"#,
-        click_house_config.db_name
-    );
-    client.execute(sql).await
-}
-
-pub async fn retrieve_infrastructure_map(
-    client: &mut ClientHandle,
-    click_house_config: &ClickHouseConfig,
-) -> Result<Option<InfrastructureMap>, StateStorageError> {
-    create_infrastructure_map_table(client, click_house_config).await?;
-
-    let block = client
-        .query(format!(
-            "SELECT infra_map from \"{}\"._MOOSE_STATE_V2 ORDER BY timestamp DESC LIMIT 1",
-            click_house_config.db_name
-        ))
-        .fetch_all()
-        .await?;
-
-    let inframap_string = block
-        .rows()
-        .map(|row| row.get(0).unwrap())
-        .collect::<Vec<String>>();
-
-    match inframap_string.len() {
-        0 => Ok(None),
-        1 => Ok(serde_json::from_str(inframap_string.first().unwrap())?),
-        len => panic!("LIMIT 1 but got {} rows: {:?}", len, inframap_string),
-    }
-}
-
+/// Checks the structure of tables in the database and compares them with the expected structure.
+///
+/// This function queries the system.columns table to get information about the columns
+/// in the specified database, then compares them with the expected structure.
+///
+/// # Arguments
+/// * `client` - ClickHouse client
+/// * `db_name` - Database name
+/// * `tables` - Expected table structures
+///
+/// # Returns
+/// * `Result<HashMap<String, Table>, clickhouse_rs::errors::Error>` - Actual table structures or error
 pub async fn check_table(
     client: &mut ClientHandle,
     db_name: &str,

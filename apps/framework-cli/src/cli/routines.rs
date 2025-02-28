@@ -86,6 +86,7 @@
 //! - Organize routines better in the file hiearchy
 //!
 
+use crate::cli::local_webserver::RouteMeta;
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
@@ -97,10 +98,8 @@ use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, sleep, Duration};
 
 use crate::cli::routines::openapi::openapi;
-use crate::framework::controller::RouteMeta;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
 use crate::project::Project;
@@ -402,9 +401,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
 
-    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-
-    let plan = plan_changes(&mut client, &project).await?;
+    let plan = plan_changes(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&plan)?;
@@ -419,25 +416,19 @@ pub async fn start_development_mode(
         &plan,
         api_changes_channel,
         metrics.clone(),
-        &mut client,
         &redis_client,
     )
     .await?;
     // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
     // Storing the result of the changes in the table
-    store_infrastructure_map(
-        &mut client,
-        &project.clickhouse_config,
-        &plan.target_infra_map,
-    )
-    .await?;
 
     let openapi_file = openapi(&project, &plan.target_infra_map).await?;
 
-    plan.target_infra_map
-        .store_in_redis(&*redis_client.lock().await)
-        .await?;
+    {
+        let redis_client = redis_client.lock().await;
+        plan.target_infra_map.store_in_redis(&redis_client).await?;
+    }
 
     let infra_map: &'static RwLock<InfrastructureMap> =
         Box::leak(Box::new(RwLock::new(plan.target_infra_map)));
@@ -522,10 +513,7 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-    info!("Clickhouse client initialized");
-
-    let plan = plan_changes(&mut client, &project).await?;
+    let plan = plan_changes(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&plan)?;
@@ -540,17 +528,7 @@ pub async fn start_production_mode(
         &plan,
         api_changes_channel,
         metrics.clone(),
-        &mut client,
         &redis_client,
-    )
-    .await?;
-    // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
-
-    // Storing the result of the changes in the table
-    store_infrastructure_map(
-        &mut client,
-        &project.clickhouse_config,
-        &plan.target_infra_map,
     )
     .await?;
 

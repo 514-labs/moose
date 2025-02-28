@@ -1,12 +1,32 @@
+/// # Infrastructure Reality Checker Module
+///
+/// This module provides functionality for comparing the actual infrastructure state
+/// with the documented infrastructure map. It helps identify discrepancies between
+/// what exists in reality and what is documented in the infrastructure map.
+///
+/// The module includes:
+/// - A reality checker that queries the actual infrastructure state
+/// - Structures to represent discrepancies between reality and documentation
+/// - Error types for reality checking operations
+///
+/// This is particularly useful for:
+/// - Validating that the infrastructure matches the documentation
+/// - Identifying tables that exist but are not documented
+/// - Identifying tables that are documented but don't exist
+/// - Identifying structural differences in tables
 use crate::{
-    framework::core::infrastructure::table::Table,
-    framework::core::infrastructure_map::{InfrastructureMap, OlapChange},
+    framework::core::{
+        infrastructure::table::Table,
+        infrastructure_map::{InfrastructureMap, OlapChange},
+    },
     infrastructure::olap::{OlapChangesError, OlapOperations},
     project::Project,
 };
 use log::debug;
 use std::collections::HashMap;
 use thiserror::Error;
+
+use super::plan::PlanningError;
 
 /// Represents errors that can occur during infrastructure reality checking.
 #[derive(Debug, Error)]
@@ -16,13 +36,17 @@ pub enum RealityCheckError {
     #[error("Failed to check OLAP infrastructure: {0}")]
     OlapCheck(#[from] OlapChangesError),
 
-    /// Error occurred while loading the infrastructure map
-    #[error("Failed to load infrastructure map: {0}")]
-    InfraMapLoad(#[from] std::io::Error),
-
     /// Error occurred during database operations
     #[error("Database error: {0}")]
     DatabaseError(String),
+
+    /// Error occurred while loading the infrastructure map
+    #[error("Failed to load infrastructure map: {0}")]
+    InfraMapLoad(#[from] anyhow::Error),
+
+    /// Error occurred while planning changes
+    #[error("Failed to plan changes: {0}")]
+    PlanningError(#[from] PlanningError),
 }
 
 /// Represents discrepancies found between actual infrastructure and documented map.
@@ -56,11 +80,20 @@ pub struct InfraRealityChecker<T: OlapOperations> {
 }
 
 impl<T: OlapOperations> InfraRealityChecker<T> {
+    /// Creates a new InfraRealityChecker with the provided OLAP client.
+    ///
+    /// # Arguments
+    /// * `olap_client` - OLAP client for querying the actual infrastructure state
     pub fn new(olap_client: T) -> Self {
         Self { olap_client }
     }
 
     /// Checks the actual infrastructure state against the provided infrastructure map
+    ///
+    /// This method queries the actual infrastructure state using the OLAP client and
+    /// compares it with the provided infrastructure map. It identifies tables that
+    /// exist in reality but not in the map, tables that are in the map but don't exist
+    /// in reality, and tables that exist in both but have structural differences.
     ///
     /// # Arguments
     ///
@@ -93,6 +126,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
             .into_iter()
             .filter(|t| !t.name.to_lowercase().starts_with("_moose"))
             .collect();
+
         debug!(
             "{} tables remain after filtering _moose tables",
             actual_tables.len()
@@ -171,7 +205,6 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
                 }
             }
         }
-        debug!("Found {} mismatched tables", mismatched_tables.len());
 
         let discrepancies = InfraDiscrepancies {
             unmapped_tables,
@@ -295,7 +328,6 @@ mod tests {
             function_processes: HashMap::new(),
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
-            initial_data_loads: HashMap::new(),
             orchestration_workers: HashMap::new(),
         };
 
@@ -352,7 +384,6 @@ mod tests {
             function_processes: HashMap::new(),
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
-            initial_data_loads: HashMap::new(),
             orchestration_workers: HashMap::new(),
         };
 
@@ -417,7 +448,6 @@ mod tests {
             function_processes: HashMap::new(),
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
-            initial_data_loads: HashMap::new(),
             orchestration_workers: HashMap::new(),
         };
 
@@ -472,7 +502,6 @@ mod tests {
             function_processes: HashMap::new(),
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
-            initial_data_loads: HashMap::new(),
             orchestration_workers: HashMap::new(),
         };
 

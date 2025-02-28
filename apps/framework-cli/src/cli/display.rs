@@ -7,7 +7,7 @@ use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
-use crate::framework::core::infrastructure_map::{InitialDataLoadChange, TableChange};
+use crate::framework::core::infrastructure_map::TableChange;
 use crate::framework::core::{
     infrastructure_map::{ApiChange, Change, OlapChange, ProcessChange, StreamingChange},
     plan::InfraPlan,
@@ -51,14 +51,26 @@ use crate::framework::core::{
 /// - add a message type for a "loading" message with a progress bar
 /// - add specific macros for each message type
 /// - add a clear screen macro
-
+///
+/// A terminal instance with associated state for displaying CLI messages.
+///
+/// The CommandTerminal wraps a console::Term for stdout handling and tracks the
+/// number of messages written for potential future needs (such as clearing or
+/// updating specific messages).
 #[derive(Debug, Clone)]
 pub struct CommandTerminal {
+    /// The underlying terminal output handler
     pub term: console::Term,
+    /// Counter tracking the number of messages written to the terminal
     pub counter: usize,
 }
 
 impl CommandTerminal {
+    /// Creates a new CommandTerminal instance for stdout.
+    ///
+    /// # Returns
+    ///
+    /// * `CommandTerminal` - A new terminal instance with counter initialized to 0
     pub fn new() -> CommandTerminal {
         CommandTerminal {
             term: console::Term::stdout(),
@@ -67,20 +79,45 @@ impl CommandTerminal {
     }
 }
 
+/// Types of messages that can be displayed to the user.
+///
+/// Each message type corresponds to a different visual style in the terminal
+/// to help distinguish between different kinds of information.
 #[derive(Deserialize, Debug, Clone, Copy)]
 pub enum MessageType {
+    /// Used for general information with cyan highlighting
     Info,
+    /// Used for successful actions with green highlighting
     Success,
+    /// Used for errors with red highlighting
     Error,
+    /// Used for important information with green background
     Highlight,
 }
 
+/// A message to be displayed to the user in the CLI.
+///
+/// Messages consist of an action (displayed with color based on MessageType)
+/// and details (the main content of the message).
 #[derive(Debug, Clone)]
 pub struct Message {
+    /// The action or category of the message, displayed with color
     pub action: String,
+    /// The main content or details of the message
     pub details: String,
 }
+
 impl Message {
+    /// Creates a new Message with the specified action and details.
+    ///
+    /// # Arguments
+    ///
+    /// * `action` - The action or category of the message
+    /// * `details` - The main content or details of the message
+    ///
+    /// # Returns
+    ///
+    /// * `Message` - A new message instance
     pub fn new(action: String, details: String) -> Message {
         Message { action, details }
     }
@@ -91,6 +128,11 @@ lazy_static! {
         Arc::new(RwLock::new(CommandTerminal::new()));
 }
 
+/// Displays a message about infrastructure being added.
+///
+/// # Arguments
+///
+/// * `message` - The message describing the added infrastructure
 pub fn infra_added(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
@@ -107,6 +149,11 @@ pub fn infra_added(message: &str) {
     info!("+ {}", message.trim());
 }
 
+/// Displays a message about infrastructure being removed.
+///
+/// # Arguments
+///
+/// * `message` - The message describing the removed infrastructure
 pub fn infra_removed(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
@@ -123,6 +170,11 @@ pub fn infra_removed(message: &str) {
     info!("- {}", message.trim());
 }
 
+/// Displays a message about infrastructure being updated.
+///
+/// # Arguments
+///
+/// * `message` - The message describing the updated infrastructure
 pub fn infra_updated(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
@@ -184,6 +236,17 @@ macro_rules! show_message {
     };
 }
 
+/// Executes a function with a spinner displayed during execution.
+///
+/// # Arguments
+///
+/// * `message` - The message to display alongside the spinner
+/// * `f` - The function to execute
+/// * `activate` - Whether to actually show the spinner (if false, just runs the function)
+///
+/// # Returns
+///
+/// * The result of the function execution
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
@@ -198,6 +261,17 @@ where
     res
 }
 
+/// Executes an asynchronous function with a spinner displayed during execution.
+///
+/// # Arguments
+///
+/// * `message` - The message to display alongside the spinner
+/// * `f` - The async function to execute
+/// * `activate` - Whether to actually show the spinner (if false, just runs the function)
+///
+/// # Returns
+///
+/// * The result of the async function execution
 pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
@@ -212,6 +286,12 @@ where
     res
 }
 
+/// Displays a table with headers and rows.
+///
+/// # Arguments
+///
+/// * `headers` - The column headers for the table
+/// * `rows` - The data rows for the table
 pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
     let mut table = Table::new();
     table
@@ -233,11 +313,23 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
     );
 }
 
+/// Wrapper for the show_message macro to allow calling from non-macro contexts.
+///
+/// # Arguments
+///
+/// * `message_type` - The type of message to display
+/// * `message` - The message to display
 pub fn show_message_wrapper(message_type: MessageType, message: Message) {
     // Probably shouldn't do macro_export so we just wrap it
     show_message!(message_type, message, false);
 }
 
+/// Displays a message about a batch being inserted into a database table.
+///
+/// # Arguments
+///
+/// * `count` - The number of rows inserted
+/// * `table_name` - The name of the table rows were inserted into
 pub fn batch_inserted(count: usize, table_name: &str) {
     show_message!(
         MessageType::Info,
@@ -248,6 +340,11 @@ pub fn batch_inserted(count: usize, table_name: &str) {
     );
 }
 
+/// Displays OLAP changes (tables and views) to the user.
+///
+/// # Arguments
+///
+/// * `olap_changes` - The vector of OLAP changes to display
 pub fn show_olap_changes(olap_changes: &[OlapChange]) {
     olap_changes.iter().for_each(|change| match change {
         OlapChange::Table(TableChange::Added(infra)) => {
@@ -285,6 +382,13 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
     });
 }
 
+/// Displays all infrastructure changes from an InfraPlan to the user.
+///
+/// Shows changes to streaming, OLAP, processes, and API endpoints.
+///
+/// # Arguments
+///
+/// * `infra_plan` - The infrastructure plan containing all changes
 pub fn show_changes(infra_plan: &InfraPlan) {
     TERM.write()
         .unwrap()
@@ -390,23 +494,6 @@ pub fn show_changes(infra_plan: &InfraPlan) {
                 infra_updated(&before.expanded_display());
             }
         });
-
-    infra_plan
-        .changes
-        .initial_data_loads
-        .iter()
-        .for_each(|change| match change {
-            InitialDataLoadChange::Addition(load)
-            | InitialDataLoadChange::Resumption {
-                resume_from: 0,
-                load,
-            } => {
-                infra_added(&load.expanded_display());
-            }
-            InitialDataLoadChange::Resumption { load, .. } => {
-                infra_updated(&load.expanded_display());
-            }
-        })
 }
 
 #[cfg(test)]

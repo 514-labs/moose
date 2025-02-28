@@ -1,3 +1,23 @@
+/// # Local Webserver Module
+///
+/// This module provides a local HTTP server implementation for development and testing.
+/// It handles API requests, routes them to the appropriate handlers, and manages
+/// infrastructure changes.
+///
+/// The webserver has two main components:
+/// - The main API server that handles data ingestion and API requests
+/// - A management server that provides administrative endpoints
+///
+/// Key features include:
+/// - Dynamic route handling based on the infrastructure map
+/// - Authentication and authorization
+/// - Metrics collection
+/// - Health checks and monitoring
+/// - OpenAPI documentation
+/// - Integration with Kafka for message publishing
+///
+/// The webserver is configurable through the `LocalWebserverConfig` struct and
+/// can be started in both development and production modes.
 use super::display::Message;
 use super::display::MessageType;
 use super::routines::auth::validate_auth_token;
@@ -6,7 +26,6 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::MetricEvent;
 
 use crate::cli::display::with_spinner;
-use crate::framework::controller::RouteMeta;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
@@ -74,23 +93,46 @@ use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure::table::Table;
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 
+/// Request wrapper for router handling.
+/// This struct combines the HTTP request with the route table for processing.
 pub struct RouterRequest {
     req: Request<hyper::body::Incoming>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
 }
 
+/// Default management port for the webserver.
+/// This is used when no management port is specified in the configuration.
 fn default_management_port() -> u16 {
     5001
 }
 
+/// Metadata for an API route.
+/// This struct contains information about the route, including the topic name,
+/// format, and data model.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RouteMeta {
+    /// The Kafka topic name associated with this route
+    pub topic_name: String,
+    /// The format of data ingestion (JSON, CSV, etc.)
+    pub format: EndpointIngestionFormat,
+    /// The data model associated with this route
+    pub data_model: DataModel,
+}
+
+/// Configuration for the local webserver.
+/// This struct contains settings for the webserver, including host, port,
+/// management port, and path prefix.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
+    /// The host to bind the webserver to
     pub host: String,
+    /// The port to bind the main API server to
     pub port: u16,
+    /// The port to bind the management server to
     #[serde(default = "default_management_port")]
     pub management_port: u16,
+    /// Optional path prefix for all routes
     pub path_prefix: Option<String>,
 }
 
@@ -342,8 +384,9 @@ async fn admin_reality_check_route(
 
     // Load infrastructure map from Redis
     let redis_guard = redis_client.lock().await;
-    let infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
-        Ok(map) => map,
+    let infra_map = match InfrastructureMap::load_from_redis(&redis_guard).await {
+        Ok(Some(map)) => map,
+        Ok(None) => InfrastructureMap::default(),
         Err(e) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -1278,10 +1321,13 @@ struct IntegrateChangesResponse {
     updated_tables: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 enum IntegrationError {
+    #[error("Unauthorized: {0}")]
     Unauthorized(String),
+    #[error("Bad Request: {0}")]
     BadRequest(String),
+    #[error("Internal Error: {0}")]
     InternalError(String),
 }
 
@@ -1476,13 +1522,13 @@ async fn update_inframap_tables(
 /// * `Err(IntegrationError)` if storage fails in either Redis or ClickHouse
 async fn store_updated_inframap(
     infra_map: &InfrastructureMap,
-    redis_guard: &RedisClient,
-    project: &Project,
+    redis_guard: Arc<Mutex<RedisClient>>,
 ) -> Result<(), IntegrationError> {
     debug!("Storing updated inframap");
 
+    let redis_guard = redis_guard.lock().await;
     // Store in Redis
-    if let Err(e) = infra_map.store_in_redis(redis_guard).await {
+    if let Err(e) = infra_map.store_in_redis(&redis_guard).await {
         debug!("Failed to store inframap in Redis: {}", e);
         return Err(IntegrationError::InternalError(format!(
             "Failed to store updated inframap in Redis: {}",
@@ -1490,29 +1536,6 @@ async fn store_updated_inframap(
         )));
     }
     debug!("Successfully stored inframap in Redis");
-
-    // Store in ClickHouse
-    let mut client = match get_pool(&project.clickhouse_config).get_handle().await {
-        Ok(client) => client,
-        Err(e) => {
-            debug!("Failed to connect to ClickHouse: {}", e);
-            return Err(IntegrationError::InternalError(format!(
-                "Failed to connect to ClickHouse: {}",
-                e
-            )));
-        }
-    };
-
-    if let Err(e) =
-        store_infrastructure_map(&mut client, &project.clickhouse_config, infra_map).await
-    {
-        debug!("Failed to store inframap in ClickHouse: {}", e);
-        return Err(IntegrationError::InternalError(format!(
-            "Failed to store updated inframap in ClickHouse: {}",
-            e
-        )));
-    }
-    debug!("Successfully stored inframap in ClickHouse");
 
     Ok(())
 }
@@ -1572,16 +1595,12 @@ async fn admin_integrate_changes_route(
     let reality_checker =
         crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
-    let redis_guard = redis_client.lock().await;
-    let mut infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
-        Ok(map) => map,
-        Err(e) => {
-            return IntegrationError::InternalError(format!(
-                "Failed to get infrastructure map: {}",
-                e
-            ))
-            .to_response();
-        }
+    let mut infra_map = {
+        let redis_guard = redis_client.lock().await;
+        InfrastructureMap::load_from_redis(&redis_guard)
+            .await
+            .unwrap_or_default()
+            .unwrap_or_default()
     };
 
     let discrepancies = match reality_checker.check_reality(project, &infra_map).await {
@@ -1604,9 +1623,16 @@ async fn admin_integrate_changes_route(
     }
 
     // Store updated inframap
-    if let Err(e) = store_updated_inframap(&infra_map, &redis_guard, project).await {
-        return e.to_response();
-    }
+    match store_updated_inframap(&infra_map, redis_client.clone()).await {
+        Ok(_) => (),
+        Err(e) => {
+            return IntegrationError::InternalError(format!(
+                "Failed to store updated inframap: {}",
+                e
+            ))
+            .to_response();
+        }
+    };
 
     // Prepare success response
     let response = IntegrateChangesResponse {
@@ -1693,8 +1719,9 @@ async fn admin_plan_route(
                 }
             };
 
-            let current_infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
-                Ok(infra_map) => infra_map,
+            let current_infra_map = match InfrastructureMap::load_from_redis(&redis_guard).await {
+                Ok(Some(infra_map)) => infra_map,
+                Ok(None) => InfrastructureMap::default(),
                 Err(e) => {
                     error!("Failed to retrieve infrastructure map from Redis: {}", e);
                     return Ok(Response::builder()
@@ -1786,7 +1813,6 @@ mod tests {
             function_processes: HashMap::new(),
             block_db_processes,
             consumption_api_web_server,
-            initial_data_loads: HashMap::new(),
             orchestration_workers: HashMap::new(),
         }
     }

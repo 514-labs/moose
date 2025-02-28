@@ -9,7 +9,6 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
-use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
@@ -167,16 +166,6 @@ pub struct InfraChanges {
     pub processes_changes: Vec<ProcessChange>,
     pub api_changes: Vec<ApiChange>,
     pub streaming_engine_changes: Vec<StreamingChange>,
-    pub initial_data_loads: Vec<InitialDataLoadChange>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum InitialDataLoadChange {
-    Addition(InitialDataLoad),
-    Resumption {
-        load: InitialDataLoad,
-        resume_from: i64,
-    },
 }
 
 impl InfraChanges {
@@ -221,9 +210,6 @@ pub struct InfrastructureMap {
     // Not sure if we will want to change that or not in the future to be able to tell
     // the new consumption endpoints that were added or removed.
     pub consumption_api_web_server: ConsumptionApiWebServer,
-
-    /// Collection of initial data loads indexed by load ID
-    pub initial_data_loads: HashMap<String, InitialDataLoad>,
 
     /// Collection of orchestration workers indexed by worker ID
     #[serde(default = "HashMap::new")]
@@ -491,11 +477,6 @@ impl InfrastructureMap {
             }
             self.function_processes.insert(process.id(), process);
         }
-        let initial_data_loads = std::mem::take(&mut self.initial_data_loads);
-        for (id, mut process) in initial_data_loads.into_iter() {
-            process.topic = redpanda_config.prefix_with_namespace(&process.topic);
-            self.initial_data_loads.insert(id, process);
-        }
     }
 
     pub fn new(project: &Project, primitive_map: PrimitiveMap) -> InfrastructureMap {
@@ -504,9 +485,8 @@ impl InfrastructureMap {
         let mut topics = HashMap::new();
         let mut api_endpoints = HashMap::new();
         let mut topic_to_table_sync_processes = HashMap::new();
-        let mut topic_to_topic_sync_processes = HashMap::new();
+        let topic_to_topic_sync_processes = HashMap::new();
         let mut function_processes = HashMap::new();
-        let mut initial_data_loads = HashMap::new();
 
         // Process data models that have changes in their latest version
         // This ensures we create new infrastructure for updated data models first
@@ -604,42 +584,8 @@ impl InfrastructureMap {
                 // We reuse the topics that were created from the data models.
                 // Unless for streaming function migrations where we will have to create new topics.
 
-                if function.is_migration() {
-                    let (source_topic, target_topic) = Topic::from_migration_function(function);
-
-                    let function_process = FunctionProcess::from_migration_function(
-                        function,
-                        &source_topic,
-                        &target_topic.clone().unwrap(),
-                    );
-
-                    let sync_process = TopicToTableSyncProcess::new(
-                        &target_topic.clone().unwrap(),
-                        &function.target_data_model.as_ref().unwrap().to_table(),
-                    );
-                    topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
-
-                    let topic_sync = TopicToTopicSyncProcess::from_migration_function(function);
-                    topic_to_topic_sync_processes.insert(topic_sync.id(), topic_sync);
-
-                    initial_data_loads.insert(
-                        function_process.id(),
-                        InitialDataLoad {
-                            table: function.source_data_model.to_table(),
-                            topic: source_topic.name.clone(),
-                            status: InitialDataLoadStatus::Completed,
-                        },
-                    );
-                    topics.insert(source_topic.id(), source_topic);
-                    if let Some(target) = target_topic.clone() {
-                        topics.insert(target.id(), target.clone());
-                    }
-
-                    function_processes.insert(function_process.id(), function_process);
-                } else {
-                    let function_process = FunctionProcess::from_function(function, &topics);
-                    function_processes.insert(function_process.id(), function_process);
-                }
+                let function_process = FunctionProcess::from_function(function, &topics);
+                function_processes.insert(function_process.id(), function_process);
             }
         }
 
@@ -669,7 +615,6 @@ impl InfrastructureMap {
             function_processes,
             block_db_processes,
             consumption_api_web_server,
-            initial_data_loads,
             orchestration_workers,
         }
     }
@@ -1011,46 +956,6 @@ impl InfrastructureMap {
         );
 
         // =================================================================
-        //                             Initial Data Loads
-        // =================================================================
-        log::info!("Analyzing changes in Initial Data Loads...");
-        let mut data_load_changes = 0;
-
-        for (id, load) in &target_map.initial_data_loads {
-            let existing = self.initial_data_loads.get(id);
-            match existing {
-                None => {
-                    log::debug!("Initial Data Load added: {}", id);
-                    data_load_changes += 1;
-                    changes
-                        .initial_data_loads
-                        .push(InitialDataLoadChange::Addition(load.clone()));
-                }
-                Some(existing) => match existing.status {
-                    InitialDataLoadStatus::InProgress(resume_from) => {
-                        log::debug!(
-                            "Initial Data Load resumption: {} (from {})",
-                            id,
-                            resume_from
-                        );
-                        data_load_changes += 1;
-                        changes
-                            .initial_data_loads
-                            .push(InitialDataLoadChange::Resumption {
-                                resume_from,
-                                load: load.clone(),
-                            });
-                    }
-                    InitialDataLoadStatus::Completed => {
-                        log::debug!("Initial Data Load already completed: {}", id);
-                    }
-                },
-            }
-        }
-
-        log::info!("Initial Data Load changes: {}", data_load_changes);
-
-        // =================================================================
         //                             Blocks Processes
         // =================================================================
         log::info!("Analyzing changes in OLAP Processes...");
@@ -1145,12 +1050,11 @@ impl InfrastructureMap {
 
         // Summarize total changes
         log::info!(
-            "Total changes: {} OLAP, {} Process, {} API, {} Streaming, {} Initial Data Load",
+            "Total changes: {} OLAP, {} Process, {} API, {} Streaming",
             changes.olap_changes.len(),
             changes.processes_changes.len(),
             changes.api_changes.len(),
-            changes.streaming_engine_changes.len(),
-            changes.initial_data_loads.len()
+            changes.streaming_engine_changes.len()
         );
 
         changes
@@ -1165,14 +1069,12 @@ impl InfrastructureMap {
         let processes_changes = self.init_processes(project);
         let api_changes = self.init_api_endpoints();
         let streaming_engine_changes = self.init_topics();
-        let initial_data_loads = self.init_data_loads();
 
         InfraChanges {
             olap_changes,
             processes_changes,
             api_changes,
             streaming_engine_changes,
-            initial_data_loads,
         }
     }
 
@@ -1255,18 +1157,6 @@ impl InfrastructureMap {
         process_changes
     }
 
-    pub fn init_data_loads(&self) -> Vec<InitialDataLoadChange> {
-        self.initial_data_loads
-            .values()
-            .map(|load| {
-                InitialDataLoadChange::Addition(InitialDataLoad {
-                    status: InitialDataLoadStatus::Completed,
-                    ..load.clone()
-                })
-            })
-            .collect()
-    }
-
     pub fn save_to_json(&self, path: &Path) -> Result<(), std::io::Error> {
         let json = serde_json::to_string(self)?;
         fs::write(path, json)
@@ -1288,16 +1178,20 @@ impl InfrastructureMap {
         Ok(())
     }
 
-    pub async fn get_from_redis(redis_client: &RedisClient) -> Result<Self> {
+    pub async fn load_from_redis(redis_client: &RedisClient) -> Result<Option<Self>> {
         let encoded = redis_client
             .get_with_service_prefix("infrastructure_map")
             .await
-            .context("Failed to get InfrastructureMap from Redis")?
-            .ok_or_else(|| anyhow::anyhow!("InfrastructureMap not found in Redis"))?;
+            .context("Failed to get InfrastructureMap from Redis")?;
 
-        let decoded = InfrastructureMap::from_proto(encoded)
-            .map_err(|e| anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e))?;
-        Ok(decoded)
+        if let Some(encoded) = encoded {
+            let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
+                anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
+            })?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn to_proto(&self) -> ProtoInfrastructureMap {
@@ -1337,11 +1231,8 @@ impl InfrastructureMap {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.to_proto()))
                 .collect(),
-            initial_data_loads: self
-                .initial_data_loads
-                .iter()
-                .map(|(k, v)| (k.clone(), v.to_proto()))
-                .collect(),
+            // Still here for reverse compatibility
+            initial_data_loads: HashMap::new(),
             orchestration_workers: self
                 .orchestration_workers
                 .iter()
@@ -1394,11 +1285,6 @@ impl InfrastructureMap {
                 .into_iter()
                 .map(|(k, v)| (k, FunctionProcess::from_proto(v)))
                 .collect(),
-            initial_data_loads: proto
-                .initial_data_loads
-                .into_iter()
-                .map(|(k, v)| (k, InitialDataLoad::from_proto(v)))
-                .collect(),
             orchestration_workers: proto
                 .orchestration_workers
                 .into_iter()
@@ -1407,6 +1293,18 @@ impl InfrastructureMap {
             consumption_api_web_server: ConsumptionApiWebServer {},
             block_db_processes: OlapProcess {},
         })
+    }
+
+    pub fn add_table(&mut self, table: Table) {
+        self.tables.insert(table.id(), table);
+    }
+
+    pub fn find_table_by_name(&self, name: &str) -> Option<&Table> {
+        self.tables.values().find(|table| table.name == name)
+    }
+
+    pub fn add_topic(&mut self, topic: Topic) {
+        self.topics.insert(topic.id(), topic);
     }
 }
 
@@ -1491,6 +1389,23 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
         before.name
     );
     diff
+}
+
+impl Default for InfrastructureMap {
+    fn default() -> Self {
+        Self {
+            topics: HashMap::new(),
+            api_endpoints: HashMap::new(),
+            tables: HashMap::new(),
+            views: HashMap::new(),
+            topic_to_table_sync_processes: HashMap::new(),
+            topic_to_topic_sync_processes: HashMap::new(),
+            function_processes: HashMap::new(),
+            block_db_processes: OlapProcess {},
+            consumption_api_web_server: ConsumptionApiWebServer {},
+            orchestration_workers: HashMap::new(),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,8 +1,5 @@
 #[derive(Debug, thiserror::Error)]
 pub enum TemporalExecutionError {
-    #[error("Authentication error: {0}")]
-    AuthenticationError(String),
-
     #[error("Temportal connection error: {0}")]
     TemporalConnectionError(#[from] tonic::transport::Error),
 

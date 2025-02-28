@@ -83,24 +83,97 @@ impl TemporalClientManager {
         info!("Getting client for Temporal URL: {}", self.temporal_url);
 
         if is_local {
-            let client = get_temporal_client(&self.temporal_url).await?;
+            let client = self.get_temporal_client().await?;
             Ok(TemporalClient::Standard(client))
         } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
             && !MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.is_empty()
             && !MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.is_empty()
         {
-            let client = get_temporal_client_mtls(&self.temporal_url).await?;
+            let client = self.get_temporal_client_mtls().await?;
             Ok(TemporalClient::Standard(client))
         } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
             && !MOOSE_TEMPORAL_CONFIG__API_KEY.is_empty()
         {
-            let client = get_temporal_client_api_key(&self.temporal_url).await?;
+            let client = self.get_temporal_client_api_key().await?;
             Ok(TemporalClient::WithInterceptor(client))
         } else {
             Err(Error::msg(
                 "No authentication credentials provided for Temporal.",
             ))
         }
+    }
+
+    async fn get_temporal_client(&self) -> Result<WorkflowServiceClient<Channel>> {
+        let endpoint: Uri = self.temporal_url.parse().unwrap();
+        WorkflowServiceClient::connect(endpoint).await.map_err(|e| {
+            eprintln!("{}", e);
+            Error::msg(format!(
+                "Could not connect to Temporal. Please ensure the Temporal server is running: {}",
+                e
+            ))
+        })
+    }
+
+    async fn get_temporal_client_mtls(&self) -> Result<WorkflowServiceClient<Channel>> {
+        let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
+        let client_cert_path = MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.clone();
+        let client_key_path = MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.clone();
+
+        let domain_name = get_temporal_domain_name(&self.temporal_url);
+
+        let client_identity = tonic::transport::Identity::from_pem(
+            std::fs::read(client_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+            std::fs::read(client_key_path).map_err(|e| Error::msg(e.to_string()))?,
+        );
+
+        let ca_certificate = tonic::transport::Certificate::from_pem(
+            std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+        );
+
+        let tls_config = tonic::transport::ClientTlsConfig::new()
+            .identity(client_identity)
+            .ca_certificate(ca_certificate)
+            .domain_name(domain_name);
+
+        let endpoint = tonic::transport::Channel::from_shared(self.temporal_url.to_string())
+            .map_err(|e| Error::msg(e.to_string()))?;
+
+        let client = WorkflowServiceClient::new(endpoint.tls_config(tls_config)?.connect().await?);
+
+        Ok(client)
+    }
+
+    async fn get_temporal_client_api_key(
+        &self,
+    ) -> Result<WorkflowServiceClient<InterceptedService<Channel, ApiKeyInterceptor>>> {
+        let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
+        let api_key = MOOSE_TEMPORAL_CONFIG__API_KEY.clone();
+
+        let domain_name = get_temporal_domain_name(&self.temporal_url);
+        let namespace = get_temporal_namespace(domain_name);
+
+        let ca_certificate = tonic::transport::Certificate::from_pem(
+            std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
+        );
+
+        let endpoint =
+            tonic::transport::Channel::from_shared("https://us-west1.gcp.api.temporal.io:7233")
+                .map_err(|e| Error::msg(e.to_string()))?
+                .tls_config(
+                    tonic::transport::ClientTlsConfig::new()
+                        .domain_name("us-west1.gcp.api.temporal.io")
+                        .ca_certificate(ca_certificate),
+                )
+                .map_err(|e| Error::msg(e.to_string()))?;
+
+        let interceptor = ApiKeyInterceptor {
+            api_key: api_key.to_string(),
+            namespace: namespace.clone(),
+        };
+
+        let client = WorkflowServiceClient::with_interceptor(endpoint.connect_lazy(), interceptor);
+
+        Ok(client)
     }
 }
 
@@ -204,83 +277,4 @@ impl TemporalClient {
                 .map_err(Error::from),
         }
     }
-}
-
-async fn connect_to_temporal(temporal_url: &str) -> Result<WorkflowServiceClient<Channel>> {
-    let endpoint: Uri = temporal_url.parse().unwrap();
-    WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
-        Error::msg("Could not connect to Temporal. Please ensure the Temporal server is running.")
-    })
-}
-
-pub async fn get_temporal_client(temporal_url: &str) -> Result<WorkflowServiceClient<Channel>> {
-    connect_to_temporal(temporal_url).await.map_err(|e| {
-        eprintln!("{}", e);
-        Error::msg(format!("{}", e))
-    })
-}
-
-pub async fn get_temporal_client_mtls(
-    temporal_url: &str,
-) -> Result<WorkflowServiceClient<Channel>> {
-    let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
-    let client_cert_path = MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.clone();
-    let client_key_path = MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.clone();
-
-    let domain_name = get_temporal_domain_name(temporal_url);
-
-    let client_identity = tonic::transport::Identity::from_pem(
-        std::fs::read(client_cert_path).map_err(|e| Error::msg(e.to_string()))?,
-        std::fs::read(client_key_path).map_err(|e| Error::msg(e.to_string()))?,
-    );
-
-    let ca_certificate = tonic::transport::Certificate::from_pem(
-        std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
-    );
-
-    let tls_config = tonic::transport::ClientTlsConfig::new()
-        .identity(client_identity)
-        .ca_certificate(ca_certificate)
-        .domain_name(domain_name);
-
-    let endpoint = tonic::transport::Channel::from_shared(temporal_url.to_string())
-        .map_err(|e| Error::msg(e.to_string()))?;
-
-    let client = WorkflowServiceClient::new(endpoint.tls_config(tls_config)?.connect().await?);
-
-    Ok(client)
-}
-
-pub async fn get_temporal_client_api_key(
-    temporal_url: &str,
-) -> Result<WorkflowServiceClient<InterceptedService<Channel, ApiKeyInterceptor>>> {
-    let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
-    let api_key = MOOSE_TEMPORAL_CONFIG__API_KEY.clone();
-
-    let domain_name = get_temporal_domain_name(temporal_url);
-
-    let namespace = get_temporal_namespace(domain_name);
-
-    let ca_certificate = tonic::transport::Certificate::from_pem(
-        std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
-    );
-
-    let endpoint =
-        tonic::transport::Channel::from_shared("https://us-west1.gcp.api.temporal.io:7233")
-            .map_err(|e| Error::msg(e.to_string()))?
-            .tls_config(
-                tonic::transport::ClientTlsConfig::new()
-                    .domain_name("us-west1.gcp.api.temporal.io")
-                    .ca_certificate(ca_certificate),
-            )
-            .map_err(|e| Error::msg(e.to_string()))?;
-
-    let interceptor = ApiKeyInterceptor {
-        api_key: api_key.to_string(),
-        namespace: namespace.clone(),
-    };
-
-    let client = WorkflowServiceClient::with_interceptor(endpoint.connect_lazy(), interceptor);
-
-    Ok(client)
 }

@@ -1,4 +1,5 @@
 use anyhow::{Error, Result};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
 use tonic::service::interceptor::InterceptedService;
@@ -148,6 +149,17 @@ impl Default for TemporalConfig {
     }
 }
 
+lazy_static! {
+    pub static ref MOOSE_TEMPORAL_CONFIG__CA_CERT: String =
+        get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
+    pub static ref MOOSE_TEMPORAL_CONFIG__CLIENT_CERT: String =
+        get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
+    pub static ref MOOSE_TEMPORAL_CONFIG__CLIENT_KEY: String =
+        get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
+    pub static ref MOOSE_TEMPORAL_CONFIG__API_KEY: String =
+        get_env_var("MOOSE_TEMPORAL_CONFIG__API_KEY");
+}
+
 pub struct ApiKeyInterceptor {
     api_key: String,
     namespace: String,
@@ -189,10 +201,9 @@ pub async fn get_temporal_client(temporal_url: &str) -> Result<WorkflowServiceCl
 pub async fn get_temporal_client_mtls(
     temporal_url: &str,
 ) -> Result<WorkflowServiceClient<Channel>> {
-    let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
-    let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
-    let client_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
-    let client_key_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
+    let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
+    let client_cert_path = MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.clone();
+    let client_key_path = MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.clone();
 
     let domain_name = get_temporal_domain_name(temporal_url);
 
@@ -221,9 +232,8 @@ pub async fn get_temporal_client_mtls(
 pub async fn get_temporal_client_api_key(
     temporal_url: &str,
 ) -> Result<WorkflowServiceClient<InterceptedService<Channel, ApiKeyInterceptor>>> {
-    let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
-    let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
-    let api_key = get_env_var("MOOSE_TEMPORAL_CONFIG__API_KEY");
+    let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
+    let api_key = MOOSE_TEMPORAL_CONFIG__API_KEY.clone();
 
     let domain_name = get_temporal_domain_name(temporal_url);
 
@@ -251,4 +261,8 @@ pub async fn get_temporal_client_api_key(
     let client = WorkflowServiceClient::with_interceptor(endpoint.connect_lazy(), interceptor);
 
     Ok(client)
+}
+
+fn get_env_var(name: &str) -> String {
+    std::env::var(name).unwrap_or_else(|_| "".to_string())
 }

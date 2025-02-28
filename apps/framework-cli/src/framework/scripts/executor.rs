@@ -12,6 +12,8 @@ use crate::framework::{
 };
 use crate::infrastructure::orchestration::temporal::{
     get_temporal_client, get_temporal_client_api_key, get_temporal_client_mtls,
+    MOOSE_TEMPORAL_CONFIG__API_KEY, MOOSE_TEMPORAL_CONFIG__CA_CERT,
+    MOOSE_TEMPORAL_CONFIG__CLIENT_CERT, MOOSE_TEMPORAL_CONFIG__CLIENT_KEY,
 };
 
 use temporal_sdk_core::protos::temporal::api::common::v1::{
@@ -102,12 +104,6 @@ async fn execute_workflow_for_language(
         params.temporal_url, is_local
     );
 
-    let get_env_var = |name: &str| std::env::var(name).unwrap_or_else(|_| "".to_string());
-    let ca_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
-    let client_cert_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
-    let client_key_path = get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
-    let api_key = get_env_var("MOOSE_TEMPORAL_CONFIG__API_KEY");
-
     if is_local {
         let namespace = DEFAULT_TEMPORTAL_NAMESPACE.to_string();
         info!("Using namespace: {}", namespace);
@@ -117,9 +113,9 @@ async fn execute_workflow_for_language(
             .map_err(|e| TemporalExecutionError::AuthenticationError(e.to_string()))?;
 
         start_workflow_execution_with_channel(&mut client, namespace, params).await
-    } else if !ca_cert_path.is_empty()
-        && !client_cert_path.is_empty()
-        && !client_key_path.is_empty()
+    } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
+        && !MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.is_empty()
+        && !MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.is_empty()
     {
         let domain_name = get_temporal_domain_name(params.temporal_url);
         let namespace = get_temporal_namespace(domain_name);
@@ -133,7 +129,9 @@ async fn execute_workflow_for_language(
             .map_err(|e| TemporalExecutionError::AuthenticationError(e.to_string()))?;
 
         start_workflow_execution_with_channel(&mut client, namespace, params).await
-    } else if !ca_cert_path.is_empty() && !api_key.is_empty() {
+    } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
+        && !MOOSE_TEMPORAL_CONFIG__API_KEY.is_empty()
+    {
         let domain_name = get_temporal_domain_name(params.temporal_url);
         let namespace = get_temporal_namespace(domain_name);
         info!(

@@ -10,11 +10,7 @@ use crate::framework::{
     languages::SupportedLanguages,
     scripts::utils::{parse_schedule, parse_timeout_to_seconds, TemporalExecutionError},
 };
-use crate::infrastructure::orchestration::temporal::{
-    get_temporal_client, get_temporal_client_api_key, get_temporal_client_mtls,
-    MOOSE_TEMPORAL_CONFIG__API_KEY, MOOSE_TEMPORAL_CONFIG__CA_CERT,
-    MOOSE_TEMPORAL_CONFIG__CLIENT_CERT, MOOSE_TEMPORAL_CONFIG__CLIENT_KEY,
-};
+use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
 
 use temporal_sdk_core::protos::temporal::api::common::v1::{
     Payload, Payloads, RetryPolicy, WorkflowType,
@@ -24,7 +20,6 @@ use temporal_sdk_core::protos::temporal::api::enums::v1::{
 };
 
 use temporal_sdk_core::protos::temporal::api::taskqueue::v1::TaskQueue;
-use temporal_sdk_core::protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
 use temporal_sdk_core::protos::temporal::api::workflowservice::v1::StartWorkflowExecutionRequest;
 
 const WORKFLOW_TYPE: &str = "ScriptWorkflow";
@@ -98,84 +93,27 @@ pub(crate) async fn execute_workflow(
 async fn execute_workflow_for_language(
     params: WorkflowExecutionParams<'_>,
 ) -> Result<String, TemporalExecutionError> {
-    let is_local = params.temporal_url.contains("localhost");
-    info!(
-        "temporal_url: {} | is_local: {}",
-        params.temporal_url, is_local
-    );
+    let client_manager = TemporalClientManager::new(params.temporal_url);
 
-    if is_local {
-        let namespace = DEFAULT_TEMPORTAL_NAMESPACE.to_string();
-        info!("Using namespace: {}", namespace);
-
-        let mut client = get_temporal_client(params.temporal_url)
-            .await
-            .map_err(|e| TemporalExecutionError::AuthenticationError(e.to_string()))?;
-
-        start_workflow_execution_with_channel(&mut client, namespace, params).await
-    } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
-        && !MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.is_empty()
-        && !MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.is_empty()
-    {
-        let domain_name = get_temporal_domain_name(params.temporal_url);
-        let namespace = get_temporal_namespace(domain_name);
-        info!(
-            "mTLS using domain name: {} | namespace: {}",
-            domain_name, namespace
-        );
-
-        let mut client = get_temporal_client_mtls(params.temporal_url)
-            .await
-            .map_err(|e| TemporalExecutionError::AuthenticationError(e.to_string()))?;
-
-        start_workflow_execution_with_channel(&mut client, namespace, params).await
-    } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
-        && !MOOSE_TEMPORAL_CONFIG__API_KEY.is_empty()
-    {
-        let domain_name = get_temporal_domain_name(params.temporal_url);
-        let namespace = get_temporal_namespace(domain_name);
-        info!(
-            "api-key using domain name: {} | namespace: {}",
-            domain_name, namespace
-        );
-
-        let mut client = get_temporal_client_api_key(params.temporal_url)
-            .await
-            .map_err(|e| TemporalExecutionError::AuthenticationError(e.to_string()))?;
-
-        start_workflow_execution_with_interceptor(&mut client, namespace, params).await
+    let domain_name = get_temporal_domain_name(params.temporal_url);
+    let namespace = if params.temporal_url.contains("localhost") {
+        DEFAULT_TEMPORTAL_NAMESPACE.to_string()
     } else {
-        Err(TemporalExecutionError::AuthenticationError(
-            "No authentication credentials provided for Temporal.".to_string(),
-        ))
-    }
-}
+        get_temporal_namespace(domain_name)
+    };
 
-async fn start_workflow_execution_with_channel(
-    client: &mut WorkflowServiceClient<tonic::transport::Channel>,
-    namespace: String,
-    params: WorkflowExecutionParams<'_>,
-) -> Result<String, TemporalExecutionError> {
-    let request = tonic::Request::new(create_workflow_execution_request(namespace, &params)?);
-    let response = client.start_workflow_execution(request).await?;
-    let run_id = response.into_inner().run_id;
-    Ok(run_id)
-}
+    info!("Using namespace: {}", namespace);
 
-async fn start_workflow_execution_with_interceptor<I>(
-    client: &mut WorkflowServiceClient<
-        tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
-    >,
-    namespace: String,
-    params: WorkflowExecutionParams<'_>,
-) -> Result<String, TemporalExecutionError>
-where
-    I: tonic::service::Interceptor,
-{
-    let request = tonic::Request::new(create_workflow_execution_request(namespace, &params)?);
-    let response = client.start_workflow_execution(request).await?;
-    let run_id = response.into_inner().run_id;
-    Ok(run_id)
+    client_manager
+        .execute(|mut client| async move {
+            let request = create_workflow_execution_request(namespace, &params)?;
+            client
+                .start_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
+        .await
+        .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))
 }
 
 fn create_workflow_execution_request(

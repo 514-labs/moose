@@ -4,9 +4,8 @@ use std::convert::TryFrom;
 use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::scripts::Workflow;
-use crate::infrastructure::orchestration::temporal::{
-    get_temporal_client, DEFAULT_TEMPORTAL_NAMESPACE,
-};
+use crate::infrastructure::orchestration::temporal::DEFAULT_TEMPORTAL_NAMESPACE;
+use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
 use crate::utilities::decode_object::decode_base64_to_json;
@@ -132,19 +131,8 @@ pub async fn list_workflows(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut table_data = Vec::new();
 
-    let mut client =
-        match get_temporal_client(&project.temporal_config.temporal_url_with_scheme()).await {
-            Ok(client) => client,
-            Err(e) => {
-                return Err(RoutineFailure::new(
-                    Message {
-                        action: "Workflow".to_string(),
-                        details: "Could not connect to Temporal.\n".to_string(),
-                    },
-                    e,
-                ));
-            }
-        };
+    let client_manager =
+        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
 
     // Convert status string to Temporal status enum
     let status_filter = if let Some(status_str) = status {
@@ -173,17 +161,19 @@ pub async fn list_workflows(
         ..Default::default()
     };
 
-    let response = client
-        .list_workflow_executions(request)
+    let response = client_manager
+        .execute(|mut client| async move {
+            client
+                .list_workflow_executions(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
         .await
         .map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: format!("Could not list workflows: {}\n", e),
-                },
-                e,
-            )
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("Could not list workflows: {}\n", e),
+            })
         })?;
 
     // Convert workflow executions to table data
@@ -228,14 +218,8 @@ pub async fn terminate_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
-        .await
-        .map_err(|_e| {
-            RoutineFailure::error(Message {
-                action: "Workflow".to_string(),
-                details: "Could not connect to Temporal.\n".to_string(),
-            })
-        })?;
+    let client_manager =
+        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
 
     let request = TerminateWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -249,15 +233,22 @@ pub async fn terminate_workflow(
         ..Default::default()
     };
 
-    client
-        .terminate_workflow_execution(request)
+    client_manager
+        .execute(|mut client| async move {
+            client
+                .terminate_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
         .await
         .map_err(|e| {
-            let error_message = match e.message() {
-                "workflow execution already completed" => {
-                    format!("Workflow '{}' has already completed", name)
-                }
-                _ => format!("Could not terminate workflow '{}': {}", name, e.message()),
+            let error_message = if e
+                .to_string()
+                .contains("workflow execution already completed")
+            {
+                format!("Workflow '{}' has already completed", name)
+            } else {
+                format!("Could not terminate workflow '{}': {}", name, e)
             };
 
             RoutineFailure::error(Message {
@@ -276,17 +267,8 @@ pub async fn pause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
-        .await
-        .map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: "Could not connect to Temporal.\n".to_string(),
-                },
-                e,
-            )
-        })?;
+    let client_manager =
+        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -301,17 +283,19 @@ pub async fn pause_workflow(
         ..Default::default()
     };
 
-    client
-        .signal_workflow_execution(request)
+    client_manager
+        .execute(|mut client| async move {
+            client
+                .signal_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
         .await
         .map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: format!("Could not pause workflow '{}': {}\n", name, e),
-                },
-                e,
-            )
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("Could not pause workflow '{}': {}\n", name, e),
+            })
         })?;
 
     Ok(RoutineSuccess::success(Message {
@@ -324,17 +308,8 @@ pub async fn unpause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
-        .await
-        .map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: "Could not connect to Temporal.\n".to_string(),
-                },
-                e,
-            )
-        })?;
+    let client_manager =
+        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -349,17 +324,19 @@ pub async fn unpause_workflow(
         ..Default::default()
     };
 
-    client
-        .signal_workflow_execution(request)
+    client_manager
+        .execute(|mut client| async move {
+            client
+                .signal_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
         .await
         .map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: format!("Could not unpause workflow '{}': {}\n", name, e),
-                },
-                e,
-            )
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("Could not unpause workflow '{}': {}\n", name, e),
+            })
         })?;
 
     Ok(RoutineSuccess::success(Message {
@@ -375,14 +352,8 @@ pub async fn get_workflow_status(
     verbose: bool,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut client = get_temporal_client(&project.temporal_config.temporal_url_with_scheme())
-        .await
-        .map_err(|_| {
-            RoutineFailure::error(Message {
-                action: "Workflow".to_string(),
-                details: "Could not connect to Temporal.\n".to_string(),
-            })
-        })?;
+    let client_manager =
+        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
 
     // If no run_id provided, get the most recent one
     let execution_id = if let Some(id) = run_id {
@@ -396,13 +367,18 @@ pub async fn get_workflow_status(
             ..Default::default()
         };
 
-        let response = client
-            .list_workflow_executions(request)
+        let response = client_manager
+            .execute(|mut client| async move {
+                client
+                    .list_workflow_executions(request)
+                    .await
+                    .map_err(|e| anyhow::Error::msg(e.to_string()))
+            })
             .await
             .map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not find workflow '{}': {}\n", name, e.message()),
+                    details: format!("Could not find workflow '{}': {}\n", name, e),
                 })
             })?;
 
@@ -428,17 +404,18 @@ pub async fn get_workflow_status(
         ),
     };
 
-    let response = client
-        .describe_workflow_execution(request)
+    let response = client_manager
+        .execute(|mut client| async move {
+            client
+                .describe_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
         .await
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!(
-                    "Could not get status for workflow '{}': {}\n",
-                    name,
-                    e.message()
-                ),
+                details: format!("Could not get status for workflow '{}': {}\n", name, e),
             })
         })?;
 
@@ -486,17 +463,18 @@ pub async fn get_workflow_status(
             ..Default::default()
         };
 
-        let history_response = client
-            .get_workflow_execution_history(history_request)
+        let history_response = client_manager
+            .execute(|mut client| async move {
+                client
+                    .get_workflow_execution_history(history_request)
+                    .await
+                    .map_err(|e| anyhow::Error::msg(e.to_string()))
+            })
             .await
             .map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: format!(
-                        "Could not fetch history for workflow '{}': {}\n",
-                        name,
-                        e.message()
-                    ),
+                    details: format!("Could not fetch history for workflow '{}': {}\n", name, e),
                 })
             })?;
 
@@ -585,17 +563,18 @@ pub async fn get_workflow_status(
 
             details.push_str(&format!("Request: {:?}\n", history_request));
 
-            let history_response = client
-                .get_workflow_execution_history(history_request)
+            let history_response = client_manager
+                .execute(|mut client| async move {
+                    client
+                        .get_workflow_execution_history(history_request)
+                        .await
+                        .map_err(|e| anyhow::Error::msg(e.to_string()))
+                })
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Workflow".to_string(),
-                        details: format!(
-                            "Could not fetch history for workflow '{}': {}\n",
-                            name,
-                            e.message()
-                        ),
+                        details: format!("Could not fetch history for workflow: {}\n", e),
                     })
                 })?;
 

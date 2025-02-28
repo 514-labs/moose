@@ -7,7 +7,7 @@ pub enum TemporalExecutionError {
     TemporalConnectionError(#[from] tonic::transport::Error),
 
     #[error("Temportal client error: {0}")]
-    TemporalClientError(#[from] tonic::Status),
+    TemporalClientError(String),
 
     #[error("Timeout error: {0}")]
     TimeoutError(String),

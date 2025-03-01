@@ -170,7 +170,32 @@
 
 .docs div.nextra-search {
   width: 100%;
-  padding-left: 3rem;
+}
+
+.docs div.nextra-search > div {
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+/* the first a in nav */
+.docs nav > a:first-child {
+  width: 20rem;
+}
+
+/* the second a in nav */
+.docs nav > :nth-child(3) > div {
+  display: flex;
+  justify-content: flex-end;
+  text-align: right;
+  /* padding-left: 0; */
+}
+
+/* Apply at breakpoint 1536px */
+@media (min-width: 1536px) {
+  .docs article > main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .docs nav.nx-justify-end {
@@ -264,6 +289,10 @@ tbody {
 
 .docs .callout p {
   display: inline;
+}
+
+nav.nextra-toc {
+  width: 20rem;
 }
 
 .docs aside.md\:nx-w-64 {

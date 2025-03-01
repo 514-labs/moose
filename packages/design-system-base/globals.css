@@ -178,16 +178,18 @@
 }
 
 /* the first a in nav */
-.docs nav > a:first-child {
+/* .docs nav > a:first-child {
   width: 20rem;
-}
+} */
 
 /* the second a in nav */
-.docs nav > :nth-child(3) > div {
-  display: flex;
-  justify-content: flex-end;
-  text-align: right;
-  /* padding-left: 0; */
+@media (min-width: 1280px) {
+  .docs nav > :nth-child(3) > div {
+    display: flex;
+    justify-content: flex-end;
+    text-align: right;
+    /* padding-left: 0; */
+  }
 }
 
 /* Apply at breakpoint 1536px */

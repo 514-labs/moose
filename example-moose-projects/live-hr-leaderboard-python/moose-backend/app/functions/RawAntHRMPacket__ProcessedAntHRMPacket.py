@@ -4,8 +4,11 @@ from app.datamodels.ProcessedAntHRMPacket import ProcessedAntHRMPacket
 from moose_lib import StreamingFunction
 from typing import Optional
 from datetime import datetime
-
+from app.helpers.postToDeadLetterQueue import postToDeadLetterQueue
  
+
+# Maintain the state of the device
+# This is used to handle byte rollovers
 device_dict = {}
  
 def fn(source: RawAntHRMPacket) -> Optional[ProcessedAntHRMPacket]:
@@ -18,18 +21,21 @@ def fn(source: RawAntHRMPacket) -> Optional[ProcessedAntHRMPacket]:
             'heart_beat_rollover': 0
         }
 
-    # Merges the 2 bytes based on the LSB and MSB
-    # TODO: Add the rollover to the previous and last beat time
+    # Merges the 2 bytes based on the LSB and MSB - building a 16 bit integer representing when the last heart beat occurred
+    # The 16 bit integer is then divided by 1024 to get the time in seconds
     previous_beat_time_seconds = (float((source.ant_hrm_packet[3] << 8) | source.ant_hrm_packet[2]) + (device_dict[source.device_id]['previous_beat_time_rollover'] * 65536)) / 1024
     last_beat_time_seconds = (float((source.ant_hrm_packet[5] << 8) | source.ant_hrm_packet[4]) + (device_dict[source.device_id]['last_beat_time_rollover'] * 65536)) / 1024
     calculated_heart_rate = source.ant_hrm_packet[7]
 
     # Invalid heart rate value per ANT+ HRM spec
     if calculated_heart_rate < 0 or calculated_heart_rate > 255:
-        # TODO: oute to dead letter queue
+        postToDeadLetterQueue(source)
         return None
     
     heart_beat_count = source.ant_hrm_packet[6] + (device_dict[source.device_id]['heart_beat_rollover'] * 256)
+    if heart_beat_count > 256:
+        device_dict[source.device_id]['heart_beat_rollover'] += 1
+
     return ProcessedAntHRMPacket(
         device_id=source.device_id,
         previous_beat_time=previous_beat_time_seconds,

@@ -4,9 +4,22 @@ import json
 import random
 import time
 import math
+from pathlib import Path
+
+def load_mock_device_ids() -> list[int]:
+    """
+    Loads device IDs from mock-user-db.json, excluding devices with live_bt_device=True
+    Returns a list of integer device IDs
+    """
+    json_path = Path(__file__).parents[4] / 'mock-user-db.json'
+    with open(json_path) as f:
+        user_db = json.load(f)
+    
+    return [int(device_id) for device_id, data in user_db.items() 
+            if not data.get('live_bt_device')]
 
 @task()
-def send_data_to_moose(data: dict):
+def send_data_to_moose():
     """
     This script mocks N users who are wearing an ANT+ heart rate monitor.
     It sends data to Moose four times per second indefinitely
@@ -18,7 +31,7 @@ def send_data_to_moose(data: dict):
     headers = {'Content-Type': 'application/json'}
 
     # Update for the number of devices
-    device_ids = [12345, 12346, 12347, 12348, 12349]
+    device_ids = load_mock_device_ids()
     
     start_time = time.time()
 
@@ -38,9 +51,7 @@ def send_data_to_moose(data: dict):
         } for device_id in device_ids
     }
 
-    # TODO: Add sig term error processing
-
-    while True:
+    while 1 / 0.25 * 500 > time.time() - start_time:
         for device_id in device_ids:
             time_elapsed = time.time() - start_time
             
@@ -70,7 +81,9 @@ def send_data_to_moose(data: dict):
     # Note: This return statement will never be reached due to the infinite loop
     return {
         "step": "send_data_to_moose",
-        "data": None
+        "data": {
+            "number_of_devices": len(device_ids)
+        }
     }
 
 def generate_ant_hrm_packet(device_id: int, device_data: dict):
@@ -126,7 +139,7 @@ def generate_ant_hrm_packet(device_id: int, device_data: dict):
     return ant_packet
 
 
-def generate_realistic_heart_rate(time_elapsed, base_hr=75, max_hr=180, session_duration=300, last_hr=None, phase=0.5):
+def generate_realistic_heart_rate(time_elapsed, base_hr=75, max_hr=180, session_duration=500, last_hr=None, phase=0.5):
     # Calculate the phase of the workout (0 to 1)
     phase = time_elapsed / session_duration
     

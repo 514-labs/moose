@@ -1,5 +1,5 @@
 name = 'ant-data-generator'
 schedule = ''
 retries = 3
-timeout = '1h'
+timeout = '5m'
 steps = ['send_data_to_moose']

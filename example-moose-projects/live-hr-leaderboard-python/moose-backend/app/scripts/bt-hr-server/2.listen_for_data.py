@@ -14,18 +14,21 @@ num_payloads_passed = 0
 num_failed_to_post = 0
 
 @task(retries=3)
-async def listen_for_data(data:dict):  # The name of your script
+async def listen_for_data(input:dict):  # The name of your script
     """
-    Connects to the Polar device and starts heart rate monitoring
+    Connects to the compatible device and starts heart rate monitoring
     """
+
     logger = Logger(action="BT Listen")
-    device_address = data["data"]["device_address"]
+    logger.info(f"Listening for data from device: {input}")
+    device_address = input["device_address"]
     quitclient = Event()
 
 
     def disconnected_callback(client, logger):
         logger.info("Device disconnected")
         quitclient.set()
+        raise Exception("Device disconnected")
 
     def post_to_moose(data, logger):
         """Helper function to post data to Moose endpoint"""
@@ -59,7 +62,6 @@ async def listen_for_data(data:dict):  # The name of your script
         post_to_moose(payload, logger)
 
     async with BleakClient(device_address, disconnected_callback=lambda client: disconnected_callback(client, logger)) as client:    
-        logger.info(f"Connected to device: {data['data']['device_name']}")
         
         heartrate = HeartRate(
             client, 
@@ -75,8 +77,7 @@ async def listen_for_data(data:dict):  # The name of your script
             await heartrate.stop_notify()
 
     logger = Logger(action="BT-Workflow")
-    logger.info(f"Listening for data from device: {data}")
-    logger.info(f"Data: {data['data']['device_address']}")
+    logger.info(f"Listening for data from device:{device_address}")
 
     return {
         "task": "listen_for_data",  # The step name is the name of the script

@@ -1,8 +1,8 @@
 name = 'bt-hr-server'
 schedule = ''
 retries = 3
-timeout = '1h'
-steps = [
-    'connect_to_device',
+timeout = '10m'
+tasks = [
+    'connect_to_BT_sensor',
     'listen_for_data',
 ]

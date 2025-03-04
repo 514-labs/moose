@@ -12,6 +12,10 @@ if (
   process.argv[2] == "consumption-type-serializer" ||
   process.argv[2] == "dmv2-serializer"
 ) {
+  const transformFile =
+    process.argv[2] == "dmv2-serializer"
+      ? "consumption-apis/insertTypiaValidation.js"
+      : "dmv2/compilerPlugin.js";
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -19,8 +23,7 @@ if (
     compilerOptions: {
       plugins: [
         {
-          transform:
-            "./node_modules/@514labs/moose-lib/dist/dmv2/compilerPlugin.js",
+          transform: `./node_modules/@514labs/moose-lib/dist/${transformFile}`,
           transformProgram: true,
         },
         {

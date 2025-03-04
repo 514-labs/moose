@@ -177,6 +177,59 @@ pub mod leadership {
             };
             matches!(result, Ok(val) if val == 1)
         }
+
+        pub async fn renew_lock(
+            &self,
+            conn: Arc<RwLock<ConnectionManager>>,
+            lock_key: &str,
+            instance_id: &str,
+            ttl: i64,
+        ) -> anyhow::Result<bool> {
+            let script = redis::Script::new(
+                "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], ARGV[2]) else return 0 end",
+            );
+            let result: i32 = script
+                .key(lock_key)
+                .arg(instance_id)
+                .arg(ttl)
+                .invoke_async::<_, i32>(&mut *conn.write().await)
+                .await?;
+            Ok(result == 1)
+        }
+
+        pub async fn release_lock(
+            &self,
+            conn: Arc<RwLock<ConnectionManager>>,
+            lock_key: &str,
+            instance_id: &str,
+        ) -> anyhow::Result<()> {
+            let script = redis::Script::new(
+                "if redis.call('GET', KEYS[1]) == ARGV[1] then\n return redis.call('DEL', KEYS[1])\nelse\n return 0\nend"
+            );
+            let _result: () = script
+                .key(lock_key)
+                .arg(instance_id)
+                .invoke_async(&mut *conn.write().await)
+                .await?;
+            Ok(())
+        }
+
+        pub async fn has_lock(
+            &self,
+            conn: Arc<RwLock<ConnectionManager>>,
+            lock_key: &str,
+            instance_id: &str,
+        ) -> anyhow::Result<bool> {
+            let script = redis::Script::new(
+                "if redis.call('GET', KEYS[1]) == ARGV[1] then return 1 else return 0 end",
+            );
+            let result: i32 = script
+                .key(lock_key)
+                .arg(instance_id)
+                .invoke_async::<_, i32>(&mut *conn.write().await)
+                .await?;
+            Ok(result == 1)
+        }
     }
 }
 
@@ -358,7 +411,7 @@ pub struct NewRedisClient {
     pub connection_monitor_task: Arc<Mutex<Option<JoinHandle<()>>>>,
     pub fallback: Option<mock::MockRedisClient>,
     // For lock management, we maintain an in-memory map similar to the old locks HashMap
-    pub locks: Arc<Mutex<std::collections::HashMap<String, (String, i64)>>>,
+    pub locks: Arc<tokio::sync::Mutex<std::collections::HashMap<String, (String, i64)>>>,
 }
 
 impl NewRedisClient {
@@ -368,7 +421,7 @@ impl NewRedisClient {
             Ok(c) => match connection::ConnectionManagerWrapper::new(&c).await {
                 Ok(cm) => (cm, None),
                 Err(e) => {
-                    log::error!("Failed to initialize real Redis connection: {}. Falling back to mock client.", e);
+                    log::error!("<NewRedisClient> Failed to initialize real Redis connection: {}. Falling back to mock client.", e);
                     (
                         connection::ConnectionManagerWrapper {
                             connection: Arc::new(RwLock::new(
@@ -389,7 +442,7 @@ impl NewRedisClient {
             },
             Err(e) => {
                 log::error!(
-                    "Failed to open Redis client: {}. Falling back to mock client.",
+                    "<NewRedisClient> Failed to open Redis client: {}. Falling back to mock client.",
                     e
                 );
                 let dummy_client = Client::open("redis://127.0.0.1:1")?;
@@ -421,7 +474,7 @@ impl NewRedisClient {
             presence_task: Arc::new(Mutex::new(None)),
             connection_monitor_task: Arc::new(Mutex::new(None)),
             fallback,
-            locks: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            locks: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
         };
 
         // Start the message listener
@@ -447,7 +500,7 @@ impl NewRedisClient {
         let broadcast_channel = format!("{}::msgchannel", self.config.key_prefix);
 
         log::info!(
-            "Starting message listener on channels: {} and {}",
+            "<NewRedisClient> Starting message listener on channels: {} and {}",
             instance_channel,
             broadcast_channel
         );
@@ -467,7 +520,7 @@ impl NewRedisClient {
             let pubsub_conn = match client.get_async_connection().await {
                 Ok(conn) => conn,
                 Err(e) => {
-                    log::error!("Failed to get pubsub connection: {}", e);
+                    log::error!("<NewRedisClient> Failed to get pubsub connection: {}", e);
                     return;
                 }
             };
@@ -477,7 +530,7 @@ impl NewRedisClient {
                 .subscribe(&[&instance_channel_clone, &broadcast_channel_clone])
                 .await
             {
-                log::error!("Failed to subscribe to channels: {}", e);
+                log::error!("<NewRedisClient> Failed to subscribe to channels: {}", e);
                 return;
             }
 
@@ -485,13 +538,13 @@ impl NewRedisClient {
                 let msg = pubsub.on_message().next().await;
                 if let Some(msg) = msg {
                     if let Ok(payload) = msg.get_payload::<String>() {
-                        log::info!("Received message: {}", payload);
+                        log::info!("<NewRedisClient> Received message: {}", payload);
                         let handlers = callbacks.read().await.clone();
                         for handler in handlers.iter() {
                             handler(payload.clone()).await;
                         }
                     } else {
-                        log::warn!("Failed to decode message payload");
+                        log::warn!("<NewRedisClient> Failed to decode message payload");
                     }
                 } else {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -604,121 +657,80 @@ impl NewRedisClient {
 
     pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
         let key = format!("{}::{}::lock", self.config.key_prefix, name);
-        let mut locks = self.locks.lock().unwrap();
+        let mut locks = self.locks.lock().await;
         locks.insert(name.to_string(), (key, ttl));
         Ok(())
     }
 
-    pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
-        // Get lock information
-        let key;
-        let ttl;
-        {
-            let locks = self.locks.lock().unwrap();
-            if let Some((lock_key, lock_ttl)) = locks.get(name) {
-                key = lock_key.clone();
-                ttl = *lock_ttl;
-            } else {
-                return Ok(false);
-            }
+    pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let locks = self.locks.lock().await;
+        if let Some((lock_key, ttl)) = locks.get(name) {
+            return Ok(self
+                .leadership_manager
+                .attempt_lock(self.connection_manager.connection.clone(), lock_key, *ttl)
+                .await);
         }
-
-        // Attempt to renew the lock
-        if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.write().await;
-            let script = redis::Script::new(
-                "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], ARGV[2]) else return 0 end",
-            );
-            let result: i32 = script
-                .key(&key)
-                .arg(&self.instance_id)
-                .arg(ttl)
-                .invoke_async(&mut *conn)
-                .await?;
-            Ok(result == 1)
-        } else if let Some(ref mock_client) = self.fallback {
-            let result = mock_client.renew_lock(&key, &self.instance_id).await;
-            Ok(result)
-        } else {
-            Ok(false)
-        }
+        Ok(false)
     }
 
-    pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
-        let mut locks = self.locks.lock().unwrap();
-        if let Some((key, _ttl)) = locks.get(name) {
-            let _: anyhow::Result<()> = if self.fallback.is_none() {
-                let rt = tokio::runtime::Handle::try_current();
-                if let Ok(handle) = rt {
-                    handle.block_on(async {
-                        let mut conn = self.connection_manager.connection.write().await;
-                        let script = redis::Script::new(
-                            "if redis.call('GET', KEYS[1]) == ARGV[1] then\n return redis.call('DEL', KEYS[1])\nelse\n return 0\nend"
-                        );
-                        let _: () = script.key(key).arg(&self.instance_id).invoke_async(&mut *conn).await.unwrap_or(());
-                    });
-                }
-                Ok(())
-            } else if let Some(ref mock_client) = self.fallback {
-                let _ =
-                    futures::executor::block_on(mock_client.release_lock(key, &self.instance_id));
-                Ok(())
-            } else {
-                Ok(())
-            };
-            locks.remove(name);
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Lock not registered"))
+    pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
+        // Map to the existing check_and_renew_lock
+        let locks = self.locks.lock().await;
+        if let Some((lock_key, ttl)) = locks.get(name) {
+            let result = self
+                .leadership_manager
+                .renew_lock(
+                    self.connection_manager.connection.clone(),
+                    lock_key,
+                    &self.instance_id,
+                    *ttl,
+                )
+                .await?;
+            return Ok(result);
         }
+        Ok(false)
     }
 
     pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
-        // Get lock information
-        let key;
-        {
-            let locks = self.locks.lock().unwrap();
-            if let Some((lock_key, _)) = locks.get(name) {
-                key = lock_key.clone();
-            } else {
-                return Ok((false, false));
-            }
-        }
+        // First check if we already have the lock
+        let had_lock = self.attempt_lock(name).await?;
 
-        // Check if we have the lock and renew it
-        if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.write().await;
-            let script = redis::Script::new(
-                r#"
-                local current = redis.call('GET', KEYS[1])
-                if current == ARGV[1] then
-                    redis.call('EXPIRE', KEYS[1], ARGV[2])
-                    return {1, 1}
-                elseif current then
-                    return {0, 1}
-                else
-                    return {0, 0}
-                end
-                "#,
-            );
-            let result: Vec<i32> = script
-                .key(&key)
-                .arg(&self.instance_id)
-                .arg(10) // Default TTL for now
-                .invoke_async(&mut *conn)
+        // Then attempt to renew it
+        let now_has_lock = self.renew_lock(name).await?;
+
+        // Return if we have the lock and if this is a new acquisition
+        Ok((now_has_lock, now_has_lock && !had_lock))
+    }
+
+    pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
+        let locks = self.locks.lock().await;
+        if let Some((lock_key, _)) = locks.get(name) {
+            return self
+                .leadership_manager
+                .release_lock(
+                    self.connection_manager.connection.clone(),
+                    lock_key,
+                    &self.instance_id,
+                )
+                .await;
+        }
+        Ok(())
+    }
+
+    pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let locks = self.locks.lock().await;
+        if let Some((lock_key, _)) = locks.get(name) {
+            let result = self
+                .leadership_manager
+                .has_lock(
+                    self.connection_manager.connection.clone(),
+                    lock_key,
+                    &self.instance_id,
+                )
                 .await?;
-
-            if result.len() >= 2 {
-                Ok((result[0] == 1, result[1] == 1))
-            } else {
-                Err(anyhow::anyhow!("Unexpected response from Redis"))
-            }
-        } else if let Some(ref mock_client) = self.fallback {
-            let has_lock = mock_client.attempt_lock(&key, &self.instance_id).await;
-            Ok((has_lock, true))
-        } else {
-            Ok((false, false))
+            return Ok(result);
         }
+        Ok(false)
     }
 
     // -------------------------------
@@ -727,7 +739,6 @@ impl NewRedisClient {
 
     pub fn start_periodic_tasks(&self) {
         // Spawn a periodic presence update task
-        let _presence_manager = self.presence_manager.clone();
         let connection = self.connection_manager.connection.clone();
         let key_prefix = self.config.key_prefix.clone();
         let instance_id = self.instance_id.clone();
@@ -756,27 +767,59 @@ impl NewRedisClient {
         drop(presence_guard);
 
         // Spawn a connection monitor task
-        let connection_monitor = self.connection_manager.clone();
+        let connection_manager = self.connection_manager.clone();
         let config = self.config.clone();
-        let monitor_task = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-            loop {
-                interval.tick().await;
-                if !connection_monitor.ping().await {
-                    log::error!("Redis connection lost, attempting reconnection");
-                    let client = Client::open(config.url.clone())
-                        .expect("Failed to open client during reconnection");
-                    connection_monitor
-                        .attempt_reconnection(&client, &config)
-                        .await;
+        if let Ok(mut guard) = self.connection_monitor_task.lock() {
+            *guard = Some(tokio::spawn(async move {
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
+                loop {
+                    interval.tick().await;
+                    if !connection_manager.ping().await {
+                        log::error!(
+                            "<NewRedisClient> Redis connection lost, attempting reconnection"
+                        );
+                        let client = redis::Client::open(config.url.clone())
+                            .expect("Failed to open client during reconnection");
+                        connection_manager
+                            .attempt_reconnection(&client, &config)
+                            .await;
+                    }
                 }
-            }
-        });
+            }));
+        } else {
+            log::error!("<NewRedisClient> Failed to lock connection_monitor_task");
+        }
 
-        // Save the connection monitor task handle
-        let mut monitor_guard = self.connection_monitor_task.lock().unwrap();
-        *monitor_guard = Some(monitor_task);
-        drop(monitor_guard);
+        // Create a closure that builds the monitoring task
+        let create_monitor_task = || {
+            let connection_manager = self.connection_manager.clone();
+            let config = self.config.clone();
+
+            tokio::spawn(async move {
+                let client = redis::Client::open(config.url.clone()).unwrap();
+                loop {
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    if !connection_manager.ping().await {
+                        connection_manager
+                            .attempt_reconnection(&client, &config)
+                            .await;
+                    }
+                }
+            })
+        };
+
+        // Create a task to return
+        let task_to_return = create_monitor_task();
+
+        // Create another task for the mutex
+        if let Ok(mut guard) = self.connection_monitor_task.lock() {
+            *guard = Some(create_monitor_task());
+        } else {
+            log::error!("<NewRedisClient> Failed to lock connection_monitor_task");
+        }
+
+        // Discard the returned task to match the expected unit type
+        std::mem::drop(task_to_return);
     }
 
     // -------------------------------
@@ -786,7 +829,7 @@ impl NewRedisClient {
 
 impl Drop for NewRedisClient {
     fn drop(&mut self) {
-        log::info!("NewRedisClient is being dropped. Cleaning up tasks and releasing locks.");
+        log::info!("<NewRedisClient> NewRedisClient is being dropped. Cleaning up tasks and releasing locks.");
         if let Some(task) = self.listener_task.lock().unwrap().take() {
             task.abort();
         }
@@ -797,7 +840,7 @@ impl Drop for NewRedisClient {
             task.abort();
         }
         // Release all registered locks
-        let locks = self.locks.lock().unwrap();
+        let locks = self.locks.blocking_lock();
         for (name, (key, _ttl)) in locks.iter() {
             let _: anyhow::Result<()> = if self.fallback.is_none() {
                 let rt = tokio::runtime::Handle::try_current();
@@ -818,7 +861,238 @@ impl Drop for NewRedisClient {
             } else {
                 Ok(())
             };
-            log::info!("Released lock {}", name);
+            log::info!("<NewRedisClient> Released lock {}", name);
         }
     }
+}
+
+impl NewRedisClient {
+    // ------------------------------------------
+    // Compatibility layer for the old RedisClient API
+    // ------------------------------------------
+
+    pub fn service_prefix(&self, keys: &[&str]) -> String {
+        format!("{}::{}", self.config.key_prefix, keys.join("::"))
+    }
+
+    pub fn instance_prefix(&self, key: &str) -> String {
+        self.service_prefix(&[&self.instance_id, key])
+    }
+
+    pub async fn presence_update(&mut self) -> anyhow::Result<()> {
+        self.presence_manager
+            .update_presence(self.connection_manager.connection.clone())
+            .await
+    }
+
+    pub async fn register_lock_compat(&mut self, name: &str, ttl: i64) -> anyhow::Result<()> {
+        // In the old client this registered the lock in memory
+        let lock_key = self.service_prefix(&[name, "lock"]);
+        let mut locks = self.locks.lock().await;
+        locks.insert(name.to_string(), (lock_key, ttl));
+        Ok(())
+    }
+
+    pub async fn send_message_to_instance(
+        &self,
+        message: &str,
+        target_instance_id: &str,
+    ) -> anyhow::Result<()> {
+        let channel = format!("{}::{}", self.config.key_prefix, target_instance_id);
+        self.messaging_manager
+            .publish_message(
+                self.connection_manager.connection.clone(),
+                &channel,
+                message,
+            )
+            .await
+    }
+
+    pub async fn broadcast_message(&mut self, message: &str) -> anyhow::Result<()> {
+        let broadcast_channel = self.service_prefix(&["msgchannel"]);
+        self.messaging_manager
+            .publish_message(
+                self.connection_manager.connection.clone(),
+                &broadcast_channel,
+                message,
+            )
+            .await
+    }
+
+    pub fn get_instance_id(&self) -> &str {
+        &self.instance_id
+    }
+
+    pub fn get_service_name(&self) -> &str {
+        &self.service_name
+    }
+
+    pub fn start_periodic_tasks_compat(&mut self) {
+        // This starts both presence updates and connection monitoring
+        let connection_manager = self.connection_manager.clone();
+        let presence_manager = self.presence_manager.clone();
+        let _instance_id = self.instance_id.clone();
+        let _config = self.config.clone();
+
+        // Start presence update task
+        let presence_task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+                if let Err(e) = presence_manager
+                    .update_presence(connection_manager.connection.clone())
+                    .await
+                {
+                    log::error!("<NewRedisClient> Error updating presence: {}", e);
+                }
+            }
+        });
+
+        let mut presence_task_guard = match self.presence_task.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                log::error!("<NewRedisClient> Failed to lock presence_task: {}", e);
+                return;
+            }
+        };
+        *presence_task_guard = Some(presence_task);
+
+        // Start connection monitor task
+        self.start_connection_monitor();
+    }
+
+    pub fn start_connection_monitor(&self) -> tokio::task::JoinHandle<()> {
+        // Create a closure that builds the monitoring task
+        let create_monitor_task = || {
+            let connection_manager = self.connection_manager.clone();
+            let config = self.config.clone();
+
+            tokio::spawn(async move {
+                let client = redis::Client::open(config.url.clone()).unwrap();
+                loop {
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    if !connection_manager.ping().await {
+                        connection_manager
+                            .attempt_reconnection(&client, &config)
+                            .await;
+                    }
+                }
+            })
+        };
+
+        // Create a task to return
+        let task_to_return = create_monitor_task();
+
+        // Create another task for the mutex
+        if let Ok(mut guard) = self.connection_monitor_task.lock() {
+            *guard = Some(create_monitor_task());
+        } else {
+            log::error!("<NewRedisClient> Failed to lock connection_monitor_task");
+        }
+
+        // Return the task
+        task_to_return
+    }
+
+    pub fn stop_periodic_tasks(&mut self) -> anyhow::Result<()> {
+        // Stop presence task
+        if let Ok(mut task) = self.presence_task.lock() {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+        }
+
+        // Stop connection monitor task
+        if let Ok(mut task) = self.connection_monitor_task.lock() {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+        }
+
+        // Stop message listener task
+        if let Ok(mut task) = self.listener_task.lock() {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn check_connection(&mut self) -> anyhow::Result<()> {
+        let is_connected = self.connection_manager.ping().await;
+        self.connection_manager
+            .state
+            .store(is_connected, Ordering::SeqCst);
+
+        if !is_connected {
+            let client = Client::open(self.config.url.clone())?;
+            self.connection_manager
+                .attempt_reconnection(&client, &self.config)
+                .await;
+        }
+
+        Ok(())
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connection_manager.state.load(Ordering::SeqCst)
+    }
+
+    // Add the key-value operations and queue operations
+
+    pub async fn set_with_service_prefix<V: redis::ToRedisArgs + Send + Sync>(
+        &self,
+        key: &str,
+        value: V,
+    ) -> anyhow::Result<()> {
+        let prefixed_key = self.service_prefix(&[key]);
+        let mut conn = self.connection_manager.connection.write().await;
+        conn.set::<_, _, ()>(&prefixed_key, value).await?;
+        Ok(())
+    }
+
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> anyhow::Result<Option<V>> {
+        let prefixed_key = self.service_prefix(&[key]);
+        let mut conn = self.connection_manager.connection.write().await;
+        let result = conn.get(&prefixed_key).await?;
+        Ok(result)
+    }
+
+    pub async fn get_queue_message_compat(
+        &self,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<Option<String>> {
+        let queue_key = match feature_name {
+            Some(feature) => self.service_prefix(&["queue", feature]),
+            None => self.service_prefix(&["queue"]),
+        };
+        let mut conn = self.connection_manager.connection.write().await;
+        let result: Option<String> = conn.lpop(&queue_key, None).await?;
+        Ok(result)
+    }
+
+    pub async fn mark_queue_message_compat(
+        &mut self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let status = if success { "success" } else { "failure" };
+        let queue_history_key = match feature_name {
+            Some(feature) => self.service_prefix(&["queue", "history", feature, status]),
+            None => self.service_prefix(&["queue", "history", status]),
+        };
+
+        let mut conn = self.connection_manager.connection.write().await;
+        conn.rpush::<_, _, ()>(&queue_history_key, message).await?;
+        Ok(())
+    }
+
+    // ------------------------------------------
+    // End of compatibility layer
+    // ------------------------------------------
 }

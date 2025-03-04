@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import dataclass
 from typing import Optional
-from pydantic import BaseModel, Json
+from pydantic import BaseModel
 
 from moose_lib.query_param import convert_pydantic_definition, QueryField, ArrayType, map_params_to_class, \
     convert_dataclass_definition

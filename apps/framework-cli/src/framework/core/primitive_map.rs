@@ -171,7 +171,7 @@ impl PrimitiveMap {
         version: &str,
         primitive_map: &mut PrimitiveMap,
     ) -> Result<(), PrimitiveMapLoadingError> {
-        if project.language == Typescript {
+        if project.features.data_model_v2 && project.language == Typescript {
             let objects = crate::framework::typescript::export_collectors::collect_from_index(
                 &project.project_location,
             )

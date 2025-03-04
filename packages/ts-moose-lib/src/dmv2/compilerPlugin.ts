@@ -9,7 +9,7 @@ import {
   transformCreateConsumptionApi,
 } from "../consumption-apis/typiaValidation";
 
-const importTypia = factory.createImportDeclaration(
+export const importTypia = factory.createImportDeclaration(
   undefined,
   factory.createImportClause(
     false,

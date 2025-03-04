@@ -1297,14 +1297,18 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
     }
 
     if !project.is_production {
-        let docker = DockerClient::new(settings);
-        with_spinner(
-            "Stopping containers",
-            || {
-                let _ = docker.stop_containers(project);
-            },
-            true,
-        );
+        if std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN").is_err() {
+            let docker = DockerClient::new(settings);
+            with_spinner(
+                "Stopping containers",
+                || {
+                    let _ = docker.stop_containers(project);
+                },
+                true,
+            );
+        } else {
+            info!("Skipping container shutdown due to MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable");
+        }
     }
     std::process::exit(0);
 }

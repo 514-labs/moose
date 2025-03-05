@@ -140,6 +140,10 @@ pub struct ProjectFeatures {
     /// Whether workflows are enabled
     #[serde(default)]
     pub workflows: bool,
+
+    /// ongoing redesign of data models
+    #[serde(default)]
+    pub data_model_v2: bool,
 }
 
 /// Represents a user's Moose project
@@ -194,6 +198,7 @@ impl Default for ProjectFeatures {
         ProjectFeatures {
             streaming_engine: true,
             workflows: false,
+            data_model_v2: false,
         }
     }
 }

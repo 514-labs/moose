@@ -1,4 +1,5 @@
 use log::warn;
+use std::path::PathBuf;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -9,6 +10,8 @@ use super::code_loader::MappingError;
 use crate::framework::data_model::config::DataModelConfig;
 use crate::framework::data_model::DuplicateModelError;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::languages::SupportedLanguages::Typescript;
+use crate::framework::versions::Version;
 use crate::framework::{
     consumption::loader::{load_consumption, ConsumptionLoaderError},
     core::infrastructure::table::ColumnType,
@@ -168,6 +171,45 @@ impl PrimitiveMap {
         version: &str,
         primitive_map: &mut PrimitiveMap,
     ) -> Result<(), PrimitiveMapLoadingError> {
+        if project.features.data_model_v2 && project.language == Typescript {
+            let objects = crate::framework::typescript::export_collectors::collect_from_index(
+                &project.project_location,
+            )
+            .await
+            .map_err(ModelConfigurationError::from)
+            .map_err(DataModelError::from)?;
+
+            for table in objects.values() {
+                let model = DataModel {
+                    columns: serde_json::from_value(
+                        table
+                            .as_object()
+                            .unwrap()
+                            .get("columnArray")
+                            .unwrap()
+                            .clone(),
+                    )
+                    .unwrap(),
+                    name: table
+                        .as_object()
+                        .unwrap()
+                        .get("name")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                    config: serde_json::from_value(
+                        table.as_object().unwrap().get("config").unwrap().clone(),
+                    )
+                    .unwrap(),
+                    abs_file_path: PathBuf::from(""), // TODO,
+                    version: Version::from_string(version.to_string()),
+                };
+                primitive_map.datamodels.add(model).unwrap();
+            }
+            return Ok(());
+        }
+
         let data_models_root = project.versioned_data_model_dir(version)?;
         log::debug!("Loading data models from: {:?}", data_models_root);
 

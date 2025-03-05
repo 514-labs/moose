@@ -9,6 +9,8 @@ export default defineConfig({
     "src/moose-tspc.ts",
     "src/moose-runner.ts",
     "src/moose-exec.ts",
+    "src/dmv2/compilerPlugin.ts",
+    "src/dmv2/index.ts",
   ],
   format: ["cjs", "esm"],
   dts: true, // Generate declaration file (.d.ts)

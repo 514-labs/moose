@@ -6,6 +6,7 @@ import {
   Column,
   DataEnum,
   DataModel,
+  NullType,
   UnknownType,
   UnsupportedEnum,
   UnsupportedFeature,
@@ -76,6 +77,13 @@ export default function (
               field: e.fieldName,
               parent: e.typeName,
               type: e.t.getSymbol()?.name,
+            };
+          } else if (e instanceof NullType) {
+            output = {
+              error_type: "unknown_type",
+              field: e.fieldName,
+              parent: e.typeName,
+              type: "null",
             };
           } else if (e instanceof UnsupportedEnum) {
             output = {

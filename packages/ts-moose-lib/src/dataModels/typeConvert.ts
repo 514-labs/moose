@@ -10,6 +10,7 @@ import {
   ArrayType,
   Column,
   DataType,
+  NullType,
   UnknownType,
   UnsupportedFeature,
 } from "./dataModelTypes";
@@ -22,12 +23,18 @@ const dateType = (checker: TypeChecker) =>
     .getConstructSignatures()[0]
     .getReturnType();
 
+// making throws expressions so that they can be used in ternaries
+
 const throwUnknownType = (
   t: ts.Type,
   fieldName: string,
   typeName: string,
 ): never => {
   throw new UnknownType(t, fieldName, typeName);
+};
+
+const throwNullType = (fieldName: string, typeName: string): never => {
+  throw new NullType(fieldName, typeName);
 };
 
 const toArrayType = ([elementNullable, elementType]: [
@@ -78,7 +85,9 @@ const tsTypeToDataType = (
                     columns: toColumns(nonNull, checker),
                     jwt: isJwt,
                   }
-                : throwUnknownType(t, fieldName, typeName);
+                : nonNull == checker.getNeverType()
+                  ? throwNullType(fieldName, typeName)
+                  : throwUnknownType(t, fieldName, typeName);
 
   return [nullable, dataType];
 };

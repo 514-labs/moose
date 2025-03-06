@@ -16,9 +16,10 @@ pub enum TypescriptParsingError {
     #[error("Failure setting up the file structure")]
     FileSystemError(#[from] std::io::Error),
     TypescriptCompilerError(Option<std::io::Error>),
-    #[error("Typescript Parser - Unsupported data type: {type_name}")]
+    #[error("Typescript Parser - Unsupported data type in {field_name}: {type_name}")]
     UnsupportedDataTypeError {
         type_name: String,
+        field_name: String,
     },
 
     #[error("Invalid output from compiler plugin. Possible incompatible versions between moose-lib and moose-cli")]
@@ -118,7 +119,15 @@ pub fn extract_data_model_from_file(
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                return Err(TypescriptParsingError::UnsupportedDataTypeError { type_name });
+                let field_name = output_json
+                    .get("field")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Err(TypescriptParsingError::UnsupportedDataTypeError {
+                    type_name,
+                    field_name,
+                });
             } else if error_type == "unsupported_enum" {
                 return Err(TypescriptParsingError::OtherError {
                     message: "We do not allow to mix String enums with Number based enums, please choose one".to_string()

@@ -33,6 +33,16 @@ export class UnknownType extends Error {
   }
 }
 
+export class NullType extends Error {
+  fieldName: string;
+  typeName: string;
+  constructor(fieldName: string, typeName: string) {
+    super();
+    this.fieldName = fieldName;
+    this.typeName = typeName;
+  }
+}
+
 export class UnsupportedEnum extends Error {
   enumName: string;
   constructor(enumName: string) {

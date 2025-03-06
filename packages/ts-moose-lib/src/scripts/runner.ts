@@ -49,6 +49,12 @@ function collectActivities(
   return scriptPaths;
 }
 
+/**
+ * This looks similar to the client in apis.
+ * Temporal SDK uses similar looking connection options & client,
+ * but there are different libraries for a worker like this & a client
+ * like in the apis.
+ */
 async function createTemporalConnection(
   logger: DefaultLogger,
   temporalUrl: string,
@@ -69,13 +75,13 @@ async function createTemporalConnection(
   };
 
   if (!temporalUrl.includes("localhost")) {
-    logger.info("Using TLS for non-local Temporal");
     // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
     const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
     const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
     const apiKey = process.env.MOOSE_TEMPORAL_CONFIG__API_KEY || "";
 
     if (certPath && keyPath) {
+      logger.info("Using TLS for non-local Temporal");
       const cert = await fs.readFileSync(certPath);
       const key = await fs.readFileSync(keyPath);
 
@@ -94,6 +100,8 @@ async function createTemporalConnection(
       connectionOptions.metadata = {
         "temporal-namespace": namespace,
       };
+    } else {
+      logger.error("No authentication credentials provided for Temporal.");
     }
   }
 

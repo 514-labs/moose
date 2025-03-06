@@ -9,8 +9,12 @@
  */
 
 import { ClickHouseClient, ResultSet } from "@clickhouse/client";
-import { Client as TemporalClient, Connection } from "@temporalio/client";
-import { Duration, StringValue } from "@temporalio/common";
+import {
+  Client as TemporalClient,
+  Connection,
+  ConnectionOptions,
+} from "@temporalio/client";
+import { StringValue } from "@temporalio/common";
 import { randomUUID } from "node:crypto";
 import * as path from "path";
 import * as fs from "fs";
@@ -236,12 +240,11 @@ export class WorkflowClient {
     );
 
     const handle = await this.client!.workflow.start("ScriptWorkflow", {
-      args: [
-        `${process.cwd()}/app/scripts/${name}`,
-        JSON.stringify(input_data),
-      ],
+      args: [`${process.cwd()}/app/scripts/${name}`, input_data],
       taskQueue: "typescript-script-queue",
       workflowId: name,
+      workflowIdConflictPolicy: "FAIL",
+      workflowIdReusePolicy: "ALLOW_DUPLICATE",
       retry: {
         maximumAttempts: config.retries,
       },
@@ -276,17 +279,63 @@ export class WorkflowClient {
   }
 }
 
+/**
+ * This looks similar to the client in runner.ts which is a worker.
+ * Temporal SDK uses similar looking connection options & client,
+ * but there are different libraries for a worker & client like this one
+ * that triggers workflows.
+ */
 export async function getTemporalClient(
-  address: string,
+  temporalUrl: string,
 ): Promise<TemporalClient | undefined> {
   try {
-    console.log(`Connecting to Temporal at ${address}`);
-    const connection = await Connection.connect({
-      address,
+    let namespace = "default";
+    if (!temporalUrl.includes("localhost")) {
+      // Remove port and just get <namespace>.<account>
+      const hostPart = temporalUrl.split(":")[0];
+      const match = hostPart.match(/^([^.]+\.[^.]+)/);
+      if (match && match[1]) {
+        namespace = match[1];
+      }
+    }
+    console.info(`Using namespace from URL: ${namespace}`);
+
+    let connectionOptions: ConnectionOptions = {
+      address: temporalUrl,
       connectTimeout: "3s",
-    });
-    const client = new TemporalClient({ connection });
+    };
+
+    if (!temporalUrl.includes("localhost")) {
+      // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
+      const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
+      const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
+      const apiKey = process.env.MOOSE_TEMPORAL_CONFIG__API_KEY || "";
+
+      if (certPath && keyPath) {
+        console.log("Using TLS for non-local Temporal");
+        const cert = await fs.readFileSync(certPath);
+        const key = await fs.readFileSync(keyPath);
+
+        connectionOptions.tls = {
+          clientCertPair: { crt: cert, key: key },
+        };
+      } else if (apiKey) {
+        console.log("Using API key for non-local Temporal");
+        // URL with API key uses gRPC regional endpoint
+        connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
+        connectionOptions.apiKey = apiKey;
+        connectionOptions.tls = {};
+        connectionOptions.metadata = {
+          "temporal-namespace": namespace,
+        };
+      }
+    }
+
+    console.log(`Connecting to Temporal at ${temporalUrl}`);
+    const connection = await Connection.connect(connectionOptions);
+    const client = new TemporalClient({ connection, namespace });
     console.log("Connected to Temporal server");
+
     return client;
   } catch (error) {
     console.error(

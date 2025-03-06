@@ -25,6 +25,7 @@
     "@sentry/profiling-node": "^8.38.0",
     "@temporalio/activity": "^1.11.7",
     "@temporalio/client": "^1.11.7",
+    "@temporalio/common": "^1.11.7",
     "@temporalio/worker": "^1.11.7",
     "@temporalio/workflow": "^1.11.7",
     "fastq": "1.17.1",

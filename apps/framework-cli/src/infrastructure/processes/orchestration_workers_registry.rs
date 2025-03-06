@@ -9,7 +9,7 @@ use crate::{
         core::infrastructure::orchestration_worker::OrchestrationWorker,
         languages::SupportedLanguages,
         python,
-        scripts::collector::{serialize_configs, Collector, WorkflowCollector},
+        scripts::collector::{Collector, WorkflowCollector},
         typescript,
     },
     project::Project,
@@ -78,18 +78,15 @@ impl OrchestrationWorkersRegistry {
             orchestration_worker.id()
         );
 
-        if orchestration_worker.supported_language == SupportedLanguages::Python {
-            let mut collector = WorkflowCollector::new();
-            if collector.collect(self.project.scripts_dir()).is_ok() {
-                if let Ok(internal_dir) = self.project.internal_dir() {
-                    serialize_configs(
-                        &collector,
-                        SupportedLanguages::Python,
-                        internal_dir.join(WORKFLOW_CONFIGS),
-                    )
-                }
+        let language = orchestration_worker.supported_language;
+        let mut collector = WorkflowCollector::new();
+        if collector.collect(self.project.scripts_dir()).is_ok() {
+            if let Ok(internal_dir) = self.project.internal_dir() {
+                collector.serialize_configs(language, internal_dir.join(WORKFLOW_CONFIGS))
             }
+        }
 
+        if language == SupportedLanguages::Python {
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {

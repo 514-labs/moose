@@ -9,7 +9,11 @@
  */
 
 import { ClickHouseClient, ResultSet } from "@clickhouse/client";
+import { Client as TemporalClient, Connection } from "@temporalio/client";
+import { Duration, StringValue } from "@temporalio/common";
 import { randomUUID } from "node:crypto";
+import * as path from "path";
+import * as fs from "fs";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
@@ -128,6 +132,16 @@ function emptyIfUndefined(value: string | undefined): string {
 }
 
 export class MooseClient {
+  query: QueryClient;
+  workflow: WorkflowClient;
+
+  constructor(queryClient: QueryClient, temporalClient?: TemporalClient) {
+    this.query = queryClient;
+    this.workflow = new WorkflowClient(temporalClient);
+  }
+}
+
+export class QueryClient {
   client: ClickHouseClient;
   query_id_prefix: string;
   constructor(client: ClickHouseClient, query_id_prefix: string) {
@@ -135,7 +149,7 @@ export class MooseClient {
     this.query_id_prefix = query_id_prefix;
   }
 
-  async query<T = any>(
+  async execute<T = any>(
     sql: Sql,
   ): Promise<ResultSet<"JSONEachRow"> & { __query_result_t?: T[] }> {
     const parameterizedStubs = sql.values.map((v, i) =>
@@ -162,6 +176,120 @@ export class MooseClient {
       format: "JSONEachRow",
       query_id: this.query_id_prefix + randomUUID(),
     });
+  }
+}
+
+interface WorkflowConfig {
+  name: string;
+  schedule: string;
+  retries: number;
+  timeout: string;
+  tasks: string[];
+}
+
+export class WorkflowClient {
+  client: TemporalClient | undefined;
+
+  constructor(temporalClient?: TemporalClient) {
+    this.client = temporalClient;
+  }
+
+  async execute(name: string, input_data: any) {
+    try {
+      if (!this.client) {
+        return {
+          status: 404,
+          body: `Temporal client not found. Is the feature flag enabled?`,
+        };
+      }
+
+      const configs = await this.loadConsolidatedConfigs();
+      const config = configs[name];
+      if (!config) {
+        return {
+          status: 404,
+          body: `Workflow config not found for ${name}`,
+        };
+      }
+
+      const runId = await this.startWorkflowAsync(name, config, input_data);
+
+      return {
+        status: 200,
+        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${name}/${runId}/history`,
+      };
+    } catch (error) {
+      return {
+        status: 400,
+        body: `Error starting workflow: ${error}`,
+      };
+    }
+  }
+
+  private async startWorkflowAsync(
+    name: string,
+    config: WorkflowConfig,
+    input_data: any,
+  ) {
+    console.log(
+      `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
+    );
+
+    const handle = await this.client!.workflow.start("ScriptWorkflow", {
+      args: [
+        `${process.cwd()}/app/scripts/${name}`,
+        JSON.stringify(input_data),
+      ],
+      taskQueue: "typescript-script-queue",
+      workflowId: name,
+      retry: {
+        maximumAttempts: config.retries,
+      },
+      workflowRunTimeout: config.timeout as StringValue,
+    });
+
+    return handle.firstExecutionRunId;
+  }
+
+  private async loadConsolidatedConfigs(): Promise<
+    Record<string, WorkflowConfig>
+  > {
+    const configPath = path.join(
+      process.cwd(),
+      ".moose",
+      "workflow_configs.json",
+    );
+    const configContent = await fs.readFileSync(configPath, "utf8");
+    const configArray = JSON.parse(configContent) as WorkflowConfig[];
+
+    const configMap = configArray.reduce(
+      (map: Record<string, WorkflowConfig>, config: WorkflowConfig) => {
+        if (config.name) {
+          map[config.name] = config;
+        }
+        return map;
+      },
+      {},
+    );
+
+    return configMap;
+  }
+}
+
+export async function getTemporalClient(
+  address: string,
+): Promise<TemporalClient | undefined> {
+  try {
+    console.log(`Connecting to Temporal at ${address}`);
+    const connection = await Connection.connect({ address });
+    const client = new TemporalClient({ connection });
+    console.log("Connected to Temporal server");
+    return client;
+  } catch (error) {
+    console.error(
+      `Failed to connect to Temporal. Is the feature flag enabled?`,
+    );
+    return undefined;
   }
 }
 

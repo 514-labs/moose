@@ -27,6 +27,7 @@ pub struct ConsumptionProcessRegistry {
     language: SupportedLanguages,
     project_path: PathBuf,
     jwt_config: Option<JwtConfig>,
+    temporal_url: String,
 }
 
 impl ConsumptionProcessRegistry {
@@ -36,6 +37,7 @@ impl ConsumptionProcessRegistry {
         jwt_config: Option<JwtConfig>,
         dir: PathBuf,
         project_path: PathBuf,
+        temporal_url: String,
     ) -> Self {
         Self {
             api_process: Option::None,
@@ -44,6 +46,7 @@ impl ConsumptionProcessRegistry {
             clickhouse_config,
             project_path,
             jwt_config,
+            temporal_url,
         }
     }
 
@@ -61,6 +64,7 @@ impl ConsumptionProcessRegistry {
                 self.jwt_config.clone(),
                 &self.dir,
                 &self.project_path,
+                &self.temporal_url,
             ),
         }?;
 

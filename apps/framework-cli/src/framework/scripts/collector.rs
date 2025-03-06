@@ -101,6 +101,15 @@ impl WorkflowCollector {
             workflows_by_language: HashMap::new(),
         }
     }
+
+    pub fn serialize_configs(&self, language: SupportedLanguages, output_path: PathBuf) {
+        if let Some(workflows) = self.items().get(&language) {
+            let configs: Vec<_> = workflows.iter().map(|w| w.config.clone()).collect();
+            if let Ok(serialized_configs) = serde_json::to_string_pretty(&configs) {
+                let _ = fs::write(output_path, serialized_configs);
+            }
+        }
+    }
 }
 
 impl Collector for WorkflowCollector {
@@ -136,19 +145,6 @@ impl Collector for WorkflowCollector {
 
     fn items(&self) -> &HashMap<SupportedLanguages, Vec<Self::Item>> {
         &self.workflows_by_language
-    }
-}
-
-pub fn serialize_configs(
-    collector: &WorkflowCollector,
-    language: SupportedLanguages,
-    output_path: PathBuf,
-) {
-    if let Some(workflows) = collector.items().get(&language) {
-        let configs: Vec<_> = workflows.iter().map(|w| w.config.clone()).collect();
-        if let Ok(serialized_configs) = serde_json::to_string_pretty(&configs) {
-            let _ = fs::write(output_path, serialized_configs);
-        }
     }
 }
 

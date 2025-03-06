@@ -21,6 +21,7 @@ pub fn run(
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
     project_path: &Path,
+    temporal_url: &str,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
@@ -57,6 +58,7 @@ pub fn run(
         &jwt_issuer,
         &jwt_audience,
         &enforce_on_all_consumptions_apis,
+        &temporal_url,
     ];
 
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;

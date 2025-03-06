@@ -263,7 +263,7 @@ struct RouteService {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
     jwt_config: Option<JwtConfig>,
-    configured_producer: ConfiguredProducer,
+    configured_producer: Option<ConfiguredProducer>,
     current_version: String,
     is_prod: bool,
     metrics: Arc<Metrics>,
@@ -832,7 +832,7 @@ async fn router(
     path_prefix: Option<String>,
     consumption_apis: &RwLock<HashSet<String>>,
     jwt_config: Option<JwtConfig>,
-    configured_producer: ConfiguredProducer,
+    configured_producer: Option<ConfiguredProducer>,
     host: String,
     is_prod: bool,
     metrics: Arc<Metrics>,
@@ -867,23 +867,23 @@ async fn router(
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
     let res = match (req.method(), &route_split[..]) {
-        (&hyper::Method::POST, ["ingest", _]) => {
+        (&hyper::Method::POST, ["ingest", _]) if project.features.streaming_engine => {
             ingest_route(
                 req,
                 // without explicit version, go to current project version
                 route.join(current_version),
-                configured_producer,
+                configured_producer.unwrap(),
                 route_table,
                 is_prod,
                 jwt_config,
             )
             .await
         }
-        (&hyper::Method::POST, ["ingest", _, _]) => {
+        (&hyper::Method::POST, ["ingest", _, _]) if project.features.streaming_engine => {
             ingest_route(
                 req,
                 route,
-                configured_producer,
+                configured_producer.unwrap(),
                 route_table,
                 is_prod,
                 jwt_config,
@@ -1154,7 +1154,11 @@ impl Webserver {
             .await
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
-        let producer = redpanda::create_producer(project.redpanda_config.clone());
+        let producer = if project.features.streaming_engine {
+            Some(redpanda::create_producer(project.redpanda_config.clone()))
+        } else {
+            None
+        };
 
         show_message!(
             MessageType::Success,

@@ -37,7 +37,8 @@ pub enum Commands {
     },
     /// Builds your moose project
     Build {
-        #[arg(short, long)]
+        /// Build for docker
+        #[arg(short, long, default_value = "false")]
         docker: bool,
         /// Build for amd64 architecture
         #[arg(long)]

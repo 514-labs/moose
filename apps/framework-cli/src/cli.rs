@@ -17,12 +17,13 @@ use commands::{
     GenerateCommand, WorkflowCommands,
 };
 use config::ConfigError;
-use display::with_spinner_async;
+use display::{with_spinner, with_spinner_async};
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
+use routines::build::build_package;
 use routines::clean::clean_project;
 use routines::datamodel::parse_and_generate;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
@@ -314,7 +315,7 @@ async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                 );
-                // TODO get rid of the routines and use functions instead
+
                 let docker_client = DockerClient::new(&settings);
                 create_dockerfile(&project_arc, &docker_client)?.show();
                 let _: RoutineSuccess =
@@ -327,10 +328,32 @@ async fn top_command_handler(
                     "Docker image(s)".to_string(),
                 )))
             } else {
-                Err(RoutineFailure::error(Message {
-                    action: "Build".to_string(),
-                    details: "Docker flag is not set and is currently mandatory".to_string(),
-                }))
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::BuildCommand,
+                    Some(project_arc.name()),
+                    &settings,
+                );
+
+                // Use the new build_package function instead of Docker build
+                let package_path = with_spinner(
+                    "Bundling deployment package",
+                    || {
+                        build_package(&project_arc).map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Build".to_string(),
+                                details: format!("Failed to build package: {:?}", e),
+                            })
+                        })
+                    },
+                    !project_arc.is_production,
+                )?;
+
+                wait_for_usage_capture(capture_handle).await;
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Built".to_string(),
+                    format!("Package available at {}", package_path.display()),
+                )))
             }
         }
         Commands::Dev {} => {

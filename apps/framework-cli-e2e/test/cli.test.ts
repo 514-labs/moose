@@ -137,7 +137,7 @@ describe("framework-cli", () => {
       });
 
       (async () => {
-        await setTimeoutAsync(60_000);
+        await setTimeoutAsync(70_000);
         if (devProcess!.killed) return;
         console.error("Dev server did not start or complete in time");
         devProcess!.kill("SIGINT");

@@ -14,6 +14,7 @@ pub fn run(
     clickhouse_config: ClickHouseConfig,
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
+    temporal_url: &str,
 ) -> Result<Child, ConsumptionError> {
     let jwt_secret = jwt_config
         .as_ref()
@@ -47,6 +48,7 @@ pub fn run(
         jwt_issuer,
         jwt_audience,
         enforce_on_all_consumptions_apis,
+        temporal_url.to_string(),
     ];
 
     let mut consumption_process =

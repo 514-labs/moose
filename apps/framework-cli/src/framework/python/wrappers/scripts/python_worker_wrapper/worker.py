@@ -1,7 +1,7 @@
-from temporalio.client import Client
+from temporalio.client import Client, TLSConfig
 from temporalio.worker import Worker
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from .workflow import ScriptWorkflow
 from .activity import create_activity_for_script
 from .logging import log
@@ -34,6 +34,57 @@ def collect_activities(workflow_dir: str) -> List[str]:
 
     log.info(f"Found {len(script_paths)} scripts")
     return script_paths
+
+async def create_temporal_connection(temporal_url: str) -> Client:
+    """
+    Create a connection to the Temporal server with appropriate authentication.
+    """
+    namespace = "default"
+    if "localhost" not in temporal_url:
+        # Extract namespace from URL for non-local connections
+        host_part = temporal_url.split(":")[0]
+        import re
+        match = re.match(r"^([^.]+\.[^.]+)", host_part)
+        if match and match.group(1):
+            namespace = match.group(1)
+    
+    log.info(f"Using namespace from URL: {namespace}")
+    
+    client_options: Dict[str, Any] = {
+        "target_host": temporal_url,
+        "namespace": namespace,
+    }
+    
+    if "localhost" not in temporal_url:
+        # Handle non-local connections with TLS or API key
+        cert_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT", "")
+        key_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY", "")
+        api_key = os.environ.get("MOOSE_TEMPORAL_CONFIG__API_KEY", "")
+        
+        if cert_path and key_path:
+            log.info("Using TLS for non-local Temporal")
+            with open(cert_path, "rb") as f:
+                cert = f.read()
+            with open(key_path, "rb") as f:
+                key = f.read()
+                
+            client_options["tls"] = TLSConfig(
+                client_cert=cert,
+                client_private_key=key,
+            )
+        elif api_key:
+            log.info("Using API key for non-local Temporal")
+            # Use regional endpoint for API key authentication
+            client_options["target_host"] = "us-west1.gcp.api.temporal.io:7233"
+            client_options["api_key"] = api_key
+            client_options["tls"] = True
+        else:
+            log.error("No authentication credentials provided for Temporal.")
+    
+    log.info(f"Connecting to Temporal at {temporal_url}")
+    client = await Client.connect(**client_options)
+    log.info("Connected to Temporal server")
+    return client
 
 async def register_workflows(temporal_url: str, script_dir: str) -> Optional[Worker]:
     """
@@ -82,7 +133,7 @@ async def register_workflows(temporal_url: str, script_dir: str) -> Optional[Wor
             log.info(f"Found {len(dynamic_activities)} task(s) in {script_dir}")
 
         log.info("Connecting to Temporal server...")
-        client = await Client.connect(temporal_url)
+        client = await create_temporal_connection(temporal_url)
         
         log.info("Creating worker...")
         worker = Worker(

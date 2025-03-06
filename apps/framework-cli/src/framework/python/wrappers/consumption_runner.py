@@ -21,9 +21,8 @@ import jwt
 from clickhouse_connect import get_client
 from clickhouse_connect.driver.client import Client as ClickhouseClient
 
-from temporalio.client import Client as TemporalClient
-from temporalio.common import RetryPolicy
-
+from temporalio.client import Client as TemporalClient, TLSConfig
+from temporalio.common import RetryPolicy, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
 parser.add_argument('consumption_dir_path', type=str,
@@ -40,6 +39,7 @@ parser.add_argument('jwt_secret', type=str, help='JWT secret')
 parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
 parser.add_argument('jwt_audience', type=str, help='JWT audience')
 parser.add_argument('jwt_enforce_all', type=str, help='Auto-handle requests without JWT')
+parser.add_argument('temporal_url', type=str, help='Temporal URL')
 
 args = parser.parse_args()
 
@@ -55,6 +55,8 @@ jwt_secret = args.jwt_secret
 jwt_issuer = args.jwt_issuer
 jwt_audience = args.jwt_audience
 jwt_enforce_all = args.jwt_enforce_all
+
+temporal_url = args.temporal_url
 
 sys.path.append(consumption_dir_path)
 
@@ -165,6 +167,8 @@ class WorkflowClient:
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
             id=name,
             task_queue="python-script-queue",
+            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
             retry_policy=retry_policy,
             run_timeout=run_timeout
         )
@@ -190,6 +194,57 @@ class WorkflowClient:
             return timedelta(seconds=int(timeout_str[:-1]))
         else:
             raise ValueError(f"Unsupported timeout format: {timeout_str}")
+
+async def create_temporal_connection(temporal_url: str) -> TemporalClient:
+    """
+    Create a connection to the Temporal server with appropriate authentication.
+    """
+    namespace = "default"
+    if "localhost" not in temporal_url:
+        # Extract namespace from URL for non-local connections
+        host_part = temporal_url.split(":")[0]
+        import re
+        match = re.match(r"^([^.]+\.[^.]+)", host_part)
+        if match and match.group(1):
+            namespace = match.group(1)
+
+    print(f"Using namespace from URL: {namespace}")
+
+    client_options: Dict[str, Any] = {
+        "target_host": temporal_url,
+        "namespace": namespace,
+    }
+
+    if "localhost" not in temporal_url:
+        # Handle non-local connections with TLS or API key
+        cert_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT", "")
+        key_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY", "")
+        api_key = os.environ.get("MOOSE_TEMPORAL_CONFIG__API_KEY", "")
+
+        if cert_path and key_path:
+            print("Using TLS for non-local Temporal")
+            with open(cert_path, "rb") as f:
+                cert = f.read()
+            with open(key_path, "rb") as f:
+                key = f.read()
+
+            client_options["tls"] = TLSConfig(
+                client_cert=cert,
+                client_private_key=key,
+            )
+        elif api_key:
+            print("Using API key for non-local Temporal")
+            # Use regional endpoint for API key authentication
+            client_options["target_host"] = "us-west1.gcp.api.temporal.io:7233"
+            client_options["api_key"] = api_key
+            client_options["tls"] = True
+        else:
+            log.error("No authentication credentials provided for Temporal.")
+
+    print(f"Connecting to Temporal at {temporal_url}")
+    client = await TemporalClient.connect(**client_options)
+    print("Connected to Temporal server")
+    return client
 
 class MooseClient:
     def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
@@ -299,8 +354,6 @@ def walk_dir(dir, file_extension):
 
     return file_list
 
-async def get_temporal_client():
-    return await TemporalClient.connect("localhost:7233")
 
 def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
@@ -312,7 +365,7 @@ def main():
         # TODO: try to connect since it's still behind a feature flag
         print("Connecting to Temporal")
         # Need to await on temporal client calls but this main function is sync
-        temporal_client = asyncio.run(get_temporal_client())
+        temporal_client = asyncio.run(create_temporal_connection(temporal_url))
     except Exception as e:
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
     

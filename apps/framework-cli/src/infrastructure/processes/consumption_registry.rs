@@ -58,6 +58,7 @@ impl ConsumptionProcessRegistry {
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),
                 &self.dir,
+                &self.temporal_url,
             ),
             SupportedLanguages::Typescript => typescript::consumption::run(
                 self.clickhouse_config.clone(),

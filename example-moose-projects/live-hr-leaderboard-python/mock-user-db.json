@@ -1,6 +1,7 @@
 {
-  "11111": {
+  "1111": {
     "user_id": 1,
+    "live_bt_device": "True",
     "user_name": "Chris",
     "profile_image": "https://ca.slack-edge.com/T062WLJGPMW-U06DCH974P9-6f641aeed2f5-192"
   },

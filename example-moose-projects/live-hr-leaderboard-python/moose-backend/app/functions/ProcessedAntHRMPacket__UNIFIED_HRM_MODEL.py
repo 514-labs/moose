@@ -8,15 +8,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 import json
 
+# Load the mock user db and return a dictionary of devices
+def load_device_dict():
+    json_path = Path(__file__).parents[3] / 'mock-user-db.json'
+    logger = Logger(action="SF")
+    logger.info(f'Starting streaming function and loading mock user db from {json_path}')
 
-json_path = Path(__file__).parents[3] / 'mock-user-db.json'
-logger = Logger(action="SF")
-logger.info(f'Starting streaming function and loading mock user db from {json_path}')
+    with open(json_path) as f:
+        device_dict = json.load(f)
+    
+    logger.info(f"Device dict: {device_dict}")
+    return device_dict
 
-with open(json_path) as f:
-    device_dict = json.load(f)
+device_dict = load_device_dict()
 
-logger.info(f"Device dict: {device_dict}")
 def fn(source: ProcessedAntHRMPacket) -> Optional[UNIFIED_HRM_MODEL]:
     device_id = str(source.device_id)
     user_id = device_dict[device_id]['user_id']

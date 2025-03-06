@@ -12,7 +12,6 @@ def run(client: MooseClient, params):
     rounded_dt = dt.replace(microsecond=0)
     rounded_dt = rounded_dt - timedelta(seconds=1)
     formatted_timestamp = rounded_dt.strftime("%Y-%m-%dT%H:%M:%S")
-    logger.info(f"Fetching HR data for timestamp: {formatted_timestamp}")
     return client.query(
         '''
         SELECT

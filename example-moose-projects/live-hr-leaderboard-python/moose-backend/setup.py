@@ -11,5 +11,6 @@ setup(
         "requests==2.32.3",
         "moose-cli==0.3.805", # Fixing version
         "moose-lib==0.3.805", # Fixing version
+        "bleak==0.22.3",
     ],
 )

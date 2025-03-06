@@ -28,3 +28,5 @@ async def connect_to_BT_sensor():
     # Rely on temporal retries logic 
     raise Exception("No Polar device found")
 
+
+

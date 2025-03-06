@@ -281,7 +281,10 @@ export async function getTemporalClient(
 ): Promise<TemporalClient | undefined> {
   try {
     console.log(`Connecting to Temporal at ${address}`);
-    const connection = await Connection.connect({ address });
+    const connection = await Connection.connect({
+      address,
+      connectTimeout: "3s",
+    });
     const client = new TemporalClient({ connection });
     console.log("Connected to Temporal server");
     return client;

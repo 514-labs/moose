@@ -38,6 +38,7 @@ use crate::project::Project;
 use crate::project::ProjectFileError;
 use crate::utilities::constants::{APP_DIR, OLD_PROJECT_CONFIG_FILE, PROJECT_CONFIG_FILE};
 use crate::utilities::system;
+use crate::utilities::system::copy_directory;
 
 /// Represents errors that can occur during the build process.
 ///
@@ -183,7 +184,7 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
             continue;
         }
 
-        match copy_recursive(&source_path, &dest_path) {
+        match copy_directory(&source_path, &dest_path) {
             Ok(_) => {
                 debug!("Copied {} to package directory", item);
             }
@@ -204,8 +205,11 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
                 .map_err(|e| BuildError::NodeDependenciesFailed(e.to_string()))?;
         }
         SupportedLanguages::Python => {
-            copy_python_dependencies(project, &package_dir)
-                .map_err(|e| BuildError::PythonDependenciesFailed(e.to_string()))?;
+            // TODO: Implement Python dependency copying
+            info!("Python dependencies not supported yet");
+            return Err(BuildError::PythonDependenciesFailed(
+                "Python dependencies not supported yet".to_string(),
+            ));
         }
     }
 
@@ -227,61 +231,9 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
     Ok(archive_path)
 }
 
-/// Recursively copies files and directories from source to destination.
-///
-/// This is a utility function that handles both individual files and directory structures,
-/// preserving the file hierarchy in the destination.
-///
-/// # Arguments
-///
-/// * `source` - Path to the source file or directory
-/// * `destination` - Path where the file or directory should be copied
-///
-/// # Returns
-///
-/// * `Result<(), std::io::Error>` - Returns Ok(()) on success
-///
-/// # Errors
-///
-/// Returns an IO error if any file operation fails, such as:
-/// - Reading directory contents
-/// - Creating directories
-/// - Copying files
-///
-/// # Notes
-///
-/// This function will create parent directories if they don't exist.
-fn copy_recursive(source: &PathBuf, destination: &PathBuf) -> Result<(), std::io::Error> {
-    if source.is_dir() {
-        fs::create_dir_all(destination)?;
-
-        for entry in fs::read_dir(source)? {
-            let entry = entry?;
-            let entry_path = entry.path();
-            let file_name = entry.file_name();
-            let dest_path = destination.join(file_name);
-
-            if entry_path.is_dir() {
-                copy_recursive(&entry_path, &dest_path)?;
-            } else {
-                fs::copy(&entry_path, &dest_path)?;
-            }
-        }
-        Ok(())
-    } else {
-        // Ensure the parent directory exists
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::copy(source, destination)?;
-        Ok(())
-    }
-}
-
 /// Copies Node.js dependencies to the package directory.
 ///
 /// This function handles copying the node_modules directory to the package.
-/// If node_modules doesn't exist, it attempts to install dependencies first.
 ///
 /// # Arguments
 ///
@@ -295,44 +247,16 @@ fn copy_recursive(source: &PathBuf, destination: &PathBuf) -> Result<(), std::io
 /// # Errors
 ///
 /// Returns a `BuildError` if:
-/// - npm install fails
 /// - Copying node_modules fails
-/// - node_modules doesn't exist even after attempting installation
-///
-/// # Side Effects
-///
-/// May run `npm install` in the project directory if node_modules doesn't exist
+/// - node_modules doesn't exist
 fn copy_node_dependencies(project: &Project, package_dir: &PathBuf) -> Result<(), BuildError> {
     info!("Copying Node.js dependencies");
 
     let node_modules_path = project.project_location.join("node_modules");
     if !node_modules_path.exists() {
-        // Try to install dependencies if node_modules doesn't exist
-        info!("node_modules not found, installing dependencies...");
-        let result = with_spinner(
-            "Installing npm dependencies",
-            || {
-                let mut cmd = Command::new("npm");
-                cmd.current_dir(&project.project_location);
-                cmd.arg("install");
-                let output = cmd.output()?;
-                if !output.status.success() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!(
-                            "npm install failed: {}",
-                            String::from_utf8_lossy(&output.stderr)
-                        ),
-                    ));
-                }
-                Ok(())
-            },
-            false,
-        );
-
-        if let Err(err) = result {
-            return Err(BuildError::NodeDependenciesFailed(err.to_string()));
-        }
+        return Err(BuildError::NodeDependenciesFailed(
+            "node_modules directory not found, please install dependencies with your package manager".to_string(),
+        ));
     }
 
     // Now copy the node_modules
@@ -351,66 +275,6 @@ fn copy_node_dependencies(project: &Project, package_dir: &PathBuf) -> Result<()
         ));
     }
 
-    Ok(())
-}
-
-/// Copies Python dependencies to the package directory.
-///
-/// Instead of copying the virtual environment, this function generates
-/// a requirements.txt file by freezing the current environment.
-///
-/// # Arguments
-///
-/// * `project` - A reference to the Project containing Python dependencies
-/// * `package_dir` - Path to the package directory where the requirements.txt will be created
-///
-/// # Returns
-///
-/// * `Result<(), BuildError>` - Returns Ok(()) on success
-///
-/// # Errors
-///
-/// Returns a `BuildError` if:
-/// - Running pip freeze fails
-/// - Writing the requirements.txt file fails
-///
-/// # Side Effects
-///
-/// Runs `pip freeze --exclude-editable` in the project directory
-fn copy_python_dependencies(project: &Project, package_dir: &Path) -> Result<(), BuildError> {
-    info!("Preparing Python dependencies");
-
-    // Create requirements.txt file
-    let requirements_path = package_dir.join("requirements.txt");
-    let result = with_spinner(
-        "Generating requirements.txt",
-        || {
-            let mut cmd = Command::new("pip");
-            cmd.current_dir(&project.project_location);
-            cmd.args(["freeze", "--exclude-editable"]);
-            let output = cmd.output()?;
-            if !output.status.success() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "pip freeze failed: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    ),
-                ));
-            }
-
-            let requirements = String::from_utf8_lossy(&output.stdout).to_string();
-            fs::write(&requirements_path, requirements)?;
-            Ok(())
-        },
-        false,
-    );
-
-    if let Err(err) = result {
-        return Err(BuildError::PythonDependenciesFailed(err.to_string()));
-    }
-
-    info!("Requirements.txt generated successfully");
     Ok(())
 }
 
@@ -437,29 +301,14 @@ fn copy_python_dependencies(project: &Project, package_dir: &Path) -> Result<(),
 fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
     info!("Running moose check with --write-infra-map");
 
-    let result = with_spinner(
-        "Running moose check",
-        || {
-            let mut cmd = Command::new("moose");
-            cmd.current_dir(package_dir);
-            cmd.args(["check", "--write-infra-map"]);
-            let output = cmd.output()?;
-            if !output.status.success() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "moose check failed: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    ),
-                ));
-            }
-            Ok(())
-        },
-        false,
-    );
-
-    if let Err(err) = result {
-        return Err(BuildError::MooseCheckFailed(err.to_string()));
+    let mut cmd = Command::new("moose");
+    cmd.current_dir(package_dir);
+    cmd.args(["check", "--write-infra-map"]);
+    let output = cmd.output()?;
+    if !output.status.success() {
+        return Err(BuildError::MooseCheckFailed(
+            "moose check failed".to_string(),
+        ));
     }
 
     info!("Moose check completed successfully");
@@ -556,10 +405,7 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
                 .status()?;
 
             if !status.success() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "zip command failed",
-                ));
+                return Err(BuildError::ArchiveFailed("zip command failed".to_string()));
             }
 
             // Move the archive to the .moose directory
@@ -567,10 +413,7 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
             if temp_archive.exists() {
                 fs::rename(&temp_archive, &archive_path)?;
             } else {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "Archive was not created correctly",
-                ));
+                return Err(BuildError::ArchiveFailed("archive not found".to_string()));
             }
 
             Ok(())

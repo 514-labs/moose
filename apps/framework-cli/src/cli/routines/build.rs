@@ -32,11 +32,13 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::cli::display::with_spinner;
 use crate::framework::languages::SupportedLanguages;
 use crate::project::Project;
 use crate::project::ProjectFileError;
-use crate::utilities::constants::{APP_DIR, OLD_PROJECT_CONFIG_FILE, PROJECT_CONFIG_FILE};
+use crate::utilities::constants::PACKAGE_JSON;
+use crate::utilities::constants::SETUP_PY;
+use crate::utilities::constants::TSCONFIG_JSON;
+use crate::utilities::constants::{APP_DIR, PROJECT_CONFIG_FILE};
 use crate::utilities::system;
 use crate::utilities::system::copy_directory;
 
@@ -173,7 +175,13 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
     let project_root_path = project.project_location.clone();
 
     // Files to include in the package
-    let files_to_copy = [APP_DIR, PROJECT_CONFIG_FILE, OLD_PROJECT_CONFIG_FILE];
+    let files_to_copy = [
+        APP_DIR,
+        PROJECT_CONFIG_FILE,
+        PACKAGE_JSON,
+        SETUP_PY,
+        TSCONFIG_JSON,
+    ];
 
     for item in &files_to_copy {
         let source_path = project_root_path.join(item);
@@ -398,7 +406,7 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
     // Use zip command to create archive
     let status = Command::new("zip")
         .current_dir(package_dir.parent().unwrap())
-        .args(["-r", &archive_name, "packager"])
+        .args(["-q", "-r", &archive_name, "packager"])
         .status()?;
 
     if !status.success() {

@@ -395,34 +395,22 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
 
     let archive_path = internal_dir.join(&archive_name);
 
-    let result = with_spinner(
-        &format!("Creating archive {}", archive_name),
-        || {
-            // Use zip command to create archive
-            let status = Command::new("zip")
-                .current_dir(package_dir.parent().unwrap())
-                .args(["-r", &archive_name, "packager"])
-                .status()?;
+    // Use zip command to create archive
+    let status = Command::new("zip")
+        .current_dir(package_dir.parent().unwrap())
+        .args(["-r", &archive_name, "packager"])
+        .status()?;
 
-            if !status.success() {
-                return Err(BuildError::ArchiveFailed("zip command failed".to_string()));
-            }
+    if !status.success() {
+        return Err(BuildError::ArchiveFailed("zip command failed".to_string()));
+    }
 
-            // Move the archive to the .moose directory
-            let temp_archive = package_dir.parent().unwrap().join(&archive_name);
-            if temp_archive.exists() {
-                fs::rename(&temp_archive, &archive_path)?;
-            } else {
-                return Err(BuildError::ArchiveFailed("archive not found".to_string()));
-            }
-
-            Ok(())
-        },
-        false,
-    );
-
-    if let Err(err) = result {
-        return Err(BuildError::ArchiveFailed(err.to_string()));
+    // Move the archive to the .moose directory
+    let temp_archive = package_dir.parent().unwrap().join(&archive_name);
+    if temp_archive.exists() {
+        fs::rename(&temp_archive, &archive_path)?;
+    } else {
+        return Err(BuildError::ArchiveFailed("archive not found".to_string()));
     }
 
     info!("Archive created successfully at: {:?}", archive_path);

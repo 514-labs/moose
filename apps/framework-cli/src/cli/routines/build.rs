@@ -28,6 +28,7 @@
 use chrono::Local;
 use log::{debug, error, info};
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -376,7 +377,7 @@ fn copy_node_dependencies(project: &Project, package_dir: &PathBuf) -> Result<()
 /// # Side Effects
 ///
 /// Runs `pip freeze --exclude-editable` in the project directory
-fn copy_python_dependencies(project: &Project, package_dir: &PathBuf) -> Result<(), BuildError> {
+fn copy_python_dependencies(project: &Project, package_dir: &Path) -> Result<(), BuildError> {
     info!("Preparing Python dependencies");
 
     // Create requirements.txt file
@@ -484,7 +485,7 @@ fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
 /// # Side Effects
 ///
 /// Creates a README.md file in the package directory
-fn create_readme(package_dir: &PathBuf) -> Result<(), BuildError> {
+fn create_readme(package_dir: &Path) -> Result<(), BuildError> {
     info!("Creating README with deployment instructions");
 
     let readme_content = r#"# Moose Application Deployment Package
@@ -532,7 +533,7 @@ For more information about Moose, visit https://www.moosejs.com/
 ///
 /// - Creates a ZIP file in the parent directory of the package directory
 /// - Moves the ZIP file to the .moose directory
-fn create_archive(project: &Project, package_dir: &PathBuf) -> Result<PathBuf, BuildError> {
+fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, BuildError> {
     info!("Creating zip archive of package");
 
     let project_name = project.name();

@@ -866,31 +866,31 @@ async fn router(
     let metrics_method = req.method().to_string();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    let res = match (req.method(), &route_split[..]) {
-        (&hyper::Method::POST, ["ingest", _]) if project.features.streaming_engine => {
+    let res = match (configured_producer, req.method(), &route_split[..]) {
+        (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             ingest_route(
                 req,
                 // without explicit version, go to current project version
                 route.join(current_version),
-                configured_producer.unwrap(),
+                configured_producer,
                 route_table,
                 is_prod,
                 jwt_config,
             )
             .await
         }
-        (&hyper::Method::POST, ["ingest", _, _]) if project.features.streaming_engine => {
+        (Some(configured_producer), &hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(
                 req,
                 route,
-                configured_producer.unwrap(),
+                configured_producer,
                 route_table,
                 is_prod,
                 jwt_config,
             )
             .await
         }
-        (&hyper::Method::POST, ["admin", "integrate-changes"]) => {
+        (_, &hyper::Method::POST, ["admin", "integrate-changes"]) => {
             admin_integrate_changes_route(
                 req,
                 &project.authentication.admin_api_key,
@@ -899,10 +899,10 @@ async fn router(
             )
             .await
         }
-        (&hyper::Method::POST, ["admin", "plan"]) => {
+        (_, &hyper::Method::POST, ["admin", "plan"]) => {
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
-        (&hyper::Method::GET, ["consumption", _rt]) => {
+        (_, &hyper::Method::GET, ["consumption", _rt]) => {
             match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
                 Err(e) => {
@@ -913,8 +913,8 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::GET, ["health"]) => health_route().await,
-        (&hyper::Method::GET, ["admin", "reality-check"]) => {
+        (_, &hyper::Method::GET, ["health"]) => health_route().await,
+        (_, &hyper::Method::GET, ["admin", "reality-check"]) => {
             admin_reality_check_route(
                 req,
                 &project.authentication.admin_api_key,
@@ -923,7 +923,7 @@ async fn router(
             )
             .await
         }
-        (&hyper::Method::OPTIONS, _) => options_route(),
+        (_, &hyper::Method::OPTIONS, _) => options_route(),
         _ => route_not_found_response(),
     };
 

@@ -1,29 +1,49 @@
-import { ZoomImg } from "../components";
+import { ZoomImg, Callout } from "../components";
+import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-react";
 
-# Data Stack Architecture
+# Moose Architecture
 
-Moose automates your data infrastructure with the following components:
+## How Moose Works
 
-- **Ingestion Layer**: Captures data via API endpoints and SDKs.
-- **Streaming Layer**: Manages peak loads with streaming buffers and processes to transform data between data model streams.
-- **Database Layer**: Uses OLAP databases for storing and querying data.
-- **Orchestration Layer**: Sets up workflows for data ingestion, transformation, storage, and querying.
-- **Database Transformation Layer**: Defines pipelines with views and materialized views for pre-computed datasets.
-- **Consumption Layer**: Builds custom analytics APIs with type-safe endpoints for user-facing analytics and dashboards.
+When you run `moose-cli dev`, Moose creates a complete development environment that combines your code with pre-configured infrastructure:
 
-## Packaging Architecture
+<ZoomImg src="CONTAINER-ARCH.svg" alt="Moose Development Environment" />
 
-Moose applications can be packaged in two ways:
+## Infrastructure Modules
 
-1. **Dev**: Local server with Redpanda for streaming, Clickhouse for storage, Node/Python for processing, and Temporal for orchestration. Run with `moose dev`.
-2. **Prod**: Scalable deployment on-prem, in the cloud, or on [Boreal.cloud](https://boreal.cloud). Package with `moose build --docker`.
+Moose organizes your data pipeline into five distinct infrastructure modules:
 
-<ZoomImg src="/CONTAINER-ARCH.svg" />
+| **Module**        | **Moose Code**                                                        | **Infrastructure**                 | **Default** |
+|-------------------|-----------------------------------------------------------------------|------------------------------------|-------------|
+| **Ingestion**     | [Data Models](/data-models)                                           | HTTP **POST** endpoints            | Rust        |
+| **Streaming**     | [Data Models](/data-models), [Streaming Functions](/stream-processing)| Streaming topics & consumers       | Redpanda    |
+| **Database**      | [Data Models](/data-models), [Blocks](/blocks)                        | OLAP tables & views                | ClickHouse  |
+| **Orchestration** | [Workflows](/workflows)                                               | Task queue & workers               | Temporal    |
+| **Consumption**   | [Analytics APIs](/consumption-apis)                                   | HTTP **GET** endpoints             | Rust        |
+## Customizing Your Infrastructure
 
-The "Dev" setup is for local development, updating in real-time with code changes. It includes all necessary infrastructure for easy setup.
+Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:
 
-The "Prod" setup supports large-scale workloads, packaged for easy deployment and scaling. It integrates with existing data clusters, supporting Redpanda for streaming and Clickhouse for storage.
+```toml
+[features]
+streaming_engine = true  # Include Redpanda for streaming
+workflows = false        # Disable Temporal for orchestration
+```
+<Callout type="warning">
+By default, workflows are disabled. You must set `workflows = true` to enable the workflow engine.
+</Callout>
 
-## Modularizing Infrastructure
+## Development Environment Details
 
-Moose allows you to customize your infrastructure. Exclude components like Redpanda if not needed, ensuring your application is optimized for your specific use case.
+| Component | Purpose | Access |
+|-----------|---------|--------|
+| Web Server | Handles HTTP requests for data ingestion and APIs | localhost:4000 |
+| ClickHouse | Analytical database for data storage and querying | localhost:18123 |
+| Redpanda | Kafka-compatible message broker for streaming | localhost:19092 |
+| Temporal | Workflow orchestration engine | localhost:7233 (Server) / localhost:8080 (UI) |
+| Redis | Caching and temporary storage | Internal only |
+
+All these components are automatically configured to work together, creating a complete development environment that mirrors a production deployment.
+
+
+

@@ -29,7 +29,7 @@ export function ToggleBlock({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="w-full space-y-2"
+      className="w-full space-y-2 mt-4"
     >
       <CollapsibleTrigger asChild>
         <Button
@@ -46,7 +46,9 @@ export function ToggleBlock({
           <SmallText>{isOpen ? closeText : openText}</SmallText>
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2">{children}</CollapsibleContent>
+      <CollapsibleContent className="space-y-2 pl-8 ml-2">
+        {children}
+      </CollapsibleContent>
     </Collapsible>
   );
 }

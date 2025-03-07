@@ -6,3 +6,5 @@ export * from "./two-columns";
 export * from "./toggle-block";
 export * from "./language-switcher";
 export * from "./language-wrappers";
+export * from "./FeatureCard";
+export * from "./MuxVideo";

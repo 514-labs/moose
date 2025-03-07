@@ -3,8 +3,7 @@ use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
-    APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
-    SETUP_PY, TSCONFIG_JSON,
+    APP_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE, SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
 use crate::utilities::{constants, system};
@@ -219,30 +218,6 @@ pub fn build_dockerfile(
             err,
         )
     })?;
-
-    // Copy versions folder to packager directory
-    let copy_result = system::copy_directory(
-        &internal_dir.join(CLI_INTERNAL_VERSIONS_DIR),
-        &internal_dir.join("packager"),
-    );
-    match copy_result {
-        Ok(_) => {
-            info!("Copied versions directory to packager directory");
-        }
-        Err(err) => {
-            error!(
-                "Failed to copy versions directory to packager directory: {}",
-                err
-            );
-            return Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to copy versions directory to packager directory".to_string(),
-                ),
-                err,
-            ));
-        }
-    }
 
     // Copy app & etc to packager directory
     let project_root_path = project.project_location.clone();

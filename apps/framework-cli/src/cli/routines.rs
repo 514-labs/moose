@@ -117,6 +117,7 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 
 pub mod auth;
 pub mod block;
+pub mod build;
 pub mod clean;
 pub mod consumption;
 pub mod datamodel;

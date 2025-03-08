@@ -1,49 +1,46 @@
 import { Callout, ZoomImg, Python, TypeScript, LanguageSwitcher, ToggleBlock } from "../../components";
-import { Steps, FileTree } from "nextra/components";
+import { Steps, FileTree, Tabs } from "nextra/components";
 
-# Getting Started with Moose
+# Setting Up Your Moose Project
 
 <LanguageSwitcher />
 
-<Callout type="info" title="Prerequisites:">
-  - [Git](https://git-scm.com/)
+In this section, you'll create a new Moose project and set up the development environment. By the end, you'll have a running Moose instance with all the necessary infrastructure components ready for building your GitHub analytics pipeline.
+
+<Callout type="info" title="Prerequisites">
   <TypeScript>
-    - [Node](https://nodejs.org/en/)
+    - **Node.js**: [version 20+](https://nodejs.org/en/download)
   </TypeScript>
   <Python>
-    - [Python version 3.12+](https://www.python.org/downloads/)
+    - **Python**: [version 3.12+](https://www.python.org/downloads/)
   </Python>
-  - [Docker](https://www.docker.com/)
-  - macOS or Linux (Windows is not supported at this time, but may work using
-    WSL Windows Subsystem for Linux)
+  - **Docker**: [Installation instructions](https://www.docker.com/products/docker-desktop)
+  - **OS**: macOS or Linux (Windows supported via WSL)
 </Callout>
 
-<Callout type="warning" title="Run Docker">
-  Open Docker Desktop if its not already running. <br /> Don't have it
-  installed? [Download Docker
-  here](https://www.docker.com/products/docker-desktop)
-</Callout>
-
+## Create Your GitHub Analytics Project
 
 <Steps>
 
+### Create a new Moose project
 <Python>
-### Create and Activate a Virtual Environment
-Navigate to the directory where you want to create your Moose project, then run:
-```bash filename="Terminal" copy
-python3 -m venv .venv && source .venv/bin/activate
-```
-
-### Install Moose CLI
-In your virtual environment, run:
+<Tabs items={["Standard Setup", "Using Virtual Environment (Recommended)"]}>
+<Tabs.Tab>
 ```bash filename="Terminal" copy
 pip install moose-cli
 ```
-</Python>
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+# Create and activate a virtual environment
+python3 -m venv .venv && source .venv/bin/activate
 
-### Create an Empty Moose Project
+# Install Moose CLI
+pip install moose-cli
+```
+</Tabs.Tab>
+</Tabs>
 
-<Python>
 ```bash filename="Terminal" copy
 moose-cli init moose-github-analytics python --empty
 ```
@@ -54,7 +51,13 @@ moose-cli init moose-github-analytics python --empty
 npx create-moose-app@latest moose-github-analytics ts --empty
 ```
 </TypeScript>
-This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an `/app` folder which contains the heart of your new Moose app. Each sub-folder hosts one type of Moose primitive.
+
+- This command initializes a new Moose project with the name "moose-github-analytics". 
+- The `--empty` flag creates a minimal project structure without any sample code, giving us a clean slate to build our GitHub analytics service.
+
+### Project Structure Overview
+
+The Moose CLI creates a project with the following structure:
 
 <FileTree>
   <FileTree.Folder open name="moose-github-analytics">
@@ -67,7 +70,16 @@ This Moose CLI helper function creates a new Moose app with the proper conventio
   </FileTree.Folder>
 </FileTree>
 
-### `cd` into your Moose Project and Install Dependencies
+Each folder corresponds to a Moose primitive:
+
+| Folder | Description |
+|--------|-------------|
+| `datamodels/` | Where you'll define the structure of your data |
+| `functions/` | Where you'll implement data processing logic |
+| `blocks/` | Where you'll create data views and aggregations |
+| `apis/` | Where you'll define endpoints to expose your data |
+
+### Install Project Dependencies
 
 <Python>
 ```bash filename="Terminal" copy
@@ -81,7 +93,9 @@ cd moose-github-analytics && npm install
 ```
 </TypeScript>
 
-### Run the Moose Development Server
+This installs all required dependencies for your Moose project.
+
+### Start the Development Server
 
 <Python>
 ```bash filename="Terminal" copy
@@ -95,31 +109,43 @@ npm run dev
 ```
 </TypeScript>
 
-<Callout type="warning">
-  You must be in your project directory in order to start the development server
+<Callout type="info" title="What's happening behind the scenes?">
+  The Moose dev server spins up a local version of a production data stack, including:
+  - Clickhouse (database) container
+  - Redpanda (streaming platform) container
+  - A webserver at `http://localhost:4000`
+  - And more!
+  
+  When you make changes to your code, it automatically reloads your application to reflect the updates.
 </Callout>
 
 You should expect to see the following printed to your terminal:
 
-<ZoomImg src="/moose-dev-terminal.png" />
+<ZoomImg src="/moose-dev-terminal.png" alt="Terminal output showing successful Moose server startup" />
 
-<Callout type="success">
-  You have set up a Moose instance at `http://localhost:4000`
-  
-  <br/><br/>
+### Verify Your Setup
 
-It provides the following infrastructure:
+Open a new terminal window and run:
 
-  <ul>
-    - **OLAP Database** (Clickhouse) to store and analyze your data 
-    - **Streaming Data Platform** (Redpanda) to buffer and transform incoming data
-    - **Ingestion and Consumption APIs** to get data in and out of your database
-  </ul>
-<br/>
-As you develop, the dev server automatically updates with your latest changes, providing a real-time view of your Moose application locally.
-</Callout>
+<Python>
+```bash filename="Terminal" copy
+moose-cli ls
+```
+</Python>
 
-<ToggleBlock openText="Troubleshooting: Can't start the dev server?" closeText="Hide Troubleshooting">
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli ls
+```
+</TypeScript>
+
+This command lists all available data models, ingestion points, and tables. Since we started with an empty project, you won't see any yet, but we'll create them in the next section.
+
+</Steps>
+
+## Troubleshooting
+
+<ToggleBlock openText="Can't start the dev server?" closeText="Hide Troubleshooting">
   If you encounter any issues starting the dev server, run the following command to check for common configuration problems:
 
   <Python>
@@ -134,21 +160,70 @@ As you develop, the dev server automatically updates with your latest changes, p
   ```
   </TypeScript>
 
-  This will verify your environment setup, including Python/Node version compatibility and other requirements.
+  This will verify your environment setup, including Python/Node version compatibility and Docker configuration.
+  
+  <Tabs items={["Docker Issues", "Installation Issues"]}>
+  <Tabs.Tab>
+  Docker must be running to start the Moose server. If you encounter issues, run the following commands to check your Docker status and start it:
+  ```bash filename="Terminal" copy
+  # Check Docker status
+  docker info
+
+  # Start Docker (macOS)
+  open -a Docker
+
+  # Check running containers
+  docker ps
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  <Python>
+  ```bash filename="Terminal" copy
+  # Check Python version
+  python --version
+  
+  # Verify virtual environment
+  which python
+  ```
+  </Python>
+  <TypeScript>
+  ```bash filename="Terminal" copy
+  # Check Node version
+  node --version
+  
+  # Verify npm
+  npm --version
+  ```
+  </TypeScript>
+  </Tabs.Tab>
+  </Tabs>
 </ToggleBlock>
 
-### Open Project in IDE
+## What's Next?
 
-With VSCode, for example:
+Now that you have your Moose development environment up and running, you're ready to start building your GitHub analytics service. In the next section, you'll create your first Data Model to define the structure of the GitHub star event data.
 
-```bash filename="Terminal" copy
-code .
-```
-
-<Callout type="info" title="(VSCode) Install Recommended Extensions ">
-  Click '**Install**' on the pop-up window located in the bottom right corner of
-  the screen. Moose will automatically configure these extensions for you.
+<Callout type="info">
+  Keep the development server running in your terminal as you proceed through the rest of the tutorial. You'll need it to see your changes in real-time.
 </Callout>
 
-<ZoomImg src="/vscode-install.png" />
-</Steps>
+## Helpful Tips
+
+<ToggleBlock openText="Setting up VSCode for Moose development" closeText="Hide VSCode setup">
+  For the best development experience with Moose, we recommend using VSCode with our recommended extensions:
+
+  ```bash filename="Terminal" copy
+  code .
+  ```
+
+  When you open the project in VSCode for the first time, you'll see a popup asking to install recommended extensions:
+
+  <ZoomImg src="/vscode-install.png" alt="VSCode extensions installation prompt" />
+
+  Click '**Install**' to set up extensions that will help with:
+  - Syntax highlighting for Moose files
+  - Database connections to your local Clickhouse instance
+  - Code completion and validation
+  
+  These extensions are automatically configured for your Moose project.
+</ToggleBlock>

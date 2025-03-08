@@ -1,23 +1,33 @@
 import { ZoomImg } from "../components";
 
-# Learn Moose
+# Learn Moose: Building a Real-time GitHub Analytics Service
 
-By the end of this tutorial you will have a solid grasp of the Moose framework and you will have built an end-to-end data and analytics service which gives you real-time insights into the users who star your Github repository. Here’s a high level diagram of what you will build:
+Welcome to the Moose framework tutorial! In this hands-on guide, you'll build a complete real-time analytics service that tracks and analyzes users who star your GitHub repository.
 
-<ZoomImg src="/GH-highlevel.png" />
+## What You'll Learn
+By the end of this tutorial, you'll understand:
+- The core Moose primitives and how they work together
+- How to build a complete data pipeline from ingestion to insights
+- Best practices for real-time data processing with Moose
 
-In Typescript (or Python!) you declare your application logic in four primitives — Data Models, Function, Blocks and Consumption APIs — and Moose automatically creates the assets in your underlying infrastructure.
+<ZoomImg src="/GH-highlevel.svg" alt="High-level architecture diagram of the GitHub analytics service" />
+
+## Prerequisites
+- Basic knowledge of TypeScript or Python
+- A GitHub account
+- Installation of Moose CLI (we'll cover this in the first step)
+
+### Time to Complete
+This tutorial takes approximately 30-60 minutes to complete.
 
 ## What You'll Build
+You'll create a complete end-to-end analytics service that:
+- Captures data - Ingest GitHub webhook events in real-time when users star your repository
+- Processes events - Filter and enrich the raw data with additional user information
+- Aggregates data - Create materialized views that aggregate information about your repository's popularity in real-time
+- Exposes insights - Build APIs that expose the aggregated data to client applications
 
-In this tutorial, you will:
+<ZoomImg src="/GH-overview-detailed.svg" alt="Detailed architecture diagram showing data flow" />
 
-1. Create a new Moose project from scratch and define your first Moose primitive (a **Data Model**) to start **ingesting** sample data within minutes.
-2. Configure GitHub to send live webhook notifications to your Moose application whenever someone stars your repository.
-3. Implement a Moose **Streaming Function** to filter and enrich the raw webhook event data as it’s ingested.
-4. Use Moose **Blocks** to create a view of the processed event data for further analysis.
-5. Build **Consumption APIs to** surface insights about the programming languages the starrers use in their repositories.
-6. Access and analyze these insights via an API Client.
-
-<br />
-<ZoomImg src="/GH-overview-detailed.png" />
+## Let's Get Started!
+In the next section, we'll set up your Moose project and create your first Data Model to start ingesting sample data.

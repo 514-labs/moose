@@ -22,7 +22,7 @@ export function FeatureCard({
       <div className="flex items-start border border-border rounded-lg p-5 h-full hover:bg-muted/50 hover:border-accent-moo-purple transition-all">
         <div className="mr-3 mt-0.5 flex-shrink-0">{icon}</div>
         <div>
-          <strong className="text-lg text-primary">{title}</strong>
+          <p className="text-primary font-medium">{title}</p>
           <p className="mt-2 text-muted-foreground">{description}</p>
         </div>
       </div>

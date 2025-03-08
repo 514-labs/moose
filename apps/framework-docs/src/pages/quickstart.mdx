@@ -195,6 +195,10 @@ There is an auto-generated OpenAPI spec that you can use to ingest data. Locate 
   muted={true}
   loop={true}
 />
+
+<Callout type="info" title="Recommended VSCode Extension">
+The [OpenAPI (Swagger) Viewer VSCode extension](https://marketplace.visualstudio.com/items?itemName=Arjun.swagger-viewer) is recommended for this workflow.
+</Callout>
 </Tabs.Tab>
 </Tabs>
 
@@ -341,7 +345,7 @@ npm install -g npm@latest
 
 <p className="text-muted-foreground font-bold">**Incompatible Python Version**</p>
 If you're using a tool to manage Python versions, you may need to install the latest stable version:
-<Tabs items={["pyenv", "conda", "asdf", "Homebrew"]}>
+<Tabs items={["pyenv", "conda", "Homebrew"]}>
 <Tabs.Tab title="pyenv">
 ```bash filename="Terminal" copy
 # Install pyenv if needed
@@ -358,17 +362,6 @@ pyenv global 3.12  # or pyenv local 3.12 for project-specific
 # Create and activate environment
 conda create -n moose-env python=3.12
 conda activate moose-env
-```
-</Tabs.Tab>
-
-<Tabs.Tab title="asdf">
-```bash filename="Terminal" copy
-# Install Python plugin if needed
-asdf plugin add python
-
-# Install and use Python 3.12
-asdf install python 3.12.0
-asdf global python 3.12.0
 ```
 </Tabs.Tab>
 

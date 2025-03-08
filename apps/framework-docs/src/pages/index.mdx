@@ -186,25 +186,27 @@ Easily extend Moose to fit your specific needs and infrastructure.
 
 ## What Can You Build with Moose?
 
+Moose is ideal for a wide range of data-intensive applications, from real-time analytics to complex data pipelines:
+
 <div className="my-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
   <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <h3 className="text-lg font-medium text-primary mb-2">User Facing Analytics</h3>
+    <p className="font-medium text-primary mb-2">User Facing Analytics</p>
     <p className="text-muted-foreground text-sm">Embed leaderboards, charts, metrics, and other real-time features in your web or mobile apps</p>
   </div>
   <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <h3 className="text-lg font-medium text-primary mb-2">BI and Data Warehouses</h3>
+    <p className="font-medium text-primary mb-2">BI and Data Warehouses</p>
     <p className="text-muted-foreground text-sm">Collect disparate data sources into an analytical database, produce custom reports, and more</p>
   </div>
   <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <h3 className="text-lg font-medium text-primary mb-2">Data Migrations</h3>
+    <p className="font-medium text-primary mb-2">Data Migrations</p>
     <p className="text-muted-foreground text-sm">One-time migration of data from legacy systems to a modern data backend</p>
   </div>
   <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <h3 className="text-lg font-medium text-primary mb-2">Event Streaming</h3>
+    <p className="font-medium text-primary mb-2">Event Streaming</p>
     <p className="text-muted-foreground text-sm">Real-time processing of events from Kafka, Redpanda, or other event streaming platforms</p>
   </div>
   <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <h3 className="text-lg font-medium text-primary mb-2">ETL Workloads</h3>
+    <p className="font-medium text-primary mb-2">ETL Workloads</p>
     <p className="text-muted-foreground text-sm">Repeated batch jobs to collect data from different sources and load them into an analytics environment</p>
   </div>
 </div>
@@ -213,21 +215,21 @@ Easily extend Moose to fit your specific needs and infrastructure.
 
 ## Community
 
-<div className="flex flex-col md:flex-row gap-8 my-8">
-  <Link href="https://github.com/514-labs/moose" className="flex-1 p-6 border border-border rounded-lg hover:bg-muted/50 transition-colors no-underline">
-    <div className="flex items-center mb-4">
-      <GitBranch className="h-6 w-6 mr-2 text-accent-moo-purple" />
-      <h3 className="text-lg font-semibold">GitHub</h3>
-    </div>
-    <p className="text-muted-foreground">Star, fork, and contribute to Moose on GitHub</p>
-  </Link>
-  
-  <Link href="https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering" className="flex-1 p-6 border border-border rounded-lg hover:bg-muted/50 transition-colors no-underline">
-    <div className="flex items-center mb-4">
-      <Users className="h-6 w-6 mr-2 text-accent-moo-purple" />
-      <h3 className="text-lg font-semibold">Talk to the Team</h3>
-    </div>
-    <p className="text-muted-foreground">We're always looking to improve Moose and would love to hear from you!</p>
-  </Link>
-</div>
+<CTACards>
+  <CTACard
+    title="GitHub"
+    description="Star, check out the code, and contribute to Moose on GitHub"
+    ctaLink="https://github.com/514-labs/moose"
+    ctaLabel="GitHub"
+    Icon={GitBranch}
+  />
+  <CTACard
+    title="Talk to the Moose Maintainers"
+    description="We're always looking to improve Moose and would love to hear from you!"
+    ctaLink="https://cal.com/team/514/talk-to-eng"
+    ctaLabel="Talk to the Team"
+    Icon={Users}
+  />
+</CTACards>
+
 

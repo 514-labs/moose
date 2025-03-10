@@ -1,3 +1,5 @@
+import { Callout } from '../components';
+
 # Data Modeling with OlapTable
 
 ## Overview
@@ -88,17 +90,20 @@ interface CompleteSchema {
 ```
 
 ### Supported Types
+| TypeScript | ClickHouse |
+|:---------- |:---------- |
+| `string`   | String     |
+| `number`   | Float64    |
+| `boolean`  | Boolean    |
+| `Date`     | DateTime   |
+| `Object`   | Nested     |
+| `Array<T>` | Array      |
+| `T?`       | Nullable   |
+| `Enum`     | Enum       |
 
-| TypeScript | ClickHouse | Notes |
-|:-----------|:-----------|:------|
-| `string`   | String     | Text values |
-| `number`   | Float64    | All numbers are stored as Float64 |
-| `boolean`  | Boolean    | True/false values |
-| `Date`     | DateTime   | Date and time values |
-| `Object`   | Json       | Nested structures |
-| `Array<T>` | Array      | Lists of values |
-| `T?`       | Nullable   | Optional fields |
-| `Enum`     | Enum       | Enumerated values |
+<Callout type="info">
+All numbers are stored as Float64 in ClickHouse.
+</Callout>
 
 ## Table Configuration
 

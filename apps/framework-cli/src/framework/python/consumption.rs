@@ -2,8 +2,10 @@ use crate::framework::consumption::model::ConsumptionQueryParam;
 use crate::framework::python::executor::{run_python_program, PythonProgram};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
-use crate::project::JwtConfig;
+use crate::project::{JwtConfig, Project};
+use crate::utilities::constants::{CONSUMPTION_WRAPPER_PACKAGE_NAME, UTILS_WRAPPER_PACKAGE_NAME};
 use log::{error, info};
+use std::fs;
 use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
@@ -11,11 +13,34 @@ use tokio::process::Child;
 use super::executor;
 
 pub fn run(
+    project: Project,
     clickhouse_config: ClickHouseConfig,
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
-    temporal_url: &str,
 ) -> Result<Child, ConsumptionError> {
+    // Create the wrapper lib files inside the .moose directory
+    let internal_dir = project.internal_dir()?;
+    let consumption_runner_dir = internal_dir.join(CONSUMPTION_WRAPPER_PACKAGE_NAME);
+    let utils_lib_dir = consumption_runner_dir.join(UTILS_WRAPPER_PACKAGE_NAME);
+
+    // Create the directory if it doesn't exist
+    if !consumption_runner_dir.exists() {
+        fs::create_dir(&consumption_runner_dir)?;
+    }
+    if !utils_lib_dir.exists() {
+        fs::create_dir(&utils_lib_dir)?;
+    }
+
+    // Overwrite the wrapper files
+    fs::write(
+        utils_lib_dir.join("__init__.py"),
+        include_str!("./utils/__init__.py"),
+    )?;
+    fs::write(
+        utils_lib_dir.join("temporal.py"),
+        include_str!("./utils/temporal.py"),
+    )?;
+
     let jwt_secret = jwt_config
         .as_ref()
         .map(|jwt| jwt.secret.clone())
@@ -48,7 +73,10 @@ pub fn run(
         jwt_issuer,
         jwt_audience,
         enforce_on_all_consumptions_apis,
-        temporal_url.to_string(),
+        project.temporal_config.temporal_url(),
+        project.temporal_config.client_cert,
+        project.temporal_config.client_key,
+        project.temporal_config.api_key,
     ];
 
     let mut consumption_process =

@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from .workflow import ScriptWorkflow
 from .activity import create_activity_for_script
 from .logging import log
+from .utils.temporal import create_temporal_connection
 
 # Maintain a global set of activity names we've already created
 _ALREADY_REGISTERED = set()
@@ -35,58 +36,7 @@ def collect_activities(workflow_dir: str) -> List[str]:
     log.info(f"Found {len(script_paths)} scripts")
     return script_paths
 
-async def create_temporal_connection(temporal_url: str) -> Client:
-    """
-    Create a connection to the Temporal server with appropriate authentication.
-    """
-    namespace = "default"
-    if "localhost" not in temporal_url:
-        # Extract namespace from URL for non-local connections
-        host_part = temporal_url.split(":")[0]
-        import re
-        match = re.match(r"^([^.]+\.[^.]+)", host_part)
-        if match and match.group(1):
-            namespace = match.group(1)
-    
-    log.info(f"Using namespace from URL: {namespace}")
-    
-    client_options: Dict[str, Any] = {
-        "target_host": temporal_url,
-        "namespace": namespace,
-    }
-    
-    if "localhost" not in temporal_url:
-        # Handle non-local connections with TLS or API key
-        cert_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT", "")
-        key_path = os.environ.get("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY", "")
-        api_key = os.environ.get("MOOSE_TEMPORAL_CONFIG__API_KEY", "")
-        
-        if cert_path and key_path:
-            log.info("Using TLS for non-local Temporal")
-            with open(cert_path, "rb") as f:
-                cert = f.read()
-            with open(key_path, "rb") as f:
-                key = f.read()
-                
-            client_options["tls"] = TLSConfig(
-                client_cert=cert,
-                client_private_key=key,
-            )
-        elif api_key:
-            log.info("Using API key for non-local Temporal")
-            # Use regional endpoint for API key authentication
-            client_options["target_host"] = "us-west1.gcp.api.temporal.io:7233"
-            client_options["api_key"] = api_key
-            client_options["tls"] = True
-        else:
-            log.error("No authentication credentials provided for Temporal.")
-    
-    log.info(f"Connecting to Temporal at {temporal_url}")
-    client = await Client.connect(**client_options)
-    log.info("Connected to Temporal server")
-    return client
-
-async def register_workflows(temporal_url: str, script_dir: str) -> Optional[Worker]:
+async def register_workflows(temporal_url: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
     """
     Register all workflows and activities without executing them.
     Activity names should match the format: "parent_dir/script_name"
@@ -133,7 +83,7 @@ async def register_workflows(temporal_url: str, script_dir: str) -> Optional[Wor
             log.info(f"Found {len(dynamic_activities)} task(s) in {script_dir}")
 
         log.info("Connecting to Temporal server...")
-        client = await create_temporal_connection(temporal_url)
+        client = await create_temporal_connection(temporal_url, client_cert, client_key, api_key)
         
         log.info("Creating worker...")
         worker = Worker(
@@ -149,7 +99,7 @@ async def register_workflows(temporal_url: str, script_dir: str) -> Optional[Wor
         log.error(f"Error registering workflows: {str(e)}")
         raise
 
-async def start_worker(temporal_url: str, script_dir: str) -> Worker:
+async def start_worker(temporal_url: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Worker:
     """
     Start a Temporal worker that handles Python script execution workflows.
 
@@ -164,7 +114,7 @@ async def start_worker(temporal_url: str, script_dir: str) -> Worker:
         ValueError: If no scripts are found to register
     """
     log.info(f"Starting worker for script directory: {script_dir}")
-    worker = await register_workflows(temporal_url, script_dir)
+    worker = await register_workflows(temporal_url, script_dir, client_cert, client_key, api_key)
 
     if worker is None:
         msg = f"No scripts found to register in {script_dir}"

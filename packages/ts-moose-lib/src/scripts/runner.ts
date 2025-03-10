@@ -10,6 +10,9 @@ import { createActivityForScript } from "./activity";
 import { activities } from "./activity";
 import { initializeLogger } from "./logger";
 
+const [, , , TEMPORAL_URL, SCRIPT_DIR, CLIENT_CERT, CLIENT_KEY, API_KEY] =
+  process.argv;
+
 // Maintain a global set of activity names we've already registered
 const ALREADY_REGISTERED = new Set<string>();
 
@@ -58,6 +61,9 @@ function collectActivities(
 async function createTemporalConnection(
   logger: DefaultLogger,
   temporalUrl: string,
+  clientCert: string,
+  clientKey: string,
+  apiKey: string,
 ): Promise<{ connection: NativeConnection; namespace: string }> {
   let namespace = "default";
   if (!temporalUrl.includes("localhost")) {
@@ -76,14 +82,10 @@ async function createTemporalConnection(
 
   if (!temporalUrl.includes("localhost")) {
     // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
-    const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
-    const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
-    const apiKey = process.env.MOOSE_TEMPORAL_CONFIG__API_KEY || "";
-
-    if (certPath && keyPath) {
+    if (clientCert && clientKey) {
       logger.info("Using TLS for non-local Temporal");
-      const cert = await fs.readFileSync(certPath);
-      const key = await fs.readFileSync(keyPath);
+      const cert = await fs.readFileSync(clientCert);
+      const key = await fs.readFileSync(clientKey);
 
       connectionOptions.tls = {
         clientCertPair: {
@@ -111,19 +113,17 @@ async function createTemporalConnection(
 
 async function registerWorkflows(
   logger: DefaultLogger,
-  temporalUrl: string,
-  scriptDir: string,
 ): Promise<Worker | null> {
-  logger.info(`Registering workflows from ${scriptDir}`);
+  logger.info(`Registering workflows from ${SCRIPT_DIR}`);
 
   // Collect all TypeScript scripts
   const allScriptPaths: string[] = [];
 
   try {
     // Process each workflow directory
-    const workflowDirs = fs.readdirSync(scriptDir);
+    const workflowDirs = fs.readdirSync(SCRIPT_DIR);
     for (const workflowDir of workflowDirs) {
-      const workflowDirFullPath = path.join(scriptDir, workflowDir);
+      const workflowDirFullPath = path.join(SCRIPT_DIR, workflowDir);
       logger.info(`Checking workflow directory: ${workflowDirFullPath}`);
 
       if (fs.statSync(workflowDirFullPath).isDirectory()) {
@@ -132,11 +132,11 @@ async function registerWorkflows(
     }
 
     if (allScriptPaths.length === 0) {
-      logger.info(`No scripts found in ${scriptDir}`);
+      logger.info(`No scripts found in ${SCRIPT_DIR}`);
       return null;
     }
 
-    logger.info(`Found ${allScriptPaths.length} scripts in ${scriptDir}`);
+    logger.info(`Found ${allScriptPaths.length} scripts in ${SCRIPT_DIR}`);
 
     // Build dynamic activities
     const dynamicActivities: any[] = [];
@@ -154,15 +154,18 @@ async function registerWorkflows(
     }
 
     if (dynamicActivities.length === 0) {
-      logger.info(`No tasks found in ${scriptDir}`);
+      logger.info(`No tasks found in ${SCRIPT_DIR}`);
       return null;
     }
 
-    logger.info(`Found ${dynamicActivities.length} task(s) in ${scriptDir}`);
+    logger.info(`Found ${dynamicActivities.length} task(s) in ${SCRIPT_DIR}`);
 
     const { connection, namespace } = await createTemporalConnection(
       logger,
-      temporalUrl,
+      TEMPORAL_URL,
+      CLIENT_CERT,
+      CLIENT_KEY,
+      API_KEY,
     );
 
     const worker = await Worker.create({
@@ -196,19 +199,15 @@ async function registerWorkflows(
  * @returns The started Temporal worker instance
  * @throws ValueError if no scripts are found to register
  */
-export async function runScripts(
-  temporalUrl: string,
-  scriptDir: string,
-): Promise<Worker | null> {
+export async function runScripts(): Promise<Worker | null> {
   // Not sure why temporal doesn't like importing the logger
   // so have to pass it around
   const logger = initializeLogger();
 
-  logger.info(`Starting worker for script directory: ${scriptDir}`);
-  const worker = await registerWorkflows(logger, temporalUrl, scriptDir);
-
+  logger.info(`Starting worker for script directory: ${SCRIPT_DIR}`);
+  const worker = await registerWorkflows(logger);
   if (!worker) {
-    const msg = `No scripts found to register in ${scriptDir}`;
+    const msg = `No scripts found to register in ${SCRIPT_DIR}`;
     logger.warn(msg);
     return null;
   }

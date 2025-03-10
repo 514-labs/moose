@@ -87,7 +87,7 @@ pub async fn run_workflow(
     })?;
 
     let run_id: String = workflow
-        .start(&project.temporal_config.temporal_url_with_scheme(), input)
+        .start(&project.temporal_config, input)
         .await
         .map_err(|e| {
             RoutineFailure::new(
@@ -131,8 +131,7 @@ pub async fn list_workflows(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut table_data = Vec::new();
 
-    let client_manager =
-        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
+    let client_manager = TemporalClientManager::new(&project.temporal_config);
 
     // Convert status string to Temporal status enum
     let status_filter = if let Some(status_str) = status {
@@ -218,8 +217,7 @@ pub async fn terminate_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager =
-        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
+    let client_manager = TemporalClientManager::new(&project.temporal_config);
 
     let request = TerminateWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -267,8 +265,7 @@ pub async fn pause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager =
-        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
+    let client_manager = TemporalClientManager::new(&project.temporal_config);
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -308,8 +305,7 @@ pub async fn unpause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager =
-        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
+    let client_manager = TemporalClientManager::new(&project.temporal_config);
 
     let request = SignalWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -352,8 +348,7 @@ pub async fn get_workflow_status(
     verbose: bool,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager =
-        TemporalClientManager::new(&project.temporal_config.temporal_url_with_scheme());
+    let client_manager = TemporalClientManager::new(&project.temporal_config);
 
     // If no run_id provided, get the most recent one
     let execution_id = if let Some(id) = run_id {

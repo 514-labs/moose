@@ -12,8 +12,8 @@ use crate::framework::{
         TemporalExecutionError,
     },
 };
+use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
-
 use temporal_sdk_core::protos::temporal::api::common::v1::{
     Payload, Payloads, RetryPolicy, WorkflowType,
 };
@@ -39,7 +39,7 @@ pub enum WorkflowExecutionError {
 }
 
 struct WorkflowExecutionParams<'a> {
-    temporal_url: &'a str,
+    temporal_config: &'a TemporalConfig,
     workflow_id: &'a str,
     execution_path: &'a Path,
     config: &'a WorkflowConfig,
@@ -49,7 +49,7 @@ struct WorkflowExecutionParams<'a> {
 
 /// Execute a specific script
 pub(crate) async fn execute_workflow(
-    temporal_url: &str,
+    temporal_config: &TemporalConfig,
     language: SupportedLanguages,
     workflow_id: &str,
     execution_path: &Path,
@@ -67,7 +67,7 @@ pub(crate) async fn execute_workflow(
     match language {
         SupportedLanguages::Python => {
             let params = WorkflowExecutionParams {
-                temporal_url,
+                temporal_config,
                 workflow_id,
                 execution_path,
                 config: &config,
@@ -79,7 +79,7 @@ pub(crate) async fn execute_workflow(
         }
         SupportedLanguages::Typescript => {
             let params = WorkflowExecutionParams {
-                temporal_url,
+                temporal_config,
                 workflow_id,
                 execution_path,
                 config: &config,
@@ -95,10 +95,11 @@ pub(crate) async fn execute_workflow(
 async fn execute_workflow_for_language(
     params: WorkflowExecutionParams<'_>,
 ) -> Result<String, TemporalExecutionError> {
-    let client_manager = TemporalClientManager::new(params.temporal_url);
+    let client_manager = TemporalClientManager::new(params.temporal_config);
 
-    let domain_name = get_temporal_domain_name(params.temporal_url);
-    let namespace = if params.temporal_url.contains("localhost") {
+    let temporal_url = params.temporal_config.temporal_url_with_scheme();
+    let domain_name = get_temporal_domain_name(&temporal_url);
+    let namespace = if temporal_url.contains("localhost") {
         DEFAULT_TEMPORTAL_NAMESPACE.to_string()
     } else {
         get_temporal_namespace(domain_name)

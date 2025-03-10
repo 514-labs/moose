@@ -24,6 +24,9 @@ const [
   JWT_AUDIENCE, // Optional
   ENFORCE_ON_ALL_CONSUMPTIONS_APIS, // Optional
   TEMPORAL_URL, // Optional
+  CLIENT_CERT, // Optional
+  CLIENT_KEY, // Optional
+  API_KEY, // Optional
 ] = process.argv;
 
 const clickhouseConfig = {
@@ -177,7 +180,12 @@ export const runConsumptionApis = async () => {
 
   const consumptionCluster = new Cluster({
     workerStart: async () => {
-      const temporalClient = await getTemporalClient(TEMPORAL_URL);
+      const temporalClient = await getTemporalClient(
+        TEMPORAL_URL,
+        CLIENT_CERT,
+        CLIENT_KEY,
+        API_KEY,
+      );
       const clickhouseClient = getClickhouseClient(clickhouseConfig);
       let publicKey: jose.KeyLike | undefined;
       if (JWT_SECRET) {

@@ -287,6 +287,9 @@ export class WorkflowClient {
  */
 export async function getTemporalClient(
   temporalUrl: string,
+  clientCert: string,
+  clientKey: string,
+  apiKey: string,
 ): Promise<TemporalClient | undefined> {
   try {
     let namespace = "default";
@@ -307,14 +310,10 @@ export async function getTemporalClient(
 
     if (!temporalUrl.includes("localhost")) {
       // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
-      const certPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_CERT || "";
-      const keyPath = process.env.MOOSE_TEMPORAL_CONFIG__CLIENT_KEY || "";
-      const apiKey = process.env.MOOSE_TEMPORAL_CONFIG__API_KEY || "";
-
-      if (certPath && keyPath) {
+      if (clientCert && clientKey) {
         console.log("Using TLS for non-local Temporal");
-        const cert = await fs.readFileSync(certPath);
-        const key = await fs.readFileSync(keyPath);
+        const cert = await fs.readFileSync(clientCert);
+        const key = await fs.readFileSync(clientKey);
 
         connectionOptions.tls = {
           clientCertPair: { crt: cert, key: key },

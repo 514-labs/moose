@@ -23,7 +23,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     let temporal_url = project.temporal_config.temporal_url();
     let scripts_dir = project.scripts_dir();
 
-    let args: Vec<&str> = vec![temporal_url.as_str(), scripts_dir.to_str().unwrap()];
+    let args: Vec<&str> = vec![
+        temporal_url.as_str(),
+        scripts_dir.to_str().unwrap(),
+        project.temporal_config.client_cert.as_str(),
+        project.temporal_config.client_key.as_str(),
+        project.temporal_config.api_key.as_str(),
+    ];
 
     let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args)?;
 

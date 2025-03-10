@@ -31,7 +31,7 @@ impl ProcessRegistries {
             project.jwt.clone(),
             project.consumption_dir(),
             project.project_location.clone(),
-            project.temporal_config.temporal_url().clone(),
+            project.clone(),
         );
 
         let orchestration_workers = OrchestrationWorkersRegistry::new(project, settings);

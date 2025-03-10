@@ -12,6 +12,7 @@
     "@514labs/design-system-base": "workspace:*",
     "@514labs/design-system-components": "workspace:*",
     "@514labs/event-capture": "workspace:*",
+    "@mux/mux-player-react": "^3.3.0",
     "@sentry/nextjs": "^7.106.0",
     "lucide-react": "^0.427.0",
     "mixpanel": "^0.18.0",

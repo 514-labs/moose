@@ -85,7 +85,7 @@ importers:
         version: 14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-themes:
         specifier: ^0.2.1
-        version: 0.2.1(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 0.2.1(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -110,7 +110,7 @@ importers:
         version: 2.1.3(react@18.3.1)
       '@sentry/nextjs':
         specifier: ^7.106.0
-        version: 7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+        version: 7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       '@types/mdx':
         specifier: ^2.0.12
         version: 2.0.13
@@ -205,9 +205,12 @@ importers:
       '@514labs/event-capture':
         specifier: workspace:*
         version: link:../../packages/event-capture
+      '@mux/mux-player-react':
+        specifier: ^3.3.0
+        version: 3.3.0(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@sentry/nextjs':
         specifier: ^7.106.0
-        version: 7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+        version: 7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       lucide-react:
         specifier: ^0.427.0
         version: 0.427.0(react@18.3.1)
@@ -286,7 +289,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.3.788(@swc/core@1.10.15(@swc/helpers@0.5.5))(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))
+        version: 0.3.824(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -305,7 +308,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.788
+        version: 0.3.824
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -365,7 +368,7 @@ importers:
         version: 14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-themes:
         specifier: ^0.2.1
-        version: 0.2.1(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 0.2.1(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-video:
         specifier: ^1.0.6
         version: 1.0.6(@types/react-dom@18.3.0)(@types/react@18.3.1)(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -390,7 +393,7 @@ importers:
         version: 2.1.3(react@18.3.1)
       '@sentry/nextjs':
         specifier: ^7.106.0
-        version: 7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+        version: 7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       '@types/node':
         specifier: ^20
         version: 20.12.12
@@ -667,7 +670,7 @@ importers:
     devDependencies:
       '@sentry/nextjs':
         specifier: ^7.106.0
-        version: 7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+        version: 7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       '@types/node':
         specifier: ^20.14.5
         version: 20.14.5
@@ -748,7 +751,7 @@ importers:
         version: 14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-themes:
         specifier: ^0.2.1
-        version: 0.2.1(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 0.2.1(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -773,7 +776,7 @@ importers:
         version: 2.1.3(react@18.3.1)
       '@sentry/nextjs':
         specifier: ^7.106.0
-        version: 7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+        version: 7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       '@types/node':
         specifier: ^20
         version: 20.14.5
@@ -872,7 +875,7 @@ importers:
         version: 1.11.7
       '@temporalio/worker':
         specifier: ^1.11.7
-        version: 1.11.7(@swc/helpers@0.5.5)(esbuild@0.19.12)
+        version: 1.11.7(@swc/helpers@0.5.5)
       '@temporalio/workflow':
         specifier: ^1.11.7
         version: 1.11.7
@@ -943,8 +946,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.3.788':
-    resolution: {integrity: sha512-zYDD1mwT1sgAzTgQSfnzPwvoUGWQrBpeGjCSEygD/1fWz/fUX7osFkZSTlxNbVnjdnZ3mZDJNgE7IbkYYziJAw==}
+  '@514labs/moose-cli-darwin-arm64@0.3.824':
+    resolution: {integrity: sha512-cZTfyqP/FZSOySQbKAuDbESRgTnxEYJATo8Jeu5Rd4DwA4IQSLToqYsL9subN9hJpl0RBycnrcBSjBlFUAyXkQ==}
     cpu: [arm64]
     os: [darwin]
 
@@ -953,8 +956,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.3.788':
-    resolution: {integrity: sha512-0YjTZiR7d9u/xIJElx4vVpiN3tV4oTiklx/E63b1FPQ96diLZtzUPZtl8T9kkgOOJr24ZTIuFQz55F97/ri+mQ==}
+  '@514labs/moose-cli-darwin-x64@0.3.824':
+    resolution: {integrity: sha512-cemt872kY9Mzb2Kyc9T9LJl+Gqv/7kIJ2Lt1P5tq7R3nVswQTLikRZKHWl5HO2KCq21zsC4vKkEiQscjDtqW8A==}
     cpu: [x64]
     os: [darwin]
 
@@ -963,8 +966,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.3.788':
-    resolution: {integrity: sha512-3T7irsKB7Vl0lgQn9ThkNDzzskrKNhgYui1fBMdy9HP+fU05VxJjmfs4qXOEfLySSfE0m1cnb4hmkV+uW8MT/g==}
+  '@514labs/moose-cli-linux-arm64@0.3.824':
+    resolution: {integrity: sha512-MwrKeFRTIKi5h+FNYPMwG6FTLtJl+38DmaWUNnqtN8ZTrCABlx/ZctkNgnGyGPhtMTrY84fiaIHa8mgL5F3b6g==}
     cpu: [arm64]
     os: [linux]
 
@@ -973,8 +976,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.3.788':
-    resolution: {integrity: sha512-HmpoJ8lEIv9luArWXne45cT8UUHeiHXAfPNWB+s8Ld/hmqeFeJcy5+nYnVWultd4raBpUPpBIhad2RkCIMU/bQ==}
+  '@514labs/moose-cli-linux-x64@0.3.824':
+    resolution: {integrity: sha512-P91+aOVzZug2svdDUy/qN9EUfNaSTgHKcwrU0ReMVIKi3bPdJlkm0Crg9sI7OZb8aDqMYYS95HZ7BFOFmZnLbQ==}
     cpu: [x64]
     os: [linux]
 
@@ -982,12 +985,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.3.788':
-    resolution: {integrity: sha512-2MoTt1x18cNKGQfML7uPGAnPorTCzZm7NIaz0Eq1KO/3YGHal1DZs8eVmbtXNFDwe2MGt4U2agVoN+WeG7mGqg==}
+  '@514labs/moose-cli@0.3.824':
+    resolution: {integrity: sha512-3LiryiJINjUyfH7SzuSDtE+vX8GAE+gNZnnfAdQJm9z3NfDlpxy4xeQlQJOOQnnIcDnyITHvYE1C8XNWo9003A==}
     hasBin: true
 
-  '@514labs/moose-lib@0.3.788':
-    resolution: {integrity: sha512-kdZeYROwyuaZqNJ6GT+a4K5oZbiKTBhGRy+G+goac83oOR1hoGgUFdjql0IbQc8aCSgGp1W/VUiIkMCzMkekAw==}
+  '@514labs/moose-lib@0.3.824':
+    resolution: {integrity: sha512-4aban2fMPjOIOO8nD6o45eoqHC2ybY8EG6ZUCiAtyvGfu6Xhf3c9Ca7hKThiGn16CjyGzO0MHVc5XTy7MgFYlw==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -1896,8 +1899,24 @@ packages:
       '@types/react-dom':
         optional: true
 
+  '@mux/mux-player-react@3.3.0':
+    resolution: {integrity: sha512-S+P7shdph+Uj73emLiDoAfDKxHbbzQaqTHmndMXqsNhjfOF0ve7ZF7pLZOAV16UUwBrBDwOQwwmIFwd3wYgY+w==}
+    peerDependencies:
+      '@types/react': ^17.0.0 || ^17.0.0-0 || ^18 || ^18.0.0-0 || ^19 || ^19.0.0-0
+      '@types/react-dom': '*'
+      react: ^17.0.2 || ^17.0.0-0 || ^18 || ^18.0.0-0 || ^19 || ^19.0.0-0
+      react-dom: ^17.0.2 || ^17.0.2-0 || ^18 || ^18.0.0-0 || ^19 || ^19.0.0-0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
   '@mux/mux-player@2.6.0':
     resolution: {integrity: sha512-UYDBa1t+3B81Gd0ksOMROd2kx0U6auGOGW1PHh7m74EB+HMYTgYx8PtMYT4kqbQ83evAFBTMxedNuJ14FyzmlA==}
+
+  '@mux/mux-player@3.3.0':
+    resolution: {integrity: sha512-/VSOPKBd56QzQzVSjuigS8r6kAMJRuNskEUGqU0o0k37FC7ztLH4Fh85fzhEyWSDHs3krJ1dBLqhJ1eCs8r3sA==}
 
   '@mux/mux-video-react@0.10.0':
     resolution: {integrity: sha512-EPd5vFYGeGxO9Wk/IO6QfCDJAIjEPeEw48BqQziajvzAxewPyEVb+jMf8J/85BZf8ePz/2PbGmdTO4n99PtCew==}
@@ -1915,8 +1934,14 @@ packages:
   '@mux/mux-video@0.18.1':
     resolution: {integrity: sha512-Q8dc8h4Kv9rEDQJzNOs/bmu8iMBRyd6VDOkvyGYgUNt0ddgeMl1IFFM2Keiq9tJ6JeHpyFqXRMFeo3mZxMzCrw==}
 
+  '@mux/mux-video@0.24.3':
+    resolution: {integrity: sha512-HM5oasXfmYVfmsTMv1lZIW/OkHEQMJwavrl1gI4p13bdlmmUu2CNARiTv/tYATJ9+NkYHlU3RsteHXx7tK7+vg==}
+
   '@mux/playback-core@0.23.1':
     resolution: {integrity: sha512-2sPwjUkxZ4vQLr9igAEw0P7fwPC0PmVORn/Mlewlsbn2fPlYkv1XNKFQ5eFny9HLkNSlRCI9cJDg0xVRIXdpMw==}
+
+  '@mux/playback-core@0.28.3':
+    resolution: {integrity: sha512-QID2zp76szCTiXZp5LLYwDZV68HgflOoF10Vmp6P81FqKHonHVrQ0svNGqW6fMZLH2Ymf/Qc6kHSnwWTucgQqA==}
 
   '@napi-rs/simple-git-android-arm-eabi@0.1.16':
     resolution: {integrity: sha512-dbrCL0Pl5KZG7x7tXdtVsA5CO6At5ohDX3myf5xIYn9kN4jDFxsocl8bNt6Vb/hZQoJd8fI+k5VlJt+rFhbdVw==}
@@ -4559,8 +4584,16 @@ packages:
   castable-video@1.0.7:
     resolution: {integrity: sha512-n+evSJbDZCBIS/TGD5quVy2EQusEiOcQZ+H/CrVqTYAUqKgAgvGRLBO88Oox9l60OCW2iYJDEmp4Y5jp/Xhsng==}
 
+  castable-video@1.1.4:
+    resolution: {integrity: sha512-EBQJ04ShZFi1CGKXhBui6UYFJf+6C6wNIa12J2/NSu+ca/XeF5gkXUwHQ8uSKVCpvFYS2RRRB2zf29R0OYz8Iw==}
+
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
+
+  ce-la-react@0.1.3:
+    resolution: {integrity: sha512-zZwEEJv9XukeEGbswQXObaDJjYAufOIilSnDg4BWCpKNEYN84H9fpaB+wl+rYKWOIH4wBBPbLnOxKvDIwsL/JQ==}
+    peerDependencies:
+      react: '>=17.0.0'
 
   chai@4.5.0:
     resolution: {integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==}
@@ -4815,6 +4848,9 @@ packages:
 
   custom-media-element@1.3.0:
     resolution: {integrity: sha512-Kgi7u8oOZYhSdaV2/hTEfiPap1QdFUfaQjZiL6cFQmiGKU88P8PnAwic7UXInzTdyZyLb9DnjCAiTskh63jzMg==}
+
+  custom-media-element@1.4.2:
+    resolution: {integrity: sha512-AM6FRWqJyW7pWTvXb4uJj6yvHE7C6UutdhJ5o3XO5NEl5aWFcfnpz8/TuW8qr1+/wfbj50wRvdArnSNjTmjmVw==}
 
   cytoscape-cose-bilkent@4.1.0:
     resolution: {integrity: sha512-wgQlVIUJF13Quxiv5e1gstZ08rnZj2XaLHGoFMYXz7SkNfCDOOteKBE6SYRfA9WxxI/iBc3ajfDoc6hb/MRAHQ==}
@@ -5876,6 +5912,9 @@ packages:
     resolution: {integrity: sha512-trFMIq3PATiFRiQmNNeHtsrkwYRByIXUbYNbotiY9RLVfMkdwZdd2eQ38mGt7BRiCKBaj1DyBAIHmm7mmXPuuw==}
     engines: {node: '>=10.0.0'}
 
+  hls.js@1.5.20:
+    resolution: {integrity: sha512-uu0VXUK52JhihhnN/MVVo1lvqNNuhoxkonqgO3IpjvQiGpJBdIXMGkofjQb/j9zvV7a1SW8U9g1FslWx/1HOiQ==}
+
   hls.js@1.5.8:
     resolution: {integrity: sha512-hJYMPfLhWO7/7+n4f9pn6bOheCGx0WgvVz7k3ouq3Pp1bja48NN+HeCQu3XCGYzqWQF/wo7Sk6dJAyWVJD8ECA==}
 
@@ -6754,6 +6793,12 @@ packages:
   media-chrome@3.2.2:
     resolution: {integrity: sha512-Fjf1rNxlZqVR5nj7a9ay+XpzeKVPMMBltK2XiMOTc5bomxAvyo3vJZ9JKzmAYVoiZ6sbDNWJJVSVf6b3laFwew==}
 
+  media-chrome@4.5.0:
+    resolution: {integrity: sha512-MkVFFM+WvkkMwFu7sXr0bJMdQ5dbJz3BkhofPguiIHvgKYWei7VDPTEC41LmdhxWx4jQQ0FCYHXN8YFOWb7Olw==}
+
+  media-chrome@4.7.1:
+    resolution: {integrity: sha512-9aZZTpMeSWqHq8klcwo10dKR0DcKHk6SEFaAp0gwgn9dPpl/E6WTkTHswwHqmLPPny1P0Mf33NmA2d2Qj+62tA==}
+
   media-tracks@0.3.2:
     resolution: {integrity: sha512-qz1MLcXPm0DuzeKm5vWm0kxHROSbwJJw/01h+pvanMAEwR8K4z3tzpLTZoF8sNNa1cy0FbQ8QzNDNU3Hwh0kJw==}
 
@@ -7056,6 +7101,9 @@ packages:
 
   mux-embed@5.2.1:
     resolution: {integrity: sha512-NukHw91xeEVDBeXVDBpi2BvXNix7gSuvdtyvOph5yR/ROn1hHbTlcYWoKQyCyJX9frsF00UROEul+S8wPzU3aQ==}
+
+  mux-embed@5.8.1:
+    resolution: {integrity: sha512-OK379tvEtMaDubXYhwXKysp+HdBVspSuPuSlv0BdNV7Zl6TFVkMsXV2Wr5xmjBVCvSCCHJ9h3x3jF+2DQovC3g==}
 
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
@@ -7426,6 +7474,9 @@ packages:
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
+
+  player.style@0.1.5:
+    resolution: {integrity: sha512-qfeudwJbYWQ/cDERtxeM5gnaY1AvaC7tTgl7COY1lcCMssuz4EQzUz/c5P9OKUSi1TrXj0NAFw3lK6kJoYFNbQ==}
 
   possible-typed-array-names@1.0.0:
     resolution: {integrity: sha512-d7Uw+eZoloe0EHDIYoe+bQ5WXnGMOpmiZFTuMWCwpjzzkL2nTjcKiAk4hh8TjnGye2TwWOk3UXucZ+3rbmBa8Q==}
@@ -8866,25 +8917,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.3.788':
+  '@514labs/moose-cli-darwin-arm64@0.3.824':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.3.788':
+  '@514labs/moose-cli-darwin-x64@0.3.824':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.3.788':
+  '@514labs/moose-cli-linux-arm64@0.3.824':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.3.788':
+  '@514labs/moose-cli-linux-x64@0.3.824':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -8894,19 +8945,23 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.3.788':
+  '@514labs/moose-cli@0.3.824':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.788
-      '@514labs/moose-cli-darwin-x64': 0.3.788
-      '@514labs/moose-cli-linux-arm64': 0.3.788
-      '@514labs/moose-cli-linux-x64': 0.3.788
+      '@514labs/moose-cli-darwin-arm64': 0.3.824
+      '@514labs/moose-cli-darwin-x64': 0.3.824
+      '@514labs/moose-cli-linux-arm64': 0.3.824
+      '@514labs/moose-cli-linux-x64': 0.3.824
 
-  '@514labs/moose-lib@0.3.788(@swc/core@1.10.15(@swc/helpers@0.5.5))(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.3.824(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
       '@sentry/node': 8.38.0
       '@sentry/profiling-node': 8.38.0
+      '@temporalio/activity': 1.11.7
+      '@temporalio/client': 1.11.7
+      '@temporalio/worker': 1.11.7(@swc/helpers@0.5.5)
+      '@temporalio/workflow': 1.11.7
       fastq: 1.17.1
       jose: 5.9.2
       kafkajs: 2.2.4
@@ -8915,10 +8970,14 @@ snapshots:
       typia: 7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5)
     transitivePeerDependencies:
       - '@swc/core'
+      - '@swc/helpers'
       - '@swc/wasm'
       - '@types/node'
+      - esbuild
       - supports-color
       - typescript
+      - uglify-js
+      - webpack-cli
 
   '@adobe/css-tools@4.3.3': {}
 
@@ -8987,8 +9046,8 @@ snapshots:
       '@aws-crypto/sha1-browser': 3.0.0
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sso-oidc': 3.574.0
-      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
+      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
+      '@aws-sdk/client-sts': 3.574.0
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-bucket-endpoint': 3.568.0
@@ -9045,11 +9104,11 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-sso-oidc@3.574.0':
+  '@aws-sdk/client-sso-oidc@3.574.0(@aws-sdk/client-sts@3.574.0)':
     dependencies:
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
+      '@aws-sdk/client-sts': 3.574.0
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-host-header': 3.567.0
@@ -9088,6 +9147,7 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.6.2
     transitivePeerDependencies:
+      - '@aws-sdk/client-sts'
       - aws-crt
 
   '@aws-sdk/client-sso@3.572.0':
@@ -9133,11 +9193,11 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-sts@3.574.0(@aws-sdk/client-sso-oidc@3.574.0)':
+  '@aws-sdk/client-sts@3.574.0':
     dependencies:
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sso-oidc': 3.574.0
+      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-host-header': 3.567.0
@@ -9176,7 +9236,6 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.6.2
     transitivePeerDependencies:
-      - '@aws-sdk/client-sso-oidc'
       - aws-crt
 
   '@aws-sdk/core@3.572.0':
@@ -9210,7 +9269,7 @@ snapshots:
 
   '@aws-sdk/credential-provider-ini@3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
+      '@aws-sdk/client-sts': 3.574.0
       '@aws-sdk/credential-provider-env': 3.568.0
       '@aws-sdk/credential-provider-process': 3.572.0
       '@aws-sdk/credential-provider-sso': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)
@@ -9267,7 +9326,7 @@ snapshots:
 
   '@aws-sdk/credential-provider-web-identity@3.568.0(@aws-sdk/client-sts@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
+      '@aws-sdk/client-sts': 3.574.0
       '@aws-sdk/types': 3.567.0
       '@smithy/property-provider': 2.2.0
       '@smithy/types': 2.12.0
@@ -9383,7 +9442,7 @@ snapshots:
 
   '@aws-sdk/token-providers@3.572.0(@aws-sdk/client-sso-oidc@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sso-oidc': 3.574.0
+      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/types': 3.567.0
       '@smithy/property-provider': 2.2.0
       '@smithy/shared-ini-file-loader': 2.4.0
@@ -10324,11 +10383,31 @@ snapshots:
       '@types/react': 18.3.1
       '@types/react-dom': 18.3.0
 
+  '@mux/mux-player-react@3.3.0(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@mux/mux-player': 3.3.0(react@18.3.1)
+      '@mux/playback-core': 0.28.3
+      prop-types: 15.8.1
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.1
+      '@types/react-dom': 18.3.0
+
   '@mux/mux-player@2.6.0':
     dependencies:
       '@mux/mux-video': 0.18.1
       '@mux/playback-core': 0.23.1
       media-chrome: 3.2.2
+
+  '@mux/mux-player@3.3.0(react@18.3.1)':
+    dependencies:
+      '@mux/mux-video': 0.24.3
+      '@mux/playback-core': 0.28.3
+      media-chrome: 4.5.0
+      player.style: 0.1.5(react@18.3.1)
+    transitivePeerDependencies:
+      - react
 
   '@mux/mux-video-react@0.10.0(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -10347,10 +10426,22 @@ snapshots:
       custom-media-element: 1.2.3
       media-tracks: 0.3.2
 
+  '@mux/mux-video@0.24.3':
+    dependencies:
+      '@mux/playback-core': 0.28.3
+      castable-video: 1.1.4
+      custom-media-element: 1.4.2
+      media-tracks: 0.3.2
+
   '@mux/playback-core@0.23.1':
     dependencies:
       hls.js: 1.5.8
       mux-embed: 5.2.1
+
+  '@mux/playback-core@0.28.3':
+    dependencies:
+      hls.js: 1.5.20
+      mux-embed: 5.8.1
 
   '@napi-rs/simple-git-android-arm-eabi@0.1.16':
     optional: true
@@ -11754,7 +11845,7 @@ snapshots:
       '@sentry/utils': 7.114.0
       localforage: 1.10.0
 
-  '@sentry/nextjs@7.114.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))':
+  '@sentry/nextjs@7.114.0(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))':
     dependencies:
       '@rollup/plugin-commonjs': 24.0.0(rollup@2.78.0)
       '@sentry/core': 7.114.0
@@ -12368,7 +12459,7 @@ snapshots:
       long: 5.3.0
       protobufjs: 7.4.0
 
-  '@temporalio/worker@1.11.7(@swc/helpers@0.5.5)(esbuild@0.19.12)':
+  '@temporalio/worker@1.11.7(@swc/helpers@0.5.5)':
     dependencies:
       '@swc/core': 1.10.15(@swc/helpers@0.5.5)
       '@temporalio/activity': 1.11.7
@@ -12382,11 +12473,11 @@ snapshots:
       memfs: 4.17.0
       rxjs: 7.8.1
       source-map: 0.7.4
-      source-map-loader: 4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
+      source-map-loader: 4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       supports-color: 8.1.1
-      swc-loader: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
+      swc-loader: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       unionfs: 4.5.4
-      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))
     transitivePeerDependencies:
       - '@swc/helpers'
       - esbuild
@@ -13520,7 +13611,15 @@ snapshots:
     dependencies:
       custom-media-element: 1.3.0
 
+  castable-video@1.1.4:
+    dependencies:
+      custom-media-element: 1.4.2
+
   ccount@2.0.1: {}
+
+  ce-la-react@0.1.3(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   chai@4.5.0:
     dependencies:
@@ -13766,6 +13865,8 @@ snapshots:
   custom-media-element@1.2.3: {}
 
   custom-media-element@1.3.0: {}
+
+  custom-media-element@1.4.2: {}
 
   cytoscape-cose-bilkent@4.1.0(cytoscape@3.29.2):
     dependencies:
@@ -14312,7 +14413,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -14330,7 +14431,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -14348,7 +14449,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -14381,7 +14482,7 @@ snapshots:
       enhanced-resolve: 5.16.1
       eslint: 8.57.0
       eslint-module-utils: 2.8.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.7.5
       is-core-module: 2.13.1
@@ -14431,7 +14532,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0):
+  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
       array-includes: 3.1.8
       array.prototype.findlastindex: 1.2.5
@@ -15318,6 +15419,8 @@ snapshots:
   he@1.2.0: {}
 
   heap-js@2.6.0: {}
+
+  hls.js@1.5.20: {}
 
   hls.js@1.5.8: {}
 
@@ -16577,6 +16680,14 @@ snapshots:
 
   media-chrome@3.2.2: {}
 
+  media-chrome@4.5.0: {}
+
+  media-chrome@4.7.1(react@18.3.1):
+    dependencies:
+      ce-la-react: 0.1.3(react@18.3.1)
+    transitivePeerDependencies:
+      - react
+
   media-tracks@0.3.2: {}
 
   memfs@4.17.0:
@@ -17187,6 +17298,8 @@ snapshots:
 
   mux-embed@5.2.1: {}
 
+  mux-embed@5.8.1: {}
+
   mz@2.7.0:
     dependencies:
       any-promise: 1.3.0
@@ -17233,7 +17346,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  next-themes@0.2.1(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  next-themes@0.2.1(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       next: 14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
@@ -17304,7 +17417,7 @@ snapshots:
       match-sorter: 6.3.4
       next: 14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-seo: 6.5.0(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      next-themes: 0.2.1(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next-themes: 0.2.1(next@14.2.15(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       nextra: 2.13.4(next@14.2.15(@babel/core@7.24.5)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -17603,6 +17716,12 @@ snapshots:
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
+
+  player.style@0.1.5(react@18.3.1):
+    dependencies:
+      media-chrome: 4.7.1(react@18.3.1)
+    transitivePeerDependencies:
+      - react
 
   possible-typed-array-names@1.0.0: {}
 
@@ -18270,11 +18389,11 @@ snapshots:
 
   source-map-js@1.2.0: {}
 
-  source-map-loader@4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
+  source-map-loader@4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
       iconv-lite: 0.6.3
       source-map-js: 1.2.0
-      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))
 
   source-map-support@0.5.13:
     dependencies:
@@ -18453,11 +18572,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
+  swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
       '@swc/core': 1.10.15(@swc/helpers@0.5.5)
       '@swc/counter': 0.1.3
-      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))
 
   symbol-tree@3.2.4: {}
 
@@ -18589,18 +18708,6 @@ snapshots:
       - ts-node
 
   tapable@2.2.1: {}
-
-  terser-webpack-plugin@5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
-      jest-worker: 27.5.1
-      schema-utils: 3.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.36.0
-      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
-    optionalDependencies:
-      '@swc/core': 1.10.15(@swc/helpers@0.5.5)
-      esbuild: 0.19.12
 
   terser-webpack-plugin@5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
@@ -19322,36 +19429,6 @@ snapshots:
       schema-utils: 3.3.0
       tapable: 2.2.1
       terser-webpack-plugin: 5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
-      watchpack: 2.4.2
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
-  webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.6
-      '@webassemblyjs/ast': 1.14.1
-      '@webassemblyjs/wasm-edit': 1.14.1
-      '@webassemblyjs/wasm-parser': 1.14.1
-      acorn: 8.14.0
-      browserslist: 4.24.0
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.17.1
-      es-module-lexer: 1.5.4
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:

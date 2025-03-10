@@ -6,7 +6,7 @@ use tokio::process::Child;
 use crate::{
     framework::{languages::SupportedLanguages, python, typescript},
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
-    project::JwtConfig,
+    project::{JwtConfig, Project, ProjectFileError},
     utilities::system::{kill_child, KillProcessError},
 };
 
@@ -18,6 +18,9 @@ pub enum ConsumptionError {
 
     #[error("Kill process Error")]
     KillProcessError(#[from] KillProcessError),
+
+    #[error("Failed to create library files")]
+    ProjectFileError(#[from] ProjectFileError),
 }
 
 pub struct ConsumptionProcessRegistry {
@@ -27,6 +30,7 @@ pub struct ConsumptionProcessRegistry {
     language: SupportedLanguages,
     project_path: PathBuf,
     jwt_config: Option<JwtConfig>,
+    project: Project,
 }
 
 impl ConsumptionProcessRegistry {
@@ -36,6 +40,7 @@ impl ConsumptionProcessRegistry {
         jwt_config: Option<JwtConfig>,
         dir: PathBuf,
         project_path: PathBuf,
+        project: Project,
     ) -> Self {
         Self {
             api_process: Option::None,
@@ -44,6 +49,7 @@ impl ConsumptionProcessRegistry {
             clickhouse_config,
             project_path,
             jwt_config,
+            project,
         }
     }
 
@@ -52,11 +58,13 @@ impl ConsumptionProcessRegistry {
 
         let child = match self.language {
             SupportedLanguages::Python => python::consumption::run(
+                self.project.clone(),
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),
                 &self.dir,
             ),
             SupportedLanguages::Typescript => typescript::consumption::run(
+                self.project.clone(),
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),
                 &self.dir,

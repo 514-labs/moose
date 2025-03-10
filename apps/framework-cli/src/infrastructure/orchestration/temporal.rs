@@ -28,6 +28,14 @@ pub struct TemporalConfig {
     pub config_path: String,
     #[serde(default = "default_postgresql_version")]
     pub postgresql_version: String,
+    #[serde(default = "default_client_cert")]
+    pub client_cert: String,
+    #[serde(default = "default_client_key")]
+    pub client_key: String,
+    #[serde(default = "default_ca_cert")]
+    pub ca_cert: String,
+    #[serde(default = "default_api_key")]
+    pub api_key: String,
 }
 
 fn default_db_user() -> String {
@@ -76,6 +84,22 @@ fn default_config_path() -> String {
 
 fn default_postgresql_version() -> String {
     "13".to_string()
+}
+
+fn default_client_cert() -> String {
+    "".to_string()
+}
+
+fn default_client_key() -> String {
+    "".to_string()
+}
+
+fn default_ca_cert() -> String {
+    "".to_string()
+}
+
+fn default_api_key() -> String {
+    "".to_string()
 }
 
 impl TemporalConfig {
@@ -138,6 +162,10 @@ impl Default for TemporalConfig {
             ui_cors_origins: default_ui_cors_origins(),
             config_path: default_config_path(),
             postgresql_version: default_postgresql_version(),
+            client_cert: default_client_cert(),
+            client_key: default_client_key(),
+            ca_cert: default_ca_cert(),
+            api_key: default_api_key(),
         }
     }
 }

@@ -10,6 +10,7 @@ pub mod utils;
 use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;
 use crate::framework::scripts::config::WorkflowConfig;
 use crate::framework::typescript::templates::TS_BASE_SCRIPT_TEMPLATE;
+use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::project::Project;
 use crate::utilities::constants::SCRIPTS_DIR;
 use anyhow::Result;
@@ -158,13 +159,17 @@ impl Workflow {
     /// Start the workflow execution locally
     pub async fn start(
         &self,
-        temporal_url: &str,
+        temporal_config: &TemporalConfig,
         input: Option<String>,
     ) -> Result<String, anyhow::Error> {
-        Ok(
-            executor::execute_workflow(temporal_url, self.language, &self.name, &self.path, input)
-                .await?,
+        Ok(executor::execute_workflow(
+            temporal_config,
+            self.language,
+            &self.name,
+            &self.path,
+            input,
         )
+        .await?)
     }
 }
 

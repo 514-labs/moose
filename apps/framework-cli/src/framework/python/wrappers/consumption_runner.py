@@ -21,9 +21,9 @@ import jwt
 from clickhouse_connect import get_client
 from clickhouse_connect.driver.client import Client as ClickhouseClient
 
-from temporalio.client import Client as TemporalClient
-from temporalio.common import RetryPolicy
-
+from temporalio.client import Client as TemporalClient, TLSConfig
+from temporalio.common import RetryPolicy, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
+from consumption_wrapper.utils import create_temporal_connection
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
 parser.add_argument('consumption_dir_path', type=str,
@@ -40,6 +40,10 @@ parser.add_argument('jwt_secret', type=str, help='JWT secret')
 parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
 parser.add_argument('jwt_audience', type=str, help='JWT audience')
 parser.add_argument('jwt_enforce_all', type=str, help='Auto-handle requests without JWT')
+parser.add_argument('temporal_url', type=str, help='Temporal URL')
+parser.add_argument('client_cert', type=str, help='Client certificate')
+parser.add_argument('client_key', type=str, help='Client key')
+parser.add_argument('api_key', type=str, help='API key')
 
 args = parser.parse_args()
 
@@ -55,6 +59,11 @@ jwt_secret = args.jwt_secret
 jwt_issuer = args.jwt_issuer
 jwt_audience = args.jwt_audience
 jwt_enforce_all = args.jwt_enforce_all
+
+temporal_url = args.temporal_url
+client_cert = args.client_cert
+client_key = args.client_key
+api_key = args.api_key
 
 sys.path.append(consumption_dir_path)
 
@@ -165,6 +174,8 @@ class WorkflowClient:
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
             id=name,
             task_queue="python-script-queue",
+            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
             retry_policy=retry_policy,
             run_timeout=run_timeout
         )
@@ -299,8 +310,6 @@ def walk_dir(dir, file_extension):
 
     return file_list
 
-async def get_temporal_client():
-    return await TemporalClient.connect("localhost:7233")
 
 def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
@@ -312,7 +321,7 @@ def main():
         # TODO: try to connect since it's still behind a feature flag
         print("Connecting to Temporal")
         # Need to await on temporal client calls but this main function is sync
-        temporal_client = asyncio.run(get_temporal_client())
+        temporal_client = asyncio.run(create_temporal_connection(temporal_url, client_cert, client_key, api_key))
     except Exception as e:
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
     

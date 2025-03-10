@@ -9,7 +9,15 @@
  */
 
 import { ClickHouseClient, ResultSet } from "@clickhouse/client";
+import {
+  Client as TemporalClient,
+  Connection,
+  ConnectionOptions,
+} from "@temporalio/client";
+import { StringValue } from "@temporalio/common";
 import { randomUUID } from "node:crypto";
+import * as path from "path";
+import * as fs from "fs";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
@@ -128,6 +136,16 @@ function emptyIfUndefined(value: string | undefined): string {
 }
 
 export class MooseClient {
+  query: QueryClient;
+  workflow: WorkflowClient;
+
+  constructor(queryClient: QueryClient, temporalClient?: TemporalClient) {
+    this.query = queryClient;
+    this.workflow = new WorkflowClient(temporalClient);
+  }
+}
+
+export class QueryClient {
   client: ClickHouseClient;
   query_id_prefix: string;
   constructor(client: ClickHouseClient, query_id_prefix: string) {
@@ -135,7 +153,7 @@ export class MooseClient {
     this.query_id_prefix = query_id_prefix;
   }
 
-  async query<T = any>(
+  async execute<T = any>(
     sql: Sql,
   ): Promise<ResultSet<"JSONEachRow"> & { __query_result_t?: T[] }> {
     const parameterizedStubs = sql.values.map((v, i) =>
@@ -162,6 +180,167 @@ export class MooseClient {
       format: "JSONEachRow",
       query_id: this.query_id_prefix + randomUUID(),
     });
+  }
+}
+
+interface WorkflowConfig {
+  name: string;
+  schedule: string;
+  retries: number;
+  timeout: string;
+  tasks: string[];
+}
+
+export class WorkflowClient {
+  client: TemporalClient | undefined;
+
+  constructor(temporalClient?: TemporalClient) {
+    this.client = temporalClient;
+  }
+
+  async execute(name: string, input_data: any) {
+    try {
+      if (!this.client) {
+        return {
+          status: 404,
+          body: `Temporal client not found. Is the feature flag enabled?`,
+        };
+      }
+
+      const configs = await this.loadConsolidatedConfigs();
+      const config = configs[name];
+      if (!config) {
+        return {
+          status: 404,
+          body: `Workflow config not found for ${name}`,
+        };
+      }
+
+      const runId = await this.startWorkflowAsync(name, config, input_data);
+
+      return {
+        status: 200,
+        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${name}/${runId}/history`,
+      };
+    } catch (error) {
+      return {
+        status: 400,
+        body: `Error starting workflow: ${error}`,
+      };
+    }
+  }
+
+  private async startWorkflowAsync(
+    name: string,
+    config: WorkflowConfig,
+    input_data: any,
+  ) {
+    console.log(
+      `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
+    );
+
+    const handle = await this.client!.workflow.start("ScriptWorkflow", {
+      args: [`${process.cwd()}/app/scripts/${name}`, input_data],
+      taskQueue: "typescript-script-queue",
+      workflowId: name,
+      workflowIdConflictPolicy: "FAIL",
+      workflowIdReusePolicy: "ALLOW_DUPLICATE",
+      retry: {
+        maximumAttempts: config.retries,
+      },
+      workflowRunTimeout: config.timeout as StringValue,
+    });
+
+    return handle.firstExecutionRunId;
+  }
+
+  private async loadConsolidatedConfigs(): Promise<
+    Record<string, WorkflowConfig>
+  > {
+    const configPath = path.join(
+      process.cwd(),
+      ".moose",
+      "workflow_configs.json",
+    );
+    const configContent = await fs.readFileSync(configPath, "utf8");
+    const configArray = JSON.parse(configContent) as WorkflowConfig[];
+
+    const configMap = configArray.reduce(
+      (map: Record<string, WorkflowConfig>, config: WorkflowConfig) => {
+        if (config.name) {
+          map[config.name] = config;
+        }
+        return map;
+      },
+      {},
+    );
+
+    return configMap;
+  }
+}
+
+/**
+ * This looks similar to the client in runner.ts which is a worker.
+ * Temporal SDK uses similar looking connection options & client,
+ * but there are different libraries for a worker & client like this one
+ * that triggers workflows.
+ */
+export async function getTemporalClient(
+  temporalUrl: string,
+  clientCert: string,
+  clientKey: string,
+  apiKey: string,
+): Promise<TemporalClient | undefined> {
+  try {
+    let namespace = "default";
+    if (!temporalUrl.includes("localhost")) {
+      // Remove port and just get <namespace>.<account>
+      const hostPart = temporalUrl.split(":")[0];
+      const match = hostPart.match(/^([^.]+\.[^.]+)/);
+      if (match && match[1]) {
+        namespace = match[1];
+      }
+    }
+    console.info(`Using namespace from URL: ${namespace}`);
+
+    let connectionOptions: ConnectionOptions = {
+      address: temporalUrl,
+      connectTimeout: "3s",
+    };
+
+    if (!temporalUrl.includes("localhost")) {
+      // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
+      if (clientCert && clientKey) {
+        console.log("Using TLS for non-local Temporal");
+        const cert = await fs.readFileSync(clientCert);
+        const key = await fs.readFileSync(clientKey);
+
+        connectionOptions.tls = {
+          clientCertPair: { crt: cert, key: key },
+        };
+      } else if (apiKey) {
+        console.log("Using API key for non-local Temporal");
+        // URL with API key uses gRPC regional endpoint
+        connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
+        connectionOptions.apiKey = apiKey;
+        connectionOptions.tls = {};
+        connectionOptions.metadata = {
+          "temporal-namespace": namespace,
+        };
+      }
+    }
+
+    console.log(`Connecting to Temporal at ${temporalUrl}`);
+    const connection = await Connection.connect(connectionOptions);
+    const client = new TemporalClient({ connection, namespace });
+    console.log("Connected to Temporal server");
+
+    return client;
+  } catch (error) {
+    console.error(
+      `Failed to connect to Temporal. Is the feature flag enabled?`,
+    );
+    return undefined;
   }
 }
 

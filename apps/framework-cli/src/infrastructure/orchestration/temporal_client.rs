@@ -1,5 +1,4 @@
 use anyhow::{Error, Result};
-use lazy_static::lazy_static;
 use log::info;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
@@ -13,9 +12,14 @@ use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
 use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
+use crate::infrastructure::orchestration::temporal::TemporalConfig;
 
 pub struct TemporalClientManager {
     temporal_url: String,
+    ca_cert: String,
+    client_cert: String,
+    client_key: String,
+    api_key: String,
 }
 
 pub enum TemporalClient {
@@ -26,21 +30,6 @@ pub enum TemporalClient {
 pub struct ApiKeyInterceptor {
     api_key: String,
     namespace: String,
-}
-
-fn get_env_var(name: &str) -> String {
-    std::env::var(name).unwrap_or_else(|_| "".to_string())
-}
-
-lazy_static! {
-    pub static ref MOOSE_TEMPORAL_CONFIG__CA_CERT: String =
-        get_env_var("MOOSE_TEMPORAL_CONFIG__CA_CERT");
-    pub static ref MOOSE_TEMPORAL_CONFIG__CLIENT_CERT: String =
-        get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_CERT");
-    pub static ref MOOSE_TEMPORAL_CONFIG__CLIENT_KEY: String =
-        get_env_var("MOOSE_TEMPORAL_CONFIG__CLIENT_KEY");
-    pub static ref MOOSE_TEMPORAL_CONFIG__API_KEY: String =
-        get_env_var("MOOSE_TEMPORAL_CONFIG__API_KEY");
 }
 
 impl tonic::service::Interceptor for ApiKeyInterceptor {
@@ -63,9 +52,13 @@ impl tonic::service::Interceptor for ApiKeyInterceptor {
 }
 
 impl TemporalClientManager {
-    pub fn new(temporal_url: &str) -> Self {
+    pub fn new(config: &TemporalConfig) -> Self {
         Self {
-            temporal_url: temporal_url.to_string(),
+            temporal_url: config.temporal_url_with_scheme(),
+            ca_cert: config.ca_cert.clone(),
+            client_cert: config.client_cert.clone(),
+            client_key: config.client_key.clone(),
+            api_key: config.api_key.clone(),
         }
     }
 
@@ -85,15 +78,13 @@ impl TemporalClientManager {
         if is_local {
             let client = self.get_temporal_client().await?;
             Ok(TemporalClient::Standard(client))
-        } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
-            && !MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.is_empty()
-            && !MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.is_empty()
+        } else if !self.ca_cert.is_empty()
+            && !self.client_cert.is_empty()
+            && !self.client_key.is_empty()
         {
             let client = self.get_temporal_client_mtls().await?;
             Ok(TemporalClient::Standard(client))
-        } else if !MOOSE_TEMPORAL_CONFIG__CA_CERT.is_empty()
-            && !MOOSE_TEMPORAL_CONFIG__API_KEY.is_empty()
-        {
+        } else if !self.ca_cert.is_empty() && !self.api_key.is_empty() {
             let client = self.get_temporal_client_api_key().await?;
             Ok(TemporalClient::WithInterceptor(client))
         } else {
@@ -115,9 +106,9 @@ impl TemporalClientManager {
     }
 
     async fn get_temporal_client_mtls(&self) -> Result<WorkflowServiceClient<Channel>> {
-        let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
-        let client_cert_path = MOOSE_TEMPORAL_CONFIG__CLIENT_CERT.clone();
-        let client_key_path = MOOSE_TEMPORAL_CONFIG__CLIENT_KEY.clone();
+        let ca_cert_path = self.ca_cert.clone();
+        let client_cert_path = self.client_cert.clone();
+        let client_key_path = self.client_key.clone();
 
         let domain_name = get_temporal_domain_name(&self.temporal_url);
 
@@ -146,8 +137,8 @@ impl TemporalClientManager {
     async fn get_temporal_client_api_key(
         &self,
     ) -> Result<WorkflowServiceClient<InterceptedService<Channel, ApiKeyInterceptor>>> {
-        let ca_cert_path = MOOSE_TEMPORAL_CONFIG__CA_CERT.clone();
-        let api_key = MOOSE_TEMPORAL_CONFIG__API_KEY.clone();
+        let ca_cert_path = self.ca_cert.clone();
+        let api_key = self.api_key.clone();
 
         let domain_name = get_temporal_domain_name(&self.temporal_url);
         let namespace = get_temporal_namespace(domain_name);

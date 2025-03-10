@@ -1,11 +1,12 @@
 import http from "http";
 import process from "node:process";
 import { getClickhouseClient } from "../commons";
-import { MooseClient, sql } from "./helpers";
+import { MooseClient, QueryClient, getTemporalClient, sql } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
+import { Client as TemporalClient } from "@temporalio/client";
 
 const [
   ,
@@ -22,6 +23,10 @@ const [
   JWT_ISSUER, // Optional
   JWT_AUDIENCE, // Optional
   ENFORCE_ON_ALL_CONSUMPTIONS_APIS, // Optional
+  TEMPORAL_URL, // Optional
+  CLIENT_CERT, // Optional
+  CLIENT_KEY, // Optional
+  API_KEY, // Optional
 ] = process.argv;
 
 const clickhouseConfig = {
@@ -53,7 +58,11 @@ export function createConsumptionApi<T extends object, R = any>(
 }
 
 const apiHandler =
-  (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
+  (
+    publicKey: jose.KeyLike | undefined,
+    clickhouseClient: ClickHouseClient,
+    temporalClient?: TemporalClient,
+  ) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       const url = new URL(req.url || "", "https://localhost");
@@ -115,8 +124,9 @@ const apiHandler =
         modulesCache.set(pathName, userFuncModule);
       }
 
+      const queryClient = new QueryClient(clickhouseClient, fileName);
       const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(clickhouseClient, fileName),
+        client: new MooseClient(queryClient, temporalClient),
         sql: sql,
         jwt: jwtPayload,
       });
@@ -170,6 +180,12 @@ export const runConsumptionApis = async () => {
 
   const consumptionCluster = new Cluster({
     workerStart: async () => {
+      const temporalClient = await getTemporalClient(
+        TEMPORAL_URL,
+        CLIENT_CERT,
+        CLIENT_KEY,
+        API_KEY,
+      );
       const clickhouseClient = getClickhouseClient(clickhouseConfig);
       let publicKey: jose.KeyLike | undefined;
       if (JWT_SECRET) {
@@ -177,7 +193,9 @@ export const runConsumptionApis = async () => {
         publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
       }
 
-      const server = http.createServer(apiHandler(publicKey, clickhouseClient));
+      const server = http.createServer(
+        apiHandler(publicKey, clickhouseClient, temporalClient),
+      );
       server.listen(4001, () => {
         console.log("Server running on port 4001");
       });

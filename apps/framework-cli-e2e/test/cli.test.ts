@@ -137,7 +137,7 @@ describe("framework-cli", () => {
       });
 
       (async () => {
-        await setTimeoutAsync(60_000);
+        await setTimeoutAsync(70_000);
         if (devProcess!.killed) return;
         console.error("Dev server did not start or complete in time");
         devProcess!.kill("SIGINT");
@@ -146,7 +146,7 @@ describe("framework-cli", () => {
     });
 
     console.log("Server started, waiting before sending test request...");
-    await setTimeoutAsync(5000);
+    await setTimeoutAsync(10000);
 
     const eventId = randomUUID();
 

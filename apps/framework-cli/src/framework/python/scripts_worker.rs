@@ -6,7 +6,7 @@ use tokio::process::Child;
 
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::project::{Project, ProjectFileError};
-use crate::utilities::constants::PYTHON_WORKER_WRAPPER_PACKAGE_NAME;
+use crate::utilities::constants::{PYTHON_WORKER_WRAPPER_PACKAGE_NAME, UTILS_WRAPPER_PACKAGE_NAME};
 
 use super::executor::{run_python_program, PythonProgram};
 
@@ -25,10 +25,14 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     // Create the wrapper lib files inside the .moose directory
     let internal_dir = project.internal_dir()?;
     let python_worker_lib_dir = internal_dir.join(PYTHON_WORKER_WRAPPER_PACKAGE_NAME);
+    let utils_lib_dir = python_worker_lib_dir.join(UTILS_WRAPPER_PACKAGE_NAME);
 
     // Create the directory if it doesn't exist
     if !python_worker_lib_dir.exists() {
         fs::create_dir(&python_worker_lib_dir)?;
+    }
+    if !utils_lib_dir.exists() {
+        fs::create_dir(&utils_lib_dir)?;
     }
 
     // Overwrite the wrapper files
@@ -60,11 +64,22 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         python_worker_lib_dir.join("serialization.py"),
         include_str!("./wrappers/scripts/python_worker_wrapper/serialization.py"),
     )?;
+    fs::write(
+        utils_lib_dir.join("__init__.py"),
+        include_str!("./utils/__init__.py"),
+    )?;
+    fs::write(
+        utils_lib_dir.join("temporal.py"),
+        include_str!("./utils/temporal.py"),
+    )?;
 
     let mut worker_process = run_python_program(PythonProgram::OrchestrationWorker {
         args: vec![
             project.temporal_config.temporal_url(),
             scripts_dir.to_string_lossy().to_string(),
+            project.temporal_config.client_cert.clone(),
+            project.temporal_config.client_key.clone(),
+            project.temporal_config.api_key.clone(),
         ],
     })?;
 

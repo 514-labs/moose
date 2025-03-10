@@ -3,7 +3,7 @@ use crate::framework::core::infrastructure::table::ColumnType;
 use crate::framework::typescript::export_collectors::ExportCollectorError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
-use crate::project::JwtConfig;
+use crate::project::{JwtConfig, Project};
 use log::{debug, error, info};
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -17,6 +17,7 @@ const CONSUMPTION_RUNNER_BIN: &str = "consumption-apis";
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
 pub fn run(
+    project: Project,
     clickhouse_config: ClickHouseConfig,
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
@@ -45,6 +46,11 @@ pub fn run(
         .map(|jwt| jwt.enforce_on_all_consumptions_apis.to_string())
         .unwrap_or("false".to_string());
 
+    let temporal_url = project.temporal_config.temporal_url();
+    let client_cert = project.temporal_config.client_cert;
+    let client_key = project.temporal_config.client_key;
+    let api_key = project.temporal_config.api_key;
+
     let args = vec![
         consumption_path.to_str().unwrap(),
         &clickhouse_config.db_name,
@@ -57,6 +63,10 @@ pub fn run(
         &jwt_issuer,
         &jwt_audience,
         &enforce_on_all_consumptions_apis,
+        &temporal_url,
+        &client_cert,
+        &client_key,
+        &api_key,
     ];
 
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;

@@ -112,7 +112,7 @@ export default createConsumptionApi<QueryParams>(
       LIMIT ${limit}
     `;
 
-    const data = await client.query<{
+    const data = await client.query.execute<{
       dayOfMonth: number;
       totalRows?: number;
       rowsWithText?: number;
@@ -152,7 +152,7 @@ interface QueryParams {}
 // createConsumptionApi uses compile time code generation to generate a parser for QueryParams
 export default createConsumptionApi<QueryParams>(
   async (params, { client, sql }) => {
-    return client.query(sql`SELECT 1`);
+    return client.query.execute(sql`SELECT 1`);
   }
 );
 "#;

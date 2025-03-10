@@ -1,7 +1,7 @@
-from temporalio.client import Client, TLSConfig
+from temporalio.client import Client
 from temporalio.worker import Worker
 import os
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from .workflow import ScriptWorkflow
 from .activity import create_activity_for_script
 from .logging import log

@@ -6,6 +6,10 @@ import { Callout } from '../components';
 
 DMv2 provides a modular, declarative approach to data modeling that gives you explicit control over your data infrastructure while maintaining type safety.
 
+<Callout type="info">
+  The current DMv2 API focuses on table definition and infrastructure setup. Querying capabilities and other interactions will be added in future releases.
+</Callout>
+
 ```typescript
 // Define your schema
 interface ExampleSchema {
@@ -266,35 +270,137 @@ When you create an OlapTable instance:
 3. The table is registered in a global registry
 4. When deployed, Moose creates the corresponding infrastructure
 
-## Coming Soon: Complete Data Pipelines
+## Development Workflow and Validation
+
+### Local Development with Hot Reloading
+
+One of the powerful features of DMv2 is its integration with the Moose development server:
+
+1. Start your local development server with `moose dev`
+2. When you define or modify an OlapTable in your code and save the file:
+   - The changes are automatically detected
+   - The TypeScript compiler plugin processes your schema definitions
+   - The infrastructure is updated in real-time to match your code changes
+   - Your tables are immediately available for testing
+
+<Callout type="info">
+  This hot reloading capability allows you to iterate quickly on your data models without having to manually rebuild or redeploy your application.
+</Callout>
+
+For example, if you add a new field to your schema:
+
+```typescript
+// Before
+interface BasicSchema {
+  id: string;
+  name: string;
+}
+
+// After adding a field
+interface BasicSchema {
+  id: string;
+  name: string;
+  createdAt: Date; // New field
+}
+```
+
+The Moose framework will:
+1. Detect the change when you save the file
+2. Update the table schema in the local ClickHouse instance
+3. Make the new field immediately available for use
+
+### Verifying Your Tables
+
+You can verify your tables were created correctly using:
+
+```bash
+# List all tables in your local environment
+moose ls
+```
+
+Or by connecting directly to your local ClickHouse instance and running SQL commands.
+
+### Schema Validation
+
+DMv2 validates your schemas at different stages:
+
+1. **Development-time validation**: TypeScript ensures your schemas are type-safe
+2. **Compile-time validation**: The compiler plugin verifies that your OlapTable instances have valid configurations
+3. **Runtime validation**: When your code changes are hot-reloaded, Moose validates that your schemas can be properly mapped to ClickHouse tables
+
+If there are issues with your schema:
+- TypeScript errors will appear in your IDE for type-related issues
+- Console errors will show in the development server output for schema or configuration problems
+- Runtime errors will be displayed if there are issues applying your changes to the database
+
+<Callout type="warning">
+  Make sure to check your development server console if your tables aren't being created as expected. Common issues include invalid primary keys or unsupported field types.
+</Callout>
+
+## Coming Soon: Complete Ingest Pipelines
 
 Future releases will include:
 
 ### Stream API
 
+Streams serve as the data transport layer between your data sources and `OlapTables`. They provide a reliable, high-throughput mechanism for buffering, validating, and delivering data to your tables.
+
+#### Core Functionality
+
+- **Type-safe data streaming**: Streams use your TypeScript schema to validate incoming data
+- **Buffering**: Absorbs traffic spikes and ensures reliable delivery to your tables
+- **Exactly-once delivery**: Guarantees data is delivered to tables without duplicates or losses
+- **Backpressure handling**: Manages throughput to prevent overwhelming downstream systems
+
+#### Creating a Stream
+
 ```typescript
 import { Stream } from '@514labs/moose-lib';
 
-// Stream definition with target table and retention
-export const DataStream = new Stream<BasicSchema>("data-stream", {
+// Basic stream configuration
+export const BasicStream = new Stream<BasicSchema>("basic-stream", {
   target: BasicTable,
   retention: "7d"
 });
 ```
 
+#### Configuration Options
+
+| Option | Type | Description |
+|:-------|:-----|:------------|
+| `target` | OlapTable | The destination table for the stream data |
+| `retention` | string | How long to keep data in the stream (e.g., "7d", "24h") |
+
+<Callout type="warning">
+All streams targeting the same table must use the same schema as the table. The schema provides the contract for data validation and structure.
+</Callout>
+
 ### Ingest API
+The Ingest API object allows you to spin up a `POST` API endpoint that accepts JSON data and writes it to a stream. Based on the schema of the stream, the Ingest API will:
+- Validate incoming data against the schema to ensure it matches the expected structure
+- Write validated data to the `target` stream and return a 200 status code on success
+- Drop data that does not pass validation and return an error message with the validation errors
 
 ```typescript
 import { Ingest } from '@514labs/moose-lib';
 
 // Ingest definition with source stream
 export const DataIngest = new Ingest({
-  source: DataStream
+  target: DataStream // The stream to write to
 });
 ```
+The Ingest object is configured with a `target` stream where it will write the validated data. This creates a clear separation of concerns:
+- The schema defines the data structure and validation rules
+- The stream handles the buffering and writing of data to the table
+- The ingest handles the validation and entry point for data
+
+<Callout type="warning">
+The schema of the stream must match the schema of the ingest API
+</Callout>
+
 
 ### IngestPipeline
-
+The IngestPipeline object is a convenience object that allows you to create a complete data pipeline with a table, stream, and ingest API in a single step.
 ```typescript
 import { IngestPipeline } from '@514labs/moose-lib';
 
@@ -305,6 +411,19 @@ export const DataPipeline = new IngestPipeline<BasicSchema>({
   ingest: true
 });
 ```
+
+In a complete ingest pipeline:
+- External systems or applications send data to the Ingest API
+- The Ingest API validates this data against the schema
+- Valid data is written to the Stream
+- The Stream buffers the data and eventually writes it to the Table
+- The Table stores the data in the OLAP database
+
+This modular approach allows you to:
+- Configure each component independently
+- Replace or modify components without affecting others
+- Scale components based on their specific requirements
+
 
 ## Best Practices
 

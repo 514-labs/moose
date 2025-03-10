@@ -1,0 +1,322 @@
+# Data Modeling with OlapTable
+
+## Overview
+
+DMv2 provides a modular, declarative approach to data modeling that gives you explicit control over your data infrastructure while maintaining type safety.
+
+```typescript
+// Define your schema
+interface ExampleSchema {
+  id: string;
+  name: string;
+  value: number;
+}
+
+// Create your table
+export const ExampleTable = new OlapTable<ExampleSchema>("ExampleTable", {
+  primaryKey: ["id"],
+});
+```
+
+## Why DMv2?
+
+Our previous Data Modeling approach (v1) automatically created all infrastructure components when you defined a schema. DMv2 improves on this by:
+
+- **Modularity**: Choose exactly which infrastructure components you need
+- **Explicitness**: See exactly what infrastructure will be created in your code
+- **Type Safety**: Maintain schema consistency between code and infrastructure
+- **Control**: Configure each component independently
+
+## Getting Started
+
+### 1. Enable DMv2
+
+Add to your `moose.config.toml`:
+
+```toml
+[features]
+dmv2 = true
+```
+
+### 2. Create an Index File
+
+```typescript
+// app/index.ts
+export * from './datamodels/model1';
+export * from './datamodels/model2';
+```
+
+### 3. Define and Export Tables
+
+```typescript
+// app/datamodels/model1.ts
+import { OlapTable } from '@514labs/moose-lib';
+
+// Schema with required and optional fields
+interface Model1Schema {
+  id: string;
+  timestamp: number;
+  value: string;
+  optionalField?: string;
+}
+
+// Export the table with a primary key
+export const Model1Table = new OlapTable<Model1Schema>("Model1", {
+  primaryKey: ["id"],
+});
+```
+
+## Schema Definition
+
+Define your schema using TypeScript interfaces:
+
+```typescript
+// Schema with various field types
+interface CompleteSchema {
+  id: string;
+  textValue: string;
+  numericValue: number;
+  booleanFlag: boolean;
+  createdAt: Date;
+  tags: string[];
+  metadata: {
+    version: number;
+    description: string;
+  };
+  optionalValue?: number;
+}
+```
+
+### Supported Types
+
+| TypeScript | ClickHouse | Notes |
+|:-----------|:-----------|:------|
+| `string`   | String     | Text values |
+| `number`   | Float64    | All numbers are stored as Float64 |
+| `boolean`  | Boolean    | True/false values |
+| `Date`     | DateTime   | Date and time values |
+| `Object`   | Json       | Nested structures |
+| `Array<T>` | Array      | Lists of values |
+| `T?`       | Nullable   | Optional fields |
+| `Enum`     | Enum       | Enumerated values |
+
+## Table Configuration
+
+Create a table with the `OlapTable` class:
+
+```typescript
+// Basic table configuration
+export const CompleteTable = new OlapTable<CompleteSchema>("CompleteTable", {
+  primaryKey: ["id"],
+});
+```
+
+### Primary Keys
+
+The `primaryKey` option specifies which field(s) to use for sorting and indexing:
+
+```typescript
+// Single field primary key
+export const SingleKeyTable = new OlapTable<CompleteSchema>("SingleKeyTable", {
+  primaryKey: ["id"],
+});
+
+// Composite primary key
+export const CompositeKeyTable = new OlapTable<CompleteSchema>("CompositeKeyTable", {
+  primaryKey: ["textValue", "numericValue"],
+});
+```
+
+#### Primary Key Best Practices
+
+- Choose fields used frequently in `WHERE` clauses
+- Place lower cardinality columns first
+- For time-series data, include a timestamp field
+- Limit the number of columns for efficiency
+
+### Advanced Configuration
+
+For more advanced use cases:
+
+```typescript
+// Table with deduplication enabled
+export const TimeSeriesTable = new OlapTable<CompleteSchema>("TimeSeriesTable", {
+  primaryKey: ["id"],
+  deduplicate: true, // Uses ReplacingMergeTree engine
+  order_by_fields: ["createdAt"] // Most recent row by createdAt is kept
+});
+```
+
+## Schema Examples
+
+### Basic Schema
+
+```typescript
+// Simple schema with primitive types
+interface BasicSchema {
+  id: string;
+  name: string;
+  value: number;
+  active: boolean;
+}
+
+// Basic table with single primary key
+export const BasicTable = new OlapTable<BasicSchema>("BasicTable", {
+  primaryKey: ["id"],
+});
+```
+
+### With Optional Fields
+
+```typescript
+// Schema with optional fields
+interface OptionalFieldsSchema {
+  id: string;
+  name: string;
+  description?: string;  // Optional field
+  metadata?: {
+    tags: string[];
+  };  // Optional nested field
+}
+
+// Table with optional fields
+export const OptionalFieldsTable = new OlapTable<OptionalFieldsSchema>("OptionalFieldsTable", {
+  primaryKey: ["id"],
+});
+```
+
+### With Nested Objects
+
+```typescript
+// Nested object definition
+interface NestedObject {
+  field1: string;
+  field2: number;
+  field3: boolean;
+}
+
+// Schema with nested object
+interface NestedSchema {
+  id: string;
+  name: string;
+  nested: NestedObject;  // Nested object
+}
+
+// Table with nested objects
+export const NestedTable = new OlapTable<NestedSchema>("NestedTable", {
+  primaryKey: ["id"],
+});
+```
+
+### With Enums
+
+```typescript
+// Enum definition
+enum StatusEnum {
+  OPTION_1 = "option1",
+  OPTION_2 = "option2",
+  OPTION_3 = "option3"
+}
+
+// Schema with enum field
+interface EnumSchema {
+  id: string;
+  status: StatusEnum;  // Enum field
+}
+
+// Table with enum field
+export const EnumTable = new OlapTable<EnumSchema>("EnumTable", {
+  primaryKey: ["id"],
+});
+```
+
+### With Inheritance
+
+```typescript
+// Base schema with common fields
+interface BaseSchema {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Extended schema that inherits from base
+interface ExtendedSchema extends BaseSchema {
+  name: string;
+  value: number;
+}
+
+// Table using extended schema
+export const ExtendedTable = new OlapTable<ExtendedSchema>("ExtendedTable", {
+  primaryKey: ["id"],
+});
+```
+
+## How It Works
+
+When you create an OlapTable instance:
+
+1. The compiler plugin extracts schema information from your TypeScript interface
+2. The schema is stored as JSON Schema (v3.1)
+3. The table is registered in a global registry
+4. When deployed, Moose creates the corresponding infrastructure
+
+## Coming Soon: Complete Data Pipelines
+
+Future releases will include:
+
+### Stream API
+
+```typescript
+import { Stream } from '@514labs/moose-lib';
+
+// Stream definition with target table and retention
+export const DataStream = new Stream<BasicSchema>("data-stream", {
+  target: BasicTable,
+  retention: "7d"
+});
+```
+
+### Ingest API
+
+```typescript
+import { Ingest } from '@514labs/moose-lib';
+
+// Ingest definition with source stream
+export const DataIngest = new Ingest({
+  source: DataStream
+});
+```
+
+### IngestPipeline
+
+```typescript
+import { IngestPipeline } from '@514labs/moose-lib';
+
+// Complete pipeline with table, stream, and ingest
+export const DataPipeline = new IngestPipeline<BasicSchema>({
+  table: true,
+  stream: true,
+  ingest: true
+});
+```
+
+## Best Practices
+
+1. **Define clear schemas**: Use descriptive field names and appropriate types
+2. **Choose primary keys carefully**: Optimize for your query patterns
+3. **Document your models**: Add comments to explain the purpose of fields
+4. **Use consistent naming**: Adopt a convention for tables and fields
+5. **Organize related models**: Group related schemas in dedicated files
+6. **Version your schemas**: Plan for schema evolution in production
+
+## Technical Details
+
+The DMv2 module uses a TypeScript compiler plugin that:
+
+1. Detects OlapTable instantiations with type parameters
+2. Extracts schema information from the type parameter
+3. Transforms the code to include schema and column information
+4. Adds necessary imports (like typia for JSON schema generation)
+
+This approach allows you to write clean, type-safe code while the plugin handles the complex schema extraction and validation. 

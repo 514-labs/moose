@@ -41,7 +41,7 @@ Add to your `moose.config.toml`:
 
 ```toml
 [features]
-dmv2 = true
+data_models_v2 = true
 ```
 
 ### 2. Create an Index File
@@ -91,21 +91,112 @@ interface CompleteSchema {
 }
 ```
 
-### Supported Types
-| TypeScript | ClickHouse |
-|:---------- |:---------- |
-| `string`   | String     |
-| `number`   | Float64    |
-| `boolean`  | Boolean    |
-| `Date`     | DateTime   |
-| `Object`   | Nested     |
-| `Array<T>` | Array      |
-| `T?`       | Nullable   |
-| `Enum`     | Enum       |
-| `Key<T>`   | Same as T  |
+### Supported and Unsupported Types
+
+| TypeScript | ClickHouse | Supported |
+|:---------- |:---------- |:--------- |
+| `string`   | String     | ✅ |
+| `number`   | Float64    | ✅ |
+| `boolean`  | Boolean    | ✅ |
+| `Date`     | DateTime   | ✅ |
+| `Object`   | Nested     | ✅ |
+| `Array<T>` | Array      | ✅ |
+| `T?`       | Nullable   | ✅ |
+| `Enum`     | Enum       | ✅ |
+| `Key<T>`   | Same as T  | ✅ |
+| `T | null` | Nullable(T) | ✅ |
+| `union types` (e.g., `string \| number`) | N/A | ❌ |
+| `undefined` | N/A | ❌ |
+| `null` as direct type | N/A | ❌ |
+| `symbol` | N/A | ❌ |
+| `bigint` | N/A | ❌ |
+| Complex TypeScript types (tuples, mapped types, etc.) | N/A | ❌ |
 
 <Callout type="info">
 All numbers are stored as Float64 in ClickHouse. The `Key<T>` type is used to identify fields that are used as primary keys. This must be a string, number, or date.
+</Callout>
+
+### Workarounds for Unsupported Types
+
+#### Union Types
+
+Union types with non-null types are not supported in the data model. However, union types with `null` (e.g., `string | null`) are supported and automatically map to ClickHouse's Nullable type, which is equivalent to using the optional modifier (`?`).
+
+```typescript
+// SUPPORTED: Nullable types
+interface SupportedSchema {
+  id: Key<string>;
+  value1?: string;         // ✅ Maps to Nullable(String)
+  value2: string | null;   // ✅ Also maps to Nullable(String)
+}
+
+// NOT SUPPORTED: Union of non-null types
+interface IncorrectSchema {
+  id: Key<string>;
+  value: string | number;  // ❌ This won't work
+}
+
+// CORRECT: Choose a single type and convert data when needed
+interface CorrectSchema {
+  id: Key<string>;
+  value: string;           // ✅ Choose a single type that makes sense
+}
+
+// When ingesting data:
+function prepareData(sourceData) {
+  return {
+    id: sourceData.id,
+    value: String(sourceData.value) // Convert any type to string before ingestion
+  };
+}
+```
+
+#### Complex TypeScript Types
+
+For complex TypeScript types like tuples, intersection types, or mapped types, simplify your schema by using basic types:
+
+```typescript
+// INCORRECT: Using complex types
+interface IncorrectSchema {
+  id: Key<string>;
+  coordinates: [number, number]; // ❌ Tuple not supported
+  metadata: Record<string, string>; // ❌ Complex mapped type
+}
+
+// CORRECT: Use nested objects and arrays
+interface CorrectSchema {
+  id: Key<string>;
+  coordinates: { lat: number; lng: number }; // ✅ Standard object
+  metadata: { key: string; value: string }[]; // ✅ Array of objects
+}
+```
+
+#### BigInt and Symbol
+
+For large integers that would normally use `bigint`, use `string` to preserve precision:
+
+```typescript
+// INCORRECT: Using BigInt
+interface IncorrectSchema {
+  id: Key<string>;
+  largeNumber: bigint; // ❌ Not supported
+}
+
+// CORRECT: Store as string
+interface CorrectSchema {
+  id: Key<string>;
+  largeNumber: string; // ✅ Store large numbers as strings
+}
+
+// When using the data:
+function processData(data) {
+  const bigIntValue = BigInt(data.largeNumber);
+  // Process with BigInt...
+}
+```
+
+<Callout type="warning">
+When designing your schema, focus on data storage and retrieval needs rather than complex application logic. Keep schemas simple and perform any necessary transformations during data ingestion or when consuming data from the tables.
 </Callout>
 
 ## Table Configuration

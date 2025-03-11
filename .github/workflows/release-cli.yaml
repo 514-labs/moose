@@ -92,7 +92,7 @@ jobs:
 
       - name: Clean up PyPI and only keep the latest 100 days of packages
         run: |
-          pypi-cleanup -u verdan712 -p moose-lib -d 100 -r '.*' --do-it
+          pypi-cleanup -u __token__ -p moose-lib -d 100 -r '.*' --do-it
         env:
           PYPI_CLEANUP_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -107,7 +107,7 @@ jobs:
 
   package-and-publish-independant-ts-package:
     name: Package and Publish Independant TS Package
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}
     needs:
       - version
@@ -165,7 +165,7 @@ jobs:
 
   package-and-publish-templates:
     name: Package and Publish Templates
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs:
       - version
     permissions:
@@ -214,13 +214,13 @@ jobs:
         build:
           - {
               NAME: linux-x64-glibc,
-              OS: ubuntu-20.04-8core,
+              OS: ubuntu-22-8-core,
               TOOLCHAIN: stable,
               TARGET: x86_64-unknown-linux-gnu,
             }
           - {
               NAME: linux-arm64-glibc,
-              OS: ubuntu-20.04-8core,
+              OS: ubuntu-22-8-core,
               TOOLCHAIN: stable,
               TARGET: aarch64-unknown-linux-gnu,
             }
@@ -242,36 +242,46 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
+        if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
 
       - name: Run sccache-cache
+        if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
         # For aarch64 we need to install protoc manually inside the before-script-Linux
         # that's ran inside the docker container
-        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' }}
+        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' || matrix.build.TARGET != 'x86_64-unknown-linux-gnu' }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          version: "23.x"
+          version: "24.4"
 
       - name: Verify Protoc Installation
         # For aarch64 we need to install protoc manually inside the before-script-Linux
         # that's ran inside the docker container
-        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' }}
+        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' || matrix.build.TARGET != 'x86_64-unknown-linux-gnu' }}
         run: |
           which protoc
           protoc --version
           echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
-      - name: Install Set Version
+      - name: Set Version
         run: |
-          cargo install cargo-edit
-          cargo set-version ${{ needs.version.outputs.version }}
+          # Update version in Cargo.toml using sed - compatible with both macOS and Linux
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS version of sed requires an empty string after -i
+            sed -i '' "s/^version = \".*\"/version = \"${{ needs.version.outputs.version }}\"/" Cargo.toml
+            sed -i '' '/name = "moose-cli"/,/version = ".*"/ s/version = ".*"/version = "${{ needs.version.outputs.version }}"/' ../../Cargo.lock
+          else
+            # Linux version of sed
+            sed -i "s/^version = \".*\"/version = \"${{ needs.version.outputs.version }}\"/" Cargo.toml
+            sed -i '/name = "moose-cli"/,/version = ".*"/ s/version = ".*"/version = "${{ needs.version.outputs.version }}"/' ../../Cargo.lock
+          fi
         working-directory: ./apps/framework-cli
 
       - name: Build wheels
@@ -281,22 +291,35 @@ jobs:
           args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
           # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
-          manylinux: ${{ matrix.build.TARGET == 'aarch64-unknown-linux-gnu' && '2_28' || '' }}
+          manylinux: ${{ (matrix.build.TARGET == 'aarch64-unknown-linux-gnu' || matrix.build.TARGET == 'x86_64-unknown-linux-gnu') && '2_28' || '' }}
           working-directory: ./apps/framework-cli
+          # Otherwise it uses an centos machine that has a bunch of things missing.
+          container: ${{ matrix.build.TARGET == 'x86_64-unknown-linux-gnu' && 'ghcr.io/rust-cross/manylinux_2_28-cross:x86_64' || '' }}
           # When running on manylinux we are inside a docker container and need to install protoc
           before-script-linux: |
             if [ -f /.dockerenv ]; then
               echo "Running in Docker container, installing required dependencies..."
               PROTOC_VERSION=24.3
+              # Use architecture-specific protoc download based on target
+              # if [[ "${{ matrix.build.TARGET }}" == "aarch64-unknown-linux-gnu" ]]; then
+              #   PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-aarch_64.zip
+              # else
               PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-
+              # fi
+              
+              # Debian-based distribution
               apt install -y curl unzip
+
               mkdir -p /usr/local/bin
               mkdir -p /usr/local/include
+
               curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
               unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
               unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
               rm -f $PROTOC_ZIP
+
+              # Verify protoc installation
+              protoc --version
             fi
 
       - name: Upload wheels
@@ -341,14 +364,12 @@ jobs:
       # Upload to GCS
       - name: Auth
         uses: "google-github-actions/auth@v2"
-        if: ${{ !inputs.dry-run }}
         with:
           service_account: "mds-911@moose-hosting-node.iam.gserviceaccount.com"
           workload_identity_provider: "projects/724152421890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-repos"
 
       - id: "upload-build"
         uses: "google-github-actions/upload-cloud-storage@v2"
-        if: ${{ !inputs.dry-run }}
         with:
           path: ./target/${{ matrix.build.TARGET }}/release
           glob: "moose-cli{,.sig,.sha256}"
@@ -376,7 +397,7 @@ jobs:
 
       - name: Clean up PyPI and only keep the latest 100 days of moose CLI
         run: |
-          pypi-cleanup -u verdan712 -p moose-cli -d 100 -r '.*' --do-it
+          pypi-cleanup -u __token__ -p moose-cli -d 100 -r '.*' --do-it
         env:
           PYPI_CLEANUP_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -394,7 +415,7 @@ jobs:
       - version
       - build-and-publish-binaries
       - package-and-publish-independant-ts-package
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}
     steps:
       - name: Checkout
@@ -470,7 +491,7 @@ jobs:
 
   build-and-publish-fullstack-image:
     name: Moose Production images
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs:
       - version
       - build-and-publish-binaries

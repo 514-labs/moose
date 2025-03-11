@@ -56,10 +56,10 @@ jobs:
           service_account: "mds-911@moose-hosting-node.iam.gserviceaccount.com"
           workload_identity_provider: "projects/724152421890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-repos"
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
         with:
-          install_components: 'gsutil'
+          install_components: "gsutil"
 
       - name: Determine Version
         run: |
@@ -79,14 +79,23 @@ jobs:
       - version
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip install setuptools wheel twine pypi-cleanup
+
+      - name: Clean up PyPI and only keep the latest 100 days of packages
+        run: |
+          pypi-cleanup -p moose-lib -d 100 -r '.*' --do-it
+        env:
+          PYPI_CLEANUP_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
       - name: Build and publish
         env:
           TWINE_USERNAME: __token__
@@ -332,12 +341,14 @@ jobs:
       # Upload to GCS
       - name: Auth
         uses: "google-github-actions/auth@v2"
+        if: ${{ !inputs.dry-run }}
         with:
           service_account: "mds-911@moose-hosting-node.iam.gserviceaccount.com"
           workload_identity_provider: "projects/724152421890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-repos"
 
       - id: "upload-build"
         uses: "google-github-actions/upload-cloud-storage@v2"
+        if: ${{ !inputs.dry-run }}
         with:
           path: ./target/${{ matrix.build.TARGET }}/release
           glob: "moose-cli{,.sig,.sha256}"
@@ -347,7 +358,6 @@ jobs:
           headers: |-
             cache-control: ${{ github.ref_name != 'main' && 'no-store, no-cache, must-revalidate' || 'public, max-age=3600' }}
 
-
   release-python:
     name: Release Python Wheels
     runs-on: ubuntu-latest
@@ -355,6 +365,21 @@ jobs:
     if: ${{ !inputs.dry-run }}
     steps:
       - uses: actions/download-artifact@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install pypi Cleanup
+        run: |
+          pip install pypi-cleanup
+
+      - name: Clean up PyPI and only keep the latest 100 days of moose CLI
+        run: |
+          pypi-cleanup -p moose-cli -d 100 -r '.*' --do-it
+        env:
+          PYPI_CLEANUP_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         with:
@@ -483,15 +508,16 @@ jobs:
             FRAMEWORK_VERSION=${{ needs.version.outputs.version }}
 
   notify-slack-on-failure:
-    needs: [
-      build-and-publish-py-moose-lib, 
-      package-and-publish-independant-ts-package, 
-      package-and-publish-templates, 
-      build-and-publish-binaries, 
-      release-python, 
-      publish-npm-base, 
-      build-and-publish-fullstack-image
-    ]
+    needs:
+      [
+        build-and-publish-py-moose-lib,
+        package-and-publish-independant-ts-package,
+        package-and-publish-templates,
+        build-and-publish-binaries,
+        release-python,
+        publish-npm-base,
+        build-and-publish-fullstack-image,
+      ]
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
     steps:

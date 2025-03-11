@@ -2,7 +2,7 @@ import ts, { factory } from "typescript";
 import { avoidTypiaNameClash, replaceProgram } from "../compilerPluginHelper";
 import {
   isNewMooseResourceWithTypeParam,
-  transformNewOlapTable,
+  transformNewMooseResource,
 } from "./dataModelMetadata";
 import {
   isCreateConsumptionApi,
@@ -25,7 +25,7 @@ const insertMdOrValidation = (
   checker: ts.TypeChecker,
 ): ts.Node => {
   if (isNewMooseResourceWithTypeParam(node, checker)) {
-    return transformNewOlapTable(node, checker);
+    return transformNewMooseResource(node, checker);
   } else if (isCreateConsumptionApi(node, checker)) {
     return transformCreateConsumptionApi(node, checker);
   }

@@ -81,8 +81,13 @@ pub async fn plan_changes(
         if project.is_production && project.is_docker_image() {
             error!("Docker Build images should have the infrastructure map already created and embedded");
         }
-        let primitive_map = PrimitiveMap::load(project).await?;
-        InfrastructureMap::new(project, primitive_map)
+
+        if project.features.data_model_v2 {
+            InfrastructureMap::load_from_user_code(project).await?
+        } else {
+            let primitive_map = PrimitiveMap::load(project).await?;
+            InfrastructureMap::new(project, primitive_map)
+        }
     };
 
     target_infra_map.with_topic_namespace(&project.redpanda_config);

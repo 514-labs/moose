@@ -26,9 +26,7 @@ pub enum ExportCollectorError {
     },
 }
 
-pub async fn collect_from_index(
-    project_path: &Path,
-) -> Result<HashMap<String, Value>, ExportCollectorError> {
+pub async fn collect_from_index(project_path: &Path) -> Result<Value, ExportCollectorError> {
     let process_name = "dmv2-serializer";
     let process = bin::run(process_name, project_path, &[])?;
 
@@ -59,10 +57,10 @@ pub async fn collect_from_index(
         };
 
         let json = raw_string_stdout
-            .split("___MOOSE_TABLES___start")
+            .split("___MOOSE_STUFF___start")
             .nth(1)
             .ok_or_else(output_format)?
-            .split("end___MOOSE_TABLES___")
+            .split("end___MOOSE_STUFF___")
             .next()
             .ok_or_else(output_format)?;
 

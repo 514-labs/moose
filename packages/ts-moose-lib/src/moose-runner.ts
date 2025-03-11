@@ -13,7 +13,7 @@ if (
   process.argv[2] == "dmv2-serializer"
 ) {
   const transformFile =
-    process.argv[2] == "dmv2-serializer"
+    process.argv[2] !== "dmv2-serializer"
       ? "consumption-apis/insertTypiaValidation.js"
       : "dmv2/compilerPlugin.js";
   register({

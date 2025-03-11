@@ -9,6 +9,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::framework::languages::SupportedLanguages::Typescript;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
@@ -1305,6 +1306,18 @@ impl InfrastructureMap {
 
     pub fn add_topic(&mut self, topic: Topic) {
         self.topics.insert(topic.id(), topic);
+    }
+
+    pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
+        if project.language == Typescript {
+            let _objects = crate::framework::typescript::export_collectors::collect_from_index(
+                &project.project_location,
+            )
+            .await?;
+            todo!("transform the output to infra map, maybe with a intermediate struct")
+        } else {
+            todo!("Python implementation")
+        }
     }
 }
 

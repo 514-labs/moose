@@ -92,7 +92,7 @@ jobs:
 
       - name: Clean up PyPI and only keep the latest 100 days of packages
         run: |
-          pypi-cleanup -u __token__ -p moose-lib -d 100 -r '.*' --do-it
+          pypi-cleanup -u 514 -p moose-lib -d 100 -r '.*' --do-it
         env:
           PYPI_CLEANUP_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 

@@ -300,12 +300,7 @@ jobs:
             if [ -f /.dockerenv ]; then
               echo "Running in Docker container, installing required dependencies..."
               PROTOC_VERSION=24.3
-              # Use architecture-specific protoc download based on target
-              # if [[ "${{ matrix.build.TARGET }}" == "aarch64-unknown-linux-gnu" ]]; then
-              #   PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-aarch_64.zip
-              # else
               PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-              # fi
               
               # Debian-based distribution
               apt install -y curl unzip

@@ -1,0 +1,48 @@
+---
+authors: Nicolas Joseph <nicolas@nicolasjoseph.com>
+title: Data Ingestion
+state: prediscussion
+---
+
+This will not cover:
+
+- Authentication
+- Governance
+
+We will cover those in a different RFD.
+
+## Context
+
+As it was raised by @mcginleyr1 in the [RFD 0001 - Ecosystem Skeleton Architecture](https://github.com/514-labs/igloo-stack/pull/59), we need a good and easy pattern for data extraction from third party systems to be made available through the Igloo toolkit.
+
+There are different types of systems the data needs to be extracted from:
+
+- Databases
+- APIs
+
+Some systems generate data:
+
+- Applications
+- IoT devices
+
+One of the challenges is make sure the data schemas evolutions throughout the different pieces of the system are handled properly.
+
+if we consider that the schema of the warehouse is governed by `prisma` schemas. We need to make sure that the data extracted from the different sources is compatible with the warehouse schema. We could have an opinion on how changes should be made to the system, but the user might not have control on the source system.
+
+Should we assume that the source system will notify the user of any changes to the schema before they happened?
+
+Mature APIs will have versioning and deprecation policies. But what about databases? Does that mean that we should only support mature APIs?
+
+When a software that runs on a database goes through an upgrade, the install process, processes the migration on the database schema - provided the database is SQL. For no SQL databases, tha application code usually handles all the states in the database. If a database schema changes, downstream systems might break without the proper migrations.
+
+Side thought: Tight coupling between systems makes changing them hard. We need to prevent breaking changes but we also need to make sure the systems can evolve independently of each other when the changes are not breaking. This makes me think we should use something like protobuffs with versioning to solve the coupling problem.
+
+## Options
+
+### Option 1: We only provide an SDK to send data to an igloo deployment
+
+### Option 2: We provide the SDK and an environment to run scripts on a schedule
+
+### Option 3: We provide an SDK and a destination connector with the airbyte project
+
+### Option x: ????

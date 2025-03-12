@@ -12,26 +12,45 @@ _ALREADY_REGISTERED = set()
 
 EXCLUDE_DIRS = [".moose"]
 
+def get_tasks(workflow_dir: str) -> List[str]:
+    config_path = os.path.join(workflow_dir, "config.toml")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path) as f:
+                config = toml.load(f)
+                return config.get("tasks", [])
+        except Exception as e:
+            log.warning(f"Failed to read config.toml: {e}")
+            return []
+
+
 def collect_activities(workflow_dir: str) -> List[str]:
     """
     Recursively collect all Python files from the workflow directory and its subdirectories,
     """
     log.info(f"Collecting tasks from {workflow_dir}")
-    script_paths = []
-    for root, _, files in os.walk(workflow_dir):
-        # Skip any folders named 'python_wrapper'
-        for exclude_dir in EXCLUDE_DIRS:
-            if exclude_dir in root:
-                log.debug(f"Skipping excluded directory: {root}")
-                continue
 
-        # We need it sorted to ensure that the activities are registered in the correct order
-        # This is important for the workflow to execute the activities in the correct order
-        for file in sorted(files):
-            if file.endswith(".py"):
-                script_path = os.path.join(root, file)
-                script_paths.append(script_path)
-                log.debug(f"Found script: {script_path}")
+    script_paths = []
+    tasks = get_tasks(workflow_dir)
+    if tasks:
+        for task in tasks:
+            if os.path.isfile(os.path.join(workflow_dir, task + ".py")):
+                script_paths.append(os.path.join(workflow_dir, task + ".py"))
+    else:
+        for root, _, files in os.walk(workflow_dir):
+            # Skip any folders named 'python_wrapper'
+            for exclude_dir in EXCLUDE_DIRS:
+                if exclude_dir in root:
+                    log.debug(f"Skipping excluded directory: {root}")
+                    continue
+
+            # We need it sorted to ensure that the activities are registered in the correct order
+            # This is important for the workflow to execute the activities in the correct order
+            for file in sorted(files):
+                if file.endswith(".py"):
+                    script_path = os.path.join(root, file)
+                    script_paths.append(script_path)
+                    log.debug(f"Found script: {script_path}")
 
     log.info(f"Found {len(script_paths)} scripts")
     return script_paths

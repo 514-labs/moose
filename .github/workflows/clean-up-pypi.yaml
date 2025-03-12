@@ -27,15 +27,15 @@ jobs:
       - name: Clean up PyPI and only keep the latest 100 days of moose CLI and lib
         run: |
           expect << EOF
-          spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it
+          spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it --yes
           expect "Authentication code:"
           send "$PYPI_OTP\r"
           expect eof
           EOF
 
           expect << EOF
-          spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it
-          expect "Authentication code:"
+          spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it --yes
+          expect "Authentication code:" 
           send "$PYPI_OTP\r"
           expect eof
           EOF

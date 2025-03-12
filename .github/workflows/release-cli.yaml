@@ -256,7 +256,7 @@ jobs:
         uses: arduino/setup-protoc@v3
         # For aarch64 we need to install protoc manually inside the before-script-Linux
         # that's ran inside the docker container
-        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' && matrix.build.TARGET != 'x86_64-unknown-linux-gnu' }}
+        if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           version: "24.4"
@@ -264,7 +264,7 @@ jobs:
       - name: Verify Protoc Installation
         # For aarch64 we need to install protoc manually inside the before-script-Linux
         # that's ran inside the docker container
-        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' || matrix.build.TARGET != 'x86_64-unknown-linux-gnu' }}
+        if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         run: |
           which protoc
           protoc --version

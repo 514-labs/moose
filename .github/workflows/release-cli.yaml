@@ -291,7 +291,7 @@ jobs:
           args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
           # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
-          manylinux: ${{ (matrix.build.TARGET == 'aarch64-unknown-linux-gnu' || matrix.build.TARGET == 'x86_64-unknown-linux-gnu') && '2014/2_17' || '' }}
+          manylinux: ${{ (matrix.build.TARGET == 'aarch64-unknown-linux-gnu' || matrix.build.TARGET == 'x86_64-unknown-linux-gnu') && '2014' || '' }}
           working-directory: ./apps/framework-cli
           # Otherwise it uses an centos machine that has a bunch of things missing.
           container: ${{ matrix.build.TARGET == 'x86_64-unknown-linux-gnu' && 'ghcr.io/rust-cross/manylinux2014-cross:x86_64' || '' }}

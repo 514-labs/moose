@@ -28,8 +28,6 @@ jobs:
         run: |
           expect << EOF
           spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it
-          expect "Password:"
-          send "$PYPI_CLEANUP_PASSWORD\r"
           expect "Authentication code:"
           send "$PYPI_OTP\r"
           expect eof
@@ -37,8 +35,6 @@ jobs:
 
           expect << EOF
           spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it
-          expect "Password:"
-          send "$PYPI_CLEANUP_PASSWORD\r"
           expect "Authentication code:"
           send "$PYPI_OTP\r"
           expect eof

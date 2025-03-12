@@ -2,6 +2,7 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 import os
 from typing import List, Optional
+import toml
 from .workflow import ScriptWorkflow
 from .activity import create_activity_for_script
 from .logging import log

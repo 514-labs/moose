@@ -551,6 +551,7 @@ jobs:
 
       - name: Install pypi Cleanup
         run: |
+          apt install -y expect
           pip install pypi-cleanup
 
       - uses: 1password/load-secrets-action@v1

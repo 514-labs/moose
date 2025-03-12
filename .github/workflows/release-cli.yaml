@@ -551,7 +551,7 @@ jobs:
 
       - name: Install pypi Cleanup
         run: |
-          apt install -y expect
+          sudo apt install -y expect
           pip install pypi-cleanup
 
       - uses: 1password/load-secrets-action@v1
@@ -562,24 +562,20 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           PYPI_TOKEN: "op://drqe7p6legi6ug2ijq2fnrkmjq/PyPi Token/password"
           PYPI_CLEANUP_PASSWORD: "op://drqe7p6legi6ug2ijq2fnrkmjq/PyPI/new_password"
-          PYPI_OTP: "op://drqe7p6legi6ug2ijq2fnrkmjq/PyPI/Saved on pypi.org/one-time password"
+          PYPI_OTP: "op://drqe7p6legi6ug2ijq2fnrkmjq/PyPI/Saved on pypi.org/one-time password?attribute=otp"
 
       - name: Clean up PyPI and only keep the latest 100 days of moose CLI and lib
         run: |
           expect << EOF
-          spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it
-          expect "Password:"
-          send "$PYPI_CLEANUP_PASSWORD\r"
+          spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it --yes
           expect "Authentication code:"
           send "$PYPI_OTP\r"
           expect eof
           EOF
 
           expect << EOF
-          spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it
-          expect "Password:"
-          send "$PYPI_CLEANUP_PASSWORD\r"
-          expect "Authentication code:"
+          spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it --yes
+          expect "Authentication code:" 
           send "$PYPI_OTP\r"
           expect eof
           EOF

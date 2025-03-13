@@ -319,57 +319,62 @@ async fn sync_kafka_to_clickhouse(
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
     loop {
-        select! {
-            received = subscriber.recv() => match received {
-                Err(e) => {
-                    debug!("Error receiving message from {}: {}", source_topic_name, e);
-                }
+        match subscriber.recv().await {
+            Err(e) => {
+                debug!("Error receiving message from {}: {}", source_topic_name, e);
+            }
 
-                Ok(message) => match message.payload() {
-                    Some(payload) => match std::str::from_utf8(payload) {
-                        Ok(payload_str) => {
-                            debug!(
-                                "Received message from {}: {}",
-                                source_topic_name, payload_str
-                            );
-                            metrics
-                                .send_metric_event(MetricEvent::TopicToOLAPEvent {
-                                    timestamp: chrono::Utc::now(),
-                                    count: 1,
-                                    bytes: payload.len() as u64,
-                                    consumer_group: "clickhouse sync".to_string(),
-                                    topic_name: source_topic_name.clone(),
-                                })
-                                .await;
+            Ok(message) => match message.payload() {
+                Some(payload) => match std::str::from_utf8(payload) {
+                    Ok(payload_str) => {
+                        debug!(
+                            "Received message from {}: {}",
+                            source_topic_name, payload_str
+                        );
+                        metrics
+                            .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                timestamp: chrono::Utc::now(),
+                                count: 1,
+                                bytes: payload.len() as u64,
+                                consumer_group: "clickhouse sync".to_string(),
+                                topic_name: source_topic_name.clone(),
+                            })
+                            .await;
 
-                            if let Ok(json_value) = serde_json::from_str(payload_str) {
-                                if let Ok(clickhouse_record) =
-                                    mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                                {
-                                    let res = inserter
-                                        .insert(clickhouse_record, message.partition(), message.offset())
-                                        .await;
+                        if let Ok(json_value) = serde_json::from_str(payload_str) {
+                            if let Ok(clickhouse_record) =
+                                mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                            {
+                                let res = inserter
+                                    .insert(
+                                        clickhouse_record,
+                                        message.partition(),
+                                        message.offset(),
+                                    )
+                                    .await;
 
-                                    if let Err(e) = res {
-                                        error!("Error adding records to the queue to be inserted: {}", e);
-                                    }
+                                if let Err(e) = res {
+                                    error!(
+                                        "Error adding records to the queue to be inserted: {}",
+                                        e
+                                    );
                                 }
                             }
                         }
-                        Err(_) => {
-                            error!(
-                                "Received message from {} with invalid UTF-8",
-                                source_topic_name
-                            );
-                        }
-                    },
-                    None => {
-                        debug!(
-                            "Received message from {} with no payload",
+                    }
+                    Err(_) => {
+                        error!(
+                            "Received message from {} with invalid UTF-8",
                             source_topic_name
                         );
                     }
                 },
+                None => {
+                    debug!(
+                        "Received message from {} with no payload",
+                        source_topic_name
+                    );
+                }
             },
         }
     }

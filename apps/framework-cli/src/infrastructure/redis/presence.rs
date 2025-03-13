@@ -1,5 +1,6 @@
 use anyhow::Context;
 use redis::aio::ConnectionManager;
+use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex as TokioMutex;
@@ -85,6 +86,21 @@ impl PresenceManager {
             let mut conn_guard = conn.lock().await;
             let _: () = redis::AsyncCommands::set_ex(&mut *conn_guard, &key, now, 10).await?;
         }
+        Ok(())
+    }
+
+    /// Updates the presence of this instance in Redis using a direct connection
+    pub async fn update_presence_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+    ) -> redis::RedisResult<()> {
+        let key = format!("{}::{}::presence", self.key_prefix, self.instance_id);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let _: () = conn.set_ex(&key, now, 3).await?;
         Ok(())
     }
 }

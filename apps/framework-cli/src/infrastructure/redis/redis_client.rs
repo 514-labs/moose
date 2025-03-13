@@ -315,12 +315,6 @@ impl RedisClient {
         );
         let broadcast_channel = format!("{}::msgchannel", self.config.key_prefix);
 
-        log::info!(
-            "<NewRedisClient> Starting message listener on channels: {} and {}",
-            instance_channel,
-            broadcast_channel
-        );
-
         let _pub_sub_manager = self.connection_manager.pub_sub.clone();
         let callbacks = self.message_callbacks.clone();
         let config_url = self.config.url.clone();
@@ -384,22 +378,48 @@ impl RedisClient {
         message: &str,
         feature_name: Option<&str>,
     ) -> anyhow::Result<()> {
-        let queue = match feature_name {
-            Some(name) => format!("{}::{}::mqrecieved", self.config.key_prefix, name),
-            None => format!("{}::mqrecieved", self.config.key_prefix),
-        };
+        let _messaging_manager = self.messaging_manager.clone();
+        let message = message.to_string();
 
-        if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
-            let _: () = redis::cmd("RPUSH")
-                .arg(&queue)
-                .arg(message)
-                .query_async(&mut *conn)
-                .await?;
-        } else if let Some(ref mock_client) = self.fallback {
-            mock_client.post_queue_message(&queue, message).await?;
-        }
-        Ok(())
+        self.connection_manager
+            .execute(move |conn| {
+                let feature_name_clone = feature_name.map(|s| s.to_string());
+                Box::pin(async move {
+                    let queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::queue", feature, "messages"),
+                        None => "messages::queue".to_string(),
+                    };
+
+                    let processing_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::processing", feature, "messages"),
+                        None => "messages::processing".to_string(),
+                    };
+
+                    let failed_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::failed", feature, "messages"),
+                        None => "messages::failed".to_string(),
+                    };
+
+                    // Create a pipeline to execute multiple commands
+                    let mut pipe = redis::pipe();
+                    pipe.atomic()
+                        .cmd("SADD")
+                        .arg("message_queues")
+                        .arg(&queue_key)
+                        .cmd("SADD")
+                        .arg("message_processing_queues")
+                        .arg(&processing_queue_key)
+                        .cmd("SADD")
+                        .arg("message_failed_queues")
+                        .arg(&failed_queue_key)
+                        .lpush(&queue_key, &message);
+
+                    // Execute the pipeline
+                    pipe.query_async::<_, ()>(conn).await
+                })
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to post message to queue: {}", e))
     }
 
     pub async fn get_queue_message(
@@ -415,13 +435,21 @@ impl RedisClient {
             None => format!("{}::mqprocess", self.config.key_prefix),
         };
         if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
-            let msg: Option<String> = redis::cmd("RPOPLPUSH")
-                .arg(&source_queue)
-                .arg(&destination_queue)
-                .query_async(&mut *conn)
+            let source = source_queue.clone();
+            let dest = destination_queue.clone();
+            let result = self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        redis::cmd("RPOPLPUSH")
+                            .arg(&source)
+                            .arg(&dest)
+                            .query_async(conn)
+                            .await
+                    })
+                })
                 .await?;
-            Ok(msg)
+            Ok(result)
         } else if let Some(ref mock_client) = self.fallback {
             let msg = mock_client.get_queue_message(&source_queue).await?;
             Ok(msg)
@@ -436,34 +464,42 @@ impl RedisClient {
         success: bool,
         feature_name: Option<&str>,
     ) -> anyhow::Result<()> {
-        let in_progress_queue = match feature_name {
-            Some(name) => format!("{}::{}::mqprocess", self.config.key_prefix, name),
-            None => format!("{}::mqprocess", self.config.key_prefix),
-        };
-        let incomplete_queue = match feature_name {
-            Some(name) => format!("{}::{}::mqincomplete", self.config.key_prefix, name),
-            None => format!("{}::mqincomplete", self.config.key_prefix),
-        };
-        if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
-            if success {
-                let _: i32 = redis::cmd("LREM")
-                    .arg(&in_progress_queue)
-                    .arg(0)
-                    .arg(message)
-                    .query_async(&mut *conn)
-                    .await?;
-            } else {
-                let mut pipe = redis::pipe();
-                pipe.lrem(&in_progress_queue, 0, message).ignore();
-                pipe.rpush(&incomplete_queue, message).ignore();
-                let _: () = pipe.query_async(&mut *conn).await?;
-            }
-        } else if let Some(ref _mock_client) = self.fallback {
-            // For mock, we do nothing
-            // placeholder for now
-        }
-        Ok(())
+        let _messaging_manager = self.messaging_manager.clone();
+        let message = message.to_string();
+
+        self.connection_manager
+            .execute(move |conn| {
+                let feature_name_clone = feature_name.map(|s| s.to_string());
+                Box::pin(async move {
+                    let processing_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::processing", feature, "messages"),
+                        None => "messages::processing".to_string(),
+                    };
+
+                    let target_queue_key = if success {
+                        match &feature_name_clone {
+                            Some(feature) => format!("{}::{}::completed", feature, "messages"),
+                            None => "messages::completed".to_string(),
+                        }
+                    } else {
+                        match &feature_name_clone {
+                            Some(feature) => format!("{}::{}::failed", feature, "messages"),
+                            None => "messages::failed".to_string(),
+                        }
+                    };
+
+                    // Create a pipeline to execute multiple commands
+                    let mut pipe = redis::pipe();
+                    pipe.atomic()
+                        .lrem(&processing_queue_key, 0, &message)
+                        .lpush(&target_queue_key, &message);
+
+                    // Execute the pipeline
+                    pipe.query_async::<_, ()>(conn).await
+                })
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to mark queue message: {}", e))
     }
 
     // -------------------------
@@ -477,29 +513,49 @@ impl RedisClient {
     }
 
     pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, ttl)) = locks.get(name) {
-            return Ok(self
-                .leadership_manager
-                .attempt_lock(self.connection_manager.connection.clone(), lock_key, *ttl)
-                .await);
+        let lock_key_and_ttl = {
+            let locks = self.locks.read().await;
+            locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
+        };
+
+        if let Some((lock_key, ttl)) = lock_key_and_ttl {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
+            return self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .attempt_lock_with_conn(conn, &lock_key, &instance_id, ttl)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
         }
         Ok(false)
     }
 
     pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, ttl)) = locks.get(name) {
-            let result = self
-                .leadership_manager
-                .renew_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                    *ttl,
-                )
-                .await?;
-            return Ok(result);
+        let lock_key_and_ttl = {
+            let locks = self.locks.read().await;
+            locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
+        };
+
+        if let Some((lock_key, ttl)) = lock_key_and_ttl {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
+            return self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .renew_lock_with_conn(conn, &lock_key, &instance_id, ttl)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
         }
         Ok(false)
     }
@@ -511,30 +567,47 @@ impl RedisClient {
     }
 
     pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
-        let locks = self.locks.write().await;
-        if let Some((lock_key, _)) = locks.get(name) {
+        let lock_key = {
+            let locks = self.locks.write().await;
+            locks.get(name).map(|(k, _)| k.clone())
+        };
+
+        if let Some(lock_key) = lock_key {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
             return self
-                .leadership_manager
-                .release_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                )
-                .await;
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .release_lock_with_conn(conn, &lock_key, &instance_id)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
         }
         Ok(())
     }
 
     pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, _)) = locks.get(name) {
+        let lock_key_and_ttl = {
+            let locks = self.locks.read().await;
+            locks.get(name).map(|(k, _)| k.clone())
+        };
+
+        if let Some(lock_key) = lock_key_and_ttl {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
             let result = self
-                .leadership_manager
-                .has_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                )
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .has_lock_with_conn(conn, &lock_key, &instance_id)
+                            .await
+                    })
+                })
                 .await?;
             return Ok(result);
         }
@@ -546,7 +619,7 @@ impl RedisClient {
     // --------------------------------------
     pub fn start_periodic_tasks(&self) {
         // Spawn a periodic presence update task
-        let connection = self.connection_manager.connection.clone();
+        let connection_manager = self.connection_manager.clone();
         let key_prefix = self.config.key_prefix.clone();
         let instance_id = self.instance_id.clone();
         let presence_task = tokio::spawn(async move {
@@ -558,12 +631,20 @@ impl RedisClient {
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                let mut conn_guard = connection.lock().await;
-                let _: redis::RedisResult<()> = redis::cmd("SETEX")
-                    .arg(&key)
-                    .arg(3)
-                    .arg(now)
-                    .query_async(&mut *conn_guard)
+
+                let key_clone = key.clone();
+                let now_clone = now;
+                let _: redis::RedisResult<()> = connection_manager
+                    .execute(|conn| {
+                        Box::pin(async move {
+                            redis::cmd("SETEX")
+                                .arg(&key_clone)
+                                .arg(3)
+                                .arg(now_clone)
+                                .query_async::<_, ()>(conn)
+                                .await
+                        })
+                    })
                     .await;
             }
         });
@@ -611,9 +692,15 @@ impl RedisClient {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                if let Err(e) = presence_manager
-                    .update_presence(connection_manager.connection.clone())
+                let presence_manager_clone = presence_manager.clone();
+                if let Err(e) = connection_manager
+                    .execute(|conn| {
+                        Box::pin(async move {
+                            presence_manager_clone.update_presence_with_conn(conn).await
+                        })
+                    })
                     .await
+                    .map_err(|e| anyhow::anyhow!("Redis error: {}", e))
                 {
                     log::error!("<NewRedisClient> Error updating presence: {}", e);
                 }
@@ -689,15 +776,18 @@ impl RedisClient {
         self.connection_manager.state.load(Ordering::SeqCst)
     }
 
-    pub async fn set_with_service_prefix<V: redis::ToRedisArgs + Send + Sync>(
-        &self,
-        key: &str,
-        value: V,
-    ) -> anyhow::Result<()> {
+    pub async fn set_with_service_prefix<V>(&self, key: &str, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync + Clone + 'static,
+    {
         let prefixed_key = self.service_prefix(&[key]);
-        let mut conn = self.connection_manager.connection.lock().await;
-        conn.set::<_, _, ()>(&prefixed_key, value).await?;
-        Ok(())
+        let value_clone = value.clone();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move { conn.set::<_, _, ()>(&prefixed_key, value_clone).await })
+            })
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
@@ -705,9 +795,11 @@ impl RedisClient {
         key: &str,
     ) -> anyhow::Result<Option<V>> {
         let prefixed_key = self.service_prefix(&[key]);
-        let mut conn = self.connection_manager.connection.lock().await;
-        let result = conn.get(&prefixed_key).await?;
-        Ok(result)
+        let result = self
+            .connection_manager
+            .execute(|conn| Box::pin(async move { conn.get(&prefixed_key).await }))
+            .await;
+        self.map_redis_error(result)
     }
 
     pub async fn get_queue_message_compat(
@@ -718,8 +810,11 @@ impl RedisClient {
             Some(feature) => self.service_prefix(&["queue", feature]),
             None => self.service_prefix(&["queue"]),
         };
-        let mut conn = self.connection_manager.connection.lock().await;
-        let result: Option<String> = conn.lpop(&queue_key, None).await?;
+        let queue_key_clone = queue_key.clone();
+        let result = self
+            .connection_manager
+            .execute(|conn| Box::pin(async move { conn.lpop(&queue_key_clone, None).await }))
+            .await?;
         Ok(result)
     }
 
@@ -734,10 +829,22 @@ impl RedisClient {
             Some(feature) => self.service_prefix(&["queue", "history", feature, status]),
             None => self.service_prefix(&["queue", "history", status]),
         };
-
-        let mut conn = self.connection_manager.connection.lock().await;
-        conn.rpush::<_, _, ()>(&queue_history_key, message).await?;
+        let queue_key_clone = queue_history_key.clone();
+        let message_clone = message.to_string();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move {
+                    conn.rpush::<_, _, ()>(&queue_key_clone, message_clone)
+                        .await
+                })
+            })
+            .await?;
         Ok(())
+    }
+
+    // Helper method for consistent error mapping
+    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
+        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
     }
 }
 
@@ -784,9 +891,13 @@ impl RedisClient {
     }
 
     pub async fn presence_update(&mut self) -> anyhow::Result<()> {
-        self.presence_manager
-            .update_presence(self.connection_manager.connection.clone())
+        let presence_manager = self.presence_manager.clone();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move { presence_manager.update_presence_with_conn(conn).await })
+            })
             .await
+            .map_err(Into::into)
     }
 
     pub async fn register_lock_compat(&mut self, name: &str, ttl: i64) -> anyhow::Result<()> {
@@ -802,24 +913,36 @@ impl RedisClient {
         target_instance_id: &str,
     ) -> anyhow::Result<()> {
         let channel = format!("{}::{}", self.config.key_prefix, target_instance_id);
-        self.messaging_manager
-            .publish_message(
-                self.connection_manager.connection.clone(),
-                &channel,
-                message,
-            )
+        let messaging_manager = self.messaging_manager.clone();
+        let channel_clone = channel.clone();
+        let message_clone = message.to_string();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move {
+                    messaging_manager
+                        .publish_message_with_conn(conn, &channel_clone, &message_clone)
+                        .await
+                })
+            })
             .await
+            .map_err(Into::into)
     }
 
     pub async fn broadcast_message(&mut self, message: &str) -> anyhow::Result<()> {
         let broadcast_channel = self.service_prefix(&["msgchannel"]);
-        self.messaging_manager
-            .publish_message(
-                self.connection_manager.connection.clone(),
-                &broadcast_channel,
-                message,
-            )
+        let messaging_manager = self.messaging_manager.clone();
+        let channel_clone = broadcast_channel.clone();
+        let message_clone = message.to_string();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move {
+                    messaging_manager
+                        .publish_message_with_conn(conn, &channel_clone, &message_clone)
+                        .await
+                })
+            })
             .await
+            .map_err(Into::into)
     }
 
     pub fn get_instance_id(&self) -> &str {

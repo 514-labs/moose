@@ -7,6 +7,7 @@ use tokio::sync::Mutex as TokioMutex;
 ///
 /// This struct provides methods to publish messages to specific instances
 /// or broadcast messages to all instances using Redis pub/sub channels.
+#[derive(Clone)]
 pub struct MessagingManager {
     /// Prefix for Redis keys and channels to prevent collisions.
     pub key_prefix: String,
@@ -76,6 +77,17 @@ impl MessagingManager {
         let channel = self.channel_for(target);
         let mut conn_guard = conn.lock().await;
         let _: () = conn_guard.publish(&channel, message).await?;
+        Ok(())
+    }
+
+    /// Publishes a message to a Redis channel using a direct connection
+    pub async fn publish_message_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+        channel: &str,
+        message: &str,
+    ) -> redis::RedisResult<()> {
+        let _: () = conn.publish(channel, message).await?;
         Ok(())
     }
 }

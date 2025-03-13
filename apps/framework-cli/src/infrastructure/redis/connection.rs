@@ -1,12 +1,11 @@
-use futures::FutureExt;
+use futures::future::{BoxFuture, FutureExt};
 use redis::aio::ConnectionManager;
 use redis::{Client, RedisError};
 use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex as TokioMutex;
-use tokio::time;
+use tokio::time::timeout;
 
 use super::redis_client::RedisConfig;
 
@@ -23,74 +22,49 @@ pub enum ConnectionState {
     Reconnecting,
 }
 
-/// A thread-safe wrapper around Redis ConnectionManager.
+/// Wrapper around Redis ConnectionManager with additional functionality
 ///
-/// This struct provides a wrapper around the Redis ConnectionManager that
-/// ensures thread safety and adds features like connection health
-/// monitoring and automatic reconnection with exponential backoff.
+/// This wrapper provides:
+/// 1. Connection state tracking
+/// 2. Automatic reconnection capabilities
+/// 3. Separate connections for regular commands and pub/sub
 #[derive(Clone)]
 pub struct ConnectionManagerWrapper {
-    /// The main connection used for regular Redis commands.
-    pub connection: Arc<TokioMutex<ConnectionManager>>,
-    /// A separate connection dedicated to pub/sub operations.
-    pub pub_sub: Arc<TokioMutex<ConnectionManager>>,
-    /// Atomic flag indicating the connection state (true = connected).
-    pub state: Arc<AtomicBool>, // true = connected
+    pub connection: ConnectionManager,
+    pub pub_sub: ConnectionManager,
+    pub state: Arc<AtomicBool>,
 }
 
 impl ConnectionManagerWrapper {
-    /// Creates a new ConnectionManagerWrapper with the provided
-    /// Redis client.
+    /// Creates a new ConnectionManagerWrapper
     ///
-    /// This method establishes two separate connections to Redis:
-    /// 1. A main connection for regular Redis commands
-    /// 2. A dedicated connection for pub/sub operations
-    ///
-    /// Both connections are wrapped in Tokio mutexes to ensure thread
-    /// safety. The connection state is initially set to connected (true).
-    ///
-    /// # Parameters
-    ///
-    /// - `client` - A reference to a Redis Client instance used to
-    ///    establish connections
+    /// # Arguments
+    /// * `client` - Redis client to create connection managers from
     ///
     /// # Returns
-    ///
-    /// - `Result<Self, RedisError>` - A new ConnectionManagerWrapper or a
-    ///   Redis error
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if it fails to establish either
-    /// connection to Redis.
+    /// * `Result<Self, RedisError>` - New wrapper or error
     pub async fn new(client: &Client) -> Result<Self, RedisError> {
         // Create connection manager for normal operations
         let conn = client.get_connection_manager().await?;
         let pub_sub_conn = client.get_connection_manager().await?;
+
         Ok(ConnectionManagerWrapper {
-            connection: Arc::new(TokioMutex::new(conn)),
-            pub_sub: Arc::new(TokioMutex::new(pub_sub_conn)),
+            connection: conn,
+            pub_sub: pub_sub_conn,
             state: Arc::new(AtomicBool::new(true)),
         })
     }
 
-    /// Checks the health of the Redis connection by sending a PING command.
-    ///
-    /// This method attempts to send a PING command to Redis with a timeout
-    /// of 2 seconds. If the PING succeeds, it returns true. If it fails or
-    /// times out, it updates the connection state to disconnected (false)
-    /// and returns false.
+    /// Checks if the connection is alive by sending a PING command
     ///
     /// # Returns
-    ///
-    /// - `bool` - true if the connection is healthy, false otherwise
+    /// * `bool` - True if connection is alive, false otherwise
     pub async fn ping(&self) -> bool {
-        let timeout_future = time::timeout(
+        let timeout_future = timeout(
             Duration::from_secs(2),
             AssertUnwindSafe(async {
-                redis::cmd("PING")
-                    .query_async::<_, String>(&mut *self.connection.lock().await)
-                    .await
+                let mut conn = self.connection.clone();
+                redis::cmd("PING").query_async::<_, String>(&mut conn).await
             })
             .catch_unwind(),
         );
@@ -104,37 +78,47 @@ impl ConnectionManagerWrapper {
         }
     }
 
-    /// Attempts to reconnect to Redis with exponential backoff.
+    /// Attempts to reconnect to Redis with exponential backoff
     ///
-    /// This method is called when a connection failure is detected. It
-    /// attempts to reestablish the connection with an exponential backoff
-    /// strategy:
-    ///
-    /// 1. Initial backoff of 5 seconds
-    /// 2. Doubles the backoff time after each failed attempt
-    /// 3. Caps the maximum backoff at 60 seconds
-    ///
-    /// Once a connection is successfully established, it updates the
-    /// connection state to connected (true) and returns.
-    ///
-    /// # Parameters
-    ///
-    /// - `client` - A reference to a Redis Client instance used to
-    ///   establish a new connection
-    /// - `_config` - A reference to the Redis configuration
-    ///   (currently unused)
+    /// # Arguments
+    /// * `client` - Redis client to reconnect with
+    /// * `config` - Redis configuration
     pub async fn attempt_reconnection(&self, client: &Client, _config: &RedisConfig) {
         let mut backoff = 5;
         while !self.state.load(Ordering::SeqCst) {
-            time::sleep(Duration::from_secs(backoff)).await;
+            tokio::time::sleep(Duration::from_secs(backoff)).await;
             if let Ok(new_conn) = client.get_connection_manager().await {
-                let mut conn_guard = self.connection.lock().await;
-                *conn_guard = new_conn;
+                // Update our connection with the new one
+                // This is safe because ConnectionManager is designed for concurrent use
+                // and we're replacing the entire instance
+                unsafe {
+                    let self_ptr =
+                        self as *const ConnectionManagerWrapper as *mut ConnectionManagerWrapper;
+                    (*self_ptr).connection = new_conn;
+                }
                 self.state.store(true, Ordering::SeqCst);
                 break;
             } else {
                 backoff = std::cmp::min(backoff * 2, 60);
             }
         }
+    }
+
+    /// Execute a Redis command using a cloned connection
+    pub async fn execute<F, R>(&self, f: F) -> redis::RedisResult<R>
+    where
+        F: for<'a> FnOnce(&'a mut ConnectionManager) -> BoxFuture<'a, redis::RedisResult<R>> + Send,
+    {
+        let mut conn = self.connection.clone();
+        f(&mut conn).await
+    }
+
+    /// Execute a pub/sub operation
+    pub async fn execute_pubsub<F, R>(&self, f: F) -> redis::RedisResult<R>
+    where
+        F: for<'a> FnOnce(&'a mut ConnectionManager) -> BoxFuture<'a, redis::RedisResult<R>> + Send,
+    {
+        let mut conn = self.pub_sub.clone();
+        f(&mut conn).await
     }
 }

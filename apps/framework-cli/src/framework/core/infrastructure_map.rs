@@ -1171,10 +1171,8 @@ impl InfrastructureMap {
     pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
         let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
         redis_client
-            .set_with_service_prefix("infrastructure_map", &encoded)
-            .await
-            .context("Failed to store InfrastructureMap in Redis")?;
-
+            .set_with_service_prefix("infrastructure_map", encoded.clone())
+            .await?;
         Ok(())
     }
 

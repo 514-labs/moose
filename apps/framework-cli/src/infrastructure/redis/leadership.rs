@@ -1,4 +1,5 @@
 use redis::aio::ConnectionManager;
+use redis::AsyncCommands;
 use redis::Script;
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
@@ -9,6 +10,7 @@ use super::redis_client::RedisConfig;
 ///
 /// This struct provides methods to acquire, verify, renew, and release
 /// distributed locks across multiple service instances using Redis.
+#[derive(Clone)]
 pub struct LeadershipManager {
     /// Unique identifier for this service instance.
     pub instance_id: String,
@@ -199,5 +201,81 @@ impl LeadershipManager {
             .invoke_async::<_, i32>(&mut *conn.lock().await)
             .await?;
         Ok(result == 1)
+    }
+
+    /// Checks if the instance has a lock using a provided connection
+    pub async fn has_lock_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+        lock_key: &str,
+        instance_id: &str,
+    ) -> redis::RedisResult<bool> {
+        let result: Option<String> = conn.get(lock_key).await?;
+        Ok(result.as_deref() == Some(instance_id))
+    }
+
+    /// Attempts to acquire a lock with a direct connection
+    pub async fn attempt_lock_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+        lock_key: &str,
+        instance_id: &str,
+        ttl: i64,
+    ) -> redis::RedisResult<bool> {
+        let result: i32 = redis::cmd("SET")
+            .arg(lock_key)
+            .arg(instance_id)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl)
+            .query_async(conn)
+            .await?;
+        Ok(result == 1)
+    }
+
+    /// Renews a lock with a direct connection
+    pub async fn renew_lock_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+        lock_key: &str,
+        instance_id: &str,
+        ttl: i64,
+    ) -> redis::RedisResult<bool> {
+        // First check if we own the lock
+        let current_value: Option<String> = conn.get(lock_key).await?;
+        if current_value.as_deref() != Some(instance_id) {
+            return Ok(false);
+        }
+
+        // If we own it, extend the TTL
+        let _: () = conn.expire(lock_key, ttl).await?;
+        Ok(true)
+    }
+
+    /// Releases a lock with a direct connection
+    pub async fn release_lock_with_conn(
+        &self,
+        conn: &mut ConnectionManager,
+        lock_key: &str,
+        instance_id: &str,
+    ) -> redis::RedisResult<()> {
+        // Only delete if we own the lock
+        let script = redis::Script::new(
+            r#"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+            "#,
+        );
+
+        let _: () = script
+            .key(lock_key)
+            .arg(instance_id)
+            .invoke_async(conn)
+            .await?;
+
+        Ok(())
     }
 }

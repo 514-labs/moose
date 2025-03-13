@@ -101,7 +101,6 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::infrastructure::processes::cron_registry::CronRegistry;
-use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -278,11 +277,9 @@ async fn process_pubsub_message(
     } else {
         // this assumes that the leader is not doing inserts during migration
         if message.contains("<migration_start>") {
-            clickhouse_writing_pause_button().send(true)?;
-            info!("Pausing write to CH");
+            info!("Should be pausing write to CH from Kafka");
         } else if message.contains("<migration_end>") {
-            clickhouse_writing_pause_button().send(false)?;
-            info!("Resuming write to CH");
+            info!("Should be resuming write to CH from Kafka");
         } else {
             info!(
                 "<Routines> This instance is not the leader and received pubsub message: {}",

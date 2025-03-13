@@ -7,8 +7,7 @@ use rdkafka::producer::DeliveryFuture;
 use rdkafka::Message;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, LazyLock};
-use tokio::select;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 use crate::framework::core::infrastructure::table::Column;
@@ -24,10 +23,6 @@ use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 use crate::metrics::{MetricEvent, Metrics};
-
-use tokio::sync::watch::{
-    channel as watch_channel, Receiver as WatchReceiver, Sender as WatchSender,
-};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
@@ -145,7 +140,7 @@ impl SyncingProcessesRegistry {
     }
 
     pub fn stop_topic_to_topic(&mut self, target_topic_name: &str) {
-        if let Some(process) = self.to_table_registry.remove(target_topic_name) {
+        if let Some(process) = self.to_topic_registry.remove(target_topic_name) {
             process.abort();
         }
     }
@@ -272,16 +267,6 @@ async fn sync_kafka_to_kafka(
     }
 }
 
-// just an AtomicBool with update listening
-static SHOULD_PAUSE_WRITING_TO_CLICKHOUSE: LazyLock<(WatchSender<bool>, WatchReceiver<bool>)> =
-    LazyLock::new(|| watch_channel(false));
-pub fn clickhouse_writing_pause_button() -> &'static WatchSender<bool> {
-    &SHOULD_PAUSE_WRITING_TO_CLICKHOUSE.0
-}
-pub fn clickhouse_writing_pause_listener() -> WatchReceiver<bool> {
-    SHOULD_PAUSE_WRITING_TO_CLICKHOUSE.1.clone()
-}
-
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
@@ -291,112 +276,105 @@ async fn sync_kafka_to_clickhouse(
     target_table_columns: Vec<ClickHouseColumn>,
     metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
-    let mut pause_receiver = clickhouse_writing_pause_listener();
+    info!(
+        "Starting/resuming kafka-clickhouse sync for {}.",
+        source_topic_name
+    );
+
+    let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
+        &kafka_config,
+        TABLE_SYNC_GROUP_ID,
+        &source_topic_name,
+    ));
+
+    let clickhouse_columns = target_table_columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect();
+
+    let topic_clone = source_topic_name.clone();
+    let subscriber_clone = subscriber.clone();
+
+    let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
+    let inserter = Inserter::<ClickHouseClient>::new(
+        client,
+        MAX_BATCH_SIZE,
+        MAX_FLUSH_INTERVAL_SECONDS,
+        &target_table_name,
+        clickhouse_columns,
+        Box::new(move |partition, offset| {
+            subscriber_clone.store_offset(&topic_clone, partition, offset)
+        }),
+    );
+
+    // WARNING: the code below is very performance sensitive
+    // it is run for every message that needs to be written to clickhouse. As such we should
+    // optimize as much as possible
+
+    // In that context we would rather not interrupt the syncing process if an error occurs.
+    // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
+    // asynchronous.
+
+    // This should also not be broken, otherwise, the subscriber will stop receiving messages
+
     loop {
-        if *pause_receiver.borrow() {
-            pause_receiver.changed().await.unwrap();
-            continue;
-        }
-        info!(
-            "Starting/resuming kafka-clickhouse sync for {}.",
-            source_topic_name
-        );
+        match subscriber.recv().await {
+            Err(e) => {
+                debug!("Error receiving message from {}: {}", source_topic_name, e);
+            }
 
-        let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
-            &kafka_config,
-            TABLE_SYNC_GROUP_ID,
-            &source_topic_name,
-        ));
+            Ok(message) => match message.payload() {
+                Some(payload) => match std::str::from_utf8(payload) {
+                    Ok(payload_str) => {
+                        debug!(
+                            "Received message from {}: {}",
+                            source_topic_name, payload_str
+                        );
+                        metrics
+                            .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                timestamp: chrono::Utc::now(),
+                                count: 1,
+                                bytes: payload.len() as u64,
+                                consumer_group: "clickhouse sync".to_string(),
+                                topic_name: source_topic_name.clone(),
+                            })
+                            .await;
 
-        let clickhouse_columns = target_table_columns
-            .iter()
-            .map(|column| column.name.clone())
-            .collect();
-
-        let topic_clone = source_topic_name.clone();
-        let subscriber_clone = subscriber.clone();
-
-        let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
-        let inserter = Inserter::<ClickHouseClient>::new(
-            client,
-            MAX_BATCH_SIZE,
-            MAX_FLUSH_INTERVAL_SECONDS,
-            &target_table_name,
-            clickhouse_columns,
-            Box::new(move |partition, offset| {
-                subscriber_clone.store_offset(&topic_clone, partition, offset)
-            }),
-        );
-
-        // WARNING: the code below is very performance sensitive
-        // it is run for every message that needs to be written to clickhouse. As such we should
-        // optimize as much as possible
-
-        // In that context we would rather not interrupt the syncing process if an error occurs.
-        // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
-        // asynchronous.
-
-        // This should also not be broken, otherwise, the subscriber will stop receiving messages
-
-        'receiving: loop {
-            select! {
-                received = subscriber.recv() => match received {
-                    Err(e) => {
-                        debug!("Error receiving message from {}: {}", source_topic_name, e);
-                    }
-
-                    Ok(message) => match message.payload() {
-                        Some(payload) => match std::str::from_utf8(payload) {
-                            Ok(payload_str) => {
-                                debug!(
-                                    "Received message from {}: {}",
-                                    source_topic_name, payload_str
-                                );
-                                metrics
-                                    .send_metric_event(MetricEvent::TopicToOLAPEvent {
-                                        timestamp: chrono::Utc::now(),
-                                        count: 1,
-                                        bytes: payload.len() as u64,
-                                        consumer_group: "clickhouse sync".to_string(),
-                                        topic_name: source_topic_name.clone(),
-                                    })
+                        if let Ok(json_value) = serde_json::from_str(payload_str) {
+                            if let Ok(clickhouse_record) =
+                                mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                            {
+                                let res = inserter
+                                    .insert(
+                                        clickhouse_record,
+                                        message.partition(),
+                                        message.offset(),
+                                    )
                                     .await;
 
-                                if let Ok(json_value) = serde_json::from_str(payload_str) {
-                                    if let Ok(clickhouse_record) =
-                                        mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                                    {
-                                        let res = inserter
-                                            .insert(clickhouse_record, message.partition(), message.offset())
-                                            .await;
-
-                                        if let Err(e) = res {
-                                            error!("Error adding records to the queue to be inserted: {}", e);
-                                        }
-                                    }
+                                if let Err(e) = res {
+                                    error!(
+                                        "Error adding records to the queue to be inserted: {}",
+                                        e
+                                    );
                                 }
                             }
-                            Err(_) => {
-                                error!(
-                                    "Received message from {} with invalid UTF-8",
-                                    source_topic_name
-                                );
-                            }
-                        },
-                        None => {
-                            debug!(
-                                "Received message from {} with no payload",
-                                source_topic_name
-                            );
                         }
-                    },
+                    }
+                    Err(_) => {
+                        error!(
+                            "Received message from {} with invalid UTF-8",
+                            source_topic_name
+                        );
+                    }
                 },
-                should_pause = pause_receiver.changed() => {
-                    should_pause?;
-                    break 'receiving // and go back to outer loop where it waits for
-                    // SHOULD_PAUSE_WRITING_TO_CLICKHOUSE to be false
+                None => {
+                    debug!(
+                        "Received message from {} with no payload",
+                        source_topic_name
+                    );
                 }
-            }
+            },
         }
     }
 }

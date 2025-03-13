@@ -277,102 +277,100 @@ async fn sync_kafka_to_clickhouse(
     target_table_columns: Vec<ClickHouseColumn>,
     metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
+    info!(
+        "Starting/resuming kafka-clickhouse sync for {}.",
+        source_topic_name
+    );
+
+    let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
+        &kafka_config,
+        TABLE_SYNC_GROUP_ID,
+        &source_topic_name,
+    ));
+
+    let clickhouse_columns = target_table_columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect();
+
+    let topic_clone = source_topic_name.clone();
+    let subscriber_clone = subscriber.clone();
+
+    let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
+    let inserter = Inserter::<ClickHouseClient>::new(
+        client,
+        MAX_BATCH_SIZE,
+        MAX_FLUSH_INTERVAL_SECONDS,
+        &target_table_name,
+        clickhouse_columns,
+        Box::new(move |partition, offset| {
+            subscriber_clone.store_offset(&topic_clone, partition, offset)
+        }),
+    );
+
+    // WARNING: the code below is very performance sensitive
+    // it is run for every message that needs to be written to clickhouse. As such we should
+    // optimize as much as possible
+
+    // In that context we would rather not interrupt the syncing process if an error occurs.
+    // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
+    // asynchronous.
+
+    // This should also not be broken, otherwise, the subscriber will stop receiving messages
+
     loop {
-        info!(
-            "Starting/resuming kafka-clickhouse sync for {}.",
-            source_topic_name
-        );
+        select! {
+            received = subscriber.recv() => match received {
+                Err(e) => {
+                    debug!("Error receiving message from {}: {}", source_topic_name, e);
+                }
 
-        let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
-            &kafka_config,
-            TABLE_SYNC_GROUP_ID,
-            &source_topic_name,
-        ));
+                Ok(message) => match message.payload() {
+                    Some(payload) => match std::str::from_utf8(payload) {
+                        Ok(payload_str) => {
+                            debug!(
+                                "Received message from {}: {}",
+                                source_topic_name, payload_str
+                            );
+                            metrics
+                                .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                    timestamp: chrono::Utc::now(),
+                                    count: 1,
+                                    bytes: payload.len() as u64,
+                                    consumer_group: "clickhouse sync".to_string(),
+                                    topic_name: source_topic_name.clone(),
+                                })
+                                .await;
 
-        let clickhouse_columns = target_table_columns
-            .iter()
-            .map(|column| column.name.clone())
-            .collect();
+                            if let Ok(json_value) = serde_json::from_str(payload_str) {
+                                if let Ok(clickhouse_record) =
+                                    mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                                {
+                                    let res = inserter
+                                        .insert(clickhouse_record, message.partition(), message.offset())
+                                        .await;
 
-        let topic_clone = source_topic_name.clone();
-        let subscriber_clone = subscriber.clone();
-
-        let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
-        let inserter = Inserter::<ClickHouseClient>::new(
-            client,
-            MAX_BATCH_SIZE,
-            MAX_FLUSH_INTERVAL_SECONDS,
-            &target_table_name,
-            clickhouse_columns,
-            Box::new(move |partition, offset| {
-                subscriber_clone.store_offset(&topic_clone, partition, offset)
-            }),
-        );
-
-        // WARNING: the code below is very performance sensitive
-        // it is run for every message that needs to be written to clickhouse. As such we should
-        // optimize as much as possible
-
-        // In that context we would rather not interrupt the syncing process if an error occurs.
-        // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
-        // asynchronous.
-
-        // This should also not be broken, otherwise, the subscriber will stop receiving messages
-
-        'receiving: loop {
-            select! {
-                received = subscriber.recv() => match received {
-                    Err(e) => {
-                        debug!("Error receiving message from {}: {}", source_topic_name, e);
-                    }
-
-                    Ok(message) => match message.payload() {
-                        Some(payload) => match std::str::from_utf8(payload) {
-                            Ok(payload_str) => {
-                                debug!(
-                                    "Received message from {}: {}",
-                                    source_topic_name, payload_str
-                                );
-                                metrics
-                                    .send_metric_event(MetricEvent::TopicToOLAPEvent {
-                                        timestamp: chrono::Utc::now(),
-                                        count: 1,
-                                        bytes: payload.len() as u64,
-                                        consumer_group: "clickhouse sync".to_string(),
-                                        topic_name: source_topic_name.clone(),
-                                    })
-                                    .await;
-
-                                if let Ok(json_value) = serde_json::from_str(payload_str) {
-                                    if let Ok(clickhouse_record) =
-                                        mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                                    {
-                                        let res = inserter
-                                            .insert(clickhouse_record, message.partition(), message.offset())
-                                            .await;
-
-                                        if let Err(e) = res {
-                                            error!("Error adding records to the queue to be inserted: {}", e);
-                                        }
+                                    if let Err(e) = res {
+                                        error!("Error adding records to the queue to be inserted: {}", e);
                                     }
                                 }
                             }
-                            Err(_) => {
-                                error!(
-                                    "Received message from {} with invalid UTF-8",
-                                    source_topic_name
-                                );
-                            }
-                        },
-                        None => {
-                            debug!(
-                                "Received message from {} with no payload",
+                        }
+                        Err(_) => {
+                            error!(
+                                "Received message from {} with invalid UTF-8",
                                 source_topic_name
                             );
                         }
                     },
+                    None => {
+                        debug!(
+                            "Received message from {} with no payload",
+                            source_topic_name
+                        );
+                    }
                 },
-            }
+            },
         }
     }
 }

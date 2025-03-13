@@ -3,7 +3,6 @@ use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
-use crate::infrastructure::processes::kafka_clickhouse_sync;
 use log::{info, warn};
 use rdkafka::error::KafkaError;
 use std::sync::Arc;

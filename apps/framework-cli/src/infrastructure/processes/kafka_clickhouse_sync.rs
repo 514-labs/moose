@@ -8,7 +8,6 @@ use rdkafka::Message;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use tokio::select;
 use tokio::task::JoinHandle;
 
 use crate::framework::core::infrastructure::table::Column;

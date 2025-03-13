@@ -7,7 +7,7 @@ use rdkafka::producer::DeliveryFuture;
 use rdkafka::Message;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use tokio::select;
 use tokio::task::JoinHandle;
 
@@ -24,10 +24,6 @@ use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 use crate::metrics::{MetricEvent, Metrics};
-
-use tokio::sync::watch::{
-    channel as watch_channel, Receiver as WatchReceiver, Sender as WatchSender,
-};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
@@ -145,7 +141,7 @@ impl SyncingProcessesRegistry {
     }
 
     pub fn stop_topic_to_topic(&mut self, target_topic_name: &str) {
-        if let Some(process) = self.to_table_registry.remove(target_topic_name) {
+        if let Some(process) = self.to_topic_registry.remove(target_topic_name) {
             process.abort();
         }
     }
@@ -272,16 +268,6 @@ async fn sync_kafka_to_kafka(
     }
 }
 
-// just an AtomicBool with update listening
-static SHOULD_PAUSE_WRITING_TO_CLICKHOUSE: LazyLock<(WatchSender<bool>, WatchReceiver<bool>)> =
-    LazyLock::new(|| watch_channel(false));
-pub fn clickhouse_writing_pause_button() -> &'static WatchSender<bool> {
-    &SHOULD_PAUSE_WRITING_TO_CLICKHOUSE.0
-}
-pub fn clickhouse_writing_pause_listener() -> WatchReceiver<bool> {
-    SHOULD_PAUSE_WRITING_TO_CLICKHOUSE.1.clone()
-}
-
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
@@ -291,12 +277,7 @@ async fn sync_kafka_to_clickhouse(
     target_table_columns: Vec<ClickHouseColumn>,
     metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
-    let mut pause_receiver = clickhouse_writing_pause_listener();
     loop {
-        if *pause_receiver.borrow() {
-            pause_receiver.changed().await.unwrap();
-            continue;
-        }
         info!(
             "Starting/resuming kafka-clickhouse sync for {}.",
             source_topic_name
@@ -391,11 +372,6 @@ async fn sync_kafka_to_clickhouse(
                         }
                     },
                 },
-                should_pause = pause_receiver.changed() => {
-                    should_pause?;
-                    break 'receiving // and go back to outer loop where it waits for
-                    // SHOULD_PAUSE_WRITING_TO_CLICKHOUSE to be false
-                }
             }
         }
     }

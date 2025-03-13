@@ -160,7 +160,7 @@ impl EventBuckets {
 /// * `redis_client` - Redis client for state management
 async fn watch(
     project: Arc<Project>,
-    route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+    route_update_channel: tokio::sync::mpsc::Sender<(InfrastructureMap, ApiChange)>,
     infrastructure_map: &'static RwLock<InfrastructureMap>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
@@ -202,7 +202,7 @@ async fn watch(
                     Ok(plan_result) => {
                         info!("Plan Changes: {:?}", plan_result.changes);
 
-                        framework::core::plan_validator::validate(&plan_result)?;
+                        framework::core::plan_validator::validate(&project, &plan_result)?;
 
                         display::show_changes(&plan_result);
                         match framework::core::execute::execute_online_change(
@@ -301,7 +301,7 @@ impl FileWatcher {
     pub fn start(
         &self,
         project: Arc<Project>,
-        route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+        route_update_channel: tokio::sync::mpsc::Sender<(InfrastructureMap, ApiChange)>,
         infrastructure_map: &'static RwLock<InfrastructureMap>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,

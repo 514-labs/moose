@@ -20,7 +20,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
     INGRESS {
-        target_topic: String,
+        target_topic_id: String,
         // in previous versions this is not stored,
         // so deserialization may fail if the value is not optional
         // our code does not depend on the stored field
@@ -59,7 +59,7 @@ impl ApiEndpoint {
         ApiEndpoint {
             name: data_model.name.clone(),
             api_type: APIType::INGRESS {
-                target_topic: topic.id(),
+                target_topic_id: topic.id(),
                 data_model: Some(data_model.clone()),
                 format: data_model.config.ingestion.format,
             },
@@ -177,9 +177,11 @@ impl DataLineage for ApiEndpoint {
 
     fn pushes_data_to(&self) -> Vec<InfrastructureSignature> {
         match &self.api_type {
-            APIType::INGRESS { target_topic, .. } => {
+            APIType::INGRESS {
+                target_topic_id, ..
+            } => {
                 vec![InfrastructureSignature::Topic {
-                    id: target_topic.clone(),
+                    id: target_topic_id.clone(),
                 }]
             }
             APIType::EGRESS { .. } => vec![],
@@ -191,11 +193,11 @@ impl APIType {
     fn to_proto(&self) -> ProtoApiType {
         match self {
             APIType::INGRESS {
-                target_topic,
+                target_topic_id,
                 data_model: _data_model,
                 format,
             } => ProtoApiType::Ingress(IngressDetails {
-                target_topic: target_topic.clone(),
+                target_topic: target_topic_id.clone(),
                 format: EnumOrUnknown::new(match format {
                     EndpointIngestionFormat::Json => ProtoIngressFormat::JSON,
                     EndpointIngestionFormat::JsonArray => ProtoIngressFormat::JSON_ARRAY,
@@ -230,7 +232,7 @@ impl APIType {
     pub fn from_proto(proto: ProtoApiType) -> Self {
         match proto {
             ProtoApiType::Ingress(details) => APIType::INGRESS {
-                target_topic: details.target_topic,
+                target_topic_id: details.target_topic,
                 data_model: None,
                 format: match details
                     .format

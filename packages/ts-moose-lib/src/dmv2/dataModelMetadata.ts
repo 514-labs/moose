@@ -2,6 +2,8 @@ import ts, { factory } from "typescript";
 import { isMooseFile, typiaJsonSchemas } from "../compilerPluginHelper";
 import { toColumns } from "../dataModels/typeConvert";
 
+const types = new Set(["OlapTable", "Stream", "IngestPipeline", "IngestApi"]);
+
 export const isNewMooseResourceWithTypeParam = (
   node: ts.Node,
   checker: ts.TypeChecker,
@@ -17,7 +19,7 @@ export const isNewMooseResourceWithTypeParam = (
     return false;
   }
   const sym = checker.getSymbolAtLocation(node.expression);
-  if (sym?.name !== "OlapTable") {
+  if (!types.has(sym?.name ?? "")) {
     return false;
   }
 
@@ -43,7 +45,7 @@ const parseAsAny = (s: string) =>
     factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
   );
 
-export const transformNewOlapTable = (
+export const transformNewMooseResource = (
   node: ts.NewExpression,
   checker: ts.TypeChecker,
 ): ts.Node => {

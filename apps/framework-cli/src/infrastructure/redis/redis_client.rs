@@ -67,6 +67,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
@@ -79,6 +80,51 @@ use super::presence::PresenceManager;
 
 // Type alias for complex callback types
 type MessageCallback = Arc<dyn Fn(String) + Send + Sync>;
+
+/// State container for RedisClient that encapsulates all synchronized state.
+///
+/// This struct centralizes the management of state that requires synchronization,
+/// making it easier to reason about thread safety and concurrency. It uses
+/// appropriate synchronization primitives (RwLock) for each type of state:
+///
+/// - RwLock for structures that have more reads than writes (callbacks, tasks, locks)
+/// - Arc for shared ownership across tasks
+///
+/// By grouping these synchronized components together, we can more easily
+/// ensure proper locking discipline and avoid potential deadlocks.
+pub struct RedisClientState {
+    /// Registered message handlers that will be called when messages are received
+    pub message_callbacks: Arc<RwLock<Vec<MessageCallback>>>,
+
+    /// Task handle for the message listener background task
+    pub listener_task: Arc<RwLock<Option<JoinHandle<()>>>>,
+
+    /// Task handle for the presence update background task
+    pub presence_task: Arc<RwLock<Option<JoinHandle<()>>>>,
+
+    /// Task handle for the connection monitor background task
+    pub connection_monitor_task: Arc<RwLock<Option<JoinHandle<()>>>>,
+
+    /// Map of registered locks with their keys and TTLs
+    pub locks: Arc<RwLock<std::collections::HashMap<String, (String, i64)>>>,
+
+    /// Fallback mock client used when Redis is unavailable
+    pub fallback: Option<MockRedisClient>,
+}
+
+impl RedisClientState {
+    /// Creates a new RedisClientState with empty/default values
+    pub fn new(fallback: Option<MockRedisClient>) -> Self {
+        RedisClientState {
+            message_callbacks: Arc::new(RwLock::new(Vec::new())),
+            listener_task: Arc::new(RwLock::new(None)),
+            presence_task: Arc::new(RwLock::new(None)),
+            connection_monitor_task: Arc::new(RwLock::new(None)),
+            locks: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            fallback,
+        }
+    }
+}
 
 /// # Redis Configuration
 ///
@@ -231,6 +277,7 @@ impl Default for RedisConfig {
 /// // Use the client for various Redis operations
 /// client.set_with_service_prefix("my-key", "my-value").await?;
 /// ```
+#[derive(Clone)]
 pub struct RedisClient {
     pub config: RedisConfig,
     pub service_name: String,
@@ -239,14 +286,7 @@ pub struct RedisClient {
     pub leadership_manager: LeadershipManager,
     pub presence_manager: PresenceManager,
     pub messaging_manager: MessagingManager,
-
-    pub message_callbacks: Arc<RwLock<Vec<MessageCallback>>>,
-    pub listener_task: Arc<RwLock<Option<JoinHandle<()>>>>,
-    pub presence_task: Arc<RwLock<Option<JoinHandle<()>>>>,
-    pub connection_monitor_task: Arc<RwLock<Option<JoinHandle<()>>>>,
-    pub fallback: Option<MockRedisClient>,
-
-    pub locks: Arc<RwLock<std::collections::HashMap<String, (String, i64)>>>,
+    pub state: Arc<RedisClientState>,
 }
 
 impl RedisClient {
@@ -278,6 +318,8 @@ impl RedisClient {
         let presence_manager = PresenceManager::new(instance_id.clone(), config.key_prefix.clone());
         let messaging_manager = MessagingManager::new(config.key_prefix.clone());
 
+        let state = Arc::new(RedisClientState::new(fallback));
+
         let client = RedisClient {
             config,
             service_name,
@@ -286,12 +328,7 @@ impl RedisClient {
             leadership_manager,
             presence_manager,
             messaging_manager,
-            message_callbacks: Arc::new(RwLock::new(Vec::new())),
-            listener_task: Arc::new(RwLock::new(None)),
-            presence_task: Arc::new(RwLock::new(None)),
-            connection_monitor_task: Arc::new(RwLock::new(None)),
-            fallback,
-            locks: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            state,
         };
 
         // Start the message listener
@@ -303,7 +340,7 @@ impl RedisClient {
     // Message Listener and Handlers
     // ------------------------------
     pub async fn register_message_handler(&self, callback: Arc<dyn Fn(String) + Send + Sync>) {
-        let mut callbacks = self.message_callbacks.write().await;
+        let mut callbacks = self.state.message_callbacks.write().await;
         let adapted_callback: MessageCallback = callback;
         callbacks.push(adapted_callback);
     }
@@ -315,8 +352,14 @@ impl RedisClient {
         );
         let broadcast_channel = format!("{}::msgchannel", self.config.key_prefix);
 
+        log::info!(
+            "<NewRedisClient> Starting message listener on channels: {} and {}",
+            instance_channel,
+            broadcast_channel
+        );
+
         let _pub_sub_manager = self.connection_manager.pub_sub.clone();
-        let callbacks = self.message_callbacks.clone();
+        let callbacks = self.state.message_callbacks.clone();
         let config_url = self.config.url.clone();
 
         let instance_channel_clone = instance_channel.clone();
@@ -361,7 +404,7 @@ impl RedisClient {
         });
 
         // Store the listener task
-        let listener_task_clone = self.listener_task.clone();
+        let listener_task_clone = self.state.listener_task.clone();
         tokio::spawn(async move {
             let mut listener_guard = listener_task_clone.write().await;
             *listener_guard = Some(listener);
@@ -434,7 +477,7 @@ impl RedisClient {
             Some(name) => format!("{}::{}::mqprocess", self.config.key_prefix, name),
             None => format!("{}::mqprocess", self.config.key_prefix),
         };
-        if self.fallback.is_none() {
+        if self.state.fallback.is_none() {
             let source = source_queue.clone();
             let dest = destination_queue.clone();
             let result = self
@@ -450,7 +493,7 @@ impl RedisClient {
                 })
                 .await?;
             Ok(result)
-        } else if let Some(ref mock_client) = self.fallback {
+        } else if let Some(ref mock_client) = self.state.fallback {
             let msg = mock_client.get_queue_message(&source_queue).await?;
             Ok(msg)
         } else {
@@ -507,14 +550,14 @@ impl RedisClient {
     // -------------------------
     pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
         let key = format!("{}::{}::lock", self.config.key_prefix, name);
-        let mut locks = self.locks.write().await;
+        let mut locks = self.state.locks.write().await;
         locks.insert(name.to_string(), (key, ttl));
         Ok(())
     }
 
     pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
         let lock_key_and_ttl = {
-            let locks = self.locks.read().await;
+            let locks = self.state.locks.read().await;
             locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
         };
 
@@ -538,7 +581,7 @@ impl RedisClient {
 
     pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
         let lock_key_and_ttl = {
-            let locks = self.locks.read().await;
+            let locks = self.state.locks.read().await;
             locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
         };
 
@@ -568,7 +611,7 @@ impl RedisClient {
 
     pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
         let lock_key = {
-            let locks = self.locks.write().await;
+            let locks = self.state.locks.read().await;
             locks.get(name).map(|(k, _)| k.clone())
         };
 
@@ -592,7 +635,7 @@ impl RedisClient {
 
     pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
         let lock_key_and_ttl = {
-            let locks = self.locks.read().await;
+            let locks = self.state.locks.read().await;
             locks.get(name).map(|(k, _)| k.clone())
         };
 
@@ -650,7 +693,7 @@ impl RedisClient {
         });
 
         // Store the presence task
-        let presence_task_clone = self.presence_task.clone();
+        let presence_task_clone = self.state.presence_task.clone();
         tokio::spawn(async move {
             let mut presence_guard = presence_task_clone.write().await;
             *presence_guard = Some(presence_task);
@@ -675,7 +718,7 @@ impl RedisClient {
         });
 
         // Store the connection monitor task
-        let connection_monitor_task_clone = self.connection_monitor_task.clone();
+        let connection_monitor_task_clone = self.state.connection_monitor_task.clone();
         tokio::spawn(async move {
             let mut guard = connection_monitor_task_clone.write().await;
             *guard = Some(monitor_task);
@@ -708,7 +751,7 @@ impl RedisClient {
         });
 
         // Store the presence task
-        let presence_task_clone = self.presence_task.clone();
+        let presence_task_clone = self.state.presence_task.clone();
         tokio::spawn(async move {
             let mut presence_task_guard = presence_task_clone.write().await;
             *presence_task_guard = Some(presence_task);
@@ -740,15 +783,15 @@ impl RedisClient {
         let rt = tokio::runtime::Handle::try_current()?;
 
         rt.block_on(async {
-            if let Some(task) = self.presence_task.write().await.take() {
+            if let Some(task) = self.state.presence_task.write().await.take() {
                 task.abort();
             }
 
-            if let Some(task) = self.connection_monitor_task.write().await.take() {
+            if let Some(task) = self.state.connection_monitor_task.write().await.take() {
                 task.abort();
             }
 
-            if let Some(task) = self.listener_task.write().await.take() {
+            if let Some(task) = self.state.listener_task.write().await.take() {
                 task.abort();
             }
         });
@@ -846,6 +889,44 @@ impl RedisClient {
     fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
         result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
     }
+
+    /// Creates a thread-safe wrapper for this RedisClient
+    ///
+    /// This method wraps the RedisClient in an Arc<Mutex<>> to make it
+    /// safely shareable across threads and tasks. This is the recommended
+    /// way to share a RedisClient instance in a multi-threaded environment.
+    ///
+    /// # Returns
+    ///
+    /// An Arc<Mutex<RedisClient>> that can be cloned and shared across tasks
+    pub fn into_thread_safe(self) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(self))
+    }
+
+    /// Creates a new thread-safe RedisClient
+    ///
+    /// This is a convenience method that creates a new RedisClient and
+    /// immediately wraps it in an Arc<Mutex<>> for thread-safe usage.
+    ///
+    /// # Arguments
+    ///
+    /// * `service_name` - The name of the service using this client
+    /// * `config` - Redis configuration
+    ///
+    /// # Returns
+    ///
+    /// An Arc<Mutex<RedisClient>> that can be cloned and shared across tasks
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RedisClient creation fails
+    pub async fn new_thread_safe(
+        service_name: String,
+        config: RedisConfig,
+    ) -> anyhow::Result<Arc<Mutex<Self>>> {
+        let client = Self::new(service_name, config).await?;
+        Ok(client.into_thread_safe())
+    }
 }
 
 impl Drop for RedisClient {
@@ -854,19 +935,19 @@ impl Drop for RedisClient {
 
         // We can't use await in drop, so we need to use blocking operations
         // or just ignore the errors for cleanup
-        if let Ok(mut guard) = self.listener_task.try_write() {
+        if let Ok(mut guard) = self.state.listener_task.try_write() {
             if let Some(task) = guard.take() {
                 task.abort();
             }
         }
 
-        if let Ok(mut guard) = self.presence_task.try_write() {
+        if let Ok(mut guard) = self.state.presence_task.try_write() {
             if let Some(task) = guard.take() {
                 task.abort();
             }
         }
 
-        if let Ok(mut guard) = self.connection_monitor_task.try_write() {
+        if let Ok(mut guard) = self.state.connection_monitor_task.try_write() {
             if let Some(task) = guard.take() {
                 task.abort();
             }
@@ -902,7 +983,7 @@ impl RedisClient {
 
     pub async fn register_lock_compat(&mut self, name: &str, ttl: i64) -> anyhow::Result<()> {
         let lock_key = self.service_prefix(&[name, "lock"]);
-        let mut locks = self.locks.write().await;
+        let mut locks = self.state.locks.write().await;
         locks.insert(name.to_string(), (lock_key, ttl));
         Ok(())
     }
@@ -951,5 +1032,84 @@ impl RedisClient {
 
     pub fn get_service_name(&self) -> &str {
         &self.service_name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+    #[tokio::test]
+    async fn test_redis_client_clone() {
+        // Create a Redis client with default config
+        let client = RedisClient::new("test-service".to_string(), RedisConfig::default())
+            .await
+            .unwrap();
+
+        // Clone the client
+        let client_clone = client.clone();
+
+        // Verify that both clients have the same instance ID
+        assert_eq!(client.instance_id, client_clone.instance_id);
+
+        // Verify that both clients share the same state
+        let key = "test-lock";
+        let ttl = 30;
+
+        // Register a lock using the original client
+        client.register_lock(key, ttl).await.unwrap();
+
+        // Verify the lock exists using the cloned client
+        let lock_exists = {
+            let locks = client_clone.state.locks.read().await;
+            locks.contains_key(key)
+        };
+
+        assert!(
+            lock_exists,
+            "Lock should exist in the cloned client's state"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_redis_client_shared_across_tasks() {
+        // Create a Redis client with default config
+        let client = RedisClient::new("test-service".to_string(), RedisConfig::default())
+            .await
+            .unwrap();
+
+        // Wrap in Arc<Mutex<>> to simulate how it's used in the application
+        let client = Arc::new(Mutex::new(client));
+
+        // Spawn tasks that use the client
+        let mut handles = vec![];
+
+        for i in 0..5 {
+            let client_clone = client.clone();
+            let handle = tokio::spawn(async move {
+                let client = client_clone.lock().await;
+                client
+                    .register_lock(&format!("test-lock-{}", i), 30)
+                    .await
+                    .unwrap();
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        // Verify all locks were registered
+        let client = client.lock().await;
+        let locks = client.state.locks.read().await;
+
+        for i in 0..5 {
+            let key = format!("test-lock-{}", i);
+            assert!(locks.contains_key(&key), "Lock {} should exist", key);
+        }
     }
 }

@@ -324,7 +324,7 @@ async fn sync_kafka_to_clickhouse(
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
     loop {
-        if !inserter.is_empty() && (clock.elapsed() > flush_interval || inserter.len() >= 1) {
+        if !inserter.is_empty() && (clock.elapsed() > flush_interval || inserter.len() > 1) {
             inserter.flush().await;
             clock = Instant::now();
         }

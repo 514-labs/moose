@@ -35,5 +35,6 @@ export * from "./blocks/helpers";
 export * from "./commons";
 export * from "./consumption-apis/helpers";
 export * from "./scripts/task";
+export { OlapTable, Stream, IngestApi, IngestPipeline } from "./dmv2";
 
 export { createConsumptionApi } from "./consumption-apis/runner";

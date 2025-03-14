@@ -222,10 +222,6 @@ async fn sync_kafka_to_kafka(
     let target_topic_name = &target_topic_name;
 
     loop {
-        while queue.len() >= MAX_PENDING_BATCHES {
-            tokio::time::sleep(std::time::Duration::from_millis(BACKPRESSURE_PAUSE_MS)).await;
-        }
-
         match subscriber.recv().await {
             Err(e) => {
                 debug!("Error receiving message from {}: {}", source_topic_name, e);
@@ -328,15 +324,16 @@ async fn sync_kafka_to_clickhouse(
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
     loop {
-        while inserter.len() >= MAX_PENDING_BATCHES {
-            tokio::time::sleep(backpressure_pause).await;
-        }
-
-        if !inserter.is_empty()
-            && (clock.elapsed() > flush_interval || inserter.len() >= MAX_BATCH_SIZE)
-        {
+        if !inserter.is_empty() && (clock.elapsed() > flush_interval || inserter.len() >= 1) {
             inserter.flush().await;
             clock = Instant::now();
+        }
+
+        // Order of operations is important here. We need to check the length of the queue first
+        // and then start to dequeue messages without consuming new ones.
+        while inserter.len() >= MAX_PENDING_BATCHES {
+            tokio::time::sleep(backpressure_pause).await;
+            continue;
         }
 
         match subscriber.recv().await {

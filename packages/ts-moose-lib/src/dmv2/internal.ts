@@ -14,7 +14,7 @@ const defaultRetentionPeriod = 60 * 60 * 24 * 7;
 interface TableJson {
   name: string;
   columns: Column[];
-  orderBy: string[];
+  order_by: string[];
   deduplicate: boolean;
 }
 interface Target {
@@ -47,7 +47,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
     tables[table.name] = {
       name: table.name,
       columns: table.columnArray,
-      orderBy: table.config.order_by_fields ?? [],
+      order_by: table.config.order_by_fields ?? [],
       deduplicate: table.config.deduplicate ?? false,
     };
   });

@@ -9,7 +9,6 @@ use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 
 use crate::framework::core::infrastructure::table::Column;
 use crate::framework::core::infrastructure::table::ColumnType;
@@ -25,12 +24,11 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 use crate::metrics::{MetricEvent, Metrics};
 use tokio::select;
+
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
 const MAX_BATCH_SIZE: usize = 100000;
-const MAX_PENDING_BATCHES: usize = 10;
-const BACKPRESSURE_PAUSE_MS: u64 = 100;
 
 struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
@@ -310,8 +308,6 @@ async fn sync_kafka_to_clickhouse(
     );
 
     let flush_interval = std::time::Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS);
-    let backpressure_pause = std::time::Duration::from_millis(BACKPRESSURE_PAUSE_MS);
-    let mut clock = Instant::now();
     let mut interval_clock = tokio::time::interval(flush_interval);
 
     // WARNING: the code below is very performance sensitive
@@ -319,28 +315,24 @@ async fn sync_kafka_to_clickhouse(
     // optimize as much as possible
 
     // In that context we would rather not interrupt the syncing process if an error occurs.
-    // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
-    // asynchronous.
 
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
     loop {
-        if !inserter.is_empty() && (clock.elapsed() > flush_interval || inserter.len() > 1) {
+        // if we have a full batch, we flush it
+        if !inserter.is_empty() && inserter.len() > 1 {
             inserter.flush().await;
-            clock = Instant::now();
-        }
-
-        // Order of operations is important here. We need to check the length of the queue first
-        // and then start to dequeue messages without consuming new ones.
-        while inserter.len() >= MAX_PENDING_BATCHES {
-            tokio::time::sleep(backpressure_pause).await;
-            continue;
         }
 
         select! {
+            // This is here to ensure that if we don't have new messages to process, we still flush
+            // the inserter at the end of the interval.
             _ = interval_clock.tick() => {
+                inserter.flush().await;
                 continue;
             }
+            // Since this is triggered for every message, if a batch gets too big, we will
+            // trigger a flush at the next message that comes in.
             message = subscriber.recv() => {
                 match message {
                     Err(e) => {

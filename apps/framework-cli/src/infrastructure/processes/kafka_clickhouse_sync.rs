@@ -24,7 +24,7 @@ use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 use crate::metrics::{MetricEvent, Metrics};
-
+use tokio::select;
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
@@ -312,6 +312,7 @@ async fn sync_kafka_to_clickhouse(
     let flush_interval = std::time::Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS);
     let backpressure_pause = std::time::Duration::from_millis(BACKPRESSURE_PAUSE_MS);
     let mut clock = Instant::now();
+    let mut interval_clock = tokio::time::interval(flush_interval);
 
     // WARNING: the code below is very performance sensitive
     // it is run for every message that needs to be written to clickhouse. As such we should
@@ -336,54 +337,60 @@ async fn sync_kafka_to_clickhouse(
             continue;
         }
 
-        match subscriber.recv().await {
-            Err(e) => {
-                debug!("Error receiving message from {}: {}", source_topic_name, e);
+        select! {
+            _ = interval_clock.tick() => {
+                continue;
             }
+            message = subscriber.recv() => {
+                match message {
+                    Err(e) => {
+                    debug!("Error receiving message from {}: {}", source_topic_name, e);
+                }
 
-            Ok(message) => match message.payload() {
-                Some(payload) => match std::str::from_utf8(payload) {
-                    Ok(payload_str) => {
-                        debug!(
-                            "Received message from {}: {}",
-                            source_topic_name, payload_str
-                        );
-                        metrics
-                            .send_metric_event(MetricEvent::TopicToOLAPEvent {
-                                timestamp: chrono::Utc::now(),
-                                count: 1,
-                                bytes: payload.len() as u64,
-                                consumer_group: "clickhouse sync".to_string(),
-                                topic_name: source_topic_name.clone(),
-                            })
-                            .await;
+                Ok(message) => match message.payload() {
+                    Some(payload) => match std::str::from_utf8(payload) {
+                        Ok(payload_str) => {
+                            debug!(
+                                "Received message from {}: {}",
+                                source_topic_name, payload_str
+                            );
+                            metrics
+                                .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                    timestamp: chrono::Utc::now(),
+                                    count: 1,
+                                    bytes: payload.len() as u64,
+                                    consumer_group: "clickhouse sync".to_string(),
+                                    topic_name: source_topic_name.clone(),
+                                })
+                                .await;
 
-                        if let Ok(json_value) = serde_json::from_str(payload_str) {
-                            if let Ok(clickhouse_record) =
-                                mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                            {
-                                inserter.insert(
-                                    clickhouse_record,
-                                    message.partition(),
-                                    message.offset(),
-                                );
+                            if let Ok(json_value) = serde_json::from_str(payload_str) {
+                                if let Ok(clickhouse_record) =
+                                    mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                                {
+                                    inserter.insert(
+                                        clickhouse_record,
+                                        message.partition(),
+                                        message.offset(),
+                                    );
+                                }
                             }
                         }
-                    }
-                    Err(_) => {
-                        error!(
-                            "Received message from {} with invalid UTF-8",
+                        Err(_) => {
+                            error!(
+                                "Received message from {} with invalid UTF-8",
+                                source_topic_name
+                            );
+                        }
+                    },
+                    None => {
+                        debug!(
+                            "Received message from {} with no payload",
                             source_topic_name
                         );
                     }
                 },
-                None => {
-                    debug!(
-                        "Received message from {} with no payload",
-                        source_topic_name
-                    );
-                }
-            },
+            }}
         }
     }
 }

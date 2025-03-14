@@ -107,6 +107,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                 self.queue.push_back(Batch::default());
                 let new_batch = self.queue.back_mut().unwrap();
                 new_batch.records.push(record);
+                new_batch.update_offset(partition, offset);
             }
         }
     }

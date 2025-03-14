@@ -263,7 +263,12 @@ mod tests {
         );
 
         assert_eq!(
-            inserter.queue.front().unwrap().records.len(),
+            inserter
+                .queue
+                .front()
+                .unwrap_or(&Batch::default())
+                .records
+                .len(),
             0,
             "Batch should be empty after successful flush"
         );

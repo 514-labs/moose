@@ -1,24 +1,91 @@
+//! # ClickHouse Batch Inserter
+//!
+//! This module provides functionality for batched inserts into ClickHouse tables.
+//! It handles:
+//!
+//! - Batching records for efficient insertion
+//! - Tracking Kafka partition offsets for each batch
+//! - Committing offsets after successful inserts
+//! - Handling transient failures during insertion
+//!
+//! The primary components are:
+//!
+//! - `Batch`: Represents a collection of records to be inserted together
+//! - `Inserter`: Manages batches and handles the insertion process
+//!
+//! ## Usage Example
+//!
+//! ```rust
+//! use crate::infrastructure::olap::clickhouse::inserter::Inserter;
+//! use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
+//! use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
+//!
+//! // Create a ClickHouse client
+//! let client = ClickHouseClient::new("http://localhost:8123");
+//!
+//! // Create an inserter with batch size of 1000
+//! let mut inserter = Inserter::new(
+//!     client,
+//!     1000,
+//!     Box::new(|partition, offset| {
+//!         // Commit the offset to Kafka
+//!         Ok(())
+//!     }),
+//!     "my_table".to_string(),
+//!     vec!["column1".to_string(), "column2".to_string()],
+//! );
+//!
+//! // Insert records
+//! let record = ClickHouseRecord::new();
+//! inserter.insert(record, 0, 100);
+//!
+//! // Flush records to ClickHouse
+//! inserter.flush().await;
+//! ```
+
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClientTrait;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
 use std::collections::{HashMap, VecDeque};
-use std::time::Duration;
 
 use log::{info, warn};
 use rdkafka::error::KafkaError;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time;
 
+/// Represents a Kafka partition identifier
+type Partition = i32;
+/// Represents a Kafka message offset
+type Offset = i64;
+/// Maps Kafka partitions to their highest offset in a batch
+type PartitionOffsets = HashMap<Partition, Offset>;
+/// Maps Kafka partitions to the number of messages from that partition in a batch
+type PartitionSizes = HashMap<Partition, i64>;
+
+/// Represents a batch of records to be inserted into ClickHouse.
+///
+/// A batch contains:
+/// - A collection of ClickHouse records
+/// - The highest offset for each Kafka partition in the batch
+/// - The number of messages from each partition in the batch
 #[derive(Default)]
 pub struct Batch {
+    /// Collection of ClickHouse records to be inserted
     pub records: Vec<ClickHouseRecord>,
-    pub partition_offsets: HashMap<i32, i64>,
-
-    // Map the partitions to the number of messages in the batch
-    pub messages_sizes: HashMap<i32, i64>,
+    /// Maps partitions to their highest offset in this batch
+    pub partition_offsets: PartitionOffsets,
+    /// Maps partitions to the number of messages in this batch
+    pub messages_sizes: PartitionSizes,
 }
 
 impl Batch {
+    /// Updates the offset tracking for a partition.
+    ///
+    /// This method:
+    /// 1. Updates the highest offset for the partition (if the new offset is higher)
+    /// 2. Increments the message count for the partition
+    ///
+    /// # Arguments
+    ///
+    /// * `partition` - The Kafka partition ID
+    /// * `offset` - The message offset in the partition
     fn update_offset(&mut self, partition: i32, offset: i64) {
         self.partition_offsets
             .entry(partition)
@@ -31,6 +98,11 @@ impl Batch {
             .or_insert(1);
     }
 
+    /// Formats partition offsets as a human-readable string.
+    ///
+    /// # Returns
+    ///
+    /// A string in the format "Partition 0: 100, Partition 1: 200, ..."
     fn offsets_to_string(&self) -> String {
         self.partition_offsets
             .iter()
@@ -39,6 +111,11 @@ impl Batch {
             .join(", ")
     }
 
+    /// Formats message sizes per partition as a human-readable string.
+    ///
+    /// # Returns
+    ///
+    /// A string in the format "Partition 0: 50, Partition 1: 75, ..."
     fn messages_sizes_to_string(&self) -> String {
         self.messages_sizes
             .iter()
@@ -48,129 +125,188 @@ impl Batch {
     }
 }
 
+/// A callback function type for committing Kafka offsets.
+///
+/// This function is called after a successful batch insertion to commit
+/// the offsets back to Kafka.
+///
+/// # Arguments
+///
+/// * `partition` - The Kafka partition ID
+/// * `offset` - The offset to commit
+///
+/// # Returns
+///
+/// A Result indicating success or failure of the commit operation
 pub type OffsetCommitCallback = Box<dyn Fn(i32, i64) -> Result<(), KafkaError> + Send + Sync>;
-pub type BatchQueue = Arc<Mutex<VecDeque<Batch>>>;
 
+/// A queue of batches waiting to be inserted
+pub type BatchQueue = VecDeque<Batch>;
+
+/// Manages batched inserts into ClickHouse tables.
+///
+/// The Inserter:
+/// 1. Collects records into batches of a specified size
+/// 2. Inserts batches into ClickHouse when they reach the size limit or when flushed
+/// 3. Tracks and commits Kafka offsets after successful inserts
+/// 4. Handles transient failures during insertion
+///
+/// # Type Parameters
+///
+/// * `C` - A type that implements the ClickHouseClientTrait
 pub struct Inserter<C: ClickHouseClientTrait + 'static> {
+    /// Queue of batches waiting to be inserted
     queue: BatchQueue,
-    client: Arc<C>,
+    /// Client for interacting with ClickHouse
+    client: C,
+    /// Maximum number of records in a batch
     batch_size: usize,
-    flush_interval: u64,
+    /// Callback for committing offsets after successful insertion
+    commit_callback: OffsetCommitCallback,
+    /// Target ClickHouse table name
+    table: String,
+    /// Column names for the target table
+    columns: Vec<String>,
 }
 
 impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
+    /// Creates a new Inserter.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - A ClickHouse client for performing inserts
+    /// * `batch_size` - Maximum number of records in a batch
+    /// * `commit_callback` - Function to call for committing offsets
+    /// * `table` - Target ClickHouse table name
+    /// * `columns` - Column names for the target table
+    ///
+    /// # Returns
+    ///
+    /// A new Inserter instance with an initial empty batch
     pub fn new(
-        client: Arc<C>,
+        client: C,
         batch_size: usize,
-        flush_interval: u64,
-        table: &str,
-        columns: Vec<String>,
         commit_callback: OffsetCommitCallback,
-    ) -> Self {
-        let queue = Arc::new(Mutex::new(VecDeque::from([Batch::default()])));
-
-        let inserter = Self {
-            queue: queue.clone(),
-            client,
-            batch_size,
-            flush_interval,
-        };
-
-        let inserter_clone = inserter.clone_for_flush();
-        let table_clone = table.to_string();
-        tokio::spawn(async move {
-            inserter_clone
-                .flush(table_clone, columns, commit_callback)
-                .await;
-        });
-
-        inserter
-    }
-
-    fn clone_for_flush(&self) -> Self {
-        Self {
-            queue: self.queue.clone(),
-            client: self.client.clone(),
-            batch_size: self.batch_size,
-            flush_interval: self.flush_interval,
-        }
-    }
-
-    pub async fn insert(
-        &self,
-        record: ClickHouseRecord,
-        partition: i32,
-        offset: i64,
-    ) -> anyhow::Result<()> {
-        let mut queue = self.queue.lock().await;
-
-        let current_batch = queue.back_mut().unwrap();
-
-        if current_batch.records.len() >= self.batch_size {
-            queue.push_back(Batch::default());
-            let new_batch = queue.back_mut().unwrap();
-            new_batch.records.push(record);
-            new_batch.update_offset(partition, offset);
-        } else {
-            current_batch.records.push(record);
-            current_batch.update_offset(partition, offset);
-        }
-
-        Ok(())
-    }
-
-    async fn flush(
-        &self,
         table: String,
         columns: Vec<String>,
-        commit_callback: OffsetCommitCallback,
-    ) {
-        let mut interval = time::interval(Duration::from_secs(self.flush_interval));
+    ) -> Self {
+        let queue = VecDeque::from([Batch::default()]);
 
-        loop {
-            interval.tick().await;
+        Self {
+            queue,
+            client,
+            batch_size,
+            commit_callback,
+            table,
+            columns,
+        }
+    }
 
-            let mut queue = self.queue.lock().await;
+    /// Returns the number of batches in the queue.
+    ///
+    /// # Returns
+    ///
+    /// The number of batches waiting to be inserted
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
 
-            if queue.is_empty() || queue.front().is_none_or(|batch| batch.records.is_empty()) {
-                continue;
+    /// Checks if the batch queue is empty.
+    ///
+    /// # Returns
+    ///
+    /// `true` if there are no batches in the queue, `false` otherwise
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    /// Inserts a record into the current batch.
+    ///
+    /// If the current batch is full (reached batch_size), a new batch is created.
+    /// The partition and offset are tracked for later committing.
+    ///
+    /// # Arguments
+    ///
+    /// * `record` - The ClickHouse record to insert
+    /// * `partition` - The Kafka partition the record came from
+    /// * `offset` - The offset of the record in the Kafka partition
+    pub fn insert(&mut self, record: ClickHouseRecord, partition: i32, offset: i64) {
+        let current_batch = self.queue.back_mut();
+
+        match current_batch {
+            Some(batch) => {
+                if batch.records.len() >= self.batch_size {
+                    self.queue.push_back(Batch::default());
+                    let new_batch = self.queue.back_mut().unwrap();
+                    new_batch.records.push(record);
+                    new_batch.update_offset(partition, offset);
+                } else {
+                    batch.records.push(record);
+                    batch.update_offset(partition, offset);
+                }
             }
+            None => {
+                self.queue.push_back(Batch::default());
+                let new_batch = self.queue.back_mut().unwrap();
+                new_batch.records.push(record);
+                new_batch.update_offset(partition, offset);
+            }
+        }
+    }
 
-            if let Some(batch) = queue.front() {
-                match self.client.insert(&table, &columns, &batch.records).await {
-                    Ok(_) => {
-                        info!(
-                            "Batch Insert records - table='{}';insert_sizes='{}';offsets='{}'",
-                            table,
-                            batch.messages_sizes_to_string(),
-                            batch.offsets_to_string()
-                        );
-                        crate::cli::display::batch_inserted(batch.records.len(), &table);
+    /// Flushes the oldest batch in the queue to ClickHouse.
+    ///
+    /// This method:
+    /// 1. Takes the first batch from the queue
+    /// 2. Attempts to insert it into ClickHouse
+    /// 3. On success, commits offsets and removes the batch from the queue
+    /// 4. On failure, logs a warning and leaves the batch in the queue for retry
+    ///
+    /// If the queue is empty or the first batch has no records, this method does nothing.
+    pub async fn flush(&mut self) {
+        if self.queue.is_empty()
+            || self
+                .queue
+                .front()
+                .is_none_or(|batch| batch.records.is_empty())
+        {
+            return;
+        }
 
-                        for (partition, offset) in &batch.partition_offsets {
-                            if let Err(err) = commit_callback(*partition, *offset) {
-                                warn!(
-                                    "Error committing offset {} for partition {}: {:?}",
-                                    offset, partition, err
-                                );
-                            }
-                        }
+        if let Some(batch) = self.queue.front() {
+            match self
+                .client
+                .insert(&self.table, &self.columns, &batch.records)
+                .await
+            {
+                Ok(_) => {
+                    info!(
+                        "Batch Insert records - table='{}';insert_sizes='{}';offsets='{}'",
+                        self.table,
+                        batch.messages_sizes_to_string(),
+                        batch.offsets_to_string()
+                    );
+                    crate::cli::display::batch_inserted(batch.records.len(), &self.table);
 
-                        queue.pop_front();
-
-                        if queue.is_empty() {
-                            queue.push_back(Batch::default());
+                    for (partition, offset) in &batch.partition_offsets {
+                        if let Err(err) = (self.commit_callback)(*partition, *offset) {
+                            warn!(
+                                "Error committing offset {} for partition {}: {:?}",
+                                offset, partition, err
+                            );
                         }
                     }
-                    Err(e) => {
-                        warn!(
-                            "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
-                            table,
-                            batch.messages_sizes_to_string(),
-                            batch.offsets_to_string(),
-                            e
-                        );
-                    }
+
+                    self.queue.pop_front();
+                }
+                Err(e) => {
+                    warn!(
+                        "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
+                        self.table,
+                        batch.messages_sizes_to_string(),
+                        batch.offsets_to_string(),
+                        e
+                    );
                 }
             }
         }
@@ -184,18 +320,18 @@ mod tests {
     use super::*;
     use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
     use std::sync::atomic::{AtomicUsize, Ordering};
-
+    use std::sync::Arc;
     struct MockClickHouseClient {
         insert_calls: Arc<AtomicUsize>,
         should_fail: bool,
     }
 
     impl MockClickHouseClient {
-        fn new(should_fail: bool) -> Arc<Self> {
-            Arc::new(Self {
+        fn new(should_fail: bool) -> Self {
+            Self {
                 insert_calls: Arc::new(AtomicUsize::new(0)),
                 should_fail,
-            })
+            }
         }
     }
 
@@ -225,30 +361,25 @@ mod tests {
     #[tokio::test]
     async fn test_batch_creation_and_size_limit() {
         let mock_client = MockClickHouseClient::new(false);
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             1,
-            100000,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        // Insert MAX_BATCH_SIZE records
+        // Insert 2 records with batch size 1
         for i in 0..2 {
-            inserter
-                .insert(create_test_record(i as i64), 0, i as i64)
-                .await
-                .unwrap();
+            inserter.insert(create_test_record(i as i64), 0, i as i64);
         }
 
-        let queue = inserter.queue.lock().await;
-        assert_eq!(queue.len(), 2, "Should have created two batches");
+        assert_eq!(inserter.queue.len(), 2, "Should have created two batches");
 
-        let first_batch = queue.front().unwrap();
+        let first_batch = inserter.queue.front().unwrap();
         assert_eq!(first_batch.records.len(), 1, "First batch should be full");
 
-        let second_batch = queue.back().unwrap();
+        let second_batch = inserter.queue.back().unwrap();
         assert_eq!(
             second_batch.records.len(),
             1,
@@ -261,26 +392,19 @@ mod tests {
         let mock_client = MockClickHouseClient::new(false);
         let insert_calls = mock_client.insert_calls.clone();
 
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             100,
-            1,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        inserter
-            .insert(create_test_record(1), 0, 100)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(2), 1, 200)
-            .await
-            .unwrap();
+        inserter.insert(create_test_record(1), 0, 100);
+        inserter.insert(create_test_record(2), 1, 200);
 
-        // Wait for flush interval
-        tokio::time::sleep(Duration::from_secs(1 + 1)).await;
+        // Manually flush instead of waiting for interval
+        inserter.flush().await;
 
         assert_eq!(
             insert_calls.load(Ordering::SeqCst),
@@ -288,9 +412,13 @@ mod tests {
             "Mock client should have been called once"
         );
 
-        let queue = inserter.queue.lock().await;
         assert_eq!(
-            queue.front().unwrap().records.len(),
+            inserter
+                .queue
+                .front()
+                .unwrap_or(&Batch::default())
+                .records
+                .len(),
             0,
             "Batch should be empty after successful flush"
         );
@@ -299,34 +427,20 @@ mod tests {
     #[tokio::test]
     async fn test_offset_tracking_per_partition() {
         let mock_client = MockClickHouseClient::new(false);
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             100,
-            100000,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        inserter
-            .insert(create_test_record(1), 0, 100)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(2), 1, 200)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(3), 0, 150)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(4), 1, 175)
-            .await
-            .unwrap();
+        inserter.insert(create_test_record(1), 0, 100);
+        inserter.insert(create_test_record(2), 1, 200);
+        inserter.insert(create_test_record(3), 0, 150);
+        inserter.insert(create_test_record(4), 1, 175);
 
-        let queue = inserter.queue.lock().await;
-        let batch = queue.front().unwrap();
+        let batch = inserter.queue.front().unwrap();
 
         assert_eq!(
             *batch.partition_offsets.get(&0).unwrap(),

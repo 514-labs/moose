@@ -1,3 +1,13 @@
+//! Data synchronization module for Kafka to ClickHouse integration.
+//!
+//! This module provides functionality to:
+//! - Synchronize data from Kafka topics to ClickHouse tables
+//! - Forward messages between Kafka topics
+//! - Transform JSON data to ClickHouse compatible formats
+//!
+//! The implementation focuses on performance and reliability with support for
+//! batching, back pressure, and error handling mechanisms.
+
 use futures::TryFutureExt;
 use log::debug;
 use log::error;
@@ -25,32 +35,54 @@ use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pr
 use crate::metrics::{MetricEvent, Metrics};
 use tokio::select;
 
+/// Consumer group ID for table synchronization
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
+/// Consumer group ID for version synchronization
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
+/// Maximum interval in seconds between flushes to ClickHouse
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
+/// Maximum batch size for ClickHouse inserts
 const MAX_BATCH_SIZE: usize = 100000;
 
+/// Represents a Kafka to ClickHouse synchronization process
 struct TableSyncingProcess {
+    /// Async task handle for the sync process
     process: JoinHandle<anyhow::Result<()>>,
+    /// Source Kafka topic name
     topic: String,
+    /// Target ClickHouse table name
     table: String,
 }
 
+/// Represents a Kafka to Kafka synchronization process
 struct TopicToTopicSyncingProcess {
+    /// Async task handle for the sync process
     process: JoinHandle<()>,
+    /// Source Kafka topic name
     #[allow(dead_code)]
     from_topic: String,
+    /// Target Kafka topic name
     to_topic: String,
 }
 
+/// Registry that manages all synchronization processes
 pub struct SyncingProcessesRegistry {
+    /// Map of topic-table processes by their combined key
     to_table_registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,
+    /// Map of topic-to-topic processes by their target topic name
     to_topic_registry: HashMap<String, JoinHandle<()>>,
+    /// Kafka configuration
     kafka_config: RedpandaConfig,
+    /// ClickHouse configuration
     clickhouse_config: ClickHouseConfig,
 }
 
 impl SyncingProcessesRegistry {
+    /// Creates a new synchronization processes registry
+    ///
+    /// # Arguments
+    /// * `kafka_config` - Configuration for Kafka/Redpanda connection
+    /// * `clickhouse_config` - Configuration for ClickHouse connection
     pub fn new(kafka_config: RedpandaConfig, clickhouse_config: ClickHouseConfig) -> Self {
         Self {
             to_table_registry: HashMap::new(),
@@ -60,23 +92,49 @@ impl SyncingProcessesRegistry {
         }
     }
 
+    /// Generates a unique key for a TableSyncingProcess
+    ///
+    /// # Arguments
+    /// * `syncing_process` - The synchronization process
     fn format_key(syncing_process: &TableSyncingProcess) -> String {
         Self::format_key_str(&syncing_process.topic, &syncing_process.table)
     }
 
+    /// Generates a unique key from topic and table names
+    ///
+    /// # Arguments
+    /// * `topic` - Kafka topic name
+    /// * `table` - ClickHouse table name
     fn format_key_str(topic: &str, table: &str) -> String {
         format!("{}-{}", topic, table)
     }
 
+    /// Registers a topic-to-table synchronization process
+    ///
+    /// # Arguments
+    /// * `syncing_process` - The synchronization process to register
     fn insert_table_sync(&mut self, syncing_process: TableSyncingProcess) {
         let key = Self::format_key(&syncing_process);
         self.to_table_registry.insert(key, syncing_process.process);
     }
+
+    /// Registers a topic-to-topic synchronization process
+    ///
+    /// # Arguments
+    /// * `syncing_process` - The synchronization process to register
     fn insert_topic_sync(&mut self, syncing_process: TopicToTopicSyncingProcess) {
         let key = syncing_process.to_topic; // the source input topic
         self.to_topic_registry.insert(key, syncing_process.process);
     }
 
+    /// Starts a new synchronization process from a Kafka topic to a ClickHouse table
+    ///
+    /// # Arguments
+    /// * `source_topic_name` - Source Kafka topic name
+    /// * `source_topic_columns` - Schema definition of the source topic
+    /// * `target_table_name` - Target ClickHouse table name
+    /// * `target_table_columns` - Schema definition of the target table
+    /// * `metrics` - Metrics collection service
     pub fn start_topic_to_table(
         &mut self,
         source_topic_name: String,
@@ -109,6 +167,11 @@ impl SyncingProcessesRegistry {
         self.insert_table_sync(syncing_process);
     }
 
+    /// Stops a topic-to-table synchronization process
+    ///
+    /// # Arguments
+    /// * `topic_name` - Source Kafka topic name
+    /// * `table_name` - Target ClickHouse table name
     pub fn stop_topic_to_table(&mut self, topic_name: &str, table_name: &str) {
         let key = Self::format_key_str(topic_name, table_name);
         if let Some(process) = self.to_table_registry.remove(&key) {
@@ -116,6 +179,12 @@ impl SyncingProcessesRegistry {
         }
     }
 
+    /// Starts a new synchronization process from one Kafka topic to another
+    ///
+    /// # Arguments
+    /// * `source_topic_name` - Source Kafka topic name
+    /// * `target_topic_name` - Target Kafka topic name
+    /// * `metrics` - Metrics collection service
     pub fn start_topic_to_topic(
         &mut self,
         source_topic_name: String,
@@ -140,6 +209,10 @@ impl SyncingProcessesRegistry {
         ));
     }
 
+    /// Stops a topic-to-topic synchronization process
+    ///
+    /// # Arguments
+    /// * `target_topic_name` - Target Kafka topic name
     pub fn stop_topic_to_topic(&mut self, target_topic_name: &str) {
         if let Some(process) = self.to_topic_registry.remove(target_topic_name) {
             process.abort();
@@ -147,6 +220,19 @@ impl SyncingProcessesRegistry {
     }
 }
 
+/// Spawns a new Kafka to ClickHouse sync process
+///
+/// # Arguments
+/// * `kafka_config` - Kafka/Redpanda configuration
+/// * `clickhouse_config` - ClickHouse configuration
+/// * `source_topic_name` - Source Kafka topic name
+/// * `source_topic_columns` - Schema definition of the source topic
+/// * `target_table_name` - Target ClickHouse table name
+/// * `target_table_columns` - Schema definition of the target table
+/// * `metrics` - Metrics collection service
+///
+/// # Returns
+/// A TableSyncingProcess struct encapsulating the async task
 fn spawn_sync_process_core(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
@@ -183,6 +269,16 @@ fn spawn_sync_process_core(
     }
 }
 
+/// Spawns a new topic to topic sync process
+///
+/// # Arguments
+/// * `kafka_config` - Kafka/Redpanda configuration
+/// * `source_topic_name` - Source Kafka topic name
+/// * `target_topic_name` - Target Kafka topic name
+/// * `metrics` - Metrics collection service
+///
+/// # Returns
+/// A TopicToTopicSyncingProcess struct encapsulating the async task
 fn spawn_kafka_to_kafka_process(
     kafka_config: RedpandaConfig,
     source_topic_name: String,
@@ -203,6 +299,13 @@ fn spawn_kafka_to_kafka_process(
     }
 }
 
+/// Continuously forwards messages from one Kafka topic to another
+///
+/// # Arguments
+/// * `kafka_config` - Kafka/Redpanda configuration
+/// * `source_topic_name` - Source Kafka topic name
+/// * `target_topic_name` - Target Kafka topic name
+/// * `metrics` - Metrics collection service
 async fn sync_kafka_to_kafka(
     kafka_config: RedpandaConfig,
     source_topic_name: String,
@@ -268,6 +371,19 @@ async fn sync_kafka_to_kafka(
     }
 }
 
+/// Continuously synchronizes data from a Kafka topic to a ClickHouse table
+///
+/// # Arguments
+/// * `kafka_config` - Kafka/Redpanda configuration
+/// * `clickhouse_config` - ClickHouse configuration
+/// * `source_topic_name` - Source Kafka topic name
+/// * `source_topic_columns` - Schema definition of the source topic
+/// * `target_table_name` - Target ClickHouse table name
+/// * `target_table_columns` - Schema definition of the target table
+/// * `metrics` - Metrics collection service
+///
+/// # Returns
+/// Result indicating success or failure
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
@@ -387,6 +503,15 @@ async fn sync_kafka_to_clickhouse(
     }
 }
 
+/// Maps JSON values to ClickHouse records based on column schema
+///
+/// # Arguments
+/// * `schema_columns` - Column schema defining the data structure
+/// * `json_value` - JSON value to convert to ClickHouse record
+///
+/// # Returns
+/// * `Ok(ClickHouseRecord)` - Successfully mapped record
+/// * `Err` - Error if mapping fails
 fn mapper_json_to_clickhouse_record(
     schema_columns: &[Column],
     json_value: Value,
@@ -440,19 +565,32 @@ fn mapper_json_to_clickhouse_record(
     }
 }
 
+/// Error types that can occur during value mapping
 #[derive(Debug, thiserror::Error)]
 enum MappingError {
+    /// Error when JSON value doesn't match the expected ClickHouse column type
     #[error("Failed to map the JSON value {value:?} to ClickHouse column typed {column_type:?}")]
     TypeMismatch {
         column_type: ColumnType,
         value: Value,
     },
+    /// Error when trying to map to an unsupported ClickHouse column type
     #[error("The Column Type {column_type:?} is not supported")]
     UnsupportedColumnType { column_type: ColumnType },
+    /// Error propagated from the ClickHouse client
     #[error("Mapping missing in the `std_field_type_to_clickhouse_type_mapper` method")]
     ClickHouseModule(#[from] ClickhouseError),
 }
 
+/// Maps a JSON value to a ClickHouse value based on the column type
+///
+/// # Arguments
+/// * `column_type` - Target ClickHouse column type
+/// * `value` - JSON value to convert
+///
+/// # Returns
+/// * `Ok(ClickHouseValue)` - Successfully mapped value
+/// * `Err(MappingError)` - Error describing why mapping failed
 fn map_json_value_to_clickhouse_value(
     column_type: &ColumnType,
     value: &Value,

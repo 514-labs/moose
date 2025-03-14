@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
 
 use crate::framework::core::infrastructure::table::Column;
 use crate::framework::core::infrastructure::table::ColumnType;
@@ -28,6 +29,8 @@ const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
 const MAX_BATCH_SIZE: usize = 100000;
+const MAX_PENDING_BATCHES: usize = 10;
+const BACKPRESSURE_PAUSE_MS: u64 = 100;
 
 struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
@@ -219,6 +222,10 @@ async fn sync_kafka_to_kafka(
     let target_topic_name = &target_topic_name;
 
     loop {
+        while queue.len() >= MAX_PENDING_BATCHES {
+            tokio::time::sleep(std::time::Duration::from_millis(BACKPRESSURE_PAUSE_MS)).await;
+        }
+
         match subscriber.recv().await {
             Err(e) => {
                 debug!("Error receiving message from {}: {}", source_topic_name, e);
@@ -295,17 +302,20 @@ async fn sync_kafka_to_clickhouse(
     let topic_clone = source_topic_name.clone();
     let subscriber_clone = subscriber.clone();
 
-    let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
-    let inserter = Inserter::<ClickHouseClient>::new(
+    let client = ClickHouseClient::new(&clickhouse_config).unwrap();
+    let mut inserter = Inserter::<ClickHouseClient>::new(
         client,
         MAX_BATCH_SIZE,
-        MAX_FLUSH_INTERVAL_SECONDS,
-        &target_table_name,
-        clickhouse_columns,
         Box::new(move |partition, offset| {
             subscriber_clone.store_offset(&topic_clone, partition, offset)
         }),
+        target_table_name,
+        clickhouse_columns,
     );
+
+    let flush_interval = std::time::Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS);
+    let backpressure_pause = std::time::Duration::from_millis(BACKPRESSURE_PAUSE_MS);
+    let mut clock = Instant::now();
 
     // WARNING: the code below is very performance sensitive
     // it is run for every message that needs to be written to clickhouse. As such we should
@@ -318,6 +328,17 @@ async fn sync_kafka_to_clickhouse(
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
     loop {
+        while inserter.len() >= MAX_PENDING_BATCHES {
+            tokio::time::sleep(backpressure_pause).await;
+        }
+
+        if !inserter.is_empty()
+            && (clock.elapsed() > flush_interval || inserter.len() >= MAX_BATCH_SIZE)
+        {
+            inserter.flush().await;
+            clock = Instant::now();
+        }
+
         match subscriber.recv().await {
             Err(e) => {
                 debug!("Error receiving message from {}: {}", source_topic_name, e);
@@ -344,20 +365,11 @@ async fn sync_kafka_to_clickhouse(
                             if let Ok(clickhouse_record) =
                                 mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
                             {
-                                let res = inserter
-                                    .insert(
-                                        clickhouse_record,
-                                        message.partition(),
-                                        message.offset(),
-                                    )
-                                    .await;
-
-                                if let Err(e) = res {
-                                    error!(
-                                        "Error adding records to the queue to be inserted: {}",
-                                        e
-                                    );
-                                }
+                                inserter.insert(
+                                    clickhouse_record,
+                                    message.partition(),
+                                    message.offset(),
+                                );
                             }
                         }
                     }

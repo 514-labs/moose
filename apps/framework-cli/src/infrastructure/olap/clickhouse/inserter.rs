@@ -1,21 +1,22 @@
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClientTrait;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
 use std::collections::{HashMap, VecDeque};
-use std::time::Duration;
 
 use log::{info, warn};
 use rdkafka::error::KafkaError;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time;
+
+type Partition = i32;
+type Offset = i64;
+type PartitionOffsets = HashMap<Partition, Offset>;
+type PartitionSizes = HashMap<Partition, i64>;
 
 #[derive(Default)]
 pub struct Batch {
     pub records: Vec<ClickHouseRecord>,
-    pub partition_offsets: HashMap<i32, i64>,
+    pub partition_offsets: PartitionOffsets,
 
     // Map the partitions to the number of messages in the batch
-    pub messages_sizes: HashMap<i32, i64>,
+    pub messages_sizes: PartitionSizes,
 }
 
 impl Batch {
@@ -49,128 +50,111 @@ impl Batch {
 }
 
 pub type OffsetCommitCallback = Box<dyn Fn(i32, i64) -> Result<(), KafkaError> + Send + Sync>;
-pub type BatchQueue = Arc<Mutex<VecDeque<Batch>>>;
+pub type BatchQueue = VecDeque<Batch>;
 
 pub struct Inserter<C: ClickHouseClientTrait + 'static> {
     queue: BatchQueue,
-    client: Arc<C>,
+    client: C,
     batch_size: usize,
-    flush_interval: u64,
+    commit_callback: OffsetCommitCallback,
+    table: String,
+    columns: Vec<String>,
 }
 
 impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
     pub fn new(
-        client: Arc<C>,
+        client: C,
         batch_size: usize,
-        flush_interval: u64,
-        table: &str,
-        columns: Vec<String>,
         commit_callback: OffsetCommitCallback,
-    ) -> Self {
-        let queue = Arc::new(Mutex::new(VecDeque::from([Batch::default()])));
-
-        let inserter = Self {
-            queue: queue.clone(),
-            client,
-            batch_size,
-            flush_interval,
-        };
-
-        let inserter_clone = inserter.clone_for_flush();
-        let table_clone = table.to_string();
-        tokio::spawn(async move {
-            inserter_clone
-                .flush(table_clone, columns, commit_callback)
-                .await;
-        });
-
-        inserter
-    }
-
-    fn clone_for_flush(&self) -> Self {
-        Self {
-            queue: self.queue.clone(),
-            client: self.client.clone(),
-            batch_size: self.batch_size,
-            flush_interval: self.flush_interval,
-        }
-    }
-
-    pub async fn insert(
-        &self,
-        record: ClickHouseRecord,
-        partition: i32,
-        offset: i64,
-    ) -> anyhow::Result<()> {
-        let mut queue = self.queue.lock().await;
-
-        let current_batch = queue.back_mut().unwrap();
-
-        if current_batch.records.len() >= self.batch_size {
-            queue.push_back(Batch::default());
-            let new_batch = queue.back_mut().unwrap();
-            new_batch.records.push(record);
-            new_batch.update_offset(partition, offset);
-        } else {
-            current_batch.records.push(record);
-            current_batch.update_offset(partition, offset);
-        }
-
-        Ok(())
-    }
-
-    async fn flush(
-        &self,
         table: String,
         columns: Vec<String>,
-        commit_callback: OffsetCommitCallback,
-    ) {
-        let mut interval = time::interval(Duration::from_secs(self.flush_interval));
+    ) -> Self {
+        let queue = VecDeque::from([Batch::default()]);
 
-        loop {
-            interval.tick().await;
+        Self {
+            queue,
+            client,
+            batch_size,
+            commit_callback,
+            table,
+            columns,
+        }
+    }
 
-            let mut queue = self.queue.lock().await;
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
 
-            if queue.is_empty() || queue.front().is_none_or(|batch| batch.records.is_empty()) {
-                continue;
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    pub fn insert(&mut self, record: ClickHouseRecord, partition: i32, offset: i64) {
+        let current_batch = self.queue.back_mut();
+
+        match current_batch {
+            Some(batch) => {
+                if batch.records.len() >= self.batch_size {
+                    self.queue.push_back(Batch::default());
+                    let new_batch = self.queue.back_mut().unwrap();
+                    new_batch.records.push(record);
+                } else {
+                    batch.records.push(record);
+                    batch.update_offset(partition, offset);
+                }
             }
+            None => {
+                self.queue.push_back(Batch::default());
+                let new_batch = self.queue.back_mut().unwrap();
+                new_batch.records.push(record);
+            }
+        }
+    }
 
-            if let Some(batch) = queue.front() {
-                match self.client.insert(&table, &columns, &batch.records).await {
-                    Ok(_) => {
-                        info!(
-                            "Batch Insert records - table='{}';insert_sizes='{}';offsets='{}'",
-                            table,
-                            batch.messages_sizes_to_string(),
-                            batch.offsets_to_string()
-                        );
-                        crate::cli::display::batch_inserted(batch.records.len(), &table);
+    pub async fn flush(&mut self) {
+        if self.queue.is_empty()
+            || self
+                .queue
+                .front()
+                .is_none_or(|batch| batch.records.is_empty())
+        {
+            return;
+        }
 
-                        for (partition, offset) in &batch.partition_offsets {
-                            if let Err(err) = commit_callback(*partition, *offset) {
-                                warn!(
-                                    "Error committing offset {} for partition {}: {:?}",
-                                    offset, partition, err
-                                );
-                            }
-                        }
+        if let Some(batch) = self.queue.front() {
+            match self
+                .client
+                .insert(&self.table, &self.columns, &batch.records)
+                .await
+            {
+                Ok(_) => {
+                    info!(
+                        "Batch Insert records - table='{}';insert_sizes='{}';offsets='{}'",
+                        self.table,
+                        batch.messages_sizes_to_string(),
+                        batch.offsets_to_string()
+                    );
+                    crate::cli::display::batch_inserted(batch.records.len(), &self.table);
 
-                        queue.pop_front();
-
-                        if queue.is_empty() {
-                            queue.push_back(Batch::default());
+                    for (partition, offset) in &batch.partition_offsets {
+                        if let Err(err) = (self.commit_callback)(*partition, *offset) {
+                            warn!(
+                                "Error committing offset {} for partition {}: {:?}",
+                                offset, partition, err
+                            );
                         }
                     }
-                    Err(e) => {
-                        warn!(
-                            "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
-                            table,
-                            batch.messages_sizes_to_string(),
-                            batch.offsets_to_string(),
-                            e
-                        );
-                    }
+
+                    self.queue.pop_front();
+                }
+                Err(e) => {
+                    warn!(
+                        "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
+                        self.table,
+                        batch.messages_sizes_to_string(),
+                        batch.offsets_to_string(),
+                        e
+                    );
                 }
             }
         }
@@ -184,18 +168,18 @@ mod tests {
     use super::*;
     use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
     use std::sync::atomic::{AtomicUsize, Ordering};
-
+    use std::sync::Arc;
     struct MockClickHouseClient {
         insert_calls: Arc<AtomicUsize>,
         should_fail: bool,
     }
 
     impl MockClickHouseClient {
-        fn new(should_fail: bool) -> Arc<Self> {
-            Arc::new(Self {
+        fn new(should_fail: bool) -> Self {
+            Self {
                 insert_calls: Arc::new(AtomicUsize::new(0)),
                 should_fail,
-            })
+            }
         }
     }
 
@@ -225,30 +209,25 @@ mod tests {
     #[tokio::test]
     async fn test_batch_creation_and_size_limit() {
         let mock_client = MockClickHouseClient::new(false);
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             1,
-            100000,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        // Insert MAX_BATCH_SIZE records
+        // Insert 2 records with batch size 1
         for i in 0..2 {
-            inserter
-                .insert(create_test_record(i as i64), 0, i as i64)
-                .await
-                .unwrap();
+            inserter.insert(create_test_record(i as i64), 0, i as i64);
         }
 
-        let queue = inserter.queue.lock().await;
-        assert_eq!(queue.len(), 2, "Should have created two batches");
+        assert_eq!(inserter.queue.len(), 2, "Should have created two batches");
 
-        let first_batch = queue.front().unwrap();
+        let first_batch = inserter.queue.front().unwrap();
         assert_eq!(first_batch.records.len(), 1, "First batch should be full");
 
-        let second_batch = queue.back().unwrap();
+        let second_batch = inserter.queue.back().unwrap();
         assert_eq!(
             second_batch.records.len(),
             1,
@@ -261,26 +240,19 @@ mod tests {
         let mock_client = MockClickHouseClient::new(false);
         let insert_calls = mock_client.insert_calls.clone();
 
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             100,
-            1,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        inserter
-            .insert(create_test_record(1), 0, 100)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(2), 1, 200)
-            .await
-            .unwrap();
+        inserter.insert(create_test_record(1), 0, 100);
+        inserter.insert(create_test_record(2), 1, 200);
 
-        // Wait for flush interval
-        tokio::time::sleep(Duration::from_secs(1 + 1)).await;
+        // Manually flush instead of waiting for interval
+        inserter.flush().await;
 
         assert_eq!(
             insert_calls.load(Ordering::SeqCst),
@@ -288,9 +260,8 @@ mod tests {
             "Mock client should have been called once"
         );
 
-        let queue = inserter.queue.lock().await;
         assert_eq!(
-            queue.front().unwrap().records.len(),
+            inserter.queue.front().unwrap().records.len(),
             0,
             "Batch should be empty after successful flush"
         );
@@ -299,34 +270,20 @@ mod tests {
     #[tokio::test]
     async fn test_offset_tracking_per_partition() {
         let mock_client = MockClickHouseClient::new(false);
-        let inserter = Inserter::new(
+        let mut inserter = Inserter::new(
             mock_client,
             100,
-            100000,
-            "test_table",
-            vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
+            "test_table".to_string(),
+            vec!["test".to_string()],
         );
 
-        inserter
-            .insert(create_test_record(1), 0, 100)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(2), 1, 200)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(3), 0, 150)
-            .await
-            .unwrap();
-        inserter
-            .insert(create_test_record(4), 1, 175)
-            .await
-            .unwrap();
+        inserter.insert(create_test_record(1), 0, 100);
+        inserter.insert(create_test_record(2), 1, 200);
+        inserter.insert(create_test_record(3), 0, 150);
+        inserter.insert(create_test_record(4), 1, 175);
 
-        let queue = inserter.queue.lock().await;
-        let batch = queue.front().unwrap();
+        let batch = inserter.queue.front().unwrap();
 
         assert_eq!(
             *batch.partition_offsets.get(&0).unwrap(),

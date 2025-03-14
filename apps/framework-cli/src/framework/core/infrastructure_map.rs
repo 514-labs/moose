@@ -913,8 +913,8 @@ impl InfrastructureMap {
         for (id, function_process) in &self.function_processes {
             if let Some(target_function_process) = target_map.function_processes.get(id) {
                 // In this case we don't do a comparison check because the function process is not just
-                // dependendant on changing one file, but also on its dependencies. Untill we are able to
-                // properly compare the function processes wholisticaly (File + Dependencies), we will just
+                // dependent on changing one file, but also on its dependencies. Until we are able to
+                // properly compare the function processes holistically (File + Dependencies), we will just
                 // assume that the function process has changed.
                 log::debug!("Function Process updated: {}", id);
                 function_updates += 1;

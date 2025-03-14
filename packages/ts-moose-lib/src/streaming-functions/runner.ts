@@ -9,10 +9,10 @@ import { Cluster } from "../cluster-utils";
 const HOSTNAME = process.env.HOSTNAME;
 const AUTO_COMMIT_INTERVAL_MS = 5000;
 const PARTITIONS_CONSUMED_CONCURRENTLY = 3;
-const MAX_RETRIES = 5;
-const MAX_RETRY_TIME_MS = 30000;
-const MAX_RETRIES_PRODUCER = 5;
-const MAX_RETRIES_CONSUMER = 5;
+const MAX_RETRIES = 150;
+const MAX_RETRY_TIME_MS = 1000;
+const MAX_RETRIES_PRODUCER = 150;
+const MAX_RETRIES_CONSUMER = 150;
 const SESSION_TIMEOUT_CONSUMER = 30000;
 const HEARTBEAT_INTERVAL_CONSUMER = 3000;
 const RETRY_FACTOR_PRODUCER = 0.2;
@@ -623,6 +623,7 @@ export const runStreamingFunctions = async (): Promise<void> => {
         sasl: buildSaslConfig(logger, args),
         retry: {
           initialRetryTime: RETRY_INITIAL_TIME_MS,
+          maxRetryTime: MAX_RETRY_TIME_MS,
           retries: MAX_RETRIES,
         },
       });

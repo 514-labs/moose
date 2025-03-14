@@ -67,7 +67,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
@@ -287,6 +286,52 @@ pub struct RedisClient {
     pub presence_manager: PresenceManager,
     pub messaging_manager: MessagingManager,
     pub state: Arc<RedisClientState>,
+}
+
+/// Read-only operations interface for Redis
+///
+/// This specialized interface provides access to read-only Redis operations,
+/// optimizing for concurrent access patterns. Multiple readers can access
+/// Redis simultaneously without blocking each other.
+///
+/// The RedisReader shares the same connection and state with its parent
+/// RedisClient but provides a more focused API for read operations.
+#[derive(Clone)]
+pub struct RedisReader {
+    pub config: RedisConfig,
+    pub service_name: String,
+    pub instance_id: String,
+    pub connection_manager: ConnectionManagerWrapper,
+    pub state: Arc<RedisClientState>,
+}
+
+/// Write operations interface for Redis
+///
+/// This specialized interface provides access to write operations for Redis,
+/// with appropriate synchronization where needed. It's designed to be used
+/// for operations that modify Redis state.
+///
+/// The RedisWriter shares the same connection and state with its parent
+/// RedisClient but provides a more focused API for write operations.
+#[derive(Clone)]
+pub struct RedisWriter {
+    pub config: RedisConfig,
+    pub service_name: String,
+    pub instance_id: String,
+    pub connection_manager: ConnectionManagerWrapper,
+    pub leadership_manager: LeadershipManager,
+    pub presence_manager: PresenceManager,
+    pub messaging_manager: MessagingManager,
+    pub state: Arc<RedisClientState>,
+}
+
+/// Thread-safe wrapper for RedisClient
+///
+/// This wrapper provides a thread-safe interface to the RedisClient,
+/// using appropriate synchronization for different operation types.
+/// It's designed to be shared across threads and tasks.
+pub struct ThreadSafeRedisClient {
+    client: Arc<RwLock<RedisClient>>,
 }
 
 impl RedisClient {
@@ -634,21 +679,19 @@ impl RedisClient {
     }
 
     pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let lock_key_and_ttl = {
+        let lock_key = {
             let locks = self.state.locks.read().await;
             locks.get(name).map(|(k, _)| k.clone())
         };
 
-        if let Some(lock_key) = lock_key_and_ttl {
+        if let Some(lock_key) = lock_key {
             let instance_id = self.instance_id.clone();
-            let leadership_manager = self.leadership_manager.clone();
             let result = self
                 .connection_manager
                 .execute(|conn| {
                     Box::pin(async move {
-                        leadership_manager
-                            .has_lock_with_conn(conn, &lock_key, &instance_id)
-                            .await
+                        let value: Option<String> = conn.get(&lock_key).await?;
+                        Ok(value == Some(instance_id))
                     })
                 })
                 .await?;
@@ -890,23 +933,39 @@ impl RedisClient {
         result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
     }
 
+    /// Returns a reader interface for read-only operations
+    ///
+    /// This method provides access to read-only Redis operations through
+    /// a specialized interface that optimizes for concurrent access.
+    pub fn reader(&self) -> RedisReader {
+        RedisReader::from_client(self)
+    }
+
+    /// Returns a writer interface for write operations
+    ///
+    /// This method provides access to write operations on Redis through
+    /// a specialized interface.
+    pub fn writer(&self) -> RedisWriter {
+        RedisWriter::from_client(self)
+    }
+
     /// Creates a thread-safe wrapper for this RedisClient
     ///
-    /// This method wraps the RedisClient in an Arc<Mutex<>> to make it
+    /// This method wraps the RedisClient in a ThreadSafeRedisClient to make it
     /// safely shareable across threads and tasks. This is the recommended
     /// way to share a RedisClient instance in a multi-threaded environment.
     ///
     /// # Returns
     ///
-    /// An Arc<Mutex<RedisClient>> that can be cloned and shared across tasks
-    pub fn into_thread_safe(self) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(self))
+    /// A ThreadSafeRedisClient that can be cloned and shared across tasks
+    pub fn into_thread_safe(self) -> ThreadSafeRedisClient {
+        ThreadSafeRedisClient::new(self)
     }
 
     /// Creates a new thread-safe RedisClient
     ///
     /// This is a convenience method that creates a new RedisClient and
-    /// immediately wraps it in an Arc<Mutex<>> for thread-safe usage.
+    /// immediately wraps it in a ThreadSafeRedisClient for thread-safe usage.
     ///
     /// # Arguments
     ///
@@ -915,7 +974,7 @@ impl RedisClient {
     ///
     /// # Returns
     ///
-    /// An Arc<Mutex<RedisClient>> that can be cloned and shared across tasks
+    /// A ThreadSafeRedisClient that can be cloned and shared across tasks
     ///
     /// # Errors
     ///
@@ -923,7 +982,7 @@ impl RedisClient {
     pub async fn new_thread_safe(
         service_name: String,
         config: RedisConfig,
-    ) -> anyhow::Result<Arc<Mutex<Self>>> {
+    ) -> anyhow::Result<ThreadSafeRedisClient> {
         let client = Self::new(service_name, config).await?;
         Ok(client.into_thread_safe())
     }
@@ -1035,6 +1094,815 @@ impl RedisClient {
     }
 }
 
+impl RedisReader {
+    /// Creates a new RedisReader from a RedisClient
+    ///
+    /// This method extracts the read-only components from a RedisClient
+    /// to create a specialized reader interface.
+    pub fn from_client(client: &RedisClient) -> Self {
+        Self {
+            config: client.config.clone(),
+            service_name: client.service_name.clone(),
+            instance_id: client.instance_id.clone(),
+            connection_manager: client.connection_manager.clone(),
+            state: client.state.clone(),
+        }
+    }
+
+    /// Retrieves a value from Redis using the service prefix
+    ///
+    /// This is a read-only operation that fetches data from Redis.
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> anyhow::Result<Option<V>> {
+        let prefixed_key = self.service_prefix(&[key]);
+        let result = self
+            .connection_manager
+            .execute(|conn| Box::pin(async move { conn.get(&prefixed_key).await }))
+            .await;
+        self.map_redis_error(result)
+    }
+
+    /// Checks if a lock is currently held
+    ///
+    /// This is a read-only operation that doesn't modify any state.
+    pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let lock_key = {
+            let locks = self.state.locks.read().await;
+            locks.get(name).map(|(k, _)| k.clone())
+        };
+
+        if let Some(lock_key) = lock_key {
+            let instance_id = self.instance_id.clone();
+            let result = self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        let value: Option<String> = conn.get(&lock_key).await?;
+                        Ok(value == Some(instance_id))
+                    })
+                })
+                .await?;
+            return Ok(result);
+        }
+        Ok(false)
+    }
+
+    /// Retrieves a message from a queue
+    ///
+    /// This is a read operation that fetches and removes an item from a queue.
+    pub async fn get_queue_message(
+        &self,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<Option<String>> {
+        let source_queue = match feature_name {
+            Some(name) => format!("{}::{}::mqrecieved", self.config.key_prefix, name),
+            None => format!("{}::mqrecieved", self.config.key_prefix),
+        };
+        let destination_queue = match feature_name {
+            Some(name) => format!("{}::{}::mqprocess", self.config.key_prefix, name),
+            None => format!("{}::mqprocess", self.config.key_prefix),
+        };
+        if let Some(ref mock_client) = self.state.fallback {
+            let msg = mock_client.get_queue_message(&source_queue).await?;
+            Ok(msg)
+        } else {
+            let source = source_queue.clone();
+            let dest = destination_queue.clone();
+            let result = self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        redis::cmd("RPOPLPUSH")
+                            .arg(&source)
+                            .arg(&dest)
+                            .query_async(conn)
+                            .await
+                    })
+                })
+                .await?;
+            Ok(result)
+        }
+    }
+
+    /// Helper method for consistent error mapping
+    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
+        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
+    }
+
+    /// Creates a service-prefixed key
+    pub fn service_prefix(&self, keys: &[&str]) -> String {
+        format!("{}::{}", self.config.key_prefix, keys.join("::"))
+    }
+
+    /// Creates an instance-prefixed key
+    pub fn instance_prefix(&self, key: &str) -> String {
+        self.service_prefix(&[&self.instance_id, key])
+    }
+
+    /// Gets the instance ID
+    pub fn get_instance_id(&self) -> &str {
+        &self.instance_id
+    }
+
+    /// Gets the service name
+    pub fn get_service_name(&self) -> &str {
+        &self.service_name
+    }
+}
+
+impl RedisWriter {
+    /// Creates a new RedisWriter from a RedisClient
+    ///
+    /// This method extracts the write components from a RedisClient
+    /// to create a specialized writer interface.
+    pub fn from_client(client: &RedisClient) -> Self {
+        Self {
+            config: client.config.clone(),
+            service_name: client.service_name.clone(),
+            instance_id: client.instance_id.clone(),
+            connection_manager: client.connection_manager.clone(),
+            leadership_manager: client.leadership_manager.clone(),
+            presence_manager: client.presence_manager.clone(),
+            messaging_manager: client.messaging_manager.clone(),
+            state: client.state.clone(),
+        }
+    }
+
+    /// Sets a value in Redis using the service prefix
+    ///
+    /// This is a write operation that stores data in Redis.
+    pub async fn set_with_service_prefix<V>(&self, key: &str, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync + Clone + 'static,
+    {
+        let prefixed_key = self.service_prefix(&[key]);
+        let value_clone = value.clone();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move { conn.set::<_, _, ()>(&prefixed_key, value_clone).await })
+            })
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Posts a message to a queue
+    ///
+    /// This is a write operation that adds a message to a Redis queue.
+    pub async fn post_queue_message(
+        &self,
+        message: &str,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let message = message.to_string();
+
+        self.connection_manager
+            .execute(move |conn| {
+                let feature_name_clone = feature_name.map(|s| s.to_string());
+                Box::pin(async move {
+                    let queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::queue", feature, "messages"),
+                        None => "messages::queue".to_string(),
+                    };
+
+                    let processing_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::processing", feature, "messages"),
+                        None => "messages::processing".to_string(),
+                    };
+
+                    let failed_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::failed", feature, "messages"),
+                        None => "messages::failed".to_string(),
+                    };
+
+                    // Create a pipeline to execute multiple commands
+                    let mut pipe = redis::pipe();
+                    pipe.atomic()
+                        .cmd("SADD")
+                        .arg("message_queues")
+                        .arg(&queue_key)
+                        .cmd("SADD")
+                        .arg("message_processing_queues")
+                        .arg(&processing_queue_key)
+                        .cmd("SADD")
+                        .arg("message_failed_queues")
+                        .arg(&failed_queue_key)
+                        .lpush(&queue_key, &message);
+
+                    // Execute the pipeline
+                    pipe.query_async::<_, ()>(conn).await
+                })
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to post message to queue: {}", e))
+    }
+
+    /// Marks a queue message as processed
+    ///
+    /// This is a write operation that moves a message from the processing
+    /// queue to either the completed or failed queue.
+    pub async fn mark_queue_message(
+        &self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let message = message.to_string();
+
+        self.connection_manager
+            .execute(move |conn| {
+                let feature_name_clone = feature_name.map(|s| s.to_string());
+                Box::pin(async move {
+                    let processing_queue_key = match &feature_name_clone {
+                        Some(feature) => format!("{}::{}::processing", feature, "messages"),
+                        None => "messages::processing".to_string(),
+                    };
+
+                    let target_queue_key = if success {
+                        match &feature_name_clone {
+                            Some(feature) => format!("{}::{}::completed", feature, "messages"),
+                            None => "messages::completed".to_string(),
+                        }
+                    } else {
+                        match &feature_name_clone {
+                            Some(feature) => format!("{}::{}::failed", feature, "messages"),
+                            None => "messages::failed".to_string(),
+                        }
+                    };
+
+                    // Create a pipeline to execute multiple commands
+                    let mut pipe = redis::pipe();
+                    pipe.atomic()
+                        .lrem(&processing_queue_key, 0, &message)
+                        .lpush(&target_queue_key, &message);
+
+                    // Execute the pipeline
+                    pipe.query_async::<_, ()>(conn).await
+                })
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to mark queue message: {}", e))
+    }
+
+    /// Registers a lock with the specified TTL
+    ///
+    /// This is a write operation that modifies the internal locks map.
+    pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
+        let key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let mut locks = self.state.locks.write().await;
+        locks.insert(name.to_string(), (key, ttl));
+        Ok(())
+    }
+
+    /// Attempts to acquire a lock
+    ///
+    /// This is a write operation that tries to set a lock in Redis.
+    pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let lock_key_and_ttl = {
+            let locks = self.state.locks.read().await;
+            locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
+        };
+
+        if let Some((lock_key, ttl)) = lock_key_and_ttl {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
+            return self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .attempt_lock_with_conn(conn, &lock_key, &instance_id, ttl)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
+        }
+        Ok(false)
+    }
+
+    /// Renews a lock
+    ///
+    /// This is a write operation that extends the TTL of a lock in Redis.
+    pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let lock_key_and_ttl = {
+            let locks = self.state.locks.read().await;
+            locks.get(name).map(|(k, ttl)| (k.clone(), *ttl))
+        };
+
+        if let Some((lock_key, ttl)) = lock_key_and_ttl {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
+            return self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .renew_lock_with_conn(conn, &lock_key, &instance_id, ttl)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
+        }
+        Ok(false)
+    }
+
+    /// Checks and renews a lock
+    ///
+    /// This is a write operation that combines checking and renewing a lock.
+    pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
+        let had_lock = self.attempt_lock(name).await?;
+        let now_has_lock = self.renew_lock(name).await?;
+        Ok((now_has_lock, now_has_lock && !had_lock))
+    }
+
+    /// Releases a lock
+    ///
+    /// This is a write operation that removes a lock from Redis.
+    pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
+        let lock_key = {
+            let locks = self.state.locks.read().await;
+            locks.get(name).map(|(k, _)| k.clone())
+        };
+
+        if let Some(lock_key) = lock_key {
+            let instance_id = self.instance_id.clone();
+            let leadership_manager = self.leadership_manager.clone();
+            return self
+                .connection_manager
+                .execute(|conn| {
+                    Box::pin(async move {
+                        leadership_manager
+                            .release_lock_with_conn(conn, &lock_key, &instance_id)
+                            .await
+                    })
+                })
+                .await
+                .map_err(Into::into);
+        }
+        Ok(())
+    }
+
+    /// Updates presence information
+    ///
+    /// This is a write operation that updates the presence information in Redis.
+    pub async fn presence_update(&self) -> anyhow::Result<()> {
+        let presence_manager = self.presence_manager.clone();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move { presence_manager.update_presence_with_conn(conn).await })
+            })
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Sends a message to a specific instance
+    ///
+    /// This is a write operation that publishes a message to a Redis channel.
+    pub async fn send_message_to_instance(
+        &self,
+        message: &str,
+        target_instance_id: &str,
+    ) -> anyhow::Result<()> {
+        let channel = format!("{}::{}", self.config.key_prefix, target_instance_id);
+        let messaging_manager = self.messaging_manager.clone();
+        let channel_clone = channel.clone();
+        let message_clone = message.to_string();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move {
+                    messaging_manager
+                        .publish_message_with_conn(conn, &channel_clone, &message_clone)
+                        .await
+                })
+            })
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Broadcasts a message to all instances
+    ///
+    /// This is a write operation that publishes a message to a broadcast channel.
+    pub async fn broadcast_message(&self, message: &str) -> anyhow::Result<()> {
+        let broadcast_channel = self.service_prefix(&["msgchannel"]);
+        let messaging_manager = self.messaging_manager.clone();
+        let channel_clone = broadcast_channel.clone();
+        let message_clone = message.to_string();
+        self.connection_manager
+            .execute(|conn| {
+                Box::pin(async move {
+                    messaging_manager
+                        .publish_message_with_conn(conn, &channel_clone, &message_clone)
+                        .await
+                })
+            })
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Helper method for consistent error mapping
+    #[allow(dead_code)]
+    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
+        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
+    }
+
+    /// Creates a service-prefixed key
+    pub fn service_prefix(&self, keys: &[&str]) -> String {
+        format!("{}::{}", self.config.key_prefix, keys.join("::"))
+    }
+
+    /// Creates an instance-prefixed key
+    pub fn instance_prefix(&self, key: &str) -> String {
+        self.service_prefix(&[&self.instance_id, key])
+    }
+}
+
+impl ThreadSafeRedisClient {
+    /// Creates a new ThreadSafeRedisClient from a RedisClient
+    ///
+    /// This method wraps a RedisClient in an Arc<RwLock<>> to make it
+    /// safely shareable across threads and tasks.
+    pub fn new(client: RedisClient) -> Self {
+        Self {
+            client: Arc::new(RwLock::new(client)),
+        }
+    }
+
+    /// Creates a new ThreadSafeRedisClient from scratch
+    ///
+    /// This method creates a new RedisClient and immediately wraps it
+    /// in a thread-safe container.
+    pub async fn create(service_name: String, config: RedisConfig) -> anyhow::Result<Self> {
+        let client = RedisClient::new(service_name, config).await?;
+        Ok(Self::new(client))
+    }
+
+    /// Gets a reader interface for read-only operations
+    ///
+    /// This method provides access to read-only Redis operations without
+    /// acquiring a write lock on the client.
+    pub async fn reader(&self) -> RedisReader {
+        let client = self.client.read().await;
+        RedisReader::from_client(&client)
+    }
+
+    /// Gets a writer interface for write operations
+    ///
+    /// This method provides access to write operations on Redis.
+    pub async fn writer(&self) -> RedisWriter {
+        let client = self.client.read().await;
+        RedisWriter::from_client(&client)
+    }
+
+    /// Starts periodic tasks for presence updates and connection monitoring
+    ///
+    /// This method acquires a write lock on the client to start the tasks.
+    pub async fn start_periodic_tasks(&self) {
+        let client = self.client.write().await;
+        client.start_periodic_tasks();
+    }
+
+    /// Stops periodic tasks
+    ///
+    /// This method acquires a write lock on the client to stop the tasks.
+    pub async fn stop_periodic_tasks(&self) -> anyhow::Result<()> {
+        let mut client = self.client.write().await;
+        client.stop_periodic_tasks()
+    }
+
+    /// Registers a message handler
+    ///
+    /// This method acquires a read lock on the client to register the handler.
+    pub async fn register_message_handler(
+        &self,
+        callback: Arc<dyn Fn(String) + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        let client = self.client.read().await;
+        client.register_message_handler(callback).await;
+        Ok(())
+    }
+
+    /// Convenience method for getting a value from Redis
+    ///
+    /// This method uses the reader interface to get a value from Redis.
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> anyhow::Result<Option<V>> {
+        let reader = self.reader().await;
+        reader.get_with_service_prefix(key).await
+    }
+
+    /// Convenience method for setting a value in Redis
+    ///
+    /// This method uses the writer interface to set a value in Redis.
+    pub async fn set_with_service_prefix<V>(&self, key: &str, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync + Clone + 'static,
+    {
+        let writer = self.writer().await;
+        writer.set_with_service_prefix(key, value).await
+    }
+
+    /// Convenience method for checking if a lock is held
+    ///
+    /// This method uses the reader interface to check if a lock is held.
+    pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let reader = self.reader().await;
+        reader.has_lock(name).await
+    }
+
+    /// Convenience method for attempting to acquire a lock
+    ///
+    /// This method uses the writer interface to attempt to acquire a lock.
+    pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let writer = self.writer().await;
+        writer.attempt_lock(name).await
+    }
+
+    /// Convenience method for renewing a lock
+    ///
+    /// This method uses the writer interface to renew a lock.
+    pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
+        let writer = self.writer().await;
+        writer.renew_lock(name).await
+    }
+
+    /// Convenience method for releasing a lock
+    ///
+    /// This method uses the writer interface to release a lock.
+    pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer.release_lock(name).await
+    }
+
+    /// Convenience method for checking and renewing a lock
+    ///
+    /// This method uses the writer interface to check and renew a lock.
+    pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
+        let writer = self.writer().await;
+        writer.check_and_renew_lock(name).await
+    }
+
+    /// Convenience method for registering a lock
+    ///
+    /// This method uses the writer interface to register a lock.
+    pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer.register_lock(name, ttl).await
+    }
+
+    /// Convenience method for posting a message to a queue
+    ///
+    /// This method uses the writer interface to post a message to a queue.
+    pub async fn post_queue_message(
+        &self,
+        message: &str,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer.post_queue_message(message, feature_name).await
+    }
+
+    /// Convenience method for getting a message from a queue
+    ///
+    /// This method uses the reader interface to get a message from a queue.
+    pub async fn get_queue_message(
+        &self,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<Option<String>> {
+        let reader = self.reader().await;
+        reader.get_queue_message(feature_name).await
+    }
+
+    /// Convenience method for marking a queue message as processed
+    ///
+    /// This method uses the writer interface to mark a queue message as processed.
+    pub async fn mark_queue_message(
+        &self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer
+            .mark_queue_message(message, success, feature_name)
+            .await
+    }
+
+    /// Convenience method for broadcasting a message
+    ///
+    /// This method uses the writer interface to broadcast a message.
+    pub async fn broadcast_message(&self, message: &str) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer.broadcast_message(message).await
+    }
+
+    /// Convenience method for sending a message to a specific instance
+    ///
+    /// This method uses the writer interface to send a message to a specific instance.
+    pub async fn send_message_to_instance(
+        &self,
+        message: &str,
+        target_instance_id: &str,
+    ) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer
+            .send_message_to_instance(message, target_instance_id)
+            .await
+    }
+
+    /// Convenience method for updating presence information
+    ///
+    /// This method uses the writer interface to update presence information.
+    pub async fn presence_update(&self) -> anyhow::Result<()> {
+        let writer = self.writer().await;
+        writer.presence_update().await
+    }
+
+    /// Gets the instance ID
+    ///
+    /// This method acquires a read lock on the client to get the instance ID.
+    pub async fn get_instance_id(&self) -> String {
+        let client = self.client.read().await;
+        client.instance_id.clone()
+    }
+
+    /// Gets the service name
+    ///
+    /// This method acquires a read lock on the client to get the service name.
+    pub async fn get_service_name(&self) -> String {
+        let client = self.client.read().await;
+        client.service_name.clone()
+    }
+}
+
+impl Clone for ThreadSafeRedisClient {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+        }
+    }
+}
+
+/// Compatibility wrapper for the RedisClient
+///
+/// This struct provides a compatibility layer for code that expects
+/// the old RedisClient API. It wraps a ThreadSafeRedisClient and
+/// exposes methods with the same signatures as the original RedisClient.
+///
+/// This is intended to ease migration from the old API to the new one.
+pub struct LegacyRedisClient {
+    client: ThreadSafeRedisClient,
+}
+
+impl LegacyRedisClient {
+    /// Creates a new LegacyRedisClient from a ThreadSafeRedisClient
+    pub fn new(client: ThreadSafeRedisClient) -> Self {
+        Self { client }
+    }
+
+    /// Creates a new LegacyRedisClient from scratch
+    pub async fn create(service_name: String, config: RedisConfig) -> anyhow::Result<Self> {
+        let client = ThreadSafeRedisClient::create(service_name, config).await?;
+        Ok(Self::new(client))
+    }
+
+    /// Gets a value from Redis using the service prefix
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> anyhow::Result<Option<V>> {
+        self.client.get_with_service_prefix(key).await
+    }
+
+    /// Sets a value in Redis using the service prefix
+    pub async fn set_with_service_prefix<V>(&self, key: &str, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync + Clone + 'static,
+    {
+        self.client.set_with_service_prefix(key, value).await
+    }
+
+    /// Registers a lock with the specified TTL
+    pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
+        self.client.register_lock(name, ttl).await
+    }
+
+    /// Attempts to acquire a lock
+    pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
+        self.client.attempt_lock(name).await
+    }
+
+    /// Renews a lock
+    pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
+        self.client.renew_lock(name).await
+    }
+
+    /// Checks and renews a lock
+    pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
+        self.client.check_and_renew_lock(name).await
+    }
+
+    /// Releases a lock
+    pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
+        self.client.release_lock(name).await
+    }
+
+    /// Checks if a lock is held
+    pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
+        self.client.has_lock(name).await
+    }
+
+    /// Posts a message to a queue
+    pub async fn post_queue_message(
+        &self,
+        message: &str,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        self.client.post_queue_message(message, feature_name).await
+    }
+
+    /// Gets a message from a queue
+    pub async fn get_queue_message(
+        &self,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<Option<String>> {
+        self.client.get_queue_message(feature_name).await
+    }
+
+    /// Marks a queue message as processed
+    pub async fn mark_queue_message(
+        &self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> anyhow::Result<()> {
+        self.client
+            .mark_queue_message(message, success, feature_name)
+            .await
+    }
+
+    /// Broadcasts a message to all instances
+    pub async fn broadcast_message(&self, message: &str) -> anyhow::Result<()> {
+        self.client.broadcast_message(message).await
+    }
+
+    /// Sends a message to a specific instance
+    pub async fn send_message_to_instance(
+        &self,
+        message: &str,
+        target_instance_id: &str,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_message_to_instance(message, target_instance_id)
+            .await
+    }
+
+    /// Updates presence information
+    pub async fn presence_update(&self) -> anyhow::Result<()> {
+        self.client.presence_update().await
+    }
+
+    /// Starts periodic tasks
+    pub async fn start_periodic_tasks(&self) {
+        self.client.start_periodic_tasks().await
+    }
+
+    /// Stops periodic tasks
+    pub async fn stop_periodic_tasks(&self) -> anyhow::Result<()> {
+        self.client.stop_periodic_tasks().await
+    }
+
+    /// Registers a message handler
+    pub async fn register_message_handler(
+        &self,
+        callback: Arc<dyn Fn(String) + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        self.client.register_message_handler(callback).await
+    }
+
+    /// Gets the instance ID
+    pub async fn get_instance_id(&self) -> String {
+        self.client.get_instance_id().await
+    }
+
+    /// Gets the service name
+    pub async fn get_service_name(&self) -> String {
+        self.client.get_service_name().await
+    }
+}
+
+impl Clone for LegacyRedisClient {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1111,5 +1979,143 @@ mod tests {
             let key = format!("test-lock-{}", i);
             assert!(locks.contains_key(&key), "Lock {} should exist", key);
         }
+    }
+
+    #[tokio::test]
+    async fn test_specialized_interfaces() {
+        // Create a Redis client with default config
+        let client = RedisClient::new("test-service".to_string(), RedisConfig::default())
+            .await
+            .unwrap();
+
+        // Get reader and writer interfaces
+        let reader = client.reader();
+        let writer = client.writer();
+
+        // Test writer operations
+        writer.register_lock("test-lock", 30).await.unwrap();
+        writer
+            .set_with_service_prefix("test-key", "test-value")
+            .await
+            .unwrap();
+
+        // Test reader operations
+        let value: Option<String> = reader.get_with_service_prefix("test-key").await.unwrap();
+        assert_eq!(value, Some("test-value".to_string()));
+
+        let has_lock = reader.has_lock("test-lock").await.unwrap();
+        assert!(has_lock, "Lock should exist");
+    }
+
+    #[tokio::test]
+    async fn test_thread_safe_client() {
+        // Create a thread-safe Redis client
+        let client =
+            RedisClient::new_thread_safe("test-service".to_string(), RedisConfig::default())
+                .await
+                .unwrap();
+
+        // Clone the client for use in multiple tasks
+        let client_clone = client.clone();
+
+        // Spawn a task that uses the client
+        let handle = tokio::spawn(async move {
+            client_clone
+                .set_with_service_prefix("test-key", "test-value")
+                .await
+                .unwrap();
+            client_clone.register_lock("test-lock", 30).await.unwrap();
+        });
+
+        // Wait for the task to complete
+        handle.await.unwrap();
+
+        // Verify the operations were successful
+        let value: Option<String> = client.get_with_service_prefix("test-key").await.unwrap();
+        assert_eq!(value, Some("test-value".to_string()));
+
+        let has_lock = client.has_lock("test-lock").await.unwrap();
+        assert!(has_lock, "Lock should exist");
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_operations() {
+        // Create a thread-safe Redis client
+        let client =
+            RedisClient::new_thread_safe("test-service".to_string(), RedisConfig::default())
+                .await
+                .unwrap();
+
+        // Spawn multiple tasks that perform concurrent operations
+        let mut handles = vec![];
+
+        for i in 0..5 {
+            let client_clone = client.clone();
+            let key = format!("test-key-{}", i);
+            let value = format!("test-value-{}", i);
+            let value_clone = value.clone();
+
+            let handle = tokio::spawn(async move {
+                // Write operation
+                client_clone
+                    .set_with_service_prefix(&key, value_clone)
+                    .await
+                    .unwrap();
+
+                // Read operation
+                let read_value: Option<String> =
+                    client_clone.get_with_service_prefix(&key).await.unwrap();
+                assert_eq!(read_value, Some(value));
+            });
+
+            handles.push(handle);
+        }
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        // Verify all operations were successful
+        for i in 0..5 {
+            let key = format!("test-key-{}", i);
+            let expected_value = format!("test-value-{}", i);
+
+            let value: Option<String> = client.get_with_service_prefix(&key).await.unwrap();
+            assert_eq!(value, Some(expected_value));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_legacy_compatibility() {
+        // Create a legacy Redis client
+        let client = LegacyRedisClient::create("test-service".to_string(), RedisConfig::default())
+            .await
+            .unwrap();
+
+        // Test basic operations
+        client.register_lock("test-lock", 30).await.unwrap();
+        client
+            .set_with_service_prefix("test-key", "test-value")
+            .await
+            .unwrap();
+
+        // Verify operations were successful
+        let value: Option<String> = client.get_with_service_prefix("test-key").await.unwrap();
+        assert_eq!(value, Some("test-value".to_string()));
+
+        let has_lock = client.has_lock("test-lock").await.unwrap();
+        assert!(has_lock, "Lock should exist");
+
+        // Test cloning
+        let client_clone = client.clone();
+        client_clone
+            .set_with_service_prefix("test-key-2", "test-value-2")
+            .await
+            .unwrap();
+
+        // Verify clone operations were successful
+        let value: Option<String> = client.get_with_service_prefix("test-key-2").await.unwrap();
+        assert_eq!(value, Some("test-value-2".to_string()));
     }
 }

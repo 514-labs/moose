@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use consumption_registry::ConsumptionError;
 use kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -6,11 +7,16 @@ use orchestration_workers_registry::OrchestrationWorkersRegistryError;
 use process_registry::ProcessRegistries;
 
 use crate::{
+    cli::settings::Settings,
+    framework::core::execute::ExecutionError,
+    framework::core::plan::InfraPlan,
     framework::{
         blocks::model::BlocksError,
         core::infrastructure_map::{Change, ProcessChange},
     },
+    infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient},
     metrics::Metrics,
+    project::Project,
 };
 
 use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns};
@@ -189,4 +195,91 @@ pub async fn execute_leader_changes(
     }
 
     Ok(())
+}
+
+/// This method is similar to execute_changes_thread_safe but works with Arc<Mutex<RedisClient>>
+pub async fn execute_changes_legacy(
+    project: &Project,
+    settings: &Settings,
+    plan: &InfraPlan,
+    metrics: Arc<Metrics>,
+    redis_client: &Arc<Mutex<RedisClient>>,
+) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
+    // Initialize registries
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+        project.redpanda_config.clone(),
+        project.clickhouse_config.clone(),
+    );
+    let mut process_registries = ProcessRegistries::new(project, settings);
+
+    // Execute changes that are allowed on any instance
+    let changes = plan.target_infra_map.init_processes(project);
+    execute_changes(
+        &mut syncing_processes_registry,
+        &mut process_registries,
+        &changes,
+        metrics,
+    )
+    .await?;
+
+    // Check if this process instance has the "leadership" lock
+    if redis_client
+        .lock()
+        .await
+        .has_lock("leadership")
+        .await
+        .map_err(ExecutionError::LeadershipCheckFailed)?
+    {
+        log::info!("Executing changes for leader instance");
+        execute_leader_changes(&mut process_registries, &changes).await?;
+    } else {
+        log::info!(
+            "Skipping leader-specific changes as this instance does not have the leadership lock"
+        );
+    }
+
+    Ok((syncing_processes_registry, process_registries))
+}
+
+/// This method is similar to execute_changes_legacy but works with ThreadSafeRedisClient
+/// It handles the entire process execution flow including leadership checks
+pub async fn execute_changes_thread_safe(
+    project: &Project,
+    settings: &Settings,
+    plan: &InfraPlan,
+    metrics: Arc<Metrics>,
+    redis_client: &ThreadSafeRedisClient,
+) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
+    // Initialize registries
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+        project.redpanda_config.clone(),
+        project.clickhouse_config.clone(),
+    );
+    let mut process_registries = ProcessRegistries::new(project, settings);
+
+    // Execute changes that are allowed on any instance
+    let changes = plan.target_infra_map.init_processes(project);
+    execute_changes(
+        &mut syncing_processes_registry,
+        &mut process_registries,
+        &changes,
+        metrics,
+    )
+    .await?;
+
+    // Check if this process instance has the "leadership" lock
+    if redis_client
+        .has_lock("leadership")
+        .await
+        .map_err(ExecutionError::LeadershipCheckFailed)?
+    {
+        log::info!("Executing changes for leader instance");
+        execute_leader_changes(&mut process_registries, &changes).await?;
+    } else {
+        log::info!(
+            "Skipping leader-specific changes as this instance does not have the leadership lock"
+        );
+    }
+
+    Ok((syncing_processes_registry, process_registries))
 }

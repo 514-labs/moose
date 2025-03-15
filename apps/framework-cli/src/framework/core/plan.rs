@@ -15,7 +15,7 @@ use super::{
     infrastructure_map::{InfraChanges, InfrastructureMap},
     primitive_map::PrimitiveMap,
 };
-use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient};
 use crate::project::Project;
 use log::error;
 use rdkafka::error::KafkaError;
@@ -57,16 +57,15 @@ pub struct InfraPlan {
     pub changes: InfraChanges,
 }
 
-/// Plans infrastructure changes by comparing the current state with the target state.
+/// Plans infrastructure changes by comparing the current infrastructure state with the target state.
 ///
-/// This function loads the current infrastructure map from Redis and compares it with
-/// the target infrastructure map derived from the project configuration. It then
-/// generates a plan that describes the changes needed to transition from the current
-/// state to the target state.
+/// This function loads the current infrastructure map from Redis, builds the target
+/// infrastructure map from the project configuration, and computes the difference
+/// between them to create a plan.
 ///
 /// # Arguments
-/// * `client` - Redis client for loading the current infrastructure map
-/// * `project` - Project configuration for building the target infrastructure map
+/// * `client` - Mutex-wrapped RedisClient for accessing Redis
+/// * `project` - Project configuration
 ///
 /// # Returns
 /// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
@@ -91,6 +90,40 @@ pub async fn plan_changes(
         let redis_guard = client.lock().await;
         InfrastructureMap::load_from_redis(&redis_guard).await?
     };
+
+    plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
+}
+
+/// Plans infrastructure changes by comparing the current infrastructure state with the target state.
+///
+/// This function loads the current infrastructure map from Redis, builds the target
+/// infrastructure map from the project configuration, and computes the difference
+/// between them to create a plan.
+///
+/// # Arguments
+/// * `client` - ThreadSafeRedisClient for accessing Redis
+/// * `project` - Project configuration
+///
+/// # Returns
+/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
+pub async fn plan_changes_thread_safe(
+    client: &ThreadSafeRedisClient,
+    project: &Project,
+) -> Result<InfraPlan, PlanningError> {
+    let json_path = Path::new(".moose/infrastructure_map.json");
+    let mut target_infra_map = if project.is_production && json_path.exists() {
+        InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
+    } else {
+        if project.is_production && project.is_docker_image() {
+            error!("Docker Build images should have the infrastructure map already created and embedded");
+        }
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(project, primitive_map)
+    };
+
+    target_infra_map.with_topic_namespace(&project.redpanda_config);
+
+    let current_infra_map = InfrastructureMap::load_from_thread_safe_redis(client).await?;
 
     plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
 }

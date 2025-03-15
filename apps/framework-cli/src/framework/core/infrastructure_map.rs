@@ -9,7 +9,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
-use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient};
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
@@ -1176,7 +1176,36 @@ impl InfrastructureMap {
         Ok(())
     }
 
+    pub async fn store_in_thread_safe_redis(
+        &self,
+        redis_client: &ThreadSafeRedisClient,
+    ) -> Result<()> {
+        let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
+        redis_client
+            .set_with_service_prefix("infrastructure_map", encoded.clone())
+            .await?;
+        Ok(())
+    }
+
     pub async fn load_from_redis(redis_client: &RedisClient) -> Result<Option<Self>> {
+        let encoded = redis_client
+            .get_with_service_prefix("infrastructure_map")
+            .await
+            .context("Failed to get InfrastructureMap from Redis")?;
+
+        if let Some(encoded) = encoded {
+            let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
+                anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
+            })?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn load_from_thread_safe_redis(
+        redis_client: &ThreadSafeRedisClient,
+    ) -> Result<Option<InfrastructureMap>> {
         let encoded = redis_client
             .get_with_service_prefix("infrastructure_map")
             .await

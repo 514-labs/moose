@@ -11,7 +11,8 @@
 /// during runtime. It also handles leadership-based execution for certain operations that
 /// should only be performed by a single instance.
 use crate::cli::settings::Settings;
-use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient};
+use log::error;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
@@ -95,40 +96,13 @@ pub async fn execute_initial_infra_change(
         api_changes_channel,
     )
     .await
-    .map_err(Box::new)?;
+    .map_err(Box::new)
+    .map_err(ExecutionError::ApiChange)?;
 
-    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
-        project.clickhouse_config.clone(),
-    );
-    let mut process_registries = ProcessRegistries::new(project, settings);
+    let (syncing_process_registry, process_registries) =
+        processes::execute_changes_legacy(project, settings, plan, metrics, redis_client).await?;
 
-    // Execute changes that are allowed on any instance
-    let changes = plan.target_infra_map.init_processes(project);
-    processes::execute_changes(
-        &mut syncing_processes_registry,
-        &mut process_registries,
-        &changes,
-        metrics,
-    )
-    .await?;
-
-    // Check if this process instance has the "leadership" lock
-    if redis_client
-        .lock()
-        .await
-        .has_lock("leadership")
-        .await
-        .map_err(ExecutionError::LeadershipCheckFailed)?
-    {
-        log::info!("Executing changes for leader instance");
-
-        processes::execute_leader_changes(&mut process_registries, &changes).await?;
-    } else {
-        log::info!("Skipping migration & olap process changes as this instance does not have the leadership lock");
-    }
-
-    Ok((syncing_processes_registry, process_registries))
+    Ok((syncing_process_registry, process_registries))
 }
 
 /// Executes infrastructure changes during runtime (after initial setup).
@@ -178,4 +152,46 @@ pub async fn execute_online_change(
     .await?;
 
     Ok(())
+}
+
+/// Executes the initial infrastructure changes for a project.
+/// Thread-safe version that accepts ThreadSafeRedisClient.
+///
+/// # Arguments
+/// * `project` - The project configuration
+/// * `settings` - Application settings
+/// * `plan` - The infrastructure plan to execute
+/// * `api_changes_channel` - Channel for sending API changes
+/// * `metrics` - Metrics collection
+/// * `redis_client` - The Redis client for infrastructure operations
+///
+/// # Returns
+/// * `Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError>` - The syncing and process registries
+pub async fn execute_initial_infra_change_thread_safe(
+    project: &Project,
+    settings: &Settings,
+    plan: &InfraPlan,
+    api_changes_channel: Sender<ApiChange>,
+    metrics: Arc<Metrics>,
+    redis_client: &ThreadSafeRedisClient,
+) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
+    // This probably can be parallelized through Tokio Spawn
+    olap::execute_changes(project, &plan.changes.olap_changes).await?;
+    stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+
+    // In prod, the webserver is part of the current process that gets spawned. As such
+    // it is initialized from 0 and we don't need to apply diffs to it.
+    api::execute_changes(
+        &plan.target_infra_map.init_api_endpoints(),
+        api_changes_channel,
+    )
+    .await
+    .map_err(Box::new)
+    .map_err(ExecutionError::ApiChange)?;
+
+    let (syncing_process_registry, process_registries) =
+        processes::execute_changes_thread_safe(project, settings, plan, metrics, redis_client)
+            .await?;
+
+    Ok((syncing_process_registry, process_registries))
 }

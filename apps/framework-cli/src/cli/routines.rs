@@ -88,17 +88,17 @@
 
 use crate::cli::local_webserver::RouteMeta;
 use crate::framework::core::plan_validator;
-use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient};
 use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
-use tokio::time::{interval, sleep, Duration};
+use tokio::sync::RwLock;
+use tokio::time::{interval, Duration};
 
 use crate::cli::routines::openapi::openapi;
-use crate::framework::core::execute::execute_initial_infra_change;
+use crate::framework::core::execute::execute_initial_infra_change_thread_safe;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
@@ -111,7 +111,7 @@ use super::settings::Settings;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
-use crate::framework::core::plan::plan_changes;
+use crate::framework::core::plan::plan_changes_thread_safe;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
 
@@ -202,19 +202,13 @@ impl RoutineFailure {
     }
 }
 
-pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
-    let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    let redis_client = Arc::new(Mutex::new(redis_client));
+pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<ThreadSafeRedisClient> {
+    let client = RedisClient::new_thread_safe(project.name(), project.redis_config.clone()).await?;
 
-    spawn_connection_monitor(redis_client.clone());
-
-    let (service_name, instance_id) = {
-        let client = redis_client.lock().await;
-        (
-            client.get_service_name().to_string(),
-            client.get_instance_id().to_string(),
-        )
-    };
+    let (service_name, instance_id) = (
+        client.get_service_name().await,
+        client.get_instance_id().await,
+    );
 
     display::show_message_wrapper(
         MessageType::Info,
@@ -225,15 +219,13 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     );
 
     // Register the leadership lock
-    redis_client
-        .lock()
-        .await
+    client
         .register_lock("leadership", LEADERSHIP_LOCK_TTL as i64)
         .await?;
 
-    let redis_client_clone = redis_client.clone();
+    let client_clone = client.clone();
     let callback = Arc::new(move |message: String| {
-        let redis_client = redis_client_clone.clone();
+        let redis_client = client_clone.clone();
         tokio::spawn(async move {
             if let Err(e) = process_pubsub_message(message, redis_client).await {
                 error!("<RedisClient> Error processing pubsub message: {}", e);
@@ -242,26 +234,19 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     });
 
     // Start the leadership lock management task
-    start_leadership_lock_task(redis_client.clone(), project.clone());
+    start_leadership_lock_task(client.clone(), project.clone());
 
-    redis_client
-        .lock()
-        .await
-        .register_message_handler(callback)
-        .await;
-    redis_client.lock().await.start_periodic_tasks();
+    client.register_message_handler(callback).await?;
+    client.start_periodic_tasks().await;
 
-    Ok(redis_client)
+    Ok(client)
 }
 
 async fn process_pubsub_message(
     message: String,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: ThreadSafeRedisClient,
 ) -> anyhow::Result<()> {
-    let has_lock = {
-        let client = redis_client.lock().await;
-        client.has_lock("leadership").await?
-    };
+    let has_lock = redis_client.has_lock("leadership").await?;
 
     if has_lock {
         if message.contains("<migration_start>") {
@@ -292,7 +277,7 @@ async fn process_pubsub_message(
     Ok(())
 }
 
-fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
+fn start_leadership_lock_task(redis_client: ThreadSafeRedisClient, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
@@ -308,14 +293,11 @@ fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Ar
 }
 
 async fn manage_leadership_lock(
-    redis_client: &Arc<Mutex<RedisClient>>,
+    redis_client: &ThreadSafeRedisClient,
     project: &Arc<Project>,
     cron_registry: &CronRegistry,
 ) -> Result<(), anyhow::Error> {
-    let (has_lock, is_new_acquisition) = {
-        let client = redis_client.lock().await;
-        client.check_and_renew_lock("leadership").await?
-    };
+    let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
 
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
@@ -332,8 +314,7 @@ async fn manage_leadership_lock(
             IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
-        let mut client = redis_client.lock().await;
-        if let Err(e) = client.broadcast_message("leader.new").await {
+        if let Err(e) = redis_client.broadcast_message("leader.new").await {
             error!(
                 "<RedisClient> Failed to broadcast new leader message: {}",
                 e
@@ -364,7 +345,7 @@ async fn leadership_tasks(
 /// # Arguments
 /// * `project` - Arc wrapped Project instance containing configuration
 /// * `metrics` - Arc wrapped Metrics instance for monitoring
-/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+/// * `redis_client` - ThreadSafeRedisClient for caching
 /// * `settings` - Reference to application Settings
 ///
 /// # Returns
@@ -372,7 +353,7 @@ async fn leadership_tasks(
 pub async fn start_development_mode(
     project: Arc<Project>,
     metrics: Arc<Metrics>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: ThreadSafeRedisClient,
     settings: &Settings,
 ) -> anyhow::Result<()> {
     display::show_message_wrapper(
@@ -401,7 +382,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let plan = plan_changes_thread_safe(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&plan)?;
@@ -410,7 +391,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
 
-    let (syncing_registry, process_registry) = execute_initial_infra_change(
+    let (syncing_registry, process_registry) = execute_initial_infra_change_thread_safe(
         &project,
         settings,
         &plan,
@@ -425,16 +406,15 @@ pub async fn start_development_mode(
 
     let openapi_file = openapi(&project, &plan.target_infra_map).await?;
 
-    {
-        let redis_client = redis_client.lock().await;
-        plan.target_infra_map.store_in_redis(&redis_client).await?;
-    }
+    plan.target_infra_map
+        .store_in_thread_safe_redis(&redis_client)
+        .await?;
 
     let infra_map: &'static RwLock<InfrastructureMap> =
         Box::leak(Box::new(RwLock::new(plan.target_infra_map)));
 
     let file_watcher = FileWatcher::new();
-    file_watcher.start(
+    file_watcher.start_thread_safe(
         project.clone(),
         route_update_channel,
         infra_map,
@@ -457,10 +437,7 @@ pub async fn start_development_mode(
         )
         .await;
 
-    {
-        let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks();
-    }
+    redis_client.stop_periodic_tasks().await?;
 
     Ok(())
 }
@@ -472,7 +449,7 @@ pub async fn start_development_mode(
 /// * `settings` - Reference to application Settings
 /// * `project` - Arc wrapped Project instance containing configuration
 /// * `metrics` - Arc wrapped Metrics instance for monitoring
-/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+/// * `redis_client` - ThreadSafeRedisClient for caching
 ///
 /// # Returns
 /// * `anyhow::Result<()>` - Success or error result
@@ -480,7 +457,7 @@ pub async fn start_production_mode(
     settings: &Settings,
     project: Arc<Project>,
     metrics: Arc<Metrics>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: ThreadSafeRedisClient,
 ) -> anyhow::Result<()> {
     display::show_message_wrapper(
         MessageType::Success,
@@ -513,7 +490,7 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let plan = plan_changes_thread_safe(&redis_client, &project).await?;
     info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&plan)?;
@@ -522,7 +499,7 @@ pub async fn start_production_mode(
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
 
-    execute_initial_infra_change(
+    execute_initial_infra_change_thread_safe(
         &project,
         settings,
         &plan,
@@ -533,7 +510,7 @@ pub async fn start_production_mode(
     .await?;
 
     plan.target_infra_map
-        .store_in_redis(&*redis_client.lock().await)
+        .store_in_thread_safe_redis(&redis_client)
         .await?;
 
     let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan.target_infra_map));
@@ -550,10 +527,7 @@ pub async fn start_production_mode(
         )
         .await;
 
-    {
-        let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks();
-    }
+    redis_client.stop_periodic_tasks().await?;
 
     Ok(())
 }
@@ -672,28 +646,4 @@ pub async fn remote_plan(
     display::show_changes(&temp_plan);
 
     Ok(())
-}
-
-fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
-    tokio::spawn(async move {
-        loop {
-            let handle = {
-                let client = redis_client.lock().await;
-                client.start_connection_monitor()
-            };
-            match handle.await {
-                Ok(_) => {
-                    info!("Connection monitor exited gracefully");
-                    break;
-                }
-                Err(err) => {
-                    error!(
-                        "Connection monitor panicked: {:#?}. Restarting in 1 second...",
-                        err
-                    );
-                    sleep(Duration::from_secs(1)).await;
-                }
-            }
-        }
-    });
 }

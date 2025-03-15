@@ -15,7 +15,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time;
 
-use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::redis::redis_client::{RedisClient, ThreadSafeRedisClient};
 use crate::metrics_inserter::MetricsInserter;
 use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
@@ -183,6 +183,40 @@ impl Metrics {
             tx_events,
             telemetry_metadata: telemetry_metadata.clone(),
             metrics_inserter: MetricsInserter::new(metric_labels, metric_endpoints, redis_client),
+            registry: Arc::new(Mutex::new(Registry::default())),
+        };
+        (metrics, rx_events)
+    }
+
+    pub fn new_with_thread_safe(
+        telemetry_metadata: TelemetryMetadata,
+        redis_client: Option<ThreadSafeRedisClient>,
+    ) -> (Metrics, tokio::sync::mpsc::Receiver<MetricEvent>) {
+        let (tx_events, rx_events) = tokio::sync::mpsc::channel(32);
+        let metric_labels = match telemetry_metadata
+            .metric_labels
+            .as_deref()
+            .map(decode_object::decode_base64_to_json)
+        {
+            Some(Ok(Value::Object(map))) => Some(map),
+            _ => None,
+        };
+        let metric_endpoints = match telemetry_metadata
+            .metric_endpoints
+            .as_deref()
+            .map(decode_object::decode_base64_to_json)
+        {
+            Some(Ok(Value::Object(map))) => Some(map),
+            _ => None,
+        };
+        let metrics = Metrics {
+            tx_events,
+            telemetry_metadata: telemetry_metadata.clone(),
+            metrics_inserter: MetricsInserter::new_thread_safe(
+                metric_labels,
+                metric_endpoints,
+                redis_client,
+            ),
             registry: Arc::new(Mutex::new(Registry::default())),
         };
         (metrics, rx_events)

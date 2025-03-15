@@ -876,16 +876,17 @@ impl RedisClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync + 'static>(
         &self,
         key: &str,
-    ) -> anyhow::Result<Option<V>> {
-        let prefixed_key = self.service_prefix(&[key]);
+    ) -> anyhow::Result<V> {
+        let prefixed_key = format!("{}:{}", self.service_name, key);
         let result = self
             .connection_manager
             .execute(|conn| Box::pin(async move { conn.get(&prefixed_key).await }))
             .await;
-        self.map_redis_error(result)
+
+        result.map_err(Into::into)
     }
 
     pub async fn get_queue_message_compat(
@@ -929,9 +930,6 @@ impl RedisClient {
     }
 
     // Helper method for consistent error mapping
-    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
-        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
-    }
 
     /// Returns a reader interface for read-only operations
     ///
@@ -985,6 +983,79 @@ impl RedisClient {
     ) -> anyhow::Result<ThreadSafeRedisClient> {
         let client = Self::new(service_name, config).await?;
         Ok(client.into_thread_safe())
+    }
+
+    /// Executes a batch of Redis operations in a single round-trip
+    ///
+    /// This method allows executing multiple Redis commands in a single round-trip,
+    /// which can significantly improve performance for certain use cases.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - A function that takes a mutable reference to a Pipeline and returns the same Pipeline
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the results of the batch operation
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let results: Vec<String> = redis_client.batch_operations(|pipe| {
+    ///     pipe.get("key1")
+    ///         .get("key2")
+    ///         .get("key3")
+    /// }).await?;
+    /// ```
+    pub async fn batch_operations<F, R>(&self, f: F) -> anyhow::Result<R>
+    where
+        F: FnOnce(&mut redis::Pipeline) -> &mut redis::Pipeline,
+        R: redis::FromRedisValue + 'static,
+    {
+        let mut pipe = redis::pipe();
+        f(&mut pipe);
+
+        self.connection_manager
+            .execute(|conn| Box::pin(async move { pipe.query_async(conn).await }))
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Executes a transaction (MULTI/EXEC) with the provided operations.
+    ///
+    /// This method allows you to execute multiple Redis commands in a single atomic transaction.
+    /// All commands between MULTI and EXEC are guaranteed to be executed sequentially and atomically.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - A function that takes a mutable reference to a Pipeline and returns the modified Pipeline
+    ///
+    /// # Returns
+    ///
+    /// * `anyhow::Result<R>` - The result of the transaction
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let results: (String, i32, String) = redis_client.transaction(|pipe| {
+    ///     pipe.set("key1", "value1")
+    ///         .incr("counter", 1)
+    ///         .get("key2")
+    /// }).await?;
+    /// ```
+    pub async fn transaction<F, R>(&self, f: F) -> anyhow::Result<R>
+    where
+        F: FnOnce(&mut redis::Pipeline) -> &mut redis::Pipeline,
+        R: redis::FromRedisValue + 'static,
+    {
+        let mut pipe = redis::pipe();
+        pipe.atomic();
+        f(&mut pipe);
+
+        self.connection_manager
+            .execute(|conn| Box::pin(async move { pipe.query_async(conn).await }))
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -1112,16 +1183,17 @@ impl RedisReader {
     /// Retrieves a value from Redis using the service prefix
     ///
     /// This is a read-only operation that fetches data from Redis.
-    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync + 'static>(
         &self,
         key: &str,
-    ) -> anyhow::Result<Option<V>> {
-        let prefixed_key = self.service_prefix(&[key]);
+    ) -> anyhow::Result<V> {
+        let prefixed_key = format!("{}:{}", self.service_name, key);
         let result = self
             .connection_manager
             .execute(|conn| Box::pin(async move { conn.get(&prefixed_key).await }))
             .await;
-        self.map_redis_error(result)
+
+        result.map_err(Into::into)
     }
 
     /// Checks if a lock is currently held
@@ -1184,11 +1256,6 @@ impl RedisReader {
                 .await?;
             Ok(result)
         }
-    }
-
-    /// Helper method for consistent error mapping
-    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
-        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
     }
 
     /// Creates a service-prefixed key
@@ -1502,12 +1569,6 @@ impl RedisWriter {
             .map_err(Into::into)
     }
 
-    /// Helper method for consistent error mapping
-    #[allow(dead_code)]
-    fn map_redis_error<T>(&self, result: redis::RedisResult<T>) -> anyhow::Result<T> {
-        result.map_err(|e| anyhow::anyhow!("Redis error: {}", e))
-    }
-
     /// Creates a service-prefixed key
     pub fn service_prefix(&self, keys: &[&str]) -> String {
         format!("{}::{}", self.config.key_prefix, keys.join("::"))
@@ -1587,10 +1648,10 @@ impl ThreadSafeRedisClient {
     /// Convenience method for getting a value from Redis
     ///
     /// This method uses the reader interface to get a value from Redis.
-    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync + 'static>(
         &self,
         key: &str,
-    ) -> anyhow::Result<Option<V>> {
+    ) -> anyhow::Result<V> {
         let reader = self.reader().await;
         reader.get_with_service_prefix(key).await
     }
@@ -1737,6 +1798,205 @@ impl ThreadSafeRedisClient {
         let client = self.client.read().await;
         client.service_name.clone()
     }
+
+    /// Convert this ThreadSafeRedisClient into a legacy RedisClient
+    pub fn into_legacy_client(&self) -> RedisClient {
+        // We need to block on the RwLock to get the client
+        // This is safe because we're just cloning the client
+        let runtime = tokio::runtime::Handle::current();
+
+        runtime.block_on(async { self.client.read().await.clone() })
+    }
+
+    /// Optimized method for checking and renewing a lock in a single operation
+    ///
+    /// This method uses a Lua script to atomically check if a lock exists and is owned
+    /// by the current instance, and then renew it if it does. This reduces the number
+    /// of round-trips to Redis and makes the lock operations more reliable.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the lock
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (now_has_lock, is_new_lock)
+    pub async fn atomic_check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
+        use super::lua_scripts::CHECK_AND_RENEW_LOCK;
+
+        let client = self.client.read().await;
+        let locks = client.state.locks.read().await;
+
+        if let Some((lock_key, ttl)) = locks.get(name) {
+            let instance_id = &client.instance_id;
+
+            let result: (bool, bool) = client
+                .connection_manager
+                .execute(|conn| {
+                    let script = CHECK_AND_RENEW_LOCK.clone();
+                    let lock_key = lock_key.clone();
+                    let instance_id = instance_id.clone();
+                    let ttl = *ttl;
+
+                    Box::pin(async move {
+                        let result: Vec<i32> = script
+                            .key(lock_key)
+                            .arg(instance_id)
+                            .arg(ttl.to_string())
+                            .invoke_async(conn)
+                            .await?;
+
+                        Ok::<_, redis::RedisError>((result[0] == 1, result[1] == 1))
+                    })
+                })
+                .await?;
+
+            return Ok(result);
+        }
+
+        Ok((false, false))
+    }
+
+    /// Optimized method for attempting to acquire a lock
+    ///
+    /// This method uses a Lua script to atomically attempt to acquire a lock.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the lock
+    ///
+    /// # Returns
+    ///
+    /// True if the lock was acquired, false otherwise
+    pub async fn atomic_attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
+        use super::lua_scripts::ATTEMPT_LOCK;
+
+        let client = self.client.read().await;
+        let locks = client.state.locks.read().await;
+
+        if let Some((lock_key, ttl)) = locks.get(name) {
+            let instance_id = &client.instance_id;
+
+            let result: bool = client
+                .connection_manager
+                .execute(|conn| {
+                    let script = ATTEMPT_LOCK.clone();
+                    let lock_key = lock_key.clone();
+                    let instance_id = instance_id.clone();
+                    let ttl = *ttl;
+
+                    Box::pin(async move {
+                        let result: i32 = script
+                            .key(lock_key)
+                            .arg(instance_id)
+                            .arg(ttl.to_string())
+                            .invoke_async(conn)
+                            .await?;
+
+                        Ok::<_, redis::RedisError>(result == 1)
+                    })
+                })
+                .await?;
+
+            return Ok(result);
+        }
+
+        Ok(false)
+    }
+
+    /// Optimized method for renewing a lock
+    ///
+    /// This method uses a Lua script to atomically renew a lock if it exists
+    /// and is owned by the current instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the lock
+    ///
+    /// # Returns
+    ///
+    /// True if the lock was renewed, false otherwise
+    pub async fn atomic_renew_lock(&self, name: &str) -> anyhow::Result<bool> {
+        use super::lua_scripts::RENEW_LOCK;
+
+        let client = self.client.read().await;
+        let locks = client.state.locks.read().await;
+
+        if let Some((lock_key, ttl)) = locks.get(name) {
+            let instance_id = &client.instance_id;
+
+            let result: bool = client
+                .connection_manager
+                .execute(|conn| {
+                    let script = RENEW_LOCK.clone();
+                    let lock_key = lock_key.clone();
+                    let instance_id = instance_id.clone();
+                    let ttl = *ttl;
+
+                    Box::pin(async move {
+                        let result: i32 = script
+                            .key(lock_key)
+                            .arg(instance_id)
+                            .arg(ttl.to_string())
+                            .invoke_async(conn)
+                            .await?;
+
+                        Ok::<_, redis::RedisError>(result == 1)
+                    })
+                })
+                .await?;
+
+            return Ok(result);
+        }
+
+        Ok(false)
+    }
+
+    /// Optimized method for releasing a lock
+    ///
+    /// This method uses a Lua script to atomically release a lock if it exists
+    /// and is owned by the current instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the lock
+    ///
+    /// # Returns
+    ///
+    /// True if the lock was released, false otherwise
+    pub async fn atomic_release_lock(&self, name: &str) -> anyhow::Result<bool> {
+        use super::lua_scripts::RELEASE_LOCK;
+
+        let client = self.client.read().await;
+        let locks = client.state.locks.read().await;
+
+        if let Some((lock_key, _)) = locks.get(name) {
+            let instance_id = &client.instance_id;
+
+            let result: bool = client
+                .connection_manager
+                .execute(|conn| {
+                    let script = RELEASE_LOCK.clone();
+                    let lock_key = lock_key.clone();
+                    let instance_id = instance_id.clone();
+
+                    Box::pin(async move {
+                        let result: i32 = script
+                            .key(lock_key)
+                            .arg(instance_id)
+                            .invoke_async(conn)
+                            .await?;
+
+                        Ok::<_, redis::RedisError>(result == 1)
+                    })
+                })
+                .await?;
+
+            return Ok(result);
+        }
+
+        Ok(false)
+    }
 }
 
 impl Clone for ThreadSafeRedisClient {
@@ -1771,10 +2031,10 @@ impl LegacyRedisClient {
     }
 
     /// Gets a value from Redis using the service prefix
-    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync>(
+    pub async fn get_with_service_prefix<V: redis::FromRedisValue + Send + Sync + 'static>(
         &self,
         key: &str,
-    ) -> anyhow::Result<Option<V>> {
+    ) -> anyhow::Result<V> {
         self.client.get_with_service_prefix(key).await
     }
 

@@ -358,7 +358,7 @@ async fn top_command_handler(
                 })
             })?;
 
-            let (metrics, rx_events) = Metrics::new(
+            let (metrics, rx_events) = Metrics::new_with_thread_safe(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
                     machine_id: settings.telemetry.machine_id.clone(),
@@ -513,7 +513,7 @@ async fn top_command_handler(
                 })
             })?;
 
-            let (metrics, rx_events) = Metrics::new(
+            let (metrics, rx_events) = Metrics::new_with_thread_safe(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
                     machine_id: settings.telemetry.machine_id.clone(),

@@ -10,6 +10,7 @@ use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::framework::languages::SupportedLanguages::Typescript;
+use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
@@ -1310,14 +1311,102 @@ impl InfrastructureMap {
 
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
         if project.language == Typescript {
-            let _objects = crate::framework::typescript::export_collectors::collect_from_index(
+            let objects = crate::framework::typescript::export_collectors::collect_from_index(
                 &project.project_location,
             )
             .await?;
-            todo!("transform the output to infra map, maybe with a intermediate struct")
+            let json = serde_json::to_string(&objects)?;
+            log::debug!("load_from_user_code inframap json: {}", json);
+
+            Self::from_json_value(objects).map_err(|e| {
+                anyhow::anyhow!("Failed to parse infrastructure map from TypeScript: {}", e)
+            })
         } else {
             todo!("Python implementation")
         }
+    }
+
+    pub fn from_json_value(value: serde_json::Value) -> Result<Self, serde_json::Error> {
+        let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
+        let tables = partial.convert_tables();
+
+        Ok(InfrastructureMap {
+            topics: partial.topics,
+            api_endpoints: partial.api_endpoints,
+            tables,
+            views: partial.views,
+            topic_to_table_sync_processes: partial.topic_to_table_sync_processes,
+            topic_to_topic_sync_processes: partial.topic_to_topic_sync_processes,
+            function_processes: partial.function_processes,
+            block_db_processes: partial.block_db_processes.unwrap_or(OlapProcess {}),
+            consumption_api_web_server: partial
+                .consumption_api_web_server
+                .unwrap_or(ConsumptionApiWebServer {}),
+            orchestration_workers: partial.orchestration_workers,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PartialTable {
+    pub name: String,
+    pub columns: Vec<Column>,
+    pub order_by: Vec<String>,
+    #[serde(default)]
+    pub deduplicate: bool,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub source_primitive: Option<PrimitiveSignature>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PartialInfrastructureMap {
+    #[serde(default)]
+    topics: HashMap<String, Topic>,
+    #[serde(default)]
+    api_endpoints: HashMap<String, ApiEndpoint>,
+    #[serde(default)]
+    tables: HashMap<String, PartialTable>,
+    #[serde(default)]
+    views: HashMap<String, View>,
+    #[serde(default)]
+    topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
+    #[serde(default)]
+    topic_to_topic_sync_processes: HashMap<String, TopicToTopicSyncProcess>,
+    #[serde(default)]
+    function_processes: HashMap<String, FunctionProcess>,
+    block_db_processes: Option<OlapProcess>,
+    consumption_api_web_server: Option<ConsumptionApiWebServer>,
+    #[serde(default)]
+    orchestration_workers: HashMap<String, OrchestrationWorker>,
+}
+
+impl PartialInfrastructureMap {
+    fn convert_tables(&self) -> HashMap<String, Table> {
+        self.tables
+            .iter()
+            .map(|(id, partial_table)| {
+                let table = Table {
+                    name: partial_table.name.clone(),
+                    columns: partial_table.columns.clone(),
+                    order_by: partial_table.order_by.clone(),
+                    deduplicate: partial_table.deduplicate,
+                    version: partial_table
+                        .version
+                        .clone()
+                        .map(Version::from_string)
+                        .unwrap_or_else(|| Version::from_string("1.0.0".to_string())),
+                    source_primitive: partial_table.source_primitive.clone().unwrap_or_else(|| {
+                        PrimitiveSignature {
+                            name: partial_table.name.clone(),
+                            primitive_type: PrimitiveTypes::DataModel,
+                        }
+                    }),
+                };
+                (id.clone(), table)
+            })
+            .collect()
     }
 }
 

@@ -1,0 +1,529 @@
+import { Callout } from '../components';
+
+# Data Modeling with OlapTable
+
+## Overview
+
+DMv2 provides a modular, declarative approach to data modeling that gives you explicit control over your data infrastructure while maintaining type safety.
+
+<Callout type="info">
+  The current DMv2 API focuses on table definition and infrastructure setup. Querying capabilities and other interactions will be added in future releases.
+</Callout>
+
+```typescript
+// Define your schema
+interface ExampleSchema {
+  id: Key<string>;
+  name: string;
+  value: number;
+}
+
+// Create your table
+export const ExampleTable = new OlapTable<ExampleSchema>("ExampleTable", {
+  primaryKey: ["id"],
+});
+```
+
+## Why DMv2?
+
+Our previous Data Modeling approach (v1) automatically created all infrastructure components when you defined a schema. DMv2 improves on this by:
+
+- **Modularity**: Choose exactly which infrastructure components you need
+- **Explicitness**: See exactly what infrastructure will be created in your code
+- **Type Safety**: Maintain schema consistency between code and infrastructure
+- **Control**: Configure each component independently
+
+## Getting Started
+
+### 1. Enable DMv2
+
+Add to your `moose.config.toml`:
+
+```toml
+[features]
+data_models_v2 = true
+```
+
+### 2. Create an Index File
+
+```typescript
+// app/index.ts
+export * from './datamodels/model1';
+export * from './datamodels/model2';
+```
+
+### 3. Define and Export Tables
+
+```typescript
+// app/datamodels/model1.ts
+import { OlapTable, Key } from '@514labs/moose-lib';
+
+// Schema with required and optional fields
+interface Model1Schema {
+  id: Key<string>;
+  timestamp: number;
+  value: string;
+  optionalField?: string;
+}
+
+// Export the table with a primary key
+export const Model1Table = new OlapTable<Model1Schema>("Model1");
+```
+
+## Schema Definition
+
+Define your schema using TypeScript interfaces:
+
+```typescript
+// Schema with various field types
+interface CompleteSchema {
+  id: Key<string>;
+  textValue: string;
+  numericValue: number;
+  booleanFlag: boolean;
+  createdAt: Date;
+  tags: string[];
+  metadata: {
+    version: number;
+    description: string;
+  };
+  optionalValue?: number;
+}
+```
+
+### Supported and Unsupported Types
+
+| TypeScript | ClickHouse | Supported |
+|:---------- |:---------- |:--------- |
+| `string`   | String     | ✅ |
+| `number`   | Float64    | ✅ |
+| `boolean`  | Boolean    | ✅ |
+| `Date`     | DateTime   | ✅ |
+| `Object`   | Nested     | ✅ |
+| `Array<T>` | Array      | ✅ |
+| `T?`       | Nullable   | ✅ |
+| `Enum`     | Enum       | ✅ |
+| `Key<T>`   | Same as T  | ✅ |
+| `T | null` | Nullable(T) | ✅ |
+| `union types` (e.g., `string \| number`) | N/A | ❌ |
+| `undefined` | N/A | ❌ |
+| `null` as direct type | N/A | ❌ |
+| `symbol` | N/A | ❌ |
+| `bigint` | N/A | ❌ |
+| Complex TypeScript types (tuples, mapped types, etc.) | N/A | ❌ |
+
+<Callout type="info">
+All numbers are stored as Float64 in ClickHouse. The `Key<T>` type is used to identify fields that are used as primary keys. This must be a string, number, or date.
+</Callout>
+
+### Workarounds for Unsupported Types
+
+#### Union Types
+
+Union types with non-null types are not supported in the data model. However, union types with `null` (e.g., `string | null`) are supported and automatically map to ClickHouse's Nullable type, which is equivalent to using the optional modifier (`?`).
+
+```typescript
+// SUPPORTED: Nullable types
+interface SupportedSchema {
+  id: Key<string>;
+  value1?: string;         // ✅ Maps to Nullable(String)
+  value2: string | null;   // ✅ Also maps to Nullable(String)
+}
+
+// NOT SUPPORTED: Union of non-null types
+interface IncorrectSchema {
+  id: Key<string>;
+  value: string | number;  // ❌ This won't work
+}
+
+// CORRECT: Choose a single type and convert data when needed
+interface CorrectSchema {
+  id: Key<string>;
+  value: string;           // ✅ Choose a single type that makes sense
+}
+
+// When ingesting data:
+function prepareData(sourceData) {
+  return {
+    id: sourceData.id,
+    value: String(sourceData.value) // Convert any type to string before ingestion
+  };
+}
+```
+
+#### Complex TypeScript Types
+
+For complex TypeScript types like tuples, intersection types, or mapped types, simplify your schema by using basic types:
+
+```typescript
+// INCORRECT: Using complex types
+interface IncorrectSchema {
+  id: Key<string>;
+  coordinates: [number, number]; // ❌ Tuple not supported
+  metadata: Record<string, string>; // ❌ Complex mapped type
+}
+
+// CORRECT: Use nested objects and arrays
+interface CorrectSchema {
+  id: Key<string>;
+  coordinates: { lat: number; lng: number }; // ✅ Standard object
+  metadata: { key: string; value: string }[]; // ✅ Array of objects
+}
+```
+
+#### BigInt and Symbol
+
+For large integers that would normally use `bigint`, use `string` to preserve precision:
+
+```typescript
+// INCORRECT: Using BigInt
+interface IncorrectSchema {
+  id: Key<string>;
+  largeNumber: bigint; // ❌ Not supported
+}
+
+// CORRECT: Store as string
+interface CorrectSchema {
+  id: Key<string>;
+  largeNumber: string; // ✅ Store large numbers as strings
+}
+
+// When using the data:
+function processData(data) {
+  const bigIntValue = BigInt(data.largeNumber);
+  // Process with BigInt...
+}
+```
+
+<Callout type="warning">
+When designing your schema, focus on data storage and retrieval needs rather than complex application logic. Keep schemas simple and perform any necessary transformations during data ingestion or when consuming data from the tables.
+</Callout>
+
+## Table Configuration
+
+Create a table with the `OlapTable` class:
+
+```typescript
+// Basic table configuration
+export const CompleteTable = new OlapTable<CompleteSchema>("CompleteTable");
+```
+
+### Primary Keys (Coming Soon)
+
+The `primaryKey` option specifies which field(s) to use for sorting and indexing:
+
+```typescript
+// Single field primary key
+export const SingleKeyTable = new OlapTable<CompleteSchema>("SingleKeyTable", {
+  primaryKey: ["id"],
+});
+
+// Composite primary key
+export const CompositeKeyTable = new OlapTable<CompleteSchema>("CompositeKeyTable", {
+  primaryKey: ["textValue", "numericValue"],
+});
+```
+
+#### Primary Key Best Practices
+
+- Choose fields used frequently in `WHERE` clauses
+- Place lower cardinality columns first
+- For time-series data, include a timestamp field
+- Limit the number of columns for efficiency
+
+### Advanced Configuration
+
+For more advanced use cases:
+
+```typescript
+// Table with deduplication enabled
+export const TimeSeriesTable = new OlapTable<CompleteSchema>("TimeSeriesTable", {
+  primaryKey: ["id"],
+  deduplicate: true, // Uses ReplacingMergeTree engine
+  order_by_fields: ["createdAt"] // Most recent row by createdAt is kept
+});
+```
+
+## Schema Examples
+
+### Basic Schema
+
+```typescript
+// Simple schema with primitive types
+interface BasicSchema {
+  id: Key<string>;
+  name: string;
+  value: number;
+  active: boolean;
+}
+
+// Basic table with single primary key
+export const BasicTable = new OlapTable<BasicSchema>("BasicTable", {
+  primaryKey: ["id"],
+});
+```
+
+### With Optional Fields
+
+```typescript
+// Schema with optional fields
+interface OptionalFieldsSchema {
+  id: Key<string>;
+  name: string;
+  description?: string;  // Optional field
+  metadata: {
+    tags?: string[];
+  };  // Optional nested field
+}
+
+// Table with optional fields
+export const OptionalFieldsTable = new OlapTable<OptionalFieldsSchema>("OptionalFieldsTable");
+```
+
+### With Nested Objects
+
+```typescript
+// Nested object definition
+interface NestedObject {
+  field1: string;
+  field2: number;
+  field3: boolean;
+}
+
+// Schema with nested object
+interface NestedSchema {
+  id: Key<string>;
+  name: string;
+  nested: NestedObject;  // Nested object
+}
+
+// Table with nested objects
+export const NestedTable = new OlapTable<NestedSchema>("NestedTable");
+```
+
+### With Enums
+
+```typescript
+// Enum definition
+enum StatusEnum {
+  OPTION_1 = "option1",
+  OPTION_2 = "option2",
+  OPTION_3 = "option3"
+}
+
+// Schema with enum field
+interface EnumSchema {
+  id: Key<string>;
+  status: StatusEnum;  // Enum field
+}
+
+// Table with enum field
+export const EnumTable = new OlapTable<EnumSchema>("EnumTable");
+```
+
+### With Inheritance
+
+```typescript
+// Base schema with common fields
+interface BaseSchema {
+  id: Key<string>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Extended schema that inherits from base
+interface ExtendedSchema extends BaseSchema {
+  name: string;
+  value: number;
+}
+
+// Table using extended schema
+export const ExtendedTable = new OlapTable<ExtendedSchema>("ExtendedTable", {
+  primaryKey: ["id"],
+});
+```
+
+## How It Works
+
+When you create an OlapTable instance:
+
+1. The compiler plugin extracts schema information from your TypeScript interface
+2. Fields marked with `Key<T>` are identified for primary key configuration
+3. The schema is stored as JSON Schema (v3.1)
+4. The table is registered in a global registry
+5. When deployed, Moose creates the corresponding infrastructure
+
+## Development Workflow and Validation
+
+### Local Development with Hot Reloading
+
+One of the powerful features of DMv2 is its integration with the Moose development server:
+
+1. Start your local development server with `moose dev`
+2. When you define or modify an OlapTable in your code and save the file:
+   - The changes are automatically detected
+   - The TypeScript compiler plugin processes your schema definitions
+   - The infrastructure is updated in real-time to match your code changes
+   - Your tables are immediately available for testing
+
+<Callout type="info">
+  This hot reloading capability allows you to iterate quickly on your data models without having to manually rebuild or redeploy your application.
+</Callout>
+
+For example, if you add a new field to your schema:
+
+```typescript
+// Before
+interface BasicSchema {
+  id: Key<string>;
+  name: string;
+}
+
+// After adding a field
+interface BasicSchema {
+  id: Key<string>;
+  name: string;
+  createdAt: Date; // New field
+}
+```
+
+The Moose framework will:
+1. Detect the change when you save the file
+2. Update the table schema in the local ClickHouse instance
+3. Make the new field immediately available for use
+
+### Verifying Your Tables
+
+You can verify your tables were created correctly using:
+
+```bash
+# List all tables in your local environment
+moose ls
+```
+
+Or by connecting directly to your local ClickHouse instance and running SQL commands.
+
+### Schema Validation
+
+DMv2 validates your schemas at different stages:
+
+1. **Development-time validation**: TypeScript ensures your schemas are type-safe
+2. **Compile-time validation**: The compiler plugin verifies that your OlapTable instances have valid configurations
+3. **Runtime validation**: When your code changes are hot-reloaded, Moose validates that your schemas can be properly mapped to ClickHouse tables
+
+If there are issues with your schema:
+- TypeScript errors will appear in your IDE for type-related issues
+- Console errors will show in the development server output for schema or configuration problems
+- Runtime errors will be displayed if there are issues applying your changes to the database
+
+<Callout type="warning">
+  Make sure to check your development server console if your tables aren't being created as expected. Common issues include invalid primary keys or unsupported field types.
+</Callout>
+
+## Coming Soon: Complete Ingest Pipelines
+
+Future releases will include:
+
+### Stream API
+
+Streams serve as the data transport layer between your data sources and `OlapTables`. They provide a reliable, high-throughput mechanism for buffering, validating, and delivering data to your tables.
+
+#### Core Functionality
+
+- **Type-safe data streaming**: Streams use your TypeScript schema to validate incoming data
+- **Buffering**: Absorbs traffic spikes and ensures reliable delivery to your tables
+- **Exactly-once delivery**: Guarantees data is delivered to tables without duplicates or losses
+- **Backpressure handling**: Manages throughput to prevent overwhelming downstream systems
+
+#### Creating a Stream
+
+```typescript
+import { Stream } from '@514labs/moose-lib';
+
+// Basic stream configuration
+export const BasicStream = new Stream<BasicSchema>("basic-stream", {
+  target: BasicTable,
+  retention: "7d"
+});
+```
+
+#### Configuration Options
+
+| Option | Type | Description |
+|:-------|:-----|:------------|
+| `target` | OlapTable | The destination table for the stream data |
+| `retention` | string | How long to keep data in the stream (e.g., "7d", "24h") |
+
+<Callout type="warning">
+All streams targeting the same table must use the same schema as the table. The schema provides the contract for data validation and structure.
+</Callout>
+
+### Ingest API
+The Ingest API object allows you to spin up a `POST` API endpoint that accepts JSON data and writes it to a stream. Based on the schema of the stream, the Ingest API will:
+- Validate incoming data against the schema to ensure it matches the expected structure
+- Write validated data to the `target` stream and return a 200 status code on success
+- Drop data that does not pass validation and return an error message with the validation errors
+
+```typescript
+import { Ingest } from '@514labs/moose-lib';
+
+// Ingest definition with source stream
+export const DataIngest = new Ingest({
+  target: DataStream // The stream to write to
+});
+```
+The Ingest object is configured with a `target` stream where it will write the validated data. This creates a clear separation of concerns:
+- The schema defines the data structure and validation rules
+- The stream handles the buffering and writing of data to the table
+- The ingest handles the validation and entry point for data
+
+<Callout type="warning">
+The schema of the stream must match the schema of the ingest API
+</Callout>
+
+
+### IngestPipeline
+The IngestPipeline object is a convenience object that allows you to create a complete data pipeline with a table, stream, and ingest API in a single step.
+```typescript
+import { IngestPipeline } from '@514labs/moose-lib';
+
+// Complete pipeline with table, stream, and ingest
+export const DataPipeline = new IngestPipeline<BasicSchema>({
+  table: true,
+  stream: true,
+  ingest: true
+});
+```
+
+In a complete ingest pipeline:
+- External systems or applications send data to the Ingest API
+- The Ingest API validates this data against the schema
+- Valid data is written to the Stream
+- The Stream buffers the data and eventually writes it to the Table
+- The Table stores the data in the OLAP database
+
+This modular approach allows you to:
+- Configure each component independently
+- Replace or modify components without affecting others
+- Scale components based on their specific requirements
+
+
+## Best Practices
+
+1. **Define clear schemas**: Use descriptive field names and appropriate types
+2. **Choose primary keys carefully**: Optimize for your query patterns
+3. **Document your models**: Add comments to explain the purpose of fields
+4. **Use consistent naming**: Adopt a convention for tables and fields
+5. **Organize related models**: Group related schemas in dedicated files
+6. **Version your schemas**: Plan for schema evolution in production
+
+## Technical Details
+
+The DMv2 module uses a TypeScript compiler plugin that:
+
+1. Detects OlapTable instantiations with type parameters
+2. Extracts schema information from the type parameter
+3. Transforms the code to include schema and column information
+4. Adds necessary imports (like typia for JSON schema generation)
+
+This approach allows you to write clean, type-safe code while the plugin handles the complex schema extraction and validation. 

@@ -495,13 +495,16 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         config,
         &[
             ("session.timeout.ms", "6000"),
+            // has to be longer than the clickhouse timeout
+            // otherwise the consumer will be considered failed if clickhouse takes too long
+            // this values is the default (5 minutes)
+            ("max.poll.interval.ms", "300000"),
             ("enable.partition.eof", "false"),
             ("enable.auto.commit", "true"),
             ("auto.commit.interval.ms", "1000"),
             ("enable.auto.offset.store", "false"),
             // to read records sent before subscriber is created
             ("auto.offset.reset", "earliest"),
-            // Groupid
             ("group.id", &group_id),
             ("isolation.level", "read_committed"),
         ],

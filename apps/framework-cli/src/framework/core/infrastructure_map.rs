@@ -1311,14 +1311,14 @@ impl InfrastructureMap {
 
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
         if project.language == Typescript {
-            let _objects = crate::framework::typescript::export_collectors::collect_from_index(
+            let objects = crate::framework::typescript::export_collectors::collect_from_index(
                 &project.project_location,
             )
             .await?;
-            let json = serde_json::to_string(&_objects)?;
+            let json = serde_json::to_string(&objects)?;
             log::debug!("load_from_user_code inframap json: {}", json);
 
-            Self::from_json_string(&json).map_err(|e| {
+            Self::from_json_value(objects).map_err(|e| {
                 anyhow::anyhow!("Failed to parse infrastructure map from TypeScript: {}", e)
             })
         } else {
@@ -1326,8 +1326,8 @@ impl InfrastructureMap {
         }
     }
 
-    pub fn from_json_string(json: &str) -> Result<Self, serde_json::Error> {
-        let partial: PartialInfrastructureMap = serde_json::from_str(json)?;
+    pub fn from_json_value(value: serde_json::Value) -> Result<Self, serde_json::Error> {
+        let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
         let tables = partial.convert_tables();
 
         Ok(InfrastructureMap {

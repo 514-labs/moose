@@ -1,8 +1,6 @@
 use anyhow::Context;
 use redis::aio::ConnectionManager;
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::sync::Mutex as TokioMutex;
 
 /// Manager for service instance presence tracking.
 ///
@@ -72,19 +70,14 @@ impl PresenceManager {
     /// Returns an error if:
     /// - Failed to get the current time
     /// - Redis operation fails
-    pub async fn update_presence(
-        &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
-    ) -> anyhow::Result<()> {
+    pub async fn update_presence(&self, mut conn: ConnectionManager) -> anyhow::Result<()> {
         let key = self.presence_key();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .context("Failed to get current time")?
             .as_secs();
-        {
-            let mut conn_guard = conn.lock().await;
-            let _: () = redis::AsyncCommands::set_ex(&mut *conn_guard, &key, now, 10).await?;
-        }
+
+        let _: () = redis::AsyncCommands::set_ex(&mut conn, &key, now, 10).await?;
         Ok(())
     }
 }

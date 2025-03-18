@@ -332,12 +332,9 @@ async fn manage_leadership_lock(
             IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
-        let mut client = redis_client.lock().await;
+        let client = redis_client.lock().await;
         if let Err(e) = client.broadcast_message("leader.new").await {
-            error!(
-                "<RedisClient> Failed to broadcast new leader message: {}",
-                e
-            );
+            error!("Failed to broadcast new leader message: {}", e);
         }
     } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
         if let Err(e) = cron_registry.stop().await {

@@ -1,7 +1,5 @@
 use redis::aio::ConnectionManager;
 use redis::Script;
-use std::sync::Arc;
-use tokio::sync::Mutex as TokioMutex;
 
 use super::redis_client::RedisConfig;
 
@@ -9,6 +7,7 @@ use super::redis_client::RedisConfig;
 ///
 /// This struct provides methods to acquire, verify, renew, and release
 /// distributed locks across multiple service instances using Redis.
+#[derive(Clone)]
 pub struct LeadershipManager {
     /// Unique identifier for this service instance.
     pub instance_id: String,
@@ -56,7 +55,7 @@ impl LeadershipManager {
     ///   otherwise
     pub async fn attempt_lock(
         &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
+        mut conn: ConnectionManager,
         lock_key: &str,
         ttl: i64,
     ) -> bool {
@@ -77,12 +76,11 @@ impl LeadershipManager {
         );
         let instance = self.instance_id.clone();
         let result = {
-            let mut conn_guard = conn.lock().await;
             script
                 .key(lock_key)
                 .arg(instance)
                 .arg(ttl)
-                .invoke_async::<_, i32>(&mut *conn_guard)
+                .invoke_async::<_, i32>(&mut conn)
                 .await
         };
         matches!(result, Ok(val) if val == 1)
@@ -111,7 +109,7 @@ impl LeadershipManager {
     /// Returns an error if the Redis operation fails
     pub async fn renew_lock(
         &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
+        mut conn: ConnectionManager,
         lock_key: &str,
         instance_id: &str,
         ttl: i64,
@@ -123,7 +121,7 @@ impl LeadershipManager {
             .key(lock_key)
             .arg(instance_id)
             .arg(ttl)
-            .invoke_async::<_, i32>(&mut *conn.lock().await)
+            .invoke_async::<_, i32>(&mut conn)
             .await?;
         Ok(result == 1)
     }
@@ -149,7 +147,7 @@ impl LeadershipManager {
     /// Returns an error if the Redis operation fails
     pub async fn release_lock(
         &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
+        mut conn: ConnectionManager,
         lock_key: &str,
         instance_id: &str,
     ) -> anyhow::Result<()> {
@@ -159,7 +157,7 @@ impl LeadershipManager {
         let _result: () = script
             .key(lock_key)
             .arg(instance_id)
-            .invoke_async(&mut *conn.lock().await)
+            .invoke_async(&mut conn)
             .await?;
         Ok(())
     }
@@ -186,7 +184,7 @@ impl LeadershipManager {
     /// Returns an error if the Redis operation fails
     pub async fn has_lock(
         &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
+        mut conn: ConnectionManager,
         lock_key: &str,
         instance_id: &str,
     ) -> anyhow::Result<bool> {
@@ -196,7 +194,7 @@ impl LeadershipManager {
         let result: i32 = script
             .key(lock_key)
             .arg(instance_id)
-            .invoke_async::<_, i32>(&mut *conn.lock().await)
+            .invoke_async::<_, i32>(&mut conn)
             .await?;
         Ok(result == 1)
     }

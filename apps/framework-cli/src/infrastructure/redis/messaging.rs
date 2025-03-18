@@ -1,12 +1,11 @@
 use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
-use std::sync::Arc;
-use tokio::sync::Mutex as TokioMutex;
 
 /// Manager for pub/sub messaging between service instances.
 ///
 /// This struct provides methods to publish messages to specific instances
 /// or broadcast messages to all instances using Redis pub/sub channels.
+#[derive(Clone)]
 pub struct MessagingManager {
     /// Prefix for Redis keys and channels to prevent collisions.
     pub key_prefix: String,
@@ -69,13 +68,12 @@ impl MessagingManager {
     /// Returns an error if the Redis publish operation fails
     pub async fn publish_message(
         &self,
-        conn: Arc<TokioMutex<ConnectionManager>>,
+        mut conn: ConnectionManager,
         target: &str,
         message: &str,
     ) -> anyhow::Result<()> {
         let channel = self.channel_for(target);
-        let mut conn_guard = conn.lock().await;
-        let _: () = conn_guard.publish(&channel, message).await?;
+        let _: () = conn.publish(&channel, message).await?;
         Ok(())
     }
 }

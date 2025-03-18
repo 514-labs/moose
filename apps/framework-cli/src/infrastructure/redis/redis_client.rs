@@ -7,20 +7,12 @@
 /// CONCURRENCY NOTES:
 ///
 /// The async `ConnectionManager` from the Redis crate implements `Send` and
-/// is therefore safe to move between threads. However, its API requires
-/// mutable access (`&mut self`) for sending commands, which means that
-/// concurrent command execution is not supported out of the box.
+/// is cloneable, making it safe to share between threads without a Mutex.
+/// This approach leverages the ConnectionManager's internal thread safety
+/// and allows for concurrent command execution without additional synchronization.
 ///
-/// To safely use the connection in an asynchronous context, we wrap it in a
-/// Tokio `Mutex`. This approach allows asynchronous tasks to wait for access
-/// without blocking the executor, ensuring that only one task can perform
-/// operations on the connection at a time. In this
-/// scenario, an `RwLock` would not offer any advantage because all operations
-/// require mutable access, leaving no opportunity for concurrent read-only
-/// access.
-///
-/// Using a Tokio `Mutex` maintains thread safety and provides the necessary
-/// mutable access control for our Redis component.
+/// Using the ConnectionManager directly maintains thread safety and avoids the
+/// need for a mutex, improving performance in high-concurrency scenarios.
 ///
 /// Additional notes:
 ///
@@ -79,6 +71,18 @@ use super::presence::PresenceManager;
 
 // Type alias for complex callback types
 type MessageCallback = Arc<dyn Fn(String) + Send + Sync>;
+
+/// Represents a distributed lock in Redis
+///
+/// This struct encapsulates the data needed to represent a lock in Redis
+/// and provides methods for lock management.
+#[derive(Clone)]
+pub struct RedisLock {
+    /// The Redis key used for this lock
+    pub key: String,
+    /// Time-to-live in seconds for this lock
+    pub ttl: i64,
+}
 
 /// # Redis Configuration
 ///
@@ -196,12 +200,15 @@ impl Default for RedisConfig {
 /// - `PresenceManager`: Manages service instance presence and discovery
 /// - `MessagingManager`: Handles pub/sub and queue-based messaging
 ///
-/// ## Thread Safety
+/// ## Thread Safety and Concurrency
 ///
-/// The `RedisClient` is designed to be thread-safe, using `Arc` and
-/// synchronization primitives to allow sharing across multiple tasks and
-/// threads. Background tasks for connection monitoring and presence updates
-/// are managed automatically.
+/// The client is designed for high-concurrency environments:
+///
+/// - All public methods can be called from multiple threads concurrently
+/// - Connection management uses Redis's thread-safe `ConnectionManager`
+/// - Read operations use shared read locks, allowing concurrent access
+/// - Write operations use exclusive write locks only when necessary
+/// - Background tasks run in separate Tokio tasks for non-blocking operation
 ///
 /// ## Performance Considerations
 ///
@@ -231,6 +238,28 @@ impl Default for RedisConfig {
 /// // Use the client for various Redis operations
 /// client.set_with_service_prefix("my-key", "my-value").await?;
 /// ```
+///
+/// ## Error Handling Strategy
+///
+/// This client follows a graceful degradation approach to Redis connectivity issues:
+///
+/// - **Critical operations**: Methods that affect application correctness (like lock management)
+///   propagate errors to allow callers to handle them appropriately.
+///
+/// - **Non-critical operations**: Methods like messaging and presence updates fail silently
+///   with warnings logged, preventing Redis issues from cascading into application failures.
+///
+/// - **Fallback mode**: When Redis is completely unavailable, a mock implementation
+///   provides partial functionality for essential operations.
+///
+/// ## Reconnection Strategy
+///
+/// The client automatically monitors the Redis connection health and attempts reconnection:
+///
+/// - Health checks run every 5 seconds
+/// - Reconnection attempts use exponential backoff
+/// - Connection state is tracked atomically and can be queried via `is_connected()`
+/// - During reconnection attempts, operations either use the fallback or fail gracefully
 pub struct RedisClient {
     pub config: RedisConfig,
     pub service_name: String,
@@ -321,7 +350,6 @@ impl RedisClient {
             broadcast_channel
         );
 
-        let _pub_sub_manager = self.connection_manager.pub_sub.clone();
         let callbacks = self.message_callbacks.clone();
         let config_url = self.config.url.clone();
 
@@ -390,11 +418,11 @@ impl RedisClient {
         };
 
         if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
+            let mut conn = self.connection_manager.connection.clone();
             let _: () = redis::cmd("RPUSH")
                 .arg(&queue)
                 .arg(message)
-                .query_async(&mut *conn)
+                .query_async(&mut conn)
                 .await?;
         } else if let Some(ref mock_client) = self.fallback {
             mock_client.post_queue_message(&queue, message).await?;
@@ -415,11 +443,11 @@ impl RedisClient {
             None => format!("{}::mqprocess", self.config.key_prefix),
         };
         if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
+            let mut conn = self.connection_manager.connection.clone();
             let msg: Option<String> = redis::cmd("RPOPLPUSH")
                 .arg(&source_queue)
                 .arg(&destination_queue)
-                .query_async(&mut *conn)
+                .query_async(&mut conn)
                 .await?;
             Ok(msg)
         } else if let Some(ref mock_client) = self.fallback {
@@ -445,19 +473,19 @@ impl RedisClient {
             None => format!("{}::mqincomplete", self.config.key_prefix),
         };
         if self.fallback.is_none() {
-            let mut conn = self.connection_manager.connection.lock().await;
+            let mut conn = self.connection_manager.connection.clone();
             if success {
                 let _: i32 = redis::cmd("LREM")
                     .arg(&in_progress_queue)
                     .arg(0)
                     .arg(message)
-                    .query_async(&mut *conn)
+                    .query_async(&mut conn)
                     .await?;
             } else {
                 let mut pipe = redis::pipe();
                 pipe.lrem(&in_progress_queue, 0, message).ignore();
                 pipe.rpush(&incomplete_queue, message).ignore();
-                let _: () = pipe.query_async(&mut *conn).await?;
+                let _: () = pipe.query_async(&mut conn).await?;
             }
         } else if let Some(ref _mock_client) = self.fallback {
             // For mock, we do nothing
@@ -541,12 +569,69 @@ impl RedisClient {
         Ok(false)
     }
 
+    /// Starts a background task that periodically renews a lock to prevent expiration.
+    ///
+    /// This method spawns a task that periodically attempts to renew the specified
+    /// lock at an interval that is approximately 1/3 of the lock's TTL to ensure
+    /// continuous ownership.
+    ///
+    /// # Parameters
+    ///
+    /// - `name` - Name of the lock to renew
+    ///
+    /// # Returns
+    ///
+    /// - `anyhow::Result<()>` - Ok if the renewal task was started successfully
+    pub async fn start_lock_renewal_task(&self, name: &str) -> anyhow::Result<()> {
+        let locks = self.locks.read().await;
+        if let Some((lock_key, ttl)) = locks.get(name).cloned() {
+            // Clone required data for the task
+            let instance_id = self.instance_id.clone();
+            let connection = self.connection_manager.connection.clone();
+            let leadership_manager = self.leadership_manager.clone();
+
+            // Determine renewal interval (1/3 of TTL)
+            let renewal_interval = std::cmp::max((ttl / 3) as u64, 1); // At least 1 second
+
+            // Spawn renewal task
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(renewal_interval));
+                loop {
+                    interval.tick().await;
+                    match leadership_manager
+                        .renew_lock(connection.clone(), &lock_key, &instance_id, ttl)
+                        .await
+                    {
+                        Ok(true) => {
+                            // Lock successfully renewed
+                            log::debug!("Lock '{}' renewed successfully", &lock_key);
+                        }
+                        Ok(false) => {
+                            // Lock not owned by this instance anymore
+                            log::warn!(
+                                "Failed to renew lock '{}': not owned by this instance",
+                                &lock_key
+                            );
+                            break; // Stop renewing
+                        }
+                        Err(e) => {
+                            // Error occurred while renewing
+                            log::error!("Error renewing lock '{}': {}", &lock_key, e);
+                            // Continue trying to renew
+                        }
+                    }
+                }
+            });
+        }
+        Ok(())
+    }
+
     // --------------------------------------
     // Periodic Tasks and Connection Monitor
     // --------------------------------------
     pub fn start_periodic_tasks(&self) {
         // Spawn a periodic presence update task
-        let connection = self.connection_manager.connection.clone();
+        let connection_manager = self.connection_manager.clone();
         let key_prefix = self.config.key_prefix.clone();
         let instance_id = self.instance_id.clone();
         let presence_task = tokio::spawn(async move {
@@ -558,13 +643,20 @@ impl RedisClient {
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                let mut conn_guard = connection.lock().await;
-                let _: redis::RedisResult<()> = redis::cmd("SETEX")
-                    .arg(&key)
-                    .arg(3)
-                    .arg(now)
-                    .query_async(&mut *conn_guard)
-                    .await;
+
+                // Use try-catch pattern to gracefully handle errors
+                match connection_manager
+                    .get_connection()
+                    .await
+                    .clone()
+                    .set_ex::<_, _, ()>(&key, now, 3)
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("Failed to update presence: {}", e);
+                    }
+                }
             }
         });
 
@@ -573,31 +665,6 @@ impl RedisClient {
         tokio::spawn(async move {
             let mut presence_guard = presence_task_clone.write().await;
             *presence_guard = Some(presence_task);
-        });
-
-        // Start connection monitor task
-        let connection_manager = self.connection_manager.clone();
-        let config = self.config.clone();
-        let monitor_task = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
-            loop {
-                interval.tick().await;
-                if !connection_manager.ping().await {
-                    log::error!("<NewRedisClient> Redis connection lost, attempting reconnection");
-                    let client = redis::Client::open(config.url.clone())
-                        .expect("Failed to open client during reconnection");
-                    connection_manager
-                        .attempt_reconnection(&client, &config)
-                        .await;
-                }
-            }
-        });
-
-        // Store the connection monitor task
-        let connection_monitor_task_clone = self.connection_monitor_task.clone();
-        tokio::spawn(async move {
-            let mut guard = connection_monitor_task_clone.write().await;
-            *guard = Some(monitor_task);
         });
     }
 
@@ -633,17 +700,15 @@ impl RedisClient {
 
     pub fn start_connection_monitor(&self) -> tokio::task::JoinHandle<()> {
         // Create a closure that builds the monitoring task
-        let connection_manager = self.connection_manager.clone();
+        let mut connection_manager = self.connection_manager.clone();
         let config = self.config.clone();
 
         tokio::spawn(async move {
-            let client = redis::Client::open(config.url.clone()).unwrap();
             loop {
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 if !connection_manager.ping().await {
-                    connection_manager
-                        .attempt_reconnection(&client, &config)
-                        .await;
+                    log::warn!("Redis connection lost, attempting reconnection");
+                    connection_manager.attempt_reconnection(&config).await;
                 }
             }
         })
@@ -676,9 +741,8 @@ impl RedisClient {
             .store(is_connected, Ordering::SeqCst);
 
         if !is_connected {
-            let client = Client::open(self.config.url.clone())?;
             self.connection_manager
-                .attempt_reconnection(&client, &self.config)
+                .attempt_reconnection(&self.config)
                 .await;
         }
 
@@ -695,7 +759,7 @@ impl RedisClient {
         value: V,
     ) -> anyhow::Result<()> {
         let prefixed_key = self.service_prefix(&[key]);
-        let mut conn = self.connection_manager.connection.lock().await;
+        let mut conn = self.connection_manager.connection.clone();
         conn.set::<_, _, ()>(&prefixed_key, value).await?;
         Ok(())
     }
@@ -705,7 +769,7 @@ impl RedisClient {
         key: &str,
     ) -> anyhow::Result<Option<V>> {
         let prefixed_key = self.service_prefix(&[key]);
-        let mut conn = self.connection_manager.connection.lock().await;
+        let mut conn = self.connection_manager.connection.clone();
         let result = conn.get(&prefixed_key).await?;
         Ok(result)
     }
@@ -718,7 +782,7 @@ impl RedisClient {
             Some(feature) => self.service_prefix(&["queue", feature]),
             None => self.service_prefix(&["queue"]),
         };
-        let mut conn = self.connection_manager.connection.lock().await;
+        let mut conn = self.connection_manager.connection.clone();
         let result: Option<String> = conn.lpop(&queue_key, None).await?;
         Ok(result)
     }
@@ -735,9 +799,87 @@ impl RedisClient {
             None => self.service_prefix(&["queue", "history", status]),
         };
 
-        let mut conn = self.connection_manager.connection.lock().await;
+        let mut conn = self.connection_manager.connection.clone();
         conn.rpush::<_, _, ()>(&queue_history_key, message).await?;
         Ok(())
+    }
+
+    pub async fn publish_message(&self, message: &str) -> anyhow::Result<()> {
+        // When Redis is unavailable (indicated by fallback existence), we silently succeed
+        // rather than failing the operation. This prevents application crashes when Redis
+        // is temporarily down or unreachable.
+        //
+        // Messaging is considered a non-critical operation that can be skipped in degraded mode.
+        if let Some(ref _mock_client) = self.fallback {
+            // Note: We're not actually using the mock client's functionality here,
+            // just returning success. This could be extended to implement proper mocking
+            // if needed for testing or specific fallback behavior.
+            return Ok(());
+        }
+
+        let target = "msgchannel"; // Broadcast channel
+
+        // Handle potential Redis errors gracefully by:
+        // 1. Catching and logging errors
+        // 2. Returning Ok() to prevent error propagation
+        //
+        // This prevents application crashes from Redis-related issues
+        match self
+            .messaging_manager
+            .publish_message(
+                self.connection_manager.get_connection().await,
+                target,
+                message,
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                log::warn!(
+                    "Failed to publish message (Redis may be unavailable): {}",
+                    e
+                );
+                Ok(()) // Return Ok to prevent propagating errors
+            }
+        }
+    }
+
+    pub async fn broadcast_message(&self, message: &str) -> anyhow::Result<()> {
+        // When Redis is unavailable (indicated by fallback existence), we silently succeed
+        // rather than failing the operation. This prevents application crashes when Redis
+        // is temporarily down or unreachable.
+        //
+        // Messaging is considered a non-critical operation that can be skipped in degraded mode.
+        if let Some(ref _mock_client) = self.fallback {
+            // Note: We're not actually using the mock client's functionality here,
+            // just returning success. This could be extended to implement proper mocking
+            // if needed for testing or specific fallback behavior.
+            return Ok(());
+        }
+
+        let channel = format!("{}::msgchannel", self.config.key_prefix);
+
+        // Handle potential Redis errors gracefully by:
+        // 1. Catching and logging errors
+        // 2. Returning Ok() to prevent error propagation
+        //
+        // This prevents application crashes from Redis-related issues
+        match self
+            .connection_manager
+            .get_connection()
+            .await
+            .publish::<_, _, ()>(&channel, message)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                log::warn!(
+                    "Failed to broadcast message (Redis may be unavailable): {}",
+                    e
+                );
+                Ok(()) // Return Ok to prevent propagating errors
+            }
+        }
     }
 }
 
@@ -806,17 +948,6 @@ impl RedisClient {
             .publish_message(
                 self.connection_manager.connection.clone(),
                 &channel,
-                message,
-            )
-            .await
-    }
-
-    pub async fn broadcast_message(&mut self, message: &str) -> anyhow::Result<()> {
-        let broadcast_channel = self.service_prefix(&["msgchannel"]);
-        self.messaging_manager
-            .publish_message(
-                self.connection_manager.connection.clone(),
-                &broadcast_channel,
                 message,
             )
             .await

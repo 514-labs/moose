@@ -5,7 +5,6 @@ use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex as TokioMutex;
 use tokio::time;
 
 use super::redis_client::RedisConfig;
@@ -14,6 +13,7 @@ use super::redis_client::RedisConfig;
 ///
 /// This enum is used to track and communicate the current state of the
 /// connection to Redis, which is useful for monitoring and diagnostics.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConnectionState {
     /// The connection to Redis is established and operational.
     Connected,
@@ -31,10 +31,12 @@ pub enum ConnectionState {
 #[derive(Clone)]
 pub struct ConnectionManagerWrapper {
     /// The main connection used for regular Redis commands.
-    pub connection: Arc<TokioMutex<ConnectionManager>>,
+    pub connection: ConnectionManager,
     /// A separate connection dedicated to pub/sub operations.
-    pub pub_sub: Arc<TokioMutex<ConnectionManager>>,
-    /// Atomic flag indicating the connection state (true = connected).
+    pub pub_sub: ConnectionManager,
+    /// Client used to create new connections
+    client: Arc<Client>,
+    /// Atomic flag indicating the connection state.
     pub state: Arc<AtomicBool>, // true = connected
 }
 
@@ -46,8 +48,8 @@ impl ConnectionManagerWrapper {
     /// 1. A main connection for regular Redis commands
     /// 2. A dedicated connection for pub/sub operations
     ///
-    /// Both connections are wrapped in Tokio mutexes to ensure thread
-    /// safety. The connection state is initially set to connected (true).
+    /// Both connections are directly cloneable, leveraging ConnectionManager's
+    /// internal thread safety. The connection state is initially set to connected (true).
     ///
     /// # Parameters
     ///
@@ -65,13 +67,104 @@ impl ConnectionManagerWrapper {
     /// connection to Redis.
     pub async fn new(client: &Client) -> Result<Self, RedisError> {
         // Create connection manager for normal operations
-        let conn = client.get_connection_manager().await?;
-        let pub_sub_conn = client.get_connection_manager().await?;
+        let conn = Self::create_connection_with_retry(client).await?;
+        let pub_sub_conn = Self::create_connection_with_retry(client).await?;
+
         Ok(ConnectionManagerWrapper {
-            connection: Arc::new(TokioMutex::new(conn)),
-            pub_sub: Arc::new(TokioMutex::new(pub_sub_conn)),
+            connection: conn,
+            pub_sub: pub_sub_conn,
+            client: Arc::new(client.clone()),
             state: Arc::new(AtomicBool::new(true)),
         })
+    }
+
+    /// Creates a new ConnectionManager with retry logic.
+    ///
+    /// This helper method attempts to create a new connection with retry logic
+    /// to handle transient connection failures.
+    ///
+    /// # Parameters
+    ///
+    /// - `client` - A reference to a Redis Client instance
+    ///
+    /// # Returns
+    ///
+    /// - `Result<ConnectionManager, RedisError>` - A new ConnectionManager or an error
+    async fn create_connection_with_retry(
+        client: &Client,
+    ) -> Result<ConnectionManager, RedisError> {
+        let mut attempts = 0;
+        let max_attempts = 3;
+        let mut last_error = None;
+
+        while attempts < max_attempts {
+            match time::timeout(Duration::from_secs(5), client.get_connection_manager()).await {
+                Ok(Ok(conn)) => return Ok(conn),
+                Ok(Err(e)) => {
+                    log::warn!(
+                        "Failed to create Redis connection (attempt {}/{}): {}",
+                        attempts + 1,
+                        max_attempts,
+                        e
+                    );
+                    last_error = Some(e);
+                }
+                Err(_) => {
+                    log::warn!(
+                        "Timeout creating Redis connection (attempt {}/{})",
+                        attempts + 1,
+                        max_attempts
+                    );
+                }
+            }
+
+            attempts += 1;
+            if attempts < max_attempts {
+                time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| {
+            RedisError::from(std::io::Error::new(
+                std::io::ErrorKind::ConnectionAborted,
+                "Failed to establish Redis connection after multiple attempts",
+            ))
+        }))
+    }
+
+    /// Gets a fresh connection, either by cloning the existing one or creating a new one.
+    ///
+    /// This method is used to get a connection for operations, with built-in
+    /// recovery if the connection state is not healthy.
+    ///
+    /// # Returns
+    ///
+    /// - `ConnectionManager` - A Redis connection manager ready for operations
+    pub async fn get_connection(&self) -> ConnectionManager {
+        if self.state.load(Ordering::SeqCst) {
+            self.connection.clone()
+        } else {
+            match Self::create_connection_with_retry(&self.client).await {
+                Ok(conn) => conn,
+                Err(_) => self.connection.clone(), // Fall back to existing connection
+            }
+        }
+    }
+
+    /// Gets a fresh pub_sub connection, either by cloning the existing one or creating a new one.
+    ///
+    /// # Returns
+    ///
+    /// - `ConnectionManager` - A Redis connection manager for pub/sub operations
+    pub async fn get_pubsub_connection(&self) -> ConnectionManager {
+        if self.state.load(Ordering::SeqCst) {
+            self.pub_sub.clone()
+        } else {
+            match Self::create_connection_with_retry(&self.client).await {
+                Ok(conn) => conn,
+                Err(_) => self.pub_sub.clone(), // Fall back to existing connection
+            }
+        }
     }
 
     /// Checks the health of the Redis connection by sending a PING command.
@@ -85,19 +178,41 @@ impl ConnectionManagerWrapper {
     ///
     /// - `bool` - true if the connection is healthy, false otherwise
     pub async fn ping(&self) -> bool {
-        let timeout_future = time::timeout(
-            Duration::from_secs(2),
-            AssertUnwindSafe(async {
-                redis::cmd("PING")
-                    .query_async::<_, String>(&mut *self.connection.lock().await)
-                    .await
-            })
-            .catch_unwind(),
-        );
+        // If we already know we're disconnected, don't attempt a ping
+        if !self.state.load(Ordering::SeqCst) {
+            return false;
+        }
 
-        match timeout_future.await {
-            Ok(Ok(Ok(_response))) => true,
-            _ => {
+        // Use a fresh connection for the ping to avoid issues with existing connections
+        let connection_result = Self::create_connection_with_retry(&self.client).await;
+        match connection_result {
+            Ok(mut conn) => {
+                // Try to ping with the fresh connection
+                let timeout_future = time::timeout(
+                    Duration::from_secs(2),
+                    AssertUnwindSafe(async {
+                        redis::cmd("PING").query_async::<_, String>(&mut conn).await
+                    })
+                    .catch_unwind(),
+                );
+
+                match timeout_future.await {
+                    Ok(Ok(Ok(_response))) => true,
+                    err => {
+                        if let Err(e) = &err {
+                            log::warn!("Redis ping timed out: {:?}", e);
+                        } else if let Ok(Err(e)) = &err {
+                            log::warn!("Redis ping panicked: {:?}", e);
+                        } else if let Ok(Ok(Err(e))) = &err {
+                            log::warn!("Redis ping failed: {:?}", e);
+                        }
+                        self.state.store(false, Ordering::SeqCst);
+                        false
+                    }
+                }
+            }
+            Err(e) => {
+                log::warn!("Failed to create connection for ping: {}", e);
                 self.state.store(false, Ordering::SeqCst);
                 false
             }
@@ -119,21 +234,53 @@ impl ConnectionManagerWrapper {
     ///
     /// # Parameters
     ///
-    /// - `client` - A reference to a Redis Client instance used to
-    ///   establish a new connection
-    /// - `_config` - A reference to the Redis configuration
-    ///   (currently unused)
-    pub async fn attempt_reconnection(&self, client: &Client, _config: &RedisConfig) {
+    /// - `config` - A reference to the Redis configuration
+    pub async fn attempt_reconnection(&mut self, config: &RedisConfig) {
         let mut backoff = 5;
         while !self.state.load(Ordering::SeqCst) {
+            log::info!(
+                "Attempting to reconnect to Redis at {} (backoff: {}s)",
+                config.url,
+                backoff
+            );
             time::sleep(Duration::from_secs(backoff)).await;
-            if let Ok(new_conn) = client.get_connection_manager().await {
-                let mut conn_guard = self.connection.lock().await;
-                *conn_guard = new_conn;
-                self.state.store(true, Ordering::SeqCst);
-                break;
-            } else {
-                backoff = std::cmp::min(backoff * 2, 60);
+
+            // Attempt to create a new client and connections
+            let client_result = Client::open(config.url.clone());
+            match client_result {
+                Ok(client) => {
+                    // Try to create both connections
+                    match Self::create_connection_with_retry(&client).await {
+                        Ok(new_conn) => {
+                            self.connection = new_conn;
+
+                            // Try to get a new pub_sub connection as well
+                            match Self::create_connection_with_retry(&client).await {
+                                Ok(new_pubsub) => {
+                                    self.pub_sub = new_pubsub;
+                                    // Store the new client for future connection creation
+                                    self.client = Arc::new(client);
+                                    log::info!("Successfully reconnected both Redis connections");
+                                }
+                                Err(e) => {
+                                    log::warn!("Reconnected main connection but failed to reconnect pub_sub: {}", e);
+                                    // Still mark as reconnected since the main connection succeeded
+                                }
+                            }
+
+                            self.state.store(true, Ordering::SeqCst);
+                            break;
+                        }
+                        Err(err) => {
+                            log::warn!("Failed to reconnect to Redis: {}", err);
+                            backoff = std::cmp::min(backoff * 2, 60);
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::warn!("Failed to create Redis client for reconnection: {}", err);
+                    backoff = std::cmp::min(backoff * 2, 60);
+                }
             }
         }
     }

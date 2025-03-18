@@ -345,7 +345,7 @@ impl RedisClient {
         let broadcast_channel = format!("{}::msgchannel", self.config.key_prefix);
 
         log::info!(
-            "<NewRedisClient> Starting message listener on channels: {} and {}",
+            "<RedisClient> Starting message listener on channels: {} and {}",
             instance_channel,
             broadcast_channel
         );
@@ -362,7 +362,7 @@ impl RedisClient {
             let pubsub_conn = match client.get_async_connection().await {
                 Ok(conn) => conn,
                 Err(e) => {
-                    log::error!("<NewRedisClient> Failed to get pubsub connection: {}", e);
+                    log::error!("<RedisClient> Failed to get pubsub connection: {}", e);
                     return;
                 }
             };
@@ -372,7 +372,7 @@ impl RedisClient {
                 .subscribe(&[&instance_channel_clone, &broadcast_channel_clone])
                 .await
             {
-                log::error!("<NewRedisClient> Failed to subscribe to channels: {}", e);
+                log::error!("<RedisClient> Failed to subscribe to channels: {}", e);
                 return;
             }
 
@@ -380,13 +380,13 @@ impl RedisClient {
                 let msg = pubsub.on_message().next().await;
                 if let Some(msg) = msg {
                     if let Ok(payload) = msg.get_payload::<String>() {
-                        log::info!("<NewRedisClient> Received message: {}", payload);
+                        log::info!("<RedisClient> Received message: {}", payload);
                         let handlers = callbacks.read().await.clone();
                         for handler in handlers.iter() {
                             handler(payload.clone());
                         }
                     } else {
-                        log::warn!("<NewRedisClient> Failed to decode message payload");
+                        log::warn!("<RedisClient> Failed to decode message payload");
                     }
                 } else {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -604,19 +604,19 @@ impl RedisClient {
                     {
                         Ok(true) => {
                             // Lock successfully renewed
-                            log::debug!("Lock '{}' renewed successfully", &lock_key);
+                            log::debug!("<RedisClient> Lock '{}' renewed successfully", &lock_key);
                         }
                         Ok(false) => {
                             // Lock not owned by this instance anymore
                             log::warn!(
-                                "Failed to renew lock '{}': not owned by this instance",
+                                "<RedisClient> Failed to renew lock '{}': not owned by this instance",
                                 &lock_key
                             );
                             break; // Stop renewing
                         }
                         Err(e) => {
                             // Error occurred while renewing
-                            log::error!("Error renewing lock '{}': {}", &lock_key, e);
+                            log::error!("<RedisClient> Error renewing lock '{}': {}", &lock_key, e);
                             // Continue trying to renew
                         }
                     }
@@ -654,7 +654,7 @@ impl RedisClient {
                 {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("Failed to update presence: {}", e);
+                        log::error!("<RedisClient> Failed to update presence: {}", e);
                     }
                 }
             }
@@ -682,7 +682,7 @@ impl RedisClient {
                     .update_presence(connection_manager.connection.clone())
                     .await
                 {
-                    log::error!("<NewRedisClient> Error updating presence: {}", e);
+                    log::error!("<RedisClient> Error updating presence: {}", e);
                 }
             }
         });
@@ -707,7 +707,7 @@ impl RedisClient {
             loop {
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 if !connection_manager.ping().await {
-                    log::warn!("Redis connection lost, attempting reconnection");
+                    log::warn!("<RedisClient> Redis connection lost, attempting reconnection");
                     connection_manager.attempt_reconnection(&config).await;
                 }
             }
@@ -836,7 +836,7 @@ impl RedisClient {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::warn!(
-                    "Failed to publish message (Redis may be unavailable): {}",
+                    "<RedisClient> Failed to publish message (Redis may be unavailable): {}",
                     e
                 );
                 Ok(()) // Return Ok to prevent propagating errors
@@ -874,7 +874,7 @@ impl RedisClient {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::warn!(
-                    "Failed to broadcast message (Redis may be unavailable): {}",
+                    "<RedisClient> Failed to broadcast message (Redis may be unavailable): {}",
                     e
                 );
                 Ok(()) // Return Ok to prevent propagating errors
@@ -885,7 +885,9 @@ impl RedisClient {
 
 impl Drop for RedisClient {
     fn drop(&mut self) {
-        log::info!("<NewRedisClient> NewRedisClient is being dropped. Cleaning up tasks and releasing locks.");
+        log::info!(
+            "<RedisClient> RedisClient is being dropped. Cleaning up tasks and releasing locks."
+        );
 
         // We can't use await in drop, so we need to use blocking operations
         // or just ignore the errors for cleanup

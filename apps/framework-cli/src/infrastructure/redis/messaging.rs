@@ -73,7 +73,20 @@ impl MessagingManager {
         message: &str,
     ) -> anyhow::Result<()> {
         let channel = self.channel_for(target);
-        let _: () = conn.publish(&channel, message).await?;
-        Ok(())
+
+        match conn.publish::<_, _, ()>(&channel, message).await {
+            Ok(_) => {
+                log::debug!("<RedisMessaging> Message published to channel {}", channel);
+                Ok(())
+            }
+            Err(e) => {
+                log::error!(
+                    "<RedisMessaging> Failed to publish message to channel {}: {}",
+                    channel,
+                    e
+                );
+                Err(anyhow::anyhow!("Failed to publish message: {}", e))
+            }
+        }
     }
 }

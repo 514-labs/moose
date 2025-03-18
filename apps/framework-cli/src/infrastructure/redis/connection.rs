@@ -1,7 +1,5 @@
-use futures::FutureExt;
 use redis::aio::ConnectionManager;
-use redis::{Client, RedisError};
-use std::panic::AssertUnwindSafe;
+use redis::{AsyncCommands, Client, RedisError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -102,7 +100,7 @@ impl ConnectionManagerWrapper {
                 Ok(Ok(conn)) => return Ok(conn),
                 Ok(Err(e)) => {
                     log::warn!(
-                        "Failed to create Redis connection (attempt {}/{}): {}",
+                        "<RedisConnection> Failed to create Redis connection (attempt {}/{}): {}",
                         attempts + 1,
                         max_attempts,
                         e
@@ -111,7 +109,7 @@ impl ConnectionManagerWrapper {
                 }
                 Err(_) => {
                     log::warn!(
-                        "Timeout creating Redis connection (attempt {}/{})",
+                        "<RedisConnection> Timeout creating Redis connection (attempt {}/{})",
                         attempts + 1,
                         max_attempts
                     );
@@ -177,42 +175,24 @@ impl ConnectionManagerWrapper {
     /// # Returns
     ///
     /// - `bool` - true if the connection is healthy, false otherwise
-    pub async fn ping(&self) -> bool {
-        // If we already know we're disconnected, don't attempt a ping
-        if !self.state.load(Ordering::SeqCst) {
-            return false;
-        }
+    pub async fn ping(&mut self) -> bool {
+        // Get a fresh connection by cloning the existing one
+        let mut conn = self.connection.clone();
 
-        // Use a fresh connection for the ping to avoid issues with existing connections
-        let connection_result = Self::create_connection_with_retry(&self.client).await;
-        match connection_result {
-            Ok(mut conn) => {
-                // Try to ping with the fresh connection
-                let timeout_future = time::timeout(
-                    Duration::from_secs(2),
-                    AssertUnwindSafe(async {
-                        redis::cmd("PING").query_async::<_, String>(&mut conn).await
-                    })
-                    .catch_unwind(),
-                );
+        // Try to ping with connection using cmd() method
+        let cmd = redis::cmd("PING");
+        let ping_future = cmd.query_async::<_, String>(&mut conn);
+        let timeout_future = time::timeout(Duration::from_secs(2), ping_future);
 
-                match timeout_future.await {
-                    Ok(Ok(Ok(_response))) => true,
-                    err => {
-                        if let Err(e) = &err {
-                            log::warn!("Redis ping timed out: {:?}", e);
-                        } else if let Ok(Err(e)) = &err {
-                            log::warn!("Redis ping panicked: {:?}", e);
-                        } else if let Ok(Ok(Err(e))) = &err {
-                            log::warn!("Redis ping failed: {:?}", e);
-                        }
-                        self.state.store(false, Ordering::SeqCst);
-                        false
-                    }
-                }
+        match timeout_future.await {
+            Ok(Ok(_response)) => true,
+            Ok(Err(e)) => {
+                log::warn!("<RedisConnection> Redis ping failed: {:?}", e);
+                self.state.store(false, Ordering::SeqCst);
+                false
             }
             Err(e) => {
-                log::warn!("Failed to create connection for ping: {}", e);
+                log::warn!("<RedisConnection> Redis ping timed out: {:?}", e);
                 self.state.store(false, Ordering::SeqCst);
                 false
             }
@@ -239,7 +219,7 @@ impl ConnectionManagerWrapper {
         let mut backoff = 5;
         while !self.state.load(Ordering::SeqCst) {
             log::info!(
-                "Attempting to reconnect to Redis at {} (backoff: {}s)",
+                "<RedisConnection> Attempting to reconnect to Redis at {} (backoff: {}s)",
                 config.url,
                 backoff
             );
@@ -260,10 +240,10 @@ impl ConnectionManagerWrapper {
                                     self.pub_sub = new_pubsub;
                                     // Store the new client for future connection creation
                                     self.client = Arc::new(client);
-                                    log::info!("Successfully reconnected both Redis connections");
+                                    log::info!("<RedisConnection> Successfully reconnected both Redis connections");
                                 }
                                 Err(e) => {
-                                    log::warn!("Reconnected main connection but failed to reconnect pub_sub: {}", e);
+                                    log::warn!("<RedisConnection> Reconnected main connection but failed to reconnect pub_sub: {}", e);
                                     // Still mark as reconnected since the main connection succeeded
                                 }
                             }
@@ -272,13 +252,16 @@ impl ConnectionManagerWrapper {
                             break;
                         }
                         Err(err) => {
-                            log::warn!("Failed to reconnect to Redis: {}", err);
+                            log::warn!("<RedisConnection> Failed to reconnect to Redis: {}", err);
                             backoff = std::cmp::min(backoff * 2, 60);
                         }
                     }
                 }
                 Err(err) => {
-                    log::warn!("Failed to create Redis client for reconnection: {}", err);
+                    log::warn!(
+                        "<RedisConnection> Failed to create Redis client for reconnection: {}",
+                        err
+                    );
                     backoff = std::cmp::min(backoff * 2, 60);
                 }
             }

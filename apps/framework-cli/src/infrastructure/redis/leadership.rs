@@ -59,7 +59,8 @@ impl LeadershipManager {
         lock_key: &str,
         ttl: i64,
     ) -> bool {
-        let script = Script::new(
+        let instance_id = &self.instance_id;
+        let script = redis::Script::new(
             r#"
             local current = redis.call('GET', KEYS[1])
             if not current then
@@ -74,16 +75,31 @@ impl LeadershipManager {
             end
             "#,
         );
-        let instance = self.instance_id.clone();
-        let result = {
-            script
-                .key(lock_key)
-                .arg(instance)
-                .arg(ttl)
-                .invoke_async::<_, i32>(&mut conn)
-                .await
-        };
-        matches!(result, Ok(val) if val == 1)
+
+        match script
+            .key(lock_key)
+            .arg(instance_id)
+            .arg(ttl)
+            .invoke_async::<_, i64>(&mut conn)
+            .await
+        {
+            Ok(1) => {
+                log::debug!(
+                    "<RedisLeadership> Lock acquired: {} by instance {}",
+                    lock_key,
+                    instance_id
+                );
+                true
+            }
+            Ok(_) => {
+                log::debug!("<RedisLeadership> Failed to acquire lock: {} (already held by another instance)", lock_key);
+                false
+            }
+            Err(e) => {
+                log::error!("<RedisLeadership> Error acquiring lock {}: {}", lock_key, e);
+                false
+            }
+        }
     }
 
     /// Renews an existing lock by extending its TTL.
@@ -117,13 +133,43 @@ impl LeadershipManager {
         let script = redis::Script::new(
             "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], ARGV[2]) else return 0 end",
         );
-        let result: i32 = script
+
+        match script
             .key(lock_key)
             .arg(instance_id)
             .arg(ttl)
-            .invoke_async::<_, i32>(&mut conn)
-            .await?;
-        Ok(result == 1)
+            .invoke_async::<_, i64>(&mut conn)
+            .await
+        {
+            Ok(1) => {
+                log::debug!(
+                    "<RedisLeadership> Lock renewed: {} for instance {}",
+                    lock_key,
+                    instance_id
+                );
+                Ok(true)
+            }
+            Ok(0) => {
+                log::warn!(
+                    "<RedisLeadership> Cannot renew lock {} - not owned by instance {}",
+                    lock_key,
+                    instance_id
+                );
+                Ok(false)
+            }
+            Ok(_) => {
+                log::warn!(
+                    "<RedisLeadership> Unexpected result while renewing lock {} for instance {}",
+                    lock_key,
+                    instance_id
+                );
+                Ok(false)
+            }
+            Err(e) => {
+                log::error!("<RedisLeadership> Error renewing lock {}: {}", lock_key, e);
+                Err(anyhow::anyhow!("Error renewing lock: {}", e))
+            }
+        }
     }
 
     /// Releases a lock if it's owned by the specified instance.

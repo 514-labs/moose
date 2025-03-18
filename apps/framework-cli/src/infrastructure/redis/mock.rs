@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -16,6 +17,10 @@ pub struct MockRedisClient {
     /// improves performance in read-heavy scenarios common in Redis
     /// usage patterns.
     pub store: Arc<RwLock<HashMap<String, String>>>,
+
+    /// Thread-safe in-memory storage for message queues.
+    /// Each queue is a vector of messages.
+    pub queues: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
 impl MockRedisClient {
@@ -27,6 +32,7 @@ impl MockRedisClient {
     pub fn new() -> Self {
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
+            queues: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -120,61 +126,62 @@ impl MockRedisClient {
         Ok(())
     }
 
-    /// Simulates posting a message to a queue.
-    ///
-    /// This method appends a message to the specified queue, creating the
-    /// queue if it doesn't exist. Messages are separated by the '|'
-    /// character.
+    /// Posts a message to a mock queue.
     ///
     /// # Parameters
     ///
-    /// - `queue` - The queue name
-    /// - `message` - The message to post
+    /// * `queue` - The queue to post the message to
+    /// * `message` - The message to post
     ///
     /// # Returns
     ///
-    /// - `Result<()>` - Ok if the operation was successful
-    pub async fn post_queue_message(&self, queue: &str, message: &str) -> Result<()> {
-        let mut store = self.store.write().await;
-        if let Some(existing) = store.get_mut(queue) {
-            existing.push('|');
-            existing.push_str(message);
-        } else {
-            store.insert(queue.to_string(), message.to_string());
+    /// * `anyhow::Result<()>` - Success or failure result
+    pub async fn post_queue_message(&self, queue: &str, message: &str) -> anyhow::Result<()> {
+        let mut queues_map = self.queues.write().await;
+
+        if !queues_map.contains_key(queue) {
+            log::debug!("<RedisMock> Creating new queue: {}", queue);
+            queues_map.insert(queue.to_string(), Vec::new());
         }
+
+        if let Some(queue_vec) = queues_map.get_mut(queue) {
+            queue_vec.push(message.to_string());
+            log::debug!(
+                "<RedisMock> Added message to queue {}, length now: {}",
+                queue,
+                queue_vec.len()
+            );
+        }
+
         Ok(())
     }
 
-    /// Retrieves and removes the first message from a queue.
-    ///
-    /// This method gets the first message from the specified queue and
-    /// removes it, simulating the behavior of Redis RPOPLPUSH command.
+    /// Gets a message from a mock queue.
     ///
     /// # Parameters
     ///
-    /// - `queue` - The queue name
+    /// * `queue` - The queue to get the message from
     ///
     /// # Returns
     ///
-    /// - `Result<Option<String>>` - The first message in the queue, or
-    ///   None if empty
-    pub async fn get_queue_message(&self, queue: &str) -> Result<Option<String>> {
-        let mut store = self.store.write().await;
-        if let Some(existing) = store.get_mut(queue) {
-            if let Some(pos) = existing.find('|') {
-                let msg = existing[..pos].to_string();
-                *existing = existing[pos + 1..].to_string();
-                return Ok(Some(msg));
-            }
+    /// * `anyhow::Result<Option<String>>` - The message, or None if the queue is empty
+    pub async fn get_queue_message(&self, queue: &str) -> anyhow::Result<Option<String>> {
+        let mut queues_map = self.queues.write().await;
 
-            // If there's no separator but there is content, return the
-            // entire content
-            if !existing.is_empty() {
-                let msg = existing.clone();
-                *existing = String::new();
-                return Ok(Some(msg));
+        if let Some(queue_vec) = queues_map.get_mut(queue) {
+            if !queue_vec.is_empty() {
+                let message = queue_vec.remove(0);
+                log::debug!(
+                    "<RedisMock> Retrieved message from queue {}, length now: {}",
+                    queue,
+                    queue_vec.len()
+                );
+                return Ok(Some(message));
             }
+        } else {
+            log::debug!("<RedisMock> Queue {} does not exist", queue);
         }
+
         Ok(None)
     }
 }

@@ -1,5 +1,6 @@
 use anyhow::Context;
 use redis::aio::ConnectionManager;
+use redis::AsyncCommands;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Manager for service instance presence tracking.
@@ -45,39 +46,41 @@ impl PresenceManager {
         format!("{}::{}::presence", self.key_prefix, self.instance_id)
     }
 
-    /// Updates the instance's presence in Redis with a new TTL.
+    /// Updates the presence of this instance in Redis.
     ///
-    /// This method:
-    /// 1. Generates the presence key for this instance
-    /// 2. Gets the current timestamp
-    /// 3. Sets the key in Redis with the timestamp as value
-    /// 4. Applies a TTL of 10 seconds to the key
+    /// This method sets a key in Redis with the current time and a TTL.
+    /// The key is in the format: `{key_prefix}::{instance_id}::presence`.
     ///
-    /// This should be called periodically (typically every few seconds)
-    /// to maintain the instance's presence. If the instance fails to
-    /// update its presence, the key will expire after the TTL.
+    /// # Arguments
     ///
-    /// # Parameters
-    ///
-    /// - `conn` - Redis connection manager
+    /// * `conn` - Redis connection to use for the operation
     ///
     /// # Returns
     ///
-    /// - `anyhow::Result<()>` - Ok(()) if the operation was successful
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Failed to get the current time
-    /// - Redis operation fails
+    /// * `anyhow::Result<()>` - Success or failure result
     pub async fn update_presence(&self, mut conn: ConnectionManager) -> anyhow::Result<()> {
-        let key = self.presence_key();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .context("Failed to get current time")?
-            .as_secs();
+        let key = format!("{}::{}::presence", self.key_prefix, self.instance_id);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
 
-        let _: () = redis::AsyncCommands::set_ex(&mut conn, &key, now, 10).await?;
-        Ok(())
+        match conn.set_ex::<_, _, ()>(&key, now, 3).await {
+            Ok(_) => {
+                log::debug!(
+                    "<RedisPresence> Updated presence for instance {}",
+                    self.instance_id
+                );
+                Ok(())
+            }
+            Err(e) => {
+                log::error!(
+                    "<RedisPresence> Failed to update presence for instance {}: {}",
+                    self.instance_id,
+                    e
+                );
+                Err(anyhow::anyhow!("Failed to update presence: {}", e))
+            }
+        }
     }
 }

@@ -39,7 +39,6 @@ if (
     experimentalTsImportSpecifiers: true,
   });
 }
-import "./instrumentation";
 
 import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";

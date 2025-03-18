@@ -21,8 +21,6 @@
   "dependencies": {
     "@clickhouse/client": "1.8.1",
     "@clickhouse/client-web": "1.5.0",
-    "@sentry/node": "^8.38.0",
-    "@sentry/profiling-node": "^8.38.0",
     "@temporalio/activity": "^1.11.7",
     "@temporalio/client": "^1.11.7",
     "@temporalio/common": "^1.11.7",

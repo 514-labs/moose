@@ -10,7 +10,7 @@ use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::framework::data_model::config::EndpointIngestionFormat;
-use crate::framework::languages::SupportedLanguages::Typescript;
+use crate::framework::languages::SupportedLanguages;
 use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -1311,7 +1311,7 @@ impl InfrastructureMap {
     }
 
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
-        if project.language == Typescript {
+        if project.language == SupportedLanguages::Typescript {
             let objects = crate::framework::typescript::export_collectors::collect_from_index(
                 &project.project_location,
             )
@@ -1319,7 +1319,7 @@ impl InfrastructureMap {
             let json = serde_json::to_string(&objects)?;
             log::info!("<dmv2> load_from_user_code inframap json: {}", json);
 
-            Self::from_json_value(objects).map_err(|e| {
+            Self::from_json_value(project.language, objects).map_err(|e| {
                 anyhow::anyhow!(
                     "<dmv2>  Failed to parse infrastructure map from TypeScript: {}",
                     e
@@ -1330,11 +1330,14 @@ impl InfrastructureMap {
         }
     }
 
-    pub fn from_json_value(value: serde_json::Value) -> Result<Self, serde_json::Error> {
+    pub fn from_json_value(
+        language: SupportedLanguages,
+        value: serde_json::Value,
+    ) -> Result<Self, serde_json::Error> {
         let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
         let tables = partial.convert_tables();
         let topics = partial.convert_topics();
-        let api_endpoints = partial.convert_api_endpoints();
+        let api_endpoints = partial.convert_api_endpoints(language);
         let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes();
 
         Ok(InfrastructureMap {
@@ -1459,7 +1462,7 @@ impl PartialInfrastructureMap {
             .collect()
     }
 
-    fn convert_api_endpoints(&self) -> HashMap<String, ApiEndpoint> {
+    fn convert_api_endpoints(&self, language: SupportedLanguages) -> HashMap<String, ApiEndpoint> {
         self.api_endpoints
             .values()
             .map(|partial_api| {
@@ -1483,7 +1486,10 @@ impl PartialInfrastructureMap {
                         parallelism: 1,
                     },
                     columns: partial_api.columns.clone(),
-                    abs_file_path: PathBuf::from("index.ts"),
+                    abs_file_path: std::env::current_dir()
+                        .unwrap_or_default()
+                        .join("app")
+                        .join(format!("index.{}", language.extension())),
                 };
 
                 let api_endpoint = ApiEndpoint {

@@ -228,7 +228,12 @@ async fn add_tables_views(
     target_version: &str,
     output_table: &mut HashMap<String, Vec<String>>,
 ) {
-    let mut system_tables = get_system_tables(project, target_version).await;
+    let version_filter = if project.features.data_model_v2 {
+        ""
+    } else {
+        target_version
+    };
+    let mut system_tables = get_system_tables(project, version_filter).await;
 
     fn update_metadata(system_table: ClickHouseSystemTable, metadata: &mut [String]) {
         match system_table.engine.as_str() {

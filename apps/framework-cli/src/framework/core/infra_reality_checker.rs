@@ -260,7 +260,8 @@ mod tests {
     fn create_test_project() -> Project {
         Project {
             language: crate::framework::languages::SupportedLanguages::Typescript,
-            redpanda_config: crate::infrastructure::stream::redpanda::RedpandaConfig::default(),
+            redpanda_config:
+                crate::infrastructure::stream::redpanda::models::RedpandaConfig::default(),
             clickhouse_config: crate::infrastructure::olap::clickhouse::ClickHouseConfig {
                 db_name: "test".to_string(),
                 user: "test".to_string(),

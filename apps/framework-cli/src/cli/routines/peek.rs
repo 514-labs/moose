@@ -12,7 +12,7 @@ use crate::project::Project;
 use super::{setup_redis_client, RoutineFailure, RoutineSuccess};
 
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
-use crate::infrastructure::stream::redpanda::create_consumer;
+use crate::infrastructure::stream::redpanda::client::create_consumer;
 use futures::stream::BoxStream;
 use log::info;
 use rdkafka::consumer::{Consumer, StreamConsumer};

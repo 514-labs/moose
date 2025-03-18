@@ -1,4 +1,4 @@
-use crate::infrastructure::stream;
+use crate::{infrastructure::stream, project::Project};
 
 use super::plan::InfraPlan;
 
@@ -8,8 +8,8 @@ pub enum ValidationError {
     StreamingChange(#[from] stream::StreamingChangesError),
 }
 
-pub fn validate(plan: &InfraPlan) -> Result<(), ValidationError> {
-    stream::validate_changes(&plan.changes.streaming_engine_changes)?;
+pub fn validate(project: &Project, plan: &InfraPlan) -> Result<(), ValidationError> {
+    stream::validate_changes(project, &plan.changes.streaming_engine_changes)?;
 
     Ok(())
 }

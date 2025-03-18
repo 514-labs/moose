@@ -15,7 +15,6 @@
 //!
 
 pub mod api;
-pub mod ingest;
 pub mod olap;
 pub mod orchestration;
 pub mod processes;

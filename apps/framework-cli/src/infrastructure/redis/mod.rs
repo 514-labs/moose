@@ -38,7 +38,6 @@
 ///     client.broadcast_message("Hello from my-service").await?;
 ///
 ///     // Implement leadership-based functionality
-///     client.register_lock("my-lock", 30).await?;
 ///     if client.attempt_lock("my-lock").await? {
 ///         // This instance is now the leader for this lock
 ///         // Perform leader-only operations

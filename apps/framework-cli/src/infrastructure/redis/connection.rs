@@ -1,5 +1,5 @@
 use redis::aio::ConnectionManager;
-use redis::{AsyncCommands, Client, RedisError};
+use redis::{Client, RedisError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;

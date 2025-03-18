@@ -1,7 +1,5 @@
-use anyhow::Context;
 use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Manager for service instance presence tracking.
 ///
@@ -33,17 +31,6 @@ impl PresenceManager {
             instance_id,
             key_prefix,
         }
-    }
-
-    /// Generates the Redis key used for tracking this instance's presence.
-    ///
-    /// The key follows the format: `{key_prefix}::{instance_id}::presence`
-    ///
-    /// # Returns
-    ///
-    /// A string containing the formatted presence key
-    fn presence_key(&self) -> String {
-        format!("{}::{}::presence", self.key_prefix, self.instance_id)
     }
 
     /// Updates the presence of this instance in Redis.

@@ -72,6 +72,9 @@ use super::presence::PresenceManager;
 // Type alias for complex callback types
 type MessageCallback = Arc<dyn Fn(String) + Send + Sync>;
 
+// Default TTL for leadership locks (15 seconds)
+const LEADERSHIP_LOCK_TTL: i64 = 15;
+
 /// Represents a distributed lock in Redis
 ///
 /// This struct encapsulates the data needed to represent a lock in Redis
@@ -274,8 +277,6 @@ pub struct RedisClient {
     pub presence_task: Arc<RwLock<Option<JoinHandle<()>>>>,
     pub connection_monitor_task: Arc<RwLock<Option<JoinHandle<()>>>>,
     pub fallback: Option<MockRedisClient>,
-
-    pub locks: Arc<RwLock<std::collections::HashMap<String, (String, i64)>>>,
 }
 
 impl RedisClient {
@@ -320,7 +321,6 @@ impl RedisClient {
             presence_task: Arc::new(RwLock::new(None)),
             connection_monitor_task: Arc::new(RwLock::new(None)),
             fallback,
-            locks: Arc::new(RwLock::new(std::collections::HashMap::new())),
         };
 
         // Start the message listener
@@ -494,42 +494,31 @@ impl RedisClient {
         Ok(())
     }
 
-    // -------------------------
-    // Lock Lifecycle Functions
-    // -------------------------
-    pub async fn register_lock(&self, name: &str, ttl: i64) -> anyhow::Result<()> {
-        let key = format!("{}::{}::lock", self.config.key_prefix, name);
-        let mut locks = self.locks.write().await;
-        locks.insert(name.to_string(), (key, ttl));
-        Ok(())
-    }
-
     pub async fn attempt_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, ttl)) = locks.get(name) {
-            return Ok(self
-                .leadership_manager
-                .attempt_lock(self.connection_manager.connection.clone(), lock_key, *ttl)
-                .await);
-        }
-        Ok(false)
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let ttl = LEADERSHIP_LOCK_TTL; // Use the configured TTL instead of hardcoded value
+
+        Ok(self
+            .leadership_manager
+            .attempt_lock(self.connection_manager.connection.clone(), &lock_key, ttl)
+            .await)
     }
 
     pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, ttl)) = locks.get(name) {
-            let result = self
-                .leadership_manager
-                .renew_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                    *ttl,
-                )
-                .await?;
-            return Ok(result);
-        }
-        Ok(false)
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let ttl = LEADERSHIP_LOCK_TTL; // Use the configured TTL instead of hardcoded value
+
+        let result = self
+            .leadership_manager
+            .renew_lock(
+                self.connection_manager.connection.clone(),
+                &lock_key,
+                &self.instance_id,
+                ttl,
+            )
+            .await?;
+
+        Ok(result)
     }
 
     pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
@@ -539,34 +528,30 @@ impl RedisClient {
     }
 
     pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {
-        let locks = self.locks.write().await;
-        if let Some((lock_key, _)) = locks.get(name) {
-            return self
-                .leadership_manager
-                .release_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                )
-                .await;
-        }
-        Ok(())
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+
+        self.leadership_manager
+            .release_lock(
+                self.connection_manager.connection.clone(),
+                &lock_key,
+                &self.instance_id,
+            )
+            .await
     }
 
     pub async fn has_lock(&self, name: &str) -> anyhow::Result<bool> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, _)) = locks.get(name) {
-            let result = self
-                .leadership_manager
-                .has_lock(
-                    self.connection_manager.connection.clone(),
-                    lock_key,
-                    &self.instance_id,
-                )
-                .await?;
-            return Ok(result);
-        }
-        Ok(false)
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+
+        let result = self
+            .leadership_manager
+            .has_lock(
+                self.connection_manager.connection.clone(),
+                &lock_key,
+                &self.instance_id,
+            )
+            .await?;
+
+        Ok(result)
     }
 
     /// Starts a background task that periodically renews a lock to prevent expiration.
@@ -583,46 +568,47 @@ impl RedisClient {
     ///
     /// - `anyhow::Result<()>` - Ok if the renewal task was started successfully
     pub async fn start_lock_renewal_task(&self, name: &str) -> anyhow::Result<()> {
-        let locks = self.locks.read().await;
-        if let Some((lock_key, ttl)) = locks.get(name).cloned() {
-            // Clone required data for the task
-            let instance_id = self.instance_id.clone();
-            let connection = self.connection_manager.connection.clone();
-            let leadership_manager = self.leadership_manager.clone();
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let ttl = LEADERSHIP_LOCK_TTL; // Use the configured TTL instead of hardcoded value
 
-            // Determine renewal interval (1/3 of TTL)
-            let renewal_interval = std::cmp::max((ttl / 3) as u64, 1); // At least 1 second
+        // Clone required data for the task
+        let instance_id = self.instance_id.clone();
+        let connection = self.connection_manager.connection.clone();
+        let leadership_manager = self.leadership_manager.clone();
 
-            // Spawn renewal task
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(renewal_interval));
-                loop {
-                    interval.tick().await;
-                    match leadership_manager
-                        .renew_lock(connection.clone(), &lock_key, &instance_id, ttl)
-                        .await
-                    {
-                        Ok(true) => {
-                            // Lock successfully renewed
-                            log::debug!("<RedisClient> Lock '{}' renewed successfully", &lock_key);
-                        }
-                        Ok(false) => {
-                            // Lock not owned by this instance anymore
-                            log::warn!(
-                                "<RedisClient> Failed to renew lock '{}': not owned by this instance",
-                                &lock_key
-                            );
-                            break; // Stop renewing
-                        }
-                        Err(e) => {
-                            // Error occurred while renewing
-                            log::error!("<RedisClient> Error renewing lock '{}': {}", &lock_key, e);
-                            // Continue trying to renew
-                        }
+        // Determine renewal interval (1/3 of TTL)
+        let renewal_interval = std::cmp::max((ttl / 3) as u64, 1); // At least 1 second
+
+        // Spawn renewal task
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(renewal_interval));
+            loop {
+                interval.tick().await;
+                match leadership_manager
+                    .renew_lock(connection.clone(), &lock_key, &instance_id, ttl)
+                    .await
+                {
+                    Ok(true) => {
+                        // Lock successfully renewed
+                        log::debug!("<RedisClient> Lock '{}' renewed successfully", &lock_key);
+                    }
+                    Ok(false) => {
+                        // Lock not owned by this instance anymore
+                        log::warn!(
+                            "<RedisClient> Failed to renew lock '{}': not owned by this instance",
+                            &lock_key
+                        );
+                        break; // Stop renewing
+                    }
+                    Err(e) => {
+                        // Error occurred while renewing
+                        log::error!("<RedisClient> Error renewing lock '{}': {}", &lock_key, e);
+                        // Continue trying to renew
                     }
                 }
-            });
-        }
+            }
+        });
+
         Ok(())
     }
 
@@ -714,22 +700,18 @@ impl RedisClient {
         })
     }
 
-    pub fn stop_periodic_tasks(&mut self) -> anyhow::Result<()> {
-        let rt = tokio::runtime::Handle::try_current()?;
+    pub async fn stop_periodic_tasks(&mut self) -> anyhow::Result<()> {
+        if let Some(task) = self.presence_task.write().await.take() {
+            task.abort();
+        }
 
-        rt.block_on(async {
-            if let Some(task) = self.presence_task.write().await.take() {
-                task.abort();
-            }
+        if let Some(task) = self.connection_monitor_task.write().await.take() {
+            task.abort();
+        }
 
-            if let Some(task) = self.connection_monitor_task.write().await.take() {
-                task.abort();
-            }
-
-            if let Some(task) = self.listener_task.write().await.take() {
-                task.abort();
-            }
-        });
+        if let Some(task) = self.listener_task.write().await.take() {
+            task.abort();
+        }
 
         Ok(())
     }
@@ -881,13 +863,26 @@ impl RedisClient {
             }
         }
     }
+
+    pub async fn send_message_to_instance(
+        &self,
+        message: &str,
+        target_instance_id: &str,
+    ) -> anyhow::Result<()> {
+        let channel = format!("{}::{}", self.config.key_prefix, target_instance_id);
+        self.messaging_manager
+            .publish_message(
+                self.connection_manager.connection.clone(),
+                &channel,
+                message,
+            )
+            .await
+    }
 }
 
 impl Drop for RedisClient {
     fn drop(&mut self) {
-        log::info!(
-            "<RedisClient> RedisClient is being dropped. Cleaning up tasks and releasing locks."
-        );
+        log::info!("<RedisClient> RedisClient is being dropped. Cleaning up tasks.");
 
         // We can't use await in drop, so we need to use blocking operations
         // or just ignore the errors for cleanup
@@ -908,13 +903,6 @@ impl Drop for RedisClient {
                 task.abort();
             }
         }
-
-        // For locks, we can't use async operations in drop
-        // We'll log this situation but can't properly clean up in a sync
-        // context
-        log::info!(
-            "<RedisClient> Note: Locks will be automatically released when Redis TTL expires"
-        );
     }
 }
 
@@ -930,28 +918,6 @@ impl RedisClient {
     pub async fn presence_update(&mut self) -> anyhow::Result<()> {
         self.presence_manager
             .update_presence(self.connection_manager.connection.clone())
-            .await
-    }
-
-    pub async fn register_lock_compat(&mut self, name: &str, ttl: i64) -> anyhow::Result<()> {
-        let lock_key = self.service_prefix(&[name, "lock"]);
-        let mut locks = self.locks.write().await;
-        locks.insert(name.to_string(), (lock_key, ttl));
-        Ok(())
-    }
-
-    pub async fn send_message_to_instance(
-        &self,
-        message: &str,
-        target_instance_id: &str,
-    ) -> anyhow::Result<()> {
-        let channel = format!("{}::{}", self.config.key_prefix, target_instance_id);
-        self.messaging_manager
-            .publish_message(
-                self.connection_manager.connection.clone(),
-                &channel,
-                message,
-            )
             .await
     }
 

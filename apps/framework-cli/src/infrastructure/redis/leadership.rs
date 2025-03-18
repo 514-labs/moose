@@ -1,5 +1,4 @@
 use redis::aio::ConnectionManager;
-use redis::Script;
 
 use super::redis_client::RedisConfig;
 

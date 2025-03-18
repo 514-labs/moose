@@ -136,7 +136,6 @@ mod util;
 pub mod validate;
 
 const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
-const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
 
 // Static flag to track if leadership tasks are running
 static IS_RUNNING_LEADERSHIP_TASKS: AtomicBool = AtomicBool::new(false);
@@ -223,13 +222,6 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
             details: format!("{}::{}", service_name, instance_id),
         },
     );
-
-    // Register the leadership lock
-    redis_client
-        .lock()
-        .await
-        .register_lock("leadership", LEADERSHIP_LOCK_TTL as i64)
-        .await?;
 
     let redis_client_clone = redis_client.clone();
     let callback = Arc::new(move |message: String| {
@@ -332,8 +324,12 @@ async fn manage_leadership_lock(
             IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
-        let client = redis_client.lock().await;
-        if let Err(e) = client.broadcast_message("leader.new").await {
+        if let Err(e) = redis_client
+            .lock()
+            .await
+            .broadcast_message("leader.new")
+            .await
+        {
             error!("Failed to broadcast new leader message: {}", e);
         }
     } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
@@ -456,7 +452,7 @@ pub async fn start_development_mode(
 
     {
         let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks();
+        let _ = redis_client.stop_periodic_tasks().await;
     }
 
     Ok(())
@@ -549,7 +545,7 @@ pub async fn start_production_mode(
 
     {
         let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks();
+        let _ = redis_client.stop_periodic_tasks().await;
     }
 
     Ok(())

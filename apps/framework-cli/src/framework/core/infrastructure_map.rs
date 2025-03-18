@@ -1370,9 +1370,9 @@ struct PartialTable {
 struct PartialTopic {
     pub name: String,
     pub columns: Vec<Column>,
-    pub target_table: String,
     pub retention_period: u64,
     pub partition_count: usize,
+    pub target_table: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1517,44 +1517,31 @@ impl PartialInfrastructureMap {
     fn create_topic_to_table_sync_processes(&self) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
-        // For each API endpoint that writes to a stream, create a sync process
-        for partial_api in self.api_endpoints.values() {
-            let topic_name = &partial_api.write_to.name;
+        for (topic_name, partial_topic) in &self.topics {
+            if let Some(target_table) = &partial_topic.target_table {
+                let sync_id = format!("{}_{}", topic_name, target_table);
 
-            // Get the topic. Topic name is the same as map key (see dmv2 seriallizer)
-            if let Some(topic) = self.topics.get(topic_name) {
-                // Use the topic's target_table as the destination
-                if !topic.target_table.is_empty() {
-                    let sync_id = format!("{}_{}", topic_name, topic.target_table);
+                let sync_process = TopicToTableSyncProcess {
+                    source_topic_id: topic_name.to_string(),
+                    target_table_id: target_table.to_string(),
+                    columns: partial_topic.columns.clone(),
+                    version: Version::from_string("0.0".to_string()),
+                    source_primitive: PrimitiveSignature {
+                        name: target_table.to_string(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
+                };
 
-                    let sync_process = TopicToTableSyncProcess {
-                        source_topic_id: topic.name.clone(),
-                        target_table_id: topic.target_table.clone(),
-                        columns: topic.columns.clone(),
-                        version: Version::from_string("0.0".to_string()),
-                        source_primitive: PrimitiveSignature {
-                            name: topic.target_table.clone(),
-                            primitive_type: PrimitiveTypes::DataModel,
-                        },
-                    };
-
-                    sync_processes.insert(sync_id, sync_process);
-                    log::info!(
-                        "<dmv2> Created topic_to_table_sync_processes from {} to {}",
-                        topic.name,
-                        topic.target_table
-                    );
-                } else {
-                    log::info!(
-                        "<dmv2> Topic {} has no target_table specified, skipping sync process creation",
-                        topic.name
-                    );
-                }
+                sync_processes.insert(sync_id.clone(), sync_process);
+                log::info!(
+                    "<dmv2> Created topic_to_table_sync_processes from {} to {}",
+                    topic_name,
+                    target_table
+                );
             } else {
                 log::info!(
-                    "<dmv2> Could not find topic with name {} for API endpoint {}",
-                    topic_name,
-                    partial_api.name
+                    "<dmv2> Topic {} has no target_table specified, skipping sync process creation",
+                    partial_topic.name
                 );
             }
         }

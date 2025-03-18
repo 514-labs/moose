@@ -871,7 +871,11 @@ async fn router(
             ingest_route(
                 req,
                 // without explicit version, go to current project version
-                route.join(current_version),
+                if !project.features.data_model_v2 {
+                    route.join(current_version)
+                } else {
+                    route
+                },
                 configured_producer,
                 route_table,
                 is_prod,

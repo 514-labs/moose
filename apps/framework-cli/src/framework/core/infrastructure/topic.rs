@@ -5,6 +5,7 @@ use crate::framework::{
     data_model::model::DataModel,
     streaming::model::StreamingFunction,
 };
+use crate::project::is_data_model_v2_enabled;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -91,7 +92,11 @@ impl Topic {
             | PrimitiveTypes::DBBlock
             | PrimitiveTypes::ConsumptionAPI => {
                 // TODO have a proper version object that standardizes transformations
-                format!("{}_{}", self.name, self.version.as_suffix())
+                if is_data_model_v2_enabled() {
+                    self.name.to_string()
+                } else {
+                    format!("{}_{}", self.name, self.version.as_suffix())
+                }
             }
         }
     }

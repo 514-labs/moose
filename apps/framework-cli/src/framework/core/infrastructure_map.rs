@@ -1,4 +1,4 @@
-use super::infrastructure::api_endpoint::{APIType, ApiEndpoint};
+use super::infrastructure::api_endpoint::{APIType, ApiEndpoint, Method};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
@@ -9,6 +9,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages::Typescript;
 use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
@@ -20,7 +21,7 @@ use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to convert infrastructure map from proto")]
@@ -1316,10 +1317,13 @@ impl InfrastructureMap {
             )
             .await?;
             let json = serde_json::to_string(&objects)?;
-            log::debug!("load_from_user_code inframap json: {}", json);
+            log::info!("<dmv2> load_from_user_code inframap json: {}", json);
 
             Self::from_json_value(objects).map_err(|e| {
-                anyhow::anyhow!("Failed to parse infrastructure map from TypeScript: {}", e)
+                anyhow::anyhow!(
+                    "<dmv2>  Failed to parse infrastructure map from TypeScript: {}",
+                    e
+                )
             })
         } else {
             todo!("Python implementation")
@@ -1329,13 +1333,16 @@ impl InfrastructureMap {
     pub fn from_json_value(value: serde_json::Value) -> Result<Self, serde_json::Error> {
         let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
         let tables = partial.convert_tables();
+        let topics = partial.convert_topics();
+        let api_endpoints = partial.convert_api_endpoints();
+        let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes();
 
         Ok(InfrastructureMap {
-            topics: partial.topics,
-            api_endpoints: partial.api_endpoints,
+            topics,
+            api_endpoints,
             tables,
             views: partial.views,
-            topic_to_table_sync_processes: partial.topic_to_table_sync_processes,
+            topic_to_table_sync_processes,
             topic_to_topic_sync_processes: partial.topic_to_topic_sync_processes,
             function_processes: partial.function_processes,
             block_db_processes: partial.block_db_processes.unwrap_or(OlapProcess {}),
@@ -1352,20 +1359,47 @@ struct PartialTable {
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
-    #[serde(default)]
     pub deduplicate: bool,
-    #[serde(default)]
-    pub version: Option<String>,
-    #[serde(default)]
-    pub source_primitive: Option<PrimitiveSignature>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialTopic {
+    pub name: String,
+    pub columns: Vec<Column>,
+    pub target_table: String,
+    pub retention_period: u64,
+    pub partition_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WriteToKind {
+    Stream,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WriteTo {
+    pub kind: WriteToKind,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialIngestApi {
+    pub name: String,
+    pub columns: Vec<Column>,
+    pub format: EndpointIngestionFormat,
+    pub write_to: WriteTo,
 }
 
 #[derive(Debug, Deserialize)]
 struct PartialInfrastructureMap {
     #[serde(default)]
-    topics: HashMap<String, Topic>,
+    topics: HashMap<String, PartialTopic>,
     #[serde(default)]
-    api_endpoints: HashMap<String, ApiEndpoint>,
+    #[serde(rename = "ingestApis")]
+    api_endpoints: HashMap<String, PartialIngestApi>,
     #[serde(default)]
     tables: HashMap<String, PartialTable>,
     #[serde(default)]
@@ -1392,21 +1426,134 @@ impl PartialInfrastructureMap {
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
                     deduplicate: partial_table.deduplicate,
-                    version: partial_table
-                        .version
-                        .clone()
-                        .map(Version::from_string)
-                        .unwrap_or_else(|| Version::from_string("1.0.0".to_string())),
-                    source_primitive: partial_table.source_primitive.clone().unwrap_or_else(|| {
-                        PrimitiveSignature {
-                            name: partial_table.name.clone(),
-                            primitive_type: PrimitiveTypes::DataModel,
-                        }
-                    }),
+                    version: Version::from_string("0.0".to_string()),
+                    source_primitive: PrimitiveSignature {
+                        name: partial_table.name.clone(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
                 };
                 (id.clone(), table)
             })
             .collect()
+    }
+
+    fn convert_topics(&self) -> HashMap<String, Topic> {
+        self.topics
+            .iter()
+            .map(|(id, partial_topic)| {
+                let topic = Topic {
+                    name: partial_topic.name.clone(),
+                    columns: partial_topic.columns.clone(),
+                    retention_period: std::time::Duration::from_secs(
+                        partial_topic.retention_period,
+                    ),
+                    partition_count: partial_topic.partition_count,
+                    version: Version::from_string("0.0".to_string()),
+                    source_primitive: PrimitiveSignature {
+                        name: partial_topic.name.clone(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
+                };
+                (id.clone(), topic)
+            })
+            .collect()
+    }
+
+    fn convert_api_endpoints(&self) -> HashMap<String, ApiEndpoint> {
+        self.api_endpoints
+            .values()
+            .map(|partial_api| {
+                let target_topic = match &partial_api.write_to.kind {
+                    WriteToKind::Stream => partial_api.write_to.name.clone(),
+                };
+
+                let data_model = crate::framework::data_model::model::DataModel {
+                    name: partial_api.name.clone(),
+                    version: Version::from_string("0.0".to_string()),
+                    config: crate::framework::data_model::config::DataModelConfig {
+                        ingestion: crate::framework::data_model::config::IngestionConfig {
+                            format: partial_api.format,
+                        },
+                        storage: crate::framework::data_model::config::StorageConfig {
+                            enabled: true,
+                            order_by_fields: vec![],
+                            deduplicate: false,
+                            name: None,
+                        },
+                        parallelism: 1,
+                    },
+                    columns: partial_api.columns.clone(),
+                    abs_file_path: PathBuf::from("index.ts"),
+                };
+
+                let api_endpoint = ApiEndpoint {
+                    name: partial_api.name.clone(),
+                    api_type: APIType::INGRESS {
+                        target_topic,
+                        data_model: Some(data_model),
+                        format: partial_api.format,
+                    },
+                    path: PathBuf::from(format!("ingest/{}", partial_api.name)),
+                    method: Method::POST,
+                    version: Version::from_string("0.0".to_string()),
+                    source_primitive: PrimitiveSignature {
+                        name: partial_api.name.clone(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
+                };
+
+                let key = format!("INGRESS_{}", partial_api.name);
+                (key, api_endpoint)
+            })
+            .collect()
+    }
+
+    fn create_topic_to_table_sync_processes(&self) -> HashMap<String, TopicToTableSyncProcess> {
+        let mut sync_processes = self.topic_to_table_sync_processes.clone();
+
+        // For each API endpoint that writes to a stream, create a sync process
+        for partial_api in self.api_endpoints.values() {
+            let topic_name = &partial_api.write_to.name;
+
+            // Get the topic. Topic name is the same as map key (see dmv2 seriallizer)
+            if let Some(topic) = self.topics.get(topic_name) {
+                // Use the topic's target_table as the destination
+                if !topic.target_table.is_empty() {
+                    let sync_id = format!("{}_{}", topic_name, topic.target_table);
+
+                    let sync_process = TopicToTableSyncProcess {
+                        source_topic_id: topic.name.clone(),
+                        target_table_id: topic.target_table.clone(),
+                        columns: topic.columns.clone(),
+                        version: Version::from_string("0.0".to_string()),
+                        source_primitive: PrimitiveSignature {
+                            name: topic.target_table.clone(),
+                            primitive_type: PrimitiveTypes::DataModel,
+                        },
+                    };
+
+                    sync_processes.insert(sync_id, sync_process);
+                    log::info!(
+                        "<dmv2> Created topic_to_table_sync_processes from {} to {}",
+                        topic.name,
+                        topic.target_table
+                    );
+                } else {
+                    log::info!(
+                        "<dmv2> Topic {} has no target_table specified, skipping sync process creation",
+                        topic.name
+                    );
+                }
+            } else {
+                log::info!(
+                    "<dmv2> Could not find topic with name {} for API endpoint {}",
+                    topic_name,
+                    partial_api.name
+                );
+            }
+        }
+
+        sync_processes
     }
 }
 

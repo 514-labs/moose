@@ -87,13 +87,14 @@ export function TrendingTopicsChart() {
     {},
   );
 
+  console.log("Raw topicStats:", data[currentTimeIndex].topicStats);
+
   const chartData = data[currentTimeIndex].topicStats.map((stat) => ({
-    ...stat,
+    eventCount: parseInt(stat.eventCount),
+    topic: stat.topic,
     fill: `var(--color-${stat.topic})`,
   }));
 
-  console.log(chartConfig);
-  console.log(chartData);
   return (
     <div>
       <TrendingTopicsControls
@@ -115,17 +116,15 @@ export function TrendingTopicsChart() {
       />
 
       <div className="mt-8">
-        <ChartContainer
-          config={chartConfig}
-          className="h-[500px] justify-center"
-        >
+        <ChartContainer config={chartConfig} className="h-[500px] w-full">
           <BarChart
+            accessibilityLayer
             layout="vertical"
             data={chartData}
-            margin={{ top: 20, right: 30, left: 120, bottom: 5 }}
+            margin={{ top: 20, right: 40, left: 40, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="eventCount" type="number" />
+            <XAxis dataKey="eventCount" type="number" domain={[0, "dataMax"]} />
             <YAxis
               type="category"
               dataKey="topic"
@@ -137,7 +136,6 @@ export function TrendingTopicsChart() {
             <Bar
               dataKey="eventCount"
               radius={[0, 4, 4, 0]}
-              maxBarSize={30}
               animationDuration={800}
             />
           </BarChart>
@@ -150,13 +148,14 @@ export function TrendingTopicsChart() {
             </Button>
             <Button
               variant="outline"
-              onClick={() =>
+              onClick={() => {
+                setIsPlaying(false);
                 setCurrentTimeIndex(
                   currentTimeIndex === 0
                     ? data.length - 1
                     : currentTimeIndex - 1,
-                )
-              }
+                );
+              }}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -170,6 +169,7 @@ export function TrendingTopicsChart() {
             <Button
               variant="outline"
               onClick={() => {
+                setIsPlaying(false);
                 setCurrentTimeIndex(
                   currentTimeIndex === data.length - 1
                     ? 0
@@ -187,7 +187,7 @@ export function TrendingTopicsChart() {
             </Button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 justify-center">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {data.map((timeData, index) => (
               <Button
                 key={timeData.time}

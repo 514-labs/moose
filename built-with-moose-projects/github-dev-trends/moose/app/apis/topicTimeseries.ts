@@ -8,7 +8,7 @@ import { tags } from "typia";
 
 interface QueryParams {
   interval?: "minute" | "hour" | "day";
-  limit?: number & tags.Minimum<10> & tags.Type<"int32">;
+  limit?: number & tags.Minimum<1> & tags.Type<"int32">;
   exclude?: string & tags.Pattern<"^([^,]+)(,[^,]+)*$">; // comma separated list of tags to exclude
 }
 
@@ -31,7 +31,7 @@ export default createConsumptionApi<QueryParams>(
         limit: sql`LIMIT ${limit} BY time`,
       },
       minute: {
-        select: sql`toStartOfMinute(createdAt) AS time`,
+        select: sql`toStartOfFifteenMinutes(createdAt) AS time`,
         groupBy: sql`GROUP BY time, topic`,
         orderBy: sql`ORDER BY time, totalEvents DESC`,
         limit: sql`LIMIT ${limit} BY time`,

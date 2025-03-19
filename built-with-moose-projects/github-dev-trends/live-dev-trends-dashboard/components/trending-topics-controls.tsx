@@ -28,7 +28,7 @@ export function TrendingTopicsControls({
   onExcludeChange,
 }: TrendingTopicsControlsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+    <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg">
       <div>
         <Label htmlFor="interval">Time Interval</Label>
         <Select value={interval} onValueChange={onIntervalChange}>
@@ -67,7 +67,7 @@ export function TrendingTopicsControls({
         </Label>
         <TagInput
           tags={exclude ? exclude.split(",") : []}
-          onTagsChange={(tags) => onExcludeChange(tags.join(","))}
+          onTagsChange={(tags) => onExcludeChange(tags.join(",") || "")}
           placeholder="Type a topic to exclude and press Enter"
         />
       </div>

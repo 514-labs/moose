@@ -64,11 +64,28 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Chart Colors - OKLCH Palette */
+  --chart-1: oklch(0.7 0.2 30); /* Vibrant Red */
+  --chart-2: oklch(0.7 0.2 60); /* Orange */
+  --chart-3: oklch(0.8 0.15 90); /* Gold */
+  --chart-4: oklch(0.85 0.18 120); /* Yellow-Green */
+  --chart-5: oklch(0.75 0.2 150); /* Green */
+  --chart-6: oklch(0.7 0.25 180); /* Teal */
+  --chart-7: oklch(0.65 0.27 200); /* Cyan */
+  --chart-8: oklch(0.6 0.25 220); /* Sky Blue */
+  --chart-9: oklch(0.55 0.22 240); /* Blue */
+  --chart-10: oklch(0.5 0.25 260); /* Indigo */
+  --chart-11: oklch(0.6 0.28 280); /* Purple */
+  --chart-12: oklch(0.7 0.25 300); /* Magenta */
+  --chart-13: oklch(0.75 0.22 320); /* Pink */
+  --chart-14: oklch(0.8 0.2 340); /* Rose */
+  --chart-15: oklch(0.85 0.18 10); /* Red-Orange */
+  --chart-16: oklch(0.65 0.15 170); /* Mint */
+  --chart-17: oklch(0.55 0.18 190); /* Turquoise */
+  --chart-18: oklch(0.45 0.2 250); /* Royal Blue */
+  --chart-19: oklch(0.65 0.22 290); /* Lavender */
+  --chart-20: oklch(0.75 0.15 50); /* Peach */
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);

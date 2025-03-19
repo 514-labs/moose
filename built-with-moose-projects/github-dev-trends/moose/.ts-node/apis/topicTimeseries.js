@@ -224,6 +224,7 @@ var __typia_transform__httpQueryReadNumber = __importStar(
   require("typia/lib/internal/_httpQueryReadNumber.js"),
 );
 var typia_1 = __importDefault(require("typia"));
+var moose_lib_1 = require("@514labs/moose-lib");
 exports.default = (function () {
   var assertGuard = (function () {
     var _io0 = function (input) {
@@ -412,6 +413,13 @@ exports.default = (function () {
       return __generator(this, function (_h) {
         switch (_h.label) {
           case 0:
+            (0, moose_lib_1.cliLog)({
+              message: "interval: "
+                .concat(interval, ", limit: ")
+                .concat(limit, ", exclude: ")
+                .concat(exclude),
+              action: "topicTimeseries",
+            });
             intervalMap = {
               hour: {
                 select: sql(

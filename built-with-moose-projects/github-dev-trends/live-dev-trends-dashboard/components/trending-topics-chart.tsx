@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { CartesianGrid, XAxis, YAxis, BarChart, Bar } from "recharts";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  Rewind,
+  Play,
+  Pause,
+  FastForward,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import mooseClient from "@/lib/moose-client";
 import {
@@ -11,57 +19,38 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { TrendingTopicsControls } from "./trending-topics-controls";
-
-// Move color generation outside component to be deterministic
-const PRESET_COLORS = [
-  "#FF6B6B",
-  "#4ECDC4",
-  "#45B7D1",
-  "#96CEB4",
-  "#FFEEAD",
-  "#D4A5A5",
-  "#9B59B6",
-  "#3498DB",
-  "#1ABC9C",
-  "#F1C40F",
-];
-
-const getTopicColor = (topic: string): string => {
-  // Use hash of topic name to pick a consistent color
-  const hash = topic
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return PRESET_COLORS[hash % PRESET_COLORS.length];
-};
+import { Button } from "@/components/ui/button";
 
 export function TrendingTopicsChart() {
   const [currentTimeIndex, setCurrentTimeIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [interval, setInterval] = useState("hour");
   const [limit, setLimit] = useState(10);
   const [exclude, setExclude] = useState("");
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["topicTimeseries", interval, limit, exclude],
     queryFn: async () => {
+      console.log("queryFn", interval, limit, exclude);
       const result = await mooseClient.consumptionTopicTimeseriesGet({
         interval,
         limit,
-        exclude,
+        exclude: exclude || undefined,
       });
       return result;
     },
   });
 
-  // Animation logic
+  // Updated animation logic
   useEffect(() => {
-    if (!data) return;
+    if (!data || !isPlaying) return;
 
     const intervalId = window.setInterval(() => {
       setCurrentTimeIndex((prev) => (prev + 1) % data.length);
     }, 2000);
 
     return () => window.clearInterval(intervalId);
-  }, [data]);
+  }, [data, isPlaying]);
 
   if (isLoading && !data) {
     return (
@@ -88,11 +77,11 @@ export function TrendingTopicsChart() {
   const chartConfig = Array.from(
     new Set(data.flatMap((d) => d.topicStats.map((t) => t.topic))),
   ).reduce(
-    (acc, topic) => ({
+    (acc, topic, index) => ({
       ...acc,
       [topic]: {
         label: topic,
-        color: getTopicColor(topic),
+        color: `var(--chart-${(index % 20) + 1})`,
       },
     }),
     {},
@@ -126,7 +115,10 @@ export function TrendingTopicsChart() {
       />
 
       <div className="mt-8">
-        <ChartContainer config={chartConfig} className="h-[500px]">
+        <ChartContainer
+          config={chartConfig}
+          className="h-[500px] justify-center"
+        >
           <BarChart
             layout="vertical"
             data={chartData}
@@ -151,21 +143,70 @@ export function TrendingTopicsChart() {
           </BarChart>
         </ChartContainer>
 
-        <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
-          {data.map((timeData, index) => (
-            <div
-              key={timeData.time}
-              className={`px-3 py-1 rounded text-sm whitespace-nowrap ${
-                index === currentTimeIndex
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              }`}
+        <div className="mt-6">
+          <div className="flex items-center gap-4 mb-4 justify-center">
+            <Button onClick={() => setCurrentTimeIndex(0)} variant="outline">
+              <Rewind className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setCurrentTimeIndex(
+                  currentTimeIndex === 0
+                    ? data.length - 1
+                    : currentTimeIndex - 1,
+                )
+              }
             >
-              {interval === "day"
-                ? new Date(timeData.time).toLocaleDateString()
-                : new Date(timeData.time).toLocaleTimeString()}
-            </div>
-          ))}
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button onClick={() => setIsPlaying(!isPlaying)} variant="outline">
+              {isPlaying ? (
+                <Pause className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCurrentTimeIndex(
+                  currentTimeIndex === data.length - 1
+                    ? 0
+                    : currentTimeIndex + 1,
+                );
+              }}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={() => setCurrentTimeIndex(data.length - 1)}
+              variant="outline"
+            >
+              <FastForward className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2 justify-center">
+            {data.map((timeData, index) => (
+              <Button
+                key={timeData.time}
+                onClick={() => {
+                  setCurrentTimeIndex(index);
+                  setIsPlaying(false);
+                }}
+                className={`px-3 py-1 rounded text-sm whitespace-nowrap cursor-pointer hover:bg-secondary/80 hover:text-secondary-foreground transition-colors ${
+                  index === currentTimeIndex
+                    ? "bg-secondary text-secondary-foreground font-medium"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {interval === "day"
+                  ? new Date(timeData.time).toLocaleDateString()
+                  : new Date(timeData.time).toLocaleTimeString()}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

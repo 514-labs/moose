@@ -1,10 +1,10 @@
 {
-  "name": "live-dev-trends",
+  "name": "moose",
   "version": "0.0",
   "scripts": {
-    "dev": "moose-cli dev",
+    "build": "moose-cli build --docker",
     "moose": "moose-cli",
-    "build": "moose-cli build --docker"
+    "dev": "moose-cli dev"
   },
   "dependencies": {
     "@514labs/moose-lib": "latest",

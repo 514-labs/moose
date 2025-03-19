@@ -1,11 +1,11 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use log::info;
 use tokio::process::Child;
 
 use crate::{
     framework::{core::infrastructure::function_process::FunctionProcess, python, typescript},
-    infrastructure::stream::redpanda::RedpandaConfig,
+    project::Project,
     utilities::system::{kill_child, KillProcessError},
 };
 
@@ -23,16 +23,14 @@ pub enum FunctionRegistryError {
 
 pub struct FunctionProcessRegistry {
     registry: HashMap<String, Child>,
-    kafka_config: RedpandaConfig,
-    project_path: PathBuf,
+    project: Project,
 }
 
 impl FunctionProcessRegistry {
-    pub fn new(kafka_config: RedpandaConfig, project_path: PathBuf) -> Self {
+    pub fn new(project: Project) -> Self {
         Self {
             registry: HashMap::new(),
-            kafka_config,
-            project_path,
+            project,
         }
     }
 
@@ -40,9 +38,12 @@ impl FunctionProcessRegistry {
         &mut self,
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
+        let kafka_config = self.project.redpanda_config.clone();
+        let project_path = self.project.project_location.clone();
+
         let child = if function_process.is_py_function_process() {
             Ok(python::streaming::run(
-                &self.kafka_config,
+                &kafka_config,
                 &function_process.source_topic,
                 &function_process.target_topic,
                 &function_process.target_topic_config_json(),
@@ -50,13 +51,14 @@ impl FunctionProcessRegistry {
             )?)
         } else if function_process.is_ts_function_process() {
             Ok(typescript::streaming::run(
-                &self.kafka_config,
+                &kafka_config,
                 &function_process.source_topic,
                 &function_process.target_topic,
                 &function_process.target_topic_config_json(),
                 &function_process.executable,
-                &self.project_path,
+                &project_path,
                 function_process.parallel_process_count,
+                self.project.features.data_model_v2,
             )?)
         } else {
             Err(FunctionRegistryError::UnsupportedFunctionLanguage {

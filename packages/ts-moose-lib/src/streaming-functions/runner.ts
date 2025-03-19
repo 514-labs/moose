@@ -5,6 +5,7 @@ import process from "node:process";
 import http from "http";
 import { cliLog } from "../commons";
 import { Cluster } from "../cluster-utils";
+import { getStreamingFunctions } from "../dmv2/internal";
 
 const HOSTNAME = process.env.HOSTNAME;
 const AUTO_COMMIT_INTERVAL_MS = 5000;
@@ -65,6 +66,7 @@ interface StreamingFunctionArgs {
   functionFilePath: string;
   broker: string;
   maxSubscriberCount: number;
+  isDmv2: boolean;
   saslUsername?: string;
   saslPassword?: string;
   saslMechanism?: string;
@@ -104,10 +106,11 @@ const parseArgs = (): StreamingFunctionArgs => {
   const FUNCTION_FILE_PATH = process.argv[6];
   const BROKER = process.argv[7];
   const MAX_SUBCRIBER_COUNT = process.argv[8];
-  const SASL_USERNAME = process.argv[9];
-  const SASL_PASSWORD = process.argv[10];
-  const SASL_MECHANISM = process.argv[11];
-  const SECURITY_PROTOCOL = process.argv[12];
+  const IS_DMV2 = process.argv[9];
+  const SASL_USERNAME = process.argv[10];
+  const SASL_PASSWORD = process.argv[11];
+  const SASL_MECHANISM = process.argv[12];
+  const SECURITY_PROTOCOL = process.argv[13];
 
   return {
     sourceTopic: SOURCE_TOPIC,
@@ -120,6 +123,7 @@ const parseArgs = (): StreamingFunctionArgs => {
     saslMechanism: SASL_MECHANISM,
     securityProtocol: SECURITY_PROTOCOL,
     maxSubscriberCount: parseInt(MAX_SUBCRIBER_COUNT),
+    isDmv2: IS_DMV2 === "true",
   };
 };
 
@@ -405,6 +409,12 @@ function loadStreamingFunction(args: StreamingFunctionArgs) {
   return streamingFunctionImport.default;
 }
 
+async function loadStreamingFunctionV2(args: StreamingFunctionArgs) {
+  const transformFunctions = await getStreamingFunctions();
+  const transformFunctionKey = `${args.sourceTopic}_${args.targetTopic}`;
+  return transformFunctions.get(transformFunctionKey);
+}
+
 /**
  * Initializes and starts a Kafka consumer that processes messages using a streaming function
  *
@@ -442,7 +452,9 @@ const startConsumer = async (
   );
 
   // We preload the function to not have to load it for each message
-  const streamingFunction: StreamingFunction = loadStreamingFunction(args);
+  const streamingFunction: StreamingFunction = args.isDmv2
+    ? await loadStreamingFunctionV2(args)
+    : loadStreamingFunction(args);
 
   await consumer.subscribe({
     topics: [args.sourceTopic],

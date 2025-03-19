@@ -1339,6 +1339,7 @@ impl InfrastructureMap {
         let topics = partial.convert_topics();
         let api_endpoints = partial.convert_api_endpoints(language);
         let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes();
+        let function_processes = partial.create_function_processes(language);
 
         Ok(InfrastructureMap {
             topics,
@@ -1347,7 +1348,7 @@ impl InfrastructureMap {
             views: partial.views,
             topic_to_table_sync_processes,
             topic_to_topic_sync_processes: partial.topic_to_topic_sync_processes,
-            function_processes: partial.function_processes,
+            function_processes,
             block_db_processes: partial.block_db_processes.unwrap_or(OlapProcess {}),
             consumption_api_web_server: partial
                 .consumption_api_web_server
@@ -1372,6 +1373,7 @@ struct PartialTopic {
     pub columns: Vec<Column>,
     pub retention_period: u64,
     pub partition_count: usize,
+    pub transformation_targets: Vec<TransformationTarget>,
     pub target_table: Option<String>,
 }
 
@@ -1383,6 +1385,12 @@ pub enum WriteToKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WriteTo {
+    pub kind: WriteToKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
 }
@@ -1547,6 +1555,60 @@ impl PartialInfrastructureMap {
         }
 
         sync_processes
+    }
+
+    fn create_function_processes(
+        &self,
+        language: SupportedLanguages,
+    ) -> HashMap<String, FunctionProcess> {
+        let mut function_processes = self.function_processes.clone();
+
+        for (topic_name, partial_topic) in &self.topics {
+            if partial_topic.transformation_targets.is_empty() {
+                continue;
+            }
+
+            for target in &partial_topic.transformation_targets {
+                let process_id = format!("{}_{}", topic_name, target.name);
+
+                match self.topics.get(&target.name) {
+                    Some(target_topic) => {
+                        let function_process = FunctionProcess {
+                            name: process_id.clone(),
+                            source_topic: topic_name.clone(),
+                            source_columns: partial_topic.columns.clone(),
+                            target_topic: target.name.clone(),
+                            target_topic_config: HashMap::from([
+                                ("max.message.bytes".to_string(), (1024 * 1024).to_string()),
+                                ("message.max.bytes".to_string(), (1024 * 1024).to_string()),
+                            ]),
+                            target_columns: target_topic.columns.clone(),
+                            executable: std::env::current_dir()
+                                .unwrap_or_default()
+                                .join("app")
+                                .join(format!("index.{}", language.extension())),
+                            parallel_process_count: partial_topic.partition_count,
+                            version: "0.0".to_string(),
+                            source_primitive: PrimitiveSignature {
+                                name: topic_name.clone(),
+                                primitive_type: PrimitiveTypes::DataModel,
+                            },
+                        };
+
+                        function_processes.insert(process_id.clone(), function_process);
+                    }
+                    None => {
+                        log::info!(
+                            "<dmv2> Cannot create function process from '{}' to '{}': target topic not found",
+                            topic_name,
+                            target.name
+                        );
+                    }
+                }
+            }
+        }
+
+        function_processes
     }
 }
 

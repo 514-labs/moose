@@ -46,7 +46,7 @@ export function TrendingTopicsChart() {
       const result = await mooseClient.consumptionTopicTimeseriesGet({
         interval,
         limit,
-        exclude: exclude || undefined,
+        exclude,
       });
       return result;
     },
@@ -114,17 +114,14 @@ export function TrendingTopicsChart() {
         onIntervalChange={(value) => {
           setInterval(value);
           setCurrentTimeIndex(0); // Reset animation index
-          refetch();
         }}
         onLimitChange={(value) => {
           setLimit(value);
           setCurrentTimeIndex(0);
-          refetch();
         }}
         onExcludeChange={(value) => {
           setExclude(value);
           setCurrentTimeIndex(0);
-          refetch();
         }}
       />
 

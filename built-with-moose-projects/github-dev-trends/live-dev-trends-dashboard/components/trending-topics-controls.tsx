@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { TagInput } from "./tag-input";
 import { Label } from "@/components/ui/label";
 
 interface TrendingTopicsControlsProps {
@@ -61,13 +61,14 @@ export function TrendingTopicsControls({
         </Select>
       </div>
 
-      <div>
-        <Label htmlFor="exclude">Exclude Topics (comma separated)</Label>
-        <Input
-          id="exclude"
-          value={exclude}
-          onChange={(e) => onExcludeChange(e.target.value)}
-          placeholder="e.g. javascript,python"
+      <div className="md:col-span-3">
+        <Label htmlFor="exclude-tags" className="mb-2 block">
+          Exclude Topics
+        </Label>
+        <TagInput
+          tags={exclude ? exclude.split(",") : []}
+          onTagsChange={(tags) => onExcludeChange(tags.join(","))}
+          placeholder="Type a topic to exclude and press Enter"
         />
       </div>
     </div>

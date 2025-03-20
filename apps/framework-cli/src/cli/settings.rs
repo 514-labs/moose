@@ -250,6 +250,18 @@ machine_id="{{uuid}}"
 }
 
 impl Settings {
+    /// Loads settings from all configuration sources
+    ///
+    /// Convenience method that calls read_settings() and handles errors appropriately.
+    /// This method can be called from anywhere in the codebase to get the current settings.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the parsed Settings or a ConfigError
+    pub fn load() -> Result<Self, ConfigError> {
+        read_settings()
+    }
+
     /// Checks if container shutdown should be skipped based on settings and environment variables
     ///
     /// This function intelligently interprets the MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable:

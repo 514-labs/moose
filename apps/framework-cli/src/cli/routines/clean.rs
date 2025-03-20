@@ -1,5 +1,5 @@
 use crate::utilities::docker::DockerClient;
-use crate::{cli::display::Message, project::Project};
+use crate::{cli::display::Message, cli::settings::Settings, project::Project};
 use log::info;
 
 use super::util::ensure_docker_running;
@@ -11,7 +11,15 @@ pub fn clean_project(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     ensure_docker_running(docker_client)?;
 
-    if std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN").is_err() {
+    // Get the settings to check if containers should be shut down
+    let settings = Settings::load().map_err(|e| {
+        RoutineFailure::new(
+            Message::new("Failed".to_string(), "to load settings".to_string()),
+            e,
+        )
+    })?;
+
+    if settings.should_shutdown_containers() {
         docker_client.stop_containers(project).map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to stop containers".to_string()),
@@ -19,9 +27,7 @@ pub fn clean_project(
             )
         })?;
     } else {
-        info!(
-            "Skipping container shutdown due to MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable"
-        );
+        info!("Skipping container shutdown based on settings and environment variables");
     }
 
     Ok(RoutineSuccess::success(Message::new(

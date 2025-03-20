@@ -19,7 +19,7 @@ use commands::{
 use config::ConfigError;
 use display::{with_spinner, with_spinner_async};
 use home::home_dir;
-use log::{debug, info};
+use log::{debug, error, info, warn};
 use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
@@ -1008,21 +1008,85 @@ pub async fn cli_run() {
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 
+    // Setup Ctrl+C / SIGINT handler
+    tokio::spawn(async move {
+        // Set up a handler for Ctrl+C / SIGINT
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {
+                info!("Received Ctrl+C / SIGINT, initiating graceful shutdown");
+
+                // Before anything else, disable any background Redis tasks
+                info!("Stopping background tasks");
+
+                // Read settings directly here to avoid borrowing issues
+                if let Ok(project) = Project::load_from_current_dir() {
+                    if !project.is_production {
+                        let should_skip_shutdown =
+                            match std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN") {
+                                Ok(val) => {
+                                    let val = val.to_lowercase();
+                                    val == "1" || val == "true" || val == "yes"
+                                }
+                                Err(_) => false,
+                            };
+
+                        if !should_skip_shutdown {
+                            // Create a new settings instance for the Docker client
+                            let settings = read_settings().unwrap();
+
+                            // Display clear message about container shutdown
+                            println!("\nStopping containers on exit...");
+
+                            let docker = DockerClient::new(&settings);
+
+                            if let Err(err) = docker.stop_containers(&project) {
+                                warn!("Error stopping containers: {:?}", err);
+                                println!("Failed to stop some containers: {}", err);
+                            } else {
+                                info!("Successfully stopped containers");
+                                println!("All containers stopped successfully");
+                            }
+                        } else {
+                            info!("Skipping container shutdown due to MOOSE_SKIP_CONTAINER_SHUTDOWN=true");
+                            println!(
+                                "Skipping container shutdown (MOOSE_SKIP_CONTAINER_SHUTDOWN=true)"
+                            );
+                        }
+                    }
+                } else {
+                    warn!("Could not load project for shutdown, containers may remain running");
+                }
+
+                // Final delay before exit
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                std::process::exit(0);
+            }
+            Err(err) => {
+                error!("Error setting up Ctrl+C handler: {:?}", err);
+            }
+        }
+    });
+
     let cli = Cli::parse();
 
-    match top_command_handler(config, &cli.command).await {
-        Ok(s) => {
-            show_message!(s.message_type, s.message);
-            exit(0);
-        }
-        Err(e) => {
-            show_message!(e.message_type, e.message);
-            if let Some(err) = e.error {
-                eprintln!("{:?}", err)
+    // Run command with the Ctrl+C handler
+    tokio::select! {
+        result = top_command_handler(config, &cli.command) => {
+            match result {
+                Ok(s) => {
+                    show_message!(s.message_type, s.message);
+                    exit(0);
+                }
+                Err(e) => {
+                    show_message!(e.message_type, e.message);
+                    if let Some(err) = e.error {
+                        eprintln!("{:?}", err)
+                    }
+                    exit(1);
+                }
             }
-            exit(1);
         }
-    };
+    }
 }
 
 #[cfg(test)]

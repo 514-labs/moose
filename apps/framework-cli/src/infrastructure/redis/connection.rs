@@ -267,4 +267,24 @@ impl ConnectionManagerWrapper {
             }
         }
     }
+
+    /// Gracefully shuts down Redis connections by sending QUIT commands.
+    ///
+    /// This method should be called as part of the application shutdown sequence
+    /// to ensure Redis connections are properly terminated.
+    pub async fn shutdown(&self) {
+        log::info!("<RedisConnection> Shutting down Redis connections");
+
+        // Send QUIT command to both connection managers
+        let mut conn = self.connection.clone();
+        let mut pub_sub = self.pub_sub.clone();
+
+        let _ = redis::cmd("QUIT").query_async::<_, ()>(&mut conn).await;
+        let _ = redis::cmd("QUIT").query_async::<_, ()>(&mut pub_sub).await;
+
+        // Mark the connection as disconnected
+        self.state.store(false, Ordering::SeqCst);
+
+        log::info!("<RedisConnection> Redis connections shutdown complete");
+    }
 }

@@ -878,14 +878,34 @@ impl RedisClient {
             )
             .await
     }
+
+    /// Shuts down the RedisClient gracefully, stopping all background tasks and closing Redis connections.
+    ///
+    /// This method should be called when the application is shutting down to ensure
+    /// a clean termination of Redis connections and prevent panics during application exit.
+    ///
+    /// # Returns
+    ///
+    /// - `anyhow::Result<()>` - Result indicating success or failure
+    pub async fn shutdown(&mut self) -> anyhow::Result<()> {
+        log::info!("<RedisClient> Shutting down RedisClient gracefully");
+
+        // First stop all periodic tasks
+        self.stop_periodic_tasks().await?;
+
+        // Shutdown Redis connections using the ConnectionManagerWrapper
+        self.connection_manager.shutdown().await;
+
+        log::info!("<RedisClient> RedisClient shutdown complete");
+        Ok(())
+    }
 }
 
 impl Drop for RedisClient {
     fn drop(&mut self) {
         log::info!("<RedisClient> RedisClient is being dropped. Cleaning up tasks.");
 
-        // We can't use await in drop, so we need to use blocking operations
-        // or just ignore the errors for cleanup
+        // First, abort any running tasks to prevent them from using the connection
         if let Ok(mut guard) = self.listener_task.try_write() {
             if let Some(task) = guard.take() {
                 task.abort();
@@ -902,6 +922,17 @@ impl Drop for RedisClient {
             if let Some(task) = guard.take() {
                 task.abort();
             }
+        }
+
+        // Create a runtime for blocking operations during drop
+        if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            // Close Redis connections gracefully using the ConnectionManagerWrapper
+            rt.block_on(async {
+                self.connection_manager.shutdown().await;
+            });
         }
     }
 }

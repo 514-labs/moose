@@ -72,7 +72,7 @@ def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
     if t is str:
         data_type = "String"
     elif t is int:
-        data_type = "Integer"
+        data_type = "Int"
     elif t is float:
         data_type = "Float"
     elif t is bool:

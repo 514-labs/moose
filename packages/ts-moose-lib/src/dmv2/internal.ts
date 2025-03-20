@@ -91,8 +91,8 @@ const toInfraMap = (registry: typeof moose_internal) => {
   };
 };
 
+// work around for variable visibility in compiler output
 (globalThis as any).moose_internal = moose_internal;
-
 export const getMooseInternal = (): typeof moose_internal =>
   (globalThis as any).moose_internal;
 

@@ -15,10 +15,7 @@ pub struct ProcessRegistries {
 
 impl ProcessRegistries {
     pub fn new(project: &Project, settings: &Settings) -> Self {
-        let functions = FunctionProcessRegistry::new(
-            project.redpanda_config.clone(),
-            project.project_location.clone(),
-        );
+        let functions = FunctionProcessRegistry::new(project.clone());
         let blocks = BlocksProcessRegistry::new(
             project.language,
             project.blocks_dir(),

@@ -106,6 +106,21 @@ export const loadIndex = async () => {
   );
 };
 
+export const getStreamingFunctions = async () => {
+  await require(`${process.cwd()}/app/index.ts`);
+
+  const registry = getMooseInternal();
+  const transformFunctions = new Map<string, (data: unknown) => unknown>();
+
+  registry.streams.forEach((stream) => {
+    stream._transformations.forEach(([destination, f]) => {
+      transformFunctions.set(`${stream.name}_${destination.name}`, f);
+    });
+  });
+
+  return transformFunctions;
+};
+
 export class TypedBase<T, C> {
   schema: IJsonSchemaCollection.IV3_1;
   name: string;

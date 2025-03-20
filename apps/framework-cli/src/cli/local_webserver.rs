@@ -1308,10 +1308,6 @@ async fn shutdown(
         }
     }
 
-    // Ensure any Redis-using tasks are stopped
-    info!("Stopping any tasks that might be using Redis");
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
     // Shutdown Redis client that was passed
     info!("Shutting down Redis client connections");
 
@@ -1337,21 +1333,12 @@ async fn shutdown(
     info!("Dropping Redis client reference");
     drop(redis_client);
 
-    // Add a small delay to ensure any background tasks have a chance to clean up
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-
     // Shutdown the Docker containers if needed
     if !project.is_production {
-        let should_skip_shutdown = match std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN") {
-            Ok(val) => {
-                // Consider values like "0", "false", "no" as false (don't skip)
-                let val = val.to_lowercase();
-                val == "1" || val == "true" || val == "yes"
-            }
-            Err(_) => false, // Variable not set, don't skip
-        };
+        // Use the centralized settings function to check if containers should be shutdown
+        let should_shutdown_containers = settings.should_shutdown_containers();
 
-        if !should_skip_shutdown {
+        if should_shutdown_containers {
             // Create docker client with a fresh settings reference
             let docker = DockerClient::new(settings);
             info!("Starting container shutdown process");
@@ -1383,7 +1370,7 @@ async fn shutdown(
 
             info!("Container shutdown complete");
         } else {
-            info!("Skipping container shutdown due to MOOSE_SKIP_CONTAINER_SHUTDOWN=true");
+            info!("Skipping container shutdown due to settings configuration");
         }
     }
 

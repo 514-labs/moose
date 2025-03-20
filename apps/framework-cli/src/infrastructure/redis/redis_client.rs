@@ -359,15 +359,14 @@ impl RedisClient {
         let listener = tokio::spawn(async move {
             // Obtain a pubsub connection
             let client = Client::open(config_url).expect("Failed to open client for listener");
-            let pubsub_conn = match client.get_async_connection().await {
-                Ok(conn) => conn,
+            let mut pubsub = match client.get_async_pubsub().await {
+                Ok(pubsub) => pubsub,
                 Err(e) => {
                     log::error!("<RedisClient> Failed to get pubsub connection: {}", e);
                     return;
                 }
             };
 
-            let mut pubsub = pubsub_conn.into_pubsub();
             if let Err(e) = pubsub
                 .subscribe(&[&instance_channel_clone, &broadcast_channel_clone])
                 .await

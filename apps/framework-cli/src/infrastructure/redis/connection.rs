@@ -181,7 +181,7 @@ impl ConnectionManagerWrapper {
 
         // Try to ping with connection using cmd() method
         let cmd = redis::cmd("PING");
-        let ping_future = cmd.query_async::<_, String>(&mut conn);
+        let ping_future = cmd.query_async::<String>(&mut conn);
         let timeout_future = time::timeout(Duration::from_secs(2), ping_future);
 
         match timeout_future.await {
@@ -279,8 +279,8 @@ impl ConnectionManagerWrapper {
         let mut conn = self.connection.clone();
         let mut pub_sub = self.pub_sub.clone();
 
-        let _ = redis::cmd("QUIT").query_async::<_, ()>(&mut conn).await;
-        let _ = redis::cmd("QUIT").query_async::<_, ()>(&mut pub_sub).await;
+        let _ = redis::cmd("QUIT").query_async::<()>(&mut conn).await;
+        let _ = redis::cmd("QUIT").query_async::<()>(&mut pub_sub).await;
 
         // Mark the connection as disconnected
         self.state.store(false, Ordering::SeqCst);

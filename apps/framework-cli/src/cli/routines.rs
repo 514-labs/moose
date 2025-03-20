@@ -205,8 +205,6 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
-    spawn_connection_monitor(redis_client.clone());
-
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
         (
@@ -671,76 +669,4 @@ pub async fn remote_plan(
     display::show_changes(&temp_plan);
 
     Ok(())
-}
-
-fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
-    // Create a watch channel for signaling shutdown
-    let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
-
-    // Store the shutdown sender in a static variable that can be accessed during application shutdown
-    // This is intentionally leaking memory, but it's fine for a shutdown handler
-    static SHUTDOWN_SENDERS: once_cell::sync::Lazy<
-        std::sync::Mutex<Vec<tokio::sync::watch::Sender<bool>>>,
-    > = once_cell::sync::Lazy::new(|| std::sync::Mutex::new(Vec::new()));
-
-    // Add our sender to the list
-    if let Ok(mut senders) = SHUTDOWN_SENDERS.lock() {
-        senders.push(shutdown_tx.clone());
-    }
-
-    // Register a Ctrl+C handler that will trigger all monitors to shut down
-    static INIT_CTRL_C: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if !INIT_CTRL_C.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        // Only register once
-        tokio::spawn(async move {
-            if tokio::signal::ctrl_c().await.is_ok() {
-                info!("Connection monitor received termination signal");
-
-                // Signal all monitors to shut down
-                if let Ok(senders) = SHUTDOWN_SENDERS.lock() {
-                    for sender in senders.iter() {
-                        let _ = sender.send(true);
-                    }
-                }
-
-                // Small delay to allow monitors to process the shutdown signal
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            }
-        });
-    }
-
-    // Use a weak reference to avoid keeping the Redis client alive if everything else has dropped it
-    let weak_client = Arc::downgrade(&redis_client);
-
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
-
-        loop {
-            tokio::select! {
-                _ = interval.tick() => {
-                    // Upgrade the weak reference to ensure the Redis client is still alive
-                    if let Some(redis_client) = weak_client.upgrade() {
-                        // Only check connection if we can get the lock without blocking
-                        if let Ok(mut client) = redis_client.try_lock() {
-                            if let Err(err) = client.check_connection().await {
-                                warn!("Error checking Redis connection: {:?}", err);
-                            }
-                        }
-                    } else {
-                        // Redis client has been dropped, we should exit
-                        info!("Redis client no longer exists, stopping connection monitor");
-                        break;
-                    }
-                }
-                result = shutdown_rx.changed() => {
-                    if result.is_ok() && *shutdown_rx.borrow() {
-                        info!("Shutting down connection monitor");
-                        break;
-                    }
-                }
-            }
-        }
-
-        info!("Connection monitor shutdown complete");
-    });
 }

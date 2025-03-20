@@ -44,6 +44,9 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
 }
 
 type ZeroOrMany<T> = T | T[] | undefined;
+type SyncOrAsyncTransform<T, U> = (
+  record: T,
+) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
 
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   constructor(name: string, config?: StreamConfig<T>);
@@ -69,13 +72,13 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
 
   _transformations = new Map<
     string,
-    [Stream<any>, (record: T) => ZeroOrMany<any>]
+    [Stream<any>, SyncOrAsyncTransform<T, any>]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
 
   addTransform = <U>(
     destination: Stream<U>,
-    transformation: (record: T) => ZeroOrMany<U>,
+    transformation: SyncOrAsyncTransform<T, U>,
   ) => {
     this._transformations.set(destination.name, [destination, transformation]);
   };

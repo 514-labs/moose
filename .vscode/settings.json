@@ -27,5 +27,6 @@
       "driver": "ClickHouse",
       "name": "pa"
     }
-  ]
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

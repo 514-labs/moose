@@ -134,6 +134,11 @@ pub struct Settings {
 pub struct DevSettings {
     /// Optional custom path to container CLI executable
     pub container_cli_path: Option<PathBuf>,
+
+    /// Whether to skip shutting down containers on exit
+    /// This can be set via the MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable
+    #[serde(default)]
+    pub skip_container_shutdown: bool,
 }
 
 /// Returns the path to the config file in the user's home directory
@@ -242,4 +247,47 @@ machine_id="{{uuid}}"
         }
     }
     Ok(())
+}
+
+impl Settings {
+    /// Loads settings from all configuration sources
+    ///
+    /// Convenience method that calls read_settings() and handles errors appropriately.
+    /// This method can be called from anywhere in the codebase to get the current settings.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the parsed Settings or a ConfigError
+    pub fn load() -> Result<Self, ConfigError> {
+        read_settings()
+    }
+
+    /// Checks if container shutdown should be skipped based on settings and environment variables
+    ///
+    /// This function intelligently interprets the MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable:
+    /// - Values like "1", "true", "yes" (case-insensitive) are interpreted as true
+    /// - Values like "0", "false", "no" (case-insensitive) are interpreted as false
+    /// - If the environment variable is not set, uses the value from config
+    pub fn should_skip_container_shutdown(&self) -> bool {
+        // Check environment variable first (takes precedence over config)
+        match std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN") {
+            Ok(val) => {
+                let val = val.to_lowercase();
+                val == "1" || val == "true" || val == "yes"
+            }
+            // Fall back to the configured value if env var is not set
+            Err(_) => self.dev.skip_container_shutdown,
+        }
+    }
+
+    /// Checks if containers should be shut down based on settings and environment variables
+    ///
+    /// This is the inverse of should_skip_container_shutdown, providing a clearer API
+    /// that avoids double negatives in calling code.
+    ///
+    /// - Returns true when containers should be shut down
+    /// - Returns false when shutdown should be skipped
+    pub fn should_shutdown_containers(&self) -> bool {
+        !self.should_skip_container_shutdown()
+    }
 }

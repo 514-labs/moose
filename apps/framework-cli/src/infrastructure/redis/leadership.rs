@@ -79,7 +79,7 @@ impl LeadershipManager {
             .key(lock_key)
             .arg(instance_id)
             .arg(ttl)
-            .invoke_async::<_, i64>(&mut conn)
+            .invoke_async::<i64>(&mut conn)
             .await
         {
             Ok(1) => {
@@ -137,7 +137,7 @@ impl LeadershipManager {
             .key(lock_key)
             .arg(instance_id)
             .arg(ttl)
-            .invoke_async::<_, i64>(&mut conn)
+            .invoke_async::<i64>(&mut conn)
             .await
         {
             Ok(1) => {
@@ -239,7 +239,7 @@ impl LeadershipManager {
         let result: i32 = script
             .key(lock_key)
             .arg(instance_id)
-            .invoke_async::<_, i32>(&mut conn)
+            .invoke_async::<i32>(&mut conn)
             .await?;
         Ok(result == 1)
     }

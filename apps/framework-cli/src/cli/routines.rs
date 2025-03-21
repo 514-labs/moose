@@ -89,13 +89,13 @@
 use crate::cli::local_webserver::RouteMeta;
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::{interval, sleep, Duration};
+use tokio::time::{interval, Duration};
 
 use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
@@ -204,8 +204,6 @@ impl RoutineFailure {
 pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
-
-    spawn_connection_monitor(redis_client.clone());
 
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
@@ -448,9 +446,13 @@ pub async fn start_development_mode(
         )
         .await;
 
-    {
-        let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks().await;
+    // Ensure Redis client is properly shutdown to avoid panic when the app is terminated
+    info!("Shutting down Redis client");
+    let mut redis_client_guard = redis_client.lock().await;
+    if let Err(err) = redis_client_guard.shutdown().await {
+        warn!("Error shutting down Redis client: {:?}", err);
+    } else {
+        info!("Redis client shutdown completed successfully");
     }
 
     Ok(())
@@ -541,9 +543,13 @@ pub async fn start_production_mode(
         )
         .await;
 
-    {
-        let mut redis_client = redis_client.lock().await;
-        let _ = redis_client.stop_periodic_tasks().await;
+    // Ensure Redis client is properly shutdown to avoid panic when the app is terminated
+    info!("Shutting down Redis client");
+    let mut redis_client_guard = redis_client.lock().await;
+    if let Err(err) = redis_client_guard.shutdown().await {
+        warn!("Error shutting down Redis client: {:?}", err);
+    } else {
+        info!("Redis client shutdown completed successfully");
     }
 
     Ok(())
@@ -663,28 +669,4 @@ pub async fn remote_plan(
     display::show_changes(&temp_plan);
 
     Ok(())
-}
-
-fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
-    tokio::spawn(async move {
-        loop {
-            let handle = {
-                let client = redis_client.lock().await;
-                client.start_connection_monitor()
-            };
-            match handle.await {
-                Ok(_) => {
-                    info!("Connection monitor exited gracefully");
-                    break;
-                }
-                Err(err) => {
-                    error!(
-                        "Connection monitor panicked: {:#?}. Restarting in 1 second...",
-                        err
-                    );
-                    sleep(Duration::from_secs(1)).await;
-                }
-            }
-        }
-    });
 }

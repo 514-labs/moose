@@ -67,7 +67,7 @@ tokio-cron-scheduler = "0.11.0"
 cron = "0.13.0"
 tokio-stream = "0.1.16"
 indexmap = "2.5.0"
-redis = { version = "0.24.0", features = [
+redis = { version = "0.29.1", features = [
     "tokio-comp",
     "aio",
     "tokio-native-tls-comp",

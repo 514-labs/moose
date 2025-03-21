@@ -1009,8 +1009,8 @@ pub async fn cli_run() {
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 
     let cli = Cli::parse();
-
-    match top_command_handler(config, &cli.command).await {
+    let cli_result = top_command_handler(config, &cli.command).await;
+    match cli_result {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             exit(0);
@@ -1022,7 +1022,7 @@ pub async fn cli_run() {
             }
             exit(1);
         }
-    };
+    }
 }
 
 #[cfg(test)]

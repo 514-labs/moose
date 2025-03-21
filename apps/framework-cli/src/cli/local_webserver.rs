@@ -18,14 +18,11 @@
 ///
 /// The webserver is configurable through the `LocalWebserverConfig` struct and
 /// can be started in both development and production modes.
-use super::display::Message;
-use super::display::MessageType;
+use super::display::{with_spinner, Message, MessageType};
 use super::routines::auth::validate_auth_token;
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::MetricEvent;
-
-use crate::cli::display::with_spinner;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
@@ -1267,7 +1264,9 @@ impl Webserver {
             }
         }
 
-        shutdown(settings, &project, graceful).await;
+        // Extract Redis client for shutdown
+        let redis_client_for_shutdown = route_service.redis_client.clone();
+        shutdown(settings, &project, graceful, redis_client_for_shutdown).await;
     }
 }
 
@@ -1294,19 +1293,69 @@ fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
         _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }
-async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShutdown) -> ! {
+async fn shutdown(
+    settings: &Settings,
+    project: &Project,
+    graceful: GracefulShutdown,
+    redis_client: Arc<Mutex<RedisClient>>,
+) -> ! {
+    // First, initiate the graceful shutdown of HTTP connections
+    let shutdown_future = graceful.shutdown();
+
+    // Wait for connections to close with a timeout
     tokio::select! {
-            _ = graceful.shutdown() => {
-                info!("all connections gracefully closed");
-            },
-            _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
-                warn!("timed out wait for all connections to close");
+        _ = shutdown_future => {
+            info!("all connections gracefully closed");
+        },
+        _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
+            warn!("timed out wait for all connections to close");
         }
     }
 
+    // Shutdown Redis client that was passed
+    info!("Shutting down Redis client connections");
+
+    // First attempt: Try to properly shut down the Redis client
+    match tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        if let Ok(mut client) = redis_client.try_lock() {
+            match client.shutdown().await {
+                Ok(_) => info!("Redis client shutdown completed successfully"),
+                Err(err) => warn!("Error during Redis client shutdown: {:?}", err),
+            }
+        } else {
+            warn!("Could not acquire lock on Redis client for shutdown");
+        }
+    })
+    .await
+    {
+        Ok(_) => info!("Redis shutdown completed within timeout"),
+        Err(_) => warn!("Redis shutdown timed out, proceeding with application shutdown"),
+    }
+
+    // Important: Drop our reference to the Redis client to ensure it's fully cleaned up
+    // before we start stopping containers
+    info!("Dropping Redis client reference");
+    drop(redis_client);
+
+    // Shutdown the Docker containers if needed
     if !project.is_production {
-        if std::env::var("MOOSE_SKIP_CONTAINER_SHUTDOWN").is_err() {
+        // Use the centralized settings function to check if containers should be shutdown
+        let should_shutdown_containers = settings.should_shutdown_containers();
+
+        if should_shutdown_containers {
+            // Create docker client with a fresh settings reference
             let docker = DockerClient::new(settings);
+            info!("Starting container shutdown process");
+
+            // First display a clear message to the user
+            super::display::show_message_wrapper(
+                MessageType::Highlight,
+                Message {
+                    action: "Shutdown".to_string(),
+                    details: "Stopping containers...".to_string(),
+                },
+            );
+
             with_spinner(
                 "Stopping containers",
                 || {
@@ -1314,10 +1363,26 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
                 },
                 true,
             );
+
+            super::display::show_message_wrapper(
+                MessageType::Success,
+                Message {
+                    action: "Shutdown".to_string(),
+                    details: "All containers stopped successfully".to_string(),
+                },
+            );
+
+            info!("Container shutdown complete");
         } else {
-            info!("Skipping container shutdown due to MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable");
+            info!("Skipping container shutdown due to settings configuration");
         }
     }
+
+    // Final delay before exit to ensure any remaining tasks complete
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    // Exit the process cleanly
+    info!("Exiting application");
     std::process::exit(0);
 }
 

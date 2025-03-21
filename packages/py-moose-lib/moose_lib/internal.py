@@ -1,20 +1,23 @@
 from typing import Literal, Optional, List, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, AliasGenerator
 
 from .data_models import Column, _to_columns
 from moose_lib.dmv2 import _tables, _streams, _ingest_apis
 from pydantic.alias_generators import to_camel
 
-model_config = ConfigDict(alias_generator=to_camel)
+model_config = ConfigDict(alias_generator=AliasGenerator(
+    serialization_alias=to_camel,
+))
 
 
 class Target(BaseModel):
-    model_config = model_config
     kind: Literal["stream"]
     name: str
 
 
 class TableConfig(BaseModel):
+    model_config = model_config
+
     name: str
     columns: List[Column]
     order_by: List[str]
@@ -22,6 +25,8 @@ class TableConfig(BaseModel):
 
 
 class TopicConfig(BaseModel):
+    model_config = model_config
+
     name: str
     columns: List[Column]
     target_table: Optional[str] = None
@@ -32,6 +37,8 @@ class TopicConfig(BaseModel):
 
 
 class IngestApiConfig(BaseModel):
+    model_config = model_config
+
     name: str
     columns: List[Column]
     format: str
@@ -39,6 +46,8 @@ class IngestApiConfig(BaseModel):
 
 
 class InfrastructureMap(BaseModel):
+    model_config = model_config
+
     tables: dict[str, TableConfig]
     topics: dict[str, TopicConfig]
     ingest_apis: dict[str, IngestApiConfig]
@@ -159,4 +168,4 @@ def load_models(module_path: str = None) -> dict:
     infra_map = to_infra_map()
 
     # Print in the format expected by the infrastructure system
-    print("___MOOSE_STUFF___start", infra_map, "end___MOOSE_STUFF___")
+    print("___MOOSE_STUFF___start", json.dumps(infra_map), "end___MOOSE_STUFF___")

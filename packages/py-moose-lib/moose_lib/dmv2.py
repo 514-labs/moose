@@ -63,7 +63,7 @@ class IngestionFormat(Enum):
 class OlapConfig(BaseModel):
     """Configuration for OLAP tables."""
     order_by_fields: list[str] = []
-    deduplicate: bool = True
+    deduplicate: bool = False
 
 
 class OlapTable(TypedMooseResource, Generic[T]):

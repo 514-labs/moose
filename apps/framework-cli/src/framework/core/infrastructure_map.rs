@@ -1356,6 +1356,7 @@ impl InfrastructureMap {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PartialTable {
     pub name: String,
     pub columns: Vec<Column>,

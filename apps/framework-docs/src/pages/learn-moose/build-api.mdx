@@ -88,7 +88,7 @@ export default async function handle(
   {}: QueryParams,
   { client, sql }: ConsumptionUtil,
 ) {
-  return client.query(sql``);
+  return client.query.execute(sql``);
 }
 ```
 </TypeScript>
@@ -98,7 +98,7 @@ from moose_lib import MooseClient
 from typing import Optional
 
 def run(client: MooseClient, params, jwt: Optional[dict] = None):
-    return client.query("", {})
+    return client.query.execute("", {})
 
 ```
 </Python>
@@ -155,7 +155,7 @@ export default createConsumptionApi<QueryParams>(
   { rankBy = "total_projects" }: QueryParams,
   { client, sql }: ConsumptionUtil
 ) {
-  return client.query(
+  return client.query.execute(
     sql`SELECT 
           language, 
           countMerge(total_projects) AS total_projects, 
@@ -210,7 +210,7 @@ def run(client: MooseClient, params: QueryParams):
         {rank_by} DESC
     '''
     # Execute the query, passing rank_by as a parameter for safety
-    return client.query(query, { "rank_by": rank_by })
+    return client.query.execute(query, { "rank_by": rank_by })
 
 ```
 </Python>

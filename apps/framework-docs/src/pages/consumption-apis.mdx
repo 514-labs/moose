@@ -90,7 +90,7 @@ interface QueryParams {}
 // createConsumptionApi uses compile time code generation to generate a parser for QueryParams
 export default createConsumptionApi<QueryParams>(
   async (params, { client, sql }) => {
-    return client.query(sql`SELECT 1`);
+    return client.query.execute(sql`SELECT 1`);
   }
 );
 
@@ -109,7 +109,7 @@ class QueryParams(BaseModel):
     ## Define your query parameters here
 
 def run(client: MooseClient, params: QueryParams):
-    return client.query("SELECT 1", { })
+    return client.query.execute("SELECT 1", { })
 
 ```
 </Python>
@@ -158,7 +158,7 @@ export default createConsumptionApi<QueryParams>(
     `;
 
     // Set return type to the expected query result shape
-    const data = await client.query<{
+    const data = await client.query.execute<{
       dayOfMonth: number;
       totalRows?: number;
       rowsWithText?: number;

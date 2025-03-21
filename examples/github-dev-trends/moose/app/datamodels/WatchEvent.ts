@@ -22,7 +22,7 @@ export interface WatchEventWithRepo extends WatchEvent {
   repoOpenIssues?: number;
   repoCreatedAt?: Date;
   repoOwnerLogin?: string;
-  repoOwnerId?: number;
+  repoOwnerId?: string;
   repoOwnerUrl?: string;
   repoOwnerAvatarUrl?: string;
   repoOwnerType?: string;

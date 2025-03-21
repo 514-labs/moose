@@ -6,7 +6,6 @@ import {
 } from "@octokit/types";
 import * as fs from "fs";
 import * as path from "path";
-import { cliLog } from "@514labs/moose-lib";
 import * as dotenv from "dotenv";
 
 // Load environment variables from .env file

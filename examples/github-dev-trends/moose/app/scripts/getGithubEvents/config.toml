@@ -3,6 +3,5 @@ schedule = '* * * * *'
 retries = 3
 timeout = '1h'
 tasks = [
-    'fetchEvents',
-    'load',
+    'fetchEvents'
 ]

@@ -157,46 +157,111 @@ var utils_1 = require("../utils");
 var moose_lib_1 = require("@514labs/moose-lib");
 // The initial input data and data passed between tasks can be
 // defined in the task function parameter
+var EVENT_TYPES = new Set([
+  "WatchEvent",
+  "PushEvent",
+  "ForkEvent",
+  "PullRequestEvent",
+  "CreatedEvent",
+]);
+var BATCH_SIZE = 5;
+var DELAY_BETWEEN_BATCHES = 1000;
 var load = function (input) {
   return __awaiter(void 0, void 0, void 0, function () {
-    var octokit,
+    var repos,
+      repoDataMap,
+      i,
+      batch,
+      batchResults,
+      error_1,
       _i,
       _a,
       event_1,
       mooseEvent,
-      repo,
       repoData,
       mooseEventWithRepo;
-    var _b, _c, _d;
-    return __generator(this, function (_e) {
-      switch (_e.label) {
+    var _b, _c, _d, _e;
+    return __generator(this, function (_f) {
+      switch (_f.label) {
         case 0:
-          // The body of your script goes here
-          console.log("Hello world from load");
           if (!input || input.noNewEvents) {
-            console.log("No new events to load");
             return [
               2 /*return*/,
               {
                 task: "load",
-                data: {
-                  eventsLoaded: 0,
-                },
+                data: { eventsLoaded: 0 },
               },
             ];
           }
-          console.log(
-            "Loading "
-              .concat(input.count, " events from ")
-              .concat(input.fetchedAt),
-          );
-          octokit = (0, utils_1.createOctokit)();
-          (_i = 0), (_a = input.events);
-          _e.label = 1;
+          repos = Array.from(
+            new Set(
+              input.events
+                .filter(function (event) {
+                  return event.type && EVENT_TYPES.has(event.type);
+                })
+                .map(function (event) {
+                  return event.repo.name;
+                }),
+            ),
+          ).map(function (fullName) {
+            var _a = fullName.split("/"),
+              owner = _a[0],
+              name = _a[1];
+            return { owner: owner, name: name };
+          });
+          repoDataMap = new Map();
+          i = 0;
+          _f.label = 1;
         case 1:
-          if (!(_i < _a.length)) return [3 /*break*/, 5];
+          if (!(i < repos.length)) return [3 /*break*/, 8];
+          if (!(i > 0)) return [3 /*break*/, 3];
+          return [
+            4 /*yield*/,
+            new Promise(function (resolve) {
+              return setTimeout(resolve, DELAY_BETWEEN_BATCHES);
+            }),
+          ];
+        case 2:
+          _f.sent();
+          _f.label = 3;
+        case 3:
+          batch = repos.slice(i, i + BATCH_SIZE);
+          _f.label = 4;
+        case 4:
+          _f.trys.push([4, 6, , 7]);
+          return [4 /*yield*/, (0, utils_1.fetchReposBatchWithRetry)(batch)];
+        case 5:
+          batchResults = _f.sent();
+          batchResults.forEach(function (value, key) {
+            return repoDataMap.set(key, value);
+          });
+          (0, moose_lib_1.cliLog)({
+            action: "fetchRepos",
+            message: "Processed batch "
+              .concat(Math.floor(i / BATCH_SIZE) + 1, "/")
+              .concat(Math.ceil(repos.length / BATCH_SIZE)),
+            message_type: "Info",
+          });
+          return [3 /*break*/, 7];
+        case 6:
+          error_1 = _f.sent();
+          (0, moose_lib_1.cliLog)({
+            action: "fetchRepos",
+            message: "Error fetching repos batch: ".concat(error_1),
+            message_type: "Error",
+          });
+          return [3 /*break*/, 7];
+        case 7:
+          i += BATCH_SIZE;
+          return [3 /*break*/, 1];
+        case 8:
+          (_i = 0), (_a = input.events);
+          _f.label = 9;
+        case 9:
+          if (!(_i < _a.length)) return [3 /*break*/, 12];
           event_1 = _a[_i];
-          if (!(event_1.type === "WatchEvent")) return [3 /*break*/, 4];
+          if (!(event_1.type && EVENT_TYPES.has(event_1.type)))
+            return [3 /*break*/, 11];
           mooseEvent = {
             eventId: event_1.id,
             actorLogin: event_1.actor.login,
@@ -206,47 +271,53 @@ var load = function (input) {
             repoName: event_1.repo.name,
             repoUrl: event_1.repo.url,
             repoId: event_1.repo.id,
-            createdAt: event_1.created_at ? new Date(event_1.created_at) : null,
+            createdAt: event_1.created_at
+              ? new Date(event_1.created_at)
+              : new Date(),
           };
-          return [
-            4 /*yield*/,
-            octokit.rest.repos.get({
-              owner: event_1.repo.name.split("/")[0],
-              repo: event_1.repo.name.split("/")[1],
-            }),
-          ];
-        case 2:
-          repo = _e.sent();
-          repoData = repo.data;
+          repoData = repoDataMap.get(event_1.repo.name);
+          if (!repoData) return [3 /*break*/, 11];
           mooseEventWithRepo = __assign(__assign({}, mooseEvent), {
-            repoDescription: repoData.description,
-            repoTopics: repoData.topics,
-            repoLanguage: repoData.language,
-            repoStars: repoData.stargazers_count,
-            repoForks: repoData.forks_count,
-            repoWatchers: repoData.watchers_count,
-            repoOpenIssues: repoData.open_issues_count,
-            repoCreatedAt: repoData.created_at
-              ? new Date(repoData.created_at)
-              : null,
+            repoDescription:
+              (_b = repoData.description) !== null && _b !== void 0
+                ? _b
+                : undefined,
+            repoTopics: repoData.repositoryTopics.nodes.map(function (n) {
+              return n.topic.name;
+            }),
+            repoLanguage:
+              (_d =
+                (_c = repoData.primaryLanguage) === null || _c === void 0
+                  ? void 0
+                  : _c.name) !== null && _d !== void 0
+                ? _d
+                : undefined,
+            repoStars: repoData.stargazerCount,
+            repoForks: repoData.forkCount,
+            repoWatchers: repoData.watchers.totalCount,
+            repoOpenIssues: repoData.issues.totalCount,
+            repoCreatedAt: new Date(repoData.createdAt),
             repoOwnerLogin: repoData.owner.login,
             repoOwnerId: repoData.owner.id,
             repoOwnerUrl: repoData.owner.url,
-            repoOwnerAvatarUrl: repoData.owner.avatar_url,
-            repoOwnerType: repoData.owner.type,
+            repoOwnerAvatarUrl: repoData.owner.avatarUrl,
+            repoOwnerType: repoData.owner.__typename,
             repoOrgId:
-              (_b = repoData.organization) === null || _b === void 0
-                ? void 0
-                : _b.id,
+              repoData.owner.__typename === "Organization"
+                ? parseInt(repoData.owner.id)
+                : undefined,
             repoOrgUrl:
-              (_c = repoData.organization) === null || _c === void 0
-                ? void 0
-                : _c.url,
+              repoData.owner.__typename === "Organization"
+                ? repoData.owner.url
+                : undefined,
             repoOrgLogin:
-              (_d = repoData.organization) === null || _d === void 0
-                ? void 0
-                : _d.login,
-            repoHomepage: repoData.homepage,
+              repoData.owner.__typename === "Organization"
+                ? repoData.owner.login
+                : undefined,
+            repoHomepage:
+              (_e = repoData.homepageUrl) !== null && _e !== void 0
+                ? _e
+                : undefined,
           });
           return [
             4 /*yield*/,
@@ -255,21 +326,13 @@ var load = function (input) {
               body: JSON.stringify(mooseEventWithRepo),
             }),
           ];
-        case 3:
-          _e.sent();
-          (0, moose_lib_1.cliLog)({
-            action: "load",
-            message: JSON.stringify(mooseEventWithRepo),
-          });
-          _e.label = 4;
-        case 4:
+        case 10:
+          _f.sent();
+          _f.label = 11;
+        case 11:
           _i++;
-          return [3 /*break*/, 1];
-        case 5:
-          // The return value is the output of the script.
-          // The return value should be a dictionary with at least:
-          // - task: the task name (e.g., "extract", "transform")
-          // - data: the actual data being passed to the next task
+          return [3 /*break*/, 9];
+        case 12:
           return [
             2 /*return*/,
             {

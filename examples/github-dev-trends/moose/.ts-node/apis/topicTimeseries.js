@@ -224,7 +224,6 @@ var __typia_transform__httpQueryReadNumber = __importStar(
   require("typia/lib/internal/_httpQueryReadNumber.js"),
 );
 var typia_1 = __importDefault(require("typia"));
-var moose_lib_1 = require("@514labs/moose-lib");
 exports.default = (function () {
   var assertGuard = (function () {
     var _io0 = function (input) {
@@ -235,7 +234,7 @@ exports.default = (function () {
           "day" === input.interval) &&
         (undefined === input.limit ||
           ("number" === typeof input.limit &&
-            10 <= input.limit &&
+            1 <= input.limit &&
             __typia_transform__isTypeInt32._isTypeInt32(input.limit))) &&
         (undefined === input.exclude ||
           ("string" === typeof input.exclude &&
@@ -263,13 +262,13 @@ exports.default = (function () {
           )) &&
         (undefined === input.limit ||
           ("number" === typeof input.limit &&
-            (10 <= input.limit ||
+            (1 <= input.limit ||
               __typia_transform__assertGuard._assertGuard(
                 _exceptionable,
                 {
                   method: "____moose____typia.http.createAssertQuery",
                   path: _path + ".limit",
-                  expected: "number & Minimum<10>",
+                  expected: "number & Minimum<1>",
                   value: input.limit,
                 },
                 _errorFactory,
@@ -290,7 +289,7 @@ exports.default = (function () {
             {
               method: "____moose____typia.http.createAssertQuery",
               path: _path + ".limit",
-              expected: '((number & Minimum<10> & Type<"int32">) | undefined)',
+              expected: '((number & Minimum<1> & Type<"int32">) | undefined)',
               value: input.limit,
             },
             _errorFactory,
@@ -413,13 +412,6 @@ exports.default = (function () {
       return __generator(this, function (_h) {
         switch (_h.label) {
           case 0:
-            (0, moose_lib_1.cliLog)({
-              message: "interval: "
-                .concat(interval, ", limit: ")
-                .concat(limit, ", exclude: ")
-                .concat(exclude),
-              action: "topicTimeseries",
-            });
             intervalMap = {
               hour: {
                 select: sql(
@@ -487,8 +479,8 @@ exports.default = (function () {
                 select: sql(
                   templateObject_9 ||
                     (templateObject_9 = __makeTemplateObject(
-                      ["toStartOfMinute(createdAt) AS time"],
-                      ["toStartOfMinute(createdAt) AS time"],
+                      ["toStartOfFifteenMinutes(createdAt) AS time"],
+                      ["toStartOfFifteenMinutes(createdAt) AS time"],
                     )),
                 ),
                 groupBy: sql(
@@ -588,7 +580,7 @@ exports.default = (function () {
             },
             limit: {
               type: "integer",
-              minimum: 10,
+              minimum: 1,
             },
             exclude: {
               type: "string",

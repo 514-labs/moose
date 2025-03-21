@@ -26,6 +26,7 @@ impl PythonSerializers {
     }
 }
 
+// TODO: move to PythonCommands
 #[derive(Debug, Clone)]
 pub enum PythonProgram {
     StreamingFunctionRunner { args: Vec<String> },
@@ -33,6 +34,11 @@ pub enum PythonProgram {
     ConsumptionRunner { args: Vec<String> },
     LoadApiParam { args: Vec<String> },
     OrchestrationWorker { args: Vec<String> },
+}
+
+/// executable files in the python moose-lib
+pub enum PythonCommand {
+    DmV2Serializer,
 }
 
 pub static STREAMING_FUNCTION_RUNNER: &str = include_str!("wrappers/streaming_function_runner.py");
@@ -58,8 +64,25 @@ fn python_path_with_version() -> String {
 }
 
 /// Executes a Python program in a subprocess
+pub fn run_python_command(command: PythonCommand) -> Result<Child, std::io::Error> {
+    let (get_args, library_module) = match command {
+        PythonCommand::DmV2Serializer => (Vec::<String>::new(), "moose_lib.dmv2-serializer"),
+    };
+
+    Command::new("python3")
+        .env(PYTHON_PATH, python_path_with_version())
+        .arg("-m")
+        .arg(library_module)
+        .args(get_args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+}
+
+/// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
-    let (get_args, program_string) = match program.clone() {
+    let (get_args, program_string) = match program {
         PythonProgram::StreamingFunctionRunner { args } => (args, STREAMING_FUNCTION_RUNNER),
         PythonProgram::BlocksRunner { args } => (args, BLOCKS_RUNNER),
         PythonProgram::ConsumptionRunner { args } => (args, CONSUMPTION_RUNNER),

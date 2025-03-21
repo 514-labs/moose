@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use tokio::io::AsyncReadExt;
+use tokio::process::Child;
 
 const EXPORT_SERIALIZER_BIN: &str = "export-serializer";
 const EXPORT_FUNC_TYPE_BIN: &str = "consumption-type-serializer";
@@ -26,47 +27,10 @@ pub enum ExportCollectorError {
     },
 }
 
-pub async fn collect_from_index(project_path: &Path) -> Result<Value, ExportCollectorError> {
+pub fn collect_from_index(project_path: &Path) -> Result<Child, ExportCollectorError> {
     let process_name = "dmv2-serializer";
     let process = bin::run(process_name, project_path, &[])?;
-
-    let mut stdout = process
-        .stdout
-        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stdout"));
-
-    let mut stderr = process
-        .stderr
-        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stderr"));
-
-    let mut raw_string_stderr: String = String::new();
-    stderr.read_to_string(&mut raw_string_stderr).await?;
-
-    if !raw_string_stderr.is_empty() {
-        Err(ExportCollectorError::Other {
-            message: format!(
-                "Error collecting exports from index.ts: \n{}",
-                raw_string_stderr
-            ),
-        })
-    } else {
-        let mut raw_string_stdout: String = String::new();
-        stdout.read_to_string(&mut raw_string_stdout).await?;
-
-        let output_format = || ExportCollectorError::Other {
-            message: "invalid output format".to_string(),
-        };
-
-        let json = raw_string_stdout
-            .split("___MOOSE_STUFF___start")
-            .nth(1)
-            .ok_or_else(output_format)?
-            .split("end___MOOSE_STUFF___")
-            .next()
-            .ok_or_else(output_format)?;
-
-        Ok(serde_json::from_str(json)
-            .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
-    }
+    Ok(process)
 }
 
 async fn collect_exports(

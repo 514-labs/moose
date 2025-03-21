@@ -8,14 +8,6 @@ import sys
 import os
 import json
 
-type Key[T: (str, int)] = T
-
-T = TypeVar('T', bound=object)
-
-class JWT(Generic[T]):
-    def __init__(self, payload: T):
-        self.payload = payload
-
 
 @dataclass
 class StreamingFunction:
@@ -95,10 +87,12 @@ def moose_data_model(arg: Any = None) -> Any:
 
 JWTPayload = Dict[str, Any]
 
+
 @dataclass
 class ConsumptionApiResult:
     status: int
     body: Any
+
 
 class QueryClient:
     def __init__(self, ch_client: ClickhouseClient):
@@ -108,6 +102,7 @@ class QueryClient:
         # No impl for the interface
         pass
 
+
 class WorkflowClient:
     def __init__(self, temporal_client: TemporalClient):
         self.temporal_client = temporal_client
@@ -116,6 +111,7 @@ class WorkflowClient:
         # No impl for the interface
         pass
 
+
 class MooseClient:
     def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
         self.query = QueryClient(ch_client)
@@ -123,6 +119,7 @@ class MooseClient:
             self.workflow = WorkflowClient(temporal_client)
         else:
             self.workflow = None
+
 
 class Sql:
     def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):

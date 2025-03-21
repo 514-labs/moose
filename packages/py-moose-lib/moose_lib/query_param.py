@@ -66,15 +66,17 @@ def convert_pydantic_definition(cls: type) -> list[QueryField]:
     fields_list = []
     for field_name, field_def in cls.model_fields.items():
         field_type = field_def.annotation
+        if field_type is None:
+            raise ValueError(f"Missing type for {field_name}")
         no_default = field_def.is_required()
         required = no_default
 
         if hasattr(field_type, "__origin__"):
-            if field_type.__origin__ is Union:
+            if field_type.__origin__ is Union:  # type: ignore
                 field_type = unwrap_optional(field_type)
                 required = False
-            elif field_type.__origin__ is list:
-                element_type = field_type.__args__[0]
+            elif field_type.__origin__ is list:  # type: ignore
+                element_type = field_type.__args__[0]  # type: ignore
                 scala_type = to_scalar_type(element_type)
                 fields_list.append(
                     QueryField(field_name, ArrayType(scala_type), has_default=not no_default, required=required))
@@ -105,9 +107,10 @@ def convert_dataclass_definition(cls: type) -> list[QueryField]:
                 field_type = unwrap_optional(field_type)
                 required = False
             elif field_type.__origin__ is list:
-                element_type = field_type.__args__[0]
+                element_type = field_type.__args__[0]  # type: ignore
                 scala_type = to_scalar_type(element_type)
-                fields_list.append(QueryField(field_name, ArrayType(scala_type), has_default=not no_default, required=required))
+                fields_list.append(
+                    QueryField(field_name, ArrayType(scala_type), has_default=not no_default, required=required))
                 continue
 
         scala_type = to_scalar_type(field_type)
@@ -119,7 +122,7 @@ def convert_dataclass_definition(cls: type) -> list[QueryField]:
 def convert_consumption_api_param(module) -> Optional[tuple[type, list[QueryField]]]:
     run_func = module.run
     params_arg = inspect.getfullargspec(run_func).args[1]
-    param_class = run_func.__annotations__.get(params_arg)
+    param_class: type = run_func.__annotations__.get(params_arg)
     if not param_class:
         return None
     if is_dataclass(param_class):
@@ -137,7 +140,7 @@ def map_params_to_class(
         cls: type,
 ) -> Any:
     # Initialize an empty dict for the constructor arguments
-    constructor_args = {}
+    constructor_args: dict[str, Any] = {}
 
     def parse(param: str, t: scalar_types) -> Any:
         if issubclass(cls, BaseModel):

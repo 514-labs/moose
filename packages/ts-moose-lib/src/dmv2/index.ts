@@ -4,7 +4,7 @@ import { getMooseInternal, TypedBase } from "./internal";
 import { IngestionFormat } from "../index";
 
 export type OlapConfig<T> = {
-  order_by_fields?: (keyof T & string)[];
+  orderByFields?: (keyof T & string)[];
   deduplicate?: boolean;
 };
 

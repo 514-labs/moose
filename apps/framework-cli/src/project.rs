@@ -19,6 +19,7 @@ pub mod typescript_project;
 use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
@@ -205,6 +206,12 @@ impl Default for ProjectFeatures {
 
 static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
 
+static DATA_MODEL_V2_ENABLED: AtomicBool = AtomicBool::new(false);
+
+pub fn is_data_model_v2_enabled() -> bool {
+    DATA_MODEL_V2_ENABLED.load(Ordering::SeqCst)
+}
+
 impl Project {
     /// Returns the default production state (false)
     pub fn default_production() -> bool {
@@ -299,6 +306,8 @@ impl Project {
                 project_config.language_project_config = LanguageProjectConfig::Python(py_config);
             }
         }
+
+        DATA_MODEL_V2_ENABLED.store(project_config.features.data_model_v2, Ordering::SeqCst);
 
         Ok(project_config)
     }

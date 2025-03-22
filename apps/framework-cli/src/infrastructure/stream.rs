@@ -108,22 +108,22 @@ fn convert_to_redpanda_changes(
 ) -> Vec<RedpandaChange> {
     changes
         .iter()
-        .filter_map(|change| match change {
+        .map(|change| match change {
             StreamingChange::Topic(Change::Added(topic)) => {
                 let config = RedpandaStreamConfig::from_topic(config, topic);
-                Some(RedpandaChange::Added(config))
+                RedpandaChange::Added(config)
             }
             StreamingChange::Topic(Change::Removed(topic)) => {
                 let config = RedpandaStreamConfig::from_topic(config, topic);
-                Some(RedpandaChange::Removed(config))
+                RedpandaChange::Removed(config)
             }
             StreamingChange::Topic(Change::Updated { before, after }) => {
                 let before_config = RedpandaStreamConfig::from_topic(config, before);
                 let after_config = RedpandaStreamConfig::from_topic(config, after);
-                Some(RedpandaChange::Updated {
+                RedpandaChange::Updated {
                     before: before_config,
                     after: after_config,
-                })
+                }
             }
         })
         .collect()

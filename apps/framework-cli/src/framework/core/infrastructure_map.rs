@@ -39,7 +39,7 @@ use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::orchestration_worker::OrchestrationWorker;
 use super::infrastructure::table::{Column, Table};
-use super::infrastructure::topic::Topic;
+use super::infrastructure::topic::{Topic, DEFAULT_MAX_MESSAGE_BYTES};
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
@@ -1598,9 +1598,9 @@ impl InfrastructureMap {
         let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
         let tables = partial.convert_tables();
         let topics = partial.convert_topics();
-        let api_endpoints = partial.convert_api_endpoints(language);
+        let api_endpoints = partial.convert_api_endpoints(language, &topics);
         let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes();
-        let function_processes = partial.create_function_processes(language);
+        let function_processes = partial.create_function_processes(language, &topics);
 
         Ok(InfrastructureMap {
             topics,
@@ -1781,6 +1781,7 @@ impl PartialInfrastructureMap {
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
                     deduplicate: partial_table.deduplicate,
+                    // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {
                         name: partial_table.name.clone(),
@@ -1799,10 +1800,12 @@ impl PartialInfrastructureMap {
                 let topic = Topic {
                     name: partial_topic.name.clone(),
                     columns: partial_topic.columns.clone(),
+                    max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
                     retention_period: std::time::Duration::from_secs(
                         partial_topic.retention_period,
                     ),
                     partition_count: partial_topic.partition_count,
+                    // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {
                         name: partial_topic.name.clone(),
@@ -1814,45 +1817,62 @@ impl PartialInfrastructureMap {
             .collect()
     }
 
-    fn convert_api_endpoints(&self, language: SupportedLanguages) -> HashMap<String, ApiEndpoint> {
+    fn convert_api_endpoints(
+        &self,
+        language: SupportedLanguages,
+        topics: &HashMap<String, Topic>,
+    ) -> HashMap<String, ApiEndpoint> {
         self.api_endpoints
             .values()
             .map(|partial_api| {
-                let target_topic = match &partial_api.write_to.kind {
+                let target_topic_name = match &partial_api.write_to.kind {
                     WriteToKind::Stream => partial_api.write_to.name.clone(),
                 };
 
+                let not_found = &format!("Target topic '{}' not found", target_topic_name);
+                let target_topic = topics
+                    .values()
+                    .find(|topic| topic.name == target_topic_name)
+                    .expect(not_found);
+
                 let data_model = crate::framework::data_model::model::DataModel {
                     name: partial_api.name.clone(),
+                    // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     config: crate::framework::data_model::config::DataModelConfig {
                         ingestion: crate::framework::data_model::config::IngestionConfig {
                             format: partial_api.format,
                         },
+                        // TODO pass through parallelism from the TS / PY api
                         storage: crate::framework::data_model::config::StorageConfig {
                             enabled: true,
                             order_by_fields: vec![],
                             deduplicate: false,
                             name: None,
                         },
+                        // TODO pass through parallelism from the TS / PY api
                         parallelism: 1,
                     },
                     columns: partial_api.columns.clone(),
+                    // If this is the app directory, we should use the project reference so that
+                    // if we rename the app folder we don't have to fish for references
                     abs_file_path: std::env::current_dir()
                         .unwrap_or_default()
                         .join("app")
+                        // The convention for py should be main no?
                         .join(format!("index.{}", language.extension())),
                 };
 
                 let api_endpoint = ApiEndpoint {
                     name: partial_api.name.clone(),
                     api_type: APIType::INGRESS {
-                        target_topic,
+                        target_topic_id: target_topic.id(),
                         data_model: Some(data_model),
                         format: partial_api.format,
                     },
                     path: PathBuf::from(format!("ingest/{}", partial_api.name)),
                     method: Method::POST,
+                    // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {
                         name: partial_api.name.clone(),
@@ -1861,6 +1881,7 @@ impl PartialInfrastructureMap {
                 };
 
                 let key = format!("INGRESS_{}", partial_api.name);
+
                 (key, api_endpoint)
             })
             .collect()
@@ -1877,6 +1898,7 @@ impl PartialInfrastructureMap {
                     source_topic_id: topic_name.to_string(),
                     target_table_id: target_table.to_string(),
                     columns: partial_topic.columns.clone(),
+                    // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {
                         name: target_table.to_string(),
@@ -1904,51 +1926,48 @@ impl PartialInfrastructureMap {
     fn create_function_processes(
         &self,
         language: SupportedLanguages,
+        topics: &HashMap<String, Topic>,
     ) -> HashMap<String, FunctionProcess> {
         let mut function_processes = self.function_processes.clone();
 
-        for (topic_name, partial_topic) in &self.topics {
-            if partial_topic.transformation_targets.is_empty() {
+        for (topic_name, source_partial_topic) in &self.topics {
+            if source_partial_topic.transformation_targets.is_empty() {
                 continue;
             }
 
-            for target in &partial_topic.transformation_targets {
-                let process_id = format!("{}_{}", topic_name, target.name);
+            let not_found = &format!("Source topic '{}' not found", topic_name);
+            let source_topic = topics
+                .values()
+                .find(|topic| &topic.name == topic_name)
+                .expect(not_found);
 
-                match self.topics.get(&target.name) {
-                    Some(target_topic) => {
-                        let function_process = FunctionProcess {
-                            name: process_id.clone(),
-                            source_topic: topic_name.clone(),
-                            source_columns: partial_topic.columns.clone(),
-                            target_topic: target.name.clone(),
-                            target_topic_config: HashMap::from([
-                                ("max.message.bytes".to_string(), (1024 * 1024).to_string()),
-                                ("message.max.bytes".to_string(), (1024 * 1024).to_string()),
-                            ]),
-                            target_columns: target_topic.columns.clone(),
-                            executable: std::env::current_dir()
-                                .unwrap_or_default()
-                                .join("app")
-                                .join(format!("index.{}", language.extension())),
-                            parallel_process_count: partial_topic.partition_count,
-                            version: "0.0".to_string(),
-                            source_primitive: PrimitiveSignature {
-                                name: topic_name.clone(),
-                                primitive_type: PrimitiveTypes::DataModel,
-                            },
-                        };
+            for transformation_target in &source_partial_topic.transformation_targets {
+                let process_id = format!("{}_{}", topic_name, transformation_target.name);
 
-                        function_processes.insert(process_id.clone(), function_process);
-                    }
-                    None => {
-                        log::info!(
-                            "<dmv2> Cannot create function process from '{}' to '{}': target topic not found",
-                            topic_name,
-                            target.name
-                        );
-                    }
-                }
+                let not_found = &format!("Target topic '{}' not found", transformation_target.name);
+                let target_topic = topics
+                    .values()
+                    .find(|topic| topic.name == transformation_target.name)
+                    .expect(not_found);
+
+                let function_process = FunctionProcess {
+                    name: process_id.clone(),
+                    source_topic_id: source_topic.id(),
+                    target_topic_id: target_topic.id(),
+                    executable: std::env::current_dir()
+                        .unwrap_or_default()
+                        .join("app")
+                        .join(format!("index.{}", language.extension())),
+                    parallel_process_count: target_topic.partition_count,
+                    // TODO pass through version from the TS / PY api
+                    version: "0.0".to_string(),
+                    source_primitive: PrimitiveSignature {
+                        name: topic_name.clone(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
+                };
+
+                function_processes.insert(process_id.clone(), function_process);
             }
         }
 

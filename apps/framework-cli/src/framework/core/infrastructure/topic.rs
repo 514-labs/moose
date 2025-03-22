@@ -12,6 +12,8 @@ use std::time::Duration;
 
 use crate::proto::infrastructure_map::Topic as ProtoTopic;
 
+pub const DEFAULT_MAX_MESSAGE_BYTES: usize = 1024 * 1024;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
     pub version: Version,
@@ -37,7 +39,7 @@ impl Topic {
             retention_period: Topic::default_duration(),
             partition_count: data_model.config.parallelism,
             columns: data_model.columns.clone(),
-            max_message_bytes: 1024 * 1024,
+            max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -61,7 +63,7 @@ impl Topic {
             version: function.source_data_model.version.clone(),
             partition_count: function.source_data_model.config.parallelism,
             retention_period: Topic::default_duration(),
-            max_message_bytes: 1024 * 1024,
+            max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
             columns: function.source_data_model.columns.clone(),
             source_primitive: PrimitiveSignature {
                 name: function.id(),
@@ -77,7 +79,7 @@ impl Topic {
                 version: target_data_model.version.clone(),
                 partition_count: target_data_model.config.parallelism,
                 retention_period: Topic::default_duration(),
-                max_message_bytes: 1024 * 1024,
+                max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
                 columns: target_data_model.columns.clone(),
                 source_primitive: PrimitiveSignature {
                     name: function.id(),

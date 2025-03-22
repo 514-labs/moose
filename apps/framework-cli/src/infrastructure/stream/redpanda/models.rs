@@ -82,8 +82,8 @@ impl RedpandaStreamConfig {
         Self {
             name: metadata.name().to_string(),
             partitions: metadata.partitions().len(),
-            retention_ms: retention_ms,
-            max_message_bytes: max_message_bytes,
+            retention_ms,
+            max_message_bytes,
             namespace,
         }
     }

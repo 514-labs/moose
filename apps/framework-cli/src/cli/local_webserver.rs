@@ -1122,7 +1122,7 @@ impl Webserver {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
                                 let topic = infra_map
-                                    .get_topic_by_id(&target_topic_id)
+                                    .get_topic_by_id(target_topic_id)
                                     .expect("Topic not found");
 
                                 let redpanda_topic = RedpandaStreamConfig::from_topic(
@@ -1870,14 +1870,12 @@ async fn admin_plan_route(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
-    use crate::framework::core::infrastructure::olap_process::OlapProcess;
+
     use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
     use crate::framework::core::infrastructure_map::{
         OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
     };
     use crate::framework::versions::Version;
-    use std::collections::HashMap;
 
     fn create_test_table(name: &str) -> Table {
         Table {

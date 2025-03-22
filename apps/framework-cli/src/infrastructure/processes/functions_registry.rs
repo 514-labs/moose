@@ -46,9 +46,6 @@ impl FunctionProcessRegistry {
         infra_map: &InfrastructureMap,
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
-        let kafka_config = self.project.redpanda_config.clone();
-        let project_path = self.project.project_location.clone();
-
         match (
             infra_map.get_topic_by_id(&function_process.source_topic_id),
             infra_map.get_topic_by_id(&function_process.target_topic_id),

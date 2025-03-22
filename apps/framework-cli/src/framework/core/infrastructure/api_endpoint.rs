@@ -24,6 +24,8 @@ pub enum APIType {
         // in previous versions this is not stored,
         // so deserialization may fail if the value is not optional
         // our code does not depend on the stored field
+        // TODO data model is a reference to the primitive map, that should not leak into the infrastructure map
+        // that's a different level of abstraction
         data_model: Option<DataModel>,
         format: EndpointIngestionFormat,
     },

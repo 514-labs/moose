@@ -45,8 +45,10 @@ pub fn run(
         &kafka_config.security_protocol,
     );
 
-    let mut streaming_function_process =
-        executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner { args })?;
+    let mut streaming_function_process = executor::run_python_program(
+        project_location,
+        executor::PythonProgram::StreamingFunctionRunner { args },
+    )?;
 
     let stdout = streaming_function_process
         .stdout

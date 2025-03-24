@@ -35,7 +35,9 @@ use std::process::Command;
 use crate::framework::languages::SupportedLanguages;
 use crate::project::Project;
 use crate::project::ProjectFileError;
+use crate::utilities::constants::LIB_DIR;
 use crate::utilities::constants::PACKAGE_JSON;
+use crate::utilities::constants::REQUIREMENTS_TXT;
 use crate::utilities::constants::SETUP_PY;
 use crate::utilities::constants::TSCONFIG_JSON;
 use crate::utilities::constants::{APP_DIR, PROJECT_CONFIG_FILE};
@@ -92,6 +94,14 @@ pub enum BuildError {
     /// This includes failures in generating requirements.txt or other Python-specific steps.
     #[error("Failed to copy Python dependencies: {0}")]
     PythonDependenciesFailed(String),
+
+    /// Error when requirements.txt is missing for Python projects.
+    #[error("requirements.txt not found: {0}")]
+    RequirementsNotFound(String),
+
+    /// Error when pip install fails.
+    #[error("pip install failed: {0}")]
+    PipInstallFailed(String),
 
     /// Error running the moose check command.
     ///
@@ -175,13 +185,14 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
     let project_root_path = project.project_location.clone();
 
     // Files to include in the package
-    let files_to_copy = [
-        APP_DIR,
-        PROJECT_CONFIG_FILE,
-        PACKAGE_JSON,
-        SETUP_PY,
-        TSCONFIG_JSON,
-    ];
+    let files_to_copy = match project.language {
+        SupportedLanguages::Typescript => {
+            vec![APP_DIR, PROJECT_CONFIG_FILE, PACKAGE_JSON, TSCONFIG_JSON]
+        }
+        SupportedLanguages::Python => {
+            vec![APP_DIR, PROJECT_CONFIG_FILE, REQUIREMENTS_TXT, SETUP_PY]
+        }
+    };
 
     for item in &files_to_copy {
         let source_path = project_root_path.join(item);
@@ -213,11 +224,8 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
                 .map_err(|e| BuildError::NodeDependenciesFailed(e.to_string()))?;
         }
         SupportedLanguages::Python => {
-            // TODO: Implement Python dependency copying
-            info!("Python dependencies not supported yet");
-            return Err(BuildError::PythonDependenciesFailed(
-                "Python dependencies not supported yet".to_string(),
-            ));
+            copy_python_dependencies(project, &package_dir)
+                .map_err(|e| BuildError::PythonDependenciesFailed(e.to_string()))?;
         }
     }
 
@@ -283,6 +291,111 @@ fn copy_node_dependencies(project: &Project, package_dir: &PathBuf) -> Result<()
         ));
     }
 
+    Ok(())
+}
+
+/// Copies Python dependencies to the package directory.
+///
+/// This function handles installing Python dependencies into a lib directory
+/// within the package using pip.
+///
+/// # Arguments
+///
+/// * `project` - A reference to the Project containing Python dependencies
+/// * `package_dir` - Path to the package directory where dependencies should be installed
+///
+/// # Returns
+///
+/// * `Result<(), BuildError>` - Returns Ok(()) on success
+///
+/// # Errors
+///
+/// Returns a `BuildError` if:
+/// - requirements.txt is missing
+/// - pip install fails
+/// - creating the lib directory fails
+fn copy_python_dependencies(project: &Project, package_dir: &PathBuf) -> Result<(), BuildError> {
+    info!("Setting up Python dependencies");
+
+    // Check if requirements.txt exists
+    let requirements_path = project.project_location.join(REQUIREMENTS_TXT);
+    if !requirements_path.exists() {
+        return Err(BuildError::RequirementsNotFound(
+            "requirements.txt not found, please create one with your Python dependencies"
+                .to_string(),
+        ));
+    }
+
+    // Create lib directory in package
+    let lib_dir = package_dir.join(LIB_DIR);
+    fs::create_dir_all(&lib_dir).map_err(|err| {
+        error!("Failed to create lib directory: {}", err);
+        BuildError::CreateDirFailed(err.to_string())
+    })?;
+
+    // Copy requirements.txt to package directory
+    let package_requirements = package_dir.join(REQUIREMENTS_TXT);
+    fs::copy(&requirements_path, &package_requirements).map_err(|err| {
+        error!(
+            "Failed to copy requirements.txt to package directory: {}",
+            err
+        );
+        BuildError::FileCopyFailed(REQUIREMENTS_TXT.to_string(), err.to_string())
+    })?;
+
+    // Run pip install
+    info!("Installing Python dependencies to lib directory");
+    let output = Command::new("pip")
+        .args([
+            "install",
+            "-r",
+            REQUIREMENTS_TXT,
+            "--target",
+            lib_dir.to_str().unwrap(),
+        ])
+        .current_dir(package_dir)
+        .output()
+        .map_err(|err| {
+            error!("Failed to run pip install: {}", err);
+            BuildError::PipInstallFailed(err.to_string())
+        })?;
+
+    if !output.status.success() {
+        let error_msg = String::from_utf8_lossy(&output.stderr);
+        error!("pip install failed: {}", error_msg);
+        return Err(BuildError::PipInstallFailed(error_msg.to_string()));
+    }
+
+    // Remove async library references as it's built into Python 3.12+
+    info!("Cleaning up async library references");
+
+    // Remove async-related directories from lib
+    if let Ok(entries) = fs::read_dir(&lib_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name.starts_with("asyncio-") && name.ends_with(".dist-info") {
+                    if let Err(err) = fs::remove_dir_all(&path) {
+                        error!("Failed to remove async dist-info directory: {}", err);
+                    } else {
+                        debug!("Removed async dist-info directory: {:?}", path);
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove async directory if it exists
+    let async_dir = lib_dir.join("asyncio");
+    if async_dir.exists() {
+        if let Err(err) = fs::remove_dir_all(&async_dir) {
+            error!("Failed to remove async directory: {}", err);
+        } else {
+            debug!("Removed async directory");
+        }
+    }
+
+    info!("Python dependencies installed successfully");
     Ok(())
 }
 

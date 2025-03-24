@@ -27,7 +27,7 @@ class Foo:
 
 @moose_data_model
 @dataclass
-class Bar:
+class Bar(BaseModel):
     primary_key: Key[str]
     utc_timestamp: datetime
     has_text: bool

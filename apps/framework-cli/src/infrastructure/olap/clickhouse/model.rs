@@ -245,7 +245,7 @@ pub enum ClickHouseValue {
     ClickhouseFloat(String),
     Decimal,
     DateTime(String),
-    Json,
+    Json(serde_json::Map<String, serde_json::Value>),
     Bytes,
     Array(Vec<ClickHouseValue>),
     Enum(String),
@@ -292,6 +292,10 @@ impl ClickHouseValue {
         }
     }
 
+    pub fn new_json(map: serde_json::Map<String, serde_json::Value>) -> ClickHouseValue {
+        ClickHouseValue::Json(map)
+    }
+
     pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
         let vals: Vec<ClickHouseValue> = members;
         ClickHouseValue::Nested(vals)
@@ -323,6 +327,7 @@ impl ClickHouseValue {
                     .join(",")
             ),
             ClickHouseValue::Null => NULL.to_string(),
+            ClickHouseValue::Json(v) => format!("'{}'", serde_json::Value::Object(v.clone())),
             _ => String::from(""),
         }
     }

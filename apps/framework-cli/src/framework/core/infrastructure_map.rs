@@ -11,17 +11,21 @@ use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::datamodel_config::load_main_py;
 use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::{Context, Result};
+use log::debug;
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncReadExt;
+use tokio::process::Child;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to convert infrastructure map from proto")]
@@ -1311,23 +1315,16 @@ impl InfrastructureMap {
     }
 
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
-        if project.language == SupportedLanguages::Typescript {
-            let objects = crate::framework::typescript::export_collectors::collect_from_index(
+        let partial = if project.language == SupportedLanguages::Typescript {
+            let process = crate::framework::typescript::export_collectors::collect_from_index(
                 &project.project_location,
-            )
-            .await?;
-            let json = serde_json::to_string(&objects)?;
-            log::info!("<dmv2> load_from_user_code inframap json: {}", json);
+            )?;
 
-            Self::from_json_value(project.language, objects).map_err(|e| {
-                anyhow::anyhow!(
-                    "<dmv2>  Failed to parse infrastructure map from TypeScript: {}",
-                    e
-                )
-            })
+            PartialInfrastructureMap::from_subprocess(process, "index.ts").await?
         } else {
-            todo!("Python implementation")
-        }
+            load_main_py().await?
+        };
+        Ok(partial.into_infra_map(project.language))
     }
 
     pub fn from_json_value(
@@ -1359,6 +1356,7 @@ impl InfrastructureMap {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PartialTable {
     pub name: String,
     pub columns: Vec<Column>,
@@ -1405,7 +1403,7 @@ struct PartialIngestApi {
 }
 
 #[derive(Debug, Deserialize)]
-struct PartialInfrastructureMap {
+pub struct PartialInfrastructureMap {
     #[serde(default)]
     topics: HashMap<String, PartialTopic>,
     #[serde(default)]
@@ -1427,7 +1425,89 @@ struct PartialInfrastructureMap {
     orchestration_workers: HashMap<String, OrchestrationWorker>,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to load Data Model V2")]
+#[non_exhaustive]
+pub enum DmV2LoadingError {
+    Tokio(#[from] tokio::io::Error),
+    #[error("Error collecting Moose resources from {user_code_file_name}:\n{message}")]
+    StdErr {
+        user_code_file_name: String,
+        message: String,
+    },
+    JsonParsing(#[from] serde_json::Error),
+    #[error("{message}")]
+    Other {
+        message: String,
+    },
+}
+
 impl PartialInfrastructureMap {
+    pub async fn from_subprocess(
+        process: Child,
+        user_code_file_name: &str,
+    ) -> Result<PartialInfrastructureMap, DmV2LoadingError> {
+        let mut stdout = process
+            .stdout
+            .unwrap_or_else(|| panic!("Process did not have a handle to stdout"));
+
+        let mut stderr = process
+            .stderr
+            .unwrap_or_else(|| panic!("Process did not have a handle to stderr"));
+
+        let mut raw_string_stderr: String = String::new();
+        stderr.read_to_string(&mut raw_string_stderr).await?;
+
+        if !raw_string_stderr.is_empty() {
+            Err(DmV2LoadingError::StdErr {
+                user_code_file_name: user_code_file_name.to_string(),
+                message: raw_string_stderr,
+            })
+        } else {
+            let mut raw_string_stdout: String = String::new();
+            stdout.read_to_string(&mut raw_string_stdout).await?;
+
+            let output_format = || DmV2LoadingError::Other {
+                message: "invalid output format".to_string(),
+            };
+
+            let json = raw_string_stdout
+                .split("___MOOSE_STUFF___start")
+                .nth(1)
+                .ok_or_else(output_format)?
+                .split("end___MOOSE_STUFF___")
+                .next()
+                .ok_or_else(output_format)?;
+            log::debug!("load_from_user_code inframap json: {}", json);
+
+            Ok(serde_json::from_str(json)
+                .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
+        }
+    }
+
+    fn into_infra_map(self, language: SupportedLanguages) -> InfrastructureMap {
+        let tables = self.convert_tables();
+        let topics = self.convert_topics();
+        let api_endpoints = self.convert_api_endpoints(language);
+        let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes();
+        let function_processes = self.create_function_processes(language);
+
+        InfrastructureMap {
+            topics,
+            api_endpoints,
+            tables,
+            views: self.views,
+            topic_to_table_sync_processes,
+            topic_to_topic_sync_processes: self.topic_to_topic_sync_processes,
+            function_processes,
+            block_db_processes: self.block_db_processes.unwrap_or(OlapProcess {}),
+            consumption_api_web_server: self
+                .consumption_api_web_server
+                .unwrap_or(ConsumptionApiWebServer {}),
+            orchestration_workers: self.orchestration_workers,
+        }
+    }
+
     fn convert_tables(&self) -> HashMap<String, Table> {
         self.tables
             .iter()

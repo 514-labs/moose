@@ -1070,7 +1070,7 @@ impl Webserver {
                                 data_model,
                                 format,
                             } => {
-                                // This not namespaced
+                                // This is not namespaced
                                 let topic = infra_map
                                     .get_topic_by_id(&target_topic_id)
                                     .expect("Topic not found");

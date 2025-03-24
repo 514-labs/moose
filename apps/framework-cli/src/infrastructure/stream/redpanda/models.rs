@@ -258,7 +258,7 @@ pub fn extract_version_from_topic_name(topic_name: &str) -> Option<Version> {
     // Look for up to 3 numeric parts from the end
     while i > 0 && version_parts.len() < 3 {
         i -= 1;
-        if let Ok(_) = parts[i].parse::<i32>() {
+        if parts[i].parse::<i32>().is_ok() {
             version_parts.insert(0, parts[i]);
         } else {
             // Stop if we encounter a non-numeric part

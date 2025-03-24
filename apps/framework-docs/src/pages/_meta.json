@@ -41,5 +41,8 @@
   "usage-data": "Privacy",
   "schema-evolution": {
     "display": "hidden"
+  },
+  "data-modeling-v2": {
+    "display": "hidden"
   }
 }

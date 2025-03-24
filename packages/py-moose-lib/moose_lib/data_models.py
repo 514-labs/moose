@@ -59,13 +59,6 @@ class Column(BaseModel):
     primary_key: bool
 
 
-def is_array(t: type) -> Optional[type]:
-    if get_origin(t) is list:
-        return get_args(t)[0]
-    else:
-        return None
-
-
 def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
     optional, t = handle_optional(t)
 
@@ -82,6 +75,8 @@ def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
     elif get_origin(t) is list:
         inner_optional, inner_type = py_type_to_column_type(get_args(t)[0])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)
+    elif t is Any:
+        data_type = "Json"
     elif issubclass(t, BaseModel):
         data_type = Nested(
             name=t.__name__,

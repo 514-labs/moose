@@ -47,7 +47,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
     tables[table.name] = {
       name: table.name,
       columns: table.columnArray,
-      orderBy: table.config.order_by_fields ?? [],
+      orderBy: table.config.orderByFields ?? [],
       deduplicate: table.config.deduplicate ?? false,
     };
   });

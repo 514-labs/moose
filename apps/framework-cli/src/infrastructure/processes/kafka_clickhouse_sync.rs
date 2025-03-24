@@ -753,9 +753,16 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Json => Err(MappingError::UnsupportedColumnType {
-            column_type: column_type.clone(),
-        }),
+        ColumnType::Json => {
+            if let Some(obj) = value.as_object() {
+                Ok(ClickHouseValue::new_json(obj.clone()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: ColumnType::Json,
+                    value: value.clone(),
+                })
+            }
+        }
         ColumnType::Bytes => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),

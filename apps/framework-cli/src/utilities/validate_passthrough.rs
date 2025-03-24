@@ -313,6 +313,37 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     .serialize_value(&serializer)
                     .map_err(A::Error::custom)
             }
+            ColumnType::Json => {
+                struct JsonPassThrough<'de, MA: MapAccess<'de>> {
+                    map: RefCell<MA>,
+                    _phantom_data: &'de PhantomData<()>,
+                }
+                impl<'de, MA: MapAccess<'de>> Serialize for JsonPassThrough<'de, MA> {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: Serializer,
+                    {
+                        use serde::ser::Error;
+                        let mut inner = serializer.serialize_map(None)?;
+                        let mut map = self.map.borrow_mut();
+                        while let Some(key) = map.next_key::<String>().map_err(S::Error::custom)? {
+                            inner.serialize_key(&key).map_err(S::Error::custom)?;
+                            SerializeMap::serialize_value(
+                                &mut inner,
+                                &map.next_value::<serde_json::Value>()
+                                    .map_err(S::Error::custom)?,
+                            )?;
+                        }
+                        inner.end().map_err(S::Error::custom)
+                    }
+                }
+                self.write_to
+                    .serialize_value(&JsonPassThrough {
+                        map: RefCell::new(map),
+                        _phantom_data: &PhantomData,
+                    })
+                    .map_err(A::Error::custom)
+            }
             _ => Err(A::Error::invalid_type(serde::de::Unexpected::Map, &self)),
         }
     }

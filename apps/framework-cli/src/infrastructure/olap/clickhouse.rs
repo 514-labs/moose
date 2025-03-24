@@ -273,7 +273,8 @@ pub fn create_client(clickhouse_config: ClickHouseConfig) -> ConfiguredDBClient 
             .with_user(clickhouse_config.user.to_string())
             .with_password(clickhouse_config.password.to_string())
             .with_database(clickhouse_config.db_name.to_string())
-            .with_option("flatten_nested", "0"),
+            .with_option("flatten_nested", "0")
+            .with_option("allow_experimental_object_type", "1"),
         config: clickhouse_config,
     }
 }

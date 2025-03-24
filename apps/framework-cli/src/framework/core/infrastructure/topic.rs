@@ -152,7 +152,9 @@ impl Topic {
             retention_period: proto.retention_period.unwrap().into(),
             partition_count: proto.partition_count.unwrap_or(1) as usize,
             columns: proto.columns.into_iter().map(Column::from_proto).collect(),
-            max_message_bytes: proto.max_message_bytes.unwrap_or(DEFAULT_MAX_MESSAGE_BYTES)
+            max_message_bytes: proto
+                .max_message_bytes
+                .unwrap_or(DEFAULT_MAX_MESSAGE_BYTES.try_into().unwrap())
                 as usize,
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }

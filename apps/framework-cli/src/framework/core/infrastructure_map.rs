@@ -1752,9 +1752,9 @@ impl PartialInfrastructureMap {
     fn into_infra_map(self, language: SupportedLanguages) -> InfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
-        let api_endpoints = self.convert_api_endpoints(language);
+        let api_endpoints = self.convert_api_endpoints(language, &topics);
         let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes();
-        let function_processes = self.create_function_processes(language);
+        let function_processes = self.create_function_processes(language, &topics);
 
         InfrastructureMap {
             topics,

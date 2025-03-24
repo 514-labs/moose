@@ -798,6 +798,7 @@ mod tests {
             retention_ms: 60000,
             max_message_bytes: 1024,
             namespace: None,
+            version: None,
         };
 
         let changes = vec![RedpandaChange::Added(topic)];
@@ -813,6 +814,7 @@ mod tests {
             retention_ms: 60000,
             max_message_bytes: 1024,
             namespace: None,
+            version: None,
         };
 
         let after = RedpandaStreamConfig {
@@ -833,6 +835,7 @@ mod tests {
             retention_ms: 60000,
             max_message_bytes: 1024,
             namespace: None,
+            version: None,
         };
 
         let after = RedpandaStreamConfig {

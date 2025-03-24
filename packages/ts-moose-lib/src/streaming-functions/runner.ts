@@ -410,7 +410,10 @@ function loadStreamingFunction(functionFilePath: string) {
   return streamingFunctionImport.default;
 }
 
-async function loadStreamingFunctionV2(sourceTopic: TopicConfig, targetTopic?: TopicConfig) {
+async function loadStreamingFunctionV2(
+  sourceTopic: TopicConfig,
+  targetTopic?: TopicConfig,
+) {
   const transformFunctions = await getStreamingFunctions();
   const transformFunctionKey = `${sourceTopic.name}_${targetTopic?.name}`;
   return transformFunctions.get(transformFunctionKey);
@@ -543,7 +546,7 @@ const startConsumer = async (
  * ```
  */
 const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
-  const logPrefix = `${args.sourceTopic} -> ${args.targetTopic} - ${workerId}`;
+  const logPrefix = `${args.sourceTopic.name} -> ${args.targetTopic?.name || "No Target"} - ${workerId}`;
   const logger: Logger = {
     logPrefix: logPrefix,
     log: (message: string): void => {
@@ -586,7 +589,7 @@ const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
 export const runStreamingFunctions = async (): Promise<void> => {
   const args = parseArgs();
 
-  const streamingFuncId = `flow-${args.sourceTopic}-${args.targetTopic}`;
+  const streamingFuncId = `flow-${args.sourceTopic.name}-${args.targetTopic?.name}`;
 
   const cluster = new Cluster({
     // This is an arbitrary value, we can adjust it as needed

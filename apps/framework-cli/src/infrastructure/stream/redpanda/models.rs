@@ -1,7 +1,7 @@
 use rdkafka::{metadata::MetadataTopic, producer::FutureProducer};
 use serde::{Deserialize, Serialize};
 
-use crate::framework::core::infrastructure::topic::Topic;
+use crate::framework::{core::infrastructure::topic::Topic, versions::Version};
 
 use super::constants::NAMESPACE_SEPARATOR;
 
@@ -12,7 +12,7 @@ use super::constants::NAMESPACE_SEPARATOR;
 /// and namespace information.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedpandaStreamConfig {
-    /// The name of the stream, this includes the namespace if it exists
+    /// The name of the stream, this includes the namespace and the version if it exists
     pub name: String,
     /// The number of partitions for the stream
     pub partitions: usize,
@@ -22,6 +22,8 @@ pub struct RedpandaStreamConfig {
     pub max_message_bytes: usize,
     /// The namespace for the stream, if any
     pub namespace: Option<String>,
+    /// The version of the stream, if it exists
+    pub version: Option<Version>,
 }
 
 impl RedpandaStreamConfig {
@@ -58,6 +60,7 @@ impl RedpandaStreamConfig {
             retention_ms: topic.retention_period.as_millis(),
             max_message_bytes: topic.max_message_bytes,
             namespace: redpanda_config.namespace.clone(),
+            version: Some(topic.version.clone()),
         }
     }
 
@@ -79,12 +82,14 @@ impl RedpandaStreamConfig {
         max_message_bytes: usize,
     ) -> Self {
         let namespace = get_namespace(metadata);
+        let version = extract_version_from_topic_name(metadata.name());
         Self {
             name: metadata.name().to_string(),
             partitions: metadata.partitions().len(),
             retention_ms,
             max_message_bytes,
             namespace,
+            version,
         }
     }
 
@@ -208,22 +213,90 @@ fn get_namespace(topic: &MetadataTopic) -> Option<String> {
         .map(|ns| ns.to_string())
 }
 
-/// Constructs a full topic name with namespace.
+/// Extracts the version from a topic name.
 ///
-/// If a namespace is provided, formats the topic name as "{namespace}{separator}{topic.name}".
-/// Otherwise, returns just the topic name.
+/// The version is expected to be at the end of the topic name as a suffix in the format:
+/// `_version_version_version` where each "version" represents a component of a semantic version.
+/// The version can have one, two, or three components (e.g., "1", "1_2", or "1_2_3").
+///
+/// # Arguments
+/// * `topic_name` - The topic name to extract the version from
+///
+/// # Returns
+/// * `Option<Version>` - The extracted version if present, None otherwise
+///
+/// # Examples
+/// ```
+/// // Three-part version
+/// let topic_name = "my_topic_1_2_3";
+/// let version = extract_version_from_topic_name(topic_name);
+/// assert_eq!(version.unwrap().as_str(), "1.2.3");
+///
+/// // Two-part version
+/// let topic_name = "my_topic_1_2";
+/// let version = extract_version_from_topic_name(topic_name);
+/// assert_eq!(version.unwrap().as_str(), "1.2");
+///
+/// // One-part version
+/// let topic_name = "my_topic_1";
+/// let version = extract_version_from_topic_name(topic_name);
+/// assert_eq!(version.unwrap().as_str(), "1");
+/// ```
+pub fn extract_version_from_topic_name(topic_name: &str) -> Option<Version> {
+    // Split the topic name by underscores
+    let parts: Vec<&str> = topic_name.split('_').collect();
+
+    // Need at least one part for a version
+    if parts.is_empty() {
+        return None;
+    }
+
+    // Try to find the version components from the end
+    let mut version_parts = Vec::new();
+    let mut i = parts.len();
+
+    // Look for up to 3 numeric parts from the end
+    while i > 0 && version_parts.len() < 3 {
+        i -= 1;
+        if let Ok(_) = parts[i].parse::<i32>() {
+            version_parts.insert(0, parts[i]);
+        } else {
+            // Stop if we encounter a non-numeric part
+            break;
+        }
+    }
+
+    // If we found at least one version component
+    if !version_parts.is_empty() {
+        // Convert underscore format to dot format
+        let version_str = version_parts.join(".");
+        Some(Version::from_string(version_str))
+    } else {
+        None
+    }
+}
+
+/// Constructs a full topic name with namespace and version.
+///
+/// If a namespace is provided, formats the topic name as "{namespace}{separator}{topic.name}_{version}".
+/// Otherwise, returns the topic name with version appended.
 ///
 /// # Arguments
 /// * `namespace` - Optional namespace to prefix
-/// * `topic` - The Topic to get the name from
+/// * `topic` - The Topic to get the name and version from
 ///
 /// # Returns
-/// * A String containing the full topic name
+/// * A String containing the full topic name with version
 fn topic_name(namespace: &Option<String>, topic: &Topic) -> String {
+    let version_suffix = format!("_{}", topic.version.as_str().replace('.', "_"));
+
     if let Some(ns) = namespace {
-        format!("{}{}{}", ns, NAMESPACE_SEPARATOR, topic.name)
+        format!(
+            "{}{}{}{}",
+            ns, NAMESPACE_SEPARATOR, topic.name, version_suffix
+        )
     } else {
-        topic.name.clone()
+        format!("{}{}", topic.name, version_suffix)
     }
 }
 

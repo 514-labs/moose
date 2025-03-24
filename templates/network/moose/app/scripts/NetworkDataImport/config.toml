@@ -1,0 +1,5 @@
+name = "NetworkDataImport"
+timeout = "1h"
+retries = 3
+schedule = ""
+tasks = ["ImportTransportSchedule", "ImportFiberPanelData"]

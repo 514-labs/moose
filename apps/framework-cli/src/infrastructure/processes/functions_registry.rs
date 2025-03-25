@@ -8,7 +8,7 @@ use crate::{
         infrastructure::function_process::FunctionProcess, infrastructure_map::InfrastructureMap,
     },
     framework::{python, typescript},
-    infrastructure::stream::{redpanda::models::RedpandaStreamConfig, StreamConfig},
+    infrastructure::stream::{kafka::models::KafkaStreamConfig, StreamConfig},
     project::Project,
     utilities::system::{kill_child, KillProcessError},
 };
@@ -52,25 +52,25 @@ impl FunctionProcessRegistry {
         ) {
             (Some(source_topic), Some(target_topic)) => {
                 // TODO This will need to be made generic
-                let source_topic = StreamConfig::Redpanda(RedpandaStreamConfig::from_topic(
-                    &self.project.redpanda_config,
+                let source_topic = StreamConfig::Redpanda(KafkaStreamConfig::from_topic(
+                    &self.project.kafka_config,
                     source_topic,
                 ));
-                let target_topic = StreamConfig::Redpanda(RedpandaStreamConfig::from_topic(
-                    &self.project.redpanda_config,
+                let target_topic = StreamConfig::Redpanda(KafkaStreamConfig::from_topic(
+                    &self.project.kafka_config,
                     target_topic,
                 ));
 
                 let child = if function_process.is_py_function_process() {
                     Ok(python::streaming::run(
-                        &self.project.redpanda_config,
+                        &self.project.kafka_config,
                         &source_topic,
                         &target_topic,
                         &function_process.executable,
                     )?)
                 } else if function_process.is_ts_function_process() {
                     Ok(typescript::streaming::run(
-                        &self.project.redpanda_config,
+                        &self.project.kafka_config,
                         &source_topic,
                         &target_topic,
                         &function_process.executable,

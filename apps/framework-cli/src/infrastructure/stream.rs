@@ -10,7 +10,7 @@
 /// - Execution of streaming infrastructure changes
 /// - Conversion between core domain objects and engine-specific objects
 /// - Type-safe serialization of configuration objects
-use redpanda::models::{RedpandaChange, RedpandaConfig, RedpandaStreamConfig};
+use kafka::models::{KafkaChange, KafkaConfig, KafkaStreamConfig};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
     project::Project,
 };
 
-pub mod redpanda;
+pub mod kafka;
 
 /// Errors that can occur during streaming infrastructure operations.
 ///
@@ -28,7 +28,7 @@ pub mod redpanda;
 pub enum StreamingChangesError {
     /// Errors from Redpanda/Kafka operations
     #[error("Failed to execute the changes on Redpanda")]
-    RedpandaChanges(#[from] redpanda::errors::RedpandaChangesError),
+    RedpandaChanges(#[from] kafka::errors::KafkaChangesError),
 }
 
 /// Validates changes to be made to the streaming infrastructure
@@ -52,10 +52,10 @@ pub fn validate_changes(
     changes: &[StreamingChange],
 ) -> Result<(), StreamingChangesError> {
     // Convert core StreamingChange to Redpanda-specific RedpandaChange
-    let redpanda_changes = convert_to_redpanda_changes(&project.redpanda_config, changes);
+    let kafka_changes = convert_to_kafka_changes(&project.kafka_config, changes);
 
-    // Delegate to redpanda client validate_changes
-    redpanda::client::validate_changes(&redpanda_changes)?;
+    // Delegate to kafka client validate_changes
+    kafka::client::validate_changes(&kafka_changes)?;
 
     Ok(())
 }
@@ -82,10 +82,10 @@ pub async fn execute_changes(
     changes: &[StreamingChange],
 ) -> Result<(), StreamingChangesError> {
     // Convert core StreamingChange to Redpanda-specific RedpandaChange
-    let redpanda_changes = convert_to_redpanda_changes(&project.redpanda_config, changes);
+    let kafka_changes = convert_to_kafka_changes(&project.kafka_config, changes);
 
     // Delegate to redpanda client execute_changes
-    redpanda::client::execute_changes(project, &redpanda_changes).await?;
+    kafka::client::execute_changes(project, &kafka_changes).await?;
 
     Ok(())
 }
@@ -102,25 +102,22 @@ pub async fn execute_changes(
 ///
 /// # Returns
 /// * A Vec of RedpandaChange objects representing the converted changes
-fn convert_to_redpanda_changes(
-    config: &RedpandaConfig,
-    changes: &[StreamingChange],
-) -> Vec<RedpandaChange> {
+fn convert_to_kafka_changes(config: &KafkaConfig, changes: &[StreamingChange]) -> Vec<KafkaChange> {
     changes
         .iter()
         .map(|change| match change {
             StreamingChange::Topic(Change::Added(topic)) => {
-                let config = RedpandaStreamConfig::from_topic(config, topic);
-                RedpandaChange::Added(config)
+                let config = KafkaStreamConfig::from_topic(config, topic);
+                KafkaChange::Added(config)
             }
             StreamingChange::Topic(Change::Removed(topic)) => {
-                let config = RedpandaStreamConfig::from_topic(config, topic);
-                RedpandaChange::Removed(config)
+                let config = KafkaStreamConfig::from_topic(config, topic);
+                KafkaChange::Removed(config)
             }
             StreamingChange::Topic(Change::Updated { before, after }) => {
-                let before_config = RedpandaStreamConfig::from_topic(config, before);
-                let after_config = RedpandaStreamConfig::from_topic(config, after);
-                RedpandaChange::Updated {
+                let before_config = KafkaStreamConfig::from_topic(config, before);
+                let after_config = KafkaStreamConfig::from_topic(config, after);
+                KafkaChange::Updated {
                     before: before_config,
                     after: after_config,
                 }
@@ -138,7 +135,7 @@ fn convert_to_redpanda_changes(
 #[serde(tag = "type")]
 pub enum StreamConfig {
     /// Configuration for Redpanda/Kafka topics
-    Redpanda(RedpandaStreamConfig),
+    Redpanda(KafkaStreamConfig),
 }
 
 impl StreamConfig {

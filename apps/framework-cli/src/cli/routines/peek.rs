@@ -12,7 +12,7 @@ use crate::project::Project;
 use super::{setup_redis_client, RoutineFailure, RoutineSuccess};
 
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
-use crate::infrastructure::stream::redpanda::client::create_consumer;
+use crate::infrastructure::stream::kafka::client::create_consumer;
 use futures::stream::BoxStream;
 use log::info;
 use rdkafka::consumer::{Consumer, StreamConsumer};
@@ -87,9 +87,9 @@ pub async fn peek(
     let table_ref: ClickHouseTable;
 
     let mut stream: BoxStream<anyhow::Result<Value>> = if topic {
-        let group_id = project.redpanda_config.prefix_with_namespace("peek");
+        let group_id = project.kafka_config.prefix_with_namespace("peek");
 
-        consumer_ref = create_consumer(&project.redpanda_config, &[("group.id", &group_id)]);
+        consumer_ref = create_consumer(&project.kafka_config, &[("group.id", &group_id)]);
         let consumer = &consumer_ref;
         let topic_versioned = format!("{}_{}", data_model_name, version_suffix);
 

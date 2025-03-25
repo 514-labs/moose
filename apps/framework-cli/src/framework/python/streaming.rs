@@ -2,14 +2,14 @@ use std::path::Path;
 
 use tokio::process::Child;
 
-use crate::infrastructure::stream::{redpanda::models::RedpandaConfig, StreamConfig};
+use crate::infrastructure::stream::{kafka::models::KafkaConfig, StreamConfig};
 use tokio::io::AsyncBufReadExt;
 
 use super::executor;
 use crate::framework::python::executor::add_optional_arg;
 
 pub fn run(
-    redpanda_config: &RedpandaConfig,
+    kafka_config: &KafkaConfig,
     source_topic: &StreamConfig,
     target_topic: &StreamConfig,
     function_path: &Path,
@@ -33,20 +33,16 @@ pub fn run(
         target_topic.as_json_string(),
         dir,
         module_name,
-        redpanda_config.broker.clone(),
+        kafka_config.broker.clone(),
     ];
 
-    add_optional_arg(&mut args, "--sasl_username", &redpanda_config.sasl_username);
-    add_optional_arg(&mut args, "--sasl_password", &redpanda_config.sasl_password);
-    add_optional_arg(
-        &mut args,
-        "--sasl_mechanism",
-        &redpanda_config.sasl_mechanism,
-    );
+    add_optional_arg(&mut args, "--sasl_username", &kafka_config.sasl_username);
+    add_optional_arg(&mut args, "--sasl_password", &kafka_config.sasl_password);
+    add_optional_arg(&mut args, "--sasl_mechanism", &kafka_config.sasl_mechanism);
     add_optional_arg(
         &mut args,
         "--security_protocol",
-        &redpanda_config.security_protocol,
+        &kafka_config.security_protocol,
     );
 
     let mut streaming_function_process =

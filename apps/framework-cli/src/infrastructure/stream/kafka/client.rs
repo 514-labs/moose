@@ -9,7 +9,7 @@
 //! The client supports authentication via SASL and various configuration options
 //! to customize behavior for different deployment scenarios.
 
-use crate::infrastructure::stream::redpanda::constants::{
+use crate::infrastructure::stream::kafka::constants::{
     DEFAULT_MAX_MESSAGE_BYTES, KAFKA_MAX_MESSAGE_BYTES_CONFIG_KEY, KAFKA_RETENTION_CONFIG_KEY,
 };
 use crate::project::Project;
@@ -40,8 +40,8 @@ use super::constants::{
     KAFKA_SASL_USERNAME_CONFIG_KEY, KAFKA_SECURITY_PROTOCOL_CONFIG_KEY,
     KAFKA_SESSION_TIMEOUT_MS_CONFIG_KEY,
 };
-use super::errors::RedpandaChangesError;
-use super::models::{ConfiguredProducer, RedpandaChange, RedpandaConfig, RedpandaStreamConfig};
+use super::errors::KafkaChangesError;
+use super::models::{ConfiguredProducer, KafkaChange, KafkaConfig, KafkaStreamConfig};
 
 /// Builds an rdkafka client configuration from a RedpandaConfig.
 ///
@@ -53,7 +53,7 @@ use super::models::{ConfiguredProducer, RedpandaChange, RedpandaConfig, Redpanda
 ///
 /// # Returns
 /// * An rdkafka ClientConfig object ready to be used for creating clients
-fn build_rdkafka_client_config(config: &RedpandaConfig) -> ClientConfig {
+fn build_rdkafka_client_config(config: &KafkaConfig) -> ClientConfig {
     let mut client_config = ClientConfig::new();
 
     // to prevent the wrapped library from writing to stderr
@@ -91,20 +91,20 @@ fn build_rdkafka_client_config(config: &RedpandaConfig) -> ClientConfig {
 /// # Errors
 /// * Returns error if attempting to create a topic with 0 partitions
 /// * Returns error if attempting to decrease partition count on an existing topic
-pub fn validate_changes(changes: &[RedpandaChange]) -> Result<(), RedpandaChangesError> {
+pub fn validate_changes(changes: &[KafkaChange]) -> Result<(), KafkaChangesError> {
     for change in changes.iter() {
         match change {
-            RedpandaChange::Added(topic) => {
+            KafkaChange::Added(topic) => {
                 if topic.partitions == 0 {
-                    return Err(RedpandaChangesError::NotSupported(
+                    return Err(KafkaChangesError::NotSupported(
                         "Partition count cannot be 0".to_string(),
                     ));
                 }
             }
 
-            RedpandaChange::Updated { before, after } => {
+            KafkaChange::Updated { before, after } => {
                 if before.partitions > after.partitions {
-                    return Err(RedpandaChangesError::NotSupported(format!(
+                    return Err(KafkaChangesError::NotSupported(format!(
                         "Cannot decrease parallelism from {:?} to {:?}",
                         before.partitions, after.partitions
                     )));
@@ -134,24 +134,24 @@ pub fn validate_changes(changes: &[RedpandaChange]) -> Result<(), RedpandaChange
 /// * Returns error if any operation fails (topic creation, update, or deletion)
 pub async fn execute_changes(
     project: &Project,
-    changes: &[RedpandaChange],
-) -> Result<(), RedpandaChangesError> {
+    changes: &[KafkaChange],
+) -> Result<(), KafkaChangesError> {
     for change in changes.iter() {
         match change {
-            RedpandaChange::Added(topic) => {
+            KafkaChange::Added(topic) => {
                 info!("Creating topic: {:?}", topic.name);
-                create_topics(&project.redpanda_config, vec![&topic]).await?;
+                create_topics(&project.kafka_config, vec![&topic]).await?;
             }
 
-            RedpandaChange::Removed(topic) => {
+            KafkaChange::Removed(topic) => {
                 info!("Deleting topic: {:?}", topic.name);
-                delete_topics(&project.redpanda_config, vec![&topic]).await?;
+                delete_topics(&project.kafka_config, vec![&topic]).await?;
             }
 
-            RedpandaChange::Updated { before, after } => {
+            KafkaChange::Updated { before, after } => {
                 if before.retention_ms != after.retention_ms {
                     info!("Updating topic: {:?} with: {:?}", before, after);
-                    update_topic_config(&project.redpanda_config, &before.name, after).await?;
+                    update_topic_config(&project.kafka_config, &before.name, after).await?;
                 }
 
                 match before.partitions.cmp(&after.partitions) {
@@ -166,7 +166,7 @@ pub async fn execute_changes(
                             "Setting partitions count for topic: {:?} with: {:?}",
                             before.name, after.partitions
                         );
-                        add_partitions(&project.redpanda_config, &before.name, after.partitions)
+                        add_partitions(&project.kafka_config, &before.name, after.partitions)
                             .await?;
                     }
                     std::cmp::Ordering::Equal => {}
@@ -184,7 +184,7 @@ pub async fn execute_changes(
 /// It's important to note that partitions can only be increased, never decreased.
 ///
 /// # Arguments
-/// * `redpanda_config` - Configuration for connecting to Redpanda/Kafka cluster
+/// * `kafka_config` - Configuration for connecting to Redpanda/Kafka cluster
 /// * `id` - Name/ID of the topic to add partitions to
 /// * `partition_count` - The total number of partitions the topic should have after the operation
 ///
@@ -197,13 +197,13 @@ pub async fn execute_changes(
 /// * Returns error if partition creation request fails
 /// * Returns error if operation times out (after 5 seconds)
 async fn add_partitions(
-    redpanda_config: &RedpandaConfig,
+    kafka_config: &KafkaConfig,
     id: &str,
     partition_count: usize,
 ) -> anyhow::Result<()> {
     info!("Adding partitions to topic: {}", id);
 
-    let admin_client: AdminClient<_> = build_rdkafka_client_config(redpanda_config)
+    let admin_client: AdminClient<_> = build_rdkafka_client_config(kafka_config)
         .create()
         .expect("Redpanda Admin Client creation failed");
 
@@ -232,7 +232,7 @@ async fn add_partitions(
 /// More configuration options could be added in the future.
 ///
 /// # Arguments
-/// * `redpanda_config` - Configuration for connecting to Redpanda/Kafka cluster
+/// * `kafka_config` - Configuration for connecting to Redpanda/Kafka cluster
 /// * `id` - Name/ID of the topic to update
 /// * `after` - The updated RedpandaStreamConfig configuration to apply
 ///
@@ -245,13 +245,13 @@ async fn add_partitions(
 /// * Returns error if configuration update request fails
 /// * Returns error if operation times out (after 5 seconds)
 async fn update_topic_config(
-    redpanda_config: &RedpandaConfig,
+    kafka_config: &KafkaConfig,
     id: &str,
-    after: &RedpandaStreamConfig,
+    after: &KafkaStreamConfig,
 ) -> anyhow::Result<()> {
     info!("Updating topic config for: {}", id);
 
-    let admin_client: AdminClient<_> = build_rdkafka_client_config(redpanda_config)
+    let admin_client: AdminClient<_> = build_rdkafka_client_config(kafka_config)
         .create()
         .expect("Redpanda Admin Client creation failed");
 
@@ -299,8 +299,8 @@ async fn update_topic_config(
 /// * Creates topics in the Redpanda/Kafka cluster
 /// * Logs results of topic creation operations
 pub async fn create_topics(
-    config: &RedpandaConfig,
-    topics: Vec<&RedpandaStreamConfig>,
+    config: &KafkaConfig,
+    topics: Vec<&KafkaStreamConfig>,
 ) -> anyhow::Result<()> {
     info!("Creating topics: {:?}", topics);
 
@@ -366,8 +366,8 @@ pub async fn create_topics(
 /// * Deletes topics from the Redpanda/Kafka cluster
 /// * Logs results of topic deletion operations
 pub async fn delete_topics(
-    config: &RedpandaConfig,
-    topics: Vec<&RedpandaStreamConfig>,
+    config: &KafkaConfig,
+    topics: Vec<&KafkaStreamConfig>,
 ) -> Result<(), anyhow::Error> {
     info!("Deleting topics: {:?}", topics);
 
@@ -415,7 +415,7 @@ pub async fn delete_topics(
 /// * Returns error if describe configs request fails
 /// * Returns empty HashMap if no config could be retrieved
 pub async fn describe_topic_config(
-    config: &RedpandaConfig,
+    config: &KafkaConfig,
     topic_name: &str,
 ) -> Result<HashMap<String, String>, rdkafka::error::KafkaError> {
     info!("Describing config for topic: {}", topic_name);
@@ -469,7 +469,7 @@ pub async fn describe_topic_config(
 ///
 /// # Panics
 /// * Panics if the producer creation fails
-pub fn create_idempotent_producer(config: &RedpandaConfig) -> FutureProducer {
+pub fn create_idempotent_producer(config: &KafkaConfig) -> FutureProducer {
     let mut client_config = build_rdkafka_client_config(config);
 
     client_config
@@ -493,7 +493,7 @@ pub fn create_idempotent_producer(config: &RedpandaConfig) -> FutureProducer {
 ///
 /// # Panics
 /// * Panics if the producer creation fails
-pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
+pub fn create_producer(config: KafkaConfig) -> ConfiguredProducer {
     let mut client_config = build_rdkafka_client_config(&config);
 
     client_config.set(
@@ -529,7 +529,7 @@ pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
 /// * Returns error if client creation fails
 /// * Returns error if metadata fetch fails
 /// * Returns error if watermark fetch fails for any partition
-pub async fn check_topic_size(topic: &str, config: &RedpandaConfig) -> Result<i64, KafkaError> {
+pub async fn check_topic_size(topic: &str, config: &KafkaConfig) -> Result<i64, KafkaError> {
     let client: StreamConsumer<_> = build_rdkafka_client_config(config).create()?;
     let timeout = Duration::from_secs(1);
     let md = client.fetch_metadata(Some(topic), timeout)?;
@@ -567,12 +567,12 @@ pub async fn check_topic_size(topic: &str, config: &RedpandaConfig) -> Result<i6
 /// * Returns error if metadata fetch fails
 /// * Returns error if describe configs fails for any topic
 pub async fn fetch_topics(
-    config: &RedpandaConfig,
-) -> Result<Vec<RedpandaStreamConfig>, rdkafka::error::KafkaError> {
+    config: &KafkaConfig,
+) -> Result<Vec<KafkaStreamConfig>, rdkafka::error::KafkaError> {
     let rdkafka_config = build_rdkafka_client_config(config);
     let client: BaseConsumer = rdkafka_config.create()?;
     let admin_client: AdminClient<_> = rdkafka_config.create()?;
-    let mut topics: Vec<RedpandaStreamConfig> = Vec::new();
+    let mut topics: Vec<KafkaStreamConfig> = Vec::new();
 
     let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
 
@@ -598,7 +598,7 @@ pub async fn fetch_topics(
                 .and_then(|entry| entry.value.as_ref().and_then(|v| v.parse::<usize>().ok()))
                 .unwrap_or(DEFAULT_MAX_MESSAGE_BYTES);
 
-            topics.push(RedpandaStreamConfig::from_metadata(
+            topics.push(KafkaStreamConfig::from_metadata(
                 topic,
                 retention_ms,
                 max_message_bytes,
@@ -622,7 +622,7 @@ pub async fn fetch_topics(
 ///
 /// # Panics
 /// * Panics if the consumer creation fails
-pub fn create_consumer(config: &RedpandaConfig, extra_config: &[(&str, &str)]) -> StreamConsumer {
+pub fn create_consumer(config: &KafkaConfig, extra_config: &[(&str, &str)]) -> StreamConsumer {
     let mut client_config = build_rdkafka_client_config(config);
 
     extra_config.iter().for_each(|(k, v)| {
@@ -647,7 +647,7 @@ pub fn create_consumer(config: &RedpandaConfig, extra_config: &[(&str, &str)]) -
 /// # Panics
 /// * Panics if the consumer creation fails
 /// * Panics if the subscription fails
-pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
+pub fn create_subscriber(config: &KafkaConfig, group_id: &str, topic: &str) -> StreamConsumer {
     let group_id = config.prefix_with_namespace(group_id);
     let consumer = create_consumer(
         config,
@@ -792,7 +792,7 @@ mod tests {
 
     #[test]
     fn test_validate_changes_zero_partitions() {
-        let topic = RedpandaStreamConfig {
+        let topic = KafkaStreamConfig {
             name: "test_topic".to_string(),
             partitions: 0,
             retention_ms: 60000,
@@ -801,14 +801,14 @@ mod tests {
             version: None,
         };
 
-        let changes = vec![RedpandaChange::Added(topic)];
+        let changes = vec![KafkaChange::Added(topic)];
 
         assert!(validate_changes(&changes).is_err());
     }
 
     #[test]
     fn test_validate_changes_decrease_partitions() {
-        let before = RedpandaStreamConfig {
+        let before = KafkaStreamConfig {
             name: "test_topic".to_string(),
             partitions: 3,
             retention_ms: 60000,
@@ -817,19 +817,19 @@ mod tests {
             version: None,
         };
 
-        let after = RedpandaStreamConfig {
+        let after = KafkaStreamConfig {
             partitions: 1,
             ..before.clone()
         };
 
-        let changes = vec![RedpandaChange::Updated { before, after }];
+        let changes = vec![KafkaChange::Updated { before, after }];
 
         assert!(validate_changes(&changes).is_err());
     }
 
     #[test]
     fn test_validate_changes_valid() {
-        let before = RedpandaStreamConfig {
+        let before = KafkaStreamConfig {
             name: "test_topic".to_string(),
             partitions: 1,
             retention_ms: 60000,
@@ -838,12 +838,12 @@ mod tests {
             version: None,
         };
 
-        let after = RedpandaStreamConfig {
+        let after = KafkaStreamConfig {
             partitions: 3,
             ..before.clone()
         };
 
-        let changes = vec![RedpandaChange::Updated { before, after }];
+        let changes = vec![KafkaChange::Updated { before, after }];
 
         assert!(validate_changes(&changes).is_ok());
     }

@@ -41,7 +41,7 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
-use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
+use crate::infrastructure::stream::kafka::models::KafkaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
 use crate::utilities::constants::SCRIPTS_DIR;
@@ -153,8 +153,8 @@ pub struct Project {
     /// Programming language used in the project
     pub language: SupportedLanguages,
     /// RedPanda streaming configuration
-    #[serde(default)]
-    pub redpanda_config: RedpandaConfig,
+    #[serde(default, alias = "redpanda_config")]
+    pub kafka_config: KafkaConfig,
     /// ClickHouse database configuration
     pub clickhouse_config: ClickHouseConfig,
     /// HTTP server configuration for local development
@@ -252,7 +252,7 @@ impl Project {
             language,
             is_production: false,
             project_location: location.clone(),
-            redpanda_config: RedpandaConfig::default(),
+            kafka_config: KafkaConfig::default(),
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),

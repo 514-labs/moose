@@ -11,7 +11,7 @@ use super::constants::NAMESPACE_SEPARATOR;
 /// Redpanda topic, including name, partitions, retention period, message size limits,
 /// and namespace information.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RedpandaStreamConfig {
+pub struct KafkaStreamConfig {
     /// The name of the stream, this includes the namespace and the version if it exists
     pub name: String,
     /// The number of partitions for the stream
@@ -26,7 +26,7 @@ pub struct RedpandaStreamConfig {
     pub version: Option<Version>,
 }
 
-impl RedpandaStreamConfig {
+impl KafkaStreamConfig {
     /// Extracts the topic name without the namespace prefix.
     ///
     /// If the topic name includes a namespace separator, returns the part after the separator.
@@ -48,18 +48,18 @@ impl RedpandaStreamConfig {
     /// applying namespace configuration if available.
     ///
     /// # Arguments
-    /// * `redpanda_config` - The RedpandaConfig containing namespace information
+    /// * `kafka_config` - The RedpandaConfig containing namespace information
     /// * `topic` - The core Topic domain model to convert
     ///
     /// # Returns
     /// * A new RedpandaStreamConfig instance
-    pub fn from_topic(redpanda_config: &RedpandaConfig, topic: &Topic) -> Self {
+    pub fn from_topic(kafka_config: &KafkaConfig, topic: &Topic) -> Self {
         Self {
-            name: topic_name(&redpanda_config.namespace, topic),
+            name: topic_name(&kafka_config.namespace, topic),
             partitions: topic.partition_count,
             retention_ms: topic.retention_period.as_millis(),
             max_message_bytes: topic.max_message_bytes,
-            namespace: redpanda_config.namespace.clone(),
+            namespace: kafka_config.namespace.clone(),
             version: Some(topic.version.clone()),
         }
     }
@@ -125,7 +125,7 @@ impl RedpandaStreamConfig {
 /// for working with a Redpanda cluster, including authentication, timeouts, and
 /// namespace configuration.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RedpandaConfig {
+pub struct KafkaConfig {
     /// Broker connection string in format "host:port"
     pub broker: String,
     /// Message timeout in milliseconds
@@ -147,7 +147,7 @@ pub struct RedpandaConfig {
     pub namespace: Option<String>,
 }
 
-impl RedpandaConfig {
+impl KafkaConfig {
     /// Gets the namespace prefix for topics.
     ///
     /// If a namespace is configured, returns the namespace followed by a separator.
@@ -300,7 +300,7 @@ fn topic_name(namespace: &Option<String>, topic: &Topic) -> String {
     }
 }
 
-impl Default for RedpandaConfig {
+impl Default for KafkaConfig {
     fn default() -> Self {
         Self {
             broker: "localhost:19092".to_string(),
@@ -325,7 +325,7 @@ pub struct ConfiguredProducer {
     /// The underlying Redpanda/Kafka producer
     pub producer: FutureProducer,
     /// The configuration used to create this producer
-    pub config: RedpandaConfig,
+    pub config: KafkaConfig,
 }
 
 /// Represents a change that can be applied to a Redpanda topic.
@@ -333,16 +333,16 @@ pub struct ConfiguredProducer {
 /// This enum allows us to track what types of changes need to be
 /// made to the Redpanda streaming infrastructure.
 #[derive(Debug, Clone)]
-pub enum RedpandaChange {
+pub enum KafkaChange {
     /// Represents adding a new topic
-    Added(RedpandaStreamConfig),
+    Added(KafkaStreamConfig),
     /// Represents removing an existing topic
-    Removed(RedpandaStreamConfig),
+    Removed(KafkaStreamConfig),
     /// Represents updating an existing topic
     Updated {
         /// The topic configuration before the update
-        before: RedpandaStreamConfig,
+        before: KafkaStreamConfig,
         /// The topic configuration after the update
-        after: RedpandaStreamConfig,
+        after: KafkaStreamConfig,
     },
 }

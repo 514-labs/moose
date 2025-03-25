@@ -22,7 +22,7 @@ use super::display::{with_spinner, Message, MessageType};
 use super::routines::auth::validate_auth_token;
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use crate::infrastructure::stream::redpanda::models::RedpandaStreamConfig;
+use crate::infrastructure::stream::kafka::models::KafkaStreamConfig;
 use crate::metrics::MetricEvent;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
@@ -33,8 +33,8 @@ use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
 use crate::framework::data_model::config::EndpointIngestionFormat;
-use crate::infrastructure::stream::redpanda;
-use crate::infrastructure::stream::redpanda::models::ConfiguredProducer;
+use crate::infrastructure::stream::kafka;
+use crate::infrastructure::stream::kafka::models::ConfiguredProducer;
 
 use crate::framework::typescript::bin::CliMessage;
 use crate::project::{JwtConfig, Project};
@@ -675,7 +675,7 @@ async fn handle_json_array_body(
                 .send_result(record)
                 .map_err(|(e, _)| e),
         );
-        // ideally we want to use redpanda::send_with_back_pressure
+        // ideally we want to use kafka::send_with_back_pressure
         // but it does not report the error back
         if count % 1024 == 1023 {
             wait_for_batch_complete(&mut res_arr, temp_res).await;
@@ -1076,17 +1076,15 @@ impl Webserver {
                                     .expect("Topic not found");
 
                                 // This is now a namespaced topic
-                                let redpanda_topic = RedpandaStreamConfig::from_topic(
-                                    &project.redpanda_config,
-                                    topic,
-                                );
+                                let kafka_topic =
+                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
 
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
                                         format,
                                         data_model: data_model.unwrap(),
-                                        kafka_topic_name: redpanda_topic.name,
+                                        kafka_topic_name: kafka_topic.name,
                                     },
                                 );
                             }
@@ -1125,10 +1123,8 @@ impl Webserver {
                                     .get_topic_by_id(target_topic_id)
                                     .expect("Topic not found");
 
-                                let redpanda_topic = RedpandaStreamConfig::from_topic(
-                                    &project.redpanda_config,
-                                    topic,
-                                );
+                                let kafka_topic =
+                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
 
                                 route_table.remove(&before.path);
                                 route_table.insert(
@@ -1136,7 +1132,7 @@ impl Webserver {
                                     RouteMeta {
                                         format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
-                                        kafka_topic_name: redpanda_topic.name,
+                                        kafka_topic_name: kafka_topic.name,
                                     },
                                 );
                             }
@@ -1178,9 +1174,7 @@ impl Webserver {
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
         let producer = if project.features.streaming_engine {
-            Some(redpanda::client::create_producer(
-                project.redpanda_config.clone(),
-            ))
+            Some(kafka::client::create_producer(project.kafka_config.clone()))
         } else {
             None
         };

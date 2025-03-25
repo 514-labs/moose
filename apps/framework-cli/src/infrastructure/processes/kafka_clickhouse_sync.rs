@@ -29,9 +29,9 @@ use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseRecord, ClickHouseRuntimeEnum, ClickHouseValue,
 };
-use crate::infrastructure::stream::redpanda::client::create_subscriber;
-use crate::infrastructure::stream::redpanda::client::{create_producer, send_with_back_pressure};
-use crate::infrastructure::stream::redpanda::models::RedpandaConfig;
+use crate::infrastructure::stream::kafka::client::create_subscriber;
+use crate::infrastructure::stream::kafka::client::{create_producer, send_with_back_pressure};
+use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::metrics::{MetricEvent, Metrics};
 use tokio::select;
 
@@ -72,7 +72,7 @@ pub struct SyncingProcessesRegistry {
     /// Map of topic-to-topic processes by their target topic name
     to_topic_registry: HashMap<String, JoinHandle<()>>,
     /// Kafka configuration
-    kafka_config: RedpandaConfig,
+    kafka_config: KafkaConfig,
     /// ClickHouse configuration
     clickhouse_config: ClickHouseConfig,
 }
@@ -83,7 +83,7 @@ impl SyncingProcessesRegistry {
     /// # Arguments
     /// * `kafka_config` - Configuration for Kafka/Redpanda connection
     /// * `clickhouse_config` - Configuration for ClickHouse connection
-    pub fn new(kafka_config: RedpandaConfig, clickhouse_config: ClickHouseConfig) -> Self {
+    pub fn new(kafka_config: KafkaConfig, clickhouse_config: ClickHouseConfig) -> Self {
         Self {
             to_table_registry: HashMap::new(),
             to_topic_registry: HashMap::new(),
@@ -234,7 +234,7 @@ impl SyncingProcessesRegistry {
 /// # Returns
 /// A TableSyncingProcess struct encapsulating the async task
 fn spawn_sync_process_core(
-    kafka_config: RedpandaConfig,
+    kafka_config: KafkaConfig,
     clickhouse_config: ClickHouseConfig,
     source_topic_name: String,
     source_topic_columns: Vec<Column>,
@@ -280,7 +280,7 @@ fn spawn_sync_process_core(
 /// # Returns
 /// A TopicToTopicSyncingProcess struct encapsulating the async task
 fn spawn_kafka_to_kafka_process(
-    kafka_config: RedpandaConfig,
+    kafka_config: KafkaConfig,
     source_topic_name: String,
     target_topic_name: String,
     metrics: Arc<Metrics>,
@@ -307,7 +307,7 @@ fn spawn_kafka_to_kafka_process(
 /// * `target_topic_name` - Target Kafka topic name
 /// * `metrics` - Metrics collection service
 async fn sync_kafka_to_kafka(
-    kafka_config: RedpandaConfig,
+    kafka_config: KafkaConfig,
     source_topic_name: String,
     target_topic_name: String,
     metrics: Arc<Metrics>,
@@ -385,7 +385,7 @@ async fn sync_kafka_to_kafka(
 /// # Returns
 /// Result indicating success or failure
 async fn sync_kafka_to_clickhouse(
-    kafka_config: RedpandaConfig,
+    kafka_config: KafkaConfig,
     clickhouse_config: ClickHouseConfig,
     source_topic_name: String,
     source_topic_columns: Vec<Column>,

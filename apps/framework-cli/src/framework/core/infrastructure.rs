@@ -59,20 +59,11 @@ pub enum InfrastructureSignature {
 /// - Pushing: Active sending of data to another component
 pub trait DataLineage {
     /// Returns infrastructure components that actively push data to this component.
-    ///
-    /// This represents a passive relationship where this component receives data
-    /// without explicitly requesting it.
     fn receives_data_from(&self) -> Vec<InfrastructureSignature>;
 
     /// Returns infrastructure components that this component actively pulls data from.
-    ///
-    /// This represents an active relationship where this component initiates
-    /// the data transfer by requesting or fetching data.
     fn pulls_data_from(&self) -> Vec<InfrastructureSignature>;
 
     /// Returns infrastructure components that this component actively pushes data to.
-    ///
-    /// This represents an active relationship where this component initiates
-    /// the data transfer by sending data to other components.
     fn pushes_data_to(&self) -> Vec<InfrastructureSignature>;
 }

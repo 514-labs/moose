@@ -1,5 +1,5 @@
 #[derive(Debug, thiserror::Error)]
-pub enum RedpandaChangesError {
+pub enum KafkaChangesError {
     #[error("Not Supported - {0}")]
     NotSupported(String),
 

@@ -260,7 +260,6 @@ export const transformCreateConsumptionApi = (
       ),
     ),
 
-    // Modify the output schema generation to use string type instead of Format
     factory.createExpressionStatement(
       factory.createBinaryExpression(
         factory.createElementAccessExpression(

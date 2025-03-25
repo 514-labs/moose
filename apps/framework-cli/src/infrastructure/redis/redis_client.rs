@@ -497,10 +497,11 @@ impl RedisClient {
         let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
         let ttl = LEADERSHIP_LOCK_TTL; // Use the configured TTL instead of hardcoded value
 
-        Ok(self
+        let (has_lock, _) = self
             .leadership_manager
             .attempt_lock(self.connection_manager.connection.clone(), &lock_key, ttl)
-            .await)
+            .await;
+        Ok(has_lock)
     }
 
     pub async fn renew_lock(&self, name: &str) -> anyhow::Result<bool> {
@@ -521,9 +522,15 @@ impl RedisClient {
     }
 
     pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
-        let had_lock = self.attempt_lock(name).await?;
-        let now_has_lock = self.renew_lock(name).await?;
-        Ok((now_has_lock, now_has_lock && !had_lock))
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let ttl = LEADERSHIP_LOCK_TTL;
+
+        let (has_lock, is_new_acquisition) = self
+            .leadership_manager
+            .attempt_lock(self.connection_manager.connection.clone(), &lock_key, ttl)
+            .await;
+
+        Ok((has_lock, is_new_acquisition))
     }
 
     pub async fn release_lock(&self, name: &str) -> anyhow::Result<()> {

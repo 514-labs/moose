@@ -50,14 +50,14 @@ impl LeadershipManager {
     ///
     /// # Returns
     ///
-    /// - `bool` - true if the lock was acquired or already owned, false
-    ///   otherwise
+    /// - `(bool, bool)` - Tuple where the first element is true if the lock was acquired or already owned,
+    ///   the second element is true if it was a new acquisition, false otherwise
     pub async fn attempt_lock(
         &self,
         mut conn: ConnectionManager,
         lock_key: &str,
         ttl: i64,
-    ) -> bool {
+    ) -> (bool, bool) {
         let instance_id = &self.instance_id;
         let script = redis::Script::new(
             r#"
@@ -65,12 +65,12 @@ impl LeadershipManager {
             if not current then
                 redis.call('SET', KEYS[1], ARGV[1])
                 redis.call('EXPIRE', KEYS[1], ARGV[2])
-                return 1
+                return 2  -- New acquisition
             elseif current == ARGV[1] then
                 redis.call('EXPIRE', KEYS[1], ARGV[2])
-                return 1
+                return 1  -- Renewal
             else
-                return 0
+                return 0  -- Failed to acquire
             end
             "#,
         );
@@ -82,21 +82,25 @@ impl LeadershipManager {
             .invoke_async::<i64>(&mut conn)
             .await
         {
-            Ok(1) => {
+            Ok(2) => {
                 log::debug!(
                     "<RedisLeadership> Lock acquired: {} by instance {}",
                     lock_key,
                     instance_id
                 );
-                true
+                (true, true) // has_lock, is_new_acquisition
+            }
+            Ok(1) => {
+                // Don't log renewals to reduce noise
+                (true, false) // has_lock and not_new_acquisition
             }
             Ok(_) => {
                 log::debug!("<RedisLeadership> Failed to acquire lock: {} (already held by another instance)", lock_key);
-                false
+                (false, false) // doesn't have lock and not new acquisition
             }
             Err(e) => {
                 log::error!("<RedisLeadership> Error acquiring lock {}: {}", lock_key, e);
-                false
+                (false, false) // doesn't have lock and not new acquisition
             }
         }
     }
@@ -149,12 +153,11 @@ impl LeadershipManager {
             .await
         {
             Ok(1) => {
-                // Dont log the renewal, it's too verbose
-                // log::debug!(
-                //     "<RedisLeadership> Lock renewed: {} for instance {}",
-                //     lock_key,
-                //     instance_id
-                // );
+                log::trace!(
+                    "<RedisLeadership> Lock renewed: {} for instance {}",
+                    lock_key,
+                    instance_id
+                );
                 Ok(true)
             }
             Ok(0) => {

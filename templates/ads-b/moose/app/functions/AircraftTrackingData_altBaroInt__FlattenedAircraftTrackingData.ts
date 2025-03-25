@@ -1,6 +1,6 @@
-import { AircraftTrackingData_altBaroString } from "../datamodels/models_str";
 import { FlattenedAircraftTrackingData } from "../datamodels/flattened";
 import { Key } from "@514labs/moose-lib";
+import { AircraftTrackingData_altBaroInt } from "datamodels/models";
 
 /**
  * Interleaves bits of two 32-bit numbers to create a Z-order curve value
@@ -43,7 +43,7 @@ function parseNavModes(navModes?: string[]): {
 }
 
 export default function run(
-  source: AircraftTrackingData_altBaroString,
+  source: AircraftTrackingData_altBaroInt,
 ): FlattenedAircraftTrackingData[] {
   // Calculate Z-order coordinate from lat/lon
   const zorderCoordinate = calculateZOrder(source.lat, source.lon);
@@ -62,11 +62,8 @@ export default function run(
     lon: source.lon,
     zorderCoordinate,
     timestamp: Date.now(), // Current timestamp in milliseconds
-    altBaro:
-      source.alt_baro.toLowerCase() === "ground"
-        ? 0
-        : parseInt(source.alt_baro) || 0,
-    altBaroIsGround: source.alt_baro.toLowerCase() === "ground", // Set to true if alt_baro is "ground"
+    altBaro: source.alt_baro,
+    altBaroIsGround: false, // Set to true if alt_baro is "ground"
     altGeom: source.alt_geom,
     gs: source.gs,
     track: source.track,

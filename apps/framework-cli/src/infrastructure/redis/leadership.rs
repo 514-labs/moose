@@ -130,7 +130,15 @@ impl LeadershipManager {
         ttl: i64,
     ) -> anyhow::Result<bool> {
         let script = redis::Script::new(
-            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], ARGV[2]) else return 0 end",
+            r#"
+            local current = redis.call('GET', KEYS[1])
+            if current == ARGV[1] then
+                redis.call('EXPIRE', KEYS[1], ARGV[2])
+                return 1
+            else
+                return 0
+            end
+            "#,
         );
 
         match script
@@ -141,11 +149,12 @@ impl LeadershipManager {
             .await
         {
             Ok(1) => {
-                log::debug!(
-                    "<RedisLeadership> Lock renewed: {} for instance {}",
-                    lock_key,
-                    instance_id
-                );
+                // Dont log the renewal, it's too verbose
+                // log::debug!(
+                //     "<RedisLeadership> Lock renewed: {} for instance {}",
+                //     lock_key,
+                //     instance_id
+                // );
                 Ok(true)
             }
             Ok(0) => {

@@ -521,8 +521,27 @@ impl RedisClient {
     }
 
     pub async fn check_and_renew_lock(&self, name: &str) -> anyhow::Result<(bool, bool)> {
-        let had_lock = self.attempt_lock(name).await?;
-        let now_has_lock = self.renew_lock(name).await?;
+        let lock_key = format!("{}::{}::lock", self.config.key_prefix, name);
+        let ttl = LEADERSHIP_LOCK_TTL;
+
+        // First check if we already have the lock
+        let had_lock = self
+            .leadership_manager
+            .has_lock(
+                self.connection_manager.connection.clone(),
+                &lock_key,
+                &self.instance_id,
+            )
+            .await?;
+
+        // Then try to acquire/renew the lock
+        let now_has_lock = self
+            .leadership_manager
+            .attempt_lock(self.connection_manager.connection.clone(), &lock_key, ttl)
+            .await;
+
+        // Return (has_lock, is_new_acquisition)
+        // We have a new acquisition if we now have the lock but didn't before
         Ok((now_has_lock, now_has_lock && !had_lock))
     }
 

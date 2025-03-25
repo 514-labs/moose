@@ -1,5 +1,5 @@
 {
-  "name": "agent-test",
+  "name": "ads-b",
   "version": "0.0",
   "scripts": {
     "moose": "moose-cli",

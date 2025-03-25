@@ -1667,12 +1667,19 @@ struct PartialIngestApi {
 }
 
 #[derive(Debug, Deserialize)]
+struct PartialEgressApi {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PartialInfrastructureMap {
     #[serde(default)]
     topics: HashMap<String, PartialTopic>,
     #[serde(default)]
-    #[serde(rename = "ingestApis")]
-    api_endpoints: HashMap<String, PartialIngestApi>,
+    ingest_apis: HashMap<String, PartialIngestApi>,
+    #[serde(default)]
+    egress_apis: HashMap<String, PartialEgressApi>,
     #[serde(default)]
     tables: HashMap<String, PartialTable>,
     #[serde(default)]
@@ -1822,69 +1829,91 @@ impl PartialInfrastructureMap {
         language: SupportedLanguages,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, ApiEndpoint> {
-        self.api_endpoints
-            .values()
-            .map(|partial_api| {
-                let target_topic_name = match &partial_api.write_to.kind {
-                    WriteToKind::Stream => partial_api.write_to.name.clone(),
-                };
+        let mut api_endpoints = HashMap::new();
 
-                let not_found = &format!("Target topic '{}' not found", target_topic_name);
-                let target_topic = topics
-                    .values()
-                    .find(|topic| topic.name == target_topic_name)
-                    .expect(not_found);
+        for partial_api in self.ingest_apis.values() {
+            let target_topic_name = match &partial_api.write_to.kind {
+                WriteToKind::Stream => partial_api.write_to.name.clone(),
+            };
 
-                let data_model = crate::framework::data_model::model::DataModel {
-                    name: partial_api.name.clone(),
-                    // TODO pass through version from the TS / PY api
-                    version: Version::from_string("0.0".to_string()),
-                    config: crate::framework::data_model::config::DataModelConfig {
-                        ingestion: crate::framework::data_model::config::IngestionConfig {
-                            format: partial_api.format,
-                        },
-                        // TODO pass through parallelism from the TS / PY api
-                        storage: crate::framework::data_model::config::StorageConfig {
-                            enabled: true,
-                            order_by_fields: vec![],
-                            deduplicate: false,
-                            name: None,
-                        },
-                        // TODO pass through parallelism from the TS / PY api
-                        parallelism: 1,
-                    },
-                    columns: partial_api.columns.clone(),
-                    // If this is the app directory, we should use the project reference so that
-                    // if we rename the app folder we don't have to fish for references
-                    abs_file_path: std::env::current_dir()
-                        .unwrap_or_default()
-                        .join("app")
-                        // The convention for py should be main no?
-                        .join(format!("index.{}", language.extension())),
-                };
+            let not_found = &format!("Target topic '{}' not found", target_topic_name);
+            let target_topic = topics
+                .values()
+                .find(|topic| topic.name == target_topic_name)
+                .expect(not_found);
 
-                let api_endpoint = ApiEndpoint {
-                    name: partial_api.name.clone(),
-                    api_type: APIType::INGRESS {
-                        target_topic_id: target_topic.id(),
-                        data_model: Some(data_model),
+            let data_model = crate::framework::data_model::model::DataModel {
+                name: partial_api.name.clone(),
+                // TODO pass through version from the TS / PY api
+                version: Version::from_string("0.0".to_string()),
+                config: crate::framework::data_model::config::DataModelConfig {
+                    ingestion: crate::framework::data_model::config::IngestionConfig {
                         format: partial_api.format,
                     },
-                    path: PathBuf::from(format!("ingest/{}", partial_api.name)),
-                    method: Method::POST,
-                    // TODO pass through version from the TS / PY api
-                    version: Version::from_string("0.0".to_string()),
-                    source_primitive: PrimitiveSignature {
-                        name: partial_api.name.clone(),
-                        primitive_type: PrimitiveTypes::DataModel,
+                    // TODO pass through parallelism from the TS / PY api
+                    storage: crate::framework::data_model::config::StorageConfig {
+                        enabled: true,
+                        order_by_fields: vec![],
+                        deduplicate: false,
+                        name: None,
                     },
-                };
+                    // TODO pass through parallelism from the TS / PY api
+                    parallelism: 1,
+                },
+                columns: partial_api.columns.clone(),
+                // If this is the app directory, we should use the project reference so that
+                // if we rename the app folder we don't have to fish for references
+                abs_file_path: std::env::current_dir()
+                    .unwrap_or_default()
+                    .join("app")
+                    // The convention for py should be main no?
+                    .join(format!("index.{}", language.extension())),
+            };
 
-                let key = format!("INGRESS_{}", partial_api.name);
+            let api_endpoint = ApiEndpoint {
+                name: partial_api.name.clone(),
+                api_type: APIType::INGRESS {
+                    target_topic_id: target_topic.id(),
+                    data_model: Some(data_model),
+                    format: partial_api.format,
+                },
+                path: PathBuf::from(format!("ingest/{}", partial_api.name)),
+                method: Method::POST,
+                // TODO pass through version from the TS / PY api
+                version: Version::from_string("0.0".to_string()),
+                source_primitive: PrimitiveSignature {
+                    name: partial_api.name.clone(),
+                    primitive_type: PrimitiveTypes::DataModel,
+                },
+            };
 
-                (key, api_endpoint)
-            })
-            .collect()
+            let key = format!("INGRESS_{}", partial_api.name);
+
+            api_endpoints.insert(key, api_endpoint);
+        }
+
+        for partial_api in self.egress_apis.values() {
+            let api_endpoint = ApiEndpoint {
+                name: partial_api.name.clone(),
+                api_type: APIType::EGRESS {
+                    query_params: vec![],
+                    output_schema: serde_json::Value::Null,
+                },
+                path: PathBuf::from(partial_api.name.clone()),
+                method: Method::GET,
+                // TODO pass through version from the TS / PY api
+                version: Version::from_string("0.0".to_string()),
+                source_primitive: PrimitiveSignature {
+                    name: partial_api.name.clone(),
+                    primitive_type: PrimitiveTypes::ConsumptionAPI,
+                },
+            };
+
+            let key = format!("EGRESS_{}", partial_api.name);
+            api_endpoints.insert(key, api_endpoint);
+        }
+
+        api_endpoints
     }
 
     fn create_topic_to_table_sync_processes(&self) -> HashMap<String, TopicToTableSyncProcess> {

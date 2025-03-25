@@ -1,13 +1,14 @@
 import process from "process";
-import { IngestApi, OlapTable, Stream } from "./index";
+import { IngestApi, OlapTable, Stream, ConsumptionApi } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { IngestionFormat } from "../index";
+import { ConsumptionUtil, IngestionFormat } from "../index";
 
 const moose_internal = {
   tables: new Map<string, OlapTable<any>>(),
   streams: new Map<string, Stream<any>>(),
-  apis: new Map<string, IngestApi<any>>(),
+  ingestApis: new Map<string, IngestApi<any>>(),
+  egressApis: new Map<string, ConsumptionApi<any>>(),
 };
 const defaultRetentionPeriod = 60 * 60 * 24 * 7;
 
@@ -37,11 +38,15 @@ interface IngestApiJson {
   format: IngestionFormat;
   writeTo: Target;
 }
+interface EgressApiJson {
+  name: string;
+}
 
 const toInfraMap = (registry: typeof moose_internal) => {
   const tables: { [key: string]: TableJson } = {};
   const topics: { [key: string]: StreamJson } = {};
   const ingestApis: { [key: string]: IngestApiJson } = {};
+  const egressApis: { [key: string]: EgressApiJson } = {};
 
   registry.tables.forEach((table) => {
     tables[table.name] = {
@@ -72,7 +77,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.apis.forEach((api) => {
+  registry.ingestApis.forEach((api) => {
     ingestApis[api.name] = {
       name: api.name,
       columns: api.columnArray,
@@ -84,10 +89,17 @@ const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
+  registry.egressApis.forEach((api) => {
+    egressApis[api.name] = {
+      name: api.name,
+    };
+  });
+
   return {
     topics,
     tables,
     ingestApis,
+    egressApis,
   };
 };
 
@@ -119,6 +131,24 @@ export const getStreamingFunctions = async () => {
   });
 
   return transformFunctions;
+};
+
+export const getEgressApis = async () => {
+  await require(`${process.cwd()}/app/index.ts`);
+  const egressFunctions = new Map<
+    string,
+    (params: unknown, utils: ConsumptionUtil) => unknown
+  >();
+
+  const registry = getMooseInternal();
+  registry.egressApis.forEach((api) => {
+    const handler = api.getHandler()!;
+    if (handler) {
+      egressFunctions.set(api.name, handler);
+    }
+  });
+
+  return egressFunctions;
 };
 
 export class TypedBase<T, C> {

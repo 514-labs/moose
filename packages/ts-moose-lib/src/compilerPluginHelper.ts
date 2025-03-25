@@ -67,8 +67,10 @@ export const replaceProgram =
     const transformedSource = tsInstance.transform(
       program
         .getSourceFiles()
-        .filter((sourceFile) =>
-          rootFileNames.includes(sourceFile.fileName as any),
+        .filter(
+          (sourceFile) =>
+            sourceFile.fileName.startsWith("app/") ||
+            sourceFile.fileName.startsWith(`${process.cwd()}/app/`),
         ),
       [transformFunction],
       compilerOptions,

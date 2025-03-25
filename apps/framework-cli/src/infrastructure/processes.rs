@@ -6,6 +6,7 @@ use orchestration_workers_registry::OrchestrationWorkersRegistryError;
 use process_registry::ProcessRegistries;
 
 use crate::{
+    framework::core::infrastructure_map::InfrastructureMap,
     framework::{
         blocks::model::BlocksError,
         core::infrastructure_map::{Change, ProcessChange},
@@ -45,6 +46,7 @@ pub enum SyncProcessChangesError {
 /// When we have multiple streams (Redpanda, RabbitMQ ...) this is where it goes.
 /// This method executes changes that are allowed on any instance.
 pub async fn execute_changes(
+    infra_map: &InfrastructureMap,
     syncing_registry: &mut SyncingProcessesRegistry,
     process_registry: &mut ProcessRegistries,
     changes: &[ProcessChange],
@@ -105,7 +107,9 @@ pub async fn execute_changes(
             }
             ProcessChange::FunctionProcess(Change::Added(function_process)) => {
                 log::info!("Starting Function process: {:?}", function_process.id());
-                process_registry.functions.start(function_process)?;
+                process_registry
+                    .functions
+                    .start(infra_map, function_process)?;
             }
             ProcessChange::FunctionProcess(Change::Removed(function_process)) => {
                 log::info!("Stopping Function process: {:?}", function_process.id());
@@ -114,7 +118,7 @@ pub async fn execute_changes(
             ProcessChange::FunctionProcess(Change::Updated { before, after }) => {
                 log::info!("Updating Function process: {:?}", before.id());
                 process_registry.functions.stop(before).await?;
-                process_registry.functions.start(after)?;
+                process_registry.functions.start(infra_map, after)?;
             }
             // Olap process changes are conditional on the leader instance
             ProcessChange::OlapProcess(Change::Added(_)) => {}

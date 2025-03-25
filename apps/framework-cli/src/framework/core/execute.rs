@@ -16,7 +16,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
-use super::{infrastructure_map::ApiChange, plan::InfraPlan};
+use super::{
+    infrastructure_map::{ApiChange, InfrastructureMap},
+    plan::InfraPlan,
+};
 use crate::{
     infrastructure::{
         api,
@@ -80,7 +83,7 @@ pub async fn execute_initial_infra_change(
     project: &Project,
     settings: &Settings,
     plan: &InfraPlan,
-    api_changes_channel: Sender<ApiChange>,
+    api_changes_channel: Sender<(InfrastructureMap, ApiChange)>,
     metrics: Arc<Metrics>,
     redis_client: &Arc<Mutex<RedisClient>>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
@@ -91,6 +94,7 @@ pub async fn execute_initial_infra_change(
     // In prod, the webserver is part of the current process that gets spawned. As such
     // it is initialized from 0 and we don't need to apply diffs to it.
     api::execute_changes(
+        &plan.target_infra_map,
         &plan.target_infra_map.init_api_endpoints(),
         api_changes_channel,
     )
@@ -98,7 +102,7 @@ pub async fn execute_initial_infra_change(
     .map_err(Box::new)?;
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
+        project.kafka_config.clone(),
         project.clickhouse_config.clone(),
     );
     let mut process_registries = ProcessRegistries::new(project, settings);
@@ -106,6 +110,7 @@ pub async fn execute_initial_infra_change(
     // Execute changes that are allowed on any instance
     let changes = plan.target_infra_map.init_processes(project);
     processes::execute_changes(
+        &plan.target_infra_map,
         &mut syncing_processes_registry,
         &mut process_registries,
         &changes,
@@ -153,7 +158,7 @@ pub async fn execute_initial_infra_change(
 pub async fn execute_online_change(
     project: &Project,
     plan: &InfraPlan,
-    api_changes_channel: Sender<ApiChange>,
+    api_changes_channel: Sender<(InfrastructureMap, ApiChange)>,
     sync_processes_registry: &mut SyncingProcessesRegistry,
     process_registries: &mut ProcessRegistries,
     metrics: Arc<Metrics>,
@@ -164,12 +169,17 @@ pub async fn execute_online_change(
 
     // In prod, the webserver is part of the current process that gets spawned. As such
     // it is initialized from 0 and we don't need to apply diffs to it.
-    api::execute_changes(&plan.changes.api_changes, api_changes_channel)
-        .await
-        .map_err(Box::new)?;
+    api::execute_changes(
+        &plan.target_infra_map,
+        &plan.changes.api_changes,
+        api_changes_channel,
+    )
+    .await
+    .map_err(Box::new)?;
 
     processes::execute_leader_changes(process_registries, &plan.changes.processes_changes).await?;
     processes::execute_changes(
+        &plan.target_infra_map,
         sync_processes_registry,
         process_registries,
         &plan.changes.processes_changes,

@@ -27,6 +27,7 @@ message Topic {
   repeated Column columns = 4;
   PrimitiveSignature source_primitive = 5;
   optional int32 partition_count = 6;
+  optional int32 max_message_bytes = 7;
 }
 
 message ApiEndpoint {

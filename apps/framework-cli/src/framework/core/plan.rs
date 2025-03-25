@@ -75,7 +75,7 @@ pub async fn plan_changes(
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
     let json_path = Path::new(".moose/infrastructure_map.json");
-    let mut target_infra_map = if project.is_production && json_path.exists() {
+    let target_infra_map = if project.is_production && json_path.exists() {
         InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
     } else {
         if project.is_production && project.is_docker_image() {
@@ -89,8 +89,6 @@ pub async fn plan_changes(
             InfrastructureMap::new(project, primitive_map)
         }
     };
-
-    target_infra_map.with_topic_namespace(&project.redpanda_config);
 
     let current_infra_map = {
         let redis_guard = client.lock().await;

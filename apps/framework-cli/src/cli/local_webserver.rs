@@ -22,6 +22,7 @@ use super::display::{with_spinner, Message, MessageType};
 use super::routines::auth::validate_auth_token;
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
+use crate::infrastructure::stream::kafka::models::KafkaStreamConfig;
 use crate::metrics::MetricEvent;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
@@ -32,8 +33,8 @@ use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
 use crate::framework::data_model::config::EndpointIngestionFormat;
-use crate::infrastructure::stream::redpanda;
-use crate::infrastructure::stream::redpanda::ConfiguredProducer;
+use crate::infrastructure::stream::kafka;
+use crate::infrastructure::stream::kafka::models::ConfiguredProducer;
 
 use crate::framework::typescript::bin::CliMessage;
 use crate::project::{JwtConfig, Project};
@@ -110,7 +111,7 @@ fn default_management_port() -> u16 {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RouteMeta {
     /// The Kafka topic name associated with this route
-    pub topic_name: String,
+    pub kafka_topic_name: String,
     /// The format of data ingestion (JSON, CSV, etc.)
     pub format: EndpointIngestionFormat,
     /// The data model associated with this route
@@ -674,7 +675,7 @@ async fn handle_json_array_body(
                 .send_result(record)
                 .map_err(|(e, _)| e),
         );
-        // ideally we want to use redpanda::send_with_back_pressure
+        // ideally we want to use kafka::send_with_back_pressure
         // but it does not report the error back
         if count % 1024 == 1023 {
             wait_for_batch_complete(&mut res_arr, temp_res).await;
@@ -778,7 +779,7 @@ async fn ingest_route(
         Some((_, route_meta)) => match route_meta.format {
             EndpointIngestionFormat::Json => Ok(handle_json_req(
                 &configured_producer,
-                &route_meta.topic_name,
+                &route_meta.kafka_topic_name,
                 &route_meta.data_model,
                 req,
                 &jwt_config,
@@ -786,7 +787,7 @@ async fn ingest_route(
             .await),
             EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
                 &configured_producer,
-                &route_meta.topic_name,
+                &route_meta.kafka_topic_name,
                 &route_meta.data_model,
                 req,
                 &jwt_config,
@@ -933,7 +934,7 @@ async fn router(
         .read()
         .await
         .get(&route_clone)
-        .map(|route_meta| route_meta.topic_name.clone())
+        .map(|route_meta| route_meta.kafka_topic_name.clone())
         .unwrap_or_default();
 
     let metrics_clone = metrics.clone();
@@ -1049,31 +1050,41 @@ impl Webserver {
 
     pub async fn spawn_api_update_listener(
         &self,
+        project: Arc<Project>,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         consumption_apis: &'static RwLock<HashSet<String>>,
-    ) -> mpsc::Sender<ApiChange> {
+    ) -> mpsc::Sender<(InfrastructureMap, ApiChange)> {
         log::info!("Spawning API update listener");
 
-        let (tx, mut rx) = mpsc::channel::<ApiChange>(32);
+        let (tx, mut rx) = mpsc::channel::<(InfrastructureMap, ApiChange)>(32);
 
         tokio::spawn(async move {
-            while let Some(api_change) = rx.recv().await {
+            while let Some((infra_map, api_change)) = rx.recv().await {
                 let mut route_table = route_table.write().await;
                 match api_change {
                     ApiChange::ApiEndpoint(Change::Added(api_endpoint)) => {
                         log::info!("Adding route: {:?}", api_endpoint.path);
                         match api_endpoint.api_type {
                             APIType::INGRESS {
-                                target_topic,
+                                target_topic_id,
                                 data_model,
                                 format,
                             } => {
+                                // This is not namespaced
+                                let topic = infra_map
+                                    .get_topic_by_id(&target_topic_id)
+                                    .expect("Topic not found");
+
+                                // This is now a namespaced topic
+                                let kafka_topic =
+                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
+
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
                                         format,
                                         data_model: data_model.unwrap(),
-                                        topic_name: target_topic,
+                                        kafka_topic_name: kafka_topic.name,
                                     },
                                 );
                             }
@@ -1102,11 +1113,18 @@ impl Webserver {
                     ApiChange::ApiEndpoint(Change::Updated { before, after }) => {
                         match &after.api_type {
                             APIType::INGRESS {
-                                target_topic,
+                                target_topic_id,
                                 data_model,
                                 format,
                             } => {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
+
+                                let topic = infra_map
+                                    .get_topic_by_id(target_topic_id)
+                                    .expect("Topic not found");
+
+                                let kafka_topic =
+                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
 
                                 route_table.remove(&before.path);
                                 route_table.insert(
@@ -1114,7 +1132,7 @@ impl Webserver {
                                     RouteMeta {
                                         format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
-                                        topic_name: target_topic.clone(),
+                                        kafka_topic_name: kafka_topic.name,
                                     },
                                 );
                             }
@@ -1156,7 +1174,7 @@ impl Webserver {
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
         let producer = if project.features.streaming_engine {
-            Some(redpanda::create_producer(project.redpanda_config.clone()))
+            Some(kafka::client::create_producer(project.kafka_config.clone()))
         } else {
             None
         };
@@ -1846,14 +1864,12 @@ async fn admin_plan_route(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
-    use crate::framework::core::infrastructure::olap_process::OlapProcess;
+
     use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
     use crate::framework::core::infrastructure_map::{
         OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
     };
     use crate::framework::versions::Version;
-    use std::collections::HashMap;
 
     fn create_test_table(name: &str) -> Table {
         Table {
@@ -1877,21 +1893,7 @@ mod tests {
     }
 
     fn create_test_infra_map() -> InfrastructureMap {
-        let block_db_processes = OlapProcess {};
-        let consumption_api_web_server = ConsumptionApiWebServer {};
-
-        InfrastructureMap {
-            tables: HashMap::new(),
-            topics: HashMap::new(),
-            api_endpoints: HashMap::new(),
-            views: HashMap::new(),
-            topic_to_table_sync_processes: HashMap::new(),
-            topic_to_topic_sync_processes: HashMap::new(),
-            function_processes: HashMap::new(),
-            block_db_processes,
-            consumption_api_web_server,
-            orchestration_workers: HashMap::new(),
-        }
+        InfrastructureMap::default()
     }
 
     #[tokio::test]

@@ -65,7 +65,7 @@ fn get_webserver_process(project: &Arc<Project>) -> Option<MooseProcess> {
 }
 
 fn get_redpanda_process(project: &Arc<Project>) -> Option<MooseProcess> {
-    let broker = &project.redpanda_config.broker;
+    let broker = &project.kafka_config.broker;
     let parts: Vec<&str> = broker.split(':').collect();
     if parts.len() < 2 {
         error!("Invalid broker format: {}", broker);
@@ -79,7 +79,7 @@ fn get_redpanda_process(project: &Arc<Project>) -> Option<MooseProcess> {
         }
     };
 
-    let config_string = serde_json::to_string_pretty(&project.redpanda_config).unwrap();
+    let config_string = serde_json::to_string_pretty(&project.kafka_config).unwrap();
     get_process_by_port(
         port,
         "redpanda",

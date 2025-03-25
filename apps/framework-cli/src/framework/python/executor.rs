@@ -131,14 +131,14 @@ pub fn add_optional_arg(args: &mut Vec<String>, flag: &str, value: &Option<Strin
 mod tests {
     use std::path::Path;
 
-    use crate::infrastructure::stream::redpanda::RedpandaConfig;
+    use crate::infrastructure::stream::kafka::models::KafkaConfig;
 
     use super::*;
 
     #[tokio::test]
     #[ignore]
     async fn test_run_python_flow_runner_program() {
-        let redpanda_config = RedpandaConfig::default();
+        let kafka_config = KafkaConfig::default();
         let source_topic = "UserActivity_0_0";
         let target_topic = "ParsedActivity_0_0";
         let flow_path = Path::new(
@@ -150,7 +150,7 @@ mod tests {
                 source_topic.to_string(),
                 target_topic.to_string(),
                 flow_path.to_str().unwrap().to_string(),
-                redpanda_config.broker,
+                kafka_config.broker,
             ],
         };
 

@@ -233,7 +233,7 @@ pub fn framework_object_mapper(
         None
     };
 
-    let namespace = project.redpanda_config.get_namespace_prefix();
+    let namespace = project.kafka_config.get_namespace_prefix();
     let topic = format!(
         "{}{}_{}",
         namespace,

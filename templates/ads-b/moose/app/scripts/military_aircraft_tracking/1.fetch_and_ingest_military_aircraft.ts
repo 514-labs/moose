@@ -1,47 +1,41 @@
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 import * as http from "http";
 
-async function mapToAircraftTrackingData(aircraft: any): Promise<any> {
-  return {
-    hex: aircraft.hex,
-    type: aircraft.type || "",
-    flight: aircraft.flight || "",
-    r: aircraft.r || "",
-    t: aircraft.t || "",
-    dbFlags: aircraft.dbFlags || 0,
-    lat: aircraft.lat || 0,
-    lon: aircraft.lon || 0,
-    alt_baro: aircraft.alt_baro || 0,
-    alt_geom: aircraft.alt_geom || 0,
-    gs: aircraft.gs || 0,
-    track: aircraft.track || 0,
-    baro_rate: aircraft.baro_rate || 0,
-    geom_rate: aircraft.geom_rate,
-    squawk: aircraft.squawk || "",
-    emergency: aircraft.emergency || "",
-    category: aircraft.category || "",
-    nav_qnh: aircraft.nav_qnh,
-    nav_altitude_mcp: aircraft.nav_altitude_mcp,
-    nav_heading: aircraft.nav_heading,
-    nav_modes: aircraft.nav_modes,
-    nic: aircraft.nic || 0,
-    rc: aircraft.rc || 0,
-    seen_pos: aircraft.seen_pos || 0,
-    version: aircraft.version || 0,
-    nic_baro: aircraft.nic_baro || 0,
-    nac_p: aircraft.nac_p || 0,
-    nac_v: aircraft.nac_v || 0,
-    sil: aircraft.sil || 0,
-    sil_type: aircraft.sil_type || "",
-    gva: aircraft.gva || 0,
-    sda: aircraft.sda || 0,
-    alert: aircraft.alert || 0,
-    spi: aircraft.spi || 0,
-    mlat: aircraft.mlat || [],
-    tisb: aircraft.tisb || [],
-    messages: aircraft.messages || 0,
-    seen: aircraft.seen || 0,
-    rssi: aircraft.rssi || 0,
-  };
+// Define interfaces for the API response and task data
+interface AircraftData {
+  hex: string;
+  flight: string;
+  alt_baro: number;
+  lat: number;
+  lon: number;
+  track: number;
+  speed: number;
+  category: string;
+  mlat: boolean;
+  tisb: boolean;
+  messages: number;
+  seen: number;
+  rssi: number;
+}
+
+interface ApiResponse {
+  aircraft: AircraftData[];
+  total: number;
+  time: number;
+}
+
+interface ProcessedAircraftData {
+  hex: string;
+  flight: string;
+  altitude_int: number;
+  altitude_str: string;
+  lat: number;
+  lon: number;
+  track: number;
+  speed: number;
+  category: string;
+  is_military: boolean;
+  timestamp: string;
 }
 
 async function mapToAircraftTrackingDataAltBaroInt(
@@ -56,7 +50,7 @@ async function mapToAircraftTrackingDataAltBaroInt(
     dbFlags: aircraft.dbFlags || 0,
     lat: aircraft.lat || 0,
     lon: aircraft.lon || 0,
-    alt_baro: parseInt(aircraft.alt_baro) || 0, // Convert to integer
+    alt_baro: parseInt(aircraft.alt_baro) || 0,
     alt_geom: aircraft.alt_geom || 0,
     gs: aircraft.gs || 0,
     track: aircraft.track || 0,
@@ -102,7 +96,7 @@ async function mapToAircraftTrackingDataAltBaroString(
     dbFlags: aircraft.dbFlags || 0,
     lat: aircraft.lat || 0,
     lon: aircraft.lon || 0,
-    alt_baro: String(aircraft.alt_baro || "0"), // Convert to string
+    alt_baro: String(aircraft.alt_baro || "0"),
     alt_geom: aircraft.alt_geom || 0,
     gs: aircraft.gs || 0,
     track: aircraft.track || 0,
@@ -172,15 +166,20 @@ async function sendToMoose(data: any, endpoint: string): Promise<void> {
   });
 }
 
-async function fetchMilitaryAircraftData(): Promise<void> {
+/**
+ * Fetches military aircraft data from adsb.lol API and processes it for Moose ingestion
+ *
+ * @param input - Input parameters (not used in this task)
+ * @returns Object containing task name and processed aircraft data
+ */
+const fetchAndIngestMilitaryAircraft: TaskFunction = async (input: any) => {
   try {
-    const url = "https://api.adsb.lol/v2/mil";
-    const controller = new AbortController();
+    console.log("Fetching military aircraft data from adsb.lol API");
 
-    // Set 30 second timeout
+    const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch(url, {
+    const response = await fetch("https://api.adsb.lol/v2/mil", {
       method: "GET",
       signal: controller.signal,
     });
@@ -193,21 +192,19 @@ async function fetchMilitaryAircraftData(): Promise<void> {
 
     const data = await response.json();
 
-    // Add collection timestamp if not present
+    // Add collection timestamp
     const timestamp = new Date().toISOString();
     const enrichedData = {
       ...data,
       collectionTimestamp: timestamp,
     };
 
-    // Write response to stdout
     console.log(JSON.stringify(enrichedData));
 
     // Process and send each aircraft to Moose
     if (enrichedData.ac && Array.isArray(enrichedData.ac)) {
       for (const aircraft of enrichedData.ac) {
         try {
-          // Send to alt_baro as integer endpoint
           const mappedDataAltBaroInt =
             await mapToAircraftTrackingDataAltBaroInt(aircraft);
           await sendToMoose(
@@ -215,7 +212,6 @@ async function fetchMilitaryAircraftData(): Promise<void> {
             "AircraftTrackingData_altBaroInt",
           );
 
-          // Send to alt_baro as string endpoint
           const mappedDataAltBaroString =
             await mapToAircraftTrackingDataAltBaroString(aircraft);
           await sendToMoose(
@@ -227,12 +223,27 @@ async function fetchMilitaryAircraftData(): Promise<void> {
         }
       }
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      console.log(`Error: ${error.message}`);
-    }
-  }
-}
 
-// Execute the fetch
-fetchMilitaryAircraftData();
+    return {
+      task: "fetch_and_ingest_military_aircraft",
+      data: enrichedData,
+    };
+  } catch (error) {
+    console.error(
+      `Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    throw error;
+  }
+};
+
+/**
+ * Creates and returns the task definition for the Moose workflow
+ */
+export default function createTask(): TaskDefinition {
+  return {
+    task: fetchAndIngestMilitaryAircraft,
+    config: {
+      retries: 3,
+    },
+  } as TaskDefinition;
+}

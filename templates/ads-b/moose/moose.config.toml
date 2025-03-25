@@ -44,10 +44,4 @@ postgresql_version = "13"
 
 [features]
 streaming_engine = true
-workflows = false
-
-
-[[cron_jobs]]
-job_id = "ingest_job"
-cron_spec = "*/5 * * * * * *"
-script_path = "/Users/johananottensooser/code/agent-test/app/scripts/ingest_script.ts"
+workflows = true

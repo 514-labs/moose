@@ -126,7 +126,9 @@ export const getStreamingFunctions = async () => {
 
   registry.streams.forEach((stream) => {
     stream._transformations.forEach(([destination, f]) => {
-      transformFunctions.set(`${stream.name}_${destination.name}`, f);
+      // TODO: Add version to dmv2 apis
+      const transformFunctionKey = `${stream.name}_0_0_${destination.name}_0_0`;
+      transformFunctions.set(transformFunctionKey, f);
     });
   });
 
@@ -142,10 +144,7 @@ export const getEgressApis = async () => {
 
   const registry = getMooseInternal();
   registry.egressApis.forEach((api) => {
-    const handler = api.getHandler()!;
-    if (handler) {
-      egressFunctions.set(api.name, handler);
-    }
+    egressFunctions.set(api.name, api.getHandler());
   });
 
   return egressFunctions;

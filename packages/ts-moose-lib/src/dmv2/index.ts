@@ -135,7 +135,7 @@ type ConsumptionHandler<T> = (
 interface EgressConfig<T> {}
 
 export class ConsumptionApi<T> extends TypedBase<T, EgressConfig<T>> {
-  _handler?: ConsumptionHandler<T>;
+  _handler: ConsumptionHandler<T>;
 
   constructor(name: string, handler: ConsumptionHandler<T>, config?: {});
 
@@ -162,7 +162,7 @@ export class ConsumptionApi<T> extends TypedBase<T, EgressConfig<T>> {
     getMooseInternal().egressApis.set(name, this);
   }
 
-  getHandler = (): ConsumptionHandler<T> | undefined => {
+  getHandler = (): ConsumptionHandler<T> => {
     return this._handler;
   };
 }

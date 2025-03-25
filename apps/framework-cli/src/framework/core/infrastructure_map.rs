@@ -1599,7 +1599,7 @@ impl InfrastructureMap {
         let tables = partial.convert_tables();
         let topics = partial.convert_topics();
         let api_endpoints = partial.convert_api_endpoints(language, &topics);
-        let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes();
+        let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes(&topics);
         let function_processes = partial.create_function_processes(language, &topics);
 
         Ok(InfrastructureMap {
@@ -1760,7 +1760,7 @@ impl PartialInfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
         let api_endpoints = self.convert_api_endpoints(language, &topics);
-        let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes();
+        let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes(&topics);
         let function_processes = self.create_function_processes(language, &topics);
 
         InfrastructureMap {
@@ -1802,8 +1802,8 @@ impl PartialInfrastructureMap {
 
     fn convert_topics(&self) -> HashMap<String, Topic> {
         self.topics
-            .iter()
-            .map(|(id, partial_topic)| {
+            .values()
+            .map(|partial_topic| {
                 let topic = Topic {
                     name: partial_topic.name.clone(),
                     columns: partial_topic.columns.clone(),
@@ -1819,7 +1819,8 @@ impl PartialInfrastructureMap {
                         primitive_type: PrimitiveTypes::DataModel,
                     },
                 };
-                (id.clone(), topic)
+                // TODO pass through version from the TS / PY api
+                (format!("{}_0_0", partial_topic.name), topic)
             })
             .collect()
     }
@@ -1916,15 +1917,25 @@ impl PartialInfrastructureMap {
         api_endpoints
     }
 
-    fn create_topic_to_table_sync_processes(&self) -> HashMap<String, TopicToTableSyncProcess> {
+    fn create_topic_to_table_sync_processes(
+        &self,
+        topics: &HashMap<String, Topic>,
+    ) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
         for (topic_name, partial_topic) in &self.topics {
             if let Some(target_table) = &partial_topic.target_table {
-                let sync_id = format!("{}_{}", topic_name, target_table);
+                let not_found = &format!("Source topic '{}' not found", topic_name);
+                let source_topic = topics
+                    .values()
+                    .find(|topic| &topic.name == topic_name)
+                    .expect(not_found);
+                let source_topic_id = source_topic.id();
+
+                let sync_id = format!("{}_{}", source_topic_id, target_table);
 
                 let sync_process = TopicToTableSyncProcess {
-                    source_topic_id: topic_name.to_string(),
+                    source_topic_id,
                     target_table_id: target_table.to_string(),
                     columns: partial_topic.columns.clone(),
                     // TODO pass through version from the TS / PY api
@@ -1936,11 +1947,7 @@ impl PartialInfrastructureMap {
                 };
 
                 sync_processes.insert(sync_id.clone(), sync_process);
-                log::info!(
-                    "<dmv2> Created topic_to_table_sync_processes from {} to {}",
-                    topic_name,
-                    target_table
-                );
+                log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
             } else {
                 log::info!(
                     "<dmv2> Topic {} has no target_table specified, skipping sync process creation",

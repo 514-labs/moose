@@ -41,6 +41,24 @@ export const isCreateConsumptionApi = (
   return name == "createConsumptionApi";
 };
 
+export const isCreateConsumptionApiV2 = (
+  node: ts.Node,
+  checker: ts.TypeChecker,
+): node is ts.NewExpression => {
+  if (!ts.isNewExpression(node)) {
+    return false;
+  }
+
+  const declaration: ts.Declaration | undefined =
+    checker.getResolvedSignature(node)?.declaration;
+  if (!declaration || !isMooseFile(declaration.getSourceFile())) {
+    return false;
+  }
+
+  const sym = checker.getSymbolAtLocation(node.expression);
+  return sym?.name === "ConsumptionApi";
+};
+
 const getParamType = (
   funcType: ts.Type,
   checker: ts.TypeChecker,
@@ -75,6 +93,19 @@ const typeToOutputSchema = (t: ts.Type, checker: ts.TypeChecker): ts.Type => {
 };
 
 export const transformCreateConsumptionApi = (
+  node: ts.Node,
+  checker: ts.TypeChecker,
+): ts.Node => {
+  if (isCreateConsumptionApi(node, checker)) {
+    return transformLegacyConsumptionApi(node, checker);
+  } else if (isCreateConsumptionApiV2(node, checker)) {
+    return transformNewConsumptionApi(node as ts.NewExpression, checker);
+  }
+
+  return node;
+};
+
+export const transformLegacyConsumptionApi = (
   node: ts.Node,
   checker: ts.TypeChecker,
 ): ts.Node => {
@@ -289,4 +320,173 @@ export const transformCreateConsumptionApi = (
 
     factory.createReturnStatement(factory.createIdentifier("wrappedFunc")),
   ]);
+};
+
+const transformNewConsumptionApi = (
+  node: ts.NewExpression,
+  checker: ts.TypeChecker,
+): ts.Node => {
+  if (!isCreateConsumptionApiV2(node, checker)) {
+    return node;
+  }
+
+  if (!node.arguments || node.arguments.length < 2 || !node.typeArguments) {
+    return node;
+  }
+
+  // Get the type parameter from the ConsumptionApi<T>
+  const typeNode = node.typeArguments[0];
+
+  // Get the handler function (second argument)
+  const handlerFunc = node.arguments[1];
+
+  // Create a new handler function that includes validation
+  const wrappedHandler = factory.createArrowFunction(
+    undefined,
+    undefined,
+    [
+      factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        factory.createIdentifier("params"),
+        undefined,
+        undefined,
+        undefined,
+      ),
+      factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        factory.createIdentifier("utils"),
+        undefined,
+        undefined,
+        undefined,
+      ),
+    ],
+    undefined,
+    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+    factory.createBlock(
+      [
+        // const assertGuard = ____moose____typia.http.createAssertQuery<T>()
+        factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                factory.createIdentifier("assertGuard"),
+                undefined,
+                undefined,
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    factory.createPropertyAccessExpression(
+                      factory.createIdentifier(avoidTypiaNameClash),
+                      factory.createIdentifier("http"),
+                    ),
+                    factory.createIdentifier("createAssertQuery"),
+                  ),
+                  [typeNode],
+                  [],
+                ),
+              ),
+            ],
+            ts.NodeFlags.Const,
+          ),
+        ),
+        // const searchParams = new URLSearchParams(params as any)
+        factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                factory.createIdentifier("searchParams"),
+                undefined,
+                undefined,
+                factory.createNewExpression(
+                  factory.createIdentifier("URLSearchParams"),
+                  undefined,
+                  [
+                    factory.createAsExpression(
+                      factory.createIdentifier("params"),
+                      factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            ts.NodeFlags.Const,
+          ),
+        ),
+        // const processedParams = assertGuard(searchParams)
+        factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            [
+              factory.createVariableDeclaration(
+                factory.createIdentifier("processedParams"),
+                undefined,
+                undefined,
+                factory.createCallExpression(
+                  factory.createIdentifier("assertGuard"),
+                  undefined,
+                  [factory.createIdentifier("searchParams")],
+                ),
+              ),
+            ],
+            ts.NodeFlags.Const,
+          ),
+        ),
+        // return originalHandler(processedParams, utils)
+        factory.createReturnStatement(
+          factory.createCallExpression(
+            factory.createParenthesizedExpression(handlerFunc),
+            undefined,
+            [
+              factory.createIdentifier("processedParams"),
+              factory.createIdentifier("utils"),
+            ],
+          ),
+        ),
+      ],
+      true,
+    ),
+  );
+
+  // Create the schema argument if it doesn't exist
+  const schemaArg =
+    node.arguments.length > 3 ? node.arguments[3] : typiaJsonSchemas(typeNode);
+
+  // Create the columns argument if it doesn't exist
+  const columnsArg =
+    node.arguments.length > 4
+      ? node.arguments[4]
+      : factory.createAsExpression(
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("JSON"),
+              factory.createIdentifier("parse"),
+            ),
+            undefined,
+            [factory.createStringLiteral("[]")],
+          ),
+          factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+        );
+
+  // Create the config argument if it doesn't exist
+  const configArg =
+    node.arguments.length > 2
+      ? node.arguments[2]
+      : factory.createObjectLiteralExpression([], false);
+
+  // Update the ConsumptionApi constructor call with all necessary arguments
+  return factory.updateNewExpression(
+    node,
+    node.expression,
+    node.typeArguments,
+    [
+      node.arguments[0], // name
+      wrappedHandler, // wrapped handler
+      configArg, // config object
+      schemaArg, // schema
+      columnsArg, // columns
+    ],
+  );
 };

@@ -58,29 +58,14 @@ export const transformNewMooseResource = (
   const typeNode = node.typeArguments![0];
   const columns = toColumns(checker.getTypeAtLocation(typeNode), checker);
 
-  const sym = checker.getSymbolAtLocation(node.expression);
-  const isConsumptionApi = sym?.name === "ConsumptionApi";
-
-  let updatedArgs;
-  if (isConsumptionApi && node.arguments!.length === 2) {
-    // Case: new ConsumptionApi<T>(name, handler)
-    updatedArgs = [
-      node.arguments![0],
-      node.arguments![1],
-      factory.createObjectLiteralExpression([], false),
-      typiaJsonSchemas(typeNode),
-      parseAsAny(JSON.stringify(columns)),
-    ];
-  } else {
-    updatedArgs = [
-      ...node.arguments!,
-      ...(node.arguments!.length === 1 // provide empty config if undefined
-        ? [factory.createObjectLiteralExpression([], false)]
-        : []),
-      typiaJsonSchemas(typeNode),
-      parseAsAny(JSON.stringify(columns)),
-    ];
-  }
+  const updatedArgs = [
+    ...node.arguments!,
+    ...(node.arguments!.length === 1 // provide empty config if undefined
+      ? [factory.createObjectLiteralExpression([], false)]
+      : []),
+    typiaJsonSchemas(typeNode),
+    parseAsAny(JSON.stringify(columns)),
+  ];
 
   return ts.factory.updateNewExpression(
     node,

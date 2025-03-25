@@ -260,7 +260,7 @@ export const transformCreateConsumptionApi = (
       ),
     ),
 
-    // wrappedFunc["moose_output_schema"] = ____moose____typia.json.schemas<[Output]>()
+    // Modify the output schema generation to use string type instead of Format
     factory.createExpressionStatement(
       factory.createBinaryExpression(
         factory.createElementAccessExpression(
@@ -278,8 +278,14 @@ export const transformCreateConsumptionApi = (
           ),
           [
             factory.createTupleTypeNode([
-              queryResultType ||
-                factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+              factory.createTypeReferenceNode(
+                factory.createIdentifier("ReturnType"),
+                [
+                  factory.createTypeQueryNode(
+                    factory.createIdentifier("handlerFunc"),
+                  ),
+                ],
+              ),
             ]),
           ],
           [],

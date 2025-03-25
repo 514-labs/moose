@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "aurora": {
+      "command": "node",
+      "args": [
+        "/Users/johananottensooser/code/mcp-demo/mcp/dist/index.js",
+        "/Users/johananottensooser/code/agent-test"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": ""
+      }
+    }
+  }
+}

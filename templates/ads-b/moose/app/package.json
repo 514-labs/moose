@@ -1,0 +1,18 @@
+{
+  "name": "agent-test",
+  "version": "0.0",
+  "scripts": {
+    "moose": "moose-cli",
+    "build": "moose-cli build --docker",
+    "dev": "moose-cli dev"
+  },
+  "dependencies": {
+    "ts-patch": "^3.3.0",
+    "@514labs/moose-lib": "latest",
+    "typia": "^7.6.0"
+  },
+  "devDependencies": {
+    "@514labs/moose-cli": "latest",
+    "@types/node": "^20.12.12"
+  }
+}

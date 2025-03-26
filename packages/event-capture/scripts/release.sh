@@ -13,6 +13,6 @@ jq \
     && mv package.json.tmp package.json
 
 cd ../..
-pnpm build --filter=event-capture
+pnpm build --filter=@514labs/event-capture
 cd packages/event-capture
 pnpm publish --access public --no-git-checks

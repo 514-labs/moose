@@ -5,11 +5,11 @@ import {
   SmallTextEmbed,
   textBodyBase,
 } from "@514labs/design-system-components/typography";
-import { Logo } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
+
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
@@ -37,11 +37,6 @@ export default {
   },
   docsRepositoryBase:
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
-  useNextSeoProps() {
-    return {
-      titleTemplate: "%s – Moose",
-    };
-  },
   head: () => (
     <>
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
@@ -117,7 +112,6 @@ export default {
         <SmallText className="my-0 text-muted-foreground">{title}</SmallText>
       );
     },
-    toggleButton: false,
   },
   toc: {
     title: () => {
@@ -149,7 +143,7 @@ export default {
     content: null,
   },
   footer: {
-    text: (
+    content: (
       <span>
         MIT | {new Date().getFullYear()} ©{" "}
         <a href="https://fiveonefour.com" target="_blank">

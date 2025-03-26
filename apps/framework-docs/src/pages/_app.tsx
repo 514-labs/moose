@@ -1,14 +1,14 @@
 import "@514labs/design-system-base/globals.css";
 import RootLayout from "../components/layouts";
-import { useEffect } from 'react'
-import { useRouter } from 'next/router'
-import Router from 'next/router'
-import posthog from 'posthog-js'
-import { PostHogProvider } from 'posthog-js/react'
-import Script from 'next/script'
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import Router from "next/router";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import Script from "next/script";
+import type { AppProps } from "next/app";
 
-
-export default function App({ Component, pageProps }) {
+export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
   useEffect(() => {
@@ -27,33 +27,39 @@ export default function App({ Component, pageProps }) {
       };
     }
 
-    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-      ui_host: 'https://us.posthog.com',
-      bootstrap: bootstrapData, // Bootstrap with IDs from the URL if provided.
-      // Enable debug mode in development
-      loaded: (posthogInstance) => {
-        if (process.env.NODE_ENV === 'development') posthogInstance.debug()
-      }
-    })
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+        api_host:
+          process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+        ui_host: "https://us.posthog.com",
+        bootstrap: bootstrapData, // Bootstrap with IDs from the URL if provided.
+        // Enable debug mode in development
+        loaded: (posthogInstance) => {
+          if (process.env.NODE_ENV === "development") posthogInstance.debug();
+        },
+      });
+    }
 
-    const handleRouteChange = () => posthog?.capture('$pageview')
+    const handleRouteChange = () =>
+      process.env.NEXT_PUBLIC_POSTHOG_KEY
+        ? posthog?.capture("$pageview")
+        : null;
 
-    Router.events.on('routeChangeComplete', handleRouteChange);
+    Router.events.on("routeChangeComplete", handleRouteChange);
 
     return () => {
-      Router.events.off('routeChangeComplete', handleRouteChange);
-    }
-  }, [router.isReady])
+      Router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.isReady]);
 
   return (
     <PostHogProvider client={posthog}>
       <RootLayout>
-      <Script
-            id="apollo-tracking"
-            strategy="beforeInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `
+        <Script
+          id="apollo-tracking"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
                 function initApollo() {
                   var n = Math.random().toString(36).substring(7);
                   var o = document.createElement("script");
@@ -68,9 +74,9 @@ export default function App({ Component, pageProps }) {
                   document.head.appendChild(o);
                 }
                 initApollo();
-              `
-            }}
-          />
+              `,
+          }}
+        />
         <Component {...pageProps} />
       </RootLayout>
     </PostHogProvider>

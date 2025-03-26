@@ -213,9 +213,6 @@ export async function runScripts(
   // so have to pass it around
   const logger = initializeLogger();
 
-  // TODO: Remove this
-  console.log(config);
-
   logger.info(`Starting worker for script directory: ${config.scriptDir}`);
   const worker = await registerWorkflows(logger, config);
   if (!worker) {

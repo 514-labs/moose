@@ -75,9 +75,6 @@ const asyncWorker = async (task: BlocksQueueTask) => {
 };
 
 export const runBlocks = async (config: BlocksConfig) => {
-  // TODO: Remove this
-  console.log(config);
-
   const chClient = getClickhouseClient(toClientConfig(config.clickhouseConfig));
   console.log(`Connected`);
 

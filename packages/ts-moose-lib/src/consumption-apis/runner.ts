@@ -185,10 +185,6 @@ const apiHandler =
   };
 
 export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
-  console.log("Starting API service");
-  // TODO: Remove this
-  console.log(config);
-
   const consumptionCluster = new Cluster({
     workerStart: async () => {
       let temporalClient: TemporalClient | undefined;

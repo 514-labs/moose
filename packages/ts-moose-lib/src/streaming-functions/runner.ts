@@ -565,9 +565,6 @@ export const runStreamingFunctions = async (
 ): Promise<void> => {
   const streamingFuncId = `flow-${args.sourceTopic.name}-${args.targetTopic?.name}`;
 
-  // TODO: Remove this
-  console.log(args);
-
   const cluster = new Cluster({
     // This is an arbitrary value, we can adjust it as needed
     // based on the performance of the streaming functions

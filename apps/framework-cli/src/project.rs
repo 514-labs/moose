@@ -252,7 +252,7 @@ impl Project {
             language,
             is_production: false,
             project_location: location.clone(),
-            kafka_config: KafkaConfig::default(),
+            redpanda_config: KafkaConfig::default(),
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),

@@ -140,18 +140,18 @@ pub async fn execute_changes(
         match change {
             KafkaChange::Added(topic) => {
                 info!("Creating topic: {:?}", topic.name);
-                create_topics(&project.kafka_config, vec![&topic]).await?;
+                create_topics(&project.redpanda_config, vec![&topic]).await?;
             }
 
             KafkaChange::Removed(topic) => {
                 info!("Deleting topic: {:?}", topic.name);
-                delete_topics(&project.kafka_config, vec![&topic]).await?;
+                delete_topics(&project.redpanda_config, vec![&topic]).await?;
             }
 
             KafkaChange::Updated { before, after } => {
                 if before.retention_ms != after.retention_ms {
                     info!("Updating topic: {:?} with: {:?}", before, after);
-                    update_topic_config(&project.kafka_config, &before.name, after).await?;
+                    update_topic_config(&project.redpanda_config, &before.name, after).await?;
                 }
 
                 match before.partitions.cmp(&after.partitions) {
@@ -166,7 +166,7 @@ pub async fn execute_changes(
                             "Setting partitions count for topic: {:?} with: {:?}",
                             before.name, after.partitions
                         );
-                        add_partitions(&project.kafka_config, &before.name, after.partitions)
+                        add_partitions(&project.redpanda_config, &before.name, after.partitions)
                             .await?;
                     }
                     std::cmp::Ordering::Equal => {}

@@ -1077,7 +1077,7 @@ impl Webserver {
 
                                 // This is now a namespaced topic
                                 let kafka_topic =
-                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
+                                    KafkaStreamConfig::from_topic(&project.redpanda_config, topic);
 
                                 route_table.insert(
                                     api_endpoint.path.clone(),
@@ -1124,7 +1124,7 @@ impl Webserver {
                                     .expect("Topic not found");
 
                                 let kafka_topic =
-                                    KafkaStreamConfig::from_topic(&project.kafka_config, topic);
+                                    KafkaStreamConfig::from_topic(&project.redpanda_config, topic);
 
                                 route_table.remove(&before.path);
                                 route_table.insert(
@@ -1174,7 +1174,9 @@ impl Webserver {
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
         let producer = if project.features.streaming_engine {
-            Some(kafka::client::create_producer(project.kafka_config.clone()))
+            Some(kafka::client::create_producer(
+                project.redpanda_config.clone(),
+            ))
         } else {
             None
         };

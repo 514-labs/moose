@@ -52,7 +52,7 @@ pub fn validate_changes(
     changes: &[StreamingChange],
 ) -> Result<(), StreamingChangesError> {
     // Convert core StreamingChange to Redpanda-specific RedpandaChange
-    let kafka_changes = convert_to_kafka_changes(&project.kafka_config, changes);
+    let kafka_changes = convert_to_kafka_changes(&project.redpanda_config, changes);
 
     // Delegate to kafka client validate_changes
     kafka::client::validate_changes(&kafka_changes)?;
@@ -82,7 +82,7 @@ pub async fn execute_changes(
     changes: &[StreamingChange],
 ) -> Result<(), StreamingChangesError> {
     // Convert core StreamingChange to Redpanda-specific RedpandaChange
-    let kafka_changes = convert_to_kafka_changes(&project.kafka_config, changes);
+    let kafka_changes = convert_to_kafka_changes(&project.redpanda_config, changes);
 
     // Delegate to redpanda client execute_changes
     kafka::client::execute_changes(project, &kafka_changes).await?;

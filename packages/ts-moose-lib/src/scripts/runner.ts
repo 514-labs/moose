@@ -10,8 +10,17 @@ import { createActivityForScript } from "./activity";
 import { activities } from "./activity";
 import { initializeLogger } from "./logger";
 
-const [, , , TEMPORAL_URL, SCRIPT_DIR, CLIENT_CERT, CLIENT_KEY, API_KEY] =
-  process.argv;
+interface TemporalConfig {
+  url: string;
+  clientCert?: string;
+  clientKey?: string;
+  apiKey?: string;
+}
+
+interface ScriptsConfig {
+  scriptDir: string;
+  temporalConfig: TemporalConfig;
+}
 
 // Maintain a global set of activity names we've already registered
 const ALREADY_REGISTERED = new Set<string>();
@@ -60,15 +69,12 @@ function collectActivities(
  */
 async function createTemporalConnection(
   logger: DefaultLogger,
-  temporalUrl: string,
-  clientCert: string,
-  clientKey: string,
-  apiKey: string,
+  temporalConfig: TemporalConfig,
 ): Promise<{ connection: NativeConnection; namespace: string }> {
   let namespace = "default";
-  if (!temporalUrl.includes("localhost")) {
+  if (!temporalConfig.url.includes("localhost")) {
     // Remove port and just get <namespace>.<account>
-    const hostPart = temporalUrl.split(":")[0];
+    const hostPart = temporalConfig.url.split(":")[0];
     const match = hostPart.match(/^([^.]+\.[^.]+)/);
     if (match && match[1]) {
       namespace = match[1];
@@ -77,15 +83,15 @@ async function createTemporalConnection(
   logger.info(`Using namespace from URL: ${namespace}`);
 
   let connectionOptions: NativeConnectionOptions = {
-    address: temporalUrl,
+    address: temporalConfig.url,
   };
 
-  if (!temporalUrl.includes("localhost")) {
+  if (!temporalConfig.url.includes("localhost")) {
     // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
-    if (clientCert && clientKey) {
+    if (temporalConfig.clientCert && temporalConfig.clientKey) {
       logger.info("Using TLS for non-local Temporal");
-      const cert = await fs.readFileSync(clientCert);
-      const key = await fs.readFileSync(clientKey);
+      const cert = await fs.readFileSync(temporalConfig.clientCert);
+      const key = await fs.readFileSync(temporalConfig.clientKey);
 
       connectionOptions.tls = {
         clientCertPair: {
@@ -93,11 +99,11 @@ async function createTemporalConnection(
           key: key,
         },
       };
-    } else if (apiKey) {
+    } else if (temporalConfig.apiKey) {
       logger.info(`Using API key for non-local Temporal`);
       // URL with API key uses gRPC regional endpoint
       connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
-      connectionOptions.apiKey = apiKey;
+      connectionOptions.apiKey = temporalConfig.apiKey;
       connectionOptions.tls = {};
       connectionOptions.metadata = {
         "temporal-namespace": namespace,
@@ -113,17 +119,18 @@ async function createTemporalConnection(
 
 async function registerWorkflows(
   logger: DefaultLogger,
+  config: ScriptsConfig,
 ): Promise<Worker | null> {
-  logger.info(`Registering workflows from ${SCRIPT_DIR}`);
+  logger.info(`Registering workflows from ${config.scriptDir}`);
 
   // Collect all TypeScript scripts
   const allScriptPaths: string[] = [];
 
   try {
     // Process each workflow directory
-    const workflowDirs = fs.readdirSync(SCRIPT_DIR);
+    const workflowDirs = fs.readdirSync(config.scriptDir);
     for (const workflowDir of workflowDirs) {
-      const workflowDirFullPath = path.join(SCRIPT_DIR, workflowDir);
+      const workflowDirFullPath = path.join(config.scriptDir, workflowDir);
       logger.info(`Checking workflow directory: ${workflowDirFullPath}`);
 
       if (fs.statSync(workflowDirFullPath).isDirectory()) {
@@ -132,11 +139,13 @@ async function registerWorkflows(
     }
 
     if (allScriptPaths.length === 0) {
-      logger.info(`No scripts found in ${SCRIPT_DIR}`);
+      logger.info(`No scripts found in ${config.scriptDir}`);
       return null;
     }
 
-    logger.info(`Found ${allScriptPaths.length} scripts in ${SCRIPT_DIR}`);
+    logger.info(
+      `Found ${allScriptPaths.length} scripts in ${config.scriptDir}`,
+    );
 
     // Build dynamic activities
     const dynamicActivities: any[] = [];
@@ -154,18 +163,17 @@ async function registerWorkflows(
     }
 
     if (dynamicActivities.length === 0) {
-      logger.info(`No tasks found in ${SCRIPT_DIR}`);
+      logger.info(`No tasks found in ${config.scriptDir}`);
       return null;
     }
 
-    logger.info(`Found ${dynamicActivities.length} task(s) in ${SCRIPT_DIR}`);
+    logger.info(
+      `Found ${dynamicActivities.length} task(s) in ${config.scriptDir}`,
+    );
 
     const { connection, namespace } = await createTemporalConnection(
       logger,
-      TEMPORAL_URL,
-      CLIENT_CERT,
-      CLIENT_KEY,
-      API_KEY,
+      config.temporalConfig,
     );
 
     const worker = await Worker.create({
@@ -194,20 +202,21 @@ async function registerWorkflows(
 /**
  * Start a Temporal worker that handles TypeScript script execution workflows.
  *
- * @param scriptDir - Root directory containing TypeScript scripts to register as activities.
- *                   Scripts will be registered with activity names in the format "parent_dir/script_name".
+ * @param config - Configuration object containing script directory and temporal settings
  * @returns The started Temporal worker instance
  * @throws ValueError if no scripts are found to register
  */
-export async function runScripts(): Promise<Worker | null> {
+export async function runScripts(
+  config: ScriptsConfig,
+): Promise<Worker | null> {
   // Not sure why temporal doesn't like importing the logger
   // so have to pass it around
   const logger = initializeLogger();
 
-  logger.info(`Starting worker for script directory: ${SCRIPT_DIR}`);
-  const worker = await registerWorkflows(logger);
+  logger.info(`Starting worker for script directory: ${config.scriptDir}`);
+  const worker = await registerWorkflows(logger, config);
   if (!worker) {
-    const msg = `No scripts found to register in ${SCRIPT_DIR}`;
+    const msg = `No scripts found to register in ${config.scriptDir}`;
     logger.warn(msg);
     return null;
   }

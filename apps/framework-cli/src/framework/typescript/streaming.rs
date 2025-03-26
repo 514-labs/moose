@@ -24,18 +24,17 @@ pub fn run(
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
     let subscriber_count_str = max_subscriber_count.to_string();
-    let is_dmv2_str = is_dmv2.to_string();
 
     let source_topic_config_str = source_topic.as_json_string();
     let target_topic_config_str = target_topic.as_json_string();
 
     let mut args: Vec<&str> = vec![
         source_topic_config_str.as_str(),
-        target_topic_config_str.as_str(),
         streaming_function_file.to_str().unwrap(),
         &kafka_config.broker,
         &subscriber_count_str,
-        &is_dmv2_str,
+        "--target-topic",
+        target_topic_config_str.as_str(),
     ];
 
     info!(
@@ -44,19 +43,27 @@ pub fn run(
     );
 
     if kafka_config.sasl_username.is_some() {
+        args.push("--sasl-username");
         args.push(kafka_config.sasl_username.as_ref().unwrap());
     }
 
     if kafka_config.sasl_password.is_some() {
+        args.push("--sasl-password");
         args.push(kafka_config.sasl_password.as_ref().unwrap());
     }
 
     if kafka_config.sasl_mechanism.is_some() {
+        args.push("--sasl-mechanism");
         args.push(kafka_config.sasl_mechanism.as_ref().unwrap());
     }
 
     if kafka_config.security_protocol.is_some() {
+        args.push("--security-protocol");
         args.push(kafka_config.security_protocol.as_ref().unwrap());
+    }
+
+    if is_dmv2 {
+        args.push("--is-dmv2");
     }
 
     let mut streaming_function_process = bin::run(FUNCTION_RUNNER_BIN, project_path, &args)?;

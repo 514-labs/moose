@@ -26,6 +26,7 @@
     "@temporalio/common": "^1.11.7",
     "@temporalio/worker": "^1.11.7",
     "@temporalio/workflow": "^1.11.7",
+    "commander": "^13.1.0",
     "fastq": "1.17.1",
     "jose": "5.9.2",
     "kafkajs": "2.2.4",

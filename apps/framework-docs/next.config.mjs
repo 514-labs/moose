@@ -1,9 +1,10 @@
-const remarkMdxDisableExplicitJsx = import("remark-mdx-disable-explicit-jsx");
+import nextra from "nextra";
+import remarkMdxDisableExplicitJsx from "remark-mdx-disable-explicit-jsx";
 
-const withNextra = require("nextra")({
+const withNextra = nextra({
   theme: "nextra-theme-docs",
   themeConfig: "./theme.config.jsx",
-
+  defaultShowCopyCode: true,
   mdxOptions: {
     remarkPlugins: [
       [
@@ -18,6 +19,9 @@ const withNextra = require("nextra")({
 const nextConfig = {
   transpilePackages: ["@514labs/design-system"],
   reactStrictMode: true,
+  images: {
+    unoptimized: true,
+  },
   // Optional build-time configuration options
   async rewrites() {
     return [
@@ -39,7 +43,7 @@ const nextConfig = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-module.exports = withNextra(nextConfig);
+export default withNextra(nextConfig);
 
 // Make sure adding Sentry options is the last code to run before exporting
 // module.exports = withNextra(

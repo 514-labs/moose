@@ -375,11 +375,11 @@ fn copy_python_dependencies(project: &Project, package_dir: &PathBuf) -> Result<
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 if name.starts_with("asyncio-") && name.ends_with(".dist-info") {
-                    if let Err(err) = fs::remove_dir_all(&path) {
+                    fs::remove_dir_all(&path).map_err(|err| {
                         error!("Failed to remove async dist-info directory: {}", err);
-                    } else {
-                        debug!("Removed async dist-info directory: {:?}", path);
-                    }
+                        BuildError::RemoveDirFailed(err.to_string())
+                    })?;
+                    debug!("Removed async dist-info directory: {:?}", path);
                 }
             }
         }

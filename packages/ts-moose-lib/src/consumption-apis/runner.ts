@@ -1,5 +1,4 @@
 import http from "http";
-import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, QueryClient, getTemporalClient, sql } from "./helpers";
 import * as jose from "jose";
@@ -8,37 +7,44 @@ import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
 import { Client as TemporalClient } from "@temporalio/client";
 
-const [
-  ,
-  ,
-  ,
-  CONSUMPTION_DIR_PATH,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_HOST,
-  CLICKHOUSE_PORT,
-  CLICKHOUSE_USERNAME,
-  CLICKHOUSE_PASSWORD,
-  CLICKHOUSE_USE_SSL,
-  JWT_SECRET, // Optional we will need to bring a proper cli parsing tool to help to make sure this is more resilient. or make it one json object
-  JWT_ISSUER, // Optional
-  JWT_AUDIENCE, // Optional
-  ENFORCE_ON_ALL_CONSUMPTIONS_APIS, // Optional
-  TEMPORAL_URL, // Optional
-  CLIENT_CERT, // Optional
-  CLIENT_KEY, // Optional
-  API_KEY, // Optional
-] = process.argv;
+interface ClickhouseConfig {
+  database: string;
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  useSSL: boolean;
+}
 
-const clickhouseConfig = {
-  username: CLICKHOUSE_USERNAME,
-  password: CLICKHOUSE_PASSWORD,
-  database: CLICKHOUSE_DB,
-  useSSL: CLICKHOUSE_USE_SSL,
-  host: CLICKHOUSE_HOST,
-  port: CLICKHOUSE_PORT,
-};
+interface JwtConfig {
+  secret?: string;
+  issuer: string;
+  audience: string;
+}
 
-const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
+interface TemporalConfig {
+  url: string;
+  clientCert: string;
+  clientKey: string;
+  apiKey: string;
+}
+
+interface ConsumptionApisConfig {
+  consumptionDir: string;
+  clickhouseConfig: ClickhouseConfig;
+  jwtConfig?: JwtConfig;
+  temporalConfig?: TemporalConfig;
+  enforceAuth: boolean;
+}
+
+// Convert our config to Clickhouse client config
+const toClientConfig = (config: ClickhouseConfig) => ({
+  ...config,
+  useSSL: config.useSSL ? "true" : "false",
+});
+
+const createPath = (consumptionDir: string, path: string) =>
+  `${consumptionDir}${path}.ts`;
 
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
@@ -61,7 +67,10 @@ const apiHandler =
   (
     publicKey: jose.KeyLike | undefined,
     clickhouseClient: ClickHouseClient,
-    temporalClient?: TemporalClient,
+    temporalClient: TemporalClient | undefined,
+    consumptionDir: string,
+    enforceAuth: boolean,
+    jwtConfig?: JwtConfig,
   ) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
@@ -69,38 +78,38 @@ const apiHandler =
       const fileName = url.pathname;
 
       let jwtPayload;
-      if (publicKey && JWT_ISSUER && JWT_AUDIENCE) {
+      if (publicKey && jwtConfig) {
         const jwt = req.headers.authorization?.split(" ")[1]; // Bearer <token>
         if (jwt) {
           try {
             const { payload } = await jose.jwtVerify(jwt, publicKey, {
-              issuer: JWT_ISSUER,
-              audience: JWT_AUDIENCE,
+              issuer: jwtConfig.issuer,
+              audience: jwtConfig.audience,
             });
             jwtPayload = payload;
           } catch (error) {
             console.log("JWT verification failed");
-            if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+            if (enforceAuth) {
               res.writeHead(401, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ error: "Unauthorized" }));
               httpLogger(req, res);
               return;
             }
           }
-        } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+        } else if (enforceAuth) {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Unauthorized" }));
           httpLogger(req, res);
           return;
         }
-      } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+      } else if (enforceAuth) {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized" }));
         httpLogger(req, res);
         return;
       }
 
-      const pathName = createPath(fileName);
+      const pathName = createPath(consumptionDir, fileName);
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
         (obj: { [key: string]: string[] | string }, [key, value]) => {
           const existingValue = obj[key];
@@ -175,26 +184,40 @@ const apiHandler =
     }
   };
 
-export const runConsumptionApis = async () => {
+export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
   console.log("Starting API service");
+  // TODO: Remove this
+  console.log(config);
 
   const consumptionCluster = new Cluster({
     workerStart: async () => {
-      const temporalClient = await getTemporalClient(
-        TEMPORAL_URL,
-        CLIENT_CERT,
-        CLIENT_KEY,
-        API_KEY,
+      let temporalClient: TemporalClient | undefined;
+      if (config.temporalConfig) {
+        temporalClient = await getTemporalClient(
+          config.temporalConfig.url,
+          config.temporalConfig.clientCert,
+          config.temporalConfig.clientKey,
+          config.temporalConfig.apiKey,
+        );
+      }
+      const clickhouseClient = getClickhouseClient(
+        toClientConfig(config.clickhouseConfig),
       );
-      const clickhouseClient = getClickhouseClient(clickhouseConfig);
       let publicKey: jose.KeyLike | undefined;
-      if (JWT_SECRET) {
+      if (config.jwtConfig?.secret) {
         console.log("Importing JWT public key...");
-        publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
+        publicKey = await jose.importSPKI(config.jwtConfig.secret, "RS256");
       }
 
       const server = http.createServer(
-        apiHandler(publicKey, clickhouseClient, temporalClient),
+        apiHandler(
+          publicKey,
+          clickhouseClient,
+          temporalClient,
+          config.consumptionDir,
+          config.enforceAuth,
+          config.jwtConfig,
+        ),
       );
       server.listen(4001, () => {
         console.log("Server running on port 4001");

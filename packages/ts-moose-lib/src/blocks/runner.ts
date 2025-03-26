@@ -1,14 +1,26 @@
-import process from "node:process";
-import { ClickHouseClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client";
 import fastq, { queueAsPromised } from "fastq";
 import { cliLog, getClickhouseClient, walkDir } from "../commons";
 import { Blocks } from "./helpers";
-
 
 interface BlocksQueueTask {
   chClient: ClickHouseClient;
   blocks: Blocks;
   retries: number;
+}
+
+interface ClickhouseConfig {
+  database: string;
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  useSSL: boolean;
+}
+
+interface BlocksConfig {
+  blocksDir: string;
+  clickhouseConfig: ClickhouseConfig;
 }
 
 class DependencyError extends Error {
@@ -18,27 +30,11 @@ class DependencyError extends Error {
   }
 }
 
-const [
-  ,
-  ,
-  ,
-  BLOCKS_DIR_PATH,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_HOST,
-  CLICKHOUSE_PORT,
-  CLICKHOUSE_USERNAME,
-  CLICKHOUSE_PASSWORD,
-  CLICKHOUSE_USE_SSL,
-] = process.argv;
-
-const clickhouseConfig = {
-  username: CLICKHOUSE_USERNAME,
-  password: CLICKHOUSE_PASSWORD,
-  database: CLICKHOUSE_DB,
-  useSSL: CLICKHOUSE_USE_SSL,
-  host: CLICKHOUSE_HOST,
-  port: CLICKHOUSE_PORT,
-};
+// Convert our config to Clickhouse client config
+const toClientConfig = (config: ClickhouseConfig) => ({
+  ...config,
+  useSSL: config.useSSL ? "true" : "false",
+});
 
 const createBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
   for (const query of blocks.setup) {
@@ -78,11 +74,14 @@ const asyncWorker = async (task: BlocksQueueTask) => {
   await createBlocks(task.chClient, task.blocks);
 };
 
-export const runBlocks = async () => {
-  const chClient = getClickhouseClient(clickhouseConfig);
+export const runBlocks = async (config: BlocksConfig) => {
+  // TODO: Remove this
+  console.log(config);
+
+  const chClient = getClickhouseClient(toClientConfig(config.clickhouseConfig));
   console.log(`Connected`);
 
-  const blocksFiles = walkDir(BLOCKS_DIR_PATH, ".ts", []);
+  const blocksFiles = walkDir(config.blocksDir, ".ts", []);
   const numOfBlockFiles = blocksFiles.length;
   console.log(`Found ${numOfBlockFiles} blocks files`);
 

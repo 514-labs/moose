@@ -24,51 +24,52 @@ pub fn run(
     project_path: &Path,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
-    let use_ssl = clickhouse_config.use_ssl.to_string();
-
-    let jwt_secret = jwt_config
-        .as_ref()
-        .map(|jwt| jwt.secret.clone())
-        .unwrap_or("".to_string());
-
-    let jwt_issuer = jwt_config
-        .as_ref()
-        .map(|jwt| jwt.issuer.clone())
-        .unwrap_or("".to_string());
-
-    let jwt_audience = jwt_config
-        .as_ref()
-        .map(|jwt| jwt.audience.clone())
-        .unwrap_or("".to_string());
-
-    let enforce_on_all_consumptions_apis = jwt_config
-        .as_ref()
-        .map(|jwt| jwt.enforce_on_all_consumptions_apis.to_string())
-        .unwrap_or("false".to_string());
-
     let temporal_url = project.temporal_config.temporal_url();
     let client_cert = project.temporal_config.client_cert;
     let client_key = project.temporal_config.client_key;
     let api_key = project.temporal_config.api_key;
 
-    let args = vec![
-        consumption_path.to_str().unwrap(),
-        &clickhouse_config.db_name,
-        &clickhouse_config.host,
-        &host_port,
-        &clickhouse_config.user,
-        &clickhouse_config.password,
-        &use_ssl,
-        &jwt_secret,
-        &jwt_issuer,
-        &jwt_audience,
-        &enforce_on_all_consumptions_apis,
-        &temporal_url,
-        &client_cert,
-        &client_key,
-        &api_key,
+    let mut string_args = vec![
+        consumption_path.to_str().unwrap().to_string(),
+        clickhouse_config.db_name.clone(),
+        clickhouse_config.host.clone(),
+        host_port,
+        clickhouse_config.user.clone(),
+        clickhouse_config.password.clone(),
     ];
 
+    if clickhouse_config.use_ssl {
+        string_args.push("--clickhouse-use-ssl".to_string());
+    }
+
+    if let Some(jwt_config) = jwt_config {
+        if jwt_config.enforce_on_all_consumptions_apis {
+            string_args.push("--enforce-auth".to_string());
+        }
+
+        string_args.push("--jwt-secret".to_string());
+        string_args.push(jwt_config.secret);
+        string_args.push("--jwt-issuer".to_string());
+        string_args.push(jwt_config.issuer);
+        string_args.push("--jwt-audience".to_string());
+        string_args.push(jwt_config.audience);
+    }
+
+    if project.features.workflows {
+        string_args.push("--temporal-url".to_string());
+        string_args.push(temporal_url);
+
+        string_args.push("--client-cert".to_string());
+        string_args.push(client_cert);
+
+        string_args.push("--client-key".to_string());
+        string_args.push(client_key);
+
+        string_args.push("--api-key".to_string());
+        string_args.push(api_key);
+    }
+
+    let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;
 
     let stdout = consumption_process

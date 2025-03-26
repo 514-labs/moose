@@ -56,7 +56,7 @@ type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
  */
 type SlimKafkaMessage = { value: string };
 
-interface TopicConfig {
+export interface TopicConfig {
   name: string;
   partitions: number;
   retentionPeriod: number;
@@ -66,7 +66,7 @@ interface TopicConfig {
 /**
  * Configuration interface for streaming function arguments
  */
-interface StreamingFunctionArgs {
+export interface StreamingFunctionArgs {
   sourceTopic: TopicConfig;
   targetTopic?: TopicConfig;
   functionFilePath: string;
@@ -95,39 +95,6 @@ interface Logger {
 const MAX_STREAMING_CONCURRENCY = process.env.MAX_STREAMING_CONCURRENCY
   ? parseInt(process.env.MAX_STREAMING_CONCURRENCY)
   : DEFAULT_MAX_STREAMING_CONCURRENCY;
-
-/**
- * Parses command line arguments into StreamingFunctionArgs object
- */
-const parseArgs = (): StreamingFunctionArgs => {
-  const SOURCE_TOPIC = process.argv[3];
-  const TARGET_TOPIC = process.argv[4];
-  const FUNCTION_FILE_PATH = process.argv[5];
-  const BROKER = process.argv[6];
-  const MAX_SUBCRIBER_COUNT = process.argv[7];
-  const IS_DMV2 = process.argv[8];
-  const SASL_USERNAME = process.argv[9];
-  const SASL_PASSWORD = process.argv[10];
-  const SASL_MECHANISM = process.argv[11];
-  const SECURITY_PROTOCOL = process.argv[12];
-
-  const sourceTopic: TopicConfig = JSON.parse(SOURCE_TOPIC);
-  const targetTopic: TopicConfig | undefined =
-    TARGET_TOPIC && TARGET_TOPIC !== "" ? JSON.parse(TARGET_TOPIC) : undefined;
-
-  return {
-    sourceTopic,
-    targetTopic,
-    functionFilePath: FUNCTION_FILE_PATH,
-    broker: BROKER,
-    saslUsername: SASL_USERNAME,
-    saslPassword: SASL_PASSWORD,
-    saslMechanism: SASL_MECHANISM,
-    securityProtocol: SECURITY_PROTOCOL,
-    maxSubscriberCount: parseInt(MAX_SUBCRIBER_COUNT),
-    isDmv2: IS_DMV2 === "true",
-  };
-};
 
 /**
  * Builds SASL configuration for Kafka client authentication
@@ -171,7 +138,7 @@ export const metricsLog: (log: CliLogData) => void = (log) => {
  */
 const jsonDateReviver = (key: string, value: unknown): unknown => {
   const iso8601Format =
-    /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/;
+    /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)$/;
 
   if (typeof value === "string" && iso8601Format.test(value)) {
     return new Date(value);
@@ -583,13 +550,23 @@ const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
  *
  * @example
  * ```ts
- * await runStreamingFunctions(); // Starts the streaming function cluster
+ * await runStreamingFunctions({
+ *   sourceTopic: { name: 'source', partitions: 3, retentionPeriod: 86400, maxMessageBytes: 1048576 },
+ *   targetTopic: { name: 'target', partitions: 3, retentionPeriod: 86400, maxMessageBytes: 1048576 },
+ *   functionFilePath: './transform.js',
+ *   broker: 'localhost:9092',
+ *   maxSubscriberCount: 3,
+ *   isDmv2: false
+ * }); // Starts the streaming function cluster
  * ```
  */
-export const runStreamingFunctions = async (): Promise<void> => {
-  const args = parseArgs();
-
+export const runStreamingFunctions = async (
+  args: StreamingFunctionArgs,
+): Promise<void> => {
   const streamingFuncId = `flow-${args.sourceTopic.name}-${args.targetTopic?.name}`;
+
+  // TODO: Remove this
+  console.log(args);
 
   const cluster = new Cluster({
     // This is an arbitrary value, we can adjust it as needed

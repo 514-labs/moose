@@ -286,7 +286,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))
+        version: 0.4.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -305,7 +305,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.1
+        version: 0.4.5
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -840,8 +840,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.1':
-    resolution: {integrity: sha512-DBtx+dsCXOuGq2jVj+O7/Uk8X4OIXeVszPFCTwb6RRkWMGwS5DQ6n4g1NQgnxFyTD7GZCPbt++26ssbEmhVq0A==}
+  '@514labs/moose-cli-darwin-arm64@0.4.5':
+    resolution: {integrity: sha512-RQA0RbwYKBf0LjPaJZziyQW1Vb+CCBQvGCr2rKNjb1v2fdpqL6d2WaX2jUlL8r9ccMZclsKL012PmnEXOSIsTw==}
     cpu: [arm64]
     os: [darwin]
 
@@ -850,8 +850,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.1':
-    resolution: {integrity: sha512-b5GFtF66z7jiircYPMWzerigKvNIPSNzBlyHnbn6DX7tggvDFTzAVbrE/LU3r7npXzaRsJdcATZX8Bj5U6WL2A==}
+  '@514labs/moose-cli-darwin-x64@0.4.5':
+    resolution: {integrity: sha512-F3c/TjGfu2Ipc1BXqSOjmZSnGZml/5tttIqngfMjsxZhB1+kcTI7RKrRxU2rw8pZ8OdT0ToPwQ8QQ0mgOEJnNA==}
     cpu: [x64]
     os: [darwin]
 
@@ -860,8 +860,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.1':
-    resolution: {integrity: sha512-L2e5jpMQ6TdAUXaxB4ip3d9HsPoLnJatQK/+PqmUM5rp+BnGbU4sRAnmpWr+OdKxkc8NeKQUnIqUc+lUv0Pr0A==}
+  '@514labs/moose-cli-linux-arm64@0.4.5':
+    resolution: {integrity: sha512-gqIhFPAJ/0vEO2fQvVL+9ze1DjZnFQAT/047z+O1t7yY83dG2lNXdJ/sLuc38lxidOiM4pDnzBoRh28pRyemNA==}
     cpu: [arm64]
     os: [linux]
 
@@ -870,8 +870,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.1':
-    resolution: {integrity: sha512-JyS0e5nO0XJI70TyOdhWSagRWYcEoK9idYgS3p9/xA6T/LIOlHQhhSpJrwVNCZFr+pg6GqxyWfy63+w36hNQqA==}
+  '@514labs/moose-cli-linux-x64@0.4.5':
+    resolution: {integrity: sha512-8Ig829gvfzhxemdYEGyrvt1nWDBt0q6jAMIaJG5h6mzI5fkEQro+2B1nyJDmxERVfJ6HBHc78+T1QppPvkBdLQ==}
     cpu: [x64]
     os: [linux]
 
@@ -879,12 +879,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.1':
-    resolution: {integrity: sha512-xrp+a1SwzKknXRBfJojKpNNwP/JLi8Q+wR6iv8v4ohJDHixS93yJ8vspPzY9AppQwW1H52tankV/hrrVYaQ4sA==}
+  '@514labs/moose-cli@0.4.5':
+    resolution: {integrity: sha512-G78AMjRIuYCX2q+sOyASnNWvxQz3EisZjtYr41cAEzQDIbEqXW2YDOBomKVfg2JTNfEDIHiFKQ/vPWlJdUkacw==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.1':
-    resolution: {integrity: sha512-rn8W5yARe+oUiSmb9qOHE02EzHzDFM0KHiD0WxOP778M4qhbqujPoCfmcFK2X8XAtaw3AZkVSFQS567p4bT6mw==}
+  '@514labs/moose-lib@0.4.6':
+    resolution: {integrity: sha512-sOMTr8lfKEAt4zKzKtO1E2inlyOx6y1qrm1WXRHjPxirUD0GT6a+4ZCp7Fe82MfCd2AMwmOYXZuotHCUo3MJLQ==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -5649,6 +5649,7 @@ packages:
 
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
+    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
@@ -6867,6 +6868,9 @@ packages:
   rxjs@7.8.1:
     resolution: {integrity: sha512-AA3TVj+0A2iuIoQkWEK/tqFjBq2j+6PO6Y0zJcvzLAFhEFIO3HL0vls9hWLncZbAAbK0mar7oZ4V079I/qPMxg==}
 
+  rxjs@7.8.2:
+    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
+
   sade@1.8.1:
     resolution: {integrity: sha512-xal3CZX1Xlo/k4ApwCFrHVACi9fBqJ7V+mwhBsuf/1IOKbBy098Fex+Wa/5QMubw09pSZ/u8EY8PWgevJsXp1A==}
     engines: {node: '>=6'}
@@ -7327,6 +7331,9 @@ packages:
 
   tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   tsup@8.0.2:
     resolution: {integrity: sha512-NY8xtQXdH7hDUAZwcQdY/Vzlw9johQsaqf7iwZ6g1DOUlFYQ5/AtVAjTvihhEyeRlGo4dLRVHtrRaL35M1daqQ==}
@@ -7829,25 +7836,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.1':
+  '@514labs/moose-cli-darwin-arm64@0.4.5':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.1':
+  '@514labs/moose-cli-darwin-x64@0.4.5':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.1':
+  '@514labs/moose-cli-linux-arm64@0.4.5':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.1':
+  '@514labs/moose-cli-linux-x64@0.4.5':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7857,14 +7864,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.1':
+  '@514labs/moose-cli@0.4.5':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.1
-      '@514labs/moose-cli-darwin-x64': 0.4.1
-      '@514labs/moose-cli-linux-arm64': 0.4.1
-      '@514labs/moose-cli-linux-x64': 0.4.1
+      '@514labs/moose-cli-darwin-arm64': 0.4.5
+      '@514labs/moose-cli-darwin-x64': 0.4.5
+      '@514labs/moose-cli-linux-arm64': 0.4.5
+      '@514labs/moose-cli-linux-x64': 0.4.5
 
-  '@514labs/moose-lib@0.4.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(@swc/helpers@0.5.5)(@types/node@20.12.12)(ts-patch@3.2.0)(typescript@5.4.5)(typia@7.6.0(@samchon/openapi@2.4.1)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -7873,6 +7880,7 @@ snapshots:
       '@temporalio/common': 1.11.7
       '@temporalio/worker': 1.11.7(@swc/helpers@0.5.5)
       '@temporalio/workflow': 1.11.7
+      commander: 13.1.0
       fastq: 1.17.1
       jose: 5.9.2
       kafkajs: 2.2.4
@@ -11888,7 +11896,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -11906,7 +11914,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -11924,7 +11932,7 @@ snapshots:
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-jsx-a11y: 6.8.0(eslint@8.57.0)
       eslint-plugin-react: 7.34.1(eslint@8.57.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
@@ -11957,7 +11965,7 @@ snapshots:
       enhanced-resolve: 5.16.1
       eslint: 8.57.0
       eslint-module-utils: 2.8.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.7.5
       is-core-module: 2.13.1
@@ -12007,7 +12015,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.57.0))(eslint@8.57.0))(eslint@8.57.0):
+  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
       array-includes: 3.1.8
       array.prototype.findlastindex: 1.2.5
@@ -12977,7 +12985,7 @@ snapshots:
       mute-stream: 0.0.8
       ora: 5.4.1
       run-async: 2.4.1
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       string-width: 4.2.3
       strip-ansi: 6.0.1
       through: 2.3.8
@@ -15604,6 +15612,10 @@ snapshots:
     dependencies:
       tslib: 2.6.2
 
+  rxjs@7.8.2:
+    dependencies:
+      tslib: 2.8.1
+
   sade@1.8.1:
     dependencies:
       mri: 1.2.0
@@ -16314,6 +16326,8 @@ snapshots:
   tslib@1.14.1: {}
 
   tslib@2.6.2: {}
+
+  tslib@2.8.1: {}
 
   tsup@8.0.2(@swc/core@1.10.15(@swc/helpers@0.5.5))(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.10.15(@swc/helpers@0.5.5))(@types/node@20.12.13)(typescript@5.7.3))(typescript@5.7.3):
     dependencies:

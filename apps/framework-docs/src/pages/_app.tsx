@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Router from "next/router";
 import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
 import Script from "next/script";
 import type { AppProps } from "next/app";
 
@@ -40,45 +39,51 @@ export default function App({ Component, pageProps }: AppProps) {
       });
     }
 
-    const handleRouteChange = () =>
-      process.env.NEXT_PUBLIC_POSTHOG_KEY
-        ? posthog?.capture("$pageview")
-        : null;
+    // Track page views
+    const handleRouteChange = () => {
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        const url = window.location.origin + router.asPath;
+        posthog?.capture("$pageview", {
+          $current_url: url,
+        });
+      }
+    };
+
+    // Track initial page view
+    handleRouteChange();
 
     Router.events.on("routeChangeComplete", handleRouteChange);
 
     return () => {
       Router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.isReady]);
+  }, [router.isReady, router.asPath]);
 
   return (
-    <PostHogProvider client={posthog}>
-      <RootLayout>
-        <Script
-          id="apollo-tracking"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-                function initApollo() {
-                  var n = Math.random().toString(36).substring(7);
-                  var o = document.createElement("script");
-                  o.src = "https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=" + n;
-                  o.async = true;
-                  o.defer = true;
-                  o.onload = function() {
-                    window.trackingFunctions.onLoad({
-                      appId: "66316b76c8e6ae01afde8c2d"
-                    });
-                  };
-                  document.head.appendChild(o);
-                }
-                initApollo();
-              `,
-          }}
-        />
-        <Component {...pageProps} />
-      </RootLayout>
-    </PostHogProvider>
+    <RootLayout>
+      <Script
+        id="apollo-tracking"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+              function initApollo() {
+                var n = Math.random().toString(36).substring(7);
+                var o = document.createElement("script");
+                o.src = "https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=" + n;
+                o.async = true;
+                o.defer = true;
+                o.onload = function() {
+                  window.trackingFunctions.onLoad({
+                    appId: "66316b76c8e6ae01afde8c2d"
+                  });
+                };
+                document.head.appendChild(o);
+              }
+              initApollo();
+            `,
+        }}
+      />
+      <Component {...pageProps} />
+    </RootLayout>
   );
 }

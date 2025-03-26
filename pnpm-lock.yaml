@@ -657,7 +657,7 @@ importers:
         version: 1.11.7
       '@temporalio/worker':
         specifier: ^1.11.7
-        version: 1.11.7(@swc/helpers@0.5.5)
+        version: 1.11.7(@swc/helpers@0.5.5)(esbuild@0.19.12)
       '@temporalio/workflow':
         specifier: ^1.11.7
         version: 1.11.7
@@ -7036,6 +7036,9 @@ packages:
   rxjs@7.8.1:
     resolution: {integrity: sha512-AA3TVj+0A2iuIoQkWEK/tqFjBq2j+6PO6Y0zJcvzLAFhEFIO3HL0vls9hWLncZbAAbK0mar7oZ4V079I/qPMxg==}
 
+  rxjs@7.8.2:
+    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
+
   safe-array-concat@1.1.2:
     resolution: {integrity: sha512-vj6RsCsWBCf19jIeHEfkRMw8DPiBb+DMXklQ/1SGDHOMlHdPUkZXFQ2YdplS23zESTijAcurb1aSgJA3AgMu1Q==}
     engines: {node: '>=0.4'}
@@ -7539,6 +7542,9 @@ packages:
 
   tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   tsup@8.0.2:
     resolution: {integrity: sha512-NY8xtQXdH7hDUAZwcQdY/Vzlw9johQsaqf7iwZ6g1DOUlFYQ5/AtVAjTvihhEyeRlGo4dLRVHtrRaL35M1daqQ==}
@@ -10404,6 +10410,31 @@ snapshots:
       swc-loader: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
       unionfs: 4.5.4
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))
+    transitivePeerDependencies:
+      - '@swc/helpers'
+      - esbuild
+      - uglify-js
+      - webpack-cli
+
+  '@temporalio/worker@1.11.7(@swc/helpers@0.5.5)(esbuild@0.19.12)':
+    dependencies:
+      '@swc/core': 1.10.15(@swc/helpers@0.5.5)
+      '@temporalio/activity': 1.11.7
+      '@temporalio/client': 1.11.7
+      '@temporalio/common': 1.11.7
+      '@temporalio/core-bridge': 1.11.7
+      '@temporalio/proto': 1.11.7
+      '@temporalio/workflow': 1.11.7
+      abort-controller: 3.0.0
+      heap-js: 2.6.0
+      memfs: 4.17.0
+      rxjs: 7.8.1
+      source-map: 0.7.4
+      source-map-loader: 4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
+      supports-color: 8.1.1
+      swc-loader: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
+      unionfs: 4.5.4
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
     transitivePeerDependencies:
       - '@swc/helpers'
       - esbuild
@@ -13540,7 +13571,7 @@ snapshots:
       mute-stream: 0.0.8
       ora: 5.4.1
       run-async: 2.4.1
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       string-width: 4.2.3
       strip-ansi: 6.0.1
       through: 2.3.8
@@ -16160,6 +16191,10 @@ snapshots:
     dependencies:
       tslib: 2.6.2
 
+  rxjs@7.8.2:
+    dependencies:
+      tslib: 2.8.1
+
   safe-array-concat@1.1.2:
     dependencies:
       call-bind: 1.0.7
@@ -16324,6 +16359,12 @@ snapshots:
       is-fullwidth-code-point: 5.0.0
 
   source-map-js@1.2.0: {}
+
+  source-map-loader@4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
+    dependencies:
+      iconv-lite: 0.6.3
+      source-map-js: 1.2.0
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
 
   source-map-loader@4.0.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
@@ -16544,6 +16585,12 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
+  swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
+    dependencies:
+      '@swc/core': 1.10.15(@swc/helpers@0.5.5)
+      '@swc/counter': 0.1.3
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
+
   swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
       '@swc/core': 1.10.15(@swc/helpers@0.5.5)
@@ -16679,6 +16726,18 @@ snapshots:
       - ts-node
 
   tapable@2.2.1: {}
+
+  terser-webpack-plugin@5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 3.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.36.0
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)
+    optionalDependencies:
+      '@swc/core': 1.10.15(@swc/helpers@0.5.5)
+      esbuild: 0.19.12
 
   terser-webpack-plugin@5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))):
     dependencies:
@@ -16932,6 +16991,8 @@ snapshots:
   tslib@1.14.1: {}
 
   tslib@2.6.2: {}
+
+  tslib@2.8.1: {}
 
   tsup@8.0.2(@swc/core@1.10.15(@swc/helpers@0.5.5))(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.10.15(@swc/helpers@0.5.5))(@types/node@20.12.13)(typescript@5.7.3))(typescript@5.7.3):
     dependencies:
@@ -17431,6 +17492,36 @@ snapshots:
       schema-utils: 3.3.0
       tapable: 2.2.1
       terser-webpack-plugin: 5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5)))
+      watchpack: 2.4.2
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.6
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      acorn: 8.14.0
+      browserslist: 4.24.0
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.17.1
+      es-module-lexer: 1.5.4
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.10(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.5))(esbuild@0.19.12))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:

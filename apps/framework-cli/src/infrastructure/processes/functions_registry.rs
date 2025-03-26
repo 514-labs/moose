@@ -63,6 +63,7 @@ impl FunctionProcessRegistry {
 
                 let child = if function_process.is_py_function_process() {
                     Ok(python::streaming::run(
+                        &self.project.project_location,
                         &self.project.redpanda_config,
                         &source_topic,
                         &target_topic,

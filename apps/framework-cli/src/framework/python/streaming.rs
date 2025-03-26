@@ -9,6 +9,7 @@ use super::executor;
 use crate::framework::python::executor::add_optional_arg;
 
 pub fn run(
+    project_location: &Path,
     kafka_config: &KafkaConfig,
     source_topic: &StreamConfig,
     target_topic: &StreamConfig,

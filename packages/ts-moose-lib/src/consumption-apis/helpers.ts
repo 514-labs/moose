@@ -337,9 +337,7 @@ export async function getTemporalClient(
 
     return client;
   } catch (error) {
-    console.error(
-      `Failed to connect to Temporal. Is the feature flag enabled?`,
-    );
+    console.warn(`Failed to connect to Temporal. Is the feature flag enabled?`);
     return undefined;
   }
 }

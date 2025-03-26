@@ -16,7 +16,8 @@ if (
 ) {
   const transformFile =
     process.argv[2] !== "dmv2-serializer" &&
-    process.argv[2] !== "streaming-functions"
+    process.argv[2] !== "streaming-functions" &&
+    process.argv[2] !== "consumption-apis"
       ? "consumption-apis/insertTypiaValidation.js"
       : "dmv2/compilerPlugin.js";
   register({
@@ -135,6 +136,7 @@ program
   .option("--client-cert <path>", "Path to client certificate")
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
+  .option("--is-dmv2", "Whether this is a DMv2 consumption", false)
   .action(
     (
       consumptionDir,
@@ -167,6 +169,7 @@ program
           apiKey: options.apiKey,
         },
         enforceAuth: options.enforceAuth,
+        isDmv2: options.isDmv2,
       });
     },
   );

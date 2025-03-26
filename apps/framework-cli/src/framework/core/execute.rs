@@ -102,7 +102,7 @@ pub async fn execute_initial_infra_change(
     .map_err(Box::new)?;
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.kafka_config.clone(),
+        project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
     let mut process_registries = ProcessRegistries::new(project, settings);

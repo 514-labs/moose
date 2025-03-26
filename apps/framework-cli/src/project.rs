@@ -153,8 +153,8 @@ pub struct Project {
     /// Programming language used in the project
     pub language: SupportedLanguages,
     /// RedPanda streaming configuration
-    #[serde(default, alias = "redpanda_config")]
-    pub kafka_config: KafkaConfig,
+    #[serde(default, alias = "kafka_config")]
+    pub redpanda_config: KafkaConfig,
     /// ClickHouse database configuration
     pub clickhouse_config: ClickHouseConfig,
     /// HTTP server configuration for local development
@@ -252,7 +252,7 @@ impl Project {
             language,
             is_production: false,
             project_location: location.clone(),
-            kafka_config: KafkaConfig::default(),
+            redpanda_config: KafkaConfig::default(),
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),

@@ -25,9 +25,9 @@ pub fn run(
     // This adds the node_modules/.bin to the PATH so that we can run moose-tspc
     let path = env::var("PATH").unwrap_or_else(|_| "/usr/local/bin".to_string());
     let bin_path = format!(
-        "{}:{}/node_modules/.bin",
-        path,
-        project_path.to_str().unwrap()
+        "{}/node_modules/.bin:{}",
+        project_path.to_str().unwrap(),
+        path
     );
 
     command

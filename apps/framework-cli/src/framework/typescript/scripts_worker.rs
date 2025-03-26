@@ -24,10 +24,14 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     let scripts_dir = project.scripts_dir();
 
     let args: Vec<&str> = vec![
-        temporal_url.as_str(),
         scripts_dir.to_str().unwrap(),
+        "--temporal-url",
+        temporal_url.as_str(),
+        "--client-cert",
         project.temporal_config.client_cert.as_str(),
+        "--client-key",
         project.temporal_config.client_key.as_str(),
+        "--api-key",
         project.temporal_config.api_key.as_str(),
     ];
 

@@ -79,8 +79,10 @@ pub fn run(
         project.temporal_config.api_key,
     ];
 
-    let mut consumption_process =
-        executor::run_python_program(executor::PythonProgram::ConsumptionRunner { args })?;
+    let mut consumption_process = executor::run_python_program(
+        &project.project_location,
+        executor::PythonProgram::ConsumptionRunner { args },
+    )?;
 
     let stdout = consumption_process
         .stdout
@@ -111,10 +113,11 @@ pub fn run(
 }
 
 pub async fn load_python_query_param(
+    project_location: &Path,
     path: &Path,
 ) -> Result<Vec<ConsumptionQueryParam>, std::io::Error> {
     let args = vec![path.file_name().unwrap().to_str().unwrap().to_string()];
-    let process = run_python_program(PythonProgram::LoadApiParam { args })?;
+    let process = run_python_program(project_location, PythonProgram::LoadApiParam { args })?;
     let output = process.wait_with_output().await?;
 
     if !output.status.success() {

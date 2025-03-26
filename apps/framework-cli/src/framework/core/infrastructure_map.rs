@@ -1564,7 +1564,7 @@ impl InfrastructureMap {
 
             PartialInfrastructureMap::from_subprocess(process, "index.ts").await?
         } else {
-            load_main_py().await?
+            load_main_py(&project.project_location).await?
         };
         Ok(partial.into_infra_map(project.language))
     }

@@ -1,0 +1,5 @@
+kafka-python-ng==2.2.2; python_version >= "3.12"
+clickhouse_connect==0.7.16; python_version >= "3.12"
+requests==2.32.3; python_version >= "3.12"
+moose-cli; python_version >= "3.12"
+moose-lib; python_version >= "3.12"

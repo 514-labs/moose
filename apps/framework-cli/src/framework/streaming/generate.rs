@@ -387,6 +387,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
             name: "test".to_string(),
             version: Version::from_string("0.1".to_string()),
             dependencies: vec![],
+            python_requires: ">=3.12".to_string(),
         });
         project.language = SupportedLanguages::Python;
 

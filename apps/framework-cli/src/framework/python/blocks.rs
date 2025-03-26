@@ -8,7 +8,11 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
 use super::executor;
 
-pub fn run(clickhouse_config: ClickHouseConfig, blocks_path: &Path) -> Result<Child, BlocksError> {
+pub fn run(
+    project_location: &Path,
+    clickhouse_config: ClickHouseConfig,
+    blocks_path: &Path,
+) -> Result<Child, BlocksError> {
     let args = vec![
         blocks_path.to_str().unwrap().to_string(),
         clickhouse_config.db_name,
@@ -19,8 +23,10 @@ pub fn run(clickhouse_config: ClickHouseConfig, blocks_path: &Path) -> Result<Ch
         clickhouse_config.use_ssl.to_string(),
     ];
 
-    let mut blocks_process =
-        executor::run_python_program(executor::PythonProgram::BlocksRunner { args })?;
+    let mut blocks_process = executor::run_python_program(
+        project_location,
+        executor::PythonProgram::BlocksRunner { args },
+    )?;
 
     let stdout = blocks_process
         .stdout

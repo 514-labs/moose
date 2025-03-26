@@ -66,7 +66,7 @@ async fn build_endpoint_file(
                     .map_err(ConsumptionLoaderError::FailedToLoadTypescriptParams)?
             }
             SupportedLanguages::Python => {
-                let params = load_python_query_param(&path)
+                let params = load_python_query_param(&project.project_location, &path)
                     .await
                     .map_err(ConsumptionLoaderError::FailedToLoadPythonParams)?;
                 (params, Value::Null)

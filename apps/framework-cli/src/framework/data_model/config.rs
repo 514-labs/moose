@@ -100,7 +100,7 @@ pub async fn get(
     } else if path.extension() == Some(OsStr::new("py"))
         && path.file_name() != Some(OsStr::new("__init__.py"))
     {
-        return execute_python_model_file_for_config(path).await;
+        return execute_python_model_file_for_config(project_path, path).await;
     } else {
         // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())

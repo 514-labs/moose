@@ -44,9 +44,11 @@ impl BlocksProcessRegistry {
                     &self.dir,
                     &self.project_path,
                 )?,
-                SupportedLanguages::Python => {
-                    python::blocks::run(self.clickhouse_config.clone(), &self.dir)?
-                }
+                SupportedLanguages::Python => python::blocks::run(
+                    &self.project_path,
+                    self.clickhouse_config.clone(),
+                    &self.dir,
+                )?,
             };
 
             self.registry.insert(olap_process.id(), child);

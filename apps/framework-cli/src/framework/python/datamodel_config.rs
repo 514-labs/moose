@@ -22,13 +22,18 @@ pub struct PythonDataModelConfig {
 }
 
 pub async fn execute_python_model_file_for_config(
+    project_location: &Path,
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     let abs_path = path.canonicalize().or_else(|_| absolute(path));
     let path_str = abs_path.as_deref().unwrap_or(path).to_string_lossy();
-    let process = run_python_file(path, &[("MOOSE_PYTHON_DM_DUMP", &*path_str)])
-        .await
-        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
+    let process = run_python_file(
+        project_location,
+        path,
+        &[("MOOSE_PYTHON_DM_DUMP", &*path_str)],
+    )
+    .await
+    .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
     let output = process
         .wait_with_output()
@@ -56,7 +61,9 @@ pub async fn execute_python_model_file_for_config(
     Ok(configs)
 }
 
-pub async fn load_main_py() -> anyhow::Result<PartialInfrastructureMap, DmV2LoadingError> {
-    let child = run_python_command(PythonCommand::DmV2Serializer)?;
+pub async fn load_main_py(
+    project_location: &Path,
+) -> anyhow::Result<PartialInfrastructureMap, DmV2LoadingError> {
+    let child = run_python_command(project_location, PythonCommand::DmV2Serializer)?;
     PartialInfrastructureMap::from_subprocess(child, "main.py").await
 }

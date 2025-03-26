@@ -1,13 +1,23 @@
 //! # Python Parser
-//! This module is responsible for parsing the python schema file and extracting the data model from it
+//! This module is responsible for parsing Python project files and extracting structured data.
 //!
-//! There are two main capabilities in this module:
-//! 1. Extracting python from a schema file and turning it an AST
-//! 2. Mapping that AST into file objects
+//! ## Core Functionality
+//! The module provides two main capabilities:
+//! 1. Parsing Python files into AST (Abstract Syntax Tree)
+//! 2. Converting AST nodes into structured data models
 //!
-//! ## File Objects
-//! The file objects are all the data model objects that are extracted from the python schema file
-//! and it's associsted supporting objects such as enums.
+//! ## Key Components
+//! - `PythonProject` parsing from setup.py and requirements.txt
+//! - Data model extraction from Python classes
+//! - Enum parsing from Python enum definitions
+//!
+//! ## File Structure Support
+//! The module handles two key project files:
+//! - `setup.py`: Contains project metadata (name, version)
+//! - `requirements.txt`: Lists project dependencies
+//!
+//! ## Error Handling
+//! All parsing operations return `Result<T, PythonParserError>` for robust error handling.
 
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -15,6 +25,7 @@ use std::path::{Path, PathBuf};
 use crate::{
     framework::data_model::{model::DataModel, parser::FileObjects},
     project::python_project::PythonProject,
+    utilities::constants::REQUIREMENTS_TXT,
 };
 use rustpython_parser::{
     ast::{self, Constant, Expr, ExprName, Identifier, Keyword, Stmt, StmtClassDef},
@@ -30,32 +41,31 @@ use crate::framework::python::utils::ColumnBuilder;
 use crate::framework::versions::Version;
 use num_traits::cast::ToPrimitive;
 
+/// Represents possible errors that can occur during Python file parsing
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Failed to parse the python file")]
 #[non_exhaustive]
 pub enum PythonParserError {
-    FileNotFound {
-        path: PathBuf,
-    },
+    /// File could not be found at the specified path
+    FileNotFound { path: PathBuf },
+    /// Encountered an unsupported data type in a field
     #[error("Python Parser - Unsupported data type in {field_name}: {type_name}")]
     UnsupportedDataTypeError {
         field_name: String,
         type_name: String,
     },
+    /// Error occurred while parsing a class definition
     #[error("Python Parser - Error parsing class node: {message}")]
-    ClassParseError {
-        message: String,
-    },
+    ClassParseError { message: String },
+    /// Error occurred while parsing an enum definition
     #[error("Python Parser - Error parsing enum node: {message}")]
-    EnumParseError {
-        message: String,
-    },
+    EnumParseError { message: String },
+    /// The Python file is not valid according to the expected format
     #[error("Python Parser - Invalid python file, please refer to the documentation for an example of a valid python file")]
     InvalidPythonFile,
+    /// Generic parsing error with a custom message
     #[error("Python Parser - Error parsing: {message}")]
-    OtherError {
-        message: String,
-    },
+    OtherError { message: String },
 }
 
 /// # First pass: AST processing functions
@@ -64,17 +74,22 @@ pub enum PythonParserError {
 ///
 /// ## Get AST from File
 /// This function reads the python schema file and turns it into an AST
+///
+/// Parses a Python file into an AST (Abstract Syntax Tree)
+///
+/// # Arguments
+/// * `path` - Path to the Python file to parse
+///
+/// # Returns
+/// * `Result<ast::Suite, PythonParserError>` - The parsed AST or an error
+///
+/// # Errors
+/// * `InvalidPythonFile` if the file cannot be read or parsed
 fn get_ast_from_file(path: &Path) -> Result<ast::Suite, PythonParserError> {
-    // Read the schema file
-    // todo!("Add file validation like checking extension and other checks");
     let schema_file =
         std::fs::read_to_string(path).map_err(|_| PythonParserError::InvalidPythonFile)?;
 
-    // Parse the schema file into an AST
-    let ast = ast::Suite::parse(&schema_file, "<embedded>")
-        .map_err(|_| PythonParserError::InvalidPythonFile)?;
-
-    Ok(ast)
+    ast::Suite::parse(&schema_file, "<embedded>").map_err(|_| PythonParserError::InvalidPythonFile)
 }
 
 /// ## Enum AST Nodes
@@ -561,21 +576,37 @@ pub fn extract_data_model_from_file(
     Ok(FileObjects::new(data_models, framework_enums))
 }
 
+/// Intermediate representation of a Python function call
+///
+/// Used to store function call information during parsing
 #[derive(Debug, Clone)]
 struct PythonFunctionIntermediateRepr {
+    /// Name of the function being called
     name: String,
+    /// Positional arguments passed to the function
     args: Vec<Expr>,
+    /// Keyword arguments passed to the function
     kwargs: Vec<Keyword>,
 }
 
 impl PythonFunctionIntermediateRepr {
+    /// Creates a new intermediate representation of a function call
     fn new(name: String, args: Vec<Expr>, kwargs: Vec<Keyword>) -> Self {
         Self { name, args, kwargs }
     }
 }
 
-/// # Get function arguments and keyword arguments
-/// This function extracts the arguments and keyword arguments from a function call
+/// Extracts a function call from an AST by its name
+///
+/// # Arguments
+/// * `func_name` - Name of the function to find
+/// * `ast` - AST to search in
+///
+/// # Returns
+/// * `Result<PythonFunctionIntermediateRepr, PythonParserError>` - Function call data or an error
+///
+/// # Errors
+/// * `OtherError` if the function is not found
 fn get_func(
     func_name: &str,
     ast: &ast::Suite,
@@ -608,29 +639,6 @@ fn get_func(
         .cloned()
 }
 
-fn get_list_string_values(expr: &Expr) -> Option<Vec<String>> {
-    if let Expr::List(list) = expr {
-        let values: Option<Vec<String>> = list
-            .elts
-            .iter()
-            .map(|e| {
-                if let Expr::Constant(c) = e {
-                    if let Constant::Str(s) = &c.value {
-                        Some(s.clone())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        values
-    } else {
-        None
-    }
-}
-
 fn get_keyword_string_value(keyword: &Keyword) -> Option<String> {
     if let Expr::Constant(c) = &keyword.value {
         if let Constant::Str(s) = &c.value {
@@ -643,6 +651,17 @@ fn get_keyword_string_value(keyword: &Keyword) -> Option<String> {
     }
 }
 
+/// Parses setup.py content into a PythonProject structure
+///
+/// # Arguments
+/// * `ast` - AST of the setup.py file
+///
+/// # Returns
+/// * `Result<PythonProject, PythonParserError>` - Parsed project data or an error
+///
+/// # Errors
+/// * `OtherError` if setup() function is not found
+/// * Other errors if parsing of name or version fails
 fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     let func = get_func("setup", ast)?;
 
@@ -653,10 +672,9 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
         });
     }
 
-    let _setup_args = ["name", "version", "install_requires"];
-
     let mut project = PythonProject::default();
-    // The name and version  either be args or kwargs
+
+    // Parse name from setup.py
     project.name = match &func.args.first() {
         Some(Expr::Constant(c)) => {
             if let Constant::Str(s) = &c.value {
@@ -678,6 +696,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
             .unwrap_or(project.name),
     };
 
+    // Parse version from setup.py
     project.version = match &func.args.get(1) {
         Some(Expr::Constant(c)) => {
             if let Constant::Str(s) = &c.value {
@@ -699,26 +718,42 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
             .unwrap_or(project.version),
     };
 
-    // The install_requires will be a kwarg
-    project.dependencies = func
-        .kwargs
-        .iter()
-        .find_map(|keyword| {
-            if keyword.arg.clone().unwrap() == Identifier::new("install_requires") {
-                get_list_string_values(&keyword.value)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default();
+    // Dependencies are now read from requirements.txt by setup.py
+    // We don't need to parse them from setup.py anymore as they're dynamically loaded
+    // Keep the default dependencies from the PythonProject struct
 
     Ok(project)
 }
 
+/// Reads and parses a Python project from setup.py and requirements.txt
+///
+/// This function first reads the setup.py file to get project metadata,
+/// then attempts to read dependencies from requirements.txt if it exists.
+/// If requirements.txt is not found, falls back to default dependencies.
+///
+/// # Arguments
+/// * `path` - Path to the setup.py file
+///
+/// # Returns
+/// * `Result<PythonProject, PythonParserError>` - Complete project configuration or an error
+///
+/// # Errors
+/// * Various `PythonParserError` variants depending on what fails during parsing
 pub fn get_project_from_file(path: &Path) -> Result<PythonProject, PythonParserError> {
     let ast = get_ast_from_file(path)?;
+    let mut project = setup_parse(&ast)?;
 
-    setup_parse(&ast)
+    // Try to read requirements.txt from the same directory as setup.py
+    let requirements_path = path.parent().unwrap().join(REQUIREMENTS_TXT);
+    if let Ok(requirements_content) = std::fs::read_to_string(&requirements_path) {
+        project.dependencies = requirements_content
+            .lines()
+            .filter(|line| !line.trim().is_empty() && !line.trim().starts_with('#'))
+            .map(|line| line.trim().to_string())
+            .collect();
+    }
+
+    Ok(project)
 }
 
 #[cfg(test)]

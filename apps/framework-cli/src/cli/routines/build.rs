@@ -76,6 +76,10 @@ pub enum BuildError {
     #[error("Failed to create package directory: {0}")]
     CreateDirFailed(String),
 
+    /// Error when removing a directory.
+    #[error("Failed to remove directory: {0}")]
+    RemoveDirFailed(String),
+
     /// Error when copying a file to the package directory.
     ///
     /// The first parameter identifies the file being copied,

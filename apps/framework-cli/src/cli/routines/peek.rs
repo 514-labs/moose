@@ -64,9 +64,7 @@ pub async fn peek(
         })
     })?;
 
-    let redis_guard = redis_client.lock().await;
-
-    let infra = InfrastructureMap::load_from_redis(&redis_guard)
+    let infra = InfrastructureMap::load_from_redis(&redis_client)
         .await
         .map_err(|_| {
             RoutineFailure::error(Message::new(

@@ -21,7 +21,7 @@ impl MetricsInserter {
     pub fn new(
         metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
         metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
-        redis_client: Option<Arc<Mutex<RedisClient>>>,
+        redis_client: Option<Arc<RedisClient>>,
     ) -> Self {
         let buffer = Arc::new(Mutex::new(Vec::new()));
 
@@ -46,7 +46,7 @@ async fn flush(
     buffer: BatchEvents,
     metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
     metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
-    redis_client: Option<Arc<Mutex<RedisClient>>>,
+    redis_client: Option<Arc<RedisClient>>,
 ) {
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
     let client = Client::new();
@@ -168,8 +168,6 @@ async fn flush(
                 });
                 if let Ok(events_json) = serde_json::to_string(&message) {
                     redis_client
-                        .lock()
-                        .await
                         .post_queue_message(&events_json, Some("metrics"))
                         .await
                         .ok();

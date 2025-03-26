@@ -73,15 +73,18 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         include_str!("./utils/temporal.py"),
     )?;
 
-    let mut worker_process = run_python_program(PythonProgram::OrchestrationWorker {
-        args: vec![
-            project.temporal_config.temporal_url(),
-            scripts_dir.to_string_lossy().to_string(),
-            project.temporal_config.client_cert.clone(),
-            project.temporal_config.client_key.clone(),
-            project.temporal_config.api_key.clone(),
-        ],
-    })?;
+    let mut worker_process = run_python_program(
+        &project.project_location,
+        PythonProgram::OrchestrationWorker {
+            args: vec![
+                project.temporal_config.temporal_url(),
+                scripts_dir.to_string_lossy().to_string(),
+                project.temporal_config.client_cert.clone(),
+                project.temporal_config.client_key.clone(),
+                project.temporal_config.api_key.clone(),
+            ],
+        },
+    )?;
 
     let stdout = worker_process
         .stdout

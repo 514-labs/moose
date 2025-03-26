@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::process::Stdio;
 
-use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
+use crate::utilities::constants::LIB_DIR;
 
 use tokio::process::{Child, Command};
 
@@ -48,29 +48,44 @@ pub static LOAD_API_PARAMS: &str = include_str!("wrappers/load_api_params.py");
 pub static ORCHESTRATION_WORKER: &str = include_str!("wrappers/scripts/worker-main.py");
 
 const PYTHON_PATH: &str = "PYTHONPATH";
-fn python_path_with_version() -> String {
-    let mut paths = std::env::var(PYTHON_PATH).unwrap_or_else(|_| String::from(""));
-    if !paths.is_empty() {
-        paths.push(':');
-    }
-    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
-    paths.push('/');
-    paths.push_str(CLI_INTERNAL_VERSIONS_DIR);
 
-    paths.push(':');
-    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
+/// Gets the Python path including the lib directory if it exists in the current project.
+///
+/// This function builds the PYTHONPATH environment variable by:
+/// 1. Starting with the existing PYTHONPATH if any
+/// 2. Adding the CLI project internal directory
+/// 3. Adding the lib directory if it exists in the current working directory
+///
+/// # Returns
+///
+/// A String containing the complete PYTHONPATH with all necessary directories
+fn python_path_with_lib(project_location: &Path) -> String {
+    // Start with existing PYTHONPATH if any
+    let mut paths = std::env::var(PYTHON_PATH).unwrap_or_else(|_| String::from(""));
+
+    // Check if lib directory exists in current directory
+    let lib_path = project_location.join(LIB_DIR);
+    if lib_path.exists() && lib_path.is_dir() {
+        paths.push(':');
+        if let Some(lib_path_str) = lib_path.to_str() {
+            paths.push_str(lib_path_str);
+        }
+    }
 
     paths
 }
 
 /// Executes a Python program in a subprocess
-pub fn run_python_command(command: PythonCommand) -> Result<Child, std::io::Error> {
+pub fn run_python_command(
+    project_location: &Path,
+    command: PythonCommand,
+) -> Result<Child, std::io::Error> {
     let (get_args, library_module) = match command {
         PythonCommand::DmV2Serializer => (Vec::<String>::new(), "moose_lib.dmv2-serializer"),
     };
 
     Command::new("python3")
-        .env(PYTHON_PATH, python_path_with_version())
+        .env(PYTHON_PATH, python_path_with_lib(project_location))
         .arg("-m")
         .arg(library_module)
         .args(get_args)
@@ -81,7 +96,10 @@ pub fn run_python_command(command: PythonCommand) -> Result<Child, std::io::Erro
 }
 
 /// Executes a Python program in a subprocess
-pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
+pub fn run_python_program(
+    project_location: &Path,
+    program: PythonProgram,
+) -> Result<Child, std::io::Error> {
     let (get_args, program_string) = match program {
         PythonProgram::StreamingFunctionRunner { args } => (args, STREAMING_FUNCTION_RUNNER),
         PythonProgram::BlocksRunner { args } => (args, BLOCKS_RUNNER),
@@ -91,7 +109,7 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
     };
 
     Command::new("python3")
-        .env(PYTHON_PATH, python_path_with_version())
+        .env(PYTHON_PATH, python_path_with_lib(project_location))
         .arg("-u")
         .arg("-c")
         .arg(program_string)
@@ -102,10 +120,14 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
         .spawn()
 }
 
-pub async fn run_python_file(path: &Path, env: &[(&str, &str)]) -> Result<Child, std::io::Error> {
+pub async fn run_python_file(
+    project_location: &Path,
+    path: &Path,
+    env: &[(&str, &str)],
+) -> Result<Child, std::io::Error> {
     let mut command = Command::new("python3");
 
-    command.env(PYTHON_PATH, python_path_with_version());
+    command.env(PYTHON_PATH, python_path_with_lib(project_location));
     for (key, val) in env {
         command.env(key, val);
     }
@@ -144,6 +166,9 @@ mod tests {
         let flow_path = Path::new(
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
         );
+        let project_location = Path::new(
+            "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
+        );
 
         let program = PythonProgram::StreamingFunctionRunner {
             args: vec![
@@ -154,7 +179,7 @@ mod tests {
             ],
         };
 
-        let child = run_python_program(program).unwrap();
+        let child = run_python_program(project_location, program).unwrap();
         let output = child.wait_with_output().await.unwrap();
 
         //print output stdout and stderr

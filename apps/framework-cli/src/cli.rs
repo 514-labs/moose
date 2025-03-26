@@ -224,7 +224,7 @@ async fn top_command_handler(
 
                     let install_string = match language {
                         SupportedLanguages::Typescript => "npm install",
-                        SupportedLanguages::Python => "pip install .",
+                        SupportedLanguages::Python => "pip install -r ./requirements.txt",
                     };
 
                     let run_dev_string = match language {

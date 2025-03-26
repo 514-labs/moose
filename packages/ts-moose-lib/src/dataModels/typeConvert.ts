@@ -47,6 +47,43 @@ const toArrayType = ([elementNullable, elementType]: [
   };
 };
 
+const isNumberType = (t: ts.Type, checker: TypeChecker): boolean => {
+  return checker.isTypeAssignableTo(t, checker.getNumberType());
+};
+
+const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
+  const tagSymbol = t.getProperty("typia.tag");
+  if (tagSymbol === undefined) {
+    return "Float";
+  } else {
+    const typiaProps = checker.getNonNullableType(
+      checker.getTypeOfSymbol(tagSymbol),
+    );
+    const valueSymbol = typiaProps.getProperty("value");
+    if (valueSymbol === undefined) {
+      console.log("Props.value is undefined");
+      return "Float";
+    } else {
+      const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
+      if (
+        checker.isTypeAssignableTo(
+          valueTypeLiteral,
+          checker.getStringLiteralType("int64"),
+        )
+      ) {
+        return "Int";
+      } else {
+        const typeString = valueTypeLiteral.isStringLiteral()
+          ? valueTypeLiteral.value
+          : "unknown";
+
+        console.log(`Other number types are not supported. ${typeString}`);
+        return "Float";
+      }
+    }
+  }
+};
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -62,8 +99,8 @@ const tsTypeToDataType = (
     ? enumConvert(nonNull)
     : nonNull == checker.getStringType()
       ? "String"
-      : nonNull == checker.getNumberType()
-        ? "Float"
+      : isNumberType(nonNull, checker)
+        ? handleNumberType(nonNull, checker)
         : nonNull == checker.getBooleanType()
           ? "Boolean"
           : nonNull == dateType(checker)

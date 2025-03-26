@@ -69,6 +69,10 @@ pub fn run(
         string_args.push(api_key);
     }
 
+    if project.features.data_model_v2 {
+        string_args.push("--is-dmv2".to_string());
+    }
+
     let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;
 

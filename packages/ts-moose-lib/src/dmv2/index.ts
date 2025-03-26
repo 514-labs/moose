@@ -1,7 +1,7 @@
 import { Column } from "../dataModels/dataModelTypes";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { getMooseInternal, TypedBase } from "./internal";
-import { IngestionFormat } from "../index";
+import { ConsumptionUtil, IngestionFormat } from "../index";
 
 export type OlapConfig<T> = {
   orderByFields?: (keyof T & string)[];
@@ -105,7 +105,7 @@ interface IngestConfig<T> {
 }
 
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
-  constructor(name: string, config?: {});
+  constructor(name: string, config?: IngestConfig<T>);
 
   /** @internal **/
   constructor(
@@ -123,8 +123,48 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
   ) {
     super(name, config, schema, columns);
 
-    getMooseInternal().apis.set(name, this);
+    getMooseInternal().ingestApis.set(name, this);
   }
+}
+
+type ConsumptionHandler<T> = (
+  params: T,
+  utils: ConsumptionUtil,
+) => Promise<any>;
+
+interface EgressConfig<T> {}
+
+export class ConsumptionApi<T> extends TypedBase<T, EgressConfig<T>> {
+  _handler: ConsumptionHandler<T>;
+
+  constructor(name: string, handler: ConsumptionHandler<T>, config?: {});
+
+  /** @internal **/
+  constructor(
+    name: string,
+    handler: ConsumptionHandler<T>,
+    config: EgressConfig<T>,
+    schema: IJsonSchemaCollection.IV3_1,
+    columns: Column[],
+  );
+
+  constructor(
+    name: string,
+    handler: ConsumptionHandler<T>,
+    config?: EgressConfig<T>,
+    schema?: IJsonSchemaCollection.IV3_1,
+    columns?: Column[],
+  ) {
+    super(name, config ?? {}, schema, columns);
+
+    this._handler = handler;
+
+    getMooseInternal().egressApis.set(name, this);
+  }
+
+  getHandler = (): ConsumptionHandler<T> => {
+    return this._handler;
+  };
 }
 
 export class IngestPipeline<T> extends TypedBase<T, DataModelConfigV2<T>> {

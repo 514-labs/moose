@@ -6,7 +6,9 @@ import {
 } from "./dataModelMetadata";
 import {
   isCreateConsumptionApi,
+  isCreateConsumptionApiV2,
   transformCreateConsumptionApi,
+  transformLegacyConsumptionApi,
 } from "../consumption-apis/typiaValidation";
 
 export const importTypia = factory.createImportDeclaration(
@@ -24,10 +26,12 @@ const insertMdOrValidation = (
   node: ts.Node,
   checker: ts.TypeChecker,
 ): ts.Node => {
-  if (isNewMooseResourceWithTypeParam(node, checker)) {
-    return transformNewMooseResource(node, checker);
-  } else if (isCreateConsumptionApi(node, checker)) {
+  if (isCreateConsumptionApi(node, checker)) {
+    return transformLegacyConsumptionApi(node, checker);
+  } else if (isCreateConsumptionApiV2(node, checker)) {
     return transformCreateConsumptionApi(node, checker);
+  } else if (isNewMooseResourceWithTypeParam(node, checker)) {
+    return transformNewMooseResource(node, checker);
   }
 
   return node;

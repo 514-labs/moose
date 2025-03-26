@@ -6,6 +6,7 @@ import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
 import { Client as TemporalClient } from "@temporalio/client";
+import { getEgressApis } from "../dmv2/internal";
 
 interface ClickhouseConfig {
   database: string;
@@ -35,6 +36,7 @@ interface ConsumptionApisConfig {
   jwtConfig?: JwtConfig;
   temporalConfig?: TemporalConfig;
   enforceAuth: boolean;
+  isDmv2: boolean;
 }
 
 // Convert our config to Clickhouse client config
@@ -70,6 +72,7 @@ const apiHandler =
     temporalClient: TemporalClient | undefined,
     consumptionDir: string,
     enforceAuth: boolean,
+    isDmv2: boolean,
     jwtConfig?: JwtConfig,
   ) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -129,16 +132,29 @@ const apiHandler =
 
       let userFuncModule = modulesCache.get(pathName);
       if (userFuncModule === undefined) {
-        userFuncModule = require(pathName);
-        modulesCache.set(pathName, userFuncModule);
+        if (isDmv2) {
+          const egressApis = await getEgressApis();
+          userFuncModule = egressApis.get(fileName.replace(/^\/+/, ""));
+          modulesCache.set(pathName, userFuncModule);
+        } else {
+          userFuncModule = require(pathName);
+          modulesCache.set(pathName, userFuncModule);
+        }
       }
 
       const queryClient = new QueryClient(clickhouseClient, fileName);
-      const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(queryClient, temporalClient),
-        sql: sql,
-        jwt: jwtPayload,
-      });
+      let result =
+        isDmv2
+          ? await userFuncModule(paramsObject, {
+              client: new MooseClient(queryClient, temporalClient),
+              sql: sql,
+              jwt: jwtPayload,
+            })
+          : await userFuncModule.default(paramsObject, {
+              client: new MooseClient(queryClient, temporalClient),
+              sql: sql,
+              jwt: jwtPayload,
+            });
 
       let body: string;
       let status: number | undefined;
@@ -212,6 +228,7 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
           temporalClient,
           config.consumptionDir,
           config.enforceAuth,
+          config.isDmv2,
           config.jwtConfig,
         ),
       );

@@ -2,7 +2,13 @@ import ts, { factory } from "typescript";
 import { isMooseFile, typiaJsonSchemas } from "../compilerPluginHelper";
 import { toColumns } from "../dataModels/typeConvert";
 
-const types = new Set(["OlapTable", "Stream", "IngestPipeline", "IngestApi"]);
+const types = new Set([
+  "OlapTable",
+  "Stream",
+  "IngestPipeline",
+  "IngestApi",
+  "ConsumptionApi",
+]);
 
 export const isNewMooseResourceWithTypeParam = (
   node: ts.Node,
@@ -60,6 +66,7 @@ export const transformNewMooseResource = (
     typiaJsonSchemas(typeNode),
     parseAsAny(JSON.stringify(columns)),
   ];
+
   return ts.factory.updateNewExpression(
     node,
     node.expression,

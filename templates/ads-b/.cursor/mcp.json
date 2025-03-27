@@ -2,10 +2,7 @@
   "mcpServers": {
     "aurora": {
       "command": "node",
-      "args": [
-        "/Users/johananottensooser/code/mcp-demo/mcp/dist/index.js",
-        "/Users/johananottensooser/code/agent-test"
-      ],
+      "args": ["path/to/mcp-demo/mcp/dist/index.js", "path/to/ADS-B"],
       "env": {
         "ANTHROPIC_API_KEY": ""
       }

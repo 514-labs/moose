@@ -36,6 +36,7 @@ impl Default for TypescriptProject {
                 ("build".to_string(), "moose-cli build --docker".to_string()),
             ]),
             dependencies: HashMap::from([
+                ("typescript".to_string(), "^5.7.0".to_string()),
                 ("@514labs/moose-lib".to_string(), "latest".to_string()),
                 ("ts-patch".to_string(), "^3.3.0".to_string()),
                 ("typia".to_string(), "^7.6.0".to_string()),

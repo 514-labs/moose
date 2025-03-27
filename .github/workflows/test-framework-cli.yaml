@@ -43,6 +43,9 @@ jobs:
           command: check
           args: --manifest-path ./apps/framework-cli/Cargo.toml
 
+      - name: Check for unused dependencies
+        uses: bnjbvr/cargo-machete@main
+
       - name: Run cargo Build in release mode
         run: cargo build --release --locked
 

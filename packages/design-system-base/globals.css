@@ -168,14 +168,14 @@
   border-top: none;
 }
 
-.docs div.nextra-search {
+/* .docs div.nextra-search {
   width: 100%;
 }
 
 .docs div.nextra-search > div {
   max-width: 72rem;
   margin: 0 auto;
-}
+} */
 
 /* the first a in nav */
 /* .docs nav > a:first-child {
@@ -200,13 +200,13 @@
   }
 }
 
-.docs nav.nx-justify-end {
+/* .docs nav.nx-justify-end {
   justify-content: flex-start;
 }
 
 .docs nav > a:is([dir="ltr"] .ltr\:nx-mr-auto) {
   margin-right: 0;
-}
+} */
 
 .docs main > p {
   line-height: 1.5rem;

@@ -1,0 +1,59 @@
+# Data Modeling with DMv2
+
+DMv2 provides a comprehensive system for building type-safe data pipelines. This guide covers everything you need to know about modeling, processing, and storing data with DMv2.
+
+## Core Concepts
+
+DMv2 is built around four main components:
+
+1. **IngestPipeline**: All-in-one solution that combines storage, processing, and ingestion
+2. **OlapTable**: Type-safe data storage optimized for analytical queries
+3. **Stream**: Real-time data processing and transformation
+4. **IngestApi**: HTTP endpoints for data ingestion with automatic validation
+
+## Quick Example
+
+```typescript
+import { IngestPipeline, Key } from '@514labs/moose-lib';
+
+// Define your data structure
+interface UserActivity {
+  id: Key<string>;
+  userId: string;
+  action: string;
+  timestamp: Date;
+}
+
+// Create a complete pipeline
+export const userActivityPipeline = new IngestPipeline<UserActivity>("user_activities", {
+  table: true,    // Enable storage
+  stream: true,   // Enable processing
+  ingest: true    // Create HTTP endpoint
+});
+```
+
+## Documentation Structure
+
+### Getting Started
+- [Quick Start Guide](/v2/data-modeling/getting-started)
+- [Components Overview](/v2/data-modeling/components)
+- [Schema Design](/v2/data-modeling/schemas)
+
+### Core Components
+- [Storage with OlapTable](/v2/data-modeling/olap-table)
+- [Stream Processing](/v2/data-modeling/streams)
+- [Data Ingestion](/v2/data-modeling/ingestion)
+
+### Advanced Topics
+- [Advanced Stream Patterns](/v2/data-modeling/advanced-streams)
+- [Production Guide](/v2/data-modeling/production)
+- [Best Practices](/v2/data-modeling/best-practices)
+- [Technical Reference](/v2/data-modeling/technical-reference)
+
+## Next Steps
+
+1. Start with the [Quick Start Guide](/v2/data-modeling/getting-started)
+2. Learn about [Components](/v2/data-modeling/components)
+3. Explore [Schema Design](/v2/data-modeling/schemas)
+
+Need help? Join our [Slack community](https://join.slack.com/t/moose-community) for support. 

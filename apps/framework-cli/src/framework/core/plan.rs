@@ -21,7 +21,6 @@ use log::error;
 use rdkafka::error::KafkaError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tokio::sync::Mutex;
 
 /// Errors that can occur during the planning process.
 #[derive(Debug, thiserror::Error)]
@@ -71,7 +70,7 @@ pub struct InfraPlan {
 /// # Returns
 /// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
 pub async fn plan_changes(
-    client: &Mutex<RedisClient>,
+    client: &RedisClient,
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
     let json_path = Path::new(".moose/infrastructure_map.json");
@@ -90,10 +89,7 @@ pub async fn plan_changes(
         }
     };
 
-    let current_infra_map = {
-        let redis_guard = client.lock().await;
-        InfrastructureMap::load_from_redis(&redis_guard).await?
-    };
+    let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
 
     plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
 }

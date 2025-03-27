@@ -884,27 +884,6 @@ impl RedisClient {
             )
             .await
     }
-
-    /// Shuts down the RedisClient gracefully, stopping all background tasks and closing Redis connections.
-    ///
-    /// This method should be called when the application is shutting down to ensure
-    /// a clean termination of Redis connections and prevent panics during application exit.
-    ///
-    /// # Returns
-    ///
-    /// - `anyhow::Result<()>` - Result indicating success or failure
-    pub async fn shutdown(&mut self) -> anyhow::Result<()> {
-        log::info!("<RedisClient> Shutting down RedisClient gracefully");
-
-        // First stop all periodic tasks
-        self.stop_periodic_tasks().await?;
-
-        // Shutdown Redis connections using the ConnectionManagerWrapper
-        self.connection_manager.shutdown().await;
-
-        log::info!("<RedisClient> RedisClient shutdown complete");
-        Ok(())
-    }
 }
 
 impl Drop for RedisClient {
@@ -937,6 +916,7 @@ impl Drop for RedisClient {
         {
             // Close Redis connections gracefully using the ConnectionManagerWrapper
             rt.block_on(async {
+                let _ = self.stop_periodic_tasks().await;
                 self.connection_manager.shutdown().await;
             });
         }

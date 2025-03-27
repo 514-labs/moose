@@ -28,7 +28,7 @@ use std::{
     io::{Error, ErrorKind},
     path::PathBuf,
 };
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
@@ -165,7 +165,7 @@ async fn watch(
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
     metrics: Arc<Metrics>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 ) -> Result<(), anyhow::Error> {
     let (tx, mut rx) = tokio::sync::watch::channel(EventBuckets::default());
     let receiver_ack = tx.clone();
@@ -216,10 +216,9 @@ async fn watch(
                         .await
                         {
                             Ok(_) => {
-                                let redis_guard = redis_client.lock().await;
                                 plan_result
                                     .target_infra_map
-                                    .store_in_redis(&redis_guard)
+                                    .store_in_redis(&redis_client)
                                     .await?;
 
                                 let _openapi_file =
@@ -306,7 +305,7 @@ impl FileWatcher {
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
         metrics: Arc<Metrics>,
-        redis_client: Arc<Mutex<RedisClient>>,
+        redis_client: Arc<RedisClient>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {

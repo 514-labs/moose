@@ -28,11 +28,10 @@ class Columns(Generic[T]):
         raise AttributeError(f"{item} is not a valid column name")
 
 
-class TypedMooseResource(Generic[T]):
+class BaseTypedResource(Generic[T]):
     """Base class for Moose resources that are typed with a Pydantic model."""
     _t: type[T]
     name: str
-    columns: Columns[T]
 
     @classmethod
     def _get_type(cls, keyword_args: dict):
@@ -43,20 +42,28 @@ class TypedMooseResource(Generic[T]):
             raise ValueError(f"{t} is not a Pydantic model")
         return t
 
+    @property
+    def model_type(self) -> type[T]:
+        """Get the Pydantic model type associated with this resource."""
+        return self._t
+
     def _set_type(self, name: str, t: type[T]):
         self._t = t
         self.name = name
-        self.columns = Columns[T](self._t)
 
     def __class_getitem__(cls, item: type[BaseModel]):
         def curried_constructor(*args, **kwargs):
             return cls(t=item, *args, **kwargs)
-
         return curried_constructor
 
-    def create_model_instance(self, params: dict) -> T:
-        """Creates an instance of the associated Pydantic model using the provided parameters."""
-        return self._t(**params)
+
+class TypedMooseResource(BaseTypedResource, Generic[T]):
+    """Base class for Moose resources that have columns."""
+    columns: Columns[T]
+
+    def _set_type(self, name: str, t: type[T]):
+        super()._set_type(name, t)
+        self.columns = Columns[T](self._t)
 
 
 class IngestionFormat(Enum):
@@ -210,7 +217,7 @@ class EgressConfig(BaseModel):
     """Configuration for Consumption APIs."""
     pass
 
-class ConsumptionApi(TypedMooseResource, Generic[T]):
+class ConsumptionApi(BaseTypedResource, Generic[T]):
     """Configures a Consumption API that can be used to query the data."""
     config: EgressConfig
     query_function: Optional[Callable[..., Any]] = None

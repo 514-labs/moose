@@ -175,24 +175,3 @@ def map_params_to_class(
             [v] = values
             constructor_args[field_name] = parse(v, field_type)
     return cls(**constructor_args)
-
-def normalize_query_params(query_params: dict[str, list[str]]) -> dict[str, Any]:
-    """
-    Normalize query parameters by unwrapping single-item lists to scalar values.
-
-    When query parameters are parsed with parse_qs(), all values are returned as lists,
-    even when there's only one value. This function unwraps single-item lists while
-    preserving multi-value lists.
-
-    Examples:
-    - {'color': ['red']} becomes {'color': 'red'}
-    - {'color': ['red', 'blue']} remains {'color': ['red', 'blue']}
-
-    Args:
-        query_params: Dictionary of query parameters where values are lists of strings
-
-    Returns:
-        Dictionary with unwrapped single values and preserved multi-value lists
-    """
-    return {k: v[0] if isinstance(v, list) and len(v) == 1 else v
-            for k, v in query_params.items()}

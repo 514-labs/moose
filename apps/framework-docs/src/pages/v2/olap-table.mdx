@@ -1,0 +1,157 @@
+# Storage with OlapTable
+
+The OlapTable component in DMv2 is an abstraction that helps you define and manage tables in the underlying database (ClickHouse). It provides type-safe table definitions that automatically:
+- Create appropriate database tables
+- Manage table schemas
+- Handle data types
+- Optimize for analytical queries
+
+## Table Definition
+
+```typescript
+import { OlapTable, Key } from '@514labs/moose-lib';
+
+// Define your data structure
+interface Record {
+  id: Key<string>;
+  field1: string;
+  field2: number;
+  field3: Date;
+  metadata: Record<string, string>;
+}
+
+// Define the table
+const dataTable = new OlapTable<Record>("data_table", {
+  orderByFields: ["field3", "field1"],  // Define primary sort order
+  deduplicate: true                     // Enable deduplication
+});
+```
+
+When you create an OlapTable, Moose:
+1. Analyzes your TypeScript interface
+2. Generates the appropriate database schema
+3. Creates the table in ClickHouse with the configuration you provide
+4. Sets up the necessary indexes based on `orderByFields`
+
+## Table Configuration
+
+### Primary Keys and Order By Fields
+You must configure table indexing using one of these approaches:
+1. Define a primary key in your interface
+2. Specify orderByFields in the table config
+3. Use both (primary key must be first in orderByFields)
+
+```typescript
+import { OlapTable, Key } from '@514labs/moose-lib';
+
+// Approach 1: Using primary key only
+interface Record1 {
+  id: Key<string>;  // Primary key field
+  field1: string;
+  field2: number;
+}
+
+const table1 = new OlapTable<Record1>("table1");  // Uses id as orderByField automatically
+
+// Approach 2: Using orderByFields only
+interface Record2 {
+  field1: string;
+  field2: number;
+  field3: Date;
+}
+
+const table2 = new OlapTable<Record2>("table2", {
+  orderByFields: ["field1", "field2"]  // Specify ordering without primary key
+});
+
+// Approach 3: Using both (primary key must be first)
+interface Record3 {
+  id: Key<string>;  // Primary key field
+  field1: string;
+  field2: number;
+}
+
+const table3 = new OlapTable<Record3>("table3", {
+  orderByFields: ["id", "field1"]  // Primary key must be first
+});
+
+// Using multiple key fields
+interface Record4 {
+  key1: Key<string>;
+  key2: Key<number>;
+  field1: string;
+}
+
+const table4 = new OlapTable<Record4>("table4", {
+  orderByFields: ["key1", "key2", "field1"]  // Multiple keys must come first
+});
+```
+
+### Invalid Configurations
+```typescript
+// ❌ ERROR: No primary key or orderByFields
+interface BadRecord1 {
+  field1: string;
+  field2: number;
+}
+
+const badTable1 = new OlapTable<BadRecord1>("bad_table1");  // Will throw error
+
+// ❌ ERROR: Primary key not first in orderByFields
+interface BadRecord2 {
+  id: Key<string>;
+  field1: string;
+}
+
+const badTable2 = new OlapTable<BadRecord2>("bad_table2", {
+  orderByFields: ["field1", "id"]  // Wrong order - primary key must be first
+});
+```
+
+### Deduplication
+When enabled, the underlying table is configured to automatically handle duplicate records:
+
+```typescript
+const table3 = new OlapTable<Record>("table3", {
+  orderByFields: ["field1"],
+  deduplicate: true  // Only keeps latest record per id
+});
+```
+
+## Database Management
+
+OlapTable handles several database management tasks automatically:
+- Schema creation and updates
+- Data type mapping between TypeScript and ClickHouse
+- Index management
+- Deduplication logic (when enabled)
+
+You don't need to:
+- Write CREATE TABLE statements
+- Manage schema migrations
+- Handle data type conversions
+- Set up indexes manually
+
+## Integration Points
+
+OlapTable is commonly used as:
+1. A storage destination for Stream processing
+2. Part of an IngestPipeline for data ingestion
+3. A standalone table for direct data storage
+
+```typescript
+// As a stream destination
+const storage = new OlapTable<Record>("table4", {
+  orderByFields: ["field3"]
+});
+
+// As part of a pipeline
+const pipeline = new IngestPipeline<Record>("table5", {
+  table: {
+    orderByFields: ["field3", "field1"],
+    deduplicate: true
+  },
+  stream: true,
+  ingest: true
+});
+```

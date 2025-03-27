@@ -1,7 +1,6 @@
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 import { Octokit } from "@octokit/rest";
-import { WatchEventWithRepo } from "datamodels/WatchEvents";
-import { WatchEvent } from "datamodels/WatchEvents";
+import { WatchEventWithRepo, WatchEvent } from "../../datamodels/WatchEvent";
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,

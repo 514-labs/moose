@@ -9,21 +9,26 @@
       "breadcrumb": false
     }
   },
-  "quickstart": "Quick Start",
-  "project-structure": "Project Structure",
   "architecture": "Architecture",
   "learn-moose": "Tutorial",
   "--Develop--": {
     "type": "separator",
-    "title": "Develop"
+    "title": "Developing with Moose"
   },
-  "data-models": "Data Modeling",
-  "ingest-data": "Ingesting Data",
-  "stream-processing": "Stream Processing",
-  "db-processing": "Database Processing",
-  "consumption-apis": "Analytics APIs",
-  "workflows": "Orchestrating Workflows",
-  "metrics-console": "Monitoring Performance",
+  "versions": {
+    "title": "Versions",
+    "type": "menu",
+    "items": {
+      "v2": {
+        "title": "Latest (V2)",
+        "href": "/v2"
+      },
+      "v1": {
+        "title": "V1",
+        "href": "/v1"
+      }
+    }
+  },
   "--Deploy--": {
     "type": "separator",
     "title": "Deploy"
@@ -40,9 +45,6 @@
   "faqs": "FAQs",
   "usage-data": "Privacy",
   "schema-evolution": {
-    "display": "hidden"
-  },
-  "data-modeling-v2": {
     "display": "hidden"
   }
 }

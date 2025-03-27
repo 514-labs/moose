@@ -1,0 +1,14 @@
+{
+  "index": {
+    "title": "Overview",
+    "theme": {
+      "breadcrumb": false
+    }
+  },
+  "quickstart": "Quickstart",
+  "components": "Ingestion Pipeline Components",
+  "schemas": "Schema Design",
+  "olap-table": "Storage with OlapTable",
+  "streams": "Stream Processing",
+  "ingestion": "Data Ingestion"
+}

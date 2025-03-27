@@ -1,0 +1,486 @@
+# Technical Reference
+
+This page provides detailed technical information about DMv2's internal architecture, type system, and infrastructure components.
+
+## Architecture Overview
+
+DMv2 consists of several core components that work together to provide a type-safe data modeling and processing system:
+
+```typescript
+// Core components and their relationships
+interface DMv2Architecture {
+  compiler: {
+    typePlugin: TypeScriptCompilerPlugin;
+    schemaGenerator: JSONSchemaGenerator;
+  };
+  runtime: {
+    componentRegistry: ComponentRegistry;
+    storageLayer: StorageLayer;
+    processingLayer: ProcessingLayer;
+  };
+  infrastructure: {
+    streamProcessor: StreamProcessor;
+    tableManager: TableManager;
+    monitoring: MonitoringSystem;
+  };
+}
+```
+
+### TypeScript Compiler Plugin
+
+The compiler plugin analyzes TypeScript interfaces and generates type-safe runtime components:
+
+```typescript
+interface TypeScriptCompilerPlugin {
+  // Analyze TypeScript interfaces
+  analyzeInterface(node: ts.InterfaceDeclaration): InterfaceMetadata;
+  
+  // Generate runtime types
+  generateRuntimeType(metadata: InterfaceMetadata): RuntimeType;
+  
+  // Generate validation code
+  generateValidator(metadata: InterfaceMetadata): string;
+  
+  // Generate serialization code
+  generateSerializer(metadata: InterfaceMetadata): string;
+}
+
+interface InterfaceMetadata {
+  name: string;
+  fields: FieldMetadata[];
+  generics: GenericParameter[];
+  decorators: DecoratorMetadata[];
+}
+```
+
+### Component Registry
+
+The registry manages component lifecycle and dependencies:
+
+```typescript
+class ComponentRegistry {
+  // Register components
+  registerComponent(component: Component): void {
+    this.components.set(component.id, {
+      instance: component,
+      dependencies: this.resolveDependencies(component),
+      state: ComponentState.Registered
+    });
+  }
+  
+  // Resolve dependencies
+  private resolveDependencies(component: Component): Dependency[] {
+    return component.getDependencies().map(dep => 
+      this.components.get(dep.id) || 
+      this.resolveExternal(dep)
+    );
+  }
+  
+  // Component lifecycle
+  async start(): Promise<void> {
+    // Topologically sort components
+    const order = this.dependencyResolver.sort();
+    
+    // Start in order
+    for (const component of order) {
+      await component.start();
+    }
+  }
+}
+
+class DependencyResolver {
+  // Resolve dependency graph
+  resolve(components: Component[]): DependencyGraph;
+  
+  // Topological sort
+  sort(): Component[];
+  
+  // Detect cycles
+  detectCycles(): CycleError[];
+}
+```
+
+## Type System
+
+### Schema Generation
+
+DMv2 automatically generates JSON Schema from TypeScript interfaces:
+
+```typescript
+// TypeScript interface
+interface User {
+  id: Key<string>;
+  name: string;
+  email: string;
+  metadata: {
+    created: Date;
+    lastLogin?: Date;
+    preferences: {
+      theme: 'light' | 'dark';
+      notifications: boolean;
+    };
+  };
+  tags: string[];
+}
+
+// Generated JSON Schema
+const UserSchema = {
+  type: "object",
+  required: ["id", "name", "email", "metadata", "tags"],
+  properties: {
+    id: {
+      type: "string",
+      format: "key"
+    },
+    name: {
+      type: "string"
+    },
+    email: {
+      type: "string",
+      format: "email"
+    },
+    metadata: {
+      type: "object",
+      required: ["created", "preferences"],
+      properties: {
+        created: {
+          type: "string",
+          format: "date-time"
+        },
+        lastLogin: {
+          type: "string",
+          format: "date-time"
+        },
+        preferences: {
+          type: "object",
+          required: ["theme", "notifications"],
+          properties: {
+            theme: {
+              type: "string",
+              enum: ["light", "dark"]
+            },
+            notifications: {
+              type: "boolean"
+            }
+          }
+        }
+      }
+    },
+    tags: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    }
+  }
+};
+```
+
+### Type Mapping
+
+| TypeScript Type | JSON Schema Type | ClickHouse Type |
+|----------------|------------------|-----------------|
+| `string` | `string` | `String` |
+| `number` | `number` | `Float64` |
+| `boolean` | `boolean` | `UInt8` |
+| `Date` | `string` (format: date-time) | `DateTime64(3)` |
+| `Key<T>` | `string` (format: key) | `String` |
+| `T[]` | `array` | `Array(T)` |
+| `Record<K,V>` | `object` | `Map(K,V)` |
+| `enum` | `string` (enum) | `Enum` |
+| `null` | `null` | `Nullable(T)` |
+| `undefined` | - | - |
+
+## Infrastructure Components
+
+### Stream Processing Engine
+
+```typescript
+class StreamProcessor<T, U> {
+  // Configuration
+  private config: StreamConfig = {
+    batchSize: 100,
+    maxRetries: 3,
+    bufferSize: 1000
+  };
+  
+  // Process records
+  async process(records: T[]): Promise<ProcessResult<U>> {
+    // Validate records
+    const validated = await this.validate(records);
+    
+    // Group into batches
+    const batches = this.batcher.group(validated);
+    
+    // Process each batch
+    const results = await Promise.all(
+      batches.map(batch => this.processBatch(batch))
+    );
+    
+    // Handle results
+    return this.handleResults(results);
+  }
+  
+  // Batch processing
+  private async processBatch(batch: T[]): Promise<BatchResult<U>> {
+    try {
+      // Process batch
+      const processed = await this.processor.process(batch);
+      
+      // Update metrics
+      this.metrics.recordBatch({
+        size: batch.length,
+        duration: processed.duration,
+        success: true
+      });
+      
+      return processed;
+    } catch (error) {
+      // Handle error
+      return this.handleError(error, batch);
+    }
+  }
+}
+```
+
+### Storage Engine
+
+```typescript
+class TableManager<T> {
+  // Table configuration
+  private config: TableConfig = {
+    engine: "MergeTree",
+    partitionBy: ["toYYYYMM(timestamp)"],
+    orderBy: ["timestamp", "id"],
+    settings: {
+      index_granularity: 8192
+    }
+  };
+  
+  // Create table
+  async createTable(): Promise<void> {
+    const schema = this.schemaGenerator.generate<T>();
+    await this.execute(this.createTableSQL(schema));
+  }
+  
+  // Insert data
+  async insert(records: T[]): Promise<InsertResult> {
+    // Prepare data
+    const prepared = this.prepareForInsert(records);
+    
+    // Execute insert
+    return await this.execute(
+      this.insertSQL(prepared)
+    );
+  }
+  
+  // Query builder
+  query(): QueryBuilder<T> {
+    return new QueryBuilder<T>(this.config)
+      .from(this.tableName);
+  }
+}
+
+class QueryBuilder<T> {
+  // Select fields
+  select(...fields: (keyof T)[]): this;
+  
+  // Add conditions
+  where(condition: Condition): this;
+  
+  // Add aggregations
+  aggregate(fn: AggregateFunction): this;
+  
+  // Execute query
+  execute(): Promise<QueryResult<T>>;
+}
+```
+
+## Performance Considerations
+
+### Memory Management
+
+```typescript
+class MemoryTracker {
+  // Track memory usage
+  private usage: MemoryUsage = {
+    heapUsed: 0,
+    heapTotal: 0,
+    external: 0
+  };
+  
+  // Monitor memory
+  monitor(): void {
+    setInterval(() => {
+      const stats = process.memoryUsage();
+      
+      // Update metrics
+      this.metrics.gauge('memory.heap_used', stats.heapUsed);
+      this.metrics.gauge('memory.heap_total', stats.heapTotal);
+      
+      // Check thresholds
+      this.checkThresholds(stats);
+    }, this.config.interval);
+  }
+  
+  // Handle memory pressure
+  private handlePressure(level: PressureLevel): void {
+    switch (level) {
+      case 'warning':
+        this.gc.collect();
+        break;
+      case 'critical':
+        this.emergency.handle();
+        break;
+    }
+  }
+}
+```
+
+### Concurrency
+
+```typescript
+class ParallelProcessor<T> {
+  // Process in parallel
+  async processParallel(items: T[]): Promise<Result[]> {
+    // Create worker pool
+    const pool = new WorkerPool(this.config.workers);
+    
+    // Distribute work
+    const chunks = this.splitWork(items);
+    const tasks = chunks.map(chunk => 
+      pool.execute(chunk)
+    );
+    
+    // Wait for completion
+    const results = await Promise.all(tasks);
+    
+    // Cleanup
+    await pool.cleanup();
+    
+    return this.mergeResults(results);
+  }
+  
+  // Handle backpressure
+  private handleBackpressure(): void {
+    if (this.queue.size > this.config.maxQueueSize) {
+      this.pause();
+      this.emit('backpressure');
+    }
+  }
+}
+```
+
+## API Reference
+
+### IngestPipeline
+
+```typescript
+interface IngestPipelineConfig<T> {
+  // Pipeline name
+  name: string;
+  
+  // Data schema
+  schema: Schema<T>;
+  
+  // Components
+  components: {
+    stream?: StreamConfig;
+    storage?: StorageConfig;
+  };
+  
+  // Monitoring
+  monitoring?: MonitoringConfig;
+}
+
+class IngestPipeline<T> {
+  // Lifecycle methods
+  async start(): Promise<void>;
+  async stop(): Promise<void>;
+  
+  // Data methods
+  async ingest(record: T): Promise<void>;
+  async ingestBatch(records: T[]): Promise<void>;
+  
+  // Status methods
+  getStatus(): PipelineStatus;
+  getMetrics(): PipelineMetrics;
+}
+```
+
+### Stream
+
+```typescript
+interface StreamConfig<T, U> {
+  // Processing
+  process: (record: T) => Promise<U>;
+  processBatch?: (records: T[]) => Promise<U[]>;
+  
+  // Error handling
+  maxRetries?: number;
+  retryStrategy?: RetryStrategy;
+  onError?: ErrorHandler;
+  
+  // Performance
+  batchSize?: number;
+  bufferSize?: number;
+  
+  // Monitoring
+  metrics?: MetricsConfig;
+}
+
+class Stream<T, U> {
+  // Processing methods
+  async process(record: T): Promise<U>;
+  async processBatch(records: T[]): Promise<U[]>;
+  
+  // Pipeline methods
+  pipe<V>(next: Stream<U, V>): Stream<T, V>;
+  
+  // Control methods
+  pause(): void;
+  resume(): void;
+}
+```
+
+### OlapTable
+
+```typescript
+interface OlapTableConfig<T> {
+  // Table configuration
+  name: string;
+  schema: Schema<T>;
+  
+  // Storage configuration
+  engine?: StorageEngine;
+  partitionBy?: string[];
+  orderBy?: string[];
+  
+  // Performance
+  settings?: TableSettings;
+  
+  // Lifecycle
+  ttl?: TTLConfig;
+}
+
+class OlapTable<T> {
+  // Data methods
+  async insert(record: T): Promise<void>;
+  async insertBatch(records: T[]): Promise<void>;
+  
+  // Query methods
+  select(): QueryBuilder<T>;
+  count(): Promise<number>;
+  
+  // Maintenance methods
+  optimize(): Promise<void>;
+  vacuum(): Promise<void>;
+}
+```
+
+## Next Steps
+
+- Learn about [Production Deployment](/v2/data-modeling/production)
+- Explore [Best Practices](/v2/data-modeling/best-practices)
+- Check [Advanced Stream Patterns](/v2/data-modeling/advanced-streams)
+- Read about [Schema Design](/v2/data-modeling/schemas) 

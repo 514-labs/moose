@@ -1,0 +1,10 @@
+[metadata]
+Language = "typescript" # Must be typescript or python
+Description = ""
+
+[CLI Info]
+CLI-Print = """
+🏃Run your workflows:
+	$ moose workflow run military_aircraft_tracking
+"""
+ # This will be printed in the CLI after the Moose prints, consider adding workflow commands

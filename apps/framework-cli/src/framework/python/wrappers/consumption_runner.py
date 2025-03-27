@@ -15,7 +15,9 @@ from importlib import import_module
 from string import Formatter
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
-from moose_lib.query_param import map_params_to_class, convert_consumption_api_param
+from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, normalize_query_params
+from moose_lib.internal import load_models
+from moose_lib.dmv2 import get_consumption_api
 
 import jwt
 from clickhouse_connect import get_client
@@ -44,6 +46,7 @@ parser.add_argument('temporal_url', type=str, help='Temporal URL')
 parser.add_argument('client_cert', type=str, help='Client certificate')
 parser.add_argument('client_key', type=str, help='Client key')
 parser.add_argument('api_key', type=str, help='API key')
+parser.add_argument('is_dmv2', type=str, help='Is DMv2')
 
 args = parser.parse_args()
 
@@ -64,6 +67,7 @@ temporal_url = args.temporal_url
 client_cert = args.client_cert
 client_key = args.client_key
 api_key = args.api_key
+is_dmv2 = args.is_dmv2.lower() == 'true'
 
 sys.path.append(consumption_dir_path)
 
@@ -239,46 +243,56 @@ def handler_with_client(moose_client):
             parsed_path = urlparse(self.path)
             module_name = parsed_path.path.lstrip('/')
             try:
-                module = import_module(module_name)
-                fields_and_class = convert_consumption_api_param(module)
-
+                jwt_payload = None
                 if has_jwt_config():
-                    jwt_payload: Optional[Dict[str, Any]] = None
                     auth_header = self.headers.get('Authorization')
                     if auth_header:
                         # Bearer <token>
                         token = auth_header.split(" ")[1] if " " in auth_header else None
                         if token:
                             jwt_payload = verify_jwt(token)
-                    
+
                     if jwt_payload is None and jwt_enforce_all == 'true':
                         self.send_response(401)
-                        response_message = bytes(json.dumps({"error": "Unauthorized"}), 'utf-8')
-                    else:
-                        query_params = parse_qs(parsed_path.query)
-                        if fields_and_class is not None:
-                            (cls, fields) = fields_and_class
-                            query_params = map_params_to_class(query_params, fields, cls)
-                        response = module.run(moose_client, query_params, jwt_payload)
-                        if hasattr(response, 'status') and hasattr(response, 'body'):
-                            response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
-                            self.send_response(response.status)
-                        else:
-                            response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
-                            self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(bytes(json.dumps({"error": "Unauthorized"}), 'utf-8'))
+                        return
 
+                query_params = parse_qs(parsed_path.query)
+
+                if is_dmv2:
+                    user_api = get_consumption_api(module_name)
+                    if user_api is not None:
+                        normalized_params = normalize_query_params(query_params)
+                        params = user_api.create_model_instance(normalized_params)
+                        args = [moose_client, params]
+                        if jwt_payload is not None:
+                            args.append(jwt_payload)
+                        response = user_api.query_function(*args)
+                    else:
+                        self.send_response(404)
+                        self.end_headers()
+                        self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
+                        return
                 else:
-                    query_params = parse_qs(parsed_path.query)
+                    module = import_module(module_name)
+                    fields_and_class = convert_consumption_api_param(module)
+
                     if fields_and_class is not None:
                         (cls, fields) = fields_and_class
                         query_params = map_params_to_class(query_params, fields, cls)
-                    response = module.run(moose_client, query_params)
-                    if hasattr(response, 'status') and hasattr(response, 'body'):
-                        response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
-                        self.send_response(response.status)
-                    else:
-                        response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
-                        self.send_response(200)
+
+                    args = [moose_client, query_params]
+                    if jwt_payload is not None:
+                        args.append(jwt_payload)
+                    response = module.run(*args)
+
+                if hasattr(response, 'status') and hasattr(response, 'body'):
+                    self.send_response(response.status)
+                    response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                else:
+                    self.send_response(200)
+                    response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
 
                 self.end_headers()
                 self.wfile.write(response_message)
@@ -324,7 +338,12 @@ def main():
         temporal_client = asyncio.run(create_temporal_connection(temporal_url, client_cert, client_key, api_key))
     except Exception as e:
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
-    
+
+    if is_dmv2:
+        # This is so the user's apis are loaded and accessible through a global
+        print("Loading DMv2 models")
+        load_models()
+
     moose_client = MooseClient(ch_client, temporal_client)
 
     server_address = ('', 4001)
@@ -332,6 +351,7 @@ def main():
 
     httpd = HTTPServer(server_address, handler)
     print(f"Starting server on http://localhost:4001")
+
     httpd.serve_forever()
 
 

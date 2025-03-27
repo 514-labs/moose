@@ -8,6 +8,7 @@ from pydantic.fields import FieldInfo
 _tables: dict[str, "OlapTable"] = {}
 _streams: dict[str, "Stream"] = {}
 _ingest_apis: dict[str, "IngestApi"] = {}
+_egress_apis: dict[str, "ConsumptionApi"] = {}
 
 T = TypeVar('T', bound=BaseModel)
 U = TypeVar('U', bound=BaseModel)
@@ -52,6 +53,10 @@ class TypedMooseResource(Generic[T]):
             return cls(t=item, *args, **kwargs)
 
         return curried_constructor
+
+    def create_model_instance(self, params: dict) -> T:
+        """Creates an instance of the associated Pydantic model using the provided parameters."""
+        return self._t(**params)
 
 
 class IngestionFormat(Enum):
@@ -200,3 +205,29 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             ingest_config_dict["destination"] = self.stream
             ingest_config = IngestConfigWithDestination(**ingest_config_dict)
             self.ingest_api = IngestApi(name, ingest_config, t=self._t)
+
+class EgressConfig(BaseModel):
+    """Configuration for Consumption APIs."""
+    pass
+
+class ConsumptionApi(TypedMooseResource, Generic[T]):
+    """Configures a Consumption API that can be used to query the data."""
+    config: EgressConfig
+    query_function: Optional[Callable[..., Any]] = None
+
+    def __init__(
+        self,
+        name: str,
+        query_function: Optional[Callable[..., Any]] = None,
+        config: EgressConfig = EgressConfig(),
+        **kwargs
+    ):
+        super().__init__()
+        self._set_type(name, self._get_type(kwargs))
+        self.config = config
+        self.query_function = query_function
+        _egress_apis[name] = self
+
+
+def get_consumption_api(name: str) -> Optional[ConsumptionApi]:
+    return _egress_apis.get(name)

@@ -1,4 +1,4 @@
-use crate::framework::core::code_loader::FrameworkObject;
+use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure::table::ColumnType;
 use anyhow::bail;
 use itertools::Itertools;
@@ -8,10 +8,17 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub async fn import_csv_file(
-    data_model: &FrameworkObject,
+    api_type: &APIType,
     file: &Path,
     destination: &str,
 ) -> anyhow::Result<()> {
+    let data_model = match api_type {
+        APIType::INGRESS { data_model, .. } => data_model.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("Data model is required for CSV import with INGRESS API type")
+        })?,
+        _ => bail!("CSV import only supports INGRESS API type"),
+    };
+
     let mut rdr = csv::Reader::from_path(file)?;
 
     let headers: Vec<String> = rdr.headers()?.into_iter().map(|s| s.to_string()).collect();
@@ -19,7 +26,6 @@ pub async fn import_csv_file(
     let client = reqwest::Client::new();
 
     let types: HashMap<String, ColumnType> = data_model
-        .data_model
         .columns
         .iter()
         .map(|col| (col.name.clone(), col.data_type.clone()))
@@ -72,7 +78,7 @@ pub async fn import_csv_file(
         s.push(']');
 
         let res = client
-            .post(format!("{}/{}", destination, data_model.data_model.name))
+            .post(format!("{}/{}", destination, data_model.name))
             .body(s)
             .send()
             .await?;

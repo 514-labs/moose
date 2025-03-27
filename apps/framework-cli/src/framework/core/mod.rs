@@ -21,7 +21,6 @@
 /// └──────────────┘                     └──────────────┘
 ///
 pub mod check;
-pub mod code_loader;
 pub mod execute;
 pub mod infra_reality_checker;
 pub mod infrastructure;

@@ -11,8 +11,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::core::code_loader::FrameworkObject;
-
 #[derive(Debug, Clone)]
 pub struct DuplicateModelError {
     pub model_name: String,
@@ -21,22 +19,6 @@ pub struct DuplicateModelError {
 }
 
 impl DuplicateModelError {
-    pub fn try_insert(
-        map: &mut HashMap<String, FrameworkObject>,
-        fo: FrameworkObject,
-        current_path: &Path,
-    ) -> Result<(), Self> {
-        let maybe_existing = map.insert(fo.data_model.name.clone(), fo);
-        match maybe_existing {
-            None => Ok(()),
-            Some(other_fo) => Err(DuplicateModelError {
-                model_name: other_fo.data_model.name,
-                file_path: current_path.to_path_buf(),
-                other_file_path: other_fo.original_file_path,
-            }),
-        }
-    }
-
     pub fn try_insert_core_v2(
         versions: &mut HashMap<String, DataModel>,
         dm: DataModel,

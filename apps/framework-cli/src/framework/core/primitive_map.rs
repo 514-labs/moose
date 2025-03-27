@@ -5,7 +5,6 @@ use std::{
 };
 use walkdir::WalkDir;
 
-use super::code_loader::MappingError;
 use crate::framework::data_model::config::DataModelConfig;
 use crate::framework::data_model::DuplicateModelError;
 use crate::framework::languages::SupportedLanguages;
@@ -52,7 +51,6 @@ pub enum PrimitiveMapLoadingError {
 pub enum DataModelError {
     Configuration(#[from] ModelConfigurationError),
     Parsing(#[from] DataModelParsingError),
-    Mapping(#[from] MappingError),
     Duplicate(#[from] DuplicateModelError),
 
     #[error("{message}")]

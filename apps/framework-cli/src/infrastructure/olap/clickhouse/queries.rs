@@ -5,7 +5,6 @@ use crate::framework::core::infrastructure::table::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
-use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
@@ -162,70 +161,6 @@ pub fn create_table_query(
     });
 
     Ok(reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?)
-}
-
-static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS `{{db_name}}`.`{{view_name}}` TO `{{db_name}}`.`{{dest_table_name}}`
-(
-    {{#each to_fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
-    {{/each}}
-)
-AS
-SELECT
-    {{#each to_fields}} moose_migrate_tuple.({{@index}} + 1) AS `{{field_name}}`{{#unless @last}},{{/unless}}
-    {{/each}}
-FROM (
-    select {{migration_function_name}}(
-        {{#each from_fields}} {{this}}{{#unless @last}},{{/unless}}
-        {{/each}}
-    ) as moose_migrate_tuple FROM `{{db_name}}`.`{{source_table_name}}`
-)
-"#;
-
-pub fn create_version_sync_trigger_query(view: &VersionSync) -> Result<String, ClickhouseError> {
-    let mut reg = Handlebars::new();
-    reg.register_escape_fn(no_escape);
-
-    let context = json!({
-        "db_name": view.db_name,
-        "view_name": view.migration_trigger_name(),
-        "migration_function_name": view.migration_function_name(),
-        "source_table_name": view.source_table.name,
-        "dest_table_name": view.dest_table.name,
-        "from_fields": view.source_table.columns.iter().map(|column| column.name.clone()).collect::<Vec<String>>(),
-        "to_fields":  builds_field_context(&view.dest_table.columns)?,
-    });
-
-    Ok(reg.render_template(CREATE_VERSION_SYNC_TRIGGER_TEMPLATE, &context)?)
-}
-
-static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
-INSERT INTO `{{db_name}}`.`{{dest_table_name}}`
-SELECT
-    {{#each to_fields}} moose_migrate_tuple.({{@index}} + 1) AS `{{field_name}}`{{#unless @last}},{{/unless}}
-    {{/each}}
-FROM (
-    select {{migration_function_name}}(
-        {{#each from_fields}}`{{this}}`{{#unless @last}},{{/unless}}
-        {{/each}}
-    ) as moose_migrate_tuple FROM `{{db_name}}`.`{{source_table_name}}`
-)
-"#;
-
-pub fn create_initial_data_load_query(view: &VersionSync) -> Result<String, ClickhouseError> {
-    let mut reg = Handlebars::new();
-    reg.register_escape_fn(no_escape);
-
-    let context = json!({
-        "db_name": view.db_name,
-        "dest_table_name": view.dest_table.name,
-        "migration_function_name": view.migration_function_name(),
-        "source_table_name": view.source_table.name,
-        "from_fields": view.source_table.columns.iter().map(|column| column.name.clone()).collect::<Vec<String>>(),
-        "to_fields": builds_field_context(&view.dest_table.columns)?,
-    });
-
-    Ok(reg.render_template(INITIAL_DATA_LOAD_TEMPLATE, &context)?)
 }
 
 pub static DROP_TABLE_TEMPLATE: &str = r#"

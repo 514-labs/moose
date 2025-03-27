@@ -76,31 +76,31 @@ redis = { version = "0.29.1", features = [
 jsonwebtoken = "9.3.0"
 num-traits = "0.2.19"
 async-trait = "0.1.83"
-protobuf = "3.7.1"
+protobuf = "3.7"
 ctor = "0.2.8"
 serial_test = "3.1.1"
 
 # Monitoring
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-opentelemetry_sdk = { version = "0.27.0", features = [
+opentelemetry_sdk = { version = "0.29.0", features = [
     "logs",
     "metrics",
     "trace",
     "rt-tokio",
 ] }
-opentelemetry-semantic-conventions = "0.27.0"
-opentelemetry = "0.27.0"
-opentelemetry-appender-log = "0.27.0"
-opentelemetry-otlp = { version = "0.27.0", default-features = false, features = [
+opentelemetry-semantic-conventions = "0.29"
+opentelemetry = "0.29"
+opentelemetry-appender-log = "0.29"
+opentelemetry-otlp = { version = "0.29.0", default-features = false, features = [
     "logs",
     "metrics",
     "trace",
     "http-json",
     "tokio",
 ] }
-opentelemetry-http = { version = "0.27.0", features = ["reqwest"] }
-prometheus-client = "0.22.2"
+opentelemetry-http = { version = "0.29.0", features = ["reqwest"] }
+prometheus-client = "0.23"
 serde_yaml = "0.9.34"
 temporal-sdk-core = { git = "https://github.com/temporalio/sdk-core.git", rev = "b94b2fc172c2740705b3454a0e04b856fe426233" }
 temporal-sdk-core-protos = { git = "https://github.com/temporalio/sdk-core.git", rev = "b94b2fc172c2740705b3454a0e04b856fe426233" }
@@ -120,7 +120,7 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 serial_test = "3.1.1"
 
 [build-dependencies]
-protobuf-codegen = "3.7.1"
+protobuf-codegen = "3.7"
 
 [features]
 used_linker = []

@@ -49,8 +49,7 @@ pub async fn list_db(
         })
     })?;
 
-    let redis_guard = redis_client.lock().await;
-    let infra = InfrastructureMap::load_from_redis(&redis_guard)
+    let infra = InfrastructureMap::load_from_redis(&redis_client)
         .await
         // temporarily have some duplicate code with get_current_state
         .map_err(|e| {

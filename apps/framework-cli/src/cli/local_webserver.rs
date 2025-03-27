@@ -65,7 +65,6 @@ use serde::Serialize;
 use serde::{Deserialize, Deserializer};
 use serde_json::Deserializer as JsonDeserializer;
 use tokio::spawn;
-use tokio::sync::Mutex;
 
 use crate::framework::data_model::model::DataModel;
 use crate::utilities::validate_passthrough::{DataModelArrayVisitor, DataModelVisitor};
@@ -267,8 +266,9 @@ struct RouteService {
     metrics: Arc<Metrics>,
     http_client: Arc<Client>,
     project: Arc<Project>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 }
+
 #[derive(Clone)]
 struct ManagementService<I: InfraMapProvider + Clone> {
     path_prefix: Option<String>,
@@ -350,7 +350,7 @@ async fn admin_reality_check_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     project: &Project,
-    redis_client: &Arc<Mutex<RedisClient>>,
+    redis_client: &Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
     let bearer_token = auth_header
@@ -381,8 +381,7 @@ async fn admin_reality_check_route(
         crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
     // Load infrastructure map from Redis
-    let redis_guard = redis_client.lock().await;
-    let infra_map = match InfrastructureMap::load_from_redis(&redis_guard).await {
+    let infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
         Ok(Some(map)) => map,
         Ok(None) => InfrastructureMap::default(),
         Err(e) => {
@@ -837,7 +836,7 @@ async fn router(
     http_client: Arc<Client>,
     request: RouterRequest,
     project: Arc<Project>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let now = Instant::now();
 
@@ -1206,6 +1205,10 @@ impl Webserver {
 
         let http_client = Arc::new(reqwest::Client::new());
 
+        let redis_client = RedisClient::new(project.name(), project.redis_config.clone())
+            .await
+            .expect("Failed to initialize Redis client");
+
         let route_service = RouteService {
             host: self.host.clone(),
             path_prefix: project.http_server_config.normalized_path_prefix(),
@@ -1218,11 +1221,7 @@ impl Webserver {
             http_client,
             metrics: metrics.clone(),
             project: project.clone(),
-            redis_client: Arc::new(Mutex::new(
-                RedisClient::new(project.name(), project.redis_config.clone())
-                    .await
-                    .unwrap(),
-            )),
+            redis_client: Arc::new(redis_client),
         };
 
         let management_service = ManagementService {
@@ -1251,8 +1250,9 @@ impl Webserver {
                     let (stream, _) = listener_result.unwrap();
                     let io = TokioIo::new(stream);
 
+                    // Create a clone of route_service for each connection
+                    // since hyper needs to own the service (it can't just borrow it)
                     let route_service = route_service.clone();
-
                     let conn = conn_builder.serve_connection(
                         io,
                         route_service,
@@ -1284,9 +1284,7 @@ impl Webserver {
             }
         }
 
-        // Extract Redis client for shutdown
-        let redis_client_for_shutdown = route_service.redis_client.clone();
-        shutdown(settings, &project, graceful, redis_client_for_shutdown).await;
+        shutdown(settings, &project, graceful).await;
     }
 }
 
@@ -1313,12 +1311,7 @@ fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
         _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }
-async fn shutdown(
-    settings: &Settings,
-    project: &Project,
-    graceful: GracefulShutdown,
-    redis_client: Arc<Mutex<RedisClient>>,
-) -> ! {
+async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShutdown) -> ! {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 
@@ -1331,31 +1324,6 @@ async fn shutdown(
             warn!("timed out wait for all connections to close");
         }
     }
-
-    // Shutdown Redis client that was passed
-    info!("Shutting down Redis client connections");
-
-    // First attempt: Try to properly shut down the Redis client
-    match tokio::time::timeout(std::time::Duration::from_secs(3), async {
-        if let Ok(mut client) = redis_client.try_lock() {
-            match client.shutdown().await {
-                Ok(_) => info!("Redis client shutdown completed successfully"),
-                Err(err) => warn!("Error during Redis client shutdown: {:?}", err),
-            }
-        } else {
-            warn!("Could not acquire lock on Redis client for shutdown");
-        }
-    })
-    .await
-    {
-        Ok(_) => info!("Redis shutdown completed within timeout"),
-        Err(_) => warn!("Redis shutdown timed out, proceeding with application shutdown"),
-    }
-
-    // Important: Drop our reference to the Redis client to ensure it's fully cleaned up
-    // before we start stopping containers
-    info!("Dropping Redis client reference");
-    drop(redis_client);
 
     // Shutdown the Docker containers if needed
     if !project.is_production {
@@ -1403,6 +1371,14 @@ async fn shutdown(
 
     // Exit the process cleanly
     info!("Exiting application");
+
+    // CLear terminal using crossterm
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)
+    )
+    .unwrap();
+
     std::process::exit(0);
 }
 
@@ -1619,13 +1595,12 @@ async fn update_inframap_tables(
 /// * `Err(IntegrationError)` if storage fails in either Redis or ClickHouse
 async fn store_updated_inframap(
     infra_map: &InfrastructureMap,
-    redis_guard: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 ) -> Result<(), IntegrationError> {
     debug!("Storing updated inframap");
 
-    let redis_guard = redis_guard.lock().await;
     // Store in Redis
-    if let Err(e) = infra_map.store_in_redis(&redis_guard).await {
+    if let Err(e) = infra_map.store_in_redis(&redis_client).await {
         debug!("Failed to store inframap in Redis: {}", e);
         return Err(IntegrationError::InternalError(format!(
             "Failed to store updated inframap in Redis: {}",
@@ -1646,7 +1621,7 @@ async fn store_updated_inframap(
 /// * `req` - The incoming HTTP request
 /// * `admin_api_key` - Optional admin API key for authentication
 /// * `project` - Reference to the project configuration
-/// * `redis_client` - Reference to the Redis client wrapped in Arc<Mutex>
+/// * `redis_client` - Reference to the Redis client wrapped in Arc<>
 ///
 /// # Returns
 /// * Result containing the HTTP response with either success or error information
@@ -1654,7 +1629,7 @@ async fn admin_integrate_changes_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     project: &Project,
-    redis_client: &Arc<Mutex<RedisClient>>,
+    redis_client: &Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!("Starting admin_integrate_changes_route");
 
@@ -1692,12 +1667,16 @@ async fn admin_integrate_changes_route(
     let reality_checker =
         crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
-    let mut infra_map = {
-        let redis_guard = redis_client.lock().await;
-        InfrastructureMap::load_from_redis(&redis_guard)
-            .await
-            .unwrap_or_default()
-            .unwrap_or_default()
+    let mut infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
+        Ok(Some(infra_map)) => infra_map,
+        Ok(None) => InfrastructureMap::default(),
+        Err(e) => {
+            return IntegrationError::InternalError(format!(
+                "Failed to load infrastructure map: {}",
+                e
+            ))
+            .to_response();
+        }
     };
 
     let discrepancies = match reality_checker.check_reality(project, &infra_map).await {
@@ -1769,7 +1748,7 @@ pub struct PlanResponse {
 async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
-    redis_client: &Arc<Mutex<RedisClient>>,
+    redis_client: &Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -1803,30 +1782,16 @@ async fn admin_plan_route(
                 }
             };
 
-            let redis_guard = match redis_client.try_lock() {
-                Ok(guard) => guard,
-                Err(_) => {
-                    error!("Failed to acquire lock on Redis client");
-                    return Ok(Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from(
-                            "Failed to acquire lock on Redis client",
-                        )))
-                        .unwrap());
-                }
-            };
-
-            let current_infra_map = match InfrastructureMap::load_from_redis(&redis_guard).await {
+            let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
                 Ok(Some(infra_map)) => infra_map,
                 Ok(None) => InfrastructureMap::default(),
                 Err(e) => {
                     error!("Failed to retrieve infrastructure map from Redis: {}", e);
                     return Ok(Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from(format!(
-                            "Failed to retrieve infrastructure map from Redis: {}",
-                            e
-                        ))))
+                        .body(Full::new(Bytes::from(
+                            "Failed to acquire lock on Redis client",
+                        )))
                         .unwrap());
                 }
             };

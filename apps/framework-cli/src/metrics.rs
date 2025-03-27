@@ -160,7 +160,7 @@ pub struct MessagesOutCounterLabels {
 impl Metrics {
     pub fn new(
         telemetry_metadata: TelemetryMetadata,
-        redis_client: Option<Arc<Mutex<RedisClient>>>,
+        redis_client: Option<Arc<RedisClient>>,
     ) -> (Metrics, tokio::sync::mpsc::Receiver<MetricEvent>) {
         let (tx_events, rx_events) = tokio::sync::mpsc::channel(32);
         let metric_labels = match telemetry_metadata

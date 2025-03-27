@@ -89,12 +89,12 @@
 use crate::cli::local_webserver::RouteMeta;
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
 use crate::cli::routines::openapi::openapi;
@@ -201,15 +201,14 @@ impl RoutineFailure {
     }
 }
 
-pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<RedisClient>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    let redis_client = Arc::new(Mutex::new(redis_client));
+    let redis_client = Arc::new(redis_client);
 
     let (service_name, instance_id) = {
-        let client = redis_client.lock().await;
         (
-            client.get_service_name().to_string(),
-            client.get_instance_id().to_string(),
+            redis_client.get_service_name().to_string(),
+            redis_client.get_instance_id().to_string(),
         )
     };
 
@@ -234,24 +233,17 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone(), project.clone());
 
-    redis_client
-        .lock()
-        .await
-        .register_message_handler(callback)
-        .await;
-    redis_client.lock().await.start_periodic_tasks();
+    redis_client.register_message_handler(callback).await;
+    redis_client.start_periodic_tasks();
 
     Ok(redis_client)
 }
 
 async fn process_pubsub_message(
     message: String,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 ) -> anyhow::Result<()> {
-    let has_lock = {
-        let client = redis_client.lock().await;
-        client.has_lock("leadership").await?
-    };
+    let has_lock = redis_client.has_lock("leadership").await?;
 
     if has_lock {
         if message.contains("<migration_start>") {
@@ -280,7 +272,7 @@ async fn process_pubsub_message(
     Ok(())
 }
 
-fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
+fn start_leadership_lock_task(redis_client: Arc<RedisClient>, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
@@ -296,14 +288,11 @@ fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Ar
 }
 
 async fn manage_leadership_lock(
-    redis_client: &Arc<Mutex<RedisClient>>,
+    redis_client: &Arc<RedisClient>,
     project: &Arc<Project>,
     cron_registry: &CronRegistry,
 ) -> Result<(), anyhow::Error> {
-    let (has_lock, is_new_acquisition) = {
-        let client = redis_client.lock().await;
-        client.check_and_renew_lock("leadership").await?
-    };
+    let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
 
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
@@ -320,12 +309,7 @@ async fn manage_leadership_lock(
             IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
-        if let Err(e) = redis_client
-            .lock()
-            .await
-            .broadcast_message("leader.new")
-            .await
-        {
+        if let Err(e) = redis_client.broadcast_message("leader.new").await {
             error!("Failed to broadcast new leader message: {}", e);
         }
     } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
@@ -361,7 +345,7 @@ async fn leadership_tasks(
 pub async fn start_development_mode(
     project: Arc<Project>,
     metrics: Arc<Metrics>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
     settings: &Settings,
 ) -> anyhow::Result<()> {
     display::show_message_wrapper(
@@ -414,10 +398,7 @@ pub async fn start_development_mode(
 
     let openapi_file = openapi(&project, &plan.target_infra_map).await?;
 
-    {
-        let redis_client = redis_client.lock().await;
-        plan.target_infra_map.store_in_redis(&redis_client).await?;
-    }
+    plan.target_infra_map.store_in_redis(&redis_client).await?;
 
     let infra_map: &'static RwLock<InfrastructureMap> =
         Box::leak(Box::new(RwLock::new(plan.target_infra_map)));
@@ -446,15 +427,6 @@ pub async fn start_development_mode(
         )
         .await;
 
-    // Ensure Redis client is properly shutdown to avoid panic when the app is terminated
-    info!("Shutting down Redis client");
-    let mut redis_client_guard = redis_client.lock().await;
-    if let Err(err) = redis_client_guard.shutdown().await {
-        warn!("Error shutting down Redis client: {:?}", err);
-    } else {
-        info!("Redis client shutdown completed successfully");
-    }
-
     Ok(())
 }
 
@@ -473,7 +445,7 @@ pub async fn start_production_mode(
     settings: &Settings,
     project: Arc<Project>,
     metrics: Arc<Metrics>,
-    redis_client: Arc<Mutex<RedisClient>>,
+    redis_client: Arc<RedisClient>,
 ) -> anyhow::Result<()> {
     display::show_message_wrapper(
         MessageType::Success,
@@ -525,9 +497,7 @@ pub async fn start_production_mode(
     )
     .await?;
 
-    plan.target_infra_map
-        .store_in_redis(&*redis_client.lock().await)
-        .await?;
+    plan.target_infra_map.store_in_redis(&redis_client).await?;
 
     let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan.target_infra_map));
 
@@ -542,15 +512,6 @@ pub async fn start_production_mode(
             None,
         )
         .await;
-
-    // Ensure Redis client is properly shutdown to avoid panic when the app is terminated
-    info!("Shutting down Redis client");
-    let mut redis_client_guard = redis_client.lock().await;
-    if let Err(err) = redis_client_guard.shutdown().await {
-        warn!("Error shutting down Redis client: {:?}", err);
-    } else {
-        info!("Redis client shutdown completed successfully");
-    }
 
     Ok(())
 }

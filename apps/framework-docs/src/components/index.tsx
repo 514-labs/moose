@@ -8,3 +8,4 @@ export * from "./language-switcher";
 export * from "./language-wrappers";
 export * from "./FeatureCard";
 export * from "./MuxVideo";
+export * from "./product-badge";

@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import { useLanguage } from "./LanguageContext";
-import { cn } from "@514labs/design-system-components/utils";
+import { cn } from "@/lib/utils";
 
 interface LanguageProps {
   children: ReactNode;

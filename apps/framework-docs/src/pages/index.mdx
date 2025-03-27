@@ -1,234 +1,29 @@
-import {
-  CTACard,
-  CTACards,
-  ZoomImg,
-  ChipButton,
-  Columns,
-  Column,
-  FeatureCard,
-  FeatureGrid
-} from "../components";
-import { FolderPlus, Scroll, Code, Terminal, Database, Zap, FileCode, Clock, Users, GitBranch } from "lucide-react";
-import {
-  Grid,
-  HalfWidthContentContainer
-} from "@514labs/design-system-components/components/containers";
-import {
-  Button
-} from "@514labs/design-system-components/components";
-import Link from "next/link";
+import { CTACards, CTACard } from "@/components";
 
+# Docs
 
-# Moose
-
->Data engineering framework for modern software developers
-
-Moose is an open-source framework for building data-intensive applications using pure TypeScript or Python without the complexity of a traditional data stack.
-
-<div className="flex flex-col md:flex-row gap-4 my-8">
-  <Link href="/quickstart">
-    <Button variant="outline">
-      Quick Start →
-    </Button>
-  </Link>
-  <Link href="/learn-moose">
-    <Button variant="secondary">
-      Try Tutorial
-    </Button>
-  </Link>
-  <Link href="https://github.com/514-labs/moose">
-    <Button variant="secondary">
-      <GitBranch className="mr-2 h-4 w-4" />
-      GitHub
-    </Button>
-  </Link>
-</div>
-
----
-
-## Why Moose Exists
-
-If you've ever built a data-intensive application, you know the pain:
-
-- **Too many tools:** Stitching together a modern data stack requires integration of numerous disjointed tools
-- **Infrastructure complexity:** Setting up and maintaining data infrastructure takes time away from building your actual application
-- **Development experience friction:** Traditional data engineering workflows are slow and don't fit into modern development practices (local dev, hot reloading, etc).
-- **SQL-only processing:** Having to use SQL for everything when you'd rather use languages you're already comfortable with
-- **OLTP Scaling challenges:** What works for small workloads (e.g. Postgres, MySQL, etc) often breaks at scale
-
-Moose was created to solve these problems by providing:
-
-- A **unified, local-first development experience** for building data-intensive applications using pure TypeScript or Python
-- Everything you need to build data pipelines, from data capture to consumption, all in one framework
-- Designed from the ground up to be easy to understand and easy to use for modern software developers
-
----
-
-## Get started in minutes
+This is the home of the documentation for the 514 products:
 
 <CTACards>
   <CTACard
-    title="Create a Moose Project"
-    description="Get up and running with your own Moose project in minutes"
-    ctaLink="/quickstart"
-    ctaLabel="Quick Start"
-    cardName="Quick Start"
-    Icon={FolderPlus}
-    variant="gradient"
+    title="Build"
+    description="A data engineering framework for modern software developers"
+    ctaLink="/moose"
+    ctaLabel="Get Started with Moose"
+    badge={{
+      variant: "moose",
+      text: "Moose"
+    }}
   />
   <CTACard
-    title="Learn Step-by-Step"
-    description="Build an end-to-end Moose app through a guided tutorial"
-    ctaLink="/learn-moose"
-    ctaLabel="Try Tutorial"
-    Icon={Scroll}
-    cardName="Try it out"
-    variant="gradient"
-  />
-</CTACards>
-
----
-
-### Local-First Development Experience
-Moose comes with a **pre-configured and fully integrated data stack** that runs entirely on your laptop. With one command (`moose dev`), you get:
-
-- **Analytical database:** ClickHouse
-- **Streaming platform:** Redpanda
-- **Workflow orchestrator:** Temporal
-
-This means you can develop and test your entire data pipeline locally, with the same technologies that will run in production, all without configuring complicated infrastructure. Your iterations are fast, just like you're used to with web development.
-
-While Moose starts with these sane defaults, we're actively adding support for more backends:
-
-- Additional data warehouses like Snowflake, BigQuery, and Databricks
-- Alternative streaming platforms like Kafka and Kinesis
-- Different orchestration tools
-
-[Let us know](https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering) if you'd like to see support for specific platforms in your stack.
-
-### Core Concepts
-
-<FeatureGrid>
-  <FeatureCard
-    href="/data-models"
-    icon={<Code className="h-6 w-6 text-moose-purple" />}
-    title="Type-Safe Data Models"
-    description="Define schemas once in TS/Python that automatically generate ingestion, storage, and API infrastructure"
-  />
-  
-  <FeatureCard
-    href="/ingest-data"
-    icon={<Database className="h-6 w-6 text-moose-purple" />}
-    title="High-Performance Data Ingestion"
-    description="Auto-validated APIs to capture data into OLAP databases with full type safety"
-  />
-  
-  <FeatureCard
-    href="/stream-processing"
-    icon={<Zap className="h-6 w-6 text-moose-purple" />}
-    title="Real-Time Stream Processing"
-    description="Transform events in-flight using your preferred language, not just SQL"
-  />
-  
-  <FeatureCard
-    href="/db-processing"
-    icon={<Database className="h-6 w-6 text-moose-purple" />}
-    title="In-Database Transformations"
-    description="Create materialized views and transform data directly in your OLAP database with SQL blocks"
-  />
-  
-  <FeatureCard
-    href="/consumption-apis"
-    icon={<FileCode className="h-6 w-6 text-moose-purple" />}
-    title="Analytics APIs"
-    description="Build and expose fully-typed APIs to consume your processed data"
-  />
-  
-  <FeatureCard
-    href="/workflows"
-    icon={<Clock className="h-6 w-6 text-moose-purple" />}
-    title="Workflow Orchestration"
-    description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
-  />
-</FeatureGrid>
-
-Moose handles the boilerplate integration of the components in your data stack automatically and orchestrates your entire data pipeline for you, so you can focus on writing your application logic.
-
----
-
-## Why Moose?
-
-#### Build with the Languages You Already Know
-Iterate confidently with a unified local development environment that reflects your production setup.
-- Pre-configured and integrated data stack
-- Local-first development with hot reloading
-- Build using TypeScript, Python, and SQL
-
-#### Catch Issues at Dev and Build Time
-Prevent errors before they happen in production by seeing error highlights in your editor as you type and in your terminal when you hit save.
-- Typed data models with runtime validation
-- Auto-derived infrastructure to prevent mismatches
-- Hot reloading
-
-#### Language-Native Experience
-Model and transform data in the languages you already know, not just SQL.
-- Data Models in native TypeScript and Python types
-- Realtime transformations as native TypeScript and Python functions
-- ORM experience built for analytical workloads (coming soon)
-
-#### Open Source and Configurable
-Easily extend Moose to fit your specific needs and infrastructure.
-- Default works with ClickHouse, support for Databricks, Snowflake, BigQuery coming soon
-- Toggle modules on and off as needed
-- Integrate with your existing workflows and connectors
-
----
-
-## What Can You Build with Moose?
-
-Moose is ideal for a wide range of data-intensive applications, from real-time analytics to complex data pipelines:
-
-<div className="my-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <p className="font-medium text-primary mb-2">User Facing Analytics</p>
-    <p className="text-muted-foreground text-sm">Embed leaderboards, charts, metrics, and other real-time features in your web or mobile apps</p>
-  </div>
-  <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <p className="font-medium text-primary mb-2">BI and Data Warehouses</p>
-    <p className="text-muted-foreground text-sm">Collect disparate data sources into an analytical database, produce custom reports, and more</p>
-  </div>
-  <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <p className="font-medium text-primary mb-2">Data Migrations</p>
-    <p className="text-muted-foreground text-sm">One-time migration of data from legacy systems to a modern data backend</p>
-  </div>
-  <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <p className="font-medium text-primary mb-2">Event Streaming</p>
-    <p className="text-muted-foreground text-sm">Real-time processing of events from Kafka, Redpanda, or other event streaming platforms</p>
-  </div>
-  <div className="p-5 border border-border rounded-lg bg-muted/30">
-    <p className="font-medium text-primary mb-2">ETL Workloads</p>
-    <p className="text-muted-foreground text-sm">Repeated batch jobs to collect data from different sources and load them into an analytics environment</p>
-  </div>
-</div>
-
----
-
-## Community
-
-<CTACards>
-  <CTACard
-    title="GitHub"
-    description="Star, check out the code, and contribute to Moose on GitHub"
-    ctaLink="https://github.com/514-labs/moose"
-    ctaLabel="GitHub"
-    Icon={GitBranch}
-  />
-  <CTACard
-    title="Talk to the Moose Maintainers"
-    description="We're always looking to improve Moose and would love to hear from you!"
-    ctaLink="https://cal.com/team/514/talk-to-eng"
-    ctaLabel="Talk to the Team"
-    Icon={Users}
+    title="Automate"
+    description="AI-copiloted data pipelines"
+    ctaLink="/aurora"
+    ctaLabel="Get Started with Aurora"
+    badge={{
+      variant: "aurora",
+      text: "Aurora"
+    }}
   />
 </CTACards>
 

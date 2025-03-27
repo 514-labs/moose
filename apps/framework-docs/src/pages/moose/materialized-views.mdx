@@ -1,0 +1,145 @@
+# Materialized Views
+
+Materialized views are a powerful feature of Moose that allow you to precompute and store the results of complex queries. This can be useful for improving query performance, reducing the load on your database, and providing a more efficient way to access data.
+
+## Overview
+
+Materialized views in Moose:
+- **Precompute complex queries**: Store results of expensive operations for faster access
+- **Automatically update**: Refresh when source tables change
+- **Support aggregations**: Efficiently calculate metrics across your data
+- **Type-safe definitions**: Leverage TypeScript for schema validation
+
+## Creating a Materialized View
+
+```ts filename="MaterializedView.ts" copy
+import { MaterializedView, sql } from "@514labs/moose-lib";
+import { sourceTable } from "./SourceTable";
+
+interface TargetSchema {
+  id: string;
+  average_rating: number;
+  num_reviews: number;
+}
+
+const exampleMaterializedView = new MaterializedView<TargetSchema>({
+  selectStatement: sql` SELECT * FROM ${sourceTable}`,
+  tableName: "my_table",
+  materializedViewName: "example_materialized_view",
+});
+```
+
+### Configuration Options
+
+```typescript filename="ViewOptions.ts"
+interface MaterializedViewOptions<T> {
+  selectStatement: string; // sql query to compute the materialized view
+  tableName: string; // name of the table where materialized view result set will be stored
+  materializedViewName: string; // name of the materialized view in the database
+
+  engine?: ClickHouseEngines; // default is MergeTree
+  orderByFields?: (keyof T & string)[]; // default is the primary key of the source table
+}
+```
+
+## Working with Aggregations
+
+Materialized views support aggregations using the `Aggregated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
+
+### Why Use ClickHouse Aggregate Functions
+
+ClickHouse's aggregate functions offer several advantages when used in materialized views:
+
+1. **Incremental computation**: ClickHouse can update aggregations incrementally when new data arrives, rather than recomputing the entire result set
+2. **Memory efficiency**: Aggregate states are stored in a compact format optimized for the specific function
+3. **High performance**: Native implementation of complex statistical functions that scale with your data volume
+4. **Type safety**: The `Aggregated<T>` type in Moose ensures correct mapping between TypeScript and ClickHouse aggregation types
+
+When using the `AggregatingMergeTree` engine, ClickHouse maintains the state of your aggregations between updates, making it much more efficient than re-aggregating from raw data each time.
+
+### Common Aggregate Functions
+
+Some of the most useful aggregate functions for materialized views include:
+
+| Function | Description | TypeScript Usage |
+|----------|-------------|-----------------|
+| `sum` | Sum of values | `number & Aggregated<"sum">` |
+| `avg` | Average of values | `number & Aggregated<"avg">` |
+| `count` | Count of records | `number & Aggregated<"count">` |
+| `uniq` | Approximate unique count | `number & Aggregated<"uniq">` |
+| `min` | Minimum value | `number & Aggregated<"min">` |
+| `max` | Maximum value | `number & Aggregated<"max">` |
+
+### Aggregation Example
+
+```ts filename="Aggregations.ts" copy
+import { MaterializedView, ClickHouseEngines } from "@514labs/moose-lib";
+import { sourceTable } from "./SourceTable";
+
+interface TargetSchema {
+  id: string;
+  average_rating: number & Aggregated<"avg">;
+  num_reviews: number & Aggregated<"sum">;
+}
+
+const query = sql`
+  SELECT 
+    ${sourceTable.id}, 
+    AVG(${sourceTable.rating}) as average_rating, 
+    COUNT(${sourceTable.id}) as num_reviews 
+  FROM ${sourceTable}
+  GROUP BY ${sourceTable.id}
+  `;
+
+const exampleMaterializedView = new MaterializedView<TargetSchema>({
+  selectStatement: query,
+  tableName: "my_table",
+  materializedViewName: "example_materialized_view",
+  engine: ClickHouseEngines.AggregatingMergeTree, 
+  orderByFields: ["id"],
+});
+```
+
+### Best Practices for Aggregations
+
+When working with aggregated materialized views:
+
+1. **Choose the right engine**: Always use `AggregatingMergeTree` for views with aggregate functions
+2. **Match schema to query**: Ensure your TargetSchema fields match the aggregate functions in your query
+3. **Consider data volume**: Aggregations are most valuable for large datasets where full scans are expensive
+4. **Group wisely**: Be thoughtful about your GROUP BY clauses as they affect both storage and query patterns
+5. **Combine with filtering**: Pre-filter data in your select statement to improve performance
+
+When these practices are followed, materialized views with aggregations can provide dramatic performance improvements for analytical queries while maintaining near real-time data freshness.
+
+## Querying Materialized Views
+
+You can query materialized views just like any other table in Moose:
+
+```ts filename="QueryingMaterializedView.ts" copy
+const query = sql`SELECT * FROM ${exampleMaterializedView}`;
+```
+
+## How It Works
+
+When you create a materialized view in Moose:
+
+1. A new table is automatically created in your database using the provided schema
+2. The `selectStatement` is used to compute the initial results
+3. The results are stored in the new table
+4. In ClickHouse, materialized views function as triggers on the source table
+5. Whenever new data is inserted into the source table, the materialized view automatically updates
+6. The update uses the `selectStatement` to compute the latest results from the source data
+
+This ensures your precomputed views stay in sync with your underlying data without manual intervention.
+
+
+
+
+
+
+
+
+
+
+

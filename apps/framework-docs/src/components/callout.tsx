@@ -1,11 +1,8 @@
 import React from "react";
-import { cn } from "@514labs/design-system-components/utils";
-import { SmallTextEmbed } from "@514labs/design-system-components/typography";
+import { cn } from "@/lib/utils";
+import { SmallTextEmbed } from "@/components/typography";
 import { Lightbulb, StopCircle, FileWarning, PartyPopper } from "lucide-react";
-import {
-  Card,
-  CardContent,
-} from "@514labs/design-system-components/components";
+import { Card, CardContent } from "@/components/ui";
 
 interface CalloutProps {
   type: CalloutType;
@@ -15,11 +12,11 @@ interface CalloutProps {
 
 const calloutVariants = {
   success: {
-    icon: <PartyPopper className="text-green" />,
+    icon: <PartyPopper className="text-moose-green" />,
     color: "bg-muted/20",
-    border: "border-green/20",
+    border: "border-moose-green/20",
     title: "Congrats!",
-    titleColor: "text-green",
+    titleColor: "text-moose-green",
   },
   info: {
     icon: <Lightbulb className="text-muted-foreground" />,
@@ -31,7 +28,7 @@ const calloutVariants = {
   warning: {
     icon: <StopCircle className="text-yellow" />,
     color: "bg-muted/20",
-    border: "border-yellow/20",
+    border: "border-moose-yellow/20",
     title: "Warning:",
     titleColor: "text-muted-foreground",
   },

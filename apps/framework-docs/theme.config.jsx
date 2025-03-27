@@ -4,16 +4,15 @@ import {
   SmallText,
   SmallTextEmbed,
   textBodyBase,
-} from "@514labs/design-system-components/typography";
-import { cn } from "@514labs/design-system-components/utils";
-import { Code, Rocket, Package, Library } from "lucide-react";
+} from "@/components/typography";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
 
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
-      <SmallText className="text-primary">Moose</SmallText>
+      <SmallText className="text-primary">Fiveonefour</SmallText>
       <SmallText className="text-muted-foreground mx-1">Docs</SmallText>
     </div>
   ),
@@ -49,68 +48,62 @@ export default {
   components: {
     h1: ({ id, children }) => <Heading id={id}>{children}</Heading>,
     h2: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l2} id={id}>
+      <Heading level={HeadingLevel.l2} id={id}>
         {children}
       </Heading>
     ),
     h3: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l3} id={id}>
+      <Heading level={HeadingLevel.l3} id={id}>
         {children}
       </Heading>
     ),
     h4: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l4} id={id}>
+      <Heading level={HeadingLevel.l4} id={id}>
         {children}
       </Heading>
     ),
-    p: ({ children }) => <SmallText>{children}</SmallText>,
+    p: (props) => {
+      return <SmallText {...props} />;
+    },
     ul: (props) => (
-      <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
+      <ul className="pl-8 list-disc text-sm leading-7" {...props} />
     ),
     ol: (props) => (
-      <ol className={cn("pl-8 list-decimal", textBodyBase)} {...props} />
+      <ol className="pl-8 list-decimal text-sm leading-7" {...props} />
     ),
     li: (props) => (
-      <li {...props} className="list-item">
-        <SmallTextEmbed className="mb-1">{props.children}</SmallTextEmbed>
+      <li className="list-item">
+        <span className="text-sm text-primary mb-1 block">
+          {props.children}
+        </span>
       </li>
     ),
     Python: ({ children }) => <Python>{children}</Python>,
     TypeScript: ({ children }) => <TypeScript>{children}</TypeScript>,
+    a: ({ children, href }) => (
+      <a href={href} className="text-moose-purple">
+        {children}
+      </a>
+    ),
   },
-  primaryHue: 220,
-  primarySaturation: 0,
+  color: {
+    hue: 220,
+    saturation: 0,
+  },
+  darkMode: true,
   sidebar: {
     defaultMenuCollapseLevel: 1,
     titleComponent({ title, type }) {
       if (type === "separator") {
         return (
-          <div className="flex flex-row justify-start items-center text-muted-foreground gap-2">
-            <div className="h-full">
-              {(() => {
-                switch (title) {
-                  case "Get Started":
-                    return <Rocket className="h-[20px] w-[20px]" />;
-                  case "Develop":
-                    return <Code className="h-[20px] w-[20px]" />;
-                  case "Deploy":
-                    return <Package className="h-[20px] w-[20px]" />;
-                  case "Reference":
-                    return <Library className="h-[20px] w-[20px]" />;
-                  default:
-                    return null;
-                }
-              })()}
-            </div>
-            <SmallText className="my-0 text-muted-foreground">
+          <div className="py-3 mt-2">
+            <span className="font-bold text-moose-purple text-base">
               {title}
-            </SmallText>
+            </span>
           </div>
         );
       }
-      return (
-        <SmallText className="my-0 text-muted-foreground">{title}</SmallText>
-      );
+      return <SmallText className="text-muted-foreground">{title}</SmallText>;
     },
   },
   toc: {

@@ -6,6 +6,7 @@ export interface FeatureCardProps {
   icon: ReactNode;
   title: string;
   description: string;
+  features?: string[];
 }
 
 export function FeatureCard({
@@ -13,18 +14,33 @@ export function FeatureCard({
   icon,
   title,
   description,
+  features = [],
 }: FeatureCardProps) {
   return (
     <Link
       href={href}
       className="block group no-underline hover:no-underline transition-transform hover:scale-[1.02]"
     >
-      <div className="flex items-start border border-border rounded-lg p-5 h-full hover:bg-muted/50 hover:border-accent-moo-purple transition-all">
-        <div className="mr-3 mt-0.5 flex-shrink-0">{icon}</div>
-        <div>
-          <p className="text-primary font-medium">{title}</p>
-          <p className="mt-2 text-muted-foreground">{description}</p>
+      <div className="flex flex-col border border-border rounded-lg p-5 h-full hover:bg-muted/50 hover:border-accent-moo-purple transition-all">
+        <div className="flex items-start">
+          <div className="mr-3 mt-0.5 flex-shrink-0 text-moose-purple">
+            {icon}
+          </div>
+          <div>
+            <p className="text-primary font-medium">{title}</p>
+            <p className="mt-2 text-muted-foreground">{description}</p>
+          </div>
         </div>
+        {features.length > 0 && (
+          <div className="mt-4">
+            <p className="text-sm text-muted-foreground">Features:</p>
+            <ul className="list-disc list-inside text-sm mt-1">
+              {features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Link>
   );

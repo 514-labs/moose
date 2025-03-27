@@ -5,10 +5,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   Button,
-} from "@514labs/design-system-components/components";
+} from "@/components/ui";
 import { ChevronRight } from "lucide-react";
-import { SmallText } from "@514labs/design-system-components/typography";
-import { cn } from "@514labs/design-system-components/utils";
+import { SmallText } from "@/components/typography";
+import { cn } from "@/lib/utils";
 
 interface ToggleBlockProps {
   openText: string;

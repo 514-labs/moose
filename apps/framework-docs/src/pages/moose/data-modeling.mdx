@@ -1,0 +1,597 @@
+import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid } from "@/components";
+import { FileTree, Tabs } from "nextra/components";
+
+# Data Modeling
+
+<LanguageSwitcher />
+
+## Motivation
+
+The siloed nature of the analytics stack (Kafka, ClickHouse, ETL processes) makes it hard to maintain type safety across your data pipeline application code and your infrastructure:
+
+```typescript
+// In your code: Robust type checking ✅
+function processOrder(order: Order): ProcessedOrder {
+  // IDE autocomplete, compiler checks, static analysis
+}
+
+// At infrastructure boundaries: No type safety ❌
+// Is the database schema in sync with this model?
+// Does the message format in Kafka match what your code expects?
+// Will this transformation function blow up with unexpected fields?
+```
+
+This leaves a bunch of manual work to keep your data pipelines working:
+
+1. **Infrastructure Integration**: Each new data model needs APIs, Kafka topics, and database tables to be created and connected
+2. **Repetitive Boilerplate**: Every schema change requires updates to:
+   - API validation logic
+   - Kafka topic schemas
+   - Database DDL statements
+   - Transformation logic
+
+3. **Runtime Surprises**: Unexpected fields, missing data, and schema mismatches are hard to catch until runtime
+4. **Cognitive Overhead**: Constant context-switching between systems
+   ```
+   "Does my Kafka topic use snake_case or camelCase?"
+   "Did I add the new field to both the model AND the table?"
+   "Which database field was nullable again?"
+   ```
+
+## Moose Data Modeling Approach
+
+Moose tries to solve these problems by making your data model the single source of truth:
+
+```typescript
+// Define once
+interface MyDataModel {
+  primaryKey: Key<string>;
+  someString: string;
+  someNumber: number;
+  someBoolean: boolean;
+  someDate: Date;
+}
+
+// Use everywhere - infrastructure adapts automatically
+const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
+  ingest: true,  // Creates validated API endpoint
+  stream: true,  // Creates properly structured topic
+  table: true    // Creates matching database table
+});
+```
+Add a field to your model, and the entire infrastructure adapts automatically. Your types are validated across the stack - from APIs to streams to databases - eliminating manual synchronization work and preventing schema drift.
+
+### Benefits
+
+- **Type safety extends beyond your application** into your entire data infrastructure
+- **Schema changes are atomic** - update in code, automatically applied to infrastructure
+- **More type errors caught at development time**, not when processing data in production
+- **Single mental model** instead of juggling multiple infrastructure paradigms
+
+---
+
+## Getting Started with Data Modeling
+
+Moose data modeling consists of two core parts:
+1. **[Schema Definition](./data-modeling#part-1-schema-definition)**: Defining the structure and types of your data
+2. **[Infrastructure Configuration](./data-modeling#part-2-infrastructure-configuration)**: Specifying how that schema should be applied to your data infrastructure
+
+### Quick Start: Basic Schema and Pipeline
+
+<TypeScript>
+```ts filename="app/index.ts" copy
+// 1. Define your schema (WHAT your data looks like)
+interface MyFirstDataModel {
+  id: Key<string>;
+  someString: string;
+  someNumber: number;
+  someBoolean: boolean;
+  someDate: Date;
+}
+
+// 2. Create a pipeline (HOW to handle your data)
+import { Key, IngestPipeline } from "@514labs/moose-lib";
+
+const myFirstPipeline = new IngestPipeline<MyFirstDataModel>("my_first_pipeline", {
+    ingest: true,  // Create API endpoint
+    stream: true,  // Create stream topic
+    table: true    // Create database table
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/index.py"
+# 1. Define your schema (WHAT your data looks like)
+class MyFirstDataModel(BaseModel):
+    id: Key[str] = Field(..., description="Primary key")
+    some_string: str
+    some_number: int
+    some_boolean: bool
+    some_date: datetime
+
+
+# 2. Create a pipeline (HOW to handle your data)
+my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", IngestPipelineConfig(
+    ingest=True,  # Create API endpoint
+    stream=True,  # Create stream topic
+    table=True    # Create database table
+))
+```
+</Python>
+
+## Schema Definition (The WHAT)
+
+<Callout type="info">
+  This section covers how to define your data models - the structure and types of your data.
+</Callout>
+
+### Basic Types
+
+<TypeScript>
+```typescript filename="app/datamodels/BasicDataModel.ts"
+import { Key } from "@514labs/moose-lib";
+
+export interface BasicDataModel {
+  // Required: Primary key for your data model
+  primaryKey: Key<string>;    // string key
+  // or
+  numericKey: Key<number>;    // numeric key
+
+  // Common types
+  someString: string;         // Text
+  someNumber: number;         // Numbers
+  someBoolean: boolean;       // Boolean
+  someDate: Date;             // Timestamps
+  someArray: string[];        // Arrays
+  someObject: object;         // Objects
+  
+  // Optional fields
+  optionalField?: string;         // May not be present in all records
+  nullableField?: string | null;  // May be present or not
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/BasicDataModel.py"
+from moose_lib import Key
+from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+class BasicDataModel(BaseModel):
+    # Required: Primary key for your data model
+    primary_key: Key[str] = Field(..., description="String primary key")
+    # or
+    numeric_key: Key[int] = Field(..., description="Numeric primary key")
+    
+    # Common types
+    some_string: str             # Text
+    some_number: int             # Numbers
+    some_boolean: bool           # Boolean
+    some_date: datetime          # Timestamps
+    some_array: List[str]        # Arrays
+    
+    # Optional fields
+    optional_field: Optional[str] = None  # May not be present in all records
+```
+</Python>
+
+### Advanced Schemas
+
+#### Nested Objects
+
+<TypeScript>
+```typescript filename="app/datamodels/NestedDataModel.ts"
+import { Key } from "@514labs/moose-lib";
+
+// Define nested object separately
+interface NestedObject {
+  nestedNumber: number;
+  nestedBoolean: boolean;
+  nestedArray: number[];
+}
+
+export interface DataModelWithNested {
+  primaryKey: Key<string>;
+  
+  // Reference nested object
+  nestedData: NestedObject;
+
+  // Or define inline
+  inlineNested: {
+    someValue: string;
+    someOtherValue: number;
+  };
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/NestedDataModel.py"
+from moose_lib import Key
+from typing import List
+from pydantic import BaseModel, Field
+
+class NestedObject(BaseModel):
+    nested_number: int
+    nested_boolean: bool
+    nested_array: List[int]
+
+class DataModelWithNested(BaseModel):
+    primary_key: Key[str]
+    nested_data: NestedObject
+```
+</Python>
+
+#### Using Enums
+
+<TypeScript>
+```typescript filename="app/datamodels/EnumDataModel.ts"
+import { Key } from "@514labs/moose-lib";
+
+enum OrderStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  COMPLETED = "completed"
+}
+
+export interface Order {
+  orderId: Key<string>;
+  status: OrderStatus;  // Type-safe status values
+  createdAt: Date;
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/EnumDataModel.py"
+from enum import Enum
+from moose_lib import Key
+from datetime import datetime
+from pydantic import BaseModel
+
+class OrderStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+
+class Order(BaseModel):
+    order_id: Key[str]
+    status: OrderStatus  # Type-safe status values
+    created_at: datetime
+```
+</Python>
+
+### Type Mapping
+
+<TypeScript>
+| TypeScript | ClickHouse | Description |
+|------------|------------|-------------|
+| `string` | String | Text values |
+| `number` | Float64 | Numeric values |
+| `number & tags.Type<"int64">` | Int64 | Integer values |
+| `boolean` | Boolean | True/false values |
+| `Date` | DateTime | Timestamp values |
+| `Array` | Array | Lists of values |
+| `object` | Nested | Nested structures |
+| `Enum` | Enum | Enumerated values |
+</TypeScript>
+
+<Python>
+| Python | ClickHouse | Description |
+|--------|------------|-------------|
+| `str` | String | Text values |
+| `int` | Int64 | Integer values |
+| `float` | Float64 | Decimal values |
+| `bool` | Boolean | True/false values |
+| `datetime` | DateTime | Timestamp values |
+| `List[T]` | Array | Lists of values |
+| `Enum` | Enum | Enumerated values |
+| `Optional[T]` | Nullable | Values may be present or not |
+
+</Python>
+
+<Callout type="info" title="Schema Evolution">
+When evolving your schemas, follow these guidelines:
+- Add new fields as optional to maintain backward compatibility
+- Avoid removing or renaming existing fields
+- Consider creating a new version of your model for major changes
+</Callout>
+
+## Infrastructure Configuration (The HOW)
+
+<Callout type="info">
+  This section covers how to apply your data models to infrastructure components.
+</Callout>
+
+### Component Types
+
+You can use your data models with different infrastructure components:
+
+#### Complete Ingestion Pipeline
+The most common pattern - combines ingestion, streaming, and storage.
+
+<TypeScript>
+```typescript filename="app/index.ts"
+import { IngestPipeline } from "@514labs/moose-lib";
+
+const myPipeline = new IngestPipeline<MyDataModel>("my_pipeline", {
+    ingest: true,
+    stream: true,
+    table: true
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/index.py"
+from moose_lib import IngestPipeline, IngestPipelineConfig
+
+my_pipeline = IngestPipeline[MyDataModel]("my_pipeline", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))
+```
+</Python>
+
+#### Individual Components
+
+<Tabs items={['Database Tables', 'Streams', 'Ingest API', 'Materialized Views', 'Consumption APIs']}>
+  <Tabs.Tab>
+    <TypeScript>
+    ```typescript filename="app/index.ts"
+    import { OlapTable } from "@514labs/moose-lib";
+    
+    // Basic table
+    const myTable = new OlapTable<MyDataModel>("MyTable");
+    ```
+    </TypeScript>
+    
+    <Python>
+    ```python filename="app/index.py"
+    from moose_lib import OlapTable
+    
+    # Basic table
+    my_table = OlapTable[MyDataModel]("MyTable")
+    ```
+    </Python>
+    More information on [Olap Tables](/moose/olap-table)
+  </Tabs.Tab>
+  
+  <Tabs.Tab>
+    <TypeScript>
+    ```typescript filename="app/index.ts"
+    import { Stream } from "@514labs/moose-lib";
+    
+    // Basic stream
+    const myStream = new Stream<MyDataModel>("MyStream");
+    ```
+    </TypeScript>
+    
+    <Python>
+    ```python filename="app/index.py"
+    from moose_lib import Stream
+    
+    # Basic stream
+    my_stream = Stream[MyDataModel]("MyStream")
+    ```
+    </Python>
+    More information on [Streams](/moose/streams)
+  </Tabs.Tab>
+  
+  <Tabs.Tab>
+    <TypeScript>
+    ```typescript filename="app/index.ts"
+    import { IngestAPI } from "@514labs/moose-lib";
+    
+    const myIngestAPI = new IngestAPI<MyDataModel>("MyIngestAPI");
+    ```
+    </TypeScript>
+    
+    <Python>
+    ```python filename="app/index.py"
+    from moose_lib import IngestAPI
+    
+    my_ingest_api = IngestAPI[MyDataModel]("MyIngestAPI")
+    ```
+    </Python>
+    More information on [Ingest APIs](/moose/ingestion)
+  </Tabs.Tab>
+  
+  <Tabs.Tab>
+    <TypeScript>
+    ```typescript filename="app/index.ts"
+    import { MaterializedView } from "@514labs/moose-lib";
+    
+    const myMaterializedView = new MaterializedView<MyDataModel>("MyMaterializedView");
+    ```
+    </TypeScript>
+    
+    <Python>
+    ```python filename="app/index.py"
+    from moose_lib import MaterializedView
+    
+    my_materialized_view = MaterializedView[MyDataModel]("MyMaterializedView")
+    ```
+    </Python>
+    More information on [Materialized Views](/moose/materialized-views)
+  </Tabs.Tab>
+  
+  <Tabs.Tab>
+    <TypeScript>
+    ```typescript filename="app/index.ts"
+    import { ConsumptionAPI } from "@514labs/moose-lib";
+    
+    const myConsumptionAPI = new ConsumptionAPI<RequestDataModel, ResponseDataModel>("MyConsumptionAPI", (request: RequestDataModel) => {
+      // Do something with the request
+      return new ResponseDataModel();
+    });
+    ```
+    </TypeScript>
+    
+    <Python>
+    ```python filename="app/index.py"
+    from moose_lib import ConsumptionAPI
+    
+    my_consumption_api = ConsumptionAPI[MyDataModel]("MyConsumptionAPI")
+    ```
+    </Python>
+    More information on [Consumption APIs](/moose/consumption-apis)
+  </Tabs.Tab>
+</Tabs>
+
+### Common Configuration Scenarios
+
+#### Enabling Batch Ingestion
+
+<TypeScript>
+```typescript
+const batchPipeline = new IngestPipeline<BatchDataModel>("batch_pipeline", {
+  ingest: {
+    format: IngestionFormat.JSON_ARRAY // Accept arrays of objects
+  },
+  stream: true,
+  table: true
+});
+```
+</TypeScript>
+
+<Python>
+```python
+from moose_lib import DataModelConfig, IngestionConfig, IngestionFormat
+
+batch_pipeline = IngestPipeline[BatchDataModel]("batch_pipeline", IngestPipelineConfig(
+    ingestion=IngestionConfig(
+        format=IngestionFormat.JSON_ARRAY  // Accept arrays of objects
+    ),
+    stream=True,
+    table=True
+))
+```
+</Python>
+
+#### Optimizing Query Performance With Ordering
+
+<TypeScript>
+```typescript
+import { Key, IngestPipeline, IngestPipelineConfig } from "@514labs/moose-lib";
+
+export interface OrderByFieldsModel {
+  userId: Key<string>;
+  timestamp: Date;
+  someOtherField: string;
+  someOtherField2: number;
+  someOtherField3: boolean;
+}
+const optimizedQueryPipeline = new IngestPipeline<OrderByFieldsModel>("optimized_pipeline", {
+  ingest: true,
+  stream: true,
+  table: {
+    orderByFields: ["userId", "timestamp"]  // Fields for optimized querying
+  }
+});
+```
+</TypeScript>
+
+<Python>
+```python
+from moose_lib import IngestPipeline, IngestPipelineConfig
+
+class OrderByFieldsModel(BaseModel):
+    user_id: Key[str]
+    timestamp: datetime
+    some_other_field: str
+    some_other_field2: int
+    some_other_field3: bool
+
+optimized_query_config = IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=StorageConfig(
+        order_by_fields=["user_id", "timestamp"]  // Fields for optimized querying
+    )
+)
+```
+</Python>
+
+#### Setting Up Deduplication
+
+<TypeScript>
+```typescript
+interface UniqueModel {
+  primaryKey: Key<string>;
+  timestamp: Date;
+  someOtherField: string;
+  someOtherField2: number;
+  someOtherField3: boolean;
+}
+
+const deduplicationPipeline = new IngestPipeline<UniqueModel>("deduplication_pipeline", {
+  ingest: true,
+  stream: true,
+  table: {
+    deduplicate: true,                         // Enable deduplication
+    orderByFields: ["primaryKey", "timestamp"]  // Fields for deduplication
+  }
+});
+```
+</TypeScript>
+
+<Python>
+```python
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig
+from pydantic import BaseModel
+
+class UniqueModel(BaseModel):
+    primary_key: Key[str]
+    timestamp: datetime
+    some_other_field: str
+    some_other_field2: int
+    some_other_field3: bool
+
+deduplication_pipeline = IngestPipeline[UniqueModel]("deduplication_pipeline", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=StorageConfig(
+        deduplicate=True,  // Enable deduplication
+        order_by_fields=["primary_key", "timestamp"]  // Fields for deduplication
+    )
+))
+```
+</Python>
+
+<Callout type="warning" title="Deduplication Caveats">
+Deduplication uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning duplicate records may not be removed immediately. This process can take time and is not guaranteed to be immediate. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
+</Callout>
+
+## Default Behaviors
+
+If you don't specify configuration options:
+
+1. Moose expects single JSON objects per request (not batches)
+2. A ClickHouse table will be created for your data model
+3. Deduplication will be disabled
+4. If your model includes a field with the `Key` type, it will be used for ordering
+
+## Next Steps
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    href="/moose/streams"
+    title="Working with Streams"
+    description="Learn how to process, transform, and manage data streams in real-time."
+  />
+  <FeatureCard
+    href="/moose/olap-table"
+    title="Working with Tables"
+    description="Discover how to optimize storage, querying, and analytics with OLAP tables."
+  />
+  <FeatureCard
+    href="/moose/ingestion"
+    title="Working with Ingest"
+    description="Explore how to efficiently ingest data with automatic schema validation."
+  />
+</FeatureGrid>

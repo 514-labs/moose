@@ -1,0 +1,199 @@
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../../../../components";
+
+# Creating Materialized Views
+
+<LanguageSwitcher />
+
+Materialized views help summarize and transform large datasets into easily queryable tables, precomputing results for efficient data retrieval.
+
+## Setting up Materialized Views with <TypeScript NodeType="span">`createAggregation()`</TypeScript><Python NodeType="span">`create_aggregation()`</Python>
+
+<Callout type="warning" title="Ensure Block Initialization">
+  Before setting up your aggregation, make sure you have already [initialized a new block](./init-block.mdx).
+</Callout>
+
+The <TypeScript NodeType="span">`createAggregation()`</TypeScript><Python NodeType="span">`create_aggregation()`</Python> function in Moose makes it easy to define a materialized view by specifying a query and a destination table for your aggregated data.
+
+### Example
+
+<TypeScript>
+```ts filename="/blocks/example-aggregation.ts" copy
+import {
+  createAggregation,
+  AggregationCreateOptions,
+  Blocks,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
+
+const destinationTable = "UserActivitySummary";
+const materializedView = "UserActivitySummaryMV";
+
+// Define the table options
+const tableCreateOptions = {
+  name: destinationTable, 
+  columns: {
+    activity: "String",
+    unique_user_count: "AggregateFunction(uniq, String)",
+    activity_count: "AggregateFunction(count, String)",
+  },
+  orderBy: "activity",
+  engine: ClickHouseEngines.AggregatingMergeTree,
+} as TableCreateOptions;
+
+// Define the query to aggregate the data
+const selectQuery = `
+  SELECT 
+    activity,
+    uniqState(userId) as unique_user_count, 
+    countState(activity) AS activity_count 
+  FROM 
+    ParsedActivity_0_0 
+  GROUP BY 
+    activity
+`;
+
+// Create the aggregation
+export default {
+  setup: createAggregation({
+    tableCreateOptions: tableCreateOptions,
+    materializedViewName: materializedView, 
+    select: selectQuery,
+  }),
+} as Blocks;
+```
+</TypeScript>
+
+<Python>
+```py filename="/blocks/example-aggregation.py" copy
+from moose_lib import (
+    AggregationCreateOptions,
+    AggregationDropOptions,
+    Blocks,
+    ClickHouseEngines,
+    TableCreateOptions,
+    create_aggregation,
+    drop_aggregation,
+)
+
+destination_table = "DailyActiveUsers"
+materialized_view = "DailyActiveUsers_mv"
+
+select_sql = """
+SELECT 
+    toStartOfDay(timestamp) as date,
+    uniqState(userId) as dailyActiveUsers
+FROM ParsedActivity_0_0
+WHERE activity = 'Login' 
+GROUP BY toStartOfDay(timestamp)
+"""
+
+teardown_queries = drop_aggregation(
+    AggregationDropOptions(materialized_view, destination_table)
+)
+
+table_options = TableCreateOptions(
+    name=destination_table,
+    columns={"date": "Date", "dailyActiveUsers": "AggregateFunction(uniq, String)"},
+    engine=ClickHouseEngines.MergeTree,
+    order_by="date",
+)
+
+aggregation_options = AggregationCreateOptions(
+    table_create_options=table_options,
+    materialized_view_name=materialized_view,
+    select=select_sql,
+)
+
+setup_queries = create_aggregation(aggregation_options)
+
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
+```
+</Python>
+
+### Example Explanation
+
+- <TypeScript NodeType="span">`tableCreateOptions`</TypeScript><Python NodeType="span">`table_create_options`</Python>: Defines the destination table schema
+  - `name`: Table name for aggregated data
+  - `columns`: Column names and data types
+  - <TypeScript NodeType="span">`orderBy`</TypeScript><Python NodeType="span">`order_by`</Python>: Column for table ordering
+  - `engine`: ClickHouse engine (e.g., `AggregatingMergeTree` for efficient aggregations)
+
+<TypeScript>
+- `materializedViewName`: Name of the materialized view
+</TypeScript>
+<Python>
+- `materialized_view_name`: Name of the materialized view
+</Python>
+
+- `select`: SQL query for data aggregation from the source table
+
+<Callout type="info" title="Workflow Tip">
+  Test your query in a SQL explorer for a more efficient workflow. Once
+  satisfied, copy and paste it into the aggregation file. Be sure to validate
+  your query using the [Clickhouse SQL
+  Reference](https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference)
+  to ensure it adheres to ClickHouse's syntax.
+</Callout>
+
+### Materialized View Creation Process
+
+When you save the file, Moose:
+1. Creates a new table using the defined structure in <TypeScript NodeType="span">`tableCreateOptions`</TypeScript><Python NodeType="span">`table_create_options`</Python>
+2. Executes the `select` query to aggregate data
+3. Populates the destination table with the results
+
+<Callout type="info" title="Automatic Updates">
+  ClickHouse Materialized Views automatically refresh your target table when new data is added to source tables. [Learn more](https://clickhouse.com/blog/using-materialized-views-in-clickhouse)
+</Callout>
+
+---
+
+## API Reference
+
+### `Blocks` Object
+- `setup` <Python NodeType="span">_(list[str])_</Python><TypeScript NodeType="span">_(string[])_</TypeScript>: SQL statements to set up the aggregation
+- `teardown` <Python NodeType="span">_(list[str])_</Python><TypeScript NodeType="span">_(string[])_</TypeScript>: SQL statements to tear down the aggregation
+
+### <TypeScript NodeType="span">`createAggregation()`</TypeScript><Python NodeType="span">`create_aggregation()`</Python> Function
+Sets up a materialized view based on a SQL query.
+
+#### Parameters
+- `options` (`AggregationCreateOptions`):
+  - <TypeScript NodeType="span">`tableCreateOptions`</TypeScript><Python NodeType="span">`table_create_options`</Python>: Destination table creation options
+  - <TypeScript NodeType="span">`materializedViewName`</TypeScript><Python NodeType="span">`materialized_view_name`</Python>: Materialized view name
+  - `select`: Aggregation SQL query
+
+#### Returns
+<TypeScript NodeType="span">`string[]`</TypeScript><Python NodeType="span">`list[str]`</Python>: SQL statements to set up the materialized view and destination table
+
+### <TypeScript NodeType="span">`dropAggregation()`</TypeScript><Python NodeType="span">`drop_aggregation()`</Python> Function
+Removes an existing aggregation.
+
+#### Parameters
+- `options` (`AggregationDropOptions`):
+  - <TypeScript NodeType="span">`viewName`</TypeScript><Python NodeType="span">`view_name`</Python>: Materialized view name to drop
+  - <TypeScript NodeType="span">`tableName`</TypeScript><Python NodeType="span">`table_name`</Python>: Destination table name to drop
+
+#### Returns
+<TypeScript NodeType="span">`string[]`</TypeScript><Python NodeType="span">`list[str]`</Python>: SQL statements to drop the specified materialized view and table
+
+### `ClickHouseEngines`
+Enum defining available ClickHouse storage engines in Moose.
+
+<TypeScript>
+```typescript
+enum ClickHouseEngines {
+  MergeTree,
+  ReplacingMergeTree,
+  SummingMergeTree,
+  AggregatingMergeTree,
+  CollapsingMergeTree,
+  VersionedCollapsingMergeTree,
+  GraphiteMergeTree,
+}
+```
+</TypeScript>
+
+<Callout type="info" title="ClickHouse Table Engines">
+  Learn more about ClickHouse table engine types and use cases in the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/).
+</Callout>

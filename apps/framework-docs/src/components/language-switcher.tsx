@@ -7,10 +7,7 @@ import { useLanguage } from "./LanguageContext";
 //   SelectTrigger,
 //   SelectValue,
 // } from "@514labs/design-system-components/components";
-import {
-  Heading,
-  HeadingLevel,
-} from "@514labs/design-system-components/typography";
+import { Heading, HeadingLevel } from "@/components/typography";
 
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
@@ -25,7 +22,7 @@ export function LanguageSwitcher() {
       <Heading level={HeadingLevel.l5}>
         switch to{" "}
         <span
-          className="text-pink hover:cursor-pointer"
+          className="text-moose-purple hover:cursor-pointer"
           onClick={() => setLanguage(otherLanguage)}
         >
           {otherLanguage}

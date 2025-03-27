@@ -1,0 +1,46 @@
+import { ZoomImg, Callout } from "@/components";
+import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-react";
+
+# Moose Architecture
+
+## How Moose Works
+
+When you run `moose-cli dev`, Moose creates a complete development environment that combines your code with pre-configured infrastructure:
+
+<ZoomImg light="/architecture-light.png" dark="/architecture-dark.png" alt="Moose Development Environment" />
+
+## Infrastructure Modules
+
+Moose organizes your data pipeline into five distinct infrastructure modules:
+
+| **Module**        | **Moose Code**                                                        | **Infrastructure**                 | **Default** |
+|-------------------|-----------------------------------------------------------------------|------------------------------------|-------------|
+| **Ingestion**     | [Ingest APIs, Ingestion Pipeline](/moose/developing/ingestion)                                           | HTTP **POST** endpoints            | Rust        |
+| **Streaming**     | [Streams](/moose/developing/streams)| Streaming topics & consumers       | Redpanda    |
+| **Database**      | [Tables](/moose/developing/olap-table), [Views](/moose/developing/materialized-views)                        | OLAP tables & views                | ClickHouse  |
+| **Orchestration** | [Workflows](/moose/developing/workflows)                                               | Task queue & workers               | Temporal    |
+| **Consumption**   | [Analytics APIs](/moose/developing/consumption-apis)                                   | HTTP **GET** endpoints             | Rust        |
+## Customizing Your Infrastructure
+
+Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:
+
+```toml
+[features]
+streaming_engine = true  # Include Redpanda for streaming
+workflows = false        # Disable Temporal for orchestration
+```
+<Callout type="warning">
+By default, workflows are disabled. You must set `workflows = true` to enable the workflow engine.
+</Callout>
+
+## Development Environment Details
+
+| Component | Purpose | Access |
+|-----------|---------|--------|
+| Web Server | Handles HTTP requests for data ingestion and APIs | localhost:4000 |
+| ClickHouse | Analytical database for data storage and querying | localhost:18123 |
+| Redpanda | Kafka-compatible message broker for streaming | localhost:19092 |
+| Temporal | Workflow orchestration engine | localhost:7233 (Server) / localhost:8080 (UI) |
+| Redis | Caching and temporary storage | Internal only |
+
+All these components are automatically configured to work together, creating a complete development environment that mirrors a production deployment.

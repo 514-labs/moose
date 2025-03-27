@@ -1,0 +1,405 @@
+import { Callout } from "@/components";
+
+# Consumption APIs
+
+Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
+
+As a developer, you'll write simple, strongly-typed functions that automatically handle:
+- URL parameter parsing and type conversion
+- SQL query construction and execution
+- Response formatting
+- Automatically generated OpenAPI documentation
+
+## Creating API Endpoints
+
+```ts filename="ExampleApi.ts" copy
+import { ConsumptionApi } from "@514labs/moose-lib";
+
+interface QueryParams {
+  filterField: string;
+  maxResults: number;
+}
+
+interface ResultItem {
+  id: number;
+  name: string;
+  value: number;
+}
+
+type ResponseBody = ResultItem[];
+
+const exampleApi = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",  
+    async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
+        const query = sql`
+        SELECT 
+          id,
+          name,
+          value
+        FROM example_table
+        WHERE category = ${filterField}
+        LIMIT ${maxResults}`;
+        
+        return client.query.execute(query);
+    });
+```
+
+The `ConsumptionApi` class takes:
+- Route name: The URL path to access your API (e.g., `"example_endpoint"`)
+- Handler function: Processes requests with typed parameters and returns the result
+
+The generic type parameters specify:
+- `QueryParams`: The structure of accepted URL parameters
+- `ResponseBody`: The exact shape of your API's response data
+
+<Callout type="info">
+You can name these types anything you want. The first type generates validation for query parameters, while the second defines the response structure for OpenAPI documentation.
+</Callout>
+
+## Defining Query Parameters
+
+Define your API's parameters as a TypeScript interface:
+
+```ts filename="ExampleQueryParams.ts" copy
+interface QueryParams {
+  filterField: string;
+  maxResults: number;
+  optionalParam?: string; // Not required for client to provide
+}
+```
+
+Moose automatically handles:
+- Runtime validation
+- Clear error messages for invalid parameters
+- OpenAPI documentation generation
+
+<Callout type="warning">
+Complex nested objects and arrays are not supported. Consumption APIs are `GET` endpoints designed to be simple and lightweight.
+</Callout>
+
+### Adding Advanced Type Validation
+
+Moose uses [Typia](https://typia.io/) to extract type definitions and provide runtime validation. Use Typia's tags for more complex validation:
+
+```ts filename="ExampleQueryParams.ts" copy
+interface QueryParams {
+  filterField: string;
+  // Ensure maxResults is a positive integer
+  maxResults: number & tags.Type<"int64"> & tags.Minimum<"1">; 
+}
+```
+
+### Common Validation Options
+
+```ts filename="ValidationExamples.ts" copy
+interface QueryParams {
+  // Numeric validations
+  id: number & tags.Type<"uint32">;  // Positive integer (0 to 4,294,967,295)
+  age: number & tags.Minimum<18> & tags.Maximum<120>;  // Range: 18 <= age <= 120
+  price: number & tags.ExclusiveMinimum<0> & tags.ExclusiveMaximum<1000>;  // Range: 0 < price < 1000
+  discount: number & tags.MultipleOf<0.5>;  // Must be multiple of 0.5
+  
+  // String validations
+  username: string & tags.MinLength<3> & tags.MaxLength<20>;  // Length between 3-20 characters
+  email: string & tags.Format<"email">;  // Valid email format
+  zipCode: string & tags.Pattern<"^[0-9]{5}$">;  // 5 digits
+  uuid: string & tags.Format<"uuid">;  // Valid UUID
+  ipAddress: string & tags.Format<"ipv4">; // Valid IPv4 address
+  
+  // Date validations
+  startDate: string & tags.Format<"date">;  // YYYY-MM-DD format
+  
+  // Enum validation
+  status: string & tags.Enum<"active" | "pending" | "inactive">;  // Must be one of these values
+  
+  // Optional parameters
+  limit?: number & tags.Type<"uint32"> & tags.Maximum<100>;  // Optional, if provided: positive integer <= 100
+  
+  // Combined validations
+  searchTerm?: (string & tags.MinLength<3>) | null;  // Either null or string with ≥3 characters
+}
+```
+Notice its just regular TypeScript union types. For a full list of validation options, see the [Typia documentation](https://typia.io/api/tags).
+
+### Setting Default Values
+
+You can set default values for parameters by setting values for each parameter in the API route handler function signature:
+
+```ts filename="ExampleQueryParams.ts" copy {9}
+interface QueryParams {
+  filterField: string;
+  maxResults: number;
+  optionalParam?: string; // Not required for client to provide
+}
+
+const api = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",
+  async ({ filterField = "example", maxResults = 10, optionalParam = "default" }, { client, sql }) => {
+    // Your logic here...
+  }
+);
+```
+
+## Implementing Route Handler
+
+Consunmption API route handlers are regular functions, so you can implement whatever arbitrary logic you want inside these functions. The primary purpose of the handler function is to construct a SQL query and return the results to the client:
+
+```ts filename="/apis/getBar.ts" copy
+import {
+  createConsumptionApi,
+  ConsumptionHelpers as CH,
+} from "@514labs/moose-lib";
+import { tags } from "typia";
+
+// Define expected parameters and their types
+interface QueryParams {
+  orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
+  limit?: number;
+  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+}
+
+interface ResponseBody {
+  dayOfMonth: number;
+  totalRows?: number;
+  rowsWithText?: number;
+  maxTextLength?: number;
+  totalTextLength?: number;
+}
+
+// ConsumptionApi uses compile time code generation to generate a parser for QueryParams
+const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
+  async (
+    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
+    { client, sql }
+  ) => {
+    const query = sql`
+      SELECT 
+        dayOfMonth,
+        ${CH.column(orderBy)}
+      FROM BarAggregated_MV
+      WHERE 
+        dayOfMonth >= ${startDay} 
+        AND dayOfMonth <= ${endDay}
+      ORDER BY ${CH.column(orderBy)} DESC
+      LIMIT ${limit}
+    `;
+
+    // Execute query and return results
+    const data = await client.query.execute(query);
+    return data;
+  }
+);
+```
+
+### Using Available Utilities
+
+The handler function provides these helpful utilities:
+
+```typescript
+interface ConsumptionUtil {
+  client: MooseClient;  // Query client for database access
+  sql: Sql;            // SQL template literal helper
+  jwt?: JWTPayload;     // JWT payload if authentication is enabled
+}
+```
+
+### Connecting to the Database
+
+The `client` object is a MooseClient instance that provides access to the database. You can use it to execute queries and other database operations.
+
+```ts filename="ExampleApi.ts" copy {1}
+const data = await client.query.execute(query);
+```
+
+### Constructing Safe SQL Queries
+
+The `sql` template literal in Moose provides type-safe query construction with protection against SQL injection. Below are some examples of common patterns for builing safe queries:
+
+#### Basic Query Parameter Interpolation
+
+```ts filename="BasicInterpolation.ts" copy
+
+const minAge = 18;
+const userRole = "admin";
+
+const query = sql`
+  SELECT * FROM users 
+  WHERE age > ${minAge} 
+  AND role = ${userRole}
+`;
+
+// MooseClient handles type conversion and escaping
+const data = await client.query.execute(query);
+
+// EXECUTION: SELECT * FROM users WHERE age > 18 AND role = 'admin'
+```
+
+#### Table and Column References
+Reference tables and columns directly from your Moose objects as variables in your `sql` template literals:
+
+```ts filename="ExampleTableColumnQuery.ts" copy
+import { userTable } from "../tables/userTable";
+
+const query = sql`
+  SELECT 
+    ${userTable.id},
+    ${userTable.name},
+    ${userTable.email}
+  FROM ${userTable}
+  WHERE ${userTable.isActive} = true
+`;
+
+// EXECUTION: SELECT id, name, email FROM users WHERE is_active = true
+```
+<Callout type="info" title="Type Safety">
+IDE autocompletion and TypeScript validation ensure you only reference columns that actually exist.
+</Callout>
+
+### Advanced Query Patterns
+
+#### Dynamic Column & Table Selection
+Use `ConsumptionHelpers` to handle dynamic column and table references in your queries:
+
+```ts filename="DynamicColumns.ts" copy
+import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
+interface QueryParams {
+  sortBy: string;  // Column to sort by
+  fields: string;  // Comma-separated list of columns to select (e.g., "id,name,email")
+}
+
+const queryHandler = async ({ sortBy = "id", fields = "id,name" }: QueryParams, { client, sql }) => {
+  // Split the comma-separated string into individual fields
+  const fieldList = fields.split(',').map(f => f.trim());
+  
+  // Build the query by selecting each column individually
+  const query = sql`
+    SELECT 
+      ${fieldList.map(field => sql`${CH.column(field)}`).join(', ')}
+    FROM ${userTable}
+    ORDER BY ${CH.column(sortBy)}
+  `;
+  
+  // MooseClient converts fieldList to valid ClickHouse identifiers
+  return client.query.execute(query);
+
+  // EXECUTION: `SELECT id, name FROM users ORDER BY id`
+};
+```
+
+```ts filename="DynamicTables.ts" copy
+import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
+interface QueryParams {
+  tableName: string;
+}
+
+const queryHandler = async ({ tableName = "users" }: QueryParams, { client, sql }) => {
+  const query = sql`
+    SELECT * FROM ${CH.table(tableName)}
+  `;
+
+  // MooseClient converts tableName to a valid ClickHouse identifier
+  return client.query.execute(query);
+
+  // EXECUTION: `SELECT * FROM users`
+};
+```
+
+#### Conditional `WHERE` Clauses
+
+Build `WHERE` clauses based on provided parameters:
+
+```ts filename="ConditionalColumns.ts" copy
+interface FilterParams {
+  minAge?: number;
+  status?: string;
+  searchText?: string;
+}
+
+const buildQuery = ({ minAge, status, searchText }: FilterParams, { sql }) => {
+  let conditions = [];
+  
+  if (minAge !== undefined) {
+    conditions.push(sql`age >= ${minAge}`);
+  }
+  
+  if (status) {
+    conditions.push(sql`status = ${status}`);
+  }
+  
+  if (searchText) {
+    conditions.push(sql`(name ILIKE ${'%' + searchText + '%'} OR email ILIKE ${'%' + searchText + '%'})`);
+  }
+  
+  // Build the full query with conditional WHERE clause
+  let query = sql`SELECT * FROM ${userTable}`;
+  
+  if (conditions.length > 0) {
+    // Join conditions with AND operator
+    let whereClause = conditions.join(' AND ');
+    query = sql`${query} WHERE ${whereClause}`;
+  }
+  
+  query = sql`${query} ORDER BY created_at DESC`;
+  return query;
+};
+```
+
+#### Aggregations and `GROUP BY`
+
+```ts filename="Aggregations.ts" copy
+import { orderTable } from "../tables/orderTable";
+
+const query = sql`
+  SELECT 
+    ${orderTable.userId},
+    COUNT(*) as order_count,
+    SUM(${orderTable.amount}) as total_spent,
+    AVG(${orderTable.amount}) as avg_order_value,
+    MIN(${orderTable.createdAt}) as first_order_date,
+    MAX(${orderTable.createdAt}) as last_order_date
+  FROM ${orderTable}
+  WHERE ${orderTable.status} = 'completed'
+  GROUP BY ${orderTable.userId}
+  ORDER BY total_spent DESC
+`;
+
+const data = await client.query.execute(query);
+
+// EXECUTION: `SELECT userId, COUNT(*) as order_count, SUM(amount) as total_spent, AVG(amount) as avg_order_value, MIN(createdAt) as first_order_date, MAX(createdAt) as last_order_date FROM orders WHERE status = 'completed' GROUP BY userId ORDER BY total_spent DESC`
+```
+
+### Adding Authentication
+
+Moose supports authentication via JSON web tokens (JWTs). When your client makes a request to your Consumption API, Moose will automatically parse the JWT and pass the **authenticated** payload to your handler function as the `jwt` object:
+
+```typescript
+async (
+  { orderBy = "totalRows", limit = 5 },
+  { client, sql, jwt }
+) => {
+  // Use jwt.userId to filter data for the current user
+  const query = sql`
+    SELECT * FROM userReports 
+    WHERE user_id = ${jwt.userId}
+    LIMIT ${limit}
+  `;
+  
+  return client.query.execute(query);
+}
+```
+
+<Callout type="warning" title="JWT Error Handling">
+Moose validates the JWT signature and ensures the JWT is properly formatted. If the JWT authentication fails, Moose will return a `401 Unauthorized error`.
+</Callout>
+
+## Understanding Response Codes
+
+Moose automatically provides standard HTTP responses:
+
+| Status Code | Meaning                 | Response Body                    |
+|-------------|-------------------------|---------------------------------|
+| 200         | Success                 | Your API's result data          |
+| 400         | Validation error        | `{ "error": "Detailed message"}`|
+| 401         | Unauthorized            | `{ "error": "Unauthorized"}`     |
+| 500         | Internal server error   | `{ "error": "Internal server error"}` |

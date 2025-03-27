@@ -1,0 +1,291 @@
+import { Callout, ZoomImg, LanguageSwitcher, TypeScript, Python } from "@/components";
+import { Steps, FileTree } from "nextra/components";
+import { Zap } from "lucide-react";
+
+# Build an API to Fetch Most Popular Languages
+
+<LanguageSwitcher />
+
+With the `TopLanguages` Materialzied View created in the previous step, you can build a [Consumption API](/consumption-apis) to fetch data from this view and make it available for your other applications.
+
+<Callout type="info">
+  A Consumption API enables you to create specific API endpoints that allow your
+  applications to access and retrieve data. It serves as the final customization
+  layer, where you can use query parameters to dynamically generate and execute
+  SQL queries.
+</Callout>
+
+In this module, you will implement a Consumption API that will:
+
+- Dynamically generate and execute a query to extract analyzed data from the `TopLanguages` materialized view
+- Return a ranked list of programming languages based on either:
+  - The number of repositories using the language
+  - The total number of kilobytes of code written in the language
+  - The average number of kilobytes of code written per repository using the language
+
+The ranking criteria will depend on the **Query Parameters** specified in the request URL.
+
+## Generate a New File & Route for your API
+
+<Steps>
+### Leverage the Moose CLI to Initialize a New Consumption API
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli consumption init rankedLanguages
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli consumption init ranked_languages
+```
+</Python>
+
+This command will generate a new file named <TypeScript NodeType="span">`rankedLanguages.ts`</TypeScript><Python NodeType="span">`ranked_languages.py`</Python> inside the `/apis` folder of your project:
+
+<TypeScript>
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="apis" open>
+      <FileTree.File name="rankedLanguages.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="apis" open>
+      <FileTree.File name="ranked_languages.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
+
+It will also create a corresponding API endpoint at: <TypeScript NodeType="span">`https://[YOUR_FORWARDING_URL]/consumption/rankedLanguages`</TypeScript><Python NodeType="span">`https://[YOUR_FORWARDING_URL]/consumption/ranked_languages`</Python>. Making an `HTTP GET` request to this URL will execute the route handler function defined inside the file.
+
+<Callout type="info" title="Consumption API Routing">
+  Moose uses file-based routing conventions to map the files in the `apis`
+  folder to corresponding API endpoints. This means that the file
+  <TypeScript NodeType="span">`rankedLanguages.ts`</TypeScript><Python NodeType="span">`ranked_languages.py`</Python> will automatically map to the
+  <TypeScript NodeType="span">`/consumption/rankedLanguages`</TypeScript><Python NodeType="span">`/consumption/ranked_languages`</Python> endpoint.
+</Callout>
+
+### Open and Inspect the File
+
+Go to the `/apis` folder and open <TypeScript NodeType="span">`rankedLanguages.ts`</TypeScript><Python NodeType="span">`ranked_languages.py`</Python>. You should see the following code:
+
+<TypeScript>
+```ts filename="/app/apis/rankedLanguages.ts" copy
+import { ConsumptionUtil } from "@514labs-moose-lib";
+// This file is where you can define your API templates for consuming your data
+// All query_params are passed in as strings, and are used within the sql tag to parameterize your queries
+interface QueryParams {}
+
+export default async function handle(
+  {}: QueryParams,
+  { client, sql }: ConsumptionUtil,
+) {
+  return client.query.execute(sql``);
+}
+```
+</TypeScript>
+<Python>
+```py filename="/app/apis/ranked_languages.py" copy
+from moose_lib import MooseClient
+from typing import Optional
+
+def run(client: MooseClient, params, jwt: Optional[dict] = None):
+    return client.query.execute("", {})
+
+```
+</Python>
+
+
+<Callout type="info" title="Consumption API Structure">
+- **Importing <TypeScript NodeType="span">`ConsumptionUtil`</TypeScript><Python NodeType="span">`MooseClient`</Python>**: This utility type from the Moose library gives you access to the database client (`client`) <TypeScript NodeType="span">and SQL query tagged template literals (`sql`)</TypeScript>
+<TypeScript>
+- **Default Export**: The default export is an asynchronous function named `handle`, which takes two parameters: 
+  - An object conforming to an empty `QueryParams` interface. You will define this interface in the next step to represent the different parameters to use in your dynamic query. 
+  - The `ConsumptionUtil` object you imported
+</TypeScript>
+<Python>
+- **`run` Function**: The `run` function is the entry point for the Consumption API. It takes three parameters: 
+  - An instantiated `MooseClient`
+  - A `params` dictionary containing the query parameters. Query parameter names are keys in the dictionary, and the values are the query parameter values.
+  - An optional `jwt` dictionary containing the JWT payload from the authenticated user. We will not use this in this tutorial, but it is useful for implementing authorization in your Consumption API.
+</Python>
+</Callout>
+
+<TypeScript>
+### Define the `QueryParams` Interface
+
+This interface should contain one key: `rankBy`. This key should be a string and have a value of either `total_projects`, `total_repo_size_kb`, or `average_repo_size_kb`. The specified value will determine the ranking criteria for the results.
+
+<Callout type="info" title="Query Parameters">
+You can use a Union type to specify the possible values for the `rankBy` parameter. Moose will automatically infer the type validation and parsing for the `rankBy` parameter based on the value you provide.
+</Callout>
+
+```ts filename="app/apis/mostUsedLanguages.ts" copy {5-6}
+import { createConsumptionApi, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { tags } from "typia";
+
+interface QueryParams {
+  rankBy: "total_projects" | "total_repo_size_kb" | "average_repo_size_kb";
+  limit: number & tags.Minimum<1> & tags.Type<"int32">;
+}
+```
+
+These parameters are set in the request URL as key-value pairs, and their values will be injected into the query that you will execute against the database.
+</TypeScript>
+
+<TypeScript>
+### Implement the `handle()` Function
+
+```ts filename="/app/apis/rankedLanguages.ts" copy {9-37}
+import { createConsumptionApi, ConsumptionUtil, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
+export interface QueryParams {
+  rankBy: "total_projects" | "total_repo_size_kb" | "average_repo_size_kb";
+}
+
+export default createConsumptionApi<QueryParams>(
+  { rankBy = "total_projects" }: QueryParams,
+  { client, sql }: ConsumptionUtil
+) {
+  return client.query.execute(
+    sql`SELECT 
+          language, 
+          countMerge(total_projects) AS total_projects, 
+          sumMerge(total_repo_size_kb) AS total_repo_size_kb, 
+          avgMerge(average_repo_size_kb) AS average_repo_size_kb 
+        FROM TopLanguages 
+        GROUP BY language 
+        ORDER BY ${CH.column(rankBy)} DESC`
+  );
+}
+```
+</TypeScript>
+
+<Python>
+```py filename="/app/apis/ranked_languages.py" copy
+from moose_lib import MooseClient
+from dataclasses import dataclass
+# Define the expected query parameters for this API endpoint
+# rank_by: Determines how to sort the results, defaults to sorting by total number of projects
+@dataclass
+class QueryParams:
+    rank_by: str = "total_projects"
+
+def run(client: MooseClient, params: QueryParams):
+    # Extract the rank_by parameter from the request
+    rank_by = params.rank_by
+    
+    # Validate that rank_by is one of the allowed values
+    # Can sort by:
+    # - total_projects: Number of repos using each language
+    # - total_repo_size_kb: Total KB of code in each language
+    # - avg_repo_size_kb: Average KB per repo for each language
+    if rank_by not in ["total_projects", "total_repo_size_kb", "avg_repo_size_kb"]:
+        raise ValueError("Invalid rank_by value. Must be one of: total_projects, total_repo_size_kb, avg_repo_size_kb")
+    
+    # Build and execute query to get ranked programming languages
+    # Uses aggregate functions to:
+    # - countMerge: Get final count of projects per language
+    # - sumMerge: Get total KB of code per language
+    # - avgMerge: Get average KB per repo per language
+    query = f'''
+    SELECT 
+        language, 
+        countMerge(total_projects) AS total_projects, 
+        sumMerge(total_repo_size_kb) AS total_repo_size_kb, 
+        avgMerge(avg_repo_size_kb) AS avg_repo_size_kb 
+    FROM 
+        TopLanguages 
+    GROUP BY 
+        language 
+    ORDER BY 
+        {rank_by} DESC
+    '''
+    # Execute the query, passing rank_by as a parameter for safety
+    return client.query.execute(query, { "rank_by": rank_by })
+
+```
+</Python>
+
+The function returns ranked programming languages based on the <TypeScript NodeType="span">`rankBy`</TypeScript><Python NodeType="span">`rank_by`</Python> parameter, defaulting to `total_projects` if not specified. Invalid parameter values will throw an error.
+
+- Use the parameter `?rankBy=total_repo_size_kb` to rank results by the total number of bytes written in each language across all the people who starred your repo.
+
+</Steps>
+
+## Test Out the API Endpoint
+
+<Steps>
+### Call the API From Your Terminal via `curl`
+
+<TypeScript>
+```bash filename="Terminal" copy
+curl -X GET https://[YOUR_FORWARDING_URL]/consumption/rankedLanguages
+```
+</TypeScript>
+<Python>
+```bash filename="Terminal" copy
+curl -X GET https://[YOUR_FORWARDING_URL]/consumption/ranked_languages
+```
+</Python>
+
+<Callout type="warning" title="Don't Forget to Use Your Forwarding URL">
+Remember when you saved it earlier?
+</Callout>
+
+### Test the Consumption API Endpoint Query Parameters via `curl`
+
+<TypeScript>
+```bash filename="Terminal" copy
+curl -X GET  https://[YOUR_FORWARDING_URL]/consumption/rankedLanguages\?rankBy\=total_repo_size_kb
+```
+</TypeScript> 
+<Python>
+```bash filename="Terminal" copy
+curl -X GET  https://[YOUR_FORWARDING_URL]/consumption/ranked_languages\?rank_by\=total_repo_size_kb
+```
+</Python>
+
+</Steps>
+
+### _(Optional)_ For a Better Experience, Use Your API Client of choice
+
+<Callout type="info" title="VSCode Users">
+  **If you agreed to install the Recommended Extensions** upon initially opening
+  your Moose project in VSCode, you will have the **Thunder Client** extension
+  autmatically installed in your project workspace. You can locate the extension
+  via the lightning bolt icon.
+</Callout>
+
+<ZoomImg src="/thunder-client.png" />
+
+Try changing the query parameters to see the results change. The query parameters do not need to be backslashed in the URL, for example:_
+
+<TypeScript>
+```txt copy
+https://[YOUR_FORWARDING_URL]/consumption/rankedLanguages?rankBy=total_repo_size_kb
+```
+</TypeScript>
+<Python>
+```txt copy
+https://[YOUR_FORWARDING_URL]/consumption/ranked_languages?rank_by=total_repo_size_kb
+```
+</Python>
+
+<Callout type="success" title="Congrats on Completing the Tutorial!">
+  You've just built an impressive real-time analytics service for GitHub star
+  events using Moose! Let's recap your amazing journey:
+  - You created a **Data Model** and set up a GitHub webhook to ingest star
+    events in real-time. 
+  - You created a **Streaming Function** to process and enrich the raw star event data. 
+  - You implemented a **Block** to analyze user programming languages. 
+  - You built a **Consumption API** to fetch insights about the most used languages.
+</Callout>

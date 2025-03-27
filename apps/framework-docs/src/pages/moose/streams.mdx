@@ -1,0 +1,386 @@
+import { Callout } from "@/components";
+import { Tabs } from "nextra/components";
+
+# Stream Processing
+
+Streams serve as the transport layer between your data sources and database tables. Built On Kafka/Redpanda topics, they provide a way to implement real-time data pipelines that:
+- **Enforce type safety** as data flows through your pipeline
+- **Buffer data between the ingestion layer and your database tables** to protect against data loss during high load or service disruptions
+- **Chain transformations on the fly** to process, reshape, and enrich data in-flight before landing in your database tables
+- **Guarantee at least once** delivery of data to your database tables
+
+As part of Moose's unified type system, streams use the same data models you define for your APIs and tables, eliminating schema mismatches between pipeline components.
+
+## Creating Streams
+You can create streams in two ways:
+- High-level: Using the `IngestPipeline` class (recommended)
+- Low-level: Manually configuring the `Stream` component
+
+### Streams for Ingestion
+
+<Tabs items={["Ingest Pipeline (Recommended)", "Manual Stream Configuration"]}>
+<Tabs.Tab title="Ingest Pipeline (Recommended)">
+The `IngestPipeline` class provides a convenient way to set up streams with ingestion APIs and tables. This is the recommended way to create streams for ingestion:
+
+```ts filename="IngestionStream.ts" copy {10}
+import { IngestPipeline } from "@514labs/moose-lib";
+
+interface RawData {
+  id: string;
+  value: number;
+}
+
+const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+  ingest: true, // Creates an ingestion API endpoint at `POST /ingest/raw_data`
+  stream: true, // Buffers data between the ingestion API and the database table
+  table: true // Creates an OLAP table named `raw_data`
+});
+```
+</Tabs.Tab>
+
+<Tabs.Tab title="Manual Stream Configuration">
+
+While the `IngestPipeline` provides a convenient way to set up streams with ingestion APIs and tables, you can also configure these components individually for more granular control:
+
+```ts filename="StreamObject.ts" copy {8-12}
+interface RawData {
+  id: string;
+  value: number;
+}
+// Create a table for the raw data
+const rawTable = new OlapTable<RawData>("raw_data");
+
+// Create a stream for the raw data
+const rawStream = new Stream<RawData>("raw_data", {
+  destination: rawTable // Optional: Specify a destination table for the stream, sets up a process to sync data from the stream to the table
+});
+
+// Create an ingestion API for the raw data
+const rawIngestApi = new IngestApi<RawData>("raw_data" {
+  destination: rawIngestionStream // Configure Moose to write all validated data to the stream
+});
+```
+</Tabs.Tab>
+</Tabs>
+<Callout type="info" title="Explanation">
+All data sent to the `POST /ingest/raw_data` endpoint will be buffered in the `raw_data` stream. Then Moose will automatically execute a process to sync the data from the `raw_data` stream to the `raw_data` OLAP table.
+</Callout>
+
+
+### Streams for Transformations
+If the raw data needs to be transformed before landing in the database, you can define a transform destination stream and a transform function to process the data:
+
+#### Single Stream Transformation
+```ts filename="TransformDestinationStream.ts" copy
+
+interface RawData {
+  id: string;
+  value: number;
+}
+
+interface TransformedData {
+  id: string;
+  transformedValue: number;
+  transformedAt: Date;
+}
+
+const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+  ingest: true,
+  stream: true, // Buffers data between the ingestion API and the database table
+  table: true
+});
+
+const transformedStream = new Stream<TransformedData>("transformed_stream", {
+  destination: transformedTable // the table to write the transformed data to
+});
+
+rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
+  id: record.id,
+  transformedValue: record.value * 2,
+  transformedAt: new Date()
+}));
+```
+
+#### Chaining Transformations
+```ts filename="ChainedTransformations.ts" copy
+interface RawData {
+  id: string;
+  value: number;
+}
+
+interface TransformedData {
+  id: string;
+  transformedValue: number;
+}
+
+interface TransformedData2 {
+  id: string;
+  transformedValue: number;
+}
+
+const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+  ingest: true,
+  stream: true, // Buffers data between the ingestion API and the database table
+  table: false
+});
+
+const transformedStream = new Stream<TransformedData>("transformed_stream");
+
+rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
+  id: record.id,
+  transformedValue: record.value * 2,
+  transformedAt: new Date()
+}));
+
+const transformedStream2 = new Stream<TransformedData2>("transformed_stream2");
+
+transformedStream.addTransform(transformedStream2, (record) => ({
+  id: record.id,
+  transformedValue: record.transformedValue * 2,
+  transformedAt: new Date()
+}));
+```
+
+
+## Implementing Transformations
+
+### Reshape and Enrich Data
+Transform data shape or enrich records:
+
+```typescript filename="DataTransform.ts"
+interface RawEvent {
+  id: string;
+  timestamp: string;
+  data: {
+    user_id: string;
+    platform: string;
+    app_version: string;
+    ip_address: string;
+  }
+}
+
+interface EnrichedEvent {
+  eventId: string;
+  timestamp: Date;
+  userId: string;
+  properties: {
+    platform: string;
+    version: string;
+    country: string;
+  };
+  metadata: {
+    originalTimestamp: string;
+    processedAt: Date;
+  }
+}
+
+const rawStream = new Stream<RawEvent>("raw_events");
+const enrichedStream = new Stream<EnrichedEvent>("enriched_events");
+
+// Reshape and enrich data
+rawStream.addTransform(enrichedStream, async (record: RawEvent) => ({
+  eventId: record.id,
+  timestamp: new Date(record.timestamp),
+  userId: record.data.user_id,
+  properties: {
+    platform: record.data.platform || 'unknown',
+    version: record.data.app_version,
+    country: await lookupCountry(record.data.ip_address)
+  },
+  metadata: {
+    originalTimestamp: record.timestamp,
+    processedAt: new Date()
+  }
+}));
+```
+
+### Filtering
+Remove or filter records based on conditions:
+
+```typescript filename="FilterStream.ts"
+interface MetricRecord {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: Date;
+}
+
+const inputStream = new Stream<MetricRecord>("input_metrics");
+const validMetrics = new Stream<MetricRecord>("valid_metrics");
+
+// Multiple filtering conditions
+inputStream.addTransform(validMetrics, (record) => {
+  // Filter out records with invalid values
+  if (isNaN(record.value) || record.value < 0) {
+    return undefined;
+  }
+
+  // Filter out old records
+  if (record.timestamp < getStartOfDay()) {
+    return undefined;
+  }
+
+  // Filter out specific metrics
+  if (record.name.startsWith('debug_')) {
+    return undefined;
+  }
+
+  return record;
+});
+```
+
+### Fan Out (1:N)
+Send data to multiple downstream processors:
+
+```ts filename="FanOut.ts" copy
+interface Order {
+  orderId: string;
+  userId: string;
+  amount: number;
+  items: string[];
+}
+
+interface HighPriorityOrder extends Order {
+  priority: 'high';
+}
+
+interface ArchivedOrder extends Order {
+  archivedAt: Date;
+}
+
+// Define destination streams
+const analyticsStream = new Stream<Order>("order_analytics");
+const notificationStream = new Stream<HighPriorityOrder>("order_notifications");
+const archiveStream = new Stream<ArchivedOrder>("order_archive");
+
+// Source stream
+const orderStream = new Stream<Order>("orders");
+
+// Send all orders to analytics
+orderStream.addTransform(analyticsStream, (order) => order);
+
+// Send large orders to notifications
+orderStream.addTransform(notificationStream, (order) => {
+  if (order.amount > 1000) {
+    return {
+      ...order,
+      priority: 'high'
+    };
+  }
+  return undefined; // Skip small orders
+});
+
+// Archive all orders
+orderStream.addTransform(archiveStream, (order) => ({
+  ...order,
+  archivedAt: new Date()
+}));
+```
+
+### Fan In (N:1)
+Combine data from multiple sources:
+
+```typescript filename="FanIn.ts"
+interface UserEvent {
+  userId: string;
+  eventType: string;
+  timestamp: Date;
+  source: string;
+  data: Record<string, unknown>;
+}
+
+// Source streams
+const webEvents = new Stream<UserEvent>("web_events");
+const mobileEvents = new Stream<UserEvent>("mobile_events");
+const apiEvents = new Stream<UserEvent>("api_events");
+
+// Combined destination
+const allEvents = new Stream<UserEvent>("all_events", {
+  destination: eventsTable
+});
+
+// Fan in from web
+webEvents.addTransform(allEvents, (event) => ({
+  ...event,
+  source: 'web',
+  timestamp: new Date()
+}));
+
+// Fan in from mobile
+mobileEvents.addTransform(allEvents, (event) => ({
+  ...event,
+  source: 'mobile',
+  timestamp: new Date()
+}));
+
+// Fan in from API
+apiEvents.addTransform(allEvents, (event) => ({
+  ...event,
+  source: 'api',
+  timestamp: new Date()
+}));
+```
+
+Each pattern demonstrates:
+- Clear input/output types
+- Practical use cases
+- Error handling considerations
+- Type-safe transformations
+
+See [API Reference](./api-reference#stream) for all available transform options.
+
+## Stream Configurations
+
+### Parallelism and Retention
+```typescript filename="StreamConfig.ts"
+const highThroughputStream = new Stream<Data>("high_throughput", {
+  parallelism: 4,              // Process 4 records simultaneously
+  retentionPeriod: 86400      // Keep data for 1 day
+});
+```
+
+### Transform Return Types
+```typescript filename="TransformTypes.ts"
+// Single record
+stream.addTransform(output, (record) => ({
+  ...record,
+  processed: true
+}));
+
+// Multiple records
+stream.addTransform(output, (record) => [
+  { ...record, type: 'original' },
+  { ...record, type: 'copy' }
+]);
+
+// Filter records
+stream.addTransform(output, (record) => {
+  if (record.value > 100) {
+    return record;
+  }
+  return undefined;  // Record will be filtered out
+});
+
+// Async transform
+stream.addTransform(output, async (record) => {
+  const enriched = await enrichData(record);
+  return enriched;
+});
+```
+
+### Error Handling
+```typescript filename="ErrorHandling.ts"
+try {
+  await stream.write(event);
+} catch (error) {
+  if (error instanceof ValidationError) {
+    // Handle schema validation errors
+    console.error("Invalid data:", error.details);
+  } else if (error instanceof BackpressureError) {
+    // Handle backpressure situations
+    await delay(1000); // Wait before retry
+  }
+}
+```
+
+See the [API Reference](./api-reference#stream) for complete configuration options. 

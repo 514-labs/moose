@@ -199,7 +199,7 @@ mod tests {
     fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
         let mut cmd = Command::new("pnpm");
         cmd_action(&mut cmd)
-            .arg("--filter=moose-lib")
+            .arg("--filter=@514labs/moose-lib")
             .current_dir("../../")
             .spawn()
             .unwrap()

@@ -22,6 +22,7 @@ export default {
   "stream-processing": "Stream Processing",
   "db-processing": "Database Processing",
   "consumption-apis": "Analytics APIs",
+  planning: "Infrastructure Planning",
   workflows: "Orchestrating Workflows",
   "metrics-console": "Monitoring Performance",
   "--Deploy--": {

@@ -95,7 +95,6 @@ impl LeadershipManager {
                 (true, false) // has_lock and not_new_acquisition
             }
             Ok(_) => {
-                log::debug!("<RedisLeadership> Failed to acquire lock: {} (already held by another instance)", lock_key);
                 (false, false) // doesn't have lock and not new acquisition
             }
             Err(e) => {

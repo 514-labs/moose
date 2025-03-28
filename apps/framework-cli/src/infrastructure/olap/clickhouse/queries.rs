@@ -120,28 +120,24 @@ pub fn create_table_query(
     let mut reg = Handlebars::new();
     reg.register_escape_fn(no_escape);
 
-    let (engine, ignore_primary_key) = match table.engine {
-        ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
+    let engine = match table.engine {
+        ClickhouseEngine::MergeTree => "MergeTree",
         ClickhouseEngine::ReplacingMergeTree => {
             if table.order_by.is_empty() {
                 return Err(ClickhouseError::InvalidParameters {
                     message: "ReplacingMergeTree requires an order by clause".to_string(),
                 });
             }
-            ("ReplacingMergeTree".to_string(), false)
+            "ReplacingMergeTree"
         }
     };
 
-    let primary_key = if ignore_primary_key {
-        Vec::new()
-    } else {
-        table
-            .columns
-            .iter()
-            .filter(|column| column.primary_key)
-            .map(|column| column.name.clone())
-            .collect::<Vec<String>>()
-    };
+    let primary_key = table
+        .columns
+        .iter()
+        .filter(|column| column.primary_key)
+        .map(|column| column.name.clone())
+        .collect::<Vec<String>>();
 
     let template_context = json!({
         "db_name": db_name,

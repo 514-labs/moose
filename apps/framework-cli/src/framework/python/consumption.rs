@@ -77,6 +77,7 @@ pub fn run(
         project.temporal_config.client_cert,
         project.temporal_config.client_key,
         project.temporal_config.api_key,
+        project.features.data_model_v2.to_string(),
     ];
 
     let mut consumption_process = executor::run_python_program(

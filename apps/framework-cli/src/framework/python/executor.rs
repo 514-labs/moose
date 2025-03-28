@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::process::Stdio;
 
-use crate::utilities::constants::LIB_DIR;
+use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, LIB_DIR};
 
 use tokio::process::{Child, Command};
 
@@ -71,6 +71,12 @@ fn python_path_with_lib(project_location: &Path) -> String {
             paths.push_str(lib_path_str);
         }
     }
+
+    // There's existing logic that write shared python modules into the project's
+    // internal directory (e.g. temporal utils).
+    // TODO: Move all python scripts to py-moose-lib
+    paths.push(':');
+    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
 
     paths
 }

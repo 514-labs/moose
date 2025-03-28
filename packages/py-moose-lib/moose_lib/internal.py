@@ -2,7 +2,7 @@ from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
 
 from .data_models import Column, _to_columns
-from moose_lib.dmv2 import _tables, _streams, _ingest_apis
+from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis
 from pydantic.alias_generators import to_camel
 
 model_config = ConfigDict(alias_generator=AliasGenerator(
@@ -44,6 +44,11 @@ class IngestApiConfig(BaseModel):
     format: str
     write_to: Target
 
+class EgressApiConfig(BaseModel):
+    model_config = model_config
+
+    name: str
+
 
 class InfrastructureMap(BaseModel):
     model_config = model_config
@@ -51,6 +56,7 @@ class InfrastructureMap(BaseModel):
     tables: dict[str, TableConfig]
     topics: dict[str, TopicConfig]
     ingest_apis: dict[str, IngestApiConfig]
+    egress_apis: dict[str, EgressApiConfig]
 
 
 def to_infra_map() -> dict:
@@ -63,6 +69,7 @@ def to_infra_map() -> dict:
     tables = {}
     topics = {}
     ingest_apis = {}
+    egress_apis = {}
 
     for name, table in _tables.items():
         tables[name] = TableConfig(
@@ -99,10 +106,16 @@ def to_infra_map() -> dict:
             )
         )
 
+    for name, api in _egress_apis.items():
+        egress_apis[name] = EgressApiConfig(
+            name=name,
+        )
+
     infra_map = InfrastructureMap(
         tables=tables,
         topics=topics,
-        ingest_apis=ingest_apis
+        ingest_apis=ingest_apis,
+        egress_apis=egress_apis
     )
 
     return infra_map.model_dump(by_alias=True)

@@ -1,14 +1,6 @@
-import { Key, DataModelConfig } from "@514labs/moose-lib";
+import { Key, IngestPipeline } from "@514labs/moose-lib";
 
-interface NavModes {
-  approach?: boolean;
-  autopilot?: boolean;
-  althold?: boolean;
-  lnav?: boolean;
-  tcas?: boolean;
-}
-
-export interface AircraftTrackingData_altBaroInt {
+export interface AircraftTrackingData {
   // Aircraft identifiers
   hex: Key<string>; // using hex as the key since it appears to be a unique aircraft identifier
   type: string;
@@ -63,9 +55,25 @@ export interface AircraftTrackingData_altBaroInt {
   rssi: number;
 }
 
-export const AircraftTrackingData_altBaroIntConfig: DataModelConfig<AircraftTrackingData_altBaroInt> =
-  {
-    storage: {
-      enabled: false,
-    },
-  };
+export interface AircraftTrackingProcessed extends AircraftTrackingData {
+  zorderCoordinate: number;
+  approach: boolean;
+  autopilot: boolean;
+  althold: boolean;
+  lnav: boolean;
+  tcas: boolean;
+}
+
+export const AircraftTrackingDataPipeline =
+  new IngestPipeline<AircraftTrackingData>("AircraftTrackingData", {
+    table: false,
+    stream: true,
+    ingest: true,
+  });
+
+export const AircraftTrackingProcessedPipeline =
+  new IngestPipeline<AircraftTrackingProcessed>("AircraftTrackingProcessed", {
+    table: true,
+    stream: true,
+    ingest: false,
+  });

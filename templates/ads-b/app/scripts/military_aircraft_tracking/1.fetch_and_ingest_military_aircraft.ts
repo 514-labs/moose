@@ -38,55 +38,18 @@ interface ProcessedAircraftData {
   timestamp: string;
 }
 
-async function mapToAircraftTrackingDataAltBaroInt(
-  aircraft: any,
-): Promise<any> {
-  return {
-    hex: aircraft.hex,
-    type: aircraft.type || "",
-    flight: aircraft.flight || "",
-    r: aircraft.r || "",
-    t: aircraft.t || "",
-    dbFlags: aircraft.dbFlags || 0,
-    lat: aircraft.lat || 0,
-    lon: aircraft.lon || 0,
-    alt_baro: parseInt(aircraft.alt_baro) || 0,
-    alt_geom: aircraft.alt_geom || 0,
-    gs: aircraft.gs || 0,
-    track: aircraft.track || 0,
-    baro_rate: aircraft.baro_rate || 0,
-    geom_rate: aircraft.geom_rate,
-    squawk: aircraft.squawk || "",
-    emergency: aircraft.emergency || "",
-    category: aircraft.category || "",
-    nav_qnh: aircraft.nav_qnh,
-    nav_altitude_mcp: aircraft.nav_altitude_mcp,
-    nav_heading: aircraft.nav_heading,
-    nav_modes: aircraft.nav_modes,
-    nic: aircraft.nic || 0,
-    rc: aircraft.rc || 0,
-    seen_pos: aircraft.seen_pos || 0,
-    version: aircraft.version || 0,
-    nic_baro: aircraft.nic_baro || 0,
-    nac_p: aircraft.nac_p || 0,
-    nac_v: aircraft.nac_v || 0,
-    sil: aircraft.sil || 0,
-    sil_type: aircraft.sil_type || "",
-    gva: aircraft.gva || 0,
-    sda: aircraft.sda || 0,
-    alert: aircraft.alert || 0,
-    spi: aircraft.spi || 0,
-    mlat: aircraft.mlat || [],
-    tisb: aircraft.tisb || [],
-    messages: aircraft.messages || 0,
-    seen: aircraft.seen || 0,
-    rssi: aircraft.rssi || 0,
-  };
-}
+async function mapToAircraftTrackingData(aircraft: any): Promise<any> {
+  // Convert alt_baro to number and handle "ground" case
+  let alt_baro = 0;
+  let alt_baro_is_ground = false;
 
-async function mapToAircraftTrackingDataAltBaroString(
-  aircraft: any,
-): Promise<any> {
+  if (aircraft.alt_baro === "ground") {
+    alt_baro = 0;
+    alt_baro_is_ground = true;
+  } else {
+    alt_baro = parseInt(aircraft.alt_baro) || 0;
+  }
+
   return {
     hex: aircraft.hex,
     type: aircraft.type || "",
@@ -96,7 +59,8 @@ async function mapToAircraftTrackingDataAltBaroString(
     dbFlags: aircraft.dbFlags || 0,
     lat: aircraft.lat || 0,
     lon: aircraft.lon || 0,
-    alt_baro: String(aircraft.alt_baro || "0"),
+    alt_baro: alt_baro,
+    alt_baro_is_ground: alt_baro_is_ground,
     alt_geom: aircraft.alt_geom || 0,
     gs: aircraft.gs || 0,
     track: aircraft.track || 0,
@@ -134,7 +98,7 @@ async function sendToMoose(data: any, endpoint: string): Promise<void> {
   const options = {
     hostname: "localhost",
     port: 4000,
-    path: `/ingest/${endpoint}/0.0`,
+    path: `/ingest/${endpoint}`,
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -205,19 +169,8 @@ const fetchAndIngestMilitaryAircraft: TaskFunction = async (input: any) => {
     if (enrichedData.ac && Array.isArray(enrichedData.ac)) {
       for (const aircraft of enrichedData.ac) {
         try {
-          const mappedDataAltBaroInt =
-            await mapToAircraftTrackingDataAltBaroInt(aircraft);
-          await sendToMoose(
-            mappedDataAltBaroInt,
-            "AircraftTrackingData_altBaroInt",
-          );
-
-          const mappedDataAltBaroString =
-            await mapToAircraftTrackingDataAltBaroString(aircraft);
-          await sendToMoose(
-            mappedDataAltBaroString,
-            "AircraftTrackingData_altBaroString",
-          );
+          const mappedData = await mapToAircraftTrackingData(aircraft);
+          await sendToMoose(mappedData, "AircraftTrackingData");
         } catch (error) {
           console.log(`Error processing aircraft ${aircraft.hex}: ${error}`);
         }

@@ -8,7 +8,6 @@
     "dist"
   ],
   "bin": {
-    "moose-tspc": "./dist/moose-tspc.js",
     "moose-runner": "./dist/moose-runner.js",
     "moose-exec": "./dist/moose-exec.js"
   },
@@ -30,7 +29,8 @@
     "fastq": "1.17.1",
     "jose": "5.9.2",
     "kafkajs": "2.2.4",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "typescript": "~5.7.3"
   },
   "devDependencies": {
     "@repo/ts-config": "workspace:*",
@@ -38,8 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.46.0",
-    "tsup": "^8.0.2",
-    "typescript": "~5.7.3"
+    "tsup": "^8.0.2"
   },
   "peerDependencies": {
     "ts-patch": "^3.3.0",

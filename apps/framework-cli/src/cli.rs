@@ -55,7 +55,7 @@ use crate::cli::{
 };
 use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::check::check_system_reqs;
-use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
@@ -868,35 +868,41 @@ async fn top_command_handler(
                 &settings,
             );
 
-            let framework_object_versions =
-                load_framework_objects(&project).await.map_err(|e| {
+            let primitive_map = crate::framework::core::primitive_map::PrimitiveMap::load(&project)
+                .await
+                .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Import".to_string(),
-                        details: format!("Failed to load initial project state: {:?}", e),
+                        details: format!("Failed to load primitive map: {:?}", e),
                     })
                 })?;
 
-            let data_model = match version {
-                None => &framework_object_versions.current_models,
-                Some(v) if v == &framework_object_versions.current_version => {
-                    &framework_object_versions.current_models
-                }
-                Some(v) => framework_object_versions
-                    .previous_version_models
-                    .get(v)
-                    .ok_or_else(|| {
-                        RoutineFailure::error(Message {
-                            action: "Unknown".to_string(),
-                            details: "version".to_string(),
-                        })
-                    })?,
-            }
-            .models
-            .get(data_model_name)
-            .ok_or(RoutineFailure::error(Message::new(
-                "Model".to_string(),
-                "not found".to_string(),
-            )))?;
+            let infrastructure_map =
+                crate::framework::core::infrastructure_map::InfrastructureMap::new(
+                    &project,
+                    primitive_map,
+                );
+
+            let api_endpoint = infrastructure_map
+                .api_endpoints
+                .values()
+                .find(|endpoint| {
+                    endpoint.name == *data_model_name
+                        && matches!(endpoint.api_type, APIType::INGRESS { .. })
+                        && match version {
+                            None => true,
+                            Some(v) => endpoint.version.as_str() == v,
+                        }
+                })
+                .ok_or_else(|| {
+                    RoutineFailure::error(Message {
+                        action: "Import".to_string(),
+                        details: format!(
+                            "Could not find ingress API endpoint for data model {}",
+                            data_model_name
+                        ),
+                    })
+                })?;
 
             let format = format
                 .as_deref()
@@ -907,7 +913,7 @@ async fn top_command_handler(
                 )))?;
 
             if format == "csv" {
-                import_csv_file(data_model, file, destination)
+                import_csv_file(&api_endpoint.api_type, file, destination)
                     .await
                     .map_err(|e| {
                         RoutineFailure::new(

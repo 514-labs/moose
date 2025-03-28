@@ -20,7 +20,7 @@
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.46.0",
     "@repo/ts-config": "workspace:*",
-    "typescript": "^4.9.5"
+    "typescript": "^5.7.0"
   },
   "optionalDependencies": {
     "@514labs/moose-cli-darwin-arm64": "0.3.205",

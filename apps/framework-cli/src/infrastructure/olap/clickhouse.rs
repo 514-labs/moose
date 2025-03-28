@@ -64,7 +64,6 @@ pub mod inserter;
 pub mod mapper;
 pub mod model;
 pub mod queries;
-pub mod version_sync;
 
 pub use config::ClickHouseConfig;
 

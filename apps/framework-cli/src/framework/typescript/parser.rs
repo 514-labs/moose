@@ -73,7 +73,7 @@ pub fn extract_data_model_from_file(
         project.project_location.to_str().unwrap()
     );
 
-    let ts_return_code = Command::new("moose-tspc")
+    let ts_return_code = Command::new("tspc")
         .arg("--project")
         .arg(format!(".moose/{}", TSCONFIG_JSON))
         .env("PATH", bin_path)
@@ -199,7 +199,7 @@ mod tests {
     fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
         let mut cmd = Command::new("pnpm");
         cmd_action(&mut cmd)
-            .arg("--filter=moose-lib")
+            .arg("--filter=@514labs/moose-lib")
             .current_dir("../../")
             .spawn()
             .unwrap()

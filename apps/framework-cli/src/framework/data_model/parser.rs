@@ -1,10 +1,7 @@
 use super::model::DataModel;
 use crate::utilities::constants;
 use crate::{
-    framework::{
-        core::{code_loader::MappingError, infrastructure::table::DataEnum},
-        python, typescript,
-    },
+    framework::{core::infrastructure::table::DataEnum, python, typescript},
     project::Project,
 };
 use log::info;
@@ -17,7 +14,6 @@ use std::path::Path;
 pub enum DataModelParsingError {
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
     PythonParsingError(#[from] python::parser::PythonParserError),
-    MappingError(#[from] MappingError),
 }
 
 #[derive(Deserialize, Debug, Default)]

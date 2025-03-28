@@ -38,7 +38,7 @@ use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
 use opentelemetry_otlp::{Protocol, WithExportConfig, WithHttpConfig};
-use opentelemetry_sdk::logs::LoggerProvider;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
@@ -169,7 +169,9 @@ pub enum LoggerError {
     #[error("Error Initializing fern logger")]
     Init(#[from] fern::InitError),
     #[error("Error setting up otel logger")]
-    Exporter(#[from] opentelemetry_sdk::logs::LogError),
+    Exporter(#[from] opentelemetry_sdk::error::OTelSdkError),
+    #[error("Error building the exporter")]
+    ExporterBuild(#[from] opentelemetry_otlp::ExporterBuildError),
     #[error("Error setting up default logger")]
     LogSetup(#[from] log::SetLoggerError),
 }
@@ -257,9 +259,12 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 }
             }
 
-            let logger_provider = LoggerProvider::builder()
-                .with_resource(Resource::new(resource_attributes))
-                .with_batch_exporter(open_telemetry_exporter, opentelemetry_sdk::runtime::Tokio)
+            let resource = Resource::builder()
+                .with_attributes(resource_attributes)
+                .build();
+            let logger_provider = SdkLoggerProvider::builder()
+                .with_resource(resource)
+                .with_batch_exporter(open_telemetry_exporter)
                 .build();
 
             let logger: Box<dyn log::Log> = Box::new(TargetToKvLogger {

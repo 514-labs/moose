@@ -8,7 +8,6 @@
     "dist"
   ],
   "bin": {
-    "moose-tspc": "./dist/moose-tspc.js",
     "moose-runner": "./dist/moose-runner.js",
     "moose-exec": "./dist/moose-exec.js"
   },

@@ -73,7 +73,7 @@ pub fn extract_data_model_from_file(
         project.project_location.to_str().unwrap()
     );
 
-    let ts_return_code = Command::new("moose-tspc")
+    let ts_return_code = Command::new("tspc")
         .arg("--project")
         .arg(format!(".moose/{}", TSCONFIG_JSON))
         .env("PATH", bin_path)

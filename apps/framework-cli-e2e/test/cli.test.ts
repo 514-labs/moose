@@ -86,6 +86,8 @@ describe("framework-cli", () => {
     const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
+    packageJson.dependencies["@514labs/moose-lib"] = `file:${MOOSE_LIB_PATH}`;
+
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
     console.log("Installing dependencies...");
@@ -101,10 +103,6 @@ describe("framework-cli", () => {
           : reject(new Error(`npm install failed with code ${code}`));
       });
     });
-
-    console.log("Linking moose-lib...");
-    await execAsync("npm link", { cwd: MOOSE_LIB_PATH });
-    await execAsync("npm link @514labs/moose-lib", { cwd: TEST_PROJECT_DIR });
 
     console.log("Starting dev server...");
     devProcess = spawn(CLI_PATH, ["dev"], {

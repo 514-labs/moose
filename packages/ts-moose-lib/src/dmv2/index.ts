@@ -241,8 +241,12 @@ export class IngestPipeline<T> extends TypedBase<T, DataModelConfigV2<T>> {
   }
 }
 
-export type Aggregated<AggregationFunction extends string> = {
+export type Aggregated<
+  AggregationFunction extends string,
+  ArgTypes extends any[] = [],
+> = {
   _aggregationFunction?: AggregationFunction;
+  _argTypes?: ArgTypes;
 };
 interface MaterializedViewOptions<T> {
   selectStatement: string;

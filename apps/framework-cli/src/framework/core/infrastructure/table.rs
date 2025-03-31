@@ -9,6 +9,7 @@ use protobuf::{EnumOrUnknown, MessageField};
 use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -90,7 +91,7 @@ pub struct Column {
     pub primary_key: bool,
     pub default: Option<ColumnDefaults>,
     #[serde(default)]
-    pub annotations: Vec<(String, String)>, // workaround for needing to Hash
+    pub annotations: Vec<(String, Value)>, // workaround for needing to Hash
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -332,7 +333,11 @@ impl Column {
     }
 
     pub fn from_proto(proto: crate::proto::infrastructure_map::Column) -> Self {
-        let mut annotations: Vec<(String, String)> = proto.annotations.into_iter().collect();
+        let mut annotations: Vec<(String, Value)> = proto
+            .annotations
+            .into_iter()
+            .map(|(k, v)| (k, serde_json::from_str(&v).unwrap()))
+            .collect();
         annotations.sort_by(|a, b| a.0.cmp(&b.0));
 
         Column {

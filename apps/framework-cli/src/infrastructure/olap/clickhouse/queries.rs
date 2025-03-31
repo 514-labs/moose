@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 
 use crate::framework::core::infrastructure::table::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
-    ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
+    AggregationFunction, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
 
 use super::errors::ClickhouseError;
@@ -248,11 +248,21 @@ pub fn basic_field_type_to_string(
             // <column_name> String NULL is equivalent to <column_name> Nullable(String)
             Ok(format!("Nullable({})", inner_type_string))
         }
-        ClickHouseColumnType::AggregateFunction { name, t } => {
-            let inner_type_string = basic_field_type_to_string(t)?;
+        ClickHouseColumnType::AggregateFunction(
+            AggregationFunction {
+                function_name,
+                argument_types,
+            },
+            _return_type,
+        ) => {
+            let inner_type_string = argument_types
+                .iter()
+                .map(basic_field_type_to_string)
+                .collect::<Result<Vec<String>, _>>()?
+                .join(", ");
             Ok(format!(
                 "AggregateFunction({}, {})",
-                name, inner_type_string
+                function_name, inner_type_string
             ))
         }
     }

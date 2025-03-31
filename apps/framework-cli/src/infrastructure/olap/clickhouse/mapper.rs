@@ -1,7 +1,9 @@
 use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+use serde_json::Value;
 
 use crate::infrastructure::olap::clickhouse::model::{
-    ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
+    AggregationFunction, ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt,
+    ClickHouseTable,
 };
 
 use super::errors::ClickhouseError;
@@ -28,14 +30,25 @@ pub fn std_column_to_clickhouse_column(
 
 pub fn std_field_type_to_clickhouse_type_mapper(
     field_type: ColumnType,
-    annotations: &[(String, String)],
+    annotations: &[(String, Value)],
 ) -> Result<ClickHouseColumnType, ClickhouseError> {
     if let Some((_, agg_func)) = annotations.iter().find(|(k, _)| k == "aggregationFunction") {
         let clickhouse_type = std_field_type_to_clickhouse_type_mapper(field_type, &[])?;
-        return Ok(ClickHouseColumnType::AggregateFunction {
-            name: agg_func.to_string(),
-            t: Box::new(clickhouse_type),
-        });
+
+        let agg_func =
+            serde_json::from_value::<AggregationFunction<ColumnType>>(agg_func.clone()).unwrap();
+
+        return Ok(ClickHouseColumnType::AggregateFunction(
+            AggregationFunction {
+                function_name: agg_func.function_name,
+                argument_types: agg_func
+                    .argument_types
+                    .into_iter()
+                    .map(|t| std_field_type_to_clickhouse_type_mapper(t, &[]))
+                    .collect::<Result<Vec<_>, _>>()?,
+            },
+            Box::new(clickhouse_type),
+        ));
     }
 
     match field_type {

@@ -2,6 +2,7 @@ import ts, {
   isIdentifier,
   isTypeReferenceNode,
   SymbolFlags,
+  TupleType,
   TypeChecker,
   TypeFlags,
 } from "typescript";
@@ -39,7 +40,7 @@ const throwNullType = (fieldName: string, typeName: string): never => {
 
 const toArrayType = ([elementNullable, _, elementType]: [
   boolean,
-  string | undefined,
+  AggregationFunction | undefined,
   DataType,
 ]): ArrayType => {
   return {
@@ -55,16 +56,27 @@ const isNumberType = (t: ts.Type, checker: TypeChecker): boolean => {
 const handleAggregated = (
   t: ts.Type,
   checker: TypeChecker,
-): string | undefined => {
+  fieldName: string,
+  typeName: string,
+): AggregationFunction | undefined => {
   const functionSymbol = t.getProperty("_aggregationFunction");
-  if (functionSymbol === undefined) {
+  const argsTypesSymbol = t.getProperty("_argTypes");
+
+  if (functionSymbol === undefined || argsTypesSymbol === undefined) {
     return undefined;
   }
   const functionStringLiteral = checker.getNonNullableType(
     checker.getTypeOfSymbol(functionSymbol),
   );
-  if (functionStringLiteral.isStringLiteral()) {
-    return functionStringLiteral.value;
+  const types = checker.getNonNullableType(
+    checker.getTypeOfSymbol(argsTypesSymbol),
+  );
+
+  if (functionStringLiteral.isStringLiteral() && checker.isTupleType(types)) {
+    const argumentTypes = ((types as TupleType).typeArguments || []).map(
+      (t) => tsTypeToDataType(t, checker, fieldName, typeName, false)[2],
+    );
+    return { functionName: functionStringLiteral.value, argumentTypes };
   } else {
     console.log("Unexpected type inside Aggregated", functionStringLiteral);
     return undefined;
@@ -104,17 +116,22 @@ const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
   }
 };
 
+interface AggregationFunction {
+  functionName: string;
+  argumentTypes: DataType[];
+}
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
   fieldName: string,
   typeName: string,
   isJwt: boolean,
-): [boolean, string | undefined, DataType] => {
+): [boolean, AggregationFunction | undefined, DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
 
-  const aggregationFunction = handleAggregated(t, checker);
+  const aggregationFunction = handleAggregated(t, checker, fieldName, typeName);
 
   // this looks nicer if we turn on experimentalTernaries in prettier
   const dataType: DataType = isEnum(nonNull)
@@ -192,7 +209,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       isJwt,
     );
 
-    const annotations: [string, string][] = [];
+    const annotations: [string, any][] = [];
     if (aggregationFunction !== undefined) {
       annotations.push(["aggregationFunction", aggregationFunction]);
     }

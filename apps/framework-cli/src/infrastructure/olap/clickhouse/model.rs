@@ -30,6 +30,13 @@ pub struct ClickHouseNested {
     columns: Vec<ClickHouseColumn>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AggregationFunction<T> {
+    pub function_name: String,
+    pub argument_types: Vec<T>,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnType {
     String,
@@ -44,10 +51,10 @@ pub enum ClickHouseColumnType {
     Nullable(Box<ClickHouseColumnType>),
     Enum(DataEnum),
     Nested(Vec<ClickHouseColumn>),
-    AggregateFunction {
-        name: String,
-        t: Box<ClickHouseColumnType>,
-    },
+    AggregateFunction(
+        AggregationFunction<ClickHouseColumnType>,
+        Box<ClickHouseColumnType>,
+    ),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -99,9 +106,9 @@ impl ClickHouseColumnType {
                 required = false;
                 inner.to_std_column_type().0
             }
-            ClickHouseColumnType::AggregateFunction { name: _, t } => {
+            ClickHouseColumnType::AggregateFunction(_, return_type) => {
                 // TODO: return the function name as an "annotation"
-                return t.to_std_column_type();
+                return return_type.to_std_column_type();
             }
         };
         (column_type, required)

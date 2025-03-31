@@ -1753,7 +1753,8 @@ struct PartialIngestApi {
 struct PartialEgressApi {
     pub name: String,
     pub query_params: Vec<Column>,
-    pub response_schema: serde_json::Value,
+    // TODO: Remove option when python side is implemented
+    pub response_schema: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -2013,7 +2014,10 @@ impl PartialInfrastructureMap {
                             required: column.required,
                         })
                         .collect(),
-                    output_schema: partial_api.response_schema.clone(),
+                    output_schema: partial_api
+                        .response_schema
+                        .clone()
+                        .unwrap_or(serde_json::Value::Null),
                 },
                 path: PathBuf::from(partial_api.name.clone()),
                 method: Method::GET,

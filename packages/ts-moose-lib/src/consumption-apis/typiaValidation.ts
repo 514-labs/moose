@@ -459,7 +459,7 @@ const transformNewConsumptionApi = (
     node.arguments.length > 3 ? node.arguments[3] : typiaJsonSchemas(typeNode);
   const responseSchemaArg = typiaJsonSchemas(responseTypeNode);
 
-  // Create columns for both input and response types
+  // Create the columns argument if it doesn't exist
   const inputColumnsArg = toColumns(
     checker.getTypeAtLocation(typeNode),
     checker,

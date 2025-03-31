@@ -48,6 +48,7 @@ class EgressApiConfig(BaseModel):
     model_config = model_config
 
     name: str
+    query_params: List[Column]
 
 
 class InfrastructureMap(BaseModel):
@@ -109,6 +110,7 @@ def to_infra_map() -> dict:
     for name, api in _egress_apis.items():
         egress_apis[name] = EgressApiConfig(
             name=name,
+            query_params=_to_columns(api.model_type),
         )
 
     infra_map = InfrastructureMap(

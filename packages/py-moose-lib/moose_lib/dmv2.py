@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic.json_schema import JsonSchemaValue
 
 _tables: dict[str, "OlapTable"] = {}
 _streams: dict[str, "Stream"] = {}
@@ -217,15 +218,26 @@ class EgressConfig(BaseModel):
     """Configuration for Consumption APIs."""
     pass
 
-class ConsumptionApi(BaseTypedResource, Generic[T]):
+class ConsumptionApi(BaseTypedResource, Generic[T, U]):
     """Configures a Consumption API that can be used to query the data."""
     config: EgressConfig
-    query_function: Optional[Callable[..., Any]] = None
+    query_function: Optional[Callable[..., U]] = None
+    _u: type[U]
+
+    def __class_getitem__(cls, items):
+        # Handle two type parameters
+        if not isinstance(items, tuple) or len(items) != 2:
+            raise ValueError(f"Use `{cls.__name__}[T, U](name='...')` to supply both input and output types")
+        input_type, output_type = items
+
+        def curried_constructor(*args, **kwargs):
+            return cls(t=(input_type, output_type), *args, **kwargs)
+        return curried_constructor
 
     def __init__(
         self,
         name: str,
-        query_function: Optional[Callable[..., Any]] = None,
+        query_function: Optional[Callable[..., U]] = None,
         config: EgressConfig = EgressConfig(),
         **kwargs
     ):
@@ -234,6 +246,105 @@ class ConsumptionApi(BaseTypedResource, Generic[T]):
         self.config = config
         self.query_function = query_function
         _egress_apis[name] = self
+
+    @classmethod
+    def _get_type(cls, keyword_args: dict):
+        t = keyword_args.get('t')
+        if not isinstance(t, tuple) or len(t) != 2:
+            raise ValueError(f"Use `{cls.__name__}[T, U](name='...')` to supply both input and output types")
+
+        input_type, output_type = t
+        if not isinstance(input_type, type) or not issubclass(input_type, BaseModel):
+            raise ValueError(f"Input type {input_type} is not a Pydantic model")
+        if not isinstance(output_type, type) or not issubclass(output_type, BaseModel):
+            raise ValueError(f"Output type {output_type} is not a Pydantic model")
+        return t
+
+    def _set_type(self, name: str, t: tuple[type[T], type[U]]):
+        input_type, output_type = t
+        self._t = input_type
+        self._u = output_type
+        self.name = name
+
+    @property
+    def return_type(self) -> type[U]:
+        """Get the return type associated with this resource."""
+        return self._u
+
+    # TODO: Is there a better way than to try and match the schema
+    # to the one generated from typia?
+    def get_response_schema(self) -> JsonSchemaValue:
+        """Get the OpenAPI-compatible JSON schema for the return type."""
+        from pydantic.type_adapter import TypeAdapter
+
+        # Get the base schema
+        base_schema = TypeAdapter(self.return_type).json_schema(
+            ref_template='#/components/schemas/{model}'
+        )
+
+        # Clean up any Key type references
+        self._clean_key_refs(base_schema)
+
+        # Restructure into the expected format
+        schemas = {}
+
+        # Move definitions from $defs to components/schemas
+        if "$defs" in base_schema:
+            for name, schema in base_schema["$defs"].items():
+                schemas[name] = schema
+            del base_schema["$defs"]
+
+        # Add the main response type
+        response_type_name = self.return_type.__name__
+        schemas[response_type_name] = {
+            "type": base_schema["type"],
+            "properties": base_schema["properties"],
+            "required": base_schema.get("required", [])
+        }
+
+        return {
+            "version": "3.1",
+            "components": {
+                "schemas": schemas
+            },
+            "schemas": [
+                {"$ref": f"#/components/schemas/{response_type_name}"}
+            ]
+        }
+
+    def _clean_key_refs(self, schema: JsonSchemaValue) -> None:
+        """Recursively clean up Key type references in the schema."""
+        if "$defs" in schema:
+            # First find the Key type definitions to determine their types
+            key_types = {}
+            for k, v in schema["$defs"].items():
+                if k.startswith("Key_"):
+                    # Key_str_ -> str, Key_int_ -> int
+                    key_type = "string" if k == "Key_str_" else "integer"
+                    key_types[k] = key_type
+
+            # Then remove them from $defs
+            for k in key_types:
+                del schema["$defs"][k]
+
+        if "$ref" in schema and schema["$ref"].startswith("#/components/schemas/Key_"):
+            # Get the key type from the reference
+            key_def = schema["$ref"].split("/")[-1]  # Get "Key_str_" or "Key_int_"
+            schema_type = "string" if key_def == "Key_str_" else "integer"
+
+            schema.clear()
+            schema.update({"type": schema_type})
+
+        if "title" in schema:
+            del schema["title"]
+
+        for value in schema.values():
+            if isinstance(value, dict):
+                self._clean_key_refs(value)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self._clean_key_refs(item)
 
 
 def get_consumption_api(name: str) -> Optional[ConsumptionApi]:

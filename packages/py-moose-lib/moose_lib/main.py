@@ -98,7 +98,7 @@ class QueryClient:
     def __init__(self, ch_client: ClickhouseClient):
         self.ch_client = ch_client
 
-    def execute(self, input, variables):
+    def execute(self, input, variables) -> Any:
         # No impl for the interface
         pass
 

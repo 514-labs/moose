@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, AliasGenerator
 from .data_models import Column, _to_columns
 from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis
 from pydantic.alias_generators import to_camel
+from pydantic.json_schema import JsonSchemaValue
 
 model_config = ConfigDict(alias_generator=AliasGenerator(
     serialization_alias=to_camel,
@@ -49,6 +50,7 @@ class EgressApiConfig(BaseModel):
 
     name: str
     query_params: List[Column]
+    response_schema: JsonSchemaValue
 
 
 class InfrastructureMap(BaseModel):
@@ -111,6 +113,7 @@ def to_infra_map() -> dict:
         egress_apis[name] = EgressApiConfig(
             name=name,
             query_params=_to_columns(api.model_type),
+            response_schema=api.get_response_schema()
         )
 
     infra_map = InfrastructureMap(

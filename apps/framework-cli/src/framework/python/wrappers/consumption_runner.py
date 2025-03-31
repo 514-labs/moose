@@ -18,6 +18,7 @@ from urllib.parse import urlparse, parse_qs
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
 from moose_lib.dmv2 import get_consumption_api
+from pydantic import BaseModel
 
 import jwt
 from clickhouse_connect import get_client
@@ -269,6 +270,9 @@ def handler_with_client(moose_client):
                         if jwt_payload is not None:
                             args.append(jwt_payload)
                         response = user_api.query_function(*args)
+                        # Convert Pydantic model to dict before JSON serialization
+                        if isinstance(response, BaseModel):
+                            response = response.model_dump()
                     else:
                         self.send_response(404)
                         self.end_headers()

@@ -49,12 +49,18 @@ interface IngestApiJson {
 interface EgressApiJson {
   name: string;
 }
+interface SqlResourceJson {
+  name: string;
+  setup: readonly string[];
+  teardown: readonly string[];
+}
 
 const toInfraMap = (registry: typeof moose_internal) => {
   const tables: { [key: string]: TableJson } = {};
   const topics: { [key: string]: StreamJson } = {};
   const ingestApis: { [key: string]: IngestApiJson } = {};
   const egressApis: { [key: string]: EgressApiJson } = {};
+  const sqlResources: { [key: string]: SqlResourceJson } = {};
 
   registry.tables.forEach((table) => {
     tables[table.name] = {
@@ -104,11 +110,20 @@ const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
+  registry.sqlResources.forEach((sqlResource) => {
+    sqlResources[sqlResource.name] = {
+      name: sqlResource.name,
+      setup: sqlResource.setup,
+      teardown: sqlResource.teardown,
+    };
+  });
+
   return {
     topics,
     tables,
     ingestApis,
     egressApis,
+    sqlResources,
   };
 };
 

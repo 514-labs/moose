@@ -220,6 +220,24 @@ pub async fn execute_changes(
                     run_query(&update_view_query, &configured_client).await?;
                 }
             },
+            OlapChange::SqlResource(Change::Added(resource)) => {
+                for query in &resource.setup {
+                    run_query(query, &configured_client).await?;
+                }
+            }
+            OlapChange::SqlResource(Change::Removed(resource)) => {
+                for query in &resource.teardown {
+                    run_query(query, &configured_client).await?;
+                }
+            }
+            OlapChange::SqlResource(Change::Updated { before, after }) => {
+                for query in &before.teardown {
+                    run_query(query, &configured_client).await?;
+                }
+                for query in &after.setup {
+                    run_query(query, &configured_client).await?;
+                }
+            }
         }
     }
 

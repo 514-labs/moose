@@ -257,8 +257,16 @@ interface MaterializedViewOptions<T> {
 export class SqlResource {
   setup: readonly string[];
   teardown: readonly string[];
+  name: string;
 
-  constructor(setup: readonly string[], teardown: readonly string[]) {
+  constructor(
+    name: string,
+    setup: readonly string[],
+    teardown: readonly string[],
+  ) {
+    getMooseInternal().sqlResources.set(name, this);
+
+    this.name = name;
     this.setup = setup;
     this.teardown = teardown;
   }
@@ -267,6 +275,7 @@ export class SqlResource {
 class View extends SqlResource {
   constructor(name: string, selectStatement: string) {
     super(
+      name,
       [
         `CREATE MATERIALIZED VIEW IF NOT EXISTS ${name} 
         AS ${selectStatement}`.trim(),
@@ -293,6 +302,7 @@ export class MaterializedView<TargetTable> extends SqlResource {
     targetColumns?: Column[],
   ) {
     super(
+      options.materializedViewName,
       [
         createMaterializedView({
           name: options.materializedViewName,

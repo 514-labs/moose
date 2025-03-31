@@ -2,7 +2,7 @@ import { Key, IngestPipeline } from "@514labs/moose-lib";
 
 export interface AircraftTrackingData {
   // Aircraft identifiers
-  hex: Key<string>; // using hex as the key since it appears to be a unique aircraft identifier
+  hex: string; // using hex as the key since it appears to be a unique aircraft identifier
   transponder_type: string;
   flight: string;
   r: string;
@@ -60,7 +60,7 @@ export interface AircraftTrackingData {
 }
 
 export interface AircraftTrackingProcessed extends AircraftTrackingData {
-  zorderCoordinate: number;
+  zorderCoordinate: Key<number>;
   approach: boolean;
   autopilot: boolean;
   althold: boolean;

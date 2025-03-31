@@ -53,6 +53,7 @@ pub enum ClickHouseColumnType {
     Nested(Vec<ClickHouseColumn>),
     AggregateFunction(
         AggregationFunction<ClickHouseColumnType>,
+        // the return type of the aggregation function
         Box<ClickHouseColumnType>,
     ),
 }

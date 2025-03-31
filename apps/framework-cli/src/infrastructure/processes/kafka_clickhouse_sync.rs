@@ -808,6 +808,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "B".to_string(),
@@ -816,6 +817,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "C".to_string(),
@@ -830,6 +832,7 @@ mod tests {
                                 unique: false,
                                 primary_key: false,
                                 default: None,
+                                annotations: vec![],
                             },
                             Column {
                                 name: "b".to_string(),
@@ -844,6 +847,7 @@ mod tests {
                                             unique: false,
                                             primary_key: false,
                                             default: None,
+                                            annotations: vec![],
                                         },
                                         Column {
                                             name: "e".to_string(),
@@ -852,6 +856,7 @@ mod tests {
                                             unique: false,
                                             primary_key: false,
                                             default: None,
+                                            annotations: vec![],
                                         },
                                         Column {
                                             name: "f".to_string(),
@@ -860,6 +865,7 @@ mod tests {
                                             unique: false,
                                             primary_key: false,
                                             default: None,
+                                            annotations: vec![],
                                         },
                                     ],
                                 }),
@@ -867,6 +873,7 @@ mod tests {
                                 unique: false,
                                 primary_key: false,
                                 default: None,
+                                annotations: vec![],
                             },
                             Column {
                                 name: "c".to_string(),
@@ -875,6 +882,7 @@ mod tests {
                                 unique: false,
                                 primary_key: false,
                                 default: None,
+                                annotations: vec![],
                             },
                         ],
                     }),
@@ -882,6 +890,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "D".to_string(),
@@ -890,6 +899,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
             ],
         };

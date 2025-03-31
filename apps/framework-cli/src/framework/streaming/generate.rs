@@ -460,6 +460,7 @@ my_function = StreamingFunction(
                 unique: is_key,
                 primary_key: is_key,
                 default: None,
+                annotations: vec![],
             })
             .collect()
     }

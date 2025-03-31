@@ -1054,6 +1054,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         })];
 
         let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
@@ -1075,6 +1076,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             }),
             ColumnChange::Removed(Column {
                 name: "old_column".to_string(),
@@ -1083,6 +1085,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             }),
             ColumnChange::Updated {
                 before: Column {
@@ -1092,6 +1095,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 after: Column {
                     name: "id".to_string(),
@@ -1100,6 +1104,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
             },
         ];

@@ -2316,6 +2316,7 @@ mod tests {
     fn test_compute_table_diff() {
         let before = Table {
             name: "test_table".to_string(),
+            engine: None,
             deduplicate: false,
             columns: vec![
                 Column {
@@ -2325,6 +2326,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "name".to_string(),
@@ -2333,6 +2335,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "to_be_removed".to_string(),
@@ -2341,6 +2344,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2353,6 +2357,7 @@ mod tests {
 
         let after = Table {
             name: "test_table".to_string(),
+            engine: None,
             deduplicate: false,
             columns: vec![
                 Column {
@@ -2362,6 +2367,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "name".to_string(),
@@ -2370,6 +2376,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "age".to_string(), // New column
@@ -2378,6 +2385,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by

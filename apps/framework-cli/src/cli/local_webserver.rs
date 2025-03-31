@@ -1848,8 +1848,10 @@ mod tests {
                 unique: true,
                 primary_key: true,
                 default: None,
+                annotations: vec![],
             }],
             order_by: vec!["id".to_string()],
+            engine: None,
             deduplicate: false,
             version: Version::from_string("1.0.0".to_string()),
             source_primitive: PrimitiveSignature {

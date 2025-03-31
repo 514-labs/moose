@@ -594,6 +594,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();

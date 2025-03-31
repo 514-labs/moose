@@ -13,7 +13,10 @@ pub fn std_column_to_clickhouse_column(
 ) -> Result<ClickHouseColumn, ClickhouseError> {
     let clickhouse_column = ClickHouseColumn {
         name: sanitize_column_name(column.name),
-        column_type: std_field_type_to_clickhouse_type_mapper(column.data_type)?,
+        column_type: std_field_type_to_clickhouse_type_mapper(
+            column.data_type,
+            &column.annotations,
+        )?,
         required: column.required,
         unique: column.unique,
         primary_key: column.primary_key,
@@ -25,7 +28,16 @@ pub fn std_column_to_clickhouse_column(
 
 pub fn std_field_type_to_clickhouse_type_mapper(
     field_type: ColumnType,
+    annotations: &[(String, String)],
 ) -> Result<ClickHouseColumnType, ClickhouseError> {
+    if let Some((_, agg_func)) = annotations.iter().find(|(k, _)| k == "aggregationFunction") {
+        let clickhouse_type = std_field_type_to_clickhouse_type_mapper(field_type, &[])?;
+        return Ok(ClickHouseColumnType::AggregateFunction {
+            name: agg_func.to_string(),
+            t: Box::new(clickhouse_type),
+        });
+    }
+
     match field_type {
         ColumnType::String => Ok(ClickHouseColumnType::String),
         ColumnType::Boolean => Ok(ClickHouseColumnType::Boolean),
@@ -40,7 +52,8 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             element_type,
             element_nullable,
         } => {
-            let inner_clickhouse_type = std_field_type_to_clickhouse_type_mapper(*element_type)?;
+            let inner_clickhouse_type =
+                std_field_type_to_clickhouse_type_mapper(*element_type, &[])?;
             let with_nullable = if element_nullable {
                 ClickHouseColumnType::Nullable(Box::new(inner_clickhouse_type))
             } else {
@@ -74,7 +87,10 @@ pub fn std_columns_to_clickhouse_columns(
     for column in columns {
         let clickhouse_column = ClickHouseColumn {
             name: sanitize_column_name(column.name.clone()),
-            column_type: std_field_type_to_clickhouse_type_mapper(column.data_type.clone())?,
+            column_type: std_field_type_to_clickhouse_type_mapper(
+                column.data_type.clone(),
+                &column.annotations,
+            )?,
             required: column.required,
             unique: column.unique,
             primary_key: column.primary_key,

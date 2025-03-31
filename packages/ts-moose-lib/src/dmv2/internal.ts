@@ -1,5 +1,11 @@
 import process from "process";
-import { IngestApi, OlapTable, Stream, ConsumptionApi } from "./index";
+import {
+  IngestApi,
+  OlapTable,
+  Stream,
+  ConsumptionApi,
+  SqlResource,
+} from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
 import { ConsumptionUtil, IngestionFormat } from "../index";
@@ -9,6 +15,7 @@ const moose_internal = {
   streams: new Map<string, Stream<any>>(),
   ingestApis: new Map<string, IngestApi<any>>(),
   egressApis: new Map<string, ConsumptionApi<any>>(),
+  sqlResources: new Map<string, SqlResource>(),
 };
 const defaultRetentionPeriod = 60 * 60 * 24 * 7;
 
@@ -17,6 +24,7 @@ interface TableJson {
   columns: Column[];
   orderBy: string[];
   deduplicate: boolean;
+  engine?: string;
 }
 interface Target {
   name: string;
@@ -54,6 +62,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
       deduplicate: table.config.deduplicate ?? false,
+      engine: table.config.engine,
     };
   });
 

@@ -44,6 +44,10 @@ pub enum ClickHouseColumnType {
     Nullable(Box<ClickHouseColumnType>),
     Enum(DataEnum),
     Nested(Vec<ClickHouseColumn>),
+    AggregateFunction {
+        name: String,
+        t: Box<ClickHouseColumnType>,
+    },
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -85,6 +89,7 @@ impl ClickHouseColumnType {
                             unique: col.unique,
                             primary_key: col.primary_key,
                             default: None,
+                            annotations: Default::default(),
                         }
                     })
                     .collect(),
@@ -93,6 +98,10 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::Nullable(inner) => {
                 required = false;
                 inner.to_std_column_type().0
+            }
+            ClickHouseColumnType::AggregateFunction { name: _, t } => {
+                // TODO: return the function name as an "annotation"
+                return t.to_std_column_type();
             }
         };
         (column_type, required)

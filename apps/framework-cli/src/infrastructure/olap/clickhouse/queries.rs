@@ -248,6 +248,13 @@ pub fn basic_field_type_to_string(
             // <column_name> String NULL is equivalent to <column_name> Nullable(String)
             Ok(format!("Nullable({})", inner_type_string))
         }
+        ClickHouseColumnType::AggregateFunction { name, t } => {
+            let inner_type_string = basic_field_type_to_string(t)?;
+            Ok(format!(
+                "AggregateFunction({}, {})",
+                name, inner_type_string
+            ))
+        }
     }
 }
 

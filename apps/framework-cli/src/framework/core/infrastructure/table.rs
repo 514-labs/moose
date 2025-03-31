@@ -1,15 +1,15 @@
-use protobuf::{EnumOrUnknown, MessageField};
-use serde::de::{Error, MapAccess, Visitor};
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Deserializer, Serialize};
-use std::fmt;
-
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map::column_type;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
+use protobuf::well_known_types::wrappers::StringValue;
+use protobuf::{EnumOrUnknown, MessageField};
+use serde::de::{Error, MapAccess, Visitor};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
@@ -18,6 +18,8 @@ pub struct Table {
     pub order_by: Vec<String>,
     #[serde(default)]
     pub deduplicate: bool,
+    #[serde(default)]
+    pub engine: Option<String>,
 
     pub version: Version,
     pub source_primitive: PrimitiveSignature,
@@ -56,6 +58,12 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.to_string(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
+
+            deduplicate: self.deduplicate,
+            engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
+                value: engine.to_string(),
+                special_fields: Default::default(),
+            })),
             special_fields: Default::default(),
         }
     }
@@ -68,6 +76,7 @@ impl Table {
             version: Version::from_string(proto.version),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
             deduplicate: false, // TODO: Add to proto
+            engine: proto.engine.into_option().map(|wrapper| wrapper.value),
         }
     }
 }
@@ -80,6 +89,8 @@ pub struct Column {
     pub unique: bool,
     pub primary_key: bool,
     pub default: Option<ColumnDefaults>,
+    #[serde(default)]
+    pub annotations: Vec<(String, String)>, // workaround for needing to Hash
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -311,11 +322,19 @@ impl Column {
                 None => ProtoColumnDefaults::NONE,
                 Some(column_default) => column_default.to_proto(),
             }),
+            annotations: self
+                .annotations
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             special_fields: Default::default(),
         }
     }
 
     pub fn from_proto(proto: crate::proto::infrastructure_map::Column) -> Self {
+        let mut annotations: Vec<(String, String)> = proto.annotations.into_iter().collect();
+        annotations.sort_by(|a, b| a.0.cmp(&b.0));
+
         Column {
             name: proto.name,
             data_type: ColumnType::from_proto(proto.data_type.unwrap()),
@@ -330,6 +349,7 @@ impl Column {
                 ProtoColumnDefaults::NONE => None,
                 default => Some(ColumnDefaults::from_proto(default)),
             },
+            annotations,
         }
     }
 }

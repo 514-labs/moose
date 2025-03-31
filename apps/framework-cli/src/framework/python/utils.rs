@@ -48,6 +48,7 @@ impl ColumnBuilder {
             unique,
             primary_key,
             default: self.default,
+            annotations: Default::default(),
         })
     }
 }

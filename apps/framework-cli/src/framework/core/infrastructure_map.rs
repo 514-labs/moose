@@ -1626,6 +1626,7 @@ struct PartialTable {
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
     pub deduplicate: bool,
+    pub engine: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1788,6 +1789,7 @@ impl PartialInfrastructureMap {
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
                     deduplicate: partial_table.deduplicate,
+                    engine: partial_table.engine.clone(),
                     // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {

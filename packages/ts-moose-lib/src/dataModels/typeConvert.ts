@@ -37,8 +37,9 @@ const throwNullType = (fieldName: string, typeName: string): never => {
   throw new NullType(fieldName, typeName);
 };
 
-const toArrayType = ([elementNullable, elementType]: [
+const toArrayType = ([elementNullable, _, elementType]: [
   boolean,
+  string | undefined,
   DataType,
 ]): ArrayType => {
   return {
@@ -49,6 +50,25 @@ const toArrayType = ([elementNullable, elementType]: [
 
 const isNumberType = (t: ts.Type, checker: TypeChecker): boolean => {
   return checker.isTypeAssignableTo(t, checker.getNumberType());
+};
+
+const handleAggregated = (
+  t: ts.Type,
+  checker: TypeChecker,
+): string | undefined => {
+  const functionSymbol = t.getProperty("_aggregationFunction");
+  if (functionSymbol === undefined) {
+    return undefined;
+  }
+  const functionStringLiteral = checker.getNonNullableType(
+    checker.getTypeOfSymbol(functionSymbol),
+  );
+  if (functionStringLiteral.isStringLiteral()) {
+    return functionStringLiteral.value;
+  } else {
+    console.log("Unexpected type inside Aggregated", functionStringLiteral);
+    return undefined;
+  }
 };
 
 const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
@@ -90,20 +110,22 @@ const tsTypeToDataType = (
   fieldName: string,
   typeName: string,
   isJwt: boolean,
-): [boolean, DataType] => {
+): [boolean, string | undefined, DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
+
+  const aggregationFunction = handleAggregated(t, checker);
 
   // this looks nicer if we turn on experimentalTernaries in prettier
   const dataType: DataType = isEnum(nonNull)
     ? enumConvert(nonNull)
-    : nonNull == checker.getStringType()
+    : checker.isTypeAssignableTo(nonNull, checker.getStringType())
       ? "String"
       : isNumberType(nonNull, checker)
         ? handleNumberType(nonNull, checker)
-        : nonNull == checker.getBooleanType()
+        : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())
           ? "Boolean"
-          : nonNull == dateType(checker)
+          : checker.isTypeAssignableTo(nonNull, dateType(checker))
             ? "DateTime"
             : checker.isArrayType(nonNull)
               ? toArrayType(
@@ -126,7 +148,7 @@ const tsTypeToDataType = (
                   ? throwNullType(fieldName, typeName)
                   : throwUnknownType(t, fieldName, typeName);
 
-  return [nullable, dataType];
+  return [nullable, aggregationFunction, dataType];
 };
 
 const hasWrapping = (
@@ -162,13 +184,18 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
 
     const isKey = hasKeyWrapping(node.type);
     const isJwt = hasJwtWrapping(node.type);
-    const [nullable, dataType] = tsTypeToDataType(
+    const [nullable, aggregationFunction, dataType] = tsTypeToDataType(
       type,
       checker,
       prop.name,
       t.symbol.name,
       isJwt,
     );
+
+    const annotations: [string, string][] = [];
+    if (aggregationFunction !== undefined) {
+      annotations.push(["aggregationFunction", aggregationFunction]);
+    }
 
     return {
       name: prop.name,
@@ -177,6 +204,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       required: !nullable,
       unique: false,
       default: null,
+      annotations,
     };
   });
 };

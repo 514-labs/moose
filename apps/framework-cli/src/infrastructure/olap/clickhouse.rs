@@ -790,6 +790,7 @@ impl OlapOperations for ConfiguredDBClient {
                     unique: false,
                     primary_key: is_primary == 1,
                     default: None,
+                    annotations: Default::default(),
                 };
 
                 columns.push(column);
@@ -816,6 +817,7 @@ impl OlapOperations for ConfiguredDBClient {
                 columns,
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
                 deduplicate: engine.contains("ReplacingMergeTree"),
+                engine: Some(engine),
                 version, // Still store the version for reference
                 source_primitive,
             };

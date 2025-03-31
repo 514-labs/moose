@@ -3,6 +3,7 @@ syntax = "proto3";
 package moose.proto;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
 
 message InfrastructureMap {
   map<string, Topic> topics = 1;
@@ -77,6 +78,9 @@ message Table {
   repeated string order_by = 3;
   string version = 4;
   PrimitiveSignature source_primitive = 5;
+
+  bool deduplicate = 6;
+  google.protobuf.StringValue engine = 7;
 }
 
 message View {
@@ -131,6 +135,8 @@ message Column {
   bool unique = 4;
   bool primary_key = 5;
   ColumnDefaults default = 6;
+
+  map<string, string> annotations = 7;
 }
 
 enum SimpleColumnType {

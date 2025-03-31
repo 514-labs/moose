@@ -3,16 +3,17 @@ import { Key, IngestPipeline } from "@514labs/moose-lib";
 export interface AircraftTrackingData {
   // Aircraft identifiers
   hex: Key<string>; // using hex as the key since it appears to be a unique aircraft identifier
-  type: string;
+  transponder_type: string;
   flight: string;
   r: string;
-  t: string;
+  aircraft_type?: string;
   dbFlags: number;
 
   // Position data
   lat: number;
   lon: number;
   alt_baro: number;
+  alt_baro_is_ground: boolean;
   alt_geom: number;
   gs: number;
   track: number;
@@ -53,6 +54,9 @@ export interface AircraftTrackingData {
   messages: number;
   seen: number;
   rssi: number;
+
+  // Timestamp
+  timestamp: string;
 }
 
 export interface AircraftTrackingProcessed extends AircraftTrackingData {

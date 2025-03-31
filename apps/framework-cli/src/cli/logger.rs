@@ -226,7 +226,7 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
         None => output_config,
         Some(otel_endpoint) => {
             let string_uri = otel_endpoint.to_string();
-            let reqwest_client = reqwest::Client::new();
+            let reqwest_client = reqwest::blocking::Client::new();
 
             let open_telemetry_exporter = opentelemetry_otlp::LogExporter::builder()
                 .with_http()

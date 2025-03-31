@@ -39,7 +39,7 @@ export const isNewMooseResourceWithTypeParam = (
   );
 };
 
-const parseAsAny = (s: string) =>
+export const parseAsAny = (s: string) =>
   factory.createAsExpression(
     factory.createCallExpression(
       factory.createPropertyAccessExpression(

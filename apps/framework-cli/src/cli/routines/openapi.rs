@@ -192,8 +192,50 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                 query_params,
                 output_schema,
             } => {
-                let path_item =
+                let (path_item, component_schemas) =
                     create_egress_path_item(api_endpoint, output_schema.clone(), query_params);
+
+                // Add any component schemas to the root level schemas
+                if let Some(components) = component_schemas {
+                    schemas.extend(components.into_iter().map(|(k, v)| {
+                        let schema_obj = v.as_object().unwrap();
+                        (
+                            k,
+                            Schema {
+                                schema_type: schema_obj
+                                    .get("type")
+                                    .and_then(|t| t.as_str())
+                                    .unwrap_or("object")
+                                    .to_string(),
+                                properties: schema_obj
+                                    .get("properties")
+                                    .and_then(|p| p.as_object())
+                                    .map(|props| {
+                                        props
+                                            .iter()
+                                            .map(|(pk, pv)| {
+                                                (
+                                                    pk.clone(),
+                                                    serde_json::from_value(pv.clone()).unwrap(),
+                                                )
+                                            })
+                                            .collect()
+                                    })
+                                    .unwrap_or_default(),
+                                required: schema_obj
+                                    .get("required")
+                                    .and_then(|r| r.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .map(|v| v.as_str().unwrap().to_string())
+                                            .collect()
+                                    })
+                                    .unwrap_or_default(),
+                            },
+                        )
+                    }));
+                }
+
                 paths.insert(
                     format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
@@ -248,8 +290,29 @@ fn create_egress_path_item(
     api_endpoint: &ApiEndpoint,
     output_schema: Value,
     query_params: &[ConsumptionQueryParam],
-) -> PathItem {
-    PathItem {
+) -> (PathItem, Option<HashMap<String, Value>>) {
+    let default_schema = r#"{"type": "object"}"#;
+
+    let (component_schemas, response_schema) = if output_schema != Value::Null {
+        let components = output_schema
+            .get("components")
+            .and_then(|c| c.get("schemas"))
+            .and_then(|s| s.as_object())
+            .cloned();
+
+        let schema = output_schema
+            .get("schemas")
+            .and_then(|s| s.as_array())
+            .and_then(|a| a.first())
+            .cloned()
+            .unwrap_or_else(|| serde_json::from_str(default_schema).unwrap());
+
+        (components, schema)
+    } else {
+        (None, serde_json::from_str(default_schema).unwrap())
+    };
+
+    let path_item = PathItem {
         post: None,
         get: Some(Operation {
             summary: format!("Egress endpoint for {}", api_endpoint.name),
@@ -267,24 +330,23 @@ fn create_egress_path_item(
                 })
                 .collect(),
             request_body: None,
-            responses: if output_schema != Value::Null {
-                HashMap::from([(
-                    "200".to_string(),
-                    Response {
-                        description: "Successful operation".to_string(),
-                        content: HashMap::from([(
-                            "application/json".to_string(),
-                            json!({
-                                "schema": output_schema,
-                            }),
-                        )]),
-                    },
-                )])
-            } else {
-                create_default_responses()
-            },
+            responses: HashMap::from([(
+                "200".to_string(),
+                Response {
+                    description: "Successful operation".to_string(),
+                    content: HashMap::from([(
+                        "application/json".to_string(),
+                        json!({ "schema": response_schema }),
+                    )]),
+                },
+            )]),
         }),
-    }
+    };
+
+    (
+        path_item,
+        component_schemas.map(|m| m.into_iter().collect()),
+    )
 }
 
 fn create_default_responses() -> HashMap<String, Response> {

@@ -134,6 +134,7 @@ export class Sql {
         } else {
           this.strings[pos] += `\`${child.name}\``;
         }
+        this.strings[pos] += rawString;
       } else {
         this.values[pos++] = child;
         this.strings[pos] = rawString;

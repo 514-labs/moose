@@ -163,7 +163,7 @@ pub async fn get_template_config(
     })?;
 
     // If template not found, create helpful error message with available templates
-    if !templates.get(template_name).is_some() {
+    if templates.get(template_name).is_none() {
         let available_templates: Vec<String> = templates
             .as_table()
             .map(|table| {

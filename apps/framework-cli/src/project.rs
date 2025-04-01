@@ -12,7 +12,6 @@
 //! ```
 
 use std::collections::HashMap;
-use std::io::Write;
 pub mod python_project;
 pub mod typescript_project;
 
@@ -24,18 +23,7 @@ use std::sync::Once;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
-use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_SAMPLE;
-use crate::framework::python::templates::{PYTHON_BASE_API_SAMPLE, PYTHON_BASE_BLOCKS_SAMPLE};
 use crate::framework::streaming::loader::parse_streaming_function;
-use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
-use crate::framework::typescript::templates::{TS_BASE_APIS_SAMPLE, VS_CODE_PYTHON_SETTINGS};
-use crate::framework::typescript::templates::{
-    TS_BASE_BLOCKS_SAMPLE, TS_BASE_STREAMING_FUNCTION_SAMPLE,
-};
-use crate::framework::typescript::templates::{
-    VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
-};
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
@@ -51,20 +39,14 @@ use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::ENVIRONMENT_VARIABLE_PREFIX;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
-use crate::utilities::constants::PY_BLOCKS_FILE;
-use crate::utilities::constants::README_PREFIX;
-use crate::utilities::constants::TSCONFIG_JSON;
-use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
-use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
+use crate::utilities::constants::{APP_DIR, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
-    CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, SAMPLE_STREAMING_FUNCTION_DEST,
-    SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
+    CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, TS_FLOW_FILE,
 };
-use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
-use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
 use crate::utilities::PathExt;
 use crate::utilities::_true;
@@ -334,156 +316,6 @@ impl Project {
         }
     }
 
-    /// Sets up the application directory structure
-    pub fn setup_app_dir(&self) -> Result<(), ProjectFileError> {
-        let app_dir = self.app_dir();
-        std::fs::create_dir_all(&app_dir)?;
-
-        // TODO probably move this to the respective project language modules
-        if self.language == SupportedLanguages::Python {
-            std::fs::File::create(app_dir.join(PYTHON_INIT_FILE))?;
-        }
-
-        for dir in APP_DIR_LAYOUT.iter() {
-            let to_create = app_dir.join(dir);
-            std::fs::create_dir_all(&to_create)?;
-
-            // TODO probably move this to the respective project language modules
-            if self.language == SupportedLanguages::Python {
-                std::fs::File::create(to_create.join(PYTHON_INIT_FILE))?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Creates base application files with optional sample code
-    pub fn create_base_app_files(&self, no_samples: bool) -> Result<(), std::io::Error> {
-        // Common file paths
-        let readme_file_path = self.project_location.join("README.md");
-        let blocks_dir = self.blocks_dir();
-
-        if !no_samples {
-            self.write_file(
-                &readme_file_path,
-                README_PREFIX.to_owned() + include_str!("../../../README.md"),
-            )?;
-        }
-        match self.language {
-            // TODO move the templates to the respective project language modules
-            SupportedLanguages::Typescript => {
-                let tsconfig = self.project_location.join(TSCONFIG_JSON);
-                self.write_file(
-                    &tsconfig,
-                    serde_json::to_string_pretty(&serde_json::json!(
-                        {
-                            "compilerOptions": {
-                                "outDir": "dist",
-                                "esModuleInterop": true,
-                                "paths": {
-                                  "datamodels/*": ["./app/datamodels/*"],
-                                  "versions/*": ["./.moose/versions/*"]
-                                },
-                                "plugins": [
-                                    {
-                                        "transform": "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
-                                        "transformProgram": true
-                                    },
-                                    {
-                                        "transform": "typia/lib/transform"
-                                    }
-                                ],
-                                "strictNullChecks": true
-                            }
-                        }
-                    ))
-                    .expect("formatting `serde_json::Value` with string keys never fails"),
-                )?;
-
-                if !no_samples {
-                    let apis_file_path = self.consumption_dir().join(TS_API_FILE);
-                    let base_model_file_path = self.data_models_dir().join("models.ts");
-                    let function_file_path = self.streaming_func_dir().join(format!(
-                        "{}__{}.ts",
-                        SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
-                    ));
-                    let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
-
-                    self.write_file(&apis_file_path, TS_BASE_APIS_SAMPLE.to_string())?;
-                    self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
-                    self.write_file(
-                        &function_file_path,
-                        TS_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
-                    )?;
-
-                    self.write_file(&blocks_file_path, TS_BASE_BLOCKS_SAMPLE.to_string())?;
-                }
-            }
-            SupportedLanguages::Python if !no_samples => {
-                let apis_file_path = self.consumption_dir().join(PY_API_FILE);
-                let base_model_file_path = self.data_models_dir().join("models.py");
-                let function_file_path = self.streaming_func_dir().join(format!(
-                    "{}__{}.py",
-                    SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
-                ));
-                let blocks_file_path = blocks_dir.join(PY_BLOCKS_FILE);
-
-                // Write Python specific templates
-                self.write_file(&apis_file_path, PYTHON_BASE_API_SAMPLE.to_string())?;
-                self.write_file(
-                    &base_model_file_path,
-                    PYTHON_BASE_MODEL_TEMPLATE.to_string(),
-                )?;
-                self.write_file(
-                    &function_file_path,
-                    PYTHON_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
-                )?;
-                self.write_file(&blocks_file_path, PYTHON_BASE_BLOCKS_SAMPLE.to_string())?;
-            }
-            SupportedLanguages::Python => {} // nothing to do
-        }
-
-        Ok(())
-    }
-
-    /// Helper function to write file content
-    fn write_file(&self, path: &PathBuf, content: String) -> Result<(), std::io::Error> {
-        let mut file = std::fs::File::create(path)?;
-        let content = if let Some(without_starting_empty_line) = content.strip_prefix('\n') {
-            without_starting_empty_line
-        } else {
-            &content
-        };
-        file.write_all(content.as_bytes())?;
-        Ok(())
-    }
-
-    /// Creates VSCode configuration files
-    pub fn create_vscode_files(&self) -> Result<(), ProjectFileError> {
-        let vscode_dir = self.vscode_dir();
-
-        let ext_file_path = vscode_dir.join(VSCODE_EXT_FILE);
-        let settings_file_path = vscode_dir.join(VSCODE_SETTINGS_FILE);
-
-        let mut ext_file = std::fs::File::create(ext_file_path)?;
-        let mut settings_file = std::fs::File::create(settings_file_path)?;
-
-        ext_file.write_all(VSCODE_EXTENSIONS_TEMPLATE.as_bytes())?;
-        settings_file.write_all(
-            VSCODE_SETTINGS_TEMPLATE
-                .replace(
-                    "{language_specific_settings}",
-                    match self.language {
-                        SupportedLanguages::Typescript => "",
-                        SupportedLanguages::Python => VS_CODE_PYTHON_SETTINGS,
-                    },
-                )
-                .as_bytes(),
-        )?;
-
-        Ok(())
-    }
-
     /// Returns the path to the app directory
     pub fn app_dir(&self) -> PathBuf {
         let mut app_dir = self.project_location.clone();
@@ -573,19 +405,6 @@ impl Project {
 
         debug!("Consumptions dir: {:?}", apis_dir);
         apis_dir
-    }
-
-    /// Returns the path to the VSCode directory
-    pub fn vscode_dir(&self) -> PathBuf {
-        let mut vscode_dir = self.project_location.clone();
-        vscode_dir.push(VSCODE_DIR);
-
-        if !vscode_dir.exists() {
-            std::fs::create_dir_all(&vscode_dir).expect("Failed to create .vscode directory");
-        }
-
-        debug!(".vscode dir: {:?}", vscode_dir);
-        vscode_dir
     }
 
     /// Returns the path to the internal directory

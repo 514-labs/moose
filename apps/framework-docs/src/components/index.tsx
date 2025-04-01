@@ -10,3 +10,5 @@ export * from "./FeatureCard";
 export * from "./MuxVideo";
 export * from "./product-badge";
 export * from "./meta-renderer";
+export * from "./bullet-points-card";
+export * from "./q-and-a-bullets";

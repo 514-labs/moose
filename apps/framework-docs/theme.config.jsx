@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
+import { LanguageSwitcher } from "./src/components/language-switcher";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +22,7 @@ import { Button } from "@/components/ui/button";
 // Base text styles that match your typography components
 const baseTextStyles = {
   small:
-    "text-primary text-sm sm:text-sm 2xl:text-base 3xl:text-lg leading-normal",
+    "text-primary text-sm sm:text-sm 2xl:text-base 3xl:text-md leading-normal",
   regular:
     "text-primary text-base sm:text-lg 2xl:text-xl 3xl:text-2xl leading-normal",
   heading: "text-primary font-semibold",
@@ -101,6 +102,14 @@ export default {
       </Link>
     ),
   },
+  main: ({ children }) => (
+    <div className="relative">
+      <div className="absolute right-0 top-0 z-10">
+        <LanguageSwitcher />
+      </div>
+      {children}
+    </div>
+  ),
   navigation: {
     prev: true,
     next: true,
@@ -159,7 +168,7 @@ export default {
       </ol>
     ),
     li: ({ children }) => (
-      <li className={cn("list-item list-disc my-3", baseTextStyles.small)}>
+      <li className={cn("list-item list-disc my-0 py-0", baseTextStyles.small)}>
         {children}
       </li>
     ),

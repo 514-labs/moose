@@ -17,9 +17,9 @@ const renderSidebarItem = (item: string | MetaItem, key?: string): MetaItem => {
   if (typeof item === "string") {
     return {
       title: (
-        <SmallText className="my-0 text-muted-foreground hover:text-primary transition-colors">
+        <p className="my-0 text-muted-foreground hover:text-primary transition-colors">
           {item}
-        </SmallText>
+        </p>
       ),
     };
   }
@@ -37,15 +37,15 @@ const renderSidebarItem = (item: string | MetaItem, key?: string): MetaItem => {
   }
 
   // If it has a type field, it's a separator
-  if (item.type === "separator") {
+  if (item.type === "separator" && !item.title) {
     return {
       type: "separator",
       title: (
-        <SmallText className="mb-0">
+        <p className="text-sm mb-0">
           {typeof item.title === "string"
             ? item.title
             : key?.replace(/--/g, "")}
-        </SmallText>
+        </p>
       ),
     };
   }
@@ -62,9 +62,9 @@ const renderSidebarItem = (item: string | MetaItem, key?: string): MetaItem => {
     return {
       ...item,
       title: (
-        <SmallText className="my-0 text-muted-foreground hover:text-primary transition-colors">
+        <p className="my-0 text-muted-foreground hover:text-primary transition-colors">
           {item.title}
-        </SmallText>
+        </p>
       ),
     };
   }

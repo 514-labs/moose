@@ -21,6 +21,7 @@ You can create ingestion APIs in two ways:
 <Tabs.Tab>
 The `IngestPipeline` class provides a convenient way to set up ingestion endpoints, streams, and tables with a single declaration:
 
+<TypeScript>
 ```typescript filename="AnalyticsPipeline.ts" copy
 interface ExampleSchema {
   id: string;
@@ -35,6 +36,22 @@ const examplePipeline = new IngestPipeline<ExampleSchema>("example", {
   table: true
 });
 ```
+</TypeScript>
+
+<Python>
+```python filename="IngestPipeline.py" copy
+from moose_lib import Key, IngestPipeline, IngestionFormat, Stream, OlapTable
+from pydantic import BaseModel
+
+class ExampleSchema(BaseModel):
+    id: Key[str]
+    name: str
+    value: int
+    timestamp: datetime
+
+```
+</Python>
+
 </Tabs.Tab>
 
 <Tabs.Tab>

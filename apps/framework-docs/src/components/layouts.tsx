@@ -23,7 +23,10 @@ export default function RootLayout({
     <LanguageProvider>
       <main
         lang="en"
-        className={"font-sans" + ` ${monoFont.variable} ${sansFont.variable}`}
+        className={
+          "font-sans" +
+          ` ${monoFont.variable} ${sansFont.variable} bg-background`
+        }
       >
         {children}
       </main>

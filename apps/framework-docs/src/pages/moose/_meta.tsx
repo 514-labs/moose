@@ -1,7 +1,17 @@
 import { render } from "@/components";
-
+import { LanguageSwitcher } from "@/components/language-switcher";
 // Raw meta object - more concise without repetitive rendering logic
 const rawMeta = {
+  // "--Select Language--": {
+  //   type: "separator",
+  //   title: (
+  //     <div className="flex flex-col gap-2">
+  //       <p>Language:</p>
+  //       <LanguageSwitcher />
+  //     </div>
+  //   )
+
+  // },
   // First Contact - Essential for newcomers
   "--Getting Started--": {
     type: "separator",

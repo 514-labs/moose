@@ -19,13 +19,16 @@ export function FeatureCard({
   features = [],
   variant = "moose",
 }: FeatureCardProps) {
-  const cardClasses = cn("flex flex-col p-6 rounded-lg border border-border", {
-    "transition-colors cursor-pointer": !!href,
-    "hover:border-moose-purple hover:bg-moose-purple/10":
-      !!href && variant === "moose",
-    "hover:border-aurora-teal hover:bg-aurora-teal/10":
-      !!href && variant === "aurora",
-  });
+  const cardClasses = cn(
+    "flex flex-col p-6 rounded-lg border border-border bg-card",
+    {
+      "transition-colors cursor-pointer": !!href,
+      "hover:border-moose-purple hover:bg-moose-purple/10":
+        !!href && variant === "moose",
+      "hover:border-aurora-teal hover:bg-aurora-teal/10":
+        !!href && variant === "aurora",
+    },
+  );
 
   const CardContent = () => (
     <>

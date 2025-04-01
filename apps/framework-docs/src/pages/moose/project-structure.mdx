@@ -3,15 +3,13 @@ import { LanguageSwitcher } from "@/components";
 
 # Project Structure
 
-<LanguageSwitcher />
-
 Moose provides a flexible yet opinionated project structure that helps you build reliable data applications quickly. The key principle is that **only objects exported from your root `index.ts` file are mapped to infrastructure**, giving you freedom in how you organize your implementation details.
 
 ## Core Concept: Infrastructure Mapping
 
-The most important file in your project is the root `index.ts` (or `index.py`). This file acts as the single source of truth for what gets deployed to your infrastructure:
-
 <TypeScript>
+The most important file in your project is the root `index.ts`. This file acts as the single source of truth for what gets deployed to your infrastructure:
+
 ```typescript
 // app/index.ts
 export { StarEventModel } from './datamodels/github';
@@ -21,13 +19,15 @@ export { StarAnalyticsAPI } from './apis/analytics';
 </TypeScript>
 
 <Python>
-```python
-# app/index.py
-from app.datamodels.github import StarEventModel
-from app.functions.process_stars import ProcessStarsFunction
-from app.apis.analytics import StarAnalyticsAPI
+The most important file in your project is the root `main.py`. This file acts as the single source of truth for what gets deployed to your infrastructure:
 
-__all__ = ['StarEventModel', 'ProcessStarsFunction', 'StarAnalyticsAPI']
+```python
+# app/main.py
+import app.datamodels
+import app.functions
+import app.views
+import app.apis
+
 ```
 </Python>
 
@@ -70,7 +70,7 @@ While you have flexibility in organizing your implementation, Moose provides a c
 <FileTree>
   <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="index.py" />
+    <FileTree.File name="main.py" />
     <FileTree.Folder name="datamodels" defaultOpen>
       <FileTree.File name="github.py" />
       <FileTree.File name="analytics.py" />

@@ -3,105 +3,40 @@ import { FileTree, Tabs } from "nextra/components";
 
 # Data Modeling
 
-<LanguageSwitcher />
+Data modeling is the core of Moose. You define your types once, then explicitly choose how to instantiate them across your infrastructure.
 
-## Motivation
+Unlike traditional data engineering workflows where you are responsible for manually syncing schemas between components, Moose lets you programmatically decide which infrastructure elements to generate from your types.
 
-The siloed nature of the analytics stack (Kafka, ClickHouse, ETL processes) makes it hard to maintain type safety across your data pipeline application code and your infrastructure:
+How it works:
 
-```typescript
-// In your code: Robust type checking ✅
-function processOrder(order: Order): ProcessedOrder {
-  // IDE autocomplete, compiler checks, static analysis
-}
+1. **[Define your schemas](./data-modeling#schema-definition)** - Create type definitions in TypeScript or Python
+2. **Choose your components** - Decide which infrastructure pieces to create (APIs, streams, tables)
+3. **Fine-tune behavior** - More granular control over how your infrastructure should behave if desired
 
-// At infrastructure boundaries: No type safety ❌
-// Is the database schema in sync with this model?
-// Does the message format in Kafka match what your code expects?
-// Will this transformation function blow up with unexpected fields?
-```
-
-This leaves a bunch of manual work to keep your data pipelines working:
-
-1. **Infrastructure Integration**: Each new data model needs APIs, Kafka topics, and database tables to be created and connected
-2. **Repetitive Boilerplate**: Every schema change requires updates to:
-   - API validation logic
-   - Kafka topic schemas
-   - Database DDL statements
-   - Transformation logic
-
-3. **Runtime Surprises**: Unexpected fields, missing data, and schema mismatches are hard to catch until runtime
-4. **Cognitive Overhead**: Constant context-switching between systems
-   ```
-   "Does my Kafka topic use snake_case or camelCase?"
-   "Did I add the new field to both the model AND the table?"
-   "Which database field was nullable again?"
-   ```
-
-## Moose Data Modeling Approach
-
-Moose tries to solve these problems by making your data model the single source of truth:
-
-```typescript
-// Define once
-interface MyDataModel {
-  primaryKey: Key<string>;
-  someString: string;
-  someNumber: number;
-  someBoolean: boolean;
-  someDate: Date;
-}
-
-// Use everywhere - infrastructure adapts automatically
-const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
-  ingest: true,  // Creates validated API endpoint
-  stream: true,  // Creates properly structured topic
-  table: true    // Creates matching database table
-});
-```
-Add a field to your model, and the entire infrastructure adapts automatically. Your types are validated across the stack - from APIs to streams to databases - eliminating manual synchronization work and preventing schema drift.
-
-### Benefits
-
-- **Type safety extends beyond your application** into your entire data infrastructure
-- **Schema changes are atomic** - update in code, automatically applied to infrastructure
-- **More type errors caught at development time**, not when processing data in production
-- **Single mental model** instead of juggling multiple infrastructure paradigms
-
----
-
-## Getting Started with Data Modeling
-
-Moose data modeling consists of two core parts:
-1. **[Schema Definition](./data-modeling#part-1-schema-definition)**: Defining the structure and types of your data
-2. **[Infrastructure Configuration](./data-modeling#part-2-infrastructure-configuration)**: Specifying how that schema should be applied to your data infrastructure
-
-### Quick Start: Basic Schema and Pipeline
 
 <TypeScript>
 ```ts filename="app/index.ts" copy
 // 1. Define your schema (WHAT your data looks like)
-interface MyFirstDataModel {
-  id: Key<string>;
+interface MyDataModel {
+  primaryKey: Key<string>;
   someString: string;
   someNumber: number;
-  someBoolean: boolean;
   someDate: Date;
 }
 
-// 2. Create a pipeline (HOW to handle your data)
-import { Key, IngestPipeline } from "@514labs/moose-lib";
-
-const myFirstPipeline = new IngestPipeline<MyFirstDataModel>("my_first_pipeline", {
-    ingest: true,  // Create API endpoint
-    stream: true,  // Create stream topic
-    table: true    // Create database table
+// 2. YOU control which infrastructure to create (HOW to handle your data)
+const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
+  ingest: true,    // Optional: Create API endpoint
+  stream: true,    // Optional: Create topic
+  table: {         // Optional: Create and configure table
+    orderByFields: ["primaryKey", "someDate"],
+    deduplicate: true
+  }
 });
 ```
 </TypeScript>
-
 <Python>
-```python filename="app/index.py"
+```python filename="app/main.py"
 # 1. Define your schema (WHAT your data looks like)
 class MyFirstDataModel(BaseModel):
     id: Key[str] = Field(..., description="Primary key")
@@ -111,18 +46,31 @@ class MyFirstDataModel(BaseModel):
     some_date: datetime
 
 
-# 2. Create a pipeline (HOW to handle your data)
+# 2. YOU control which infrastructure to create (HOW to handle your data)
 my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", IngestPipelineConfig(
-    ingest=True,  # Create API endpoint
-    stream=True,  # Create stream topic
-    table=True    # Create database table
+    ingest=True,  // Create API endpoint
+    stream=True,  // Create stream topic
+    table=True    // Create database table
 ))
 ```
 </Python>
 
-## Schema Definition (The WHAT)
+### Benefits
 
-<Callout type="info">
+- **Type-driven development** - Catch errors at dev time, not runtime
+- **Full control** - Choose exactly what to create and how it should behave
+- **Zero schema drift** - Change types in one place, entire stack updates
+
+## Getting Started with Data Modeling
+
+Moose data modeling consists of two core parts:
+1. **[Schema Definition](./data-modeling#part-1-schema-definition)**: Defining the structure and types of your data
+2. **[Infrastructure Configuration](./data-modeling#part-2-infrastructure-configuration)**: Specifying how that schema should be applied to your data infrastructure
+
+
+## Schema Definition
+
+<Callout type="info" title="The WHAT">
   This section covers how to define your data models - the structure and types of your data.
 </Callout>
 
@@ -154,6 +102,8 @@ export interface BasicDataModel {
 </TypeScript>
 
 <Python>
+You use Pydantic to define your schemas:
+
 ```python filename="app/datamodels/BasicDataModel.py"
 from moose_lib import Key
 from datetime import datetime
@@ -178,7 +128,7 @@ class BasicDataModel(BaseModel):
 ```
 </Python>
 
-### Advanced Schemas
+### Advanced Schema Patterns
 
 #### Nested Objects
 
@@ -300,7 +250,7 @@ When evolving your schemas, follow these guidelines:
 - Consider creating a new version of your model for major changes
 </Callout>
 
-## Infrastructure Configuration (The HOW)
+## Infrastructure Configuration
 
 <Callout type="info">
   This section covers how to apply your data models to infrastructure components.
@@ -314,7 +264,7 @@ You can use your data models with different infrastructure components:
 The most common pattern - combines ingestion, streaming, and storage.
 
 <TypeScript>
-```typescript filename="app/index.ts"
+```ts filename="app/index.ts"
 import { IngestPipeline } from "@514labs/moose-lib";
 
 const myPipeline = new IngestPipeline<MyDataModel>("my_pipeline", {

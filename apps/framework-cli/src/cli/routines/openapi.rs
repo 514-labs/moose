@@ -95,7 +95,6 @@ struct Schema {
     properties: Option<HashMap<String, Property>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     required: Option<Vec<String>>,
-    // Add any other fields that might be in the schema
     #[serde(skip_serializing_if = "Option::is_none")]
     title: Option<String>,
 }

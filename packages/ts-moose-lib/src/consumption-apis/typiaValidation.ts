@@ -323,6 +323,8 @@ export const transformLegacyConsumptionApi = (
   ]);
 };
 
+// TODO: When the legacy consumption api is removed, follow the args
+// pattern in transformNewMooseResource
 const transformNewConsumptionApi = (
   node: ts.NewExpression,
   checker: ts.TypeChecker,

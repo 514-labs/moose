@@ -148,20 +148,15 @@ async fn watch(
 
     log::debug!("Watcher setup complete, entering main loop");
 
-    let mut debounce_timer = tokio::time::interval(Duration::from_secs(1));
-    let mut last_change = std::time::Instant::now();
-    let debounce_duration = Duration::from_secs(1);
-
     loop {
         tokio::select! {
             Ok(()) = rx.changed() => {
                 log::debug!("Received change notification, current changes: {:?}", rx.borrow());
-                last_change = std::time::Instant::now();
             }
-            _ = debounce_timer.tick() => {
+            _ = tokio::time::sleep(Duration::from_secs(1)) => {
                 let should_process = {
                     let current_changes = rx.borrow();
-                    !current_changes.is_empty() && last_change.elapsed() >= debounce_duration
+                    !current_changes.is_empty()
                 };
 
                 if should_process {

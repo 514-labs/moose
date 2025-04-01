@@ -229,7 +229,7 @@ export class IngestPipeline<T> extends TypedBase<T, DataModelConfigV2<T>> {
 
       const ingestConfig = {
         destination: this.stream,
-        ...(config.stream === true ? {} : config.stream),
+        ...(config.ingest === true ? {} : config.ingest),
       };
       this.ingestApi = new IngestApi(
         name,

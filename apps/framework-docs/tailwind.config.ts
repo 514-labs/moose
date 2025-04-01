@@ -10,6 +10,7 @@ const config = {
     "../../packages/**/*.{ts,tsx,md,mdx}",
   ],
   safelist: [
+    "active",
     "lg:-mx-48",
     {
       pattern: /^col-span-\d+$/,

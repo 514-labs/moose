@@ -1,8 +1,10 @@
-export default {
+import { render } from "@/components";
+
+// Raw meta object - more concise without repetitive rendering logic
+const rawMeta = {
   // First Contact - Essential for newcomers
   "--Getting Started--": {
     type: "separator",
-    title: "Getting Started",
   },
   index: {
     title: "Introduction",
@@ -17,7 +19,6 @@ export default {
   // Builder's Guide - Task-oriented approach
   "--Building with Moose--": {
     type: "separator",
-    title: "Building with Moose",
   },
   "data-modeling": "Data Modeling",
   ingestion: "Ingesting Data via APIs",
@@ -30,7 +31,6 @@ export default {
   // Practical Guidance
   "--Guides--": {
     type: "separator",
-    title: "Guides",
   },
   deploying: "Self-Hosted Deployment",
   monitoring: "Monitoring & Observability",
@@ -39,7 +39,6 @@ export default {
   // Reference & Resources
   "--Reference--": {
     type: "separator",
-    title: "Reference",
   },
   "api-reference": "API Reference",
   "moose-cli": "CLI Reference",
@@ -48,7 +47,6 @@ export default {
   // Help & Support
   "--Help--": {
     type: "separator",
-    title: "Help & Support",
   },
   faqs: "FAQs",
 
@@ -56,4 +54,7 @@ export default {
   v1: {
     display: "hidden",
   },
-} as const;
+};
+
+// Process the raw meta object to generate the final meta object with proper rendering
+export default render(rawMeta);

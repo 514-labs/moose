@@ -9,3 +9,4 @@ export * from "./language-wrappers";
 export * from "./FeatureCard";
 export * from "./MuxVideo";
 export * from "./product-badge";
+export * from "./meta-renderer";

@@ -1,10 +1,12 @@
+import { render } from "@/components";
 import Display from "@/components/display";
 
-export default {
+export default render({
   index: {
     display: "hidden",
     theme: {
       breadcrumb: false,
+      sidebar: false,
     },
   },
   moose: {
@@ -17,10 +19,14 @@ export default {
     title: "Aurora",
     href: "/aurora",
   },
-  tutorials: {
+  blog: {
+    title: "Blog",
     type: "page",
-    title: "Tutorials",
-    href: "/tutorials",
+    href: "https://www.fiveonefour.com/blog",
+    newWindow: true,
+  },
+  tutorials: {
+    display: "hidden",
   },
   templates: {
     type: "page",
@@ -28,4 +34,4 @@ export default {
     href: "/templates",
   },
   "usage-data": "Privacy",
-};
+});

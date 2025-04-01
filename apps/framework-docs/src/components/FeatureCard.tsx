@@ -1,12 +1,14 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, FC } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export interface FeatureCardProps {
-  href: string;
+  href?: string;
   icon: ReactNode;
   title: string;
   description: string;
   features?: string[];
+  variant?: "moose" | "aurora";
 }
 
 export function FeatureCard({
@@ -15,34 +17,38 @@ export function FeatureCard({
   title,
   description,
   features = [],
+  variant = "moose",
 }: FeatureCardProps) {
+  const cardClasses = cn("flex flex-col p-6 rounded-lg border border-border", {
+    "transition-colors cursor-pointer": !!href,
+    "hover:border-moose-purple hover:bg-moose-purple/10":
+      !!href && variant === "moose",
+    "hover:border-aurora-teal hover:bg-aurora-teal/10":
+      !!href && variant === "aurora",
+  });
+
+  const CardContent = () => (
+    <>
+      {icon && <div className="mb-4">{icon}</div>}
+      <h3 className="text-lg font-medium mb-2">{title}</h3>
+      {description && (
+        <div className="text-muted-foreground">{description}</div>
+      )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={cardClasses}>
+        <CardContent />
+      </Link>
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      className="block group no-underline hover:no-underline transition-transform hover:scale-[1.02]"
-    >
-      <div className="flex flex-col border border-border rounded-lg p-5 h-full hover:bg-muted/50 hover:border-accent-moo-purple transition-all">
-        <div className="flex items-start">
-          <div className="mr-3 mt-0.5 flex-shrink-0 text-moose-purple">
-            {icon}
-          </div>
-          <div>
-            <p className="text-primary font-medium">{title}</p>
-            <p className="mt-2 text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        {features.length > 0 && (
-          <div className="mt-4">
-            <p className="text-sm text-muted-foreground">Features:</p>
-            <ul className="list-disc list-inside text-sm mt-1">
-              {features.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </Link>
+    <div className={cardClasses}>
+      <CardContent />
+    </div>
   );
 }
 

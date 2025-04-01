@@ -96,27 +96,37 @@ export const Heading = ({
 const smallBodyBase =
   "text-primary leading-none 2xl:leading-none text-sm sm:text-sm 2xl:text-base 3xl:text-lg";
 
-export const SmallText = ({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) => {
-  return <p className={cn(smallBodyBase, textBase, className)}>{children}</p>;
-};
-
-export const SmallTextEmbed = ({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) => {
+export const SmallText = forwardRef<
+  HTMLParagraphElement,
+  ComponentPropsWithoutRef<"p">
+>(({ className, children, ...props }, ref) => {
   return (
-    <span className={cn(smallBodyBase, textBase, className)}>{children}</span>
+    <p
+      ref={ref}
+      className={cn(smallBodyBase, textBase, className)}
+      {...props}
+      suppressHydrationWarning
+    >
+      {children}
+    </p>
   );
-};
+});
+
+export const SmallTextEmbed = forwardRef<
+  HTMLSpanElement,
+  ComponentPropsWithoutRef<"span">
+>(({ className, children, ...props }, ref) => {
+  return (
+    <span
+      ref={ref}
+      className={cn(smallBodyBase, textBase, className)}
+      {...props}
+      suppressHydrationWarning
+    >
+      {children}
+    </span>
+  );
+});
 
 export const textBodyBase =
   "text-primary leading-normal 2xl:leading-normal sm:text-lg 2xl:text-xl 3xl:text-2xl";

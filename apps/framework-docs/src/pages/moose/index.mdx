@@ -12,7 +12,7 @@ import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
 import { FolderPlus, Scroll, Code, Terminal, Database, Zap, FileCode, Clock, Users, GitBranch } from "lucide-react";
 import Link from "next/link";
-
+import { Tabs, Tab } from "nextra/components";
 
 # Moose
 
@@ -39,57 +39,176 @@ Moose is an open-source framework for building data-intensive applications using
 
 ---
 
-## Why Moose Exists
+## Building with the Data Stack Doesn't Have to Suck
 
-If you've ever built a data-intensive application, you know the pain:
+Building software with today's data stack is hard. You usually have to deal with:
 
-- **Too many tools:** Stitching together a modern data stack requires integration of numerous disjointed tools
-- **Infrastructure complexity:** Setting up and maintaining data infrastructure takes time away from building your actual application
-- **Development experience friction:** Traditional data engineering workflows are slow and don't fit into modern development practices (local dev, hot reloading, etc).
-- **SQL-only processing:** Having to use SQL for everything when you'd rather use languages you're already comfortable with
-- **OLTP Scaling challenges:** What works for small workloads (e.g. Postgres, MySQL, etc) often breaks at scale
+- Tool fragmentation: More time spent integrating Kafka, ClickHouse, Postgres, dbt, Airflow, and a dozen other services instead of building your actual application
+- Schema drift everywhere: Your TypeScript or Python models, database schemas, API validation, and message formats all diverge over time
+- Painful development workflow: No local testing, long deployment cycles, and constant context switching
+- SQL-only processing: Having to use SQL for everything when you'd rather use languages you're already comfortable with
 
-Moose was created to solve these problems by providing:
 
-- A **unified, local-first development experience** for building data-intensive applications using pure TypeScript or Python
-- Everything you need to build data pipelines, from data capture to consumption, all in one framework
-- Designed from the ground up to be easy to understand and easy to use for modern software developers
+### Why Moose Exists (Current State)
+What happens when you need to add a simple string field to your data model?
 
----
+**1. Update your TS/Python Code Model**
+```
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  status: string;  // New field!
+}
+```
 
-## Get started in minutes
+**2. Update your Database Schema**
+```sql
+-- Create a migration
+ALTER TABLE users ADD COLUMN status VARCHAR(50);
+```
 
-<CTACards>
-  <CTACard
-    title="Create a Moose Project"
-    description="Get up and running with your own Moose project in minutes"
-    ctaLink="/quickstart"
-    ctaLabel="Quick Start"
-    cardName="Quick Start"
-    Icon={FolderPlus}
-    variant="gradient"
-  />
-  <CTACard
-    title="Learn Step-by-Step"
-    description="Build an end-to-end Moose app through a guided tutorial"
-    ctaLink="/learn-moose"
-    ctaLabel="Try Tutorial"
-    Icon={Scroll}
-    cardName="Try it out"
-    variant="gradient"
-  />
-</CTACards>
+**3. Update your Kafka Topic**
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "email": { "type": "string" },
+    "name": { "type": "string" },
+    "status": { "type": "string" }  // New field!
+  }
+}
+```
 
----
+**4. Update your Runtime Validation**
+```ts
+function validateUser(user: User) {
+  if (!user.status) {
+    throw new Error("Status is required");
+  }
+  if (user.status !== "active" && user.status !== "inactive") {
+    throw new Error("Status must be either active or inactive");
+  }
+  if (user.status === "active" && !user.email) {
+    throw new Error("Active users must have an email");
+  }
+  if (user.status === "inactive" && user.email) {
+    throw new Error("Inactive users cannot have an email");
+  }
+}
+```
 
-### Local-First Development Experience
-Moose comes with a **pre-configured and fully integrated data stack** that runs entirely on your laptop. With one command (`moose dev`), you get:
+**5. Update your transformations & queries**
+```sql
+-- Update your transformations & queries
+SELECT id, email, name, status FROM users;
+```
 
-- **Analytical database:** ClickHouse
-- **Streaming platform:** Redpanda
-- **Workflow orchestrator:** Temporal
 
-This means you can develop and test your entire data pipeline locally, with the same technologies that will run in production, all without configuring complicated infrastructure. Your iterations are fast, just like you're used to with web development.
+> Can you see the problem? This process repeats for **every change**.
+
+You also have to test that everything is working together in a safe, isolated dev environment, which is even more painful with so many moving parts.
+
+### What Moose Does
+With Moose, your TypeScript and Python code is the single source of truth for your data models and transformations:
+
+```ts
+// Define your model ONCE
+import { Key, IngestPipeline } from "@514labs/moose-lib";
+
+interface Order {
+  id: Key<string>;
+  customerId: string;
+  items: {
+    productId: string;
+    quantity: number;
+    price: number;
+  }[];
+  createdAt: Date;
+}
+
+// And use it EVERYWHERE - ONE line to wire everything up
+export const orderPipeline = new IngestPipeline<Order>("orders", {
+  ingest: true,    // Creates API endpoint with validation
+  stream: true,    // Creates properly structured Redpanda topic
+  table: true      // Creates ClickHouse database table
+});
+```
+You get end-to-end infrastructure for your data pipeline that is:
+- Defined purely in TypeScript or Python code
+- Completely type safe and validated
+- Boilerplate free
+- Able to catch errors at dev time, not at runtime
+- Running entirely on your laptop and hot reloaded as you save changes in your editor
+
+No schema management, no manual synchronization, no context switching between your code editor, your database console, your Kafka client, etc.
+
+```txt
+❌ “Does my Database table use snake_case or camelCase?” 
+❌ “Did I add the new field to both the model AND the table?” 
+❌ “Which database field was nullable again?”
+```
+### Local Dev in Seconds
+Moose comes with a pre-configured and fully integrated data stack that runs entirely on your laptop.
+
+Spin up your local data stack in seconds
+```bash
+moose dev
+```
+
+All the infrastructure is automatically spun up on your laptop:
+- Analytical database: ClickHouse
+- Streaming platform: Redpanda
+- Workflow orchestrator: Temporal
+
+```txt
+⡏ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+```
+This lets you iterate on your data pipeline quickly and confidently, with the same technologies and logic that will run in production. No need to configure any of the infrastructure yourself.
+
+- Need to add or change a model? Moose hot reloads it to your local infrastructure when you save
+- Added a new field? It's instantly available in your API, streams, and database
+- Need to test your pipeline? Send a request locally and see the data flow through
+
+```ts filename="HotReload.ts" {11} copy
+// Add a field to your model
+interface Order {
+  id: Key<string>;
+  customerId: string;
+  items: {
+    productId: string;
+    quantity: number;
+    price: number;
+  }[];
+  createdAt: Date;
+  status: string; // New field
+}
+```
+
+Hit save and youll see your changes hot reloaded to your local infrastructure:
+```txt {3}
+⢹ Processing Infrastructure changes from file watcher
+             ~ Topic: orders - Version: 0.0 - Retention Period: 604800s - Partition Count: 1
+             ~ Table orders with column changes: [Added(Column { name: "status", data_type: String, required: true, unique: false, primary_key: false, default: None })] and order by changes: OrderByChange { before: [], after: [] }
+             ~ Topic to Table Sync Process: orders_0_0 -> orders
+             ~ API Endpoint: orders - Version: 0.0 - Path: ingest/orders - Method: POST - Format: Some(Json)
+```
+That's it! No additional steps needed.
+- Your API now validates this field
+- Your database schema is updated
+- Your streams carry the new field
+
+
+#### Modular and Configurable
+
+Moose is designed to be modular and configurable. You can pick and choose which components you need and configure them to your liking.
 
 While Moose starts with these sane defaults, we're actively adding support for more backends:
 
@@ -99,7 +218,10 @@ While Moose starts with these sane defaults, we're actively adding support for m
 
 [Let us know](https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering) if you'd like to see support for specific platforms in your stack.
 
-### Core Concepts
+
+## Ready to get started?
+
+### Learn the Core Concepts
 
 <FeatureGrid>
   <FeatureCard
@@ -144,37 +266,6 @@ While Moose starts with these sane defaults, we're actively adding support for m
     description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
   />
 </FeatureGrid>
-
-Moose handles the boilerplate integration of the components in your data stack automatically and orchestrates your entire data pipeline for you, so you can focus on writing your application logic.
-
----
-
-## Why Moose?
-
-#### Build with the Languages You Already Know
-Iterate confidently with a unified local development environment that reflects your production setup.
-- Pre-configured and integrated data stack
-- Local-first development with hot reloading
-- Build using TypeScript, Python, and SQL
-
-#### Catch Issues at Dev and Build Time
-Prevent errors before they happen in production by seeing error highlights in your editor as you type and in your terminal when you hit save.
-- Typed data models with runtime validation
-- Auto-derived infrastructure to prevent mismatches
-- Hot reloading
-
-#### Language-Native Experience
-Model and transform data in the languages you already know, not just SQL.
-- Data Models in native TypeScript and Python types
-- Realtime transformations as native TypeScript and Python functions
-- ORM experience built for analytical workloads (coming soon)
-
-#### Open Source and Configurable
-Easily extend Moose to fit your specific needs and infrastructure.
-- Default works with ClickHouse, support for Databricks, Snowflake, BigQuery coming soon
-- Toggle modules on and off as needed
-- Integrate with your existing workflows and connectors
-
 ---
 
 ## What Can You Build with Moose?

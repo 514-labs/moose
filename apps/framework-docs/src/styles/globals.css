@@ -131,166 +131,130 @@
 }
 
 /* Nextra overrides */
-.docs .nx-max-w-\[90rem\] {
-  max-width: none;
-}
-
-/* .docs * {
-  font-weight: 400;
-  line-height: 1.75;
-} */
-
-.docs h2 {
+h2 {
   margin-bottom: 0;
 }
 
-/* .docs a {
-  text-decoration: none;
-  color: hsl(var(--accent-moo-pink));
-} */
+.nextra-focus._font-semibold {
+  font-weight: 400;
+}
 
-.docs .nextra-breadcrumb a {
+.nextra-breadcrumb a {
   color: inherit;
 }
 
-.docs footer a {
-  color: inherit; /* or specify a different color if needed */
+/* Remove the footer shadow */
+
+.nextra-toc-footer,
+.nextra-sidebar-footer {
+  box-shadow: none;
+  --tw-shadow: none;
+  --tw-shadow-colored: none;
 }
 
-.docs h2.nx-border-b {
-  border-bottom: none;
+.nextra-nav-container-blur,
+.nextra-sidebar-footer {
+  background-color: transparent;
 }
 
-.docs div.nx-border-b {
-  border-bottom: none;
-}
-
-.docs div.nx-border-t {
-  border-top: none;
-}
-
-/* .docs div.nextra-search {
-  width: 100%;
-}
-
-.docs div.nextra-search > div {
-  max-width: 72rem;
-  margin: 0 auto;
+/* Make nav link text larger */
+/* nav a {
+  font-size: 1rem !important;
 } */
 
-/* the first a in nav */
-/* .docs nav > a:first-child {
-  width: 20rem;
-} */
-
-/* the second a in nav */
-@media (min-width: 1280px) {
-  .docs nav > :nth-child(3) > div {
-    display: flex;
-    justify-content: flex-end;
-    text-align: right;
-    /* padding-left: 0; */
-  }
-}
-
-/* Apply at breakpoint 1536px */
-@media (min-width: 1536px) {
-  .docs article > main {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-/* .docs nav.nx-justify-end {
-  justify-content: flex-start;
-}
-
-.docs nav > a:is([dir="ltr"] .ltr\:nx-mr-auto) {
-  margin-right: 0;
-} */
-
-.docs main > p {
+main > p {
   line-height: 1.5rem;
 }
 
-.docs div.nextra-breadcrumb {
-  text-transform: uppercase;
-  font-family: monospace;
-}
-
-.docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
+:is(html[class~="dark"] .dark\:_bg-dark) {
   background-color: hsl(var(--background)) !important;
 }
 
-.docs :is(html[class~="dark"] body) {
+:is(html[class~="dark"] body) {
   background-color: hsl(var(--background)) !important;
 }
 
-.docs
-  :is(
-    html[class~="dark"]
-      .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
+._shadow-\[0_12px_16px_rgb\(var\(--nextra-bg\)\)\] {
+  box-shadow: none;
+}
+
+:is(
+    html[class~="dark"].dark\:_shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
   ) {
   box-shadow: none;
 }
 
-.docs :is(html[class~="dark"] .nextra-nav-container-blur) {
+:is(html[class~="dark"] .nextra-nav-container-blur) {
   background-color: hsl(var(--background) / 0.8) !important;
 }
 
-.docs :is(html[class~="dark"] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
+:is(html[class~="dark"] .dark\:_shadow-\[0_-12px_16px_\#111\]) {
   box-shadow: none;
 }
 
-.docs [data-theme="dark"]#logo-path {
+[data-theme="dark"]#logo-path {
   color: white;
 }
 
-.docs th,
+/* Make the text gray */
+:is(html[class~="dark"]) .dark\:_text-gray-400,
+html.dark .dark\:_text-gray-400,
+.nextra-toc .dark\:_text-gray-400 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+:is(html[class~="dark"]) .dark\:_text-neutral-400,
+html.dark .dark\:_text-neutral-400,
+.nextra-toc .dark\:_text-neutral-400 {
+  --tw-text-opacity: 1;
+  color: rgb(163 163 163 / var(--tw-text-opacity, 1));
+}
+
+th,
 td {
   border: none;
 }
 
-.docs th {
+th {
   text-align: left;
 }
 
-.docs tr:nth-child(2n) {
+tr:nth-child(2n) {
   background-color: inherit !important;
 }
 
-.docs table {
+table {
   table-layout: auto;
 }
 
-.docs thead > tr {
+thead > tr {
   border-top: none;
 }
 
-.docs table,
+table,
 thead,
 tbody {
   display: table;
   width: 100%;
 }
 
-.docs :is(html[class~="dark"] tr) {
+:is(html[class~="dark"] tr) {
   border-color: rgba(38, 38, 38, var(--tw-bg-opacity));
 }
 
-.docs li.active > a {
+li.active > a {
   color: var(--primary-foreground) !important;
   background-color: hsl(var(--muted)) !important;
   border-radius: 10px;
 }
 
-.docs li.active > a > p {
+li.active > a > p {
   color: var(--primary-foreground) !important;
   background-color: hsl(var(--muted)) !important;
   border-radius: 10px;
 }
 
-.docs .callout p {
+.callout p {
   display: inline;
 }
 
@@ -298,28 +262,28 @@ nav.nextra-toc {
   width: 20rem;
 }
 
-.docs aside.md\:nx-w-64 {
+aside.md\:nx-w-64 {
   width: 20rem;
 }
 
-.docs .nextra-steps h3 {
+.nextra-steps h3 {
   font-size: 1rem;
 }
 
-li.nx-my-2 {
+li.my-2 {
   list-style: none;
 }
 
 /* custom-nextra-styles.css */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-top: 2rem;
   margin-bottom: 2rem;
-}
+} */
 
-/* Style for both previous and next links */
+/* Style for both previous and next links
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a {
   display: flex !important;
   align-items: center !important;
@@ -331,14 +295,14 @@ li.nx-my-2 {
   font-size: 16px;
   line-height: 22px;
   border: 1px solid hsl(var(--border));
-}
+} */
 
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:hover {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:hover {
   background-color: hsl(var(--muted)) !important;
-}
+} */
 
 /* Hide the default chevron icons */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
   width: 24px;
   height: 24px;
   background-color: hsl(var(--muted));
@@ -351,38 +315,38 @@ li.nx-my-2 {
   background-position: center;
   color: hsl(var(--primary));
   margin: 0.25rem;
-}
+} */
 
-.nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8
+/* .nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8
   a:only-child {
   margin-left: auto !important;
   justify-self: flex-end;
-}
+} */
 
 /* Style for the previous link */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:first-child {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:first-child {
   justify-content: flex-start;
   margin-right: 0.5rem;
-}
+} */
 
 /* Style for the next link */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child {
   justify-content: flex-end;
   flex-grow: 1;
   margin-left: 0.5rem;
-}
+} */
 
 /* Style for the text */
-.nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8 a span {
+/* .nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8 a span {
   font-size: 1rem !important;
   font-weight: 500 !important;
-}
+} */
 
 /* Style for the icons */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
   width: 1.5rem !important;
   height: 1.5rem !important;
-}
+} */
 
 .nx-truncate {
   background-color: transparent !important;
@@ -395,10 +359,10 @@ li.nx-my-2 {
   justify-content: center;
 }
 
-.nextra-nav-container p {
+/* .nextra-nav-container p {
   font-size: 16px !important;
   line-height: 22px !important;
-}
+} */
 
 footer {
   background-color: transparent !important;

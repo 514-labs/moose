@@ -5,7 +5,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const process = require("child_process");
+const { execFileSync } = require("child_process");
 const toml = require("@iarna/toml");
 
 const TEMPLATE_PACKAGES_DIR = "template-packages";
@@ -43,11 +43,14 @@ templates.forEach((template) => {
       );
 
       // Package the template
-      const cwd = `${__dirname}/../${TEMPLATE_DIR}/${template}`;
-      process.execSync(
-        `tar -czf ../../${TEMPLATE_PACKAGES_DIR}/${template}.tgz .`,
-        { cwd },
+      const cwd = path.join(__dirname, "..", TEMPLATE_DIR, template);
+      const outputFilePath = path.join(
+        __dirname,
+        "..",
+        TEMPLATE_PACKAGES_DIR,
+        `${template}.tgz`,
       );
+      execFileSync("tar", ["-czf", outputFilePath, "."], { cwd });
     } catch (error) {
       console.error(`Error processing ${template}:`, error.message);
     }

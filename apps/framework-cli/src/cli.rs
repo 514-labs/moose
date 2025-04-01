@@ -40,7 +40,6 @@ use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 
-use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::peek::peek;
 use crate::cli::routines::setup_redis_client;
@@ -149,28 +148,25 @@ async fn top_command_handler(
     match commands {
         Commands::Init {
             name,
-            language,
             location,
             template,
             no_fail_already_exists,
-            empty,
         } => {
             info!(
-                "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
-                name, language, location, template
+                "Running init command with name: {}, location: {:?}, template: {:?}",
+                name, location, template
             );
 
             let capture_handle = crate::utilities::capture::capture_usage(
-                if template.is_some() {
-                    ActivityType::InitTemplateCommand
-                } else {
-                    ActivityType::InitCommand
-                },
+                ActivityType::InitTemplateCommand,
                 Some(name.to_string()),
                 &settings,
             );
 
             check_project_name(name)?;
+
+            let template_config =
+                templates::get_template_config(&template.to_lowercase(), CLI_VERSION).await?;
 
             let dir_path = Path::new(location.as_deref().unwrap_or(name));
             if !no_fail_already_exists && dir_path.exists() {
@@ -181,7 +177,6 @@ async fn top_command_handler(
                             .to_string(),
                 }));
             }
-
             std::fs::create_dir_all(dir_path).expect("Failed to create directory");
 
             if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
@@ -191,55 +186,26 @@ async fn top_command_handler(
                 }));
             }
 
-            // TODO: refactor this to be extracted in different functions
-            match template {
-                Some(template) => {
-                    templates::generate_template(template, CLI_VERSION, dir_path).await?;
+            let language = match template_config.language.as_str() {
+                "typescript" => SupportedLanguages::Typescript,
+                "python" => SupportedLanguages::Python,
+                _ => SupportedLanguages::Typescript,
+            };
 
-                    let project = Project::new(dir_path, name.clone(), *language);
-                    let project_arc = Arc::new(project);
+            templates::generate_template(&template.to_lowercase(), CLI_VERSION, dir_path).await?;
+            let project = Project::new(dir_path, name.clone(), language);
+            let project_arc = Arc::new(project);
+            maybe_create_git_repo(dir_path, project_arc);
+            wait_for_usage_capture(capture_handle).await;
 
-                    maybe_create_git_repo(dir_path, project_arc);
+            let post_install_message = template_config
+                .post_install_print
+                .replace("{project_dir}", &dir_path.to_string_lossy());
 
-                    wait_for_usage_capture(capture_handle).await;
-
-                    Ok(RoutineSuccess::highlight(Message::new(
-                        "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
-                    )))
-                }
-                None => {
-                    let project = Project::new(dir_path, name.clone(), *language);
-                    let project_arc = Arc::new(project);
-
-                    debug!("Project: {:?}", project_arc);
-
-                    initialize_project(&project_arc, *empty)?.show();
-
-                    project_arc
-                        .write_to_disk()
-                        .expect("Failed to write project to file");
-
-                    maybe_create_git_repo(dir_path, project_arc);
-
-                    let install_string = match language {
-                        SupportedLanguages::Typescript => "npm install",
-                        SupportedLanguages::Python => "pip install -r ./requirements.txt",
-                    };
-
-                    let run_dev_string = match language {
-                        SupportedLanguages::Typescript => "npm run dev",
-                        SupportedLanguages::Python => "moose-cli dev",
-                    };
-
-                    wait_for_usage_capture(capture_handle).await;
-
-                    Ok(RoutineSuccess::highlight(Message::new(
-                        "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ {}\n\n", dir_path.to_string_lossy(), install_string, run_dev_string),
-                    )))
-                }
-            }
+            Ok(RoutineSuccess::highlight(Message::new(
+                "Get Started".to_string(),
+                format!("\n\n{}", post_install_message),
+            )))
         }
         // This command is used to check the project for errors that are not related to runtime
         // For example, it checks that the project is valid and that all the primitives are loaded

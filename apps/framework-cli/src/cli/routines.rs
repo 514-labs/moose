@@ -122,7 +122,6 @@ pub mod consumption;
 pub mod datamodel;
 pub mod dev;
 pub mod docker_packager;
-pub mod initialize;
 pub mod logs;
 pub mod ls;
 pub mod metrics_console;
@@ -149,14 +148,6 @@ pub struct RoutineSuccess {
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
-    // E.g. when we try to create a resource that already exists,
-    pub fn info(message: Message) -> Self {
-        Self {
-            message,
-            message_type: MessageType::Info,
-        }
-    }
-
     pub fn success(message: Message) -> Self {
         Self {
             message,

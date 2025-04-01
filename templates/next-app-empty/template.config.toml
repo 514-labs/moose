@@ -1,0 +1,6 @@
+language = "typescript" # Must be typescript or python
+description = "Template Containing an empty TS moose project and starter Next app"
+post_install_print = """
+🏃Run your workflows:
+	$ moose workflow run military_aircraft_tracking
+"""

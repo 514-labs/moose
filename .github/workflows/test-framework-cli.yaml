@@ -35,7 +35,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -81,7 +81,7 @@ jobs:
           toolchain: stable
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Run Tests
         run: cargo test
@@ -125,7 +125,7 @@ jobs:
           toolchain: stable
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Run Tests
         run: cargo test
@@ -163,7 +163,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       # to trigger code gen
       - name: Run cargo build

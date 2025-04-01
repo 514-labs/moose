@@ -253,7 +253,7 @@ jobs:
 
       - name: Run sccache-cache
         if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3

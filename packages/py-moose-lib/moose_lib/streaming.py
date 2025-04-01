@@ -65,7 +65,6 @@ def get_streaming_functions() -> Dict[str, Callable]:
             )
             
             # Create a special key for multi-transforms
-            # We could implement this differently, but for now using a special key format
             multi_transform_key = f"{stream_name}_multi_transform"
             transform_functions[multi_transform_key] = multi_transform_func
     
@@ -117,7 +116,7 @@ def load_transforms(module_path: Optional[str] = None) -> Dict[str, Callable]:
         # Try to import as a module name
         try:
             importlib.import_module(module_path)
-        except ImportError:
+        except ImportError as e:
             raise ImportError(f"Could not load module: {module_path}")
     
     # Return the discovered streaming functions
@@ -138,8 +137,6 @@ def execute_transform(transform_func: Callable, data: Any) -> Any:
         result = transform_func(data)
         return result
     except Exception as e:
-        # Log error and re-raise
-        print(f"Error executing transform: {str(e)}")
         raise
 
 def get_transform_info() -> Dict[str, Any]:

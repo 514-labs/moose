@@ -10,14 +10,13 @@ This is the Python equivalent of the runner.ts file in ts-moose-lib.
 """
 
 import json
-import logging
 import os
 import signal
 import sys
 import time
 import threading
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 try:
     from kafka import KafkaConsumer, KafkaProducer
@@ -25,7 +24,7 @@ try:
 except ImportError:
     KAFKA_AVAILABLE = False
 
-from .streaming import get_streaming_functions, load_transforms
+from .streaming import get_streaming_functions, load_transforms, execute_transform
 
 # Configurable constants
 AUTO_COMMIT_INTERVAL_MS = 5000
@@ -42,13 +41,6 @@ DEFAULT_MAX_STREAMING_CONCURRENCY = 100
 # Get maximum concurrency from environment or use default
 MAX_STREAMING_CONCURRENCY = int(os.environ.get('MAX_STREAMING_CONCURRENCY', 
                                               DEFAULT_MAX_STREAMING_CONCURRENCY))
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("moose-streaming-runner")
 
 class StreamingRunner:
     """
@@ -134,9 +126,7 @@ class StreamingRunner:
         if self.sasl_config:
             config.update(self.sasl_config)
             
-        consumer = KafkaConsumer(self.source_topic, **config)
-        logger.info(f"Consumer connected to {self.broker} listening on {self.source_topic}")
-        return consumer
+        return KafkaConsumer(self.source_topic, **config)
         
     def _create_producer(self) -> KafkaProducer:
         """Create and configure a Kafka producer."""
@@ -150,9 +140,7 @@ class StreamingRunner:
         if self.sasl_config:
             config.update(self.sasl_config)
             
-        producer = KafkaProducer(**config)
-        logger.info(f"Producer connected to {self.broker}")
-        return producer
+        return KafkaProducer(**config)
     
     def _process_message(self, message: Any) -> Union[List[Any], Any, None]:
         """Process a single message through the transformation function."""
@@ -174,8 +162,7 @@ class StreamingRunner:
                     return transformed
             
             return None
-        except Exception as e:
-            logger.error(f"Error transforming message: {str(e)}")
+        except Exception:
             return None
     
     def _consumer_thread(self):
@@ -190,7 +177,6 @@ class StreamingRunner:
                     
                 value = message.value
                 if value is None:
-                    logger.warning("Received message with no value, skipping...")
                     continue
                     
                 transformed = self._process_message(value)
@@ -207,8 +193,6 @@ class StreamingRunner:
                 if self.metrics['count_in'] % 100 == 0:
                     self._log_metrics()
                     
-        except Exception as e:
-            logger.error(f"Error in consumer thread: {str(e)}")
         finally:
             if producer:
                 producer.close()
@@ -216,16 +200,11 @@ class StreamingRunner:
     
     def _log_metrics(self):
         """Log metrics information."""
-        logger.info(
-            f"Metrics - In: {self.metrics['count_in']}, "
-            f"Out: {self.metrics['count_out']}, "
-            f"Bytes: {self.metrics['bytes_processed']}"
-        )
+        pass
     
     def start(self):
         """Start the streaming runner."""
         if self._running:
-            logger.warning("Streaming runner is already running")
             return
             
         self._running = True
@@ -236,15 +215,9 @@ class StreamingRunner:
             thread.daemon = True
             thread.start()
             self._threads.append(thread)
-            
-        logger.info(
-            f"Started streaming runner with {self.max_subscriber_count} "
-            f"consumers for {self.source_topic} -> {self.target_topic or 'multiple destinations'}"
-        )
         
     def stop(self):
         """Stop the streaming runner."""
-        logger.info("Stopping streaming runner...")
         self._running = False
         
         # Wait for threads to terminate
@@ -253,77 +226,91 @@ class StreamingRunner:
             
         self._threads = []
         self._log_metrics()
-        logger.info("Streaming runner stopped")
 
-def run_streaming_function(
-    source_topic: str,
-    target_topic: Optional[str],
-    transform_key: str,
-    broker: str = "localhost:9092",
-    max_subscriber_count: int = 1,
-    module_path: Optional[str] = None,
-    sasl_username: Optional[str] = None,
-    sasl_password: Optional[str] = None,
-    sasl_mechanism: Optional[str] = None,
-    security_protocol: Optional[str] = None
-):
+    def process_record(self, stream_name: str, record: Any) -> List[Tuple[str, Any]]:
+        """
+        Process a single record through the transformation pipeline.
+        
+        Args:
+            stream_name: Name of the source stream
+            record: The record to process
+            
+        Returns:
+            List of (destination_stream_name, transformed_record) tuples
+        """
+        results = []
+        
+        # Check for single-destination transforms
+        for transform_key, transform_func in self.transform_function.items():
+            if transform_key.startswith(f"{stream_name}_0_0_"):
+                try:
+                    # Extract destination stream name from transform key
+                    dest_stream = transform_key.split("_0_0_")[1].split("_0_0")[0]
+                    transformed = execute_transform(transform_func, record)
+                    
+                    if transformed is not None:
+                        if isinstance(transformed, list):
+                            for item in transformed:
+                                results.append((dest_stream, item))
+                        else:
+                            results.append((dest_stream, transformed))
+                except Exception:
+                    raise
+        
+        # Check for multi-destination transforms
+        multi_transform_key = f"{stream_name}_multi_transform"
+        if multi_transform_key in self.transform_function:
+            try:
+                multi_transform = self.transform_function[multi_transform_key]
+                transformed = execute_transform(multi_transform, record)
+                
+                if transformed:
+                    for item in transformed:
+                        results.append((item.destination.name, item.values))
+            except Exception:
+                raise
+        
+        return results
+
+    def get_transform_info(self) -> Dict[str, Dict[str, Any]]:
+        """Get information about available transforms."""
+        transform_info = {}
+        
+        for transform_key in self.transform_function:
+            if "_0_0_" in transform_key:
+                source, dest = transform_key.split("_0_0_")
+                dest = dest.split("_0_0")[0]
+                transform_info[transform_key] = {
+                    "source": source,
+                    "destination": dest,
+                    "type": "single"
+                }
+            elif transform_key.endswith("_multi_transform"):
+                source = transform_key.replace("_multi_transform", "")
+                transform_info[transform_key] = {
+                    "source": source,
+                    "type": "multi"
+                }
+        
+        return transform_info
+
+def run_streaming_function(transform_key: str, transform_func: Callable, data: Any) -> Any:
     """
-    Run a streaming function for a specific source and target.
+    Executes a streaming function with the provided data.
     
     Args:
-        source_topic: Name of the source Kafka topic
-        target_topic: Name of the target Kafka topic (optional for multi-destination)
-        transform_key: Key identifying the transform function
-        broker: Kafka broker address
-        max_subscriber_count: Maximum number of consumers
-        module_path: Path to the module containing the streaming functions
-        sasl_username: SASL username for authentication
-        sasl_password: SASL password for authentication
-        sasl_mechanism: SASL mechanism for authentication
-        security_protocol: Security protocol
-    """
-    # Load transforms
-    transforms = load_transforms(module_path)
-    
-    if transform_key not in transforms:
-        available_keys = ", ".join(transforms.keys())
-        raise ValueError(
-            f"Transform key '{transform_key}' not found. Available keys: {available_keys}"
-        )
-    
-    transform_func = transforms[transform_key]
-    
-    # Create runner
-    runner = StreamingRunner(
-        source_topic=source_topic,
-        target_topic=target_topic,
-        broker=broker,
-        transform_function=transform_func,
-        max_subscriber_count=max_subscriber_count,
-        sasl_username=sasl_username,
-        sasl_password=sasl_password,
-        sasl_mechanism=sasl_mechanism,
-        security_protocol=security_protocol
-    )
-    
-    # Handle graceful shutdown
-    def signal_handler(sig, frame):
-        logger.info("Received shutdown signal")
-        runner.stop()
-        sys.exit(0)
+        transform_key: The key identifying the transform (e.g. "Foo_0_0_Bar_0_0")
+        transform_func: The transformation function to execute
+        data: The data to transform
         
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    
-    # Start runner
-    runner.start()
-    
-    # Keep main thread alive
+    Returns:
+        The transformed data
+    """
     try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        runner.stop()
+        result = transform_func(data)
+        return result
+    except Exception:
+        raise
 
 if __name__ == "__main__":
     # This can be used for direct command-line execution

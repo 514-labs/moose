@@ -127,10 +127,13 @@ const toInfraMap = (registry: typeof moose_internal) => {
   };
 };
 
-// work around for variable visibility in compiler output
-(globalThis as any).moose_internal = moose_internal;
 export const getMooseInternal = (): typeof moose_internal =>
   (globalThis as any).moose_internal;
+
+// work around for variable visibility in compiler output
+if (getMooseInternal === undefined) {
+  (globalThis as any).moose_internal = moose_internal;
+}
 
 export const loadIndex = async () => {
   await require(`${process.cwd()}/app/index.ts`);

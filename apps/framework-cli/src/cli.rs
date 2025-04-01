@@ -262,29 +262,29 @@ async fn top_command_handler(
                     })
                 })?;
 
-            if *write_infra_map {
-                let infra_map = if project_arc.features.data_model_v2 {
-                    debug!("Loading InfrastructureMap from user code (DMV2)");
-                    InfrastructureMap::load_from_user_code(&project_arc)
-                        .await
-                        .map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Build".to_string(),
-                                details: format!("Failed to load InfrastructureMap: {:?}", e),
-                            })
-                        })?
-                } else {
-                    debug!("Loading InfrastructureMap from primitives");
-                    let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
+            let infra_map = if project_arc.features.data_model_v2 {
+                debug!("Loading InfrastructureMap from user code (DMV2)");
+                InfrastructureMap::load_from_user_code(&project_arc)
+                    .await
+                    .map_err(|e| {
                         RoutineFailure::error(Message {
                             action: "Build".to_string(),
-                            details: format!("Failed to load Primitives: {:?}", e),
+                            details: format!("Failed to load InfrastructureMap: {:?}", e),
                         })
-                    })?;
+                    })?
+            } else {
+                debug!("Loading InfrastructureMap from primitives");
+                let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Build".to_string(),
+                        details: format!("Failed to load Primitives: {:?}", e),
+                    })
+                })?;
 
-                    InfrastructureMap::new(&project_arc, primitive_map)
-                };
+                InfrastructureMap::new(&project_arc, primitive_map)
+            };
 
+            if *write_infra_map {
                 let json_path = project_arc
                     .internal_dir()
                     .map_err(|e| {

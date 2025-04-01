@@ -44,6 +44,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::framework::consumption::model::ConsumptionQueryParam;
 use crate::framework::core::infrastructure_map::Change::Added;
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages;
@@ -1748,8 +1749,11 @@ struct PartialIngestApi {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PartialEgressApi {
     pub name: String,
+    pub query_params: Vec<Column>,
+    pub response_schema: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -2000,8 +2004,16 @@ impl PartialInfrastructureMap {
             let api_endpoint = ApiEndpoint {
                 name: partial_api.name.clone(),
                 api_type: APIType::EGRESS {
-                    query_params: vec![],
-                    output_schema: serde_json::Value::Null,
+                    query_params: partial_api
+                        .query_params
+                        .iter()
+                        .map(|column| ConsumptionQueryParam {
+                            name: column.name.clone(),
+                            data_type: column.data_type.clone(),
+                            required: column.required,
+                        })
+                        .collect(),
+                    output_schema: partial_api.response_schema.clone(),
                 },
                 path: PathBuf::from(partial_api.name.clone()),
                 method: Method::GET,

@@ -2,9 +2,10 @@ import ts, { factory } from "typescript";
 import {
   avoidTypiaNameClash,
   isMooseFile,
-  replaceProgram,
   typiaJsonSchemas,
 } from "../compilerPluginHelper";
+import { toColumns } from "../dataModels/typeConvert";
+import { parseAsAny } from "../dmv2/dataModelMetadata";
 
 const iife = (statements: ts.Statement[]): ts.CallExpression =>
   factory.createCallExpression(
@@ -322,6 +323,8 @@ export const transformLegacyConsumptionApi = (
   ]);
 };
 
+// TODO: When the legacy consumption api is removed, follow the args
+// pattern in transformNewMooseResource
 const transformNewConsumptionApi = (
   node: ts.NewExpression,
   checker: ts.TypeChecker,
@@ -334,8 +337,11 @@ const transformNewConsumptionApi = (
     return node;
   }
 
-  // Get the type parameter from the ConsumptionApi<T>
+  // Get both type parameters from ConsumptionApi<T, R>
   const typeNode = node.typeArguments[0];
+  const responseTypeNode =
+    node.typeArguments[1] ||
+    factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
 
   // Get the handler function (second argument)
   const handlerFunc = node.arguments[1];
@@ -450,25 +456,16 @@ const transformNewConsumptionApi = (
     ),
   );
 
-  // Create the schema argument if it doesn't exist
-  const schemaArg =
+  // Create the schema arguments
+  const inputSchemaArg =
     node.arguments.length > 3 ? node.arguments[3] : typiaJsonSchemas(typeNode);
+  const responseSchemaArg = typiaJsonSchemas(responseTypeNode);
 
   // Create the columns argument if it doesn't exist
-  const columnsArg =
-    node.arguments.length > 4
-      ? node.arguments[4]
-      : factory.createAsExpression(
-          factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier("JSON"),
-              factory.createIdentifier("parse"),
-            ),
-            undefined,
-            [factory.createStringLiteral("[]")],
-          ),
-          factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
-        );
+  const inputColumnsArg = toColumns(
+    checker.getTypeAtLocation(typeNode),
+    checker,
+  );
 
   // Create the config argument if it doesn't exist
   const configArg =
@@ -485,8 +482,9 @@ const transformNewConsumptionApi = (
       node.arguments[0], // name
       wrappedHandler, // wrapped handler
       configArg, // config object
-      schemaArg, // schema
-      columnsArg, // columns
+      inputSchemaArg, // input schema
+      parseAsAny(JSON.stringify(inputColumnsArg)), // input columns
+      responseSchemaArg, // response schema
     ],
   );
 };

@@ -48,6 +48,8 @@ interface IngestApiJson {
 }
 interface EgressApiJson {
   name: string;
+  queryParams: Column[];
+  responseSchema: IJsonSchemaCollection.IV3_1;
 }
 interface SqlResourceJson {
   name: string;
@@ -107,6 +109,8 @@ const toInfraMap = (registry: typeof moose_internal) => {
   registry.egressApis.forEach((api) => {
     egressApis[api.name] = {
       name: api.name,
+      queryParams: api.columnArray,
+      responseSchema: api.responseSchema,
     };
   });
 

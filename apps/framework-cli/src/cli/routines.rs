@@ -546,12 +546,12 @@ pub async fn remote_plan(
     // Build the inframap from the local project=
     let local_infra_map = if project.features.data_model_v2 {
         debug!("Loading InfrastructureMap from user code (DMV2)");
-        InfrastructureMap::load_from_user_code(&project).await?
+        InfrastructureMap::load_from_user_code(project).await?
     } else {
         debug!("Loading InfrastructureMap from primitives");
-        let primitive_map = PrimitiveMap::load(&project).await?;
+        let primitive_map = PrimitiveMap::load(project).await?;
 
-        InfrastructureMap::new(&project, primitive_map)
+        InfrastructureMap::new(project, primitive_map)
     };
 
     // Determine the target URL

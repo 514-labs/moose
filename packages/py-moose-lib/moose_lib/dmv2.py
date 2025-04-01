@@ -221,7 +221,7 @@ class EgressConfig(BaseModel):
 class ConsumptionApi(BaseTypedResource, Generic[T, U]):
     """Configures a Consumption API that can be used to query the data."""
     config: EgressConfig
-    query_function: Optional[Callable[..., U]] = None
+    query_function: Callable[..., U]
     _u: type[U]
 
     def __class_getitem__(cls, items):
@@ -237,7 +237,7 @@ class ConsumptionApi(BaseTypedResource, Generic[T, U]):
     def __init__(
         self,
         name: str,
-        query_function: Optional[Callable[..., U]] = None,
+        query_function: Callable[..., U],
         config: EgressConfig = EgressConfig(),
         **kwargs
     ):

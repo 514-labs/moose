@@ -4,7 +4,15 @@ Description = ""
 
 [CLI Info]
 CLI-Print = """
+📂 Go to your project directory:
+	$ cd aircraft
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+	$ moose dev
+
 🏃Run your workflows:
 	$ moose workflow run military_aircraft_tracking
 """
- # This will be printed in the CLI after the Moose prints, consider adding workflow commands

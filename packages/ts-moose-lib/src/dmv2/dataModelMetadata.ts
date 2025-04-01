@@ -2,12 +2,13 @@ import ts, { factory } from "typescript";
 import { isMooseFile, typiaJsonSchemas } from "../compilerPluginHelper";
 import { toColumns } from "../dataModels/typeConvert";
 
-const types = new Set([
-  "OlapTable",
-  "Stream",
-  "IngestPipeline",
-  "IngestApi",
-  "ConsumptionApi",
+const typesToArgsLength = new Map([
+  ["OlapTable", 2],
+  ["Stream", 2],
+  ["IngestPipeline", 2],
+  ["IngestApi", 2],
+  ["ConsumptionApi", 2],
+  ["MaterializedView", 1],
 ]);
 
 export const isNewMooseResourceWithTypeParam = (
@@ -25,7 +26,7 @@ export const isNewMooseResourceWithTypeParam = (
     return false;
   }
   const sym = checker.getSymbolAtLocation(node.expression);
-  if (!types.has(sym?.name ?? "")) {
+  if (!typesToArgsLength.has(sym?.name ?? "")) {
     return false;
   }
 
@@ -58,9 +59,14 @@ export const transformNewMooseResource = (
   const typeNode = node.typeArguments![0];
   const columns = toColumns(checker.getTypeAtLocation(typeNode), checker);
 
+  const argLength = typesToArgsLength.get(
+    checker.getSymbolAtLocation(node.expression)!.name,
+  )!;
+  const needsExtraArg = node.arguments!.length === argLength - 1; // provide empty config if undefined
+
   const updatedArgs = [
     ...node.arguments!,
-    ...(node.arguments!.length === 1 // provide empty config if undefined
+    ...(needsExtraArg
       ? [factory.createObjectLiteralExpression([], false)]
       : []),
     typiaJsonSchemas(typeNode),

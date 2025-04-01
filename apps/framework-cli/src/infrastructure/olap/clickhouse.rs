@@ -220,6 +220,24 @@ pub async fn execute_changes(
                     run_query(&update_view_query, &configured_client).await?;
                 }
             },
+            OlapChange::SqlResource(Change::Added(resource)) => {
+                for query in &resource.setup {
+                    run_query(query, &configured_client).await?;
+                }
+            }
+            OlapChange::SqlResource(Change::Removed(resource)) => {
+                for query in &resource.teardown {
+                    run_query(query, &configured_client).await?;
+                }
+            }
+            OlapChange::SqlResource(Change::Updated { before, after }) => {
+                for query in &before.teardown {
+                    run_query(query, &configured_client).await?;
+                }
+                for query in &after.setup {
+                    run_query(query, &configured_client).await?;
+                }
+            }
         }
     }
 
@@ -737,13 +755,13 @@ impl OlapOperations for ConfiguredDBClient {
             // Get column information for each table
             let columns_query = format!(
                 r#"
-                SELECT 
+                SELECT
                     name,
                     type,
                     is_in_primary_key,
                     is_in_sorting_key
-                FROM system.columns 
-                WHERE database = '{}' 
+                FROM system.columns
+                WHERE database = '{}'
                 AND table = '{}'
                 ORDER BY name
                 "#,
@@ -790,6 +808,7 @@ impl OlapOperations for ConfiguredDBClient {
                     unique: false,
                     primary_key: is_primary == 1,
                     default: None,
+                    annotations: Default::default(),
                 };
 
                 columns.push(column);
@@ -816,6 +835,7 @@ impl OlapOperations for ConfiguredDBClient {
                 columns,
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
                 deduplicate: engine.contains("ReplacingMergeTree"),
+                engine: Some(engine),
                 version, // Still store the version for reference
                 source_primitive,
             };
@@ -866,6 +886,8 @@ impl OlapOperations for ConfiguredDBClient {
 /// ```
 fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, bool), String> {
     use regex::Regex;
+
+    // TODO: handle AggregateFunction, we don't know the result type the function
 
     // Handle Nullable type wrapper
     if ch_type.starts_with("Nullable(") {
@@ -1034,6 +1056,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         })];
 
         let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
@@ -1055,6 +1078,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             }),
             ColumnChange::Removed(Column {
                 name: "old_column".to_string(),
@@ -1063,6 +1087,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             }),
             ColumnChange::Updated {
                 before: Column {
@@ -1072,6 +1097,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 after: Column {
                     name: "id".to_string(),
@@ -1080,6 +1106,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
             },
         ];

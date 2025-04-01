@@ -14,6 +14,7 @@ export interface Column {
   unique: false; // what is this for?
   primary_key: boolean;
   default: null;
+  annotations: [string, any][];
 }
 
 export interface DataModel {

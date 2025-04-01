@@ -296,8 +296,10 @@ mod tests {
                 unique: true,
                 primary_key: true,
                 default: None,
+                annotations: vec![],
             }],
             order_by: vec!["id".to_string()],
+            engine: None,
             deduplicate: false,
             version: Version::from_string("1.0.0".to_string()),
             source_primitive: PrimitiveSignature {
@@ -329,6 +331,7 @@ mod tests {
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
+            sql_resources: HashMap::new(),
         };
 
         // Create reality checker
@@ -368,6 +371,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         });
 
         let mock_client = MockOlapClient {
@@ -385,6 +389,7 @@ mod tests {
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
+            sql_resources: HashMap::new(),
         };
 
         infra_map
@@ -426,6 +431,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         };
         actual_table.columns.push(timestamp_col.clone());
         infra_table.columns.push(timestamp_col);
@@ -449,6 +455,7 @@ mod tests {
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
+            sql_resources: HashMap::new(),
         };
 
         infra_map
@@ -503,6 +510,7 @@ mod tests {
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
+            sql_resources: HashMap::new(),
         };
 
         infra_map

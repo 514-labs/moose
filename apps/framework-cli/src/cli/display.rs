@@ -379,6 +379,15 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
         OlapChange::View(Change::Updated { before, after: _ }) => {
             infra_updated(&before.expanded_display());
         }
+        OlapChange::SqlResource(Change::Added(sql_resource)) => {
+            infra_added(&format!("SQL Resource: {}", sql_resource.name));
+        }
+        OlapChange::SqlResource(Change::Removed(sql_resource)) => {
+            infra_removed(&format!("SQL Resource: {}", sql_resource.name));
+        }
+        OlapChange::SqlResource(Change::Updated { before, after: _ }) => {
+            infra_updated(&format!("SQL Resource: {}", before.name));
+        }
     });
 }
 

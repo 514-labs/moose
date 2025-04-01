@@ -30,6 +30,13 @@ pub struct ClickHouseNested {
     columns: Vec<ClickHouseColumn>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AggregationFunction<T> {
+    pub function_name: String,
+    pub argument_types: Vec<T>,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnType {
     String,
@@ -44,6 +51,11 @@ pub enum ClickHouseColumnType {
     Nullable(Box<ClickHouseColumnType>),
     Enum(DataEnum),
     Nested(Vec<ClickHouseColumn>),
+    AggregateFunction(
+        AggregationFunction<ClickHouseColumnType>,
+        // the return type of the aggregation function
+        Box<ClickHouseColumnType>,
+    ),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -53,6 +65,7 @@ impl fmt::Display for ClickHouseColumnType {
 }
 
 impl ClickHouseColumnType {
+    // TODO: delete? this is used only by `check_table` which is unused
     pub fn to_std_column_type(&self) -> (ColumnType, bool) {
         let mut required = true;
         let column_type = match self {
@@ -85,6 +98,7 @@ impl ClickHouseColumnType {
                             unique: col.unique,
                             primary_key: col.primary_key,
                             default: None,
+                            annotations: Default::default(),
                         }
                     })
                     .collect(),
@@ -93,6 +107,9 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::Nullable(inner) => {
                 required = false;
                 inner.to_std_column_type().0
+            }
+            ClickHouseColumnType::AggregateFunction(_, return_type) => {
+                return return_type.to_std_column_type();
             }
         };
         (column_type, required)

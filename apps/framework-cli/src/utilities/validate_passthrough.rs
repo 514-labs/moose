@@ -605,6 +605,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "int_col".to_string(),
@@ -613,6 +614,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "float_col".to_string(),
@@ -621,6 +623,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "bool_col".to_string(),
@@ -629,6 +632,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "date_col".to_string(),
@@ -637,6 +641,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 
@@ -668,6 +673,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         }];
 
         let json = r#"
@@ -699,6 +705,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         }];
 
         let json = r#"
@@ -737,6 +744,7 @@ mod tests {
             unique: false,
             primary_key: false,
             default: None,
+            annotations: vec![],
         }];
 
         // Test valid enum value
@@ -783,6 +791,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "nested_int".to_string(),
@@ -791,6 +800,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 
@@ -802,6 +812,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "nested_object".to_string(),
@@ -814,6 +825,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 
@@ -869,6 +881,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "optional_field".to_string(),
@@ -877,6 +890,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 
@@ -905,6 +919,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "aud".to_string(),
@@ -913,6 +928,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "exp".to_string(),
@@ -921,6 +937,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 
@@ -932,6 +949,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
             Column {
                 name: "jwt_object".to_string(),
@@ -944,6 +962,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                annotations: vec![],
             },
         ];
 

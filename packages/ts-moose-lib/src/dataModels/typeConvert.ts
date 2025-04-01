@@ -2,6 +2,7 @@ import ts, {
   isIdentifier,
   isTypeReferenceNode,
   SymbolFlags,
+  TupleType,
   TypeChecker,
   TypeFlags,
 } from "typescript";
@@ -37,8 +38,9 @@ const throwNullType = (fieldName: string, typeName: string): never => {
   throw new NullType(fieldName, typeName);
 };
 
-const toArrayType = ([elementNullable, elementType]: [
+const toArrayType = ([elementNullable, _, elementType]: [
   boolean,
+  AggregationFunction | undefined,
   DataType,
 ]): ArrayType => {
   return {
@@ -49,6 +51,36 @@ const toArrayType = ([elementNullable, elementType]: [
 
 const isNumberType = (t: ts.Type, checker: TypeChecker): boolean => {
   return checker.isTypeAssignableTo(t, checker.getNumberType());
+};
+
+const handleAggregated = (
+  t: ts.Type,
+  checker: TypeChecker,
+  fieldName: string,
+  typeName: string,
+): AggregationFunction | undefined => {
+  const functionSymbol = t.getProperty("_aggregationFunction");
+  const argsTypesSymbol = t.getProperty("_argTypes");
+
+  if (functionSymbol === undefined || argsTypesSymbol === undefined) {
+    return undefined;
+  }
+  const functionStringLiteral = checker.getNonNullableType(
+    checker.getTypeOfSymbol(functionSymbol),
+  );
+  const types = checker.getNonNullableType(
+    checker.getTypeOfSymbol(argsTypesSymbol),
+  );
+
+  if (functionStringLiteral.isStringLiteral() && checker.isTupleType(types)) {
+    const argumentTypes = ((types as TupleType).typeArguments || []).map(
+      (t) => tsTypeToDataType(t, checker, fieldName, typeName, false)[2],
+    );
+    return { functionName: functionStringLiteral.value, argumentTypes };
+  } else {
+    console.log("Unexpected type inside Aggregated", functionStringLiteral);
+    return undefined;
+  }
 };
 
 const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
@@ -84,26 +116,33 @@ const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
   }
 };
 
+interface AggregationFunction {
+  functionName: string;
+  argumentTypes: DataType[];
+}
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
   fieldName: string,
   typeName: string,
   isJwt: boolean,
-): [boolean, DataType] => {
+): [boolean, AggregationFunction | undefined, DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
+
+  const aggregationFunction = handleAggregated(t, checker, fieldName, typeName);
 
   // this looks nicer if we turn on experimentalTernaries in prettier
   const dataType: DataType = isEnum(nonNull)
     ? enumConvert(nonNull)
-    : nonNull == checker.getStringType()
+    : checker.isTypeAssignableTo(nonNull, checker.getStringType())
       ? "String"
       : isNumberType(nonNull, checker)
         ? handleNumberType(nonNull, checker)
-        : nonNull == checker.getBooleanType()
+        : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())
           ? "Boolean"
-          : nonNull == dateType(checker)
+          : checker.isTypeAssignableTo(nonNull, dateType(checker))
             ? "DateTime"
             : checker.isArrayType(nonNull)
               ? toArrayType(
@@ -126,7 +165,7 @@ const tsTypeToDataType = (
                   ? throwNullType(fieldName, typeName)
                   : throwUnknownType(t, fieldName, typeName);
 
-  return [nullable, dataType];
+  return [nullable, aggregationFunction, dataType];
 };
 
 const hasWrapping = (
@@ -162,13 +201,18 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
 
     const isKey = hasKeyWrapping(node.type);
     const isJwt = hasJwtWrapping(node.type);
-    const [nullable, dataType] = tsTypeToDataType(
+    const [nullable, aggregationFunction, dataType] = tsTypeToDataType(
       type,
       checker,
       prop.name,
       t.symbol.name,
       isJwt,
     );
+
+    const annotations: [string, any][] = [];
+    if (aggregationFunction !== undefined) {
+      annotations.push(["aggregationFunction", aggregationFunction]);
+    }
 
     return {
       name: prop.name,
@@ -177,6 +221,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       required: !nullable,
       unique: false,
       default: null,
+      annotations,
     };
   });
 };

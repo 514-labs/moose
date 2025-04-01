@@ -44,13 +44,16 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::framework::core::infrastructure_map::Change::Added;
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::datamodel_config::load_main_py;
 use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::project::Project;
-use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
+use crate::proto::infrastructure_map::{
+    InfrastructureMap as ProtoInfrastructureMap, SqlResource as ProtoSqlResource,
+};
 use anyhow::{Context, Result};
 use log::debug;
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
@@ -258,6 +261,7 @@ pub enum OlapChange {
     Table(TableChange),
     /// Change to a database view
     View(Change<View>),
+    SqlResource(Change<SqlResource>),
 }
 
 /// Changes to streaming components
@@ -373,6 +377,10 @@ pub struct InfrastructureMap {
     /// Collection of orchestration workers indexed by worker ID
     #[serde(default = "HashMap::new")]
     pub orchestration_workers: HashMap<String, OrchestrationWorker>,
+
+    /// resources that have setup and teardown
+    #[serde(default)]
+    pub sql_resources: HashMap<String, SqlResource>,
 }
 
 impl InfrastructureMap {
@@ -531,6 +539,7 @@ impl InfrastructureMap {
             block_db_processes,
             consumption_api_web_server,
             orchestration_workers,
+            sql_resources: Default::default(),
         }
     }
 
@@ -597,6 +606,11 @@ impl InfrastructureMap {
         self.tables
             .values()
             .map(|table| OlapChange::Table(TableChange::Added(table.clone())))
+            .chain(
+                self.sql_resources
+                    .values()
+                    .map(|resource| OlapChange::SqlResource(Added(Box::new(resource.clone())))),
+            )
             .collect()
     }
 
@@ -843,6 +857,15 @@ impl InfrastructureMap {
             view_additions,
             view_removals,
             view_updates
+        );
+
+        // =================================================================
+        //                              SQL Resources
+        // =================================================================
+        Self::diff_sql_resources(
+            &self.sql_resources,
+            &target_map.sql_resources,
+            &mut changes.olap_changes,
         );
 
         // =================================================================
@@ -1118,6 +1141,71 @@ impl InfrastructureMap {
         );
 
         changes
+    }
+
+    /// Compare SQL resources between two infrastructure maps and compute the differences
+    ///
+    /// This method identifies added, removed, and updated SQL resources by comparing
+    /// the source and target SQL resource maps.
+    ///
+    /// Changes are collected in the provided changes vector with detailed logging
+    /// of what has changed.
+    ///
+    /// # Arguments
+    /// * `self_sql_resources` - HashMap of source SQL resources to compare from
+    /// * `target_sql_resources` - HashMap of target SQL resources to compare against
+    /// * `olap_changes` - Mutable vector to collect the identified changes
+    pub fn diff_sql_resources(
+        self_sql_resources: &HashMap<String, SqlResource>,
+        target_sql_resources: &HashMap<String, SqlResource>,
+        olap_changes: &mut Vec<OlapChange>,
+    ) {
+        log::info!(
+            "Analyzing SQL resource differences between {} source resources and {} target resources",
+            self_sql_resources.len(),
+            target_sql_resources.len()
+        );
+
+        let mut sql_resource_updates = 0;
+        let mut sql_resource_removals = 0;
+        let mut sql_resource_additions = 0;
+
+        for (id, sql_resource) in self_sql_resources {
+            if let Some(target_sql_resource) = target_sql_resources.get(id) {
+                if sql_resource != target_sql_resource {
+                    // TODO: if only the teardown code changed, we should not need to execute any changes
+                    log::debug!("SQL resource '{}' has differences", id);
+                    sql_resource_updates += 1;
+                    olap_changes.push(OlapChange::SqlResource(Change::Updated {
+                        before: Box::new(sql_resource.clone()),
+                        after: Box::new(target_sql_resource.clone()),
+                    }));
+                }
+            } else {
+                log::debug!("SQL resource '{}' removed", id);
+                sql_resource_removals += 1;
+                olap_changes.push(OlapChange::SqlResource(Change::Removed(Box::new(
+                    sql_resource.clone(),
+                ))));
+            }
+        }
+
+        for (id, sql_resource) in target_sql_resources {
+            if !self_sql_resources.contains_key(id) {
+                log::debug!("SQL resource '{}' added", id);
+                sql_resource_additions += 1;
+                olap_changes.push(OlapChange::SqlResource(Change::Added(Box::new(
+                    sql_resource.clone(),
+                ))));
+            }
+        }
+
+        log::info!(
+            "SQL resource changes: {} added, {} removed, {} updated",
+            sql_resource_additions,
+            sql_resource_removals,
+            sql_resource_updates
+        );
     }
 
     /// Compare tables between two infrastructure maps and compute the differences
@@ -1454,6 +1542,11 @@ impl InfrastructureMap {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.to_proto()))
                 .collect(),
+            sql_resources: self
+                .sql_resources
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
             special_fields: Default::default(),
         }
     }
@@ -1519,6 +1612,20 @@ impl InfrastructureMap {
                 .collect(),
             consumption_api_web_server: ConsumptionApiWebServer {},
             block_db_processes: OlapProcess {},
+            sql_resources: proto
+                .sql_resources
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        SqlResource {
+                            name: v.name,
+                            setup: v.setup,
+                            teardown: v.teardown,
+                        },
+                    )
+                })
+                .collect(),
         })
     }
 
@@ -1590,33 +1697,6 @@ impl InfrastructureMap {
     pub fn get_topic_by_name(&self, name: &str) -> Option<&Topic> {
         self.topics.values().find(|topic| topic.name == name)
     }
-
-    pub fn from_json_value(
-        language: SupportedLanguages,
-        value: serde_json::Value,
-    ) -> Result<Self, serde_json::Error> {
-        let partial: PartialInfrastructureMap = serde_json::from_value(value)?;
-        let tables = partial.convert_tables();
-        let topics = partial.convert_topics();
-        let api_endpoints = partial.convert_api_endpoints(language, &topics);
-        let topic_to_table_sync_processes = partial.create_topic_to_table_sync_processes(&topics);
-        let function_processes = partial.create_function_processes(language, &topics);
-
-        Ok(InfrastructureMap {
-            topics,
-            api_endpoints,
-            tables,
-            views: partial.views,
-            topic_to_table_sync_processes,
-            topic_to_topic_sync_processes: partial.topic_to_topic_sync_processes,
-            function_processes,
-            block_db_processes: partial.block_db_processes.unwrap_or(OlapProcess {}),
-            consumption_api_web_server: partial
-                .consumption_api_web_server
-                .unwrap_or(ConsumptionApiWebServer {}),
-            orchestration_workers: partial.orchestration_workers,
-        })
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1626,6 +1706,7 @@ struct PartialTable {
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
     pub deduplicate: bool,
+    pub engine: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1671,6 +1752,24 @@ struct PartialEgressApi {
     pub name: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct SqlResource {
+    pub name: String,
+    pub setup: Vec<String>,
+    pub teardown: Vec<String>,
+}
+
+impl SqlResource {
+    fn to_proto(&self) -> ProtoSqlResource {
+        ProtoSqlResource {
+            name: self.name.clone(),
+            setup: self.setup.clone(),
+            teardown: self.teardown.clone(),
+            special_fields: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialInfrastructureMap {
@@ -1684,6 +1783,8 @@ pub struct PartialInfrastructureMap {
     tables: HashMap<String, PartialTable>,
     #[serde(default)]
     views: HashMap<String, View>,
+    #[serde(default)]
+    sql_resources: HashMap<String, SqlResource>,
     #[serde(default)]
     topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
     #[serde(default)]
@@ -1768,6 +1869,7 @@ impl PartialInfrastructureMap {
             api_endpoints,
             tables,
             views: self.views,
+            sql_resources: self.sql_resources,
             topic_to_table_sync_processes,
             topic_to_topic_sync_processes: self.topic_to_topic_sync_processes,
             function_processes,
@@ -1788,6 +1890,7 @@ impl PartialInfrastructureMap {
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
                     deduplicate: partial_table.deduplicate,
+                    engine: partial_table.engine.clone(),
                     // TODO pass through version from the TS / PY api
                     version: Version::from_string("0.0".to_string()),
                     source_primitive: PrimitiveSignature {
@@ -2126,6 +2229,7 @@ impl Default for InfrastructureMap {
             block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
+            sql_resources: HashMap::new(),
         }
     }
 }
@@ -2212,6 +2316,7 @@ mod tests {
     fn test_compute_table_diff() {
         let before = Table {
             name: "test_table".to_string(),
+            engine: None,
             deduplicate: false,
             columns: vec![
                 Column {
@@ -2221,6 +2326,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "name".to_string(),
@@ -2229,6 +2335,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "to_be_removed".to_string(),
@@ -2237,6 +2344,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2249,6 +2357,7 @@ mod tests {
 
         let after = Table {
             name: "test_table".to_string(),
+            engine: None,
             deduplicate: false,
             columns: vec![
                 Column {
@@ -2258,6 +2367,7 @@ mod tests {
                     unique: true,
                     primary_key: true,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "name".to_string(),
@@ -2266,6 +2376,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
                 Column {
                     name: "age".to_string(), // New column
@@ -2274,6 +2385,7 @@ mod tests {
                     unique: false,
                     primary_key: false,
                     default: None,
+                    annotations: vec![],
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by

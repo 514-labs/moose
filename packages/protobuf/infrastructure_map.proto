@@ -3,6 +3,7 @@ syntax = "proto3";
 package moose.proto;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
 
 message InfrastructureMap {
   map<string, Topic> topics = 1;
@@ -18,6 +19,8 @@ message InfrastructureMap {
   //  ConsumptionApiWebServer consumption_api_web_server = 9;
   map<string, InitialDataLoad> initial_data_loads = 10;
   map<string, OrchestrationWorker> orchestration_workers = 11;
+
+  map<string, SqlResource> sql_resources = 12;
 }
 
 message Topic {
@@ -77,6 +80,9 @@ message Table {
   repeated string order_by = 3;
   string version = 4;
   PrimitiveSignature source_primitive = 5;
+
+  bool deduplicate = 6;
+  google.protobuf.StringValue engine = 7;
 }
 
 message View {
@@ -131,6 +137,8 @@ message Column {
   bool unique = 4;
   bool primary_key = 5;
   ColumnDefaults default = 6;
+
+  map<string, string> annotations = 7;
 }
 
 enum SimpleColumnType {
@@ -202,4 +210,10 @@ enum PrimitiveTypes {
 
 message OrchestrationWorker {
   string supported_language = 1;
+}
+
+message SqlResource {
+  string name = 1;
+  repeated string setup = 2;
+  repeated string teardown = 3;
 }

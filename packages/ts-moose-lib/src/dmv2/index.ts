@@ -1,11 +1,20 @@
 import { Column } from "../dataModels/dataModelTypes";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { getMooseInternal, TypedBase } from "./internal";
-import { ConsumptionUtil, IngestionFormat } from "../index";
+import {
+  ClickHouseEngines,
+  ConsumptionUtil,
+  createMaterializedView,
+  dropView,
+  IngestionFormat,
+  populateTable,
+} from "../index";
 
 export type OlapConfig<T> = {
   orderByFields?: (keyof T & string)[];
+  // equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`
   deduplicate?: boolean;
+  engine?: ClickHouseEngines;
 };
 
 export interface StreamConfig<T> {
@@ -229,5 +238,101 @@ export class IngestPipeline<T> extends TypedBase<T, DataModelConfigV2<T>> {
         this.columnArray,
       );
     }
+  }
+}
+
+export type Aggregated<
+  AggregationFunction extends string,
+  ArgTypes extends any[] = [],
+> = {
+  _aggregationFunction?: AggregationFunction;
+  _argTypes?: ArgTypes;
+};
+interface MaterializedViewOptions<T> {
+  selectStatement: string;
+
+  tableName: string;
+  materializedViewName: string;
+
+  engine?: ClickHouseEngines;
+  orderByFields?: (keyof T & string)[];
+}
+
+export class SqlResource {
+  setup: readonly string[];
+  teardown: readonly string[];
+  name: string;
+
+  constructor(
+    name: string,
+    setup: readonly string[],
+    teardown: readonly string[],
+  ) {
+    getMooseInternal().sqlResources.set(name, this);
+
+    this.name = name;
+    this.setup = setup;
+    this.teardown = teardown;
+  }
+}
+
+class View extends SqlResource {
+  constructor(name: string, selectStatement: string) {
+    super(
+      name,
+      [
+        `CREATE MATERIALIZED VIEW IF NOT EXISTS ${name} 
+        AS ${selectStatement}`.trim(),
+      ],
+      [dropView(name)],
+    );
+  }
+}
+
+export class MaterializedView<TargetTable> extends SqlResource {
+  targetTable: OlapTable<TargetTable>;
+
+  constructor(options: MaterializedViewOptions<TargetTable>);
+
+  /** @internal **/
+  constructor(
+    options: MaterializedViewOptions<TargetTable>,
+    targetSchema: IJsonSchemaCollection.IV3_1,
+    targetColumns: Column[],
+  );
+  constructor(
+    options: MaterializedViewOptions<TargetTable>,
+    targetSchema?: IJsonSchemaCollection.IV3_1,
+    targetColumns?: Column[],
+  ) {
+    super(
+      options.materializedViewName,
+      [
+        createMaterializedView({
+          name: options.materializedViewName,
+          destinationTable: options.tableName,
+          select: options.selectStatement,
+        }),
+        populateTable({
+          destinationTable: options.tableName,
+          select: options.selectStatement,
+        }),
+      ],
+      [dropView(options.materializedViewName)],
+    );
+
+    if (targetSchema === undefined || targetColumns === undefined) {
+      throw new Error(
+        "Supply the type param T so that the schema is inserted by the compiler plugin.",
+      );
+    }
+    this.targetTable = new OlapTable(
+      options.tableName,
+      {
+        orderByFields: options.orderByFields,
+      },
+      targetSchema,
+      targetColumns,
+    );
   }
 }

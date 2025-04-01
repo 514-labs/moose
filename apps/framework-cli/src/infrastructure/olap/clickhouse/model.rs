@@ -65,6 +65,7 @@ impl fmt::Display for ClickHouseColumnType {
 }
 
 impl ClickHouseColumnType {
+    // TODO: delete? this is used only by `check_table` which is unused
     pub fn to_std_column_type(&self) -> (ColumnType, bool) {
         let mut required = true;
         let column_type = match self {
@@ -108,7 +109,6 @@ impl ClickHouseColumnType {
                 inner.to_std_column_type().0
             }
             ClickHouseColumnType::AggregateFunction(_, return_type) => {
-                // TODO: return the function name as an "annotation"
                 return return_type.to_std_column_type();
             }
         };

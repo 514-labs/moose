@@ -755,13 +755,13 @@ impl OlapOperations for ConfiguredDBClient {
             // Get column information for each table
             let columns_query = format!(
                 r#"
-                SELECT 
+                SELECT
                     name,
                     type,
                     is_in_primary_key,
                     is_in_sorting_key
-                FROM system.columns 
-                WHERE database = '{}' 
+                FROM system.columns
+                WHERE database = '{}'
                 AND table = '{}'
                 ORDER BY name
                 "#,
@@ -886,6 +886,8 @@ impl OlapOperations for ConfiguredDBClient {
 /// ```
 fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, bool), String> {
     use regex::Regex;
+
+    // TODO: handle AggregateFunction, we don't know the result type the function
 
     // Handle Nullable type wrapper
     if ch_type.starts_with("Nullable(") {

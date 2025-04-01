@@ -116,7 +116,7 @@ const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
   }
 };
 
-interface AggregationFunction {
+export interface AggregationFunction {
   functionName: string;
   argumentTypes: DataType[];
 }

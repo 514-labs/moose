@@ -91,10 +91,13 @@ struct MediaTypeSchema {
 struct Schema {
     #[serde(rename = "type")]
     schema_type: String,
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    properties: HashMap<String, Property>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    required: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    properties: Option<HashMap<String, Property>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    required: Option<Vec<String>>,
+    // Add any other fields that might be in the schema
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -300,40 +303,17 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
     // Handle typia-style schema
     if let Some(components) = schema.get("components").and_then(|c| c.get("schemas")) {
         if let Some(obj) = components.as_object() {
-            for (name, schema_value) in obj {
-                let schema = Schema {
-                    schema_type: schema_value
-                        .get("type")
-                        .and_then(|t| t.as_str())
-                        .unwrap_or("object")
-                        .to_string(),
-                    properties: schema_value
-                        .get("properties")
-                        .and_then(|p| p.as_object())
-                        .map(|props| {
-                            props
-                                .iter()
-                                .map(|(k, v)| {
-                                    (k.clone(), serde_json::from_value(v.clone()).unwrap())
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default(),
-                    required: schema_value
-                        .get("required")
-                        .and_then(|r| r.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(String::from))
-                                .collect()
-                        })
-                        .unwrap_or_default(),
-                };
-                component_schemas.insert(name.clone(), schema);
+            // Copy all schemas directly to top level component schemas
+            for (name, schema_def) in obj {
+                component_schemas.insert(
+                    name.clone(),
+                    serde_json::from_value(schema_def.clone())
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
+                );
             }
         }
 
-        // Get the reference from the schemas array
+        // Reference the schema in the response
         if let Some(schemas) = schema.get("schemas").and_then(|s| s.as_array()) {
             if let Some(first_schema) = schemas.first() {
                 return (first_schema.clone(), component_schemas);
@@ -344,101 +324,22 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
     // Handle pydantic-style schema
     if let Some(defs) = schema.get("$defs") {
         if let Some(obj) = defs.as_object() {
-            for (name, schema_value) in obj {
-                // For simple types (like string), just include the type without properties/required
-                if let Some(type_str) = schema_value.get("type").and_then(|t| t.as_str()) {
-                    if schema_value.get("properties").is_none() {
-                        component_schemas.insert(
-                            name.clone(),
-                            Schema {
-                                schema_type: type_str.to_string(),
-                                properties: HashMap::new(),
-                                required: Vec::new(),
-                            },
-                        );
-                        continue;
-                    }
-                }
-
-                // For complex types, include all properties
+            // Copy all schemas directly to top level component schemas
+            for (name, schema_def) in obj {
                 component_schemas.insert(
                     name.clone(),
-                    Schema {
-                        schema_type: schema_value
-                            .get("type")
-                            .and_then(|t| t.as_str())
-                            .unwrap_or("object")
-                            .to_string(),
-                        properties: schema_value
-                            .get("properties")
-                            .and_then(|p| p.as_object())
-                            .map(|props| {
-                                props
-                                    .iter()
-                                    .map(|(k, v)| {
-                                        (k.clone(), serde_json::from_value(v.clone()).unwrap())
-                                    })
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                        required: schema_value
-                            .get("required")
-                            .and_then(|r| r.as_array())
-                            .map(|arr| {
-                                arr.iter()
-                                    .filter_map(|v| v.as_str().map(String::from))
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                    },
+                    serde_json::from_value(schema_def.clone())
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
                 );
             }
         }
 
-        // Add the main schema as a component using its title
-        let response_type_name = schema
-            .get("title")
-            .and_then(|t| t.as_str())
-            .unwrap_or("Response")
-            .to_string();
-
-        component_schemas.insert(
-            response_type_name.clone(),
-            Schema {
-                schema_type: schema
-                    .get("type")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("object")
-                    .to_string(),
-                properties: schema
-                    .get("properties")
-                    .and_then(|p| p.as_object())
-                    .map(|props| {
-                        props
-                            .iter()
-                            .map(|(k, v)| (k.clone(), serde_json::from_value(v.clone()).unwrap()))
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-                required: schema
-                    .get("required")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(String::from))
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-            },
-        );
-
-        // Return a reference to the main response schema
-        return (
-            json!({
-                "$ref": format!("#/components/schemas/{}", response_type_name)
-            }),
-            component_schemas,
-        );
+        // Reference the schema in the response
+        let mut response_schema = schema.clone();
+        response_schema
+            .as_object_mut()
+            .and_then(|obj| obj.remove("$defs"));
+        return (response_schema, component_schemas);
     }
 
     (schema, component_schemas)
@@ -528,8 +429,9 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
         parent_name.clone(),
         Schema {
             schema_type: "object".to_string(),
-            properties,
-            required,
+            properties: Some(properties),
+            required: Some(required),
+            title: None,
         },
     );
 }

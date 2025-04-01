@@ -426,7 +426,10 @@ fn copy_python_dependencies(project: &Project, package_dir: &PathBuf) -> Result<
 fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
     info!("Running moose check with --write-infra-map");
 
-    let mut cmd = Command::new("moose");
+    let mut cmd = Command::new(std::env::current_exe().map_err(|e| {
+        BuildError::MooseCheckFailed(format!("Failed to get current executable path: {}", e))
+    })?);
+
     cmd.current_dir(package_dir);
     cmd.args(["check", "--write-infra-map"]);
     let output = cmd.output()?;

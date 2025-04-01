@@ -245,7 +245,10 @@ async fn top_command_handler(
         // For example, it checks that the project is valid and that all the primitives are loaded
         // It is used in the build process to ensure that the project is valid while building docker images
         Commands::Check { write_infra_map } => {
-            info!("Running check command");
+            info!(
+                "Running check command with write_infra_map: {}",
+                *write_infra_map
+            );
             let project_arc = Arc::new(load_project()?);
 
             check_project_name(&project_arc.name())?;
@@ -259,15 +262,28 @@ async fn top_command_handler(
                     })
                 })?;
 
-            let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Build".to_string(),
-                    details: format!("Failed to load Primitives: {:?}", e),
-                })
-            })?;
-
             if *write_infra_map {
-                let infra_map = InfrastructureMap::new(&project_arc, primitive_map);
+                let infra_map = if project_arc.features.data_model_v2 {
+                    debug!("Loading InfrastructureMap from user code (DMV2)");
+                    InfrastructureMap::load_from_user_code(&project_arc)
+                        .await
+                        .map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Build".to_string(),
+                                details: format!("Failed to load InfrastructureMap: {:?}", e),
+                            })
+                        })?
+                } else {
+                    debug!("Loading InfrastructureMap from primitives");
+                    let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
+                        RoutineFailure::error(Message {
+                            action: "Build".to_string(),
+                            details: format!("Failed to load Primitives: {:?}", e),
+                        })
+                    })?;
+
+                    InfrastructureMap::new(&project_arc, primitive_map)
+                };
 
                 let json_path = project_arc
                     .internal_dir()

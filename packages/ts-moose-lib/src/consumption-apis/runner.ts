@@ -77,7 +77,7 @@ const apiHandler =
   ) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
-      const url = new URL(req.url || "", "https://localhost");
+      const url = new URL(req.url || "", "http://localhost");
       const fileName = url.pathname;
 
       let jwtPayload;
@@ -143,18 +143,17 @@ const apiHandler =
       }
 
       const queryClient = new QueryClient(clickhouseClient, fileName);
-      let result =
-        isDmv2
-          ? await userFuncModule(paramsObject, {
-              client: new MooseClient(queryClient, temporalClient),
-              sql: sql,
-              jwt: jwtPayload,
-            })
-          : await userFuncModule.default(paramsObject, {
-              client: new MooseClient(queryClient, temporalClient),
-              sql: sql,
-              jwt: jwtPayload,
-            });
+      let result = isDmv2
+        ? await userFuncModule(paramsObject, {
+            client: new MooseClient(queryClient, temporalClient),
+            sql: sql,
+            jwt: jwtPayload,
+          })
+        : await userFuncModule.default(paramsObject, {
+            client: new MooseClient(queryClient, temporalClient),
+            sql: sql,
+            jwt: jwtPayload,
+          });
 
       let body: string;
       let status: number | undefined;

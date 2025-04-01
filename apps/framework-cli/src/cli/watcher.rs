@@ -1,8 +1,8 @@
 /// # File Watcher Module
 ///
 /// This module provides functionality for watching file changes in the project directory
-/// and triggering infrastructure updates based on those changes. It monitors files in specific
-/// directories like functions, blocks, data models, consumption, and scripts.
+/// and triggering infrastructure updates based on those changes. It monitors files in the
+/// app directory and debounces updates to prevent excessive reloads while changes are being made.
 ///
 /// The watcher uses the `notify` crate to detect file system events and processes them
 /// to update the infrastructure map, which is then used to apply changes to the system.
@@ -10,12 +10,12 @@
 /// ## Main Components:
 /// - `FileWatcher`: The main struct that initializes and starts the file watching process
 /// - `EventListener`: Handles file system events and forwards them to the processing pipeline
-/// - `EventBuckets`: Categorizes file changes by their directory type
+/// - `EventBuckets`: Tracks changes in the app directory with debouncing
 ///
 /// ## Process Flow:
 /// 1. The watcher monitors the project directory for file changes
-/// 2. When changes are detected, they are categorized by directory type
-/// 3. After a short delay, changes are processed to update the infrastructure
+/// 2. When changes are detected, they are tracked in EventBuckets
+/// 3. After a short delay (debouncing), changes are processed to update the infrastructure
 /// 4. The updated infrastructure is applied to the system
 use crate::framework;
 use log::info;
@@ -29,7 +29,6 @@ use std::{
     path::PathBuf,
 };
 use tokio::sync::RwLock;
-use tokio::time::sleep;
 
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 
@@ -41,9 +40,6 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::Metrics;
 use crate::project::Project;
-use crate::utilities::constants::{
-    BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR, SCRIPTS_DIR,
-};
 use crate::utilities::PathExt;
 
 /// Event listener that receives file system events and forwards them to the event processing pipeline.
@@ -54,6 +50,7 @@ struct EventListener {
 
 impl EventHandler for EventListener {
     fn handle_event(&mut self, event: notify::Result<Event>) {
+        log::debug!("Received Watcher event: {:?}", event);
         match event {
             Ok(event) => {
                 self.tx.send_if_modified(|events| {
@@ -68,30 +65,20 @@ impl EventHandler for EventListener {
     }
 }
 
-/// Container for categorizing file system events by directory type.
-/// This helps organize changes for more efficient processing.
+/// Container for tracking file system events in the app directory.
+/// Implements debouncing by tracking changes until they are processed.
 #[derive(Default, Debug)]
 struct EventBuckets {
-    functions: HashSet<PathBuf>,
-    blocks: HashSet<PathBuf>,
-    data_models: HashSet<PathBuf>,
-    consumption: HashSet<PathBuf>,
-    scripts: HashSet<PathBuf>,
+    changes: HashSet<PathBuf>,
 }
 
 impl EventBuckets {
-    /// Checks if all buckets are empty
+    /// Checks if there are no pending changes
     pub fn is_empty(&self) -> bool {
-        self.functions.is_empty()
-            && self.blocks.is_empty()
-            && self.data_models.is_empty()
-            && self.consumption.is_empty()
-            && self.scripts.is_empty()
+        self.changes.is_empty()
     }
 
-    /// Processes a file system event and categorizes it into the appropriate bucket
-    /// based on the directory path.
-    ///
+    /// Processes a file system event and tracks it if it's relevant.
     /// Only processes events that are relevant (create, modify, remove) and
     /// ignores metadata changes and access events.
     pub fn insert(&mut self, event: Event) {
@@ -103,52 +90,24 @@ impl EventBuckets {
             | EventKind::Remove(_)
             | EventKind::Other => {}
         };
+
         for path in event.paths {
             if !path.ext_is_supported_lang() && !path.ext_is_script_config() {
                 continue;
             }
-
-            if path
-                .iter()
-                .any(|component| component.eq_ignore_ascii_case(FUNCTIONS_DIR))
-            {
-                self.functions.insert(path);
-            } else if path
-                .iter()
-                .any(|component| component.eq_ignore_ascii_case(BLOCKS_DIR))
-            {
-                self.blocks.insert(path);
-            } else if path
-                .iter()
-                .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
-            {
-                self.data_models.insert(path);
-            } else if path
-                .iter()
-                .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
-            {
-                self.consumption.insert(path);
-            } else if path
-                .iter()
-                .any(|component| component.eq_ignore_ascii_case(SCRIPTS_DIR))
-            {
-                self.scripts.insert(path);
-            }
+            self.changes.insert(path);
         }
 
-        info!("Functions: {:?}", self.functions);
-        info!("Blocks: {:?}", self.blocks);
-        info!("Data Models: {:?}", self.data_models);
-        info!("Consumption: {:?}", self.consumption);
-        info!("Scripts: {:?}", self.scripts);
+        info!("App directory changes detected: {:?}", self.changes);
     }
 }
 
 /// Main watching function that monitors the project directory for changes and
 /// processes them to update the infrastructure.
 ///
-/// This function runs in a loop, waiting for file system events, then after a short delay
-/// processes them to update the infrastructure map and apply changes to the system.
+/// This function runs in a loop, waiting for file system events, then waits for a period
+/// of inactivity (debouncing) before processing the changes to update the infrastructure
+/// map and apply changes to the system.
 ///
 /// # Arguments
 /// * `project` - The project configuration
@@ -167,6 +126,11 @@ async fn watch(
     metrics: Arc<Metrics>,
     redis_client: Arc<RedisClient>,
 ) -> Result<(), anyhow::Error> {
+    log::debug!(
+        "Starting file watcher for project: {:?}",
+        project.app_dir().display()
+    );
+
     let (tx, mut rx) = tokio::sync::watch::channel(EventBuckets::default());
     let receiver_ack = tx.clone();
 
@@ -182,94 +146,103 @@ async fn watch(
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
-    while let Ok(()) = rx.changed().await {
-        sleep(Duration::from_secs(1)).await;
-        let _bucketed_events = receiver_ack.send_replace(EventBuckets::default());
-        rx.mark_unchanged();
-        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged
-        // can be picked up the next rx.changed call
-        if !rx.borrow().is_empty() {
-            rx.mark_changed();
-        }
+    log::debug!("Watcher setup complete, entering main loop");
 
-        let _ = with_spinner_async(
-            "Processing Infrastructure changes from file watcher",
-            async {
-                let plan_result =
-                    framework::core::plan::plan_changes(&redis_client, &project).await;
+    loop {
+        tokio::select! {
+            Ok(()) = rx.changed() => {
+                log::debug!("Received change notification, current changes: {:?}", rx.borrow());
+            }
+            _ = tokio::time::sleep(Duration::from_secs(1)) => {
+                let should_process = {
+                    let current_changes = rx.borrow();
+                    !current_changes.is_empty()
+                };
 
-                match plan_result {
-                    Ok(plan_result) => {
-                        info!("Plan Changes: {:?}", plan_result.changes);
+                if should_process {
+                    log::debug!("Debounce period elapsed, processing changes");
+                    receiver_ack.send_replace(EventBuckets::default());
+                    rx.mark_unchanged();
 
-                        framework::core::plan_validator::validate(&project, &plan_result)?;
+                    let _ = with_spinner_async(
+                        "Processing Infrastructure changes from file watcher",
+                        async {
+                            let plan_result =
+                                framework::core::plan::plan_changes(&redis_client, &project).await;
 
-                        display::show_changes(&plan_result);
-                        match framework::core::execute::execute_online_change(
-                            &project,
-                            &plan_result,
-                            route_update_channel.clone(),
-                            syncing_process_registry,
-                            project_registries,
-                            metrics.clone(),
-                        )
-                        .await
-                        {
-                            Ok(_) => {
-                                plan_result
-                                    .target_infra_map
-                                    .store_in_redis(&redis_client)
-                                    .await?;
+                            match plan_result {
+                                Ok(plan_result) => {
+                                    info!("Plan Changes: {:?}", plan_result.changes);
 
-                                let _openapi_file =
-                                    openapi(&project, &plan_result.target_infra_map).await?;
+                                    framework::core::plan_validator::validate(&project, &plan_result)?;
 
-                                let mut infra_ptr = infrastructure_map.write().await;
-                                *infra_ptr = plan_result.target_infra_map
-                            }
-                            Err(e) => {
-                                let error: anyhow::Error = e.into();
-                                show_message!(MessageType::Error, {
-                                    Message {
-                                        action: "\nFailed".to_string(),
-                                        details: format!(
-                                            "Executing changes to the infrastructure failed:\n{:?}",
-                                            error
-                                        ),
+                                    display::show_changes(&plan_result);
+                                    match framework::core::execute::execute_online_change(
+                                        &project,
+                                        &plan_result,
+                                        route_update_channel.clone(),
+                                        syncing_process_registry,
+                                        project_registries,
+                                        metrics.clone(),
+                                    )
+                                    .await
+                                    {
+                                        Ok(_) => {
+                                            plan_result
+                                                .target_infra_map
+                                                .store_in_redis(&redis_client)
+                                                .await?;
+
+                                            let _openapi_file =
+                                                openapi(&project, &plan_result.target_infra_map).await?;
+
+                                            let mut infra_ptr = infrastructure_map.write().await;
+                                            *infra_ptr = plan_result.target_infra_map
+                                        }
+                                        Err(e) => {
+                                            let error: anyhow::Error = e.into();
+                                            show_message!(MessageType::Error, {
+                                                Message {
+                                                    action: "\nFailed".to_string(),
+                                                    details: format!(
+                                                        "Executing changes to the infrastructure failed:\n{:?}",
+                                                        error
+                                                    ),
+                                                }
+                                            });
+                                        }
                                     }
-                                });
+                                }
+                                Err(e) => {
+                                    let error: anyhow::Error = e.into();
+                                    show_message!(MessageType::Error, {
+                                        Message {
+                                            action: "\nFailed".to_string(),
+                                            details: format!(
+                                                "Planning changes to the infrastructure failed:\n{:?}",
+                                                error
+                                            ),
+                                        }
+                                    });
+                                }
                             }
-                        }
-                    }
-                    Err(e) => {
-                        let error: anyhow::Error = e.into();
+                            Ok(())
+                        },
+                        !project.is_production,
+                    )
+                    .await
+                    .map_err(|e: anyhow::Error| {
                         show_message!(MessageType::Error, {
                             Message {
-                                action: "\nFailed".to_string(),
-                                details: format!(
-                                    "Planning changes to the infrastructure failed:\n{:?}",
-                                    error
-                                ),
+                                action: "Failed".to_string(),
+                                details: format!("Processing Infrastructure changes failed:\n{:?}", e),
                             }
                         });
-                    }
+                    });
                 }
-                Ok(())
-            },
-            !project.is_production,
-        )
-        .await
-        .map_err(|e: anyhow::Error| {
-            show_message!(MessageType::Error, {
-                Message {
-                    action: "Failed".to_string(),
-                    details: format!("Processing Infrastructure changes failed:\n{:?}", e),
-                }
-            });
-        });
+            }
+        }
     }
-
-    Ok(())
 }
 
 /// File watcher that monitors project files for changes and triggers infrastructure updates.
@@ -317,7 +290,8 @@ impl FileWatcher {
         let mut syncing_process_registry = syncing_process_registry;
         let mut project_registry = project_registries;
 
-        tokio::spawn(async move {
+        // Move everything into the spawned task to avoid Send issues
+        let watch_task = async move {
             watch(
                 project,
                 route_update_channel,
@@ -329,7 +303,9 @@ impl FileWatcher {
             )
             .await
             .unwrap()
-        });
+        };
+
+        tokio::spawn(watch_task);
 
         Ok(())
     }

@@ -1,6 +1,7 @@
 name: Test Framework CLI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "**"

@@ -91,7 +91,9 @@ struct MediaTypeSchema {
 struct Schema {
     #[serde(rename = "type")]
     schema_type: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     properties: HashMap<String, Property>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     required: Vec<String>,
 }
 
@@ -194,52 +196,12 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
             } => {
                 let (path_item, component_schemas) =
                     create_egress_path_item(api_endpoint, output_schema.clone(), query_params);
-
-                // Add any component schemas to the root level schemas
-                if let Some(components) = component_schemas {
-                    schemas.extend(components.into_iter().map(|(k, v)| {
-                        let schema_obj = v.as_object().unwrap();
-                        (
-                            k,
-                            Schema {
-                                schema_type: schema_obj
-                                    .get("type")
-                                    .and_then(|t| t.as_str())
-                                    .unwrap_or("object")
-                                    .to_string(),
-                                properties: schema_obj
-                                    .get("properties")
-                                    .and_then(|p| p.as_object())
-                                    .map(|props| {
-                                        props
-                                            .iter()
-                                            .map(|(pk, pv)| {
-                                                (
-                                                    pk.clone(),
-                                                    serde_json::from_value(pv.clone()).unwrap(),
-                                                )
-                                            })
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                required: schema_obj
-                                    .get("required")
-                                    .and_then(|r| r.as_array())
-                                    .map(|arr| {
-                                        arr.iter()
-                                            .map(|v| v.as_str().unwrap().to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                            },
-                        )
-                    }));
-                }
-
                 paths.insert(
                     format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
                 );
+                // Merge egress schemas into the main schemas map
+                schemas.extend(component_schemas);
             }
             _ => {}
         }
@@ -290,26 +252,12 @@ fn create_egress_path_item(
     api_endpoint: &ApiEndpoint,
     output_schema: Value,
     query_params: &[ConsumptionQueryParam],
-) -> (PathItem, Option<HashMap<String, Value>>) {
-    let default_schema = r#"{"type": "object"}"#;
-
-    let (component_schemas, response_schema) = if output_schema != Value::Null {
-        let components = output_schema
-            .get("components")
-            .and_then(|c| c.get("schemas"))
-            .and_then(|s| s.as_object())
-            .cloned();
-
-        let schema = output_schema
-            .get("schemas")
-            .and_then(|s| s.as_array())
-            .and_then(|a| a.first())
-            .cloned()
-            .unwrap_or_else(|| serde_json::from_str(default_schema).unwrap());
-
-        (components, schema)
+) -> (PathItem, HashMap<String, Schema>) {
+    let default_schema = json!({"type": "object"});
+    let (response_schema, component_schemas) = if output_schema != Value::Null {
+        extract_component_schemas(output_schema)
     } else {
-        (None, serde_json::from_str(default_schema).unwrap())
+        (default_schema, HashMap::new())
     };
 
     let path_item = PathItem {
@@ -343,10 +291,157 @@ fn create_egress_path_item(
         }),
     };
 
-    (
-        path_item,
-        component_schemas.map(|m| m.into_iter().collect()),
-    )
+    (path_item, component_schemas)
+}
+
+fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) {
+    let mut component_schemas = HashMap::new();
+
+    // Handle typia-style schema
+    if let Some(components) = schema.get("components").and_then(|c| c.get("schemas")) {
+        if let Some(obj) = components.as_object() {
+            for (name, schema_value) in obj {
+                let schema = Schema {
+                    schema_type: schema_value
+                        .get("type")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("object")
+                        .to_string(),
+                    properties: schema_value
+                        .get("properties")
+                        .and_then(|p| p.as_object())
+                        .map(|props| {
+                            props
+                                .iter()
+                                .map(|(k, v)| {
+                                    (k.clone(), serde_json::from_value(v.clone()).unwrap())
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    required: schema_value
+                        .get("required")
+                        .and_then(|r| r.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                };
+                component_schemas.insert(name.clone(), schema);
+            }
+        }
+
+        // Get the reference from the schemas array
+        if let Some(schemas) = schema.get("schemas").and_then(|s| s.as_array()) {
+            if let Some(first_schema) = schemas.first() {
+                return (first_schema.clone(), component_schemas);
+            }
+        }
+    }
+
+    // Handle pydantic-style schema
+    if let Some(defs) = schema.get("$defs") {
+        if let Some(obj) = defs.as_object() {
+            for (name, schema_value) in obj {
+                // For simple types (like string), just include the type without properties/required
+                if let Some(type_str) = schema_value.get("type").and_then(|t| t.as_str()) {
+                    if schema_value.get("properties").is_none() {
+                        component_schemas.insert(
+                            name.clone(),
+                            Schema {
+                                schema_type: type_str.to_string(),
+                                properties: HashMap::new(),
+                                required: Vec::new(),
+                            },
+                        );
+                        continue;
+                    }
+                }
+
+                // For complex types, include all properties
+                component_schemas.insert(
+                    name.clone(),
+                    Schema {
+                        schema_type: schema_value
+                            .get("type")
+                            .and_then(|t| t.as_str())
+                            .unwrap_or("object")
+                            .to_string(),
+                        properties: schema_value
+                            .get("properties")
+                            .and_then(|p| p.as_object())
+                            .map(|props| {
+                                props
+                                    .iter()
+                                    .map(|(k, v)| {
+                                        (k.clone(), serde_json::from_value(v.clone()).unwrap())
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        required: schema_value
+                            .get("required")
+                            .and_then(|r| r.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(String::from))
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                    },
+                );
+            }
+        }
+
+        // Add the main schema as a component using its title
+        let response_type_name = schema
+            .get("title")
+            .and_then(|t| t.as_str())
+            .unwrap_or("Response")
+            .to_string();
+
+        component_schemas.insert(
+            response_type_name.clone(),
+            Schema {
+                schema_type: schema
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("object")
+                    .to_string(),
+                properties: schema
+                    .get("properties")
+                    .and_then(|p| p.as_object())
+                    .map(|props| {
+                        props
+                            .iter()
+                            .map(|(k, v)| (k.clone(), serde_json::from_value(v.clone()).unwrap()))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                required: schema
+                    .get("required")
+                    .and_then(|r| r.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            },
+        );
+
+        // Return a reference to the main response schema
+        return (
+            json!({
+                "$ref": format!("#/components/schemas/{}", response_type_name)
+            }),
+            component_schemas,
+        );
+    }
+
+    (schema, component_schemas)
 }
 
 fn create_default_responses() -> HashMap<String, Response> {

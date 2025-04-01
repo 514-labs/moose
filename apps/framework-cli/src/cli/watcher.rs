@@ -55,7 +55,7 @@ impl EventHandler for EventListener {
             Ok(event) => {
                 self.tx.send_if_modified(|events| {
                     events.insert(event);
-                    true // Always notify of changes
+                    !events.is_empty()
                 });
             }
             Err(e) => {

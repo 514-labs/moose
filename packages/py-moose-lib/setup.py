@@ -18,4 +18,9 @@ setup(
         "pydantic==2.10.6",
         "temporalio==1.9.0",
     ],
+    entry_points={
+        'console_scripts': [
+            'moose-streaming=moose_lib.streaming_cli:main',
+        ],
+    },
 )

@@ -6,6 +6,7 @@ importlib_metadata==8.0.0
 jaraco.classes==3.4.0
 jaraco.context==5.3.0
 jaraco.functools==4.0.1
+kafka-python-ng==2.2.2
 keyring==25.2.1
 markdown-it-py==3.0.0
 mdurl==0.1.2

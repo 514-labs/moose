@@ -52,7 +52,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   }
 }
 
-type ZeroOrMany<T> = T | T[] | undefined;
+type ZeroOrMany<T> = T | T[] | undefined | null;
 type SyncOrAsyncTransform<T, U> = (
   record: T,
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;

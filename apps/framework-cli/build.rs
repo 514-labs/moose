@@ -17,7 +17,6 @@ fn package_templates() -> Result<()> {
 
 fn main() -> Result<()> {
     // Package templates first
-    println!("cargo:rerun-if-changed=../../templates");
     package_templates()?;
 
     println!("cargo:rerun-if-changed=../../packages/protobuf");

@@ -90,11 +90,11 @@ jobs:
           MOOSE_TELEMETRY_ENABLED: false
 
       - name: LS file
-        run: ls -la
+        run: cd ../../../ && ls -la
         if: always()
 
       - name: LS other file
-        run: cd .. && ls -la
+        run: cd ../.. && ls -la
         if: always()
 
       - name: Inspect Logs

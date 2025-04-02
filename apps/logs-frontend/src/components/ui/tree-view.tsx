@@ -266,8 +266,8 @@ const Folder = forwardRef<
           }}
         >
           {expendedItems?.includes(value)
-            ? openIcon ?? <FolderOpenIcon className="h-4 w-4" />
-            : closeIcon ?? <FolderIcon className="h-4 w-4" />}
+            ? (openIcon ?? <FolderOpenIcon className="h-4 w-4" />)
+            : (closeIcon ?? <FolderIcon className="h-4 w-4" />)}
           <span>{element}</span>
           {inline}
         </AccordionPrimitive.Trigger>

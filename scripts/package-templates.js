@@ -19,13 +19,24 @@ const manifest = {
   templates: {},
 };
 
+// Log base directories
+console.log(
+  "Template Packages Directory:",
+  path.resolve(TEMPLATE_PACKAGES_DIR),
+);
+console.log("Templates Directory:", path.resolve(TEMPLATE_DIR));
+
 // Process each template and create manifest
 const templates = fs
   .readdirSync(TEMPLATE_DIR)
   .filter((dir) => fs.statSync(path.join(TEMPLATE_DIR, dir)).isDirectory());
 
+console.log("\nFound templates:", templates);
+
 templates.forEach((template) => {
   const configPath = path.join(TEMPLATE_DIR, template, "template.config.toml");
+  console.log(`\nProcessing template: ${template}`);
+  console.log("Config path:", path.resolve(configPath));
 
   if (fs.existsSync(configPath)) {
     try {
@@ -50,6 +61,9 @@ templates.forEach((template) => {
         TEMPLATE_PACKAGES_DIR,
         `${template}.tgz`,
       );
+      console.log("Template directory:", path.resolve(cwd));
+      console.log("Output tar file:", path.resolve(outputFilePath));
+
       execFileSync(
         "tar",
         ["-czf", outputFilePath, "--exclude", "node_modules", "."],
@@ -57,6 +71,7 @@ templates.forEach((template) => {
           cwd,
         },
       );
+      console.log(`Successfully created tar file for ${template}`);
     } catch (error) {
       console.error(`Error processing ${template}:`, error.message);
     }
@@ -67,15 +82,16 @@ templates.forEach((template) => {
 
 // Write manifest file to the packages directory
 try {
+  const manifestPath = path.join(TEMPLATE_PACKAGES_DIR, "manifest.toml");
+  console.log("\nWriting manifest to:", path.resolve(manifestPath));
   const manifestContent = toml.stringify(manifest);
-  fs.writeFileSync(
-    path.join(TEMPLATE_PACKAGES_DIR, "manifest.toml"),
-    manifestContent,
-  );
-  console.log("Templates packaged successfully");
-  console.log("Manifest created successfully");
+  fs.writeFileSync(manifestPath, manifestContent);
+
+  console.log("\nTemplates packaged successfully");
+  console.log("Files in packages directory:");
   fs.readdirSync(TEMPLATE_PACKAGES_DIR).forEach((file) => {
-    console.log(`- ${file}`);
+    const fullPath = path.resolve(TEMPLATE_PACKAGES_DIR, file);
+    console.log(`- ${file} (${fullPath})`);
   });
 } catch (error) {
   console.error("Error writing manifest file:", error.message);

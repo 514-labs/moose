@@ -2,15 +2,24 @@ use std::io::Result;
 use std::process::Command;
 
 fn package_templates() -> Result<()> {
-    let package_templates_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let root_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
-        .unwrap()
-        .join("scripts/package-templates.js");
+        .unwrap();
+
+    let package_templates_dir = root_dir.join("scripts/package-templates.js");
+    let home_dir = std::env::current_dir().unwrap();
+    let log_dir = home_dir.join(".moose");
+
+    std::fs::create_dir_all(&log_dir)?;
+    let log_file = log_dir.join("build.log");
+    let log_output = std::fs::File::create(log_file)?;
 
     Command::new(&package_templates_dir)
-        .current_dir(package_templates_dir.parent().unwrap().parent().unwrap())
+        .current_dir(root_dir)
+        .stdout(log_output.try_clone()?)
+        .stderr(log_output)
         .status()?;
     Ok(())
 }

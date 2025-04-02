@@ -55,6 +55,7 @@ use crate::project::Project;
 use crate::proto::infrastructure_map::{
     InfrastructureMap as ProtoInfrastructureMap, SqlResource as ProtoSqlResource,
 };
+use crate::utilities::constants;
 use anyhow::{Context, Result};
 use log::debug;
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
@@ -1828,9 +1829,32 @@ impl PartialInfrastructureMap {
         let raw_string_stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         if !raw_string_stderr.is_empty() {
+            let error_message = if raw_string_stderr.contains("MODULE_NOT_FOUND")
+                || raw_string_stderr.contains("ModuleNotFoundError")
+            {
+                let install_command = if user_code_file_name
+                    .ends_with(constants::TYPESCRIPT_FILE_EXTENSION)
+                {
+                    "npm install"
+                } else if user_code_file_name.ends_with(constants::PYTHON_FILE_EXTENSION) {
+                    "pip install ."
+                } else {
+                    return Err(DmV2LoadingError::Other {
+                        message: format!("Unsupported file extension in: {}", user_code_file_name),
+                    });
+                };
+
+                format!("Missing dependencies detected. Please run '{}' and try again.\nOriginal error: {}", 
+                    install_command,
+                    raw_string_stderr
+                )
+            } else {
+                raw_string_stderr
+            };
+
             Err(DmV2LoadingError::StdErr {
                 user_code_file_name: user_code_file_name.to_string(),
-                message: raw_string_stderr,
+                message: error_message,
             })
         } else {
             let raw_string_stdout: String = String::from_utf8_lossy(&output.stdout).to_string();

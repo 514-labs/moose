@@ -49,7 +49,16 @@ fn template_file_archive(template_name: &str, template_version: &str) -> PathBuf
 }
 
 async fn download_from_local(template_name: &str) -> anyhow::Result<()> {
-    let local_template_path = Path::new(LOCAL_TEMPLATE_DIR).join(format!("{}.tgz", template_name));
+    let bin_dir = std::env::current_exe()?;
+    let local_template_path = bin_dir
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(LOCAL_TEMPLATE_DIR)
+        .join(format!("{}.tgz", template_name));
 
     if !local_template_path.exists() {
         anyhow::bail!("Local template not found. Did you run scripts/package-templates.js?")
@@ -112,7 +121,19 @@ fn unpack(template_name: &str, template_version: &str, target_dir: &PathBuf) -> 
     let tar_gz = File::open(template_archive)?;
     let tar = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(tar);
-    archive.unpack(target_dir)?;
+
+    // Filter out macOS metadata files during extraction
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?;
+
+        // Skip macOS metadata files
+        if path.to_string_lossy().contains("/._") || path.to_string_lossy().starts_with("._") {
+            continue;
+        }
+
+        entry.unpack_in(target_dir)?;
+    }
 
     Ok(())
 }
@@ -154,7 +175,17 @@ pub async fn generate_template(
 pub async fn get_template_manifest(template_version: &str) -> anyhow::Result<Value> {
     // If we're in test mode (0.0.1), use local manifest
     if template_version == "0.0.1" {
-        let manifest_path = Path::new(LOCAL_TEMPLATE_DIR).join("manifest.toml");
+        let bin_dir = std::env::current_exe()?;
+        let manifest_path = bin_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(LOCAL_TEMPLATE_DIR)
+            .join("manifest.toml");
+
         if !manifest_path.exists() {
             anyhow::bail!(
                 "Local manifest not found. Did you run scripts/package-templates.js? {}",

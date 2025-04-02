@@ -50,7 +50,9 @@ templates.forEach((template) => {
         TEMPLATE_PACKAGES_DIR,
         `${template}.tgz`,
       );
-      execFileSync("tar", ["-czf", outputFilePath, "."], { cwd });
+      execFileSync("tar", ['--exclude=".*"', "-czf", outputFilePath, "."], {
+        cwd,
+      });
     } catch (error) {
       console.error(`Error processing ${template}:`, error.message);
     }

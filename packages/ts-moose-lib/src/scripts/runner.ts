@@ -113,7 +113,11 @@ async function createTemporalConnection(
     }
   }
 
+  console.log(
+    `<workflow> Connecting to Temporal at ${connectionOptions.address}`,
+  );
   const connection = await NativeConnection.connect(connectionOptions);
+  console.log("<workflow> Connected to Temporal server");
   return { connection, namespace };
 }
 

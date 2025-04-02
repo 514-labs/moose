@@ -349,10 +349,10 @@ export async function getTemporalClient(
       }
     }
 
-    console.log(`Connecting to Temporal at ${temporalUrl}`);
+    console.log(`<api> Connecting to Temporal at ${connectionOptions.address}`);
     const connection = await Connection.connect(connectionOptions);
     const client = new TemporalClient({ connection, namespace });
-    console.log("Connected to Temporal server");
+    console.log("<api> Connected to Temporal server");
 
     return client;
   } catch (error) {

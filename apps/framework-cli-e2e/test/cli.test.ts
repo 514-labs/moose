@@ -187,13 +187,13 @@ describe("framework-cli", () => {
 
     try {
       const result = await client.query({
-        query: "SELECT * FROM Foo_0_0",
+        query: "SELECT * FROM Bar",
         format: "JSONEachRow",
       });
       const rows: any[] = await result.json();
       console.log("Foo data:", rows);
 
-      expect(rows).to.have.lengthOf(1, "Expected exactly one row in Foo");
+      expect(rows).to.have.lengthOf(1, "Expected exactly one row in Bar");
 
       expect(rows[0].primaryKey).to.equal(
         eventId,

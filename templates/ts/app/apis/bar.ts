@@ -5,8 +5,8 @@ import { tags } from "typia";
 interface QueryParams {
   orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
   limit?: number;
-  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
-  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  startDay?: number & tags.Type<"int32">;
+  endDay?: number & tags.Type<"int32">;
 }
 
 export const BarApi = new ConsumptionApi<QueryParams>(

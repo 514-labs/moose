@@ -15,22 +15,24 @@
 
 ### Interact with your moose project and data
 
-- `create_consumption_api`
+- `create_egress_api`
     - Creates an egress API from Moose Clickhouse. Can utilize type safe parameters.
-- `test_consumption_api`
+- `test_egress_api`
     - Tests said apis.
 
 ### Experimental tools
 
 > Note, these are experimental tools, if you want to use them, toggle the experimental features flag in your config file.
 > 
-- `generate_spec`
+- `write_spec`
     - Generate or update a specification for a data-intensive feature
-- `write_script`
+- `write_workflow`
     - Write a script for use in Moose Workflows.
 - `write_data_model`
     - Generate a Moose data model file and write it to the project's datamodels directory
-- `run_script`
+- `run_workflowt`
     - Runs said scripts.
-- `create_stream_function`
+- `write_stream_function`
     - Generate a Moose stream processing function using an LLM and write it to the project's functions directory
+- `write_and_run_temp_script`
+    - Creates and runs a temporary script, usually for sampling purposes.

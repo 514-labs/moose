@@ -27,6 +27,7 @@ import threading
 import time
 from typing import Optional, Callable, Tuple, Any
 
+from moose_lib.dmv2 import _streams
 from moose_lib import cli_log, CliLogData
 
 # Force stdout to be unbuffered
@@ -64,10 +65,17 @@ class KafkaTopicConfig:
         name = self.name
         if self.version is not None:
             version_suffix = f"_{self.version}".replace(".", "_")
-            name = name.replace(version_suffix, "")
+            if name.endswith(version_suffix):
+                name = name.removesuffix(version_suffix)
+            else:
+                raise Exception(f"Version suffix {version_suffix} not found in topic name {name}")
 
-        if self.namespace is not None:
-            name = name.split(self.namespace + ".")[-1]
+        if self.namespace is not None and self.namespace != "":
+            prefix = self.namespace + "."
+            if name.startswith(prefix):
+                name = name.removeprefix(prefix)
+            else:
+                raise Exception(f"Namespace prefix {prefix} not found in topic name {name}")
         
         return name
 
@@ -142,7 +150,7 @@ def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str
 
     return run_input_type, streaming_function_run
 
-def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[type, Callable]:
+def load_streaming_function_dmv2() -> tuple[type, Callable]:
     """
     Load a DMV2 streaming function by finding the stream transformation that matches
     the source and target topics.
@@ -159,22 +167,9 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
     Raises:
         SystemExit: If module import fails or if no matching transformation is found
     """
-    # Add the function directory to Python path so we can import the main module
-    sys.path.append(function_file_dir)
-    
-    try:
-        # Import the main module which should define the streams
-        import_module(function_file_name)
-        module = import_module("moose_lib.dmv2")
-    except Exception as e:
-        cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))
-        sys.exit(1)
-        
-    # Get all streams from the global registry
-    streams = module._streams
-    
+
     # Find the stream that has a transformation matching our source/destination
-    for source_py_stream_name, stream in streams.items():
+    for source_py_stream_name, stream in _streams.items():
         if source_py_stream_name != source_topic.topic_name_to_stream_name():
             continue
 
@@ -387,7 +382,7 @@ def main():
             streaming_function_input_type = None
             streaming_function_callable = None
             if args.dmv2:
-                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv2(function_file_dir, function_file_name)
+                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv2()
             else:
                 streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv1(function_file_dir, function_file_name)
 

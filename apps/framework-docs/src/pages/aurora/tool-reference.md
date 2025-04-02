@@ -20,9 +20,9 @@
 - `test_egress_api`
     - Tests said apis.
 
-### Experimental tools
+## Experimental tools
 
-> Note, these are experimental tools, if you want to use them, toggle the experimental features flag in your config file.
+> Note, these are experimental tools, if you want to use them, toggle the experimental features flag with `aurora config tools experimental`
 > 
 - `write_spec`
     - Generate or update a specification for a data-intensive feature

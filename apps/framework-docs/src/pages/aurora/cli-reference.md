@@ -13,7 +13,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 Creates a data engineering project with Moose, with Aurora MCP preconfigured.
 
 ```
-aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> <--no-fail-already-exists>
+aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> 
 ```
 
 - `<name>`: name of your application

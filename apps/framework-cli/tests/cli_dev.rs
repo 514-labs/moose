@@ -62,18 +62,3 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
         dev: dev_process,
     })
 }
-
-fn teardown_dev(mut dev_state: CargoDev) {
-    dev_state.dev.kill().unwrap();
-}
-
-#[test]
-fn should_properly_get_data_in_storage() -> Result<(), anyhow::Error> {
-    let dev = setup_dev()?;
-
-    // Add test steps here
-
-    teardown_dev(dev);
-
-    Ok(())
-}

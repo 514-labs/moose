@@ -131,6 +131,9 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Run pnpm install
+        run: pnpm install --filter=@repo/scripts
+
       - name: Run Tests
         run: cargo test
         env:

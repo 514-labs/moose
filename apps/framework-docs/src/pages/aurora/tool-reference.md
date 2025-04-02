@@ -1,6 +1,6 @@
 # Tool reference
 
-### Analytics Engineering Agent
+## Analytics Engineering Agent
 
 ### Read your moose project and data
 

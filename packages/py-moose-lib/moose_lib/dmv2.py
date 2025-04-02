@@ -198,6 +198,24 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
     stream: Optional[Stream[T]] = None
     ingest_api: Optional[IngestApi[T]] = None
 
+    def get_table(self) -> OlapTable[T]:
+        """Get the OLAP table, raising an error if it was not configured."""
+        if self.table is None:
+            raise ValueError("Table was not configured for this pipeline")
+        return self.table
+
+    def get_stream(self) -> Stream[T]:
+        """Get the stream, raising an error if it was not configured."""
+        if self.stream is None:
+            raise ValueError("Stream was not configured for this pipeline")
+        return self.stream
+
+    def get_ingest_api(self) -> IngestApi[T]:
+        """Get the ingestion API, raising an error if it was not configured."""
+        if self.ingest_api is None:
+            raise ValueError("Ingest API was not configured for this pipeline")
+        return self.ingest_api
+
     def __init__(self, name: str, config: DataModelConfigV2, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))

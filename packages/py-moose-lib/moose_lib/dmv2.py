@@ -119,13 +119,14 @@ class Stream(TypedMooseResource, Generic[T]):
     - Optional connection to a destination table
     """
     config: StreamConfig
-    transformations: dict[str, Tuple["Stream[Any]", Callable[[T], ZeroOrMany[Any]]]] = {}
+    transformations: dict[str, Tuple["Stream[Any]", Callable[[T], ZeroOrMany[Any]]]]
     _multipleTransformations: Optional[Callable[[T], list[_RoutedMessage]]] = None
 
     def __init__(self, name: str, config: StreamConfig = StreamConfig(), **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
+        self.transformations = {}
         _streams[name] = self
 
     def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]]):

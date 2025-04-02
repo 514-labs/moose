@@ -83,7 +83,11 @@ const handleAggregated = (
   }
 };
 
-const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
+const handleNumberType = (
+  t: ts.Type,
+  checker: TypeChecker,
+  fieldName: string,
+): string => {
   const tagSymbol = t.getProperty("typia.tag");
   if (tagSymbol === undefined) {
     return "Float";
@@ -91,28 +95,36 @@ const handleNumberType = (t: ts.Type, checker: TypeChecker): string => {
     const typiaProps = checker.getNonNullableType(
       checker.getTypeOfSymbol(tagSymbol),
     );
-    const valueSymbol = typiaProps.getProperty("value");
-    if (valueSymbol === undefined) {
-      console.log("Props.value is undefined");
-      return "Float";
-    } else {
-      const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-      if (
-        checker.isTypeAssignableTo(
-          valueTypeLiteral,
-          checker.getStringLiteralType("int64"),
-        )
-      ) {
-        return "Int";
-      } else {
-        const typeString = valueTypeLiteral.isStringLiteral()
-          ? valueTypeLiteral.value
-          : "unknown";
+    const props: ts.Type[] = typiaProps.isIntersection()
+      ? typiaProps.types
+      : [typiaProps];
 
-        console.log(`Other number types are not supported. ${typeString}`);
-        return "Float";
+    for (const prop of props) {
+      const valueSymbol = prop.getProperty("value");
+      if (valueSymbol === undefined) {
+        console.log(`Props.value is undefined for ${fieldName}`);
+      } else {
+        const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
+        if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("int64"),
+          )
+        ) {
+          return "Int";
+        } else {
+          const typeString = valueTypeLiteral.isStringLiteral()
+            ? valueTypeLiteral.value
+            : "unknown";
+
+          console.log(
+            `Other number types are not supported: ${typeString} in field ${fieldName}`,
+          );
+        }
       }
     }
+
+    return "Float";
   }
 };
 
@@ -139,7 +151,7 @@ const tsTypeToDataType = (
     : checker.isTypeAssignableTo(nonNull, checker.getStringType())
       ? "String"
       : isNumberType(nonNull, checker)
-        ? handleNumberType(nonNull, checker)
+        ? handleNumberType(nonNull, checker, fieldName)
         : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())
           ? "Boolean"
           : checker.isTypeAssignableTo(nonNull, dateType(checker))

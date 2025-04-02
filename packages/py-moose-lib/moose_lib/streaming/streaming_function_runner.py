@@ -150,7 +150,7 @@ def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str
 
     return run_input_type, streaming_function_run
 
-def load_streaming_function_dmv2() -> tuple[type, Callable]:
+def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[type, Callable]:
     """
     Load a DMV2 streaming function by finding the stream transformation that matches
     the source and target topics.
@@ -167,6 +167,14 @@ def load_streaming_function_dmv2() -> tuple[type, Callable]:
     Raises:
         SystemExit: If module import fails or if no matching transformation is found
     """
+    sys.path.append(function_file_dir)
+
+    try:
+        # todo: check the flat naming
+        import_module(function_file_name)
+    except Exception as e:
+        cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))
+        sys.exit(1)
 
     # Find the stream that has a transformation matching our source/destination
     for source_py_stream_name, stream in _streams.items():
@@ -382,7 +390,7 @@ def main():
             streaming_function_input_type = None
             streaming_function_callable = None
             if args.dmv2:
-                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv2()
+                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv2(function_file_dir, function_file_name)
             else:
                 streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv1(function_file_dir, function_file_name)
 

@@ -1,6 +1,7 @@
 import dataclasses
 from datetime import datetime
 from enum import Enum
+from .main import IngestionFormat
 from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple, Annotated
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -69,12 +70,6 @@ class TypedMooseResource(BaseTypedResource, Generic[T]):
     def _set_type(self, name: str, t: type[T]):
         super()._set_type(name, t)
         self.columns = Columns[T](self._t)
-
-
-class IngestionFormat(Enum):
-    """Supported formats for data ingestion."""
-    JSON = "JSON"
-    JSON_ARRAY = "JSON_ARRAY"
 
 
 class OlapConfig(BaseModel):
@@ -168,7 +163,7 @@ class IngestConfigWithDestination[T: BaseModel]:
     format: IngestionFormat = IngestionFormat.JSON
 
 
-class DataModelConfigV2(BaseModel):
+class IngestPipelineConfig(BaseModel):
     """Configuration for creating a complete data pipeline with table, stream and ingestion."""
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
@@ -217,7 +212,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             raise ValueError("Ingest API was not configured for this pipeline")
         return self.ingest_api
 
-    def __init__(self, name: str, config: DataModelConfigV2, **kwargs):
+    def __init__(self, name: str, config: IngestPipelineConfig, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         if config.table:

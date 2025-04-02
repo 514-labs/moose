@@ -1,6 +1,7 @@
+from importlib import import_module
 from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
-
+import json
 from .data_models import Column, _to_columns
 from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources
 from pydantic.alias_generators import to_camel
@@ -148,61 +149,11 @@ def to_infra_map() -> dict:
     return infra_map.model_dump(by_alias=True)
 
 
-def load_models(module_path: str = None) -> dict:
+def load_models():
     """
-    Loads the data models from a specified module and returns the infrastructure configuration.
-    
-    Args:
-        module_path: Path to the module to load (can be a file path or module name).
-                    If None, looks for 'main.py' in the current directory.
-    
-    Returns:
-        A dictionary with the infrastructure configuration.
+    Loads the data models from a app/main.py and prints the infrastructure configuration.
     """
-    import importlib
-    import importlib.util
-    import os
-    import sys
-    import json
-
-    if module_path is None:
-        # Try common model definition filenames, starting with main.py
-        possible_paths = [
-            os.path.join(os.getcwd(), "main.py"),
-            os.path.join(os.getcwd(), "app", "main.py"),
-            os.path.join(os.getcwd(), "models.py"),
-            os.path.join(os.getcwd(), "data_models.py"),
-            os.path.join(os.getcwd(), "app", "models.py")
-        ]
-
-        for path in possible_paths:
-            if os.path.exists(path):
-                module_path = path
-                break
-
-        if module_path is None:
-            raise FileNotFoundError(
-                "Could not find model definitions. Please specify the module path."
-            )
-
-    # Check if it's a file path or module name
-    if os.path.exists(module_path):
-        # Load from file path
-        dir_path = os.path.dirname(os.path.abspath(module_path))
-        if dir_path not in sys.path:
-            sys.path.insert(0, dir_path)
-
-        module_name = os.path.basename(module_path).replace(".py", "")
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-    else:
-        # Try to import as a module name
-        try:
-            importlib.import_module(module_path)
-        except ImportError:
-            raise ImportError(f"Could not load module: {module_path}")
+    import_module("app.main")
 
     # Generate the infrastructure map
     infra_map = to_infra_map()

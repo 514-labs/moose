@@ -50,18 +50,17 @@ All your code lives in the `app` directory, where Moose provides a flexible yet 
 <TypeScript>
 The most important file in your project is the root `index.ts`. This file acts as the single source of truth for what gets deployed to your infrastructure:
 
-```typescript
-// app/index.ts
-export { UserEvents } from './ingest/events';
-export { UserDataMaterializedView } from './views/user-analytics';
-export { UserAnalyticsAPI } from './apis/user-analytics';
+```ts filename="app/index.ts" copy
+export { RawRecords, ProcessedRecords } from './ingest/records';
+export { RecordMetricsView } from './views/aggregations';
+export { MetricsAPI } from './apis/metrics-api';
 ```
 </TypeScript>
 
 <Python>
 The most important file in your project is the root `main.py`. This file acts as the single source of truth for what gets deployed to your infrastructure:
 
-```python
+```py filename="app/main.py" copy
 # app/main.py
 import app.ingest
 import app.views
@@ -145,6 +144,7 @@ While you have complete flexibility in organizing your implementation, here's a 
 | ingest      | Create [IngestPipeline](/moose/building/ingestion) objects that combine ingest APIs, streams, and tables |
 | views          | Define in-database transformations using [Materialized Views](/moose/building/materialized-views) |
 | apis    | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
+| scripts    | Create [Workflows](/moose/building/workflows) to run ad-hoc tasks |
 | utils          | Helper functions and utilities |
 </Python>
 

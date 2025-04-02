@@ -1,6 +1,7 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
 import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo } from "@/components";
 import { RectangleEllipsis, Square, Workflow, Database, FileCode } from "lucide-react";
+import { paths } from "@/lib/paths";
 
 # Quick Start
 
@@ -90,17 +91,17 @@ moose-cli peek Foo
 <FeatureCard
   title="Data Modeling Basics"
   description="Learn how to build your first data model in Moose" 
-  href="/moose/building/data-modeling"
+  href={paths.dataModels}
 />
 <FeatureCard
   title="Working with Database Tables"
   description="Learn how to work with database tables in Moose" 
-  href="/moose/building/olap-table"
+  href={paths.olapTables}
 />
 <FeatureCard 
   title="Building Analytics APIs"
   description="Serve data from your OLAP database to client applications" 
-  href="/moose/building/consumption-apis"
+  href={paths.consumptionApis}
 />
 </FeatureGrid>
 

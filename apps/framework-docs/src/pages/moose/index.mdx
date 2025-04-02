@@ -31,15 +31,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
+import { paths } from "@/lib/paths";
 
 # Moose
 
->Data engineering framework for modern software developers
-
-Moose is an open-source framework for building data-intensive applications using pure TypeScript or Python without the complexity of a traditional data stack.
+Moose is an open source framework for developing data products & APIs on OLAP/streaming infra using native TypeScript/Python
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
-  <Link href="/moose/getting-started/quickstart">
+  <Link href={paths.quickstart}>
     <Button variant="default">Quick Start →</Button>
   </Link>
   <Link href="/templates">
@@ -53,42 +52,42 @@ Moose is an open-source framework for building data-intensive applications using
 
 <FeatureGrid>
   <FeatureCard
-    href="/moose/building/data-modeling"
+    href={paths.dataModels}
     Icon={Icons.models}
     title="Type-Safe Data Models"
     description="Define schemas once in TS/Python that can be used to generate data ingestion, storage, and API infrastructure"
   />
   
   <FeatureCard
-    href="/moose/building/ingestion"
+    href={paths.ingestion}
     Icon={Icons.ingestion}
     title="High-Performance Data Ingestion"
     description="Auto-validated APIs to capture data into OLAP databases with full type safety"
   />
   
   <FeatureCard
-    href="/moose/building/streams"
+    href={paths.streams}
     Icon={Icons.streams}
     title="Real-Time Stream Processing"
     description="Transform events in-flight using your preferred language, not just SQL"
   />
   
   <FeatureCard
-    href="/moose/building/materialized-views"
+    href={paths.materializedViews}
     Icon={Icons.db}
     title="In-Database Transformations"
     description="Create materialized views and transform data directly in your OLAP database with SQL blocks"
   />
   
   <FeatureCard
-    href="/moose/building/consumption-apis"
+    href={paths.consumptionApis}
     Icon={Icons.api}
     title="Analytics APIs"
     description="Build and expose fully-typed APIs to consume your processed data"
   />
   
   <FeatureCard
-    href="/moose/building/workflows"
+    href={paths.workflows}
     Icon={Icons.workflows}
     title="Workflow Orchestration"
     description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
@@ -121,13 +120,29 @@ Moose is an open-source framework for building data-intensive applications using
 />
 
 ### The DIY Data Stack Approach
-What if you need to add a simple string field to your data model?
 
-1. Update your TS/Python Code Model
-2. Update your Database Schema
-3. Update your Kafka Topic
-4. Update your Runtime Validation
-5. Update your transformations & queries
+<BulletPointsCard
+  bulletStyle="number"
+  divider={false}
+  title="What if you need to add a simple string field to your data model?"
+  bullets={[
+    {
+      title: "Update your TS/Python Code Model",
+    },
+    {
+      title: "Update your Database Schema",
+    },
+    {
+      title: "Update your Kafka Topic",
+    },
+    {
+      title: "Update your Runtime Validation",
+    },
+    {
+      title: "Update your transformations & queries",
+    },
+  ]}
+/>
 
 
 _Can you see the problem? This process repeats for **every change**._
@@ -160,24 +175,40 @@ export const examplePipeline = new IngestPipeline<ExampleModel>("example", {
 });
 ```
 
-<CheckmarkBullets
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
   title="You get end-to-end infrastructure for your data pipeline that is:"
   bullets={[
-    "Defined purely in TypeScript or Python code",
-    "Completely type safe and validated",
-    "Boilerplate free",
-    "Able to catch errors at dev time, not at runtime",
-    "Running entirely on your laptop and hot reloaded as you save changes in your editor",
+    {
+      title: "Defined purely in TypeScript or Python code",
+    },
+    {
+      title: "Completely type safe and validated",
+    },
+    {
+      title: "Boilerplate free",
+    },
+    {
+      title: "Able to catch errors at dev time, not at runtime",
+    },
   ]}
 />
 
-<CheckmarkBullets
-  variant="negative"
+<BulletPointsCard
+  bulletStyle="x"
+  divider={false}
   title="No manual synchronization, no context switching between your code editor, your database console, your Kafka client, etc."
   bullets={[
-    "“Does my Database table use snake_case or camelCase?”",
-    "“Did I add the new field to both the model AND the table?”",
-    "“Which database field was nullable again?”",
+    {
+      title: "“Does my Database table use snake_case or camelCase?”",
+    },
+    {
+      title: "“Did I add the new field to both the model AND the table?”",
+    },
+    {
+      title: "“Which database field was nullable again?”",
+    },
   ]}
 />
 
@@ -220,7 +251,8 @@ All the infrastructure is automatically spun up:
   Successfully ran local infrastructure
 ```
 
-<QnABullets
+<BulletPointsCard
+  divider={false}
   title="Common workflow scenarios"
   bullets={[
     {
@@ -265,12 +297,20 @@ Hit save and youll see your changes hot reloaded to your local infrastructure:
              ~ API Endpoint: orders - Version: 0.0 - Path: ingest/orders - Method: POST - Format: Some(Json)
 ```
 
-<CheckmarkBullets
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
   title="That's it! No additional steps needed."
   bullets={[
-      "Your API now validates this field",
-      "Your database schema is updated",
-      "Your streams carry the new field",
+    {
+      title: "Your API now validates this field",
+    },
+    {
+      title: "Your database schema is updated",
+    },
+    {
+      title: "Your streams carry the new field",
+    },
   ]}
 />
 

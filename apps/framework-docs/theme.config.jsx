@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 // Base text styles that match your typography components
 const baseTextStyles = {
   small:
-    "text-primary text-sm sm:text-sm 2xl:text-base 3xl:text-md leading-normal",
+    "text-muted-foreground text-sm sm:text-sm 2xl:text-base 3xl:text-md leading-normal",
   regular:
     "text-primary text-base sm:text-lg 2xl:text-xl 3xl:text-2xl leading-normal",
   heading: "text-primary font-semibold",

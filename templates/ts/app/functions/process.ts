@@ -1,12 +1,10 @@
-import { FooPipeline, BarPipeline, Foo, Bar } from "../datamodels/models";
+import { FooPipeline, BarPipeline, Foo, Bar } from "../ingest/models";
 
-if (FooPipeline.stream && BarPipeline.stream) {
-  FooPipeline.stream.addTransform(BarPipeline.stream, (foo: Foo): Bar => {
-    return {
-      primaryKey: foo.primaryKey,
-      utcTimestamp: new Date(foo.timestamp),
-      textLength: foo.optionalText?.length ?? 0,
-      hasText: foo.optionalText !== null,
-    };
-  });
-}
+FooPipeline.stream!.addTransform(BarPipeline.stream!, (foo: Foo): Bar => {
+  return {
+    primaryKey: foo.primaryKey,
+    utcTimestamp: new Date(foo.timestamp),
+    textLength: foo.optionalText?.length ?? 0,
+    hasText: foo.optionalText !== null,
+  };
+});

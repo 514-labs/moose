@@ -1,6 +1,6 @@
 use anyhow::Result;
-use chrono::Utc;
 use log::info;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::Path;
 use toml;
@@ -147,13 +147,21 @@ fn create_workflow_execution_request(
         });
     }
 
+    let workflow_id = if let Some(data) = &params.input {
+        let mut hasher = Sha256::new();
+        hasher.update(data.as_bytes());
+        format!(
+            "{}-{:.16}",
+            params.workflow_id,
+            hex::encode(hasher.finalize())
+        )
+    } else {
+        params.workflow_id.to_string()
+    };
+
     Ok(StartWorkflowExecutionRequest {
         namespace,
-        workflow_id: format!(
-            "{}-{}",
-            params.workflow_id,
-            Utc::now().format("%Y%m%d%H%M%S")
-        ),
+        workflow_id,
         workflow_type: Some(WorkflowType {
             name: WORKFLOW_TYPE.to_string(),
         }),

@@ -5,7 +5,7 @@ import {
   ConnectionOptions,
 } from "@temporalio/client";
 import { StringValue } from "@temporalio/common";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import * as path from "path";
 import * as fs from "fs";
 import { Column } from "../dataModels/dataModelTypes";
@@ -258,17 +258,17 @@ export class WorkflowClient {
       `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
     );
 
-    // Similar to rust client format Utc::now().format("%Y%m%d%H%M%S")
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:\.]/g, "")
-      .replace("T", "")
-      .slice(0, 14);
+    const workflowId = input_data
+      ? `${name}-${createHash("sha256")
+          .update(JSON.stringify(input_data))
+          .digest("hex")
+          .slice(0, 16)}`
+      : name;
 
     const handle = await this.client!.workflow.start("ScriptWorkflow", {
       args: [`${process.cwd()}/app/scripts/${name}`, input_data],
       taskQueue: "typescript-script-queue",
-      workflowId: `${name}-${timestamp}`,
+      workflowId,
       workflowIdConflictPolicy: "FAIL",
       workflowIdReusePolicy: "ALLOW_DUPLICATE",
       retry: {

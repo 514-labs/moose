@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import dataclasses
+import hashlib
 import json
 import os
 import subprocess
@@ -161,6 +162,7 @@ class WorkflowClient:
         print(f"WorkflowClient - starting workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
         
         # We should parse and encode the input_data here
+        workflow_id = name
         if input_data:
             try:
                 # First decode the JSON string if it's a string
@@ -171,16 +173,17 @@ class WorkflowClient:
                 input_data = json.loads(
                     json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
                 )
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON input data: {e}")
 
-        # Similar to rust client format Utc::now().format("%Y%m%d%H%M%S")
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+                params_str = json.dumps(input_data, sort_keys=True)
+                params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+                workflow_id = f"{name}-{params_hash}"
+            except Exception as e:
+                raise ValueError(f"Invalid JSON input data: {e}")
 
         workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
-            id=f"{name}-{timestamp}",
+            id=workflow_id,
             task_queue="python-script-queue",
             id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
             id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,

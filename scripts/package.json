@@ -1,4 +1,5 @@
 {
+  "name": "@repo/scripts",
   "type": "commonjs",
   "dependencies": {
     "@iarna/toml": "^3.0.0"

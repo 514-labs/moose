@@ -1,5 +1,6 @@
 
-# Quickstart: ADS-B (aircraft transponder) data for getting started
+# Quickstart
+*ADS-B (aircraft transponder) data for getting started*
 
 This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
 

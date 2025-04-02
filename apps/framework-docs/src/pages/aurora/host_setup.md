@@ -1,4 +1,4 @@
-## Host setup guide
+# Host setup guide
 
 | Host | Support | Best for |
 | --- | --- | --- |

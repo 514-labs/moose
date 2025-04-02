@@ -1,4 +1,4 @@
-## Tools
+# Tool reference
 
 ### Analytics Engineering Agent
 

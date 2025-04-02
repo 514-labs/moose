@@ -1,6 +1,26 @@
 use std::io::Result;
+use std::process::Command;
+
+fn package_templates() -> Result<()> {
+    let root_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap();
+
+    let package_templates_dir = root_dir.join("scripts/package-templates.js");
+
+    Command::new(&package_templates_dir)
+        .current_dir(root_dir)
+        .status()?;
+    Ok(())
+}
 
 fn main() -> Result<()> {
+    // Package templates first
+    println!("cargo:rerun-if-changed=../../templates");
+    package_templates()?;
+
     println!("cargo:rerun-if-changed=../../packages/protobuf");
 
     std::fs::create_dir_all("src/proto/")?;

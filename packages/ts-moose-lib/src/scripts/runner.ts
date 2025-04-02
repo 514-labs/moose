@@ -80,7 +80,7 @@ async function createTemporalConnection(
       namespace = match[1];
     }
   }
-  logger.info(`Using namespace from URL: ${namespace}`);
+  logger.info(`<workflow> Using namespace from URL: ${namespace}`);
 
   let connectionOptions: NativeConnectionOptions = {
     address: temporalConfig.url,
@@ -113,7 +113,11 @@ async function createTemporalConnection(
     }
   }
 
+  logger.info(
+    `<workflow> Connecting to Temporal at ${connectionOptions.address}`,
+  );
   const connection = await NativeConnection.connect(connectionOptions);
+  logger.info("<workflow> Connected to Temporal server");
   return { connection, namespace };
 }
 

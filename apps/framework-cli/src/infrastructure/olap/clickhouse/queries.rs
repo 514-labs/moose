@@ -111,6 +111,20 @@ ENGINE = {{engine}}
 pub enum ClickhouseEngine {
     MergeTree,
     ReplacingMergeTree,
+    AggregatingMergeTree,
+}
+
+impl<'a> TryFrom<&'a str> for ClickhouseEngine {
+    type Error = &'a str;
+
+    fn try_from(value: &'a str) -> Result<Self, &'a str> {
+        match value {
+            "MergeTree" => Ok(ClickhouseEngine::MergeTree),
+            "ReplacingMergeTree" => Ok(ClickhouseEngine::ReplacingMergeTree),
+            "AggregatingMergeTree" => Ok(ClickhouseEngine::AggregatingMergeTree),
+            _ => Err(value),
+        }
+    }
 }
 
 pub fn create_table_query(
@@ -130,6 +144,7 @@ pub fn create_table_query(
             }
             "ReplacingMergeTree"
         }
+        ClickhouseEngine::AggregatingMergeTree => "AggregatingMergeTree",
     };
 
     let primary_key = table

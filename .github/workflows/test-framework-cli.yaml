@@ -92,10 +92,6 @@ jobs:
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
-      - name: cat file
-        run: cat .moose/build.log
-        if: always()
-
       - name: Inspect Logs
         if: always()
         run: |

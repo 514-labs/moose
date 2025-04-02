@@ -55,6 +55,7 @@ use crate::project::Project;
 use crate::proto::infrastructure_map::{
     InfrastructureMap as ProtoInfrastructureMap, SqlResource as ProtoSqlResource,
 };
+use crate::utilities::constants;
 use anyhow::{Context, Result};
 use log::debug;
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
@@ -1832,10 +1833,10 @@ impl PartialInfrastructureMap {
                 || raw_string_stderr.contains("ModuleNotFoundError")
             {
                 let install_command = if user_code_file_name
-                    .ends_with(SupportedLanguages::Typescript.extension())
+                    .ends_with(constants::TYPESCRIPT_FILE_EXTENSION)
                 {
                     "npm install"
-                } else if user_code_file_name.ends_with(SupportedLanguages::Python.extension()) {
+                } else if user_code_file_name.ends_with(constants::PYTHON_FILE_EXTENSION) {
                     "pip install ."
                 } else {
                     return Err(DmV2LoadingError::Other {

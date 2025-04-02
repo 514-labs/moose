@@ -1,19 +1,32 @@
-import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid, CheckmarkBullets, BulletPointsCard } from "@/components";
 import { FileTree, Tabs } from "nextra/components";
 
 # Data Modeling
-
+<LanguageSwitcher />
 Data modeling is the core of Moose. You define your types once, then explicitly choose how to instantiate them across your infrastructure.
 
+## Overview
 Unlike traditional data engineering workflows where you are responsible for manually syncing schemas between components, Moose lets you programmatically decide which infrastructure elements to generate from your types.
 
-How it works:
+<BulletPointsCard
+  title="How it works:"
+  bullets={[
+    {
+      title: "Define your schemas",
+      description: "Create type definitions in TypeScript or Python"
+    },
+    {
+      title: "Choose your components",
+      description: "Decide which infrastructure pieces to create (APIs, streams, tables)"
+    },
+    {
+      title: "Fine-tune behavior",
+      description: "More granular control over how your infrastructure should behave if desired"
+    }
+  ]}
+/>
 
-1. **[Define your schemas](./data-modeling#schema-definition)** - Create type definitions in TypeScript or Python
-2. **Choose your components** - Decide which infrastructure pieces to create (APIs, streams, tables)
-3. **Fine-tune behavior** - More granular control over how your infrastructure should behave if desired
-
-
+### Quick Start
 <TypeScript>
 ```ts filename="app/index.ts" copy
 // 1. Define your schema (WHAT your data looks like)
@@ -55,18 +68,14 @@ my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", Ingest
 ```
 </Python>
 
-### Benefits
-
-- **Type-driven development** - Catch errors at dev time, not runtime
-- **Full control** - Choose exactly what to create and how it should behave
-- **Zero schema drift** - Change types in one place, entire stack updates
-
-## Getting Started with Data Modeling
-
-Moose data modeling consists of two core parts:
-1. **[Schema Definition](./data-modeling#part-1-schema-definition)**: Defining the structure and types of your data
-2. **[Infrastructure Configuration](./data-modeling#part-2-infrastructure-configuration)**: Specifying how that schema should be applied to your data infrastructure
-
+<CheckmarkBullets
+  title="Benefits:"
+  bullets={[
+    "End-to-end type safety across your code and infrastructure",
+    "Full control over your infrastructure with code",
+    "Zero schema drift - change your types in one place, automatically update your infrastructure"
+  ]}
+/>
 
 ## Schema Definition
 
@@ -252,7 +261,7 @@ When evolving your schemas, follow these guidelines:
 
 ## Infrastructure Configuration
 
-<Callout type="info">
+<Callout type="info" title="The HOW">
   This section covers how to apply your data models to infrastructure components.
 </Callout>
 
@@ -531,7 +540,7 @@ If you don't specify configuration options:
 <FeatureGrid columns={3}>
   <FeatureCard
     href="/moose/streams"
-    title="Working with Streams"
+    title="Streaming Deep Dive"
     description="Learn how to process, transform, and manage data streams in real-time."
   />
   <FeatureCard
@@ -541,7 +550,7 @@ If you don't specify configuration options:
   />
   <FeatureCard
     href="/moose/ingestion"
-    title="Working with Ingest"
+    title="Ingesting Data"
     description="Explore how to efficiently ingest data with automatic schema validation."
   />
 </FeatureGrid>

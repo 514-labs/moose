@@ -14,7 +14,20 @@ import {
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
-import { FolderPlus, Scroll, Code, Terminal, Database, Zap, FileCode, Clock, Users, GitBranch } from "lucide-react";
+import { 
+  FolderPlus, 
+  Scroll, 
+  Code, 
+  Terminal,
+  Database, 
+  Zap, 
+  FileCode, 
+  Clock, 
+  Users, 
+  GitBranch, 
+  HardDriveDownload, 
+  Waves 
+} from "lucide-react";
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
 
@@ -40,42 +53,42 @@ Moose is an open-source framework for building data-intensive applications using
 <FeatureGrid>
   <FeatureCard
     href="/moose/data-modeling"
-    icon={<Code className="h-6 w-6 text-moose-purple" />}
+    Icon={Code}
     title="Type-Safe Data Models"
     description="Define schemas once in TS/Python that can be used to generate data ingestion, storage, and API infrastructure"
   />
   
   <FeatureCard
     href="/moose/ingestion"
-    icon={<Database className="h-6 w-6 text-moose-purple" />}
+    Icon={HardDriveDownload}
     title="High-Performance Data Ingestion"
     description="Auto-validated APIs to capture data into OLAP databases with full type safety"
   />
   
   <FeatureCard
     href="/moose/streams"
-    icon={<Zap className="h-6 w-6 text-moose-purple" />}
+    Icon={Waves}
     title="Real-Time Stream Processing"
     description="Transform events in-flight using your preferred language, not just SQL"
   />
   
   <FeatureCard
     href="/moose/materialized-views"
-    icon={<Database className="h-6 w-6 text-moose-purple" />}
+    Icon={Database}
     title="In-Database Transformations"
     description="Create materialized views and transform data directly in your OLAP database with SQL blocks"
   />
   
   <FeatureCard
     href="/moose/consumption-apis"
-    icon={<FileCode className="h-6 w-6 text-moose-purple" />}
+    Icon={FileCode}
     title="Analytics APIs"
     description="Build and expose fully-typed APIs to consume your processed data"
   />
   
   <FeatureCard
     href="/moose/workflows"
-    icon={<Clock className="h-6 w-6 text-moose-purple" />}
+    Icon={Clock}
     title="Workflow Orchestration"
     description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
   />

@@ -102,14 +102,14 @@ export default {
       </Link>
     ),
   },
-  main: ({ children }) => (
-    <div className="relative">
-      <div className="absolute right-0 top-0 z-10">
-        <LanguageSwitcher />
-      </div>
-      {children}
-    </div>
-  ),
+  // main: ({ children }) => (
+  //   <div className="relative">
+  //     <div className="absolute right-0 top-0 z-10">
+  //       <LanguageSwitcher />
+  //     </div>
+  //     {children}
+  //   </div>
+  // ),
   navigation: {
     prev: true,
     next: true,

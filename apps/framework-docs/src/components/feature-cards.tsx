@@ -1,10 +1,11 @@
 import React, { ReactNode, FC } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface FeatureCardProps {
   href?: string;
-  icon: ReactNode;
+  Icon: React.ElementType;
   title: string;
   description: string;
   features?: string[];
@@ -13,7 +14,7 @@ export interface FeatureCardProps {
 
 export function FeatureCard({
   href,
-  icon,
+  Icon,
   title,
   description,
   features = [],
@@ -31,13 +32,23 @@ export function FeatureCard({
   );
 
   const CardContent = () => (
-    <>
-      {icon && <div className="mb-4">{icon}</div>}
-      <h3 className="text-lg font-medium mb-2">{title}</h3>
-      {description && (
-        <div className="text-muted-foreground">{description}</div>
-      )}
-    </>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-4">
+        {Icon && (
+          <div className="flex-shrink-0 self-start mt-1">
+            <Icon className="h-[20px] w-[20px] text-moose-purple" />
+          </div>
+        )}
+        <div>
+          <h3 className="text-lg font-medium">{title}</h3>
+          {description && (
+            <div className="text-muted-foreground text-sm mt-1">
+              {description}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
   if (href) {

@@ -1,9 +1,31 @@
-import { Callout } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, CheckmarkBullets } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Ingestion APIs
+<LanguageSwitcher />
 
-Ingestion APIs are the entry point for data flowing into your Moose application. They provide type-safe HTTP endpoints that:
+## Overview
+Ingestion APIs are the entry point for data flowing into your Moose application. 
+
+<BulletPointsCard
+  title="How it works:"
+  bullets={[
+    {
+      title: "Define your data model",
+      description: "Create a type definition that validates incoming data"
+    },
+    {
+      title: "Set up ingestion endpoints",
+      description: "Configure how data enters your pipeline with REST APIs"
+    },
+    {
+      title: "Connect to destination",
+      description: "Direct validated data to streams, tables, or both"
+    }
+  ]}
+/>
+
+They provide type-safe HTTP endpoints that:
 - **Accept data through REST APIs** with automatic validation
 - **Connect to streams** to buffer data for reliable processing
 

@@ -1,33 +1,85 @@
-# Materialized Views
+import { LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python } from "@/components";
 
-Materialized views are a powerful feature of Moose that allow you to precompute and store the results of complex queries. This can be useful for improving query performance, reducing the load on your database, and providing a more efficient way to access data.
+# In-Database Transformations
+
+<LanguageSwitcher />
 
 ## Overview
+Materialized views allow you to precompute and store the results of complex queries. This can be useful for improving query performance, reducing the load on your database, and providing a more efficient way to access data.
 
-Materialized views in Moose:
-- **Precompute complex queries**: Store results of expensive operations for faster access
-- **Automatically update**: Refresh when source tables change
-- **Support aggregations**: Efficiently calculate metrics across your data
-- **Type-safe definitions**: Leverage TypeScript for schema validation
+<BulletPointsCard
+  title="How it works:"
+  bullets={[
+    {
+      title: "Model your target query result set",
+      description: "Write the schema of your materialized view result set as a data model"
+    },
+    {
+      title: "Define your transformation logic",
+      description: "Write a SELECT query to compute the result set"
+    },
+    {
+      title: "Moose generates the infrastructure",
+      description: "Moose turns your query into a materialized view and a physical table to store the results"
+    }
+  ]}
+/>
 
-## Creating a Materialized View
+### Basic Example
 
+<TypeScript>
 ```ts filename="MaterializedView.ts" copy
 import { MaterializedView, sql } from "@514labs/moose-lib";
 import { sourceTable } from "./SourceTable";
 
+// 1. Define the schema of the materialized view result set
 interface TargetSchema {
   id: string;
   average_rating: number;
   num_reviews: number;
 }
 
+// 2. Write a SELECT query to compute the result set
 const exampleMaterializedView = new MaterializedView<TargetSchema>({
   selectStatement: sql` SELECT * FROM ${sourceTable}`,
   tableName: "my_table",
   materializedViewName: "example_materialized_view",
 });
 ```
+</TypeScript>
+
+## TODO: Review Python example
+<Python>
+```py filename="MaterializedView.py" copy
+from moose_lib import MaterializedView, sql
+from source_table import source_table
+
+# 1. Define the schema of the materialized view result set
+class TargetSchema(BaseModel):
+    id: str
+    average_rating: float
+    num_reviews: int
+
+# 2. Write a SELECT query to compute the result set
+example_materialized_view = MaterializedView[TargetSchema](
+    select_statement=f"SELECT * FROM {source_table}",
+    table_name="my_table",
+    materialized_view_name="example_materialized_view",
+)
+```
+</Python>
+
+
+
+
+<CheckmarkBullets
+  title="Key benefits:"
+  bullets={[
+    "Automatic refresh on new data",
+    "Supports incremental aggregations",
+    "Type-safe schema definitions"
+  ]}
+/>
 
 ### Configuration Options
 

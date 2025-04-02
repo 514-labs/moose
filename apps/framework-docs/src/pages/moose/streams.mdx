@@ -71,6 +71,7 @@ All data sent to the `POST /ingest/raw_data` endpoint will be buffered in the `r
 If the raw data needs to be transformed before landing in the database, you can define a transform destination stream and a transform function to process the data:
 
 #### Single Stream Transformation
+<TypeScript>
 ```ts filename="TransformDestinationStream.ts" copy
 
 interface RawData {
@@ -90,6 +91,10 @@ const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
   table: true
 });
 
+// Create a table for the transformed data
+const transformedTable = new OlapTable<TransformedData>("transformed_data");
+
+// Create a stream for the transformed data
 const transformedStream = new Stream<TransformedData>("transformed_stream", {
   destination: transformedTable // the table to write the transformed data to
 });
@@ -100,8 +105,16 @@ rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
   transformedAt: new Date()
 }));
 ```
+</TypeScript>
+
+<Python>
+```py filename="TransformDestinationStream.py" copy
+
+```
+</Python>
 
 #### Chaining Transformations
+<TypeScript>
 ```ts filename="ChainedTransformations.ts" copy
 interface RawData {
   id: string;
@@ -140,13 +153,20 @@ transformedStream.addTransform(transformedStream2, (record) => ({
   transformedAt: new Date()
 }));
 ```
+</TypeScript>
 
+<Python>
+```py filename="ChainedTransformations.py" copy
+
+```
+</Python>
 
 ## Implementing Transformations
 
 ### Reshape and Enrich Data
 Transform data shape or enrich records:
 
+<TypeScript>
 ```typescript filename="DataTransform.ts"
 interface RawEvent {
   id: string;
@@ -193,10 +213,19 @@ rawStream.addTransform(enrichedStream, async (record: RawEvent) => ({
   }
 }));
 ```
+</TypeScript>
+
+<Python>
+```py filename="DataTransform.py" copy
+
+```
+</Python>
+
 
 ### Filtering
 Remove or filter records based on conditions:
 
+<TypeScript>
 ```typescript filename="FilterStream.ts"
 interface MetricRecord {
   id: string;
@@ -228,10 +257,19 @@ inputStream.addTransform(validMetrics, (record) => {
   return record;
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="FilterStream.py" copy
+
+```
+</Python>
+
 
 ### Fan Out (1:N)
 Send data to multiple downstream processors:
 
+<TypeScript>
 ```ts filename="FanOut.ts" copy
 interface Order {
   orderId: string;
@@ -276,10 +314,18 @@ orderStream.addTransform(archiveStream, (order) => ({
   archivedAt: new Date()
 }));
 ```
+</TypeScript>
+
+<Python>
+```py filename="FanOut.py" copy
+
+```
+</Python>
 
 ### Fan In (N:1)
 Combine data from multiple sources:
 
+<TypeScript>
 ```typescript filename="FanIn.ts"
 interface UserEvent {
   userId: string;
@@ -320,26 +366,38 @@ apiEvents.addTransform(allEvents, (event) => ({
   timestamp: new Date()
 }));
 ```
+</TypeScript>
 
-Each pattern demonstrates:
-- Clear input/output types
-- Practical use cases
-- Error handling considerations
-- Type-safe transformations
+<Python>
+```py filename="FanIn.py" copy
+
+```
+</Python>
 
 See [API Reference](./api-reference#stream) for all available transform options.
 
 ## Stream Configurations
 
 ### Parallelism and Retention
+
+<TypeScript>
 ```typescript filename="StreamConfig.ts"
 const highThroughputStream = new Stream<Data>("high_throughput", {
   parallelism: 4,              // Process 4 records simultaneously
   retentionPeriod: 86400      // Keep data for 1 day
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="StreamConfig.py" copy
+
+```
+</Python>
+
 
 ### Transform Return Types
+<TypeScript>
 ```typescript filename="TransformTypes.ts"
 // Single record
 stream.addTransform(output, (record) => ({
@@ -367,8 +425,16 @@ stream.addTransform(output, async (record) => {
   return enriched;
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="TransformTypes.py" copy
+
+```
+</Python>
 
 ### Error Handling
+<TypeScript>
 ```typescript filename="ErrorHandling.ts"
 try {
   await stream.write(event);
@@ -382,5 +448,13 @@ try {
   }
 }
 ```
+</TypeScript>
+
+<Python>
+```py filename="ErrorHandling.py" copy
+
+```
+</Python> 
+
 
 See the [API Reference](./api-reference#stream) for complete configuration options. 

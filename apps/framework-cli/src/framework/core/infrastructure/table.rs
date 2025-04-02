@@ -76,7 +76,7 @@ impl Table {
             order_by: proto.order_by,
             version: Version::from_string(proto.version),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
-            deduplicate: false, // TODO: Add to proto
+            deduplicate: proto.deduplicate,
             engine: proto.engine.into_option().map(|wrapper| wrapper.value),
         }
     }

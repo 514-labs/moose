@@ -320,7 +320,7 @@ export async function getTemporalClient(
         namespace = match[1];
       }
     }
-    console.info(`Using namespace from URL: ${namespace}`);
+    console.info(`<api> Using namespace from URL: ${namespace}`);
 
     let connectionOptions: ConnectionOptions = {
       address: temporalUrl,

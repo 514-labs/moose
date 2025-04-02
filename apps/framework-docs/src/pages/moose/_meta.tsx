@@ -1,5 +1,15 @@
 import { render } from "@/components";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { SmallText } from "@/components/typography";
+import {
+  ArrowRight,
+  HandMetal,
+  Code,
+  BookOpen,
+  Rocket,
+  BookMarked,
+} from "lucide-react";
+
 // Raw meta object - more concise without repetitive rendering logic
 const rawMeta = {
   // "--Select Language--": {
@@ -12,51 +22,40 @@ const rawMeta = {
   //   )
 
   // },
-  // First Contact - Essential for newcomers
-  "--Getting Started--": {
-    type: "separator",
-  },
   index: {
-    title: "Introduction",
+    title: "Welcome to Moose",
     theme: {
       breadcrumb: false,
     },
   },
-  quickstart: "Quick Start",
-  architecture: "Architecture Overview",
-  "project-structure": "Project Structure",
-
+  "getting-started": {
+    title: "Getting Started",
+    Icon: HandMetal,
+  },
   // Builder's Guide - Task-oriented approach
-  "--Building with Moose--": {
-    type: "separator",
+  building: {
+    title: "Developing",
+    Icon: Code,
   },
-  "data-modeling": "Data Modeling",
-  ingestion: "Ingesting Data via APIs",
-  streams: "Stream Processing",
-  "olap-table": "Working with Database Tables",
-  "materialized-views": "Transforming Data in your Database",
-  "consumption-apis": "Consuming Data via APIs",
-  workflows: "Workflow Orchestration",
-
-  // Practical Guidance
-  "--Guides--": {
-    type: "separator",
+  deploying: {
+    title: "Deploying",
+    Icon: Rocket,
   },
-  deploying: "Self-Hosted Deployment",
-  monitoring: "Monitoring & Observability",
-  "data-flow": "Data Flow",
-
-  // Reference & Resources
-  "--Reference--": {
-    type: "separator",
+  reference: {
+    title: "Reference",
+    Icon: BookMarked,
   },
-  "api-reference": "API Reference",
-  "moose-cli": "CLI Reference",
-  "metrics-console": "Metrics Console",
+  "data-flow": {
+    display: "hidden",
+  },
+  "metrics-console": {
+    display: "hidden",
+  },
 
   // Help & Support
   "--Help--": {
     type: "separator",
+    title: "Help & Support",
   },
   faqs: "FAQs",
 

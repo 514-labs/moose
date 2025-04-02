@@ -18,7 +18,7 @@ You can create streams in two ways:
 
 ### Streams for Ingestion
 
-<Tabs items={["Ingest Pipeline (Recommended)", "Manual Stream Configuration"]}>
+<Tabs items={["Ingest Pipeline (Recommended)", "Standalone Stream"]}>
 <Tabs.Tab title="Ingest Pipeline (Recommended)">
 The `IngestPipeline` class provides a convenient way to set up streams with ingestion APIs and tables. This is the recommended way to create streams for ingestion:
 
@@ -71,6 +71,9 @@ All data sent to the `POST /ingest/raw_data` endpoint will be buffered in the `r
 If the raw data needs to be transformed before landing in the database, you can define a transform destination stream and a transform function to process the data:
 
 #### Single Stream Transformation
+
+<Tabs items={["Ingest Pipeline (Recommended)", "Standalone Stream"]}>
+<Tabs.Tab title="Ingest Pipeline (Recommended)">
 <TypeScript>
 ```ts filename="TransformDestinationStream.ts" copy
 
@@ -85,21 +88,21 @@ interface TransformedData {
   transformedAt: Date;
 }
 
-const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+// Configure components for raw data ingestion & buffering
+const rawData = new IngestPipeline<RawData>("raw_data", {
   ingest: true,
   stream: true, // Buffers data between the ingestion API and the database table
-  table: true
+  table: false // Don't create a table for the raw data
 });
 
 // Create a table for the transformed data
-const transformedTable = new OlapTable<TransformedData>("transformed_data");
-
-// Create a stream for the transformed data
-const transformedStream = new Stream<TransformedData>("transformed_stream", {
-  destination: transformedTable // the table to write the transformed data to
+const transformedData = new IngestPipeline<TransformedData>("transformed_data", {
+  ingest: false, // Don't create an ingestion API for the transformed data
+  stream: true, // Create destination stream for the transformed data
+  table: true // Create a table for the transformed data
 });
 
-rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
+rawData.stream.addTransform(transformedData.stream, (record) => ({
   id: record.id,
   transformedValue: record.value * 2,
   transformedAt: new Date()
@@ -112,6 +115,50 @@ rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
 
 ```
 </Python>
+</Tabs.Tab>
+
+<Tabs.Tab title="Standalone Stream">
+<TypeScript>
+```ts filename="TransformDestinationStream.ts" copy
+interface RawData {
+  id: string;
+  value: number;
+}
+
+interface TransformedData {
+  id: string;
+  transformedValue: number;
+  transformedAt: Date;
+}
+
+// Configure components for raw data ingestion & buffering
+const rawDataStream = new Stream<RawData>("raw_data");
+const rawIngestionStream = new IngestApi<RawData>("raw_data", {
+  destination: rawDataStream
+});
+
+// Configure components for transformed data stream & storage
+const transformedTable = new OlapTable<TransformedData>("transformed_data");
+const transformedStream = new Stream<TransformedData>("transformed_stream", {
+  destination: transformedTable // Configure the stream <-> table sync
+});
+
+// Add a transform to the raw data stream to transform the data
+rawDataStream.addTransform(transformedStream, (record) => ({
+  id: record.id,
+  transformedValue: record.value * 2,
+  transformedAt: new Date()
+}));
+```
+</TypeScript>
+
+<Python>
+```py filename="TransformDestinationStream.py" copy
+
+```
+</Python>
+</Tabs.Tab>
+</Tabs>
 
 #### Chaining Transformations
 <TypeScript>
@@ -131,7 +178,7 @@ interface TransformedData2 {
   transformedValue: number;
 }
 
-const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+const rawData = new IngestPipeline<RawData>("raw_data", {
   ingest: true,
   stream: true, // Buffers data between the ingestion API and the database table
   table: false
@@ -139,7 +186,7 @@ const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
 
 const transformedStream = new Stream<TransformedData>("transformed_stream");
 
-rawIngestionStream.stream.addTransform(transformedStream, (record) => ({
+rawData.stream.addTransform(transformedStream, (record) => ({
   id: record.id,
   transformedValue: record.value * 2,
   transformedAt: new Date()

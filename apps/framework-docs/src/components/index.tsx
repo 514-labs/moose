@@ -12,3 +12,4 @@ export * from "./product-badge";
 export * from "./meta-renderer";
 export * from "./bullet-points-card";
 export * from "./q-and-a-bullets";
+export * from "./icons";

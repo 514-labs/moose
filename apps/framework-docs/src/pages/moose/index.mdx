@@ -10,7 +10,8 @@ import {
   BulletPointsCard,
   Callout,
   QnABullets,
-  CheckmarkBullets
+  CheckmarkBullets,
+  Icons
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -38,7 +39,7 @@ import { Tabs, Tab } from "nextra/components";
 Moose is an open-source framework for building data-intensive applications using pure TypeScript or Python without the complexity of a traditional data stack.
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
-  <Link href="/moose/quickstart">
+  <Link href="/moose/getting-started/quickstart">
     <Button variant="default">Quick Start →</Button>
   </Link>
   <Link href="/templates">
@@ -52,43 +53,43 @@ Moose is an open-source framework for building data-intensive applications using
 
 <FeatureGrid>
   <FeatureCard
-    href="/moose/data-modeling"
-    Icon={Code}
+    href="/moose/building/data-modeling"
+    Icon={Icons.models}
     title="Type-Safe Data Models"
     description="Define schemas once in TS/Python that can be used to generate data ingestion, storage, and API infrastructure"
   />
   
   <FeatureCard
-    href="/moose/ingestion"
-    Icon={HardDriveDownload}
+    href="/moose/building/ingestion"
+    Icon={Icons.ingestion}
     title="High-Performance Data Ingestion"
     description="Auto-validated APIs to capture data into OLAP databases with full type safety"
   />
   
   <FeatureCard
-    href="/moose/streams"
-    Icon={Waves}
+    href="/moose/building/streams"
+    Icon={Icons.streams}
     title="Real-Time Stream Processing"
     description="Transform events in-flight using your preferred language, not just SQL"
   />
   
   <FeatureCard
-    href="/moose/materialized-views"
-    Icon={Database}
+    href="/moose/building/materialized-views"
+    Icon={Icons.db}
     title="In-Database Transformations"
     description="Create materialized views and transform data directly in your OLAP database with SQL blocks"
   />
   
   <FeatureCard
-    href="/moose/consumption-apis"
-    Icon={FileCode}
+    href="/moose/building/consumption-apis"
+    Icon={Icons.api}
     title="Analytics APIs"
     description="Build and expose fully-typed APIs to consume your processed data"
   />
   
   <FeatureCard
-    href="/moose/workflows"
-    Icon={Clock}
+    href="/moose/building/workflows"
+    Icon={Icons.workflows}
     title="Workflow Orchestration"
     description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
   />
@@ -325,14 +326,14 @@ Moose is ideal for a wide range of data-intensive applications, from real-time a
     description="Star, check out the code, and contribute to Moose on GitHub"
     ctaLink="https://github.com/514-labs/moose"
     ctaLabel="GitHub"
-    Icon={GitBranch}
+    Icon={Icons.github}
   />
   <CTACard
     title="Talk to the Moose Maintainers"
     description="We're always looking to improve Moose and would love to hear from you!"
     ctaLink="https://cal.com/team/514/talk-to-eng"
     ctaLabel="Talk to the Team"
-    Icon={Users}
+    Icon={Icons.contact}
   />
 </CTACards>
 

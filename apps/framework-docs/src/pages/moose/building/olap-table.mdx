@@ -1,13 +1,41 @@
-import { Callout } from "@/components";
+import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python } from "@/components";
+import { Tabs } from "nextra/components";
 
 # Working with Database Tables
-
+<LanguageSwitcher />
 Tables are the foundation of Moose's data storage layer, designed to integrate with your entire data pipeline. They store data from your APIs and streams while powering your analytics queries for your downstream transformations, APIs, and more.
 
 ## Overview
 
+Tables in Moose provide a type-safe way to define your database schema directly in your code.
+
 Tables in Moose eliminate the tedious database administration tasks that typically interrupt your development flow:
 
+<BulletPointsCard
+title="How it works:"
+bullets={[
+  {
+    title: "Define your table schema as a data model",
+    description: "Create a type definition that describes your table structure"
+  },
+  {
+    title: "Instantiate your table",
+    description: "Create a typed table instance from your model with one line of code"
+  },
+  {
+    title: "Configure storage options",
+    description: "Optionally specify indexing, ordering, and other optimizations for your query patterns"
+  },
+  {
+    title: "Iterate on your schema",
+    description: "Add, edit, or remove fields and tables update automatically"
+  }
+]}
+/>
+
+### Basic Example
+
+<TypeScript>
 ```ts filename="FirstTable.ts" copy
 interface MyFirstTable {
   id: Key<string>;
@@ -17,52 +45,45 @@ interface MyFirstTable {
 
 const myTable = new OlapTable<MyFirstTable>("my_first_table");
 ```
+</TypeScript>
 
-This simple interface definition is automatically converted into a ClickHouse table. No more context-switching between application code and database administration:
+<Python>
+```py filename="FirstTable.py" copy
+from pydantic import BaseModel
+from moose_lib import Key, OlapTable
+from pydantic import BaseModel
 
-- **No SQL boilerplate**: Forget writing verbose CREATE TABLE and ALTER TABLE statements
-- **Type-safe schema evolution**: Add fields to your model and tables update automatically
-- **Automatic index creation**: Optimal indexes based on your key definitions
-- **Type mapping handled for you**: Database types derived directly from your application types
-- **Validation built-in**: Data is validated against your schema before storage
+class MyFirstTable(BaseModel):
+    id: Key[str]
+    name: str
+    age: int
+
+my_table = OlapTable[MyFirstTable]("my_first_table")
+```
+</Python>
+
+
+<CheckmarkBullets
+  title="Benefits:"
+  bullets={[
+    "Boilerplate CREATE/ALTER TABLE statements handled for you",
+    "Automatic type mapping between your code and database types",
+    "Built-in validation before storage"
+  ]}
+/>
 
 ## Creating Tables
+There are two main approaches to creating tables:
+- [Standalone Tables](#standalone-tables)
+- [Tables in Ingestion Pipelines](#tables-in-ingestion-pipelines)
 
-Tables in Moose provide a type-safe way to define your database schema directly in your code. There are two main approaches to creating tables:
-
-### Standalone Tables
-
-Create a table directly for custom data flows or when you need fine-grained control:
-
-```ts filename="StandaloneTable.ts"
-import { OlapTable, Key } from "@514labs/moose-lib";
-
-// Define your schema
-interface ExampleSchema {
-  id: Key<string>;
-  dateField: Date;
-  numericField: number;
-  booleanField: boolean;
-  floatField: number;
-  integerField: number & tags.Type<"int64">; // Moose supports native tagged types so you can use Integers in typescript
-}
-
-// Create a standalone table
-const exampleTable = new OlapTable<ExampleSchema>("example_table", {
-  orderByFields: ["id", "dateField"], // Optional when using a primary key
-  deduplicate: true  // Optional: keep only the latest version of each record
-});
-
-// Now you can:
-// - Write to this table from streams
-// - Query it directly
-// - Use it as a source for materialized views
-```
-
-### Tables in Ingestion Pipelines
+<Tabs items={["IngestPipelines (Recommended)", "Standalone Tables"]}>
+<Tabs.Tab title="IngestPipelines (Recommended)">
+### Creating Tables in Ingestion Pipelines
 
 For end-to-end data flows, create tables as part of an ingestion pipeline:
 
+<TypeScript>
 ```ts filename="PipelineTable.ts"
 import { IngestPipeline, Key } from "@514labs/moose-lib";
 
@@ -88,8 +109,94 @@ const eventsPipeline = new IngestPipeline<UserEvent>("user_events_pipeline", {
 // Access the table component when needed
 const eventsTable = eventsPipeline.table;
 ```
+</TypeScript>
+
+<Python>
+```py filename="PipelineTable.py"
+from moose_lib import IngestPipeline, Key, OlapTable
+from pydantic import BaseModel
+
+class UserEvent(BaseModel):
+    id: Key[str]
+    user_id: str
+    timestamp: Date
+    event_type: str
+    properties: dict
+
+events_pipeline = IngestPipeline[UserEvent]("user_events_pipeline", {
+  ingest: True,
+  stream: True,
+  table: {
+    orderByFields: ["id", "timestamp"],
+    deduplicate: True
+  }
+})
+
+# Access the table component when needed:
+events_table = events_pipeline.table
+```
+</Python>
 
 This integrated approach automatically creates the necessary infrastructure and connects all components, ensuring data flows smoothly from API to database with full type checking at every step.
+
+</Tabs.Tab>
+
+<Tabs.Tab title="Standalone Tables">
+
+Create a table directly for custom data flows or when you need fine-grained control:
+
+<TypeScript>
+```ts filename="StandaloneTable.ts"
+import { OlapTable, Key } from "@514labs/moose-lib";
+
+// Define your schema
+interface ExampleSchema {
+  id: Key<string>;
+  dateField: Date;
+  numericField: number;
+  booleanField: boolean;
+  floatField: number;
+  integerField: number & tags.Type<"int64">; // Moose supports native tagged types so you can use Integers in typescript
+}
+
+// Create a standalone table
+const exampleTable = new OlapTable<ExampleSchema>("example_table", {
+  orderByFields: ["id", "dateField"], // Optional when using a primary key
+  deduplicate: true  // Optional: keep only the latest version of each record
+});
+
+// Now you can:
+// - Write to this table from streams
+// - Query it directly
+// - Use it as a source for materialized views
+```
+</TypeScript>
+
+<Python>
+```py filename="StandaloneTable.py"
+from moose_lib import Key, OlapTable
+from pydantic import BaseModel
+
+class ExampleSchema(BaseModel):
+    id: Key[str]
+    date_field: Date
+    numeric_field: float
+    boolean_field: bool
+
+example_table = OlapTable[ExampleSchema]("example_table", {
+  orderByFields: ["id", "date_field"],
+  deduplicate: True
+})
+```
+</Python>
+
+Standalone tables are useful for:
+- When you need to do a bulk import of data
+- When you have in-memory ETL/ELT workflows that need to write directly to a table as opposed to a streaming ingestion pipeline
+- When you have some external service that is maintaining and writing to the table, like a CDC or other external ETL service
+
+</Tabs.Tab>
+</Tabs>
 
 ## Querying Tables
 
@@ -241,10 +348,40 @@ const badTable3 = new OlapTable<BadRecord3>("bad_table3", {
 
 ## How It Works
 
-When you create an `OlapTable` instance:
-1. The table is registered in the global Moose registry
-2. The schema is stored as JSON Schema (v3.1)
-3. When deployed, Moose creates the corresponding infrastructure
+<BulletPointsCard
+  title="How it works:"
+  bullets={[
+    {
+      title: "Define your data model",
+      description: "Create a type definition that describes your table structure"
+    },
+    {
+      title: "Instantiate your table",
+      description: "Create a typed table instance from your model with one line of code"
+    },
+    {
+      title: "Configure storage options",
+      description: "Optionally specify ordering, partitioning, and other optimizations"
+    },
+    {
+      title: "Evolve your schema",
+      description: "Add fields to your model and tables update automatically"
+    }
+  ]}
+/>
+
+// Code example goes here
+
+<CheckmarkBullets
+  title="Benefits:"
+  bullets={[
+    "No SQL boilerplate or CREATE/ALTER TABLE statements",
+    "Type-safe schema evolution with automatic migration",
+    "Automatic index creation based on key definitions",
+    "Database types derived directly from your application types",
+    "Built-in validation before storage"
+  ]}
+/>
 
 ## Development Workflow
 

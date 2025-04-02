@@ -1,6 +1,6 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, CTACard, CTACards, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo } from "@/components";
-import { RectangleEllipsis, Square, Workflow } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo } from "@/components";
+import { RectangleEllipsis, Square, Workflow, Database, FileCode } from "lucide-react";
 
 # Quick Start
 
@@ -86,33 +86,27 @@ moose-cli peek Foo
 
 ## What's Next?
 
-<CTACards columns={3}>
-<CTACard
+<FeatureGrid columns={3}>
+<FeatureCard
   title="Data Modeling Basics"
   description="Learn how to build your first data model in Moose" 
-  ctaLink="/moose/data-modeling"
-  ctaLabel="Learn More" 
-  Icon={Square}
+  href="/moose/building/data-modeling"
 />
-<CTACard
+<FeatureCard
   title="Working with Database Tables"
   description="Learn how to work with database tables in Moose" 
-  ctaLink="/moose/olap-table"
-  ctaLabel="Learn More" 
-  Icon={Workflow}
+  href="/moose/building/olap-table"
 />
-<CTACard 
+<FeatureCard 
   title="Building Analytics APIs"
   description="Serve data from your OLAP database to client applications" 
-  ctaLink="/moose/developing/consumption-apis"
-  ctaLabel="Learn More" 
-  Icon={RectangleEllipsis}
+  href="/moose/building/consumption-apis"
 />
-</CTACards>
+</FeatureGrid>
 
 <ToggleBlock openText="Need Help?" closeText="Hide Help">
 
-<Tabs items={["Common Issues", "Connect to Database", "Resources"]}>
+<Tabs items={["Common Issues", "Connect to Database"]}>
 <Tabs.Tab>
 - **Docker not running**: Run `open -a Docker` on macOS
 - **Port conflicts**: Check `lsof -i :4000` for conflicts
@@ -130,12 +124,6 @@ host_port = 18123
 ```
 
 Install [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) for VSCode integration
-</Tabs.Tab>
-
-<Tabs.Tab>
-- [Join Discord Community](https://discord.gg/moose)
-- [Read Documentation](/moose/docs)
-- [View Example Projects](/moose/examples)
 </Tabs.Tab>
 </Tabs>
 

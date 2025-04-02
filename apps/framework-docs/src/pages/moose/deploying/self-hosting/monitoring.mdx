@@ -1,0 +1,38 @@
+# Monitoring your App
+
+When you run MooseJS app localy you can visit `localhost:4000/metrics` to see the metrics that your moose app is collecting. This endpoint is also available on your production docker container
+These metrics are collected using [Prometheus](https://prometheus.io/) instrumentation and metrics format.
+
+### Prometheus Metrics
+
+The metrics endpoint will show you latency data for every single http endpoint that a http request has been made to.
+If no data is shown for a http endpoint then no http requests have been made to this http endpoint.
+
+Here is an example of some metrics that are sent to this http endpoint
+
+```
+# HELP latency Latency of HTTP requests.
+# TYPE latency histogram
+latency_sum{method="POST",path="ingest/UserActivity"} 0.025
+latency_count{method="POST",path="ingest/UserActivity"} 2
+latency_bucket{le="0.001",method="POST",path="ingest/UserActivity"} 0
+latency_bucket{le="0.01",method="POST",path="ingest/UserActivity"} 0
+latency_bucket{le="0.02",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="0.05",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="0.1",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="0.25",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="0.5",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="1.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="5.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="10.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="30.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="60.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="120.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="240.0",method="POST",path="ingest/UserActivity"} 1
+latency_bucket{le="+Inf",method="POST",path="ingest/UserActivity"} 1
+# EOF
+```
+
+These metrics are outputted as a Prometheus family of [histograms](https://prometheus.io/docs/concepts/metric_types/#histogram)
+
+Please let us know [here](https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CMetrics%20Http%20Endpoint%E2%80%9D&labels=feedback) if you have any ideas or feedback about MooseJS monitoring.

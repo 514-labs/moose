@@ -16,20 +16,14 @@ Ingestion APIs are the entry point for data flowing into your Moose application.
     },
     {
       title: "Set up ingestion endpoints",
-      description: "Configure how data enters your pipeline with REST APIs"
+      description: "Configure how data enters your pipeline with HTTP REST APIs"
     },
     {
-      title: "Connect to destination",
-      description: "Direct validated data to streams, tables, or both"
+      title: "Connect to destination streams",
+      description: "Direct validated data to streams for buffering and processing"
     }
   ]}
 />
-
-They provide type-safe HTTP endpoints that:
-- **Accept data through REST APIs** with automatic validation
-- **Connect to streams** to buffer data for reliable processing
-
-As part of Moose's unified type system, ingestion APIs use the same data models you define for your streams and tables, eliminating schema mismatches between pipeline components.
 
 ## Creating Ingestion APIs
 
@@ -39,7 +33,7 @@ You can create ingestion APIs in two ways:
 
 ### Basic Analytics Pipeline
 
-<Tabs items={["IngestPipeline", "Low-Level Components"]}>
+<Tabs items={["IngestPipeline (Recommended)", "Standalone IngestAPI"]}>
 <Tabs.Tab>
 The `IngestPipeline` class provides a convenient way to set up ingestion endpoints, streams, and tables with a single declaration:
 

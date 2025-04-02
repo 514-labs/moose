@@ -2,100 +2,184 @@ import { SmallText } from "@/components/typography";
 import React from "react";
 import { Button } from "@/components/ui/button";
 
-// Define types for our meta items
-type MetaItem = {
+/**
+ * Meta item definition for sidebar navigation
+ */
+interface MetaItem {
   type?: string;
   title?: string | React.ReactNode;
   theme?: Record<string, any>;
   display?: string;
   href?: string;
+  Icon?: React.ElementType;
+  newWindow?: boolean;
+}
+
+/**
+ * Reusable JSX elements for consistent rendering
+ */
+const UI = {
+  // Standard text with hover effect
+  HoverText: ({ children }: { children: React.ReactNode }) => (
+    <SmallText className="my-0 text-muted-foreground hover:text-primary transition-colors">
+      {children}
+    </SmallText>
+  ),
+
+  // Standard small text for navigation items
+  NavText: ({ children }: { children: React.ReactNode }) => (
+    <SmallText className="text-inherit transition-colors">{children}</SmallText>
+  ),
+
+  // Icon with text layout
+  IconWithText: ({
+    icon,
+    text,
+  }: {
+    icon?: React.ReactElement;
+    text: React.ReactNode;
+  }) => (
+    <div className="flex items-center gap-2 text-primary">
+      {icon}
+      <SmallText className="text-inherit my-2">{text}</SmallText>
+    </div>
+  ),
 };
 
-// Universal renderer that handles all sidebar item types
-const renderSidebarItem = (item: string | MetaItem, key?: string): MetaItem => {
-  // If it's a simple string, it's a regular menu item with the string as title
+/**
+ * Renders a string item as a paragraph with styles
+ */
+const renderStringItem = (item: string): MetaItem => {
+  return {
+    title: <UI.HoverText>{item}</UI.HoverText>,
+  };
+};
+
+/**
+ * Renders a page type item
+ */
+const renderPageItem = (item: MetaItem): MetaItem => {
+  return {
+    ...item,
+    title: <UI.NavText>{item.title}</UI.NavText>,
+  };
+};
+
+/**
+ * Renders an object item with icon
+ */
+const renderObjectWithIcon = (item: MetaItem): MetaItem => {
+  return {
+    ...item,
+    title: (
+      <UI.IconWithText
+        icon={item.Icon ? <item.Icon className="w-6 h-6" /> : undefined}
+        text={item.title}
+      />
+    ),
+  };
+};
+
+/**
+ * Renders a standard object item
+ */
+const renderStandardObject = (item: MetaItem): MetaItem => {
+  // If title is already a React element, return as is
+  if (React.isValidElement(item.title)) {
+    return item;
+  }
+
+  // Otherwise, wrap the title in our component
+  return {
+    ...item,
+    title: <UI.HoverText>{item.title}</UI.HoverText>,
+  };
+};
+
+/**
+ * Renders an index item with theme
+ */
+const renderIndexWithTheme = (item: MetaItem): MetaItem => {
+  const processedItem = { ...item };
+
+  if (typeof item.title === "string") {
+    processedItem.title = <UI.IconWithText text={item.title} />;
+  }
+
+  return processedItem;
+};
+
+/**
+ * Renders an item with display or theme properties
+ */
+const renderDisplayOrTheme = (item: MetaItem): MetaItem => {
+  const processedItem = { ...item };
+
+  if (typeof item.title === "string") {
+    processedItem.title = <UI.HoverText>{item.title}</UI.HoverText>;
+  }
+
+  return processedItem;
+};
+
+/**
+ * Determines the type of item and delegates to the appropriate renderer
+ */
+const renderItem = (item: string | MetaItem, key?: string): MetaItem => {
+  // Handle string item
   if (typeof item === "string") {
-    return {
-      title: (
-        <p className="my-0 text-muted-foreground hover:text-primary transition-colors">
-          {item}
-        </p>
-      ),
-    };
+    return renderStringItem(item);
   }
-  // If it's a page, it's a page item with the title and href
+
+  // Handle page type
   if (item.type === "page") {
-    return {
-      type: "page",
-      title: (
-        <SmallText className="text-inherit transition-colors">
-          {item.title}
-        </SmallText>
-      ),
-      href: item.href,
-    };
+    return renderPageItem(item);
   }
 
-  // If it has a type field, it's a separator
-  if (item.type === "separator" && !item.title) {
-    return {
-      type: "separator",
-      title: (
-        <p className="text-sm mb-0">
-          {typeof item.title === "string"
-            ? item.title
-            : key?.replace(/--/g, "")}
-        </p>
-      ),
-    };
+  // Handle object with non-React element title
+  if (typeof item === "object" && !React.isValidElement(item.title)) {
+    return renderObjectWithIcon(item);
   }
 
-  // If it's already an object with a title field
+  // Handle object with title
   if (item.title) {
-    // If title is already a React element, return as is
-    if (React.isValidElement(item.title)) {
-      console.log("item.title", item.title);
-      return item;
-    }
-
-    // Otherwise, wrap the title in our SmallText component
-    return {
-      ...item,
-      title: (
-        <p className="my-0 text-muted-foreground hover:text-primary transition-colors">
-          {item.title}
-        </p>
-      ),
-    };
+    return renderStandardObject(item);
   }
 
-  // Default case - return the item as is
+  // Default case
   return item;
 };
 
-// Process the meta object structure using our universal renderer
+/**
+ * Process the meta object structure using specialized renderers
+ */
 export const render = (items: Record<string, any>): Record<string, any> => {
   const result: Record<string, any> = {};
 
   for (const key in items) {
     const item = items[key];
 
-    // Process the item based on its type
+    // Skip undefined or null items
+    if (!item) continue;
+
+    // Determine the type of item and render appropriately
     if (typeof item === "object" && !React.isValidElement(item)) {
-      // For objects that don't have the expected structure or are complex
-      if (item.display || item.theme) {
-        const processedItem = { ...item };
-        if (typeof item.title === "string") {
-          processedItem.title = renderSidebarItem(item.title).title;
-        }
-        result[key] = processedItem;
-      } else {
-        // It's an item with properties we should process
-        result[key] = renderSidebarItem(item, key);
+      // Special case: index item with theme
+      if (key === "index" && item.theme) {
+        result[key] = renderIndexWithTheme(item);
       }
-    } else {
-      // It's a simple item (string or React element)
-      result[key] = renderSidebarItem(item, key);
+      // Items with display or theme properties
+      else if (item.display || item.theme) {
+        result[key] = renderDisplayOrTheme(item);
+      }
+      // Standard object items
+      else {
+        result[key] = renderItem(item, key);
+      }
+    }
+    // String or React element items
+    else {
+      result[key] = renderItem(item, key);
     }
   }
 

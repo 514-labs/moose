@@ -1,6 +1,5 @@
+use log::{info, warn};
 use std::collections::HashMap;
-
-use log::info;
 use tokio::process::Child;
 
 use crate::{
@@ -80,9 +79,15 @@ impl OrchestrationWorkersRegistry {
 
         let language = orchestration_worker.supported_language;
         let mut collector = WorkflowCollector::new();
-        if collector.collect(self.project.scripts_dir()).is_ok() {
-            if let Ok(internal_dir) = self.project.internal_dir() {
-                collector.serialize_configs(language, internal_dir.join(WORKFLOW_CONFIGS))
+
+        match collector.collect(self.project.scripts_dir()) {
+            Ok(_) => {
+                if let Ok(internal_dir) = self.project.internal_dir() {
+                    collector.serialize_configs(language, internal_dir.join(WORKFLOW_CONFIGS))
+                }
+            }
+            Err(e) => {
+                warn!("Failed to collect orchestration configs: {}", e);
             }
         }
 

@@ -1,7 +1,7 @@
-use crate::framework::languages::SupportedLanguages;
-use std::{collections::HashMap, fs, path::PathBuf};
-
 use super::{Script, Workflow};
+use crate::framework::languages::SupportedLanguages;
+use log::warn;
+use std::{collections::HashMap, fs, path::PathBuf};
 
 /// A trait that defines the interface for a collector.
 ///
@@ -106,7 +106,9 @@ impl WorkflowCollector {
         if let Some(workflows) = self.items().get(&language) {
             let configs: Vec<_> = workflows.iter().map(|w| w.config.clone()).collect();
             if let Ok(serialized_configs) = serde_json::to_string_pretty(&configs) {
-                let _ = fs::write(output_path, serialized_configs);
+                if let Err(e) = fs::write(output_path, serialized_configs) {
+                    warn!("Failure writing workflow config: {}", e)
+                };
             }
         }
     }

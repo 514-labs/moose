@@ -68,6 +68,7 @@ impl FunctionProcessRegistry {
                         &source_topic,
                         &target_topic,
                         &function_process.executable,
+                        self.project.features.data_model_v2,
                     )?)
                 } else if function_process.is_ts_function_process() {
                     Ok(typescript::streaming::run(

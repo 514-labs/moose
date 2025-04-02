@@ -95,3 +95,6 @@ This is a [MooseJs](https://www.moosejs.com/) project bootstrapped with the
 pub const PYTHON_WORKER_WRAPPER_PACKAGE_NAME: &str = "python_worker_wrapper";
 pub const CONSUMPTION_WRAPPER_PACKAGE_NAME: &str = "consumption_wrapper";
 pub const UTILS_WRAPPER_PACKAGE_NAME: &str = "utils";
+
+pub const PYTHON_MAIN_FILE: &str = "main.py";
+pub const TYPESCRIPT_MAIN_FILE: &str = "index.ts";

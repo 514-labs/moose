@@ -20,7 +20,7 @@ use crate::metrics_inserter::MetricsInserter;
 use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
 use chrono::{DateTime, Utc};
-use log::{debug, warn};
+use log::{trace, warn};
 
 const DEFAULT_ANONYMOUS_METRICS_URL: &str =
     "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
@@ -328,7 +328,7 @@ impl Metrics {
                     let _ = metrics_inserter.insert(message.clone()).await;
                 }
 
-                debug!("Received Metrics Event: {:?}", message);
+                trace!("Received Metrics Event: {:?}", message);
 
                 match message {
                     MetricEvent::IngestedEvent {
@@ -455,7 +455,7 @@ impl Metrics {
                     }
                 };
 
-                debug!("Updated metrics: {:?}", data);
+                trace!("Updated metrics: {:?}", data);
             }
         });
 

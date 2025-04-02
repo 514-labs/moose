@@ -7,6 +7,8 @@ import os
 import subprocess
 import sys
 import traceback
+import signal
+import threading
 from datetime import datetime, timezone, date, timedelta
 
 from http import HTTPStatus
@@ -216,10 +218,26 @@ class WorkflowClient:
 class MooseClient:
     def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
         self.query = QueryClient(ch_client)
+        self.ch_client = ch_client  # Store reference for cleanup
+        self.temporal_client = temporal_client
         if temporal_client:
             self.workflow = WorkflowClient(temporal_client)
         else:
             self.workflow = None
+
+    async def cleanup(self):
+        """Cleanup resources before shutdown"""
+        if self.ch_client:
+            try:
+                self.ch_client.close()
+            except Exception as e:
+                print(f"Error closing Clickhouse client: {e}")
+
+        if self.temporal_client:
+            try:
+                await self.temporal_client.close()
+            except Exception as e:
+                print(f"Error closing Temporal client: {e}")
 
 def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
@@ -342,27 +360,46 @@ def main():
 
     temporal_client = None
     try:
-        # TODO: try to connect since it's still behind a feature flag
         print("Connecting to Temporal")
-        # Need to await on temporal client calls but this main function is sync
         temporal_client = asyncio.run(create_temporal_connection(temporal_url, client_cert, client_key, api_key))
     except Exception as e:
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
 
     if is_dmv2:
-        # This is so the user's apis are loaded and accessible through a global
         print("Loading DMv2 models")
         load_models()
 
     moose_client = MooseClient(ch_client, temporal_client)
-
     server_address = ('', 4001)
     handler = handler_with_client(moose_client)
-
     httpd = HTTPServer(server_address, handler)
+    
+    # Store references for cleanup
+    httpd.moose_client = moose_client
+    
+    def shutdown_server():
+        httpd.shutdown()
+        print("\nShutting down server...")
+        httpd.server_close()
+        # Cleanup clients
+        asyncio.run(moose_client.cleanup())
+        print("Server shutdown complete")
+    
+    def signal_handler(signum, frame):
+        print(f"\nReceived signal {signum}. Starting graceful shutdown...")
+        # Start shutdown in a separate thread to avoid deadlock
+        threading.Thread(target=shutdown_server).start()
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     print(f"Starting server on http://localhost:4001")
-
-    httpd.serve_forever()
+    
+    try:
+        httpd.serve_forever()
+    except Exception as e:
+        print(f"Server error: {e}")
 
 
 main()

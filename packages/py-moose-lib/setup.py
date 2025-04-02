@@ -17,5 +17,6 @@ setup(
         'asyncio==3.4.3',
         "pydantic==2.10.6",
         "temporalio==1.9.0",
+        "kafka-python-ng==2.2.2",
     ],
 )

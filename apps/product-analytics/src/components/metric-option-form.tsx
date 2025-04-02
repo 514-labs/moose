@@ -1,8 +1,4 @@
-import {
-  ControllerRenderProps,
-  FieldValues,
-  UseFormReturn,
-} from "react-hook-form";
+import { ControllerRenderProps, UseFormReturn } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormMessage } from "./ui/form";
 import {
   Select,
@@ -11,12 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { MetricOptions } from "@/lib/form-types";
+import {
+  MetricForm,
+  MetricOptions,
+  AggregateFunctions,
+} from "@/lib/form-types";
 import { useState } from "react";
 
 interface OptionsProps {
-  form: UseFormReturn<FieldValues, any, undefined>;
-  field: ControllerRenderProps<FieldValues, `list.${number}.metric`>;
+  form: UseFormReturn<{ list: MetricForm[] }>;
+  field: ControllerRenderProps<{ list: MetricForm[] }, `list.${number}.metric`>;
   index: number;
 }
 
@@ -24,12 +24,12 @@ const metricOptions = [
   { val: MetricOptions.Total_Events, label: "Total Events" },
   { val: MetricOptions.Total_Sessions, label: "Total Sessions" },
   { val: MetricOptions.Aggregated_Property, label: "AggregatedProperty" },
-];
+] as const;
 
 const aggregatedProperty = [
-  { val: "sum", label: "sum" },
-  { val: "min", label: "min" },
-];
+  { val: AggregateFunctions.Sum, label: "sum" },
+  { val: AggregateFunctions.Min, label: "min" },
+] as const;
 
 export default function MetricOptionsForm({
   field,
@@ -40,15 +40,33 @@ export default function MetricOptionsForm({
   return (
     <Select
       open={open}
-      onValueChange={(val) => field.onChange(val)}
-      defaultValue={field.value}
-      value={field.value}
+      onValueChange={(val) => {
+        if (val === MetricOptions.Aggregated_Property) {
+          field.onChange({ aggregatedProperty: AggregateFunctions.Sum });
+        } else {
+          field.onChange(val);
+        }
+      }}
+      defaultValue={
+        typeof field.value === "string"
+          ? field.value
+          : MetricOptions.Aggregated_Property
+      }
+      value={
+        typeof field.value === "string"
+          ? field.value
+          : MetricOptions.Aggregated_Property
+      }
     >
       <FormControl>
         <SelectTrigger
           onClick={() => setOpen(true)}
           className="rounded-xl"
-          value={field.value}
+          value={
+            typeof field.value === "string"
+              ? field.value
+              : MetricOptions.Aggregated_Property
+          }
         >
           <SelectValue placeholder="Select Event" />
         </SelectTrigger>
@@ -71,10 +89,11 @@ export default function MetricOptionsForm({
 }
 
 interface AggregatedPropertyFormProps {
-  form: UseFormReturn<FieldValues, any, undefined>;
+  form: UseFormReturn<{ list: MetricForm[] }>;
   index: number;
   setOpen: (val: boolean) => void;
 }
+
 function AggregatedPropertyForm({
   index,
   form,
@@ -126,11 +145,11 @@ function OptionsSelect({
   setOpen,
   currVal,
 }: {
-  form: UseFormReturn<FieldValues, any, undefined>;
-  val: string;
+  form: UseFormReturn<{ list: MetricForm[] }>;
+  val: MetricOptions;
   label: string;
   index: number;
-  currVal: string;
+  currVal: MetricOptions | { aggregatedProperty: AggregateFunctions };
   setOpen: (val: boolean) => void;
 }) {
   switch (val) {
@@ -147,12 +166,14 @@ function OptionsSelect({
         </SelectItem>
       );
     case MetricOptions.Aggregated_Property:
+      const isAggregated =
+        typeof currVal === "object" && "aggregatedProperty" in currVal;
       return (
         <div>
           <SelectItem onClick={() => setOpen(true)} value={val}>
             {label}
           </SelectItem>
-          {currVal == MetricOptions.Aggregated_Property && (
+          {isAggregated && (
             <AggregatedPropertyForm
               setOpen={setOpen}
               form={form}

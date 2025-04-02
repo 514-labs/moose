@@ -2,7 +2,7 @@ from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
 
 from .data_models import Column, _to_columns
-from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis
+from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources
 from pydantic.alias_generators import to_camel
 from pydantic.json_schema import JsonSchemaValue
 
@@ -23,6 +23,7 @@ class TableConfig(BaseModel):
     columns: List[Column]
     order_by: List[str]
     deduplicate: bool
+    engine: Optional[str]
 
 
 class TopicConfig(BaseModel):
@@ -45,12 +46,21 @@ class IngestApiConfig(BaseModel):
     format: str
     write_to: Target
 
+
 class EgressApiConfig(BaseModel):
     model_config = model_config
 
     name: str
     query_params: List[Column]
     response_schema: JsonSchemaValue
+
+
+class SqlResourceConfig(BaseModel):
+    model_config = model_config
+
+    name: str
+    setup: list[str]
+    teardown: list[str]
 
 
 class InfrastructureMap(BaseModel):
@@ -60,6 +70,7 @@ class InfrastructureMap(BaseModel):
     topics: dict[str, TopicConfig]
     ingest_apis: dict[str, IngestApiConfig]
     egress_apis: dict[str, EgressApiConfig]
+    sql_resources: dict[str, SqlResourceConfig]
 
 
 def to_infra_map() -> dict:
@@ -73,13 +84,16 @@ def to_infra_map() -> dict:
     topics = {}
     ingest_apis = {}
     egress_apis = {}
+    sql_resources = {}
 
     for name, table in _tables.items():
+        engine = table.config.engine
         tables[name] = TableConfig(
             name=name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
-            deduplicate=table.config.deduplicate
+            deduplicate=table.config.deduplicate,
+            engine=None if engine is None else engine.value
         )
 
     for name, stream in _streams.items():
@@ -116,11 +130,19 @@ def to_infra_map() -> dict:
             response_schema=api.get_response_schema()
         )
 
+    for name, resource in _sql_resources.items():
+        sql_resources[name] = SqlResourceConfig(
+            name=resource.name,
+            setup=resource.setup,
+            teardown=resource.teardown
+        )
+
     infra_map = InfrastructureMap(
         tables=tables,
         topics=topics,
         ingest_apis=ingest_apis,
-        egress_apis=egress_apis
+        egress_apis=egress_apis,
+        sql_resources=sql_resources
     )
 
     return infra_map.model_dump(by_alias=True)

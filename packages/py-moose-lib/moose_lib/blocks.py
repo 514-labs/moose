@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
 
+
 class ClickHouseEngines(Enum):
     MergeTree = "MergeTree"
     ReplacingMergeTree = "ReplacingMergeTree"

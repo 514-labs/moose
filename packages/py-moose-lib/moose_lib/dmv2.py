@@ -1,15 +1,18 @@
 import dataclasses
 from datetime import datetime
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple
+from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple, Annotated
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
+
+from moose_lib import ClickHouseEngines
 
 _tables: dict[str, "OlapTable"] = {}
 _streams: dict[str, "Stream"] = {}
 _ingest_apis: dict[str, "IngestApi"] = {}
 _egress_apis: dict[str, "ConsumptionApi"] = {}
+_sql_resources: dict[str, "SqlResource"] = {}
 
 T = TypeVar('T', bound=BaseModel)
 U = TypeVar('U', bound=BaseModel)
@@ -55,6 +58,7 @@ class BaseTypedResource(Generic[T]):
     def __class_getitem__(cls, item: type[BaseModel]):
         def curried_constructor(*args, **kwargs):
             return cls(t=item, *args, **kwargs)
+
         return curried_constructor
 
 
@@ -76,7 +80,9 @@ class IngestionFormat(Enum):
 class OlapConfig(BaseModel):
     """Configuration for OLAP tables."""
     order_by_fields: list[str] = []
+    # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
     deduplicate: bool = False
+    engine: Optional[ClickHouseEngines] = None
 
 
 class OlapTable(TypedMooseResource, Generic[T]):
@@ -214,9 +220,11 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             ingest_config = IngestConfigWithDestination(**ingest_config_dict)
             self.ingest_api = IngestApi(name, ingest_config, t=self._t)
 
+
 class EgressConfig(BaseModel):
     """Configuration for Consumption APIs."""
     pass
+
 
 class ConsumptionApi(BaseTypedResource, Generic[T, U]):
     """Configures a Consumption API that can be used to query the data."""
@@ -232,14 +240,15 @@ class ConsumptionApi(BaseTypedResource, Generic[T, U]):
 
         def curried_constructor(*args, **kwargs):
             return cls(t=(input_type, output_type), *args, **kwargs)
+
         return curried_constructor
 
     def __init__(
-        self,
-        name: str,
-        query_function: Callable[..., U],
-        config: EgressConfig = EgressConfig(),
-        **kwargs
+            self,
+            name: str,
+            query_function: Callable[..., U],
+            config: EgressConfig = EgressConfig(),
+            **kwargs
     ):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
@@ -278,5 +287,68 @@ class ConsumptionApi(BaseTypedResource, Generic[T, U]):
         )
 
 
-def get_consumption_api(name: str) -> Optional[ConsumptionApi]:
+def _get_consumption_api(name: str) -> Optional[ConsumptionApi]:
     return _egress_apis.get(name)
+
+
+class SqlResource:
+    """Base class for SQL resources like views and tables."""
+    setup: list[str]
+    teardown: list[str]
+    name: str
+
+    def __init__(self, name: str, setup: list[str], teardown: list[str]):
+        self.name = name
+        self.setup = setup
+        self.teardown = teardown
+        _sql_resources[name] = self
+
+
+class View(SqlResource):
+    """A materialized view in the database."""
+
+    def __init__(self, name: str, select_statement: str):
+        setup = [
+            f"CREATE MATERIALIZED VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
+        ]
+        teardown = [f"DROP VIEW IF EXISTS {name}"]
+        super().__init__(name, setup, teardown)
+
+
+class MaterializedViewOptions(BaseModel):
+    """Configuration options for materialized views."""
+    select_statement: str
+    table_name: str
+    materialized_view_name: str
+    engine: Optional[ClickHouseEngines] = None
+    order_by_fields: Optional[list[str]] = None
+
+
+class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
+    """A materialized view with a typed target table."""
+    target_table: OlapTable[T]
+    config: MaterializedViewOptions
+
+    def __init__(
+            self,
+            options: MaterializedViewOptions,
+            **kwargs
+    ):
+        self._set_type(options.materialized_view_name, self._get_type(kwargs))
+
+        setup = [
+            f"CREATE MATERIALIZED VIEW IF NOT EXISTS {options.materialized_view_name} TO {options.table_name} AS {options.select_statement}",
+            f"INSERT INTO {options.table_name} {options.select_statement}"
+        ]
+        teardown = [f"DROP VIEW IF EXISTS {options.materialized_view_name}"]
+
+        super().__init__(options.materialized_view_name, setup, teardown)
+
+        self.target_table = OlapTable(
+            name=options.table_name,
+            config=OlapConfig(
+                order_by_fields=options.order_by_fields or [],
+                engine=options.engine
+            ),
+            t=self._t
+        )

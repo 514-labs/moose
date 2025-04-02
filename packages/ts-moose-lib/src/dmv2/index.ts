@@ -52,7 +52,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   }
 }
 
-type ZeroOrMany<T> = T | T[] | undefined;
+type ZeroOrMany<T> = T | T[] | undefined | null;
 type SyncOrAsyncTransform<T, U> = (
   record: T,
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
@@ -136,42 +136,48 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
   }
 }
 
-type ConsumptionHandler<T> = (
+type ConsumptionHandler<T, R> = (
   params: T,
   utils: ConsumptionUtil,
-) => Promise<any>;
+) => Promise<R>;
 
 interface EgressConfig<T> {}
 
-export class ConsumptionApi<T> extends TypedBase<T, EgressConfig<T>> {
-  _handler: ConsumptionHandler<T>;
+export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
+  _handler: ConsumptionHandler<T, R>;
+  responseSchema: IJsonSchemaCollection.IV3_1;
 
-  constructor(name: string, handler: ConsumptionHandler<T>, config?: {});
+  constructor(name: string, handler: ConsumptionHandler<T, R>, config?: {});
 
   /** @internal **/
   constructor(
     name: string,
-    handler: ConsumptionHandler<T>,
+    handler: ConsumptionHandler<T, R>,
     config: EgressConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
+    responseSchema: IJsonSchemaCollection.IV3_1,
   );
 
   constructor(
     name: string,
-    handler: ConsumptionHandler<T>,
+    handler: ConsumptionHandler<T, R>,
     config?: EgressConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
+    responseSchema?: IJsonSchemaCollection.IV3_1,
   ) {
     super(name, config ?? {}, schema, columns);
-
     this._handler = handler;
-
+    this.responseSchema = responseSchema ?? {
+      version: "3.1",
+      schemas: [{ type: "array", items: { type: "object" } }],
+      components: { schemas: {} },
+    };
     getMooseInternal().egressApis.set(name, this);
   }
 
-  getHandler = (): ConsumptionHandler<T> => {
+  getHandler = (): ConsumptionHandler<T, R> => {
     return this._handler;
   };
 }

@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic.json_schema import JsonSchemaValue
 
 _tables: dict[str, "OlapTable"] = {}
 _streams: dict[str, "Stream"] = {}
@@ -217,15 +218,26 @@ class EgressConfig(BaseModel):
     """Configuration for Consumption APIs."""
     pass
 
-class ConsumptionApi(BaseTypedResource, Generic[T]):
+class ConsumptionApi(BaseTypedResource, Generic[T, U]):
     """Configures a Consumption API that can be used to query the data."""
     config: EgressConfig
-    query_function: Optional[Callable[..., Any]] = None
+    query_function: Callable[..., U]
+    _u: type[U]
+
+    def __class_getitem__(cls, items):
+        # Handle two type parameters
+        if not isinstance(items, tuple) or len(items) != 2:
+            raise ValueError(f"Use `{cls.__name__}[T, U](name='...')` to supply both input and output types")
+        input_type, output_type = items
+
+        def curried_constructor(*args, **kwargs):
+            return cls(t=(input_type, output_type), *args, **kwargs)
+        return curried_constructor
 
     def __init__(
         self,
         name: str,
-        query_function: Optional[Callable[..., Any]] = None,
+        query_function: Callable[..., U],
         config: EgressConfig = EgressConfig(),
         **kwargs
     ):
@@ -234,6 +246,36 @@ class ConsumptionApi(BaseTypedResource, Generic[T]):
         self.config = config
         self.query_function = query_function
         _egress_apis[name] = self
+
+    @classmethod
+    def _get_type(cls, keyword_args: dict):
+        t = keyword_args.get('t')
+        if not isinstance(t, tuple) or len(t) != 2:
+            raise ValueError(f"Use `{cls.__name__}[T, U](name='...')` to supply both input and output types")
+
+        input_type, output_type = t
+        if not isinstance(input_type, type) or not issubclass(input_type, BaseModel):
+            raise ValueError(f"Input type {input_type} is not a Pydantic model")
+        if not isinstance(output_type, type) or not issubclass(output_type, BaseModel):
+            raise ValueError(f"Output type {output_type} is not a Pydantic model")
+        return t
+
+    def _set_type(self, name: str, t: tuple[type[T], type[U]]):
+        input_type, output_type = t
+        self._t = input_type
+        self._u = output_type
+        self.name = name
+
+    @property
+    def return_type(self) -> type[U]:
+        """Get the return type associated with this resource."""
+        return self._u
+
+    def get_response_schema(self) -> JsonSchemaValue:
+        from pydantic.type_adapter import TypeAdapter
+        return TypeAdapter(self.return_type).json_schema(
+            ref_template='#/components/schemas/{model}'
+        )
 
 
 def get_consumption_api(name: str) -> Optional[ConsumptionApi]:

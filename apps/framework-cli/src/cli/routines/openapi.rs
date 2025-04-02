@@ -91,8 +91,12 @@ struct MediaTypeSchema {
 struct Schema {
     #[serde(rename = "type")]
     schema_type: String,
-    properties: HashMap<String, Property>,
-    required: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    properties: Option<HashMap<String, Property>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    required: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -192,12 +196,14 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                 query_params,
                 output_schema,
             } => {
-                let path_item =
+                let (path_item, component_schemas) =
                     create_egress_path_item(api_endpoint, output_schema.clone(), query_params);
                 paths.insert(
                     format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
                 );
+                // Merge egress schemas into the main schemas map
+                schemas.extend(component_schemas);
             }
             _ => {}
         }
@@ -248,8 +254,15 @@ fn create_egress_path_item(
     api_endpoint: &ApiEndpoint,
     output_schema: Value,
     query_params: &[ConsumptionQueryParam],
-) -> PathItem {
-    PathItem {
+) -> (PathItem, HashMap<String, Schema>) {
+    let default_schema = json!({"type": "object"});
+    let (response_schema, component_schemas) = if output_schema != Value::Null {
+        extract_component_schemas(output_schema)
+    } else {
+        (default_schema, HashMap::new())
+    };
+
+    let path_item = PathItem {
         post: None,
         get: Some(Operation {
             summary: format!("Egress endpoint for {}", api_endpoint.name),
@@ -267,24 +280,68 @@ fn create_egress_path_item(
                 })
                 .collect(),
             request_body: None,
-            responses: if output_schema != Value::Null {
-                HashMap::from([(
-                    "200".to_string(),
-                    Response {
-                        description: "Successful operation".to_string(),
-                        content: HashMap::from([(
-                            "application/json".to_string(),
-                            json!({
-                                "schema": output_schema,
-                            }),
-                        )]),
-                    },
-                )])
-            } else {
-                create_default_responses()
-            },
+            responses: HashMap::from([(
+                "200".to_string(),
+                Response {
+                    description: "Successful operation".to_string(),
+                    content: HashMap::from([(
+                        "application/json".to_string(),
+                        json!({ "schema": response_schema }),
+                    )]),
+                },
+            )]),
         }),
+    };
+
+    (path_item, component_schemas)
+}
+
+fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) {
+    let mut component_schemas = HashMap::new();
+
+    // Handle typia-style schema
+    if let Some(components) = schema.get("components").and_then(|c| c.get("schemas")) {
+        if let Some(obj) = components.as_object() {
+            // Copy all schemas directly to top level component schemas
+            for (name, schema_def) in obj {
+                component_schemas.insert(
+                    name.clone(),
+                    serde_json::from_value(schema_def.clone())
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
+                );
+            }
+        }
+
+        // Reference the schema in the response
+        if let Some(schemas) = schema.get("schemas").and_then(|s| s.as_array()) {
+            if let Some(first_schema) = schemas.first() {
+                return (first_schema.clone(), component_schemas);
+            }
+        }
     }
+
+    // Handle pydantic-style schema
+    if let Some(defs) = schema.get("$defs") {
+        if let Some(obj) = defs.as_object() {
+            // Copy all schemas directly to top level component schemas
+            for (name, schema_def) in obj {
+                component_schemas.insert(
+                    name.clone(),
+                    serde_json::from_value(schema_def.clone())
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
+                );
+            }
+        }
+
+        // Reference the schema in the response
+        let mut response_schema = schema.clone();
+        response_schema
+            .as_object_mut()
+            .and_then(|obj| obj.remove("$defs"));
+        return (response_schema, component_schemas);
+    }
+
+    (schema, component_schemas)
 }
 
 fn create_default_responses() -> HashMap<String, Response> {
@@ -371,8 +428,9 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
         parent_name.clone(),
         Schema {
             schema_type: "object".to_string(),
-            properties,
-            required,
+            properties: Some(properties),
+            required: Some(required),
+            title: None,
         },
     );
 }

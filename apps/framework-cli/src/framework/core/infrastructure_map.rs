@@ -44,6 +44,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::framework::consumption::model::ConsumptionQueryParam;
 use crate::framework::core::infrastructure_map::Change::Added;
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages;
@@ -61,7 +62,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tokio::io::AsyncReadExt;
 use tokio::process::Child;
 
 /// Error types for InfrastructureMap protocol buffer operations
@@ -1748,8 +1748,11 @@ struct PartialIngestApi {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PartialEgressApi {
     pub name: String,
+    pub query_params: Vec<Column>,
+    pub response_schema: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -1819,16 +1822,10 @@ impl PartialInfrastructureMap {
         process: Child,
         user_code_file_name: &str,
     ) -> Result<PartialInfrastructureMap, DmV2LoadingError> {
-        let mut stdout = process
-            .stdout
-            .unwrap_or_else(|| panic!("Process did not have a handle to stdout"));
+        let output = process.wait_with_output().await?;
 
-        let mut stderr = process
-            .stderr
-            .unwrap_or_else(|| panic!("Process did not have a handle to stderr"));
-
-        let mut raw_string_stderr: String = String::new();
-        stderr.read_to_string(&mut raw_string_stderr).await?;
+        // needs from_utf8_lossy_owned
+        let raw_string_stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         if !raw_string_stderr.is_empty() {
             Err(DmV2LoadingError::StdErr {
@@ -1836,8 +1833,7 @@ impl PartialInfrastructureMap {
                 message: raw_string_stderr,
             })
         } else {
-            let mut raw_string_stdout: String = String::new();
-            stdout.read_to_string(&mut raw_string_stdout).await?;
+            let raw_string_stdout: String = String::from_utf8_lossy(&output.stdout).to_string();
 
             let output_format = || DmV2LoadingError::Other {
                 message: "invalid output format".to_string(),
@@ -2000,8 +1996,16 @@ impl PartialInfrastructureMap {
             let api_endpoint = ApiEndpoint {
                 name: partial_api.name.clone(),
                 api_type: APIType::EGRESS {
-                    query_params: vec![],
-                    output_schema: serde_json::Value::Null,
+                    query_params: partial_api
+                        .query_params
+                        .iter()
+                        .map(|column| ConsumptionQueryParam {
+                            name: column.name.clone(),
+                            data_type: column.data_type.clone(),
+                            required: column.required,
+                        })
+                        .collect(),
+                    output_schema: partial_api.response_schema.clone(),
                 },
                 path: PathBuf::from(partial_api.name.clone()),
                 method: Method::GET,

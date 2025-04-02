@@ -1853,11 +1853,7 @@ impl PartialInfrastructureMap {
         }
     }
 
-    fn into_infra_map(
-        self,
-        language: SupportedLanguages,
-        main_file: &PathBuf,
-    ) -> InfrastructureMap {
+    fn into_infra_map(self, language: SupportedLanguages, main_file: &Path) -> InfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
         let api_endpoints = self.convert_api_endpoints(main_file, &topics);
@@ -1930,7 +1926,7 @@ impl PartialInfrastructureMap {
 
     fn convert_api_endpoints(
         &self,
-        main_file: &PathBuf,
+        main_file: &Path,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, ApiEndpoint> {
         let mut api_endpoints = HashMap::new();
@@ -1967,7 +1963,7 @@ impl PartialInfrastructureMap {
                 columns: partial_api.columns.clone(),
                 // If this is the app directory, we should use the project reference so that
                 // if we rename the app folder we don't have to fish for references
-                abs_file_path: main_file.clone(),
+                abs_file_path: main_file.to_path_buf(),
             };
 
             let api_endpoint = ApiEndpoint {

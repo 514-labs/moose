@@ -1,5 +1,6 @@
 use anyhow::Result;
 use log::info;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::Path;
 use toml;
@@ -146,9 +147,21 @@ fn create_workflow_execution_request(
         });
     }
 
+    let workflow_id = if let Some(data) = &params.input {
+        let mut hasher = Sha256::new();
+        hasher.update(data.as_bytes());
+        format!(
+            "{}-{:.16}",
+            params.workflow_id,
+            hex::encode(hasher.finalize())
+        )
+    } else {
+        params.workflow_id.to_string()
+    };
+
     Ok(StartWorkflowExecutionRequest {
         namespace,
-        workflow_id: params.workflow_id.to_string(),
+        workflow_id,
         workflow_type: Some(WorkflowType {
             name: WORKFLOW_TYPE.to_string(),
         }),
@@ -164,6 +177,8 @@ fn create_workflow_execution_request(
         }),
         identity: MOOSE_CLI_IDENTITY.to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
+        // Allow duplicate doesn't actually allow concurrent runs of the same workflow ID
+        // It allows reuse of that workflow ID after the previous run has completed
         workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
         retry_policy: Some(RetryPolicy {
             maximum_attempts: params.config.retries as i32,

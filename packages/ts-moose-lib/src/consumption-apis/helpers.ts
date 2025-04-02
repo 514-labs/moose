@@ -23,8 +23,7 @@ import { AggregationFunction } from "../dataModels/typeConvert";
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
     // infer the float or int according to exist remainder or not
-    if (value % 1 !== 0) return "Float";
-    return "Int";
+    return Number.isInteger(value) ? "Int" : "Float";
   }
   // When define column type or query result with parameterized query, The Bool or Boolean type both supported.
   // But the column type of query result only return Bool, so we only support Bool type for safety.

@@ -1,10 +1,25 @@
 from datetime import datetime
 
-from typing import Literal, Tuple, Union, Any, Optional, get_origin, get_args
+from typing import Literal, Tuple, Union, Any, Optional, get_origin, get_args, TypeAliasType, Annotated
 from pydantic import BaseModel
 
 type Key[T: (str, int)] = T
 type JWT[T] = T
+
+type Aggregated[T, agg_func] = Annotated[T, agg_func]
+
+
+class AggregateFunction(BaseModel):
+    agg_func: str
+    param_types: list[type]
+
+    def to_dict(self):
+        return {
+            "functionName": self.agg_func,
+            "argumentTypes": [
+                py_type_to_column_type(t)[2] for t in self.param_types
+            ]
+        }
 
 
 class EnumValue(BaseModel):
@@ -51,15 +66,29 @@ def handle_key(field_type: type) -> Tuple[bool, type]:
     return False, field_type
 
 
+def handle_annotation(t: type, md: list[any]) -> Tuple[type, list[any]]:
+    if get_origin(t) is Annotated:
+        return handle_annotation(t.__origin__, md + t.__metadata__)
+    if get_origin(t) is Aggregated:
+        args = get_args(t)
+        agg_func = args[1]
+        if not isinstance(agg_func, AggregateFunction):
+            raise ValueError("Pass an AggregateFunction to Aggregated")
+        return handle_annotation(args[0], md + [agg_func])
+    return t, md
+
+
 class Column(BaseModel):
     name: str
     data_type: str
     required: bool
     unique: Literal[False]
     primary_key: bool
+    annotations: list[Tuple[str, Any]] = []
 
 
-def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
+def py_type_to_column_type(t: type) -> Tuple[bool, list[any], DataType]:
+    t, md = handle_annotation(t, [])
     optional, t = handle_optional(t)
 
     if t is str:
@@ -73,7 +102,7 @@ def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
     elif t is datetime:
         data_type = "DateTime"
     elif get_origin(t) is list:
-        inner_optional, inner_type = py_type_to_column_type(get_args(t)[0])
+        inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)
     elif t is Any:
         data_type = "Json"
@@ -84,7 +113,7 @@ def py_type_to_column_type(t: type) -> Tuple[bool, DataType]:
         )
     else:
         raise ValueError(f"Unknown type {t}")
-    return optional, data_type
+    return optional, md, data_type
 
 
 def _to_columns(model: type[BaseModel]) -> list[Column]:
@@ -98,7 +127,14 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
         primary_key, field_type = handle_key(field_type)
         is_jwt, field_type = handle_jwt(field_type)
 
-        optional, data_type = py_type_to_column_type(field_type)
+        optional, md, data_type = py_type_to_column_type(field_type)
+
+        annotations = []
+        agg_fn = next((m for m in md if isinstance(m, AggregateFunction)), None)
+        if agg_fn is not None:
+            annotations.append(
+                ("aggregationFunction", agg_fn.to_dict())
+            )
 
         columns.append(
             Column(
@@ -106,7 +142,8 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
                 data_type=data_type,
                 required=not optional,
                 unique=False,
-                primary_key=primary_key
+                primary_key=primary_key,
+                annotations=annotations,
             )
         )
     return columns

@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
-from moose_lib.dmv2 import get_consumption_api
+from moose_lib.dmv2 import _get_consumption_api
 from pydantic import BaseModel
 
 import jwt
@@ -262,7 +262,7 @@ def handler_with_client(moose_client):
                 query_params = parse_qs(parsed_path.query)
 
                 if is_dmv2:
-                    user_api = get_consumption_api(module_name)
+                    user_api = _get_consumption_api(module_name)
                     if user_api is not None:
                         query_fields = convert_pydantic_definition(user_api.model_type)
                         params = map_params_to_class(query_params, query_fields, user_api.model_type)

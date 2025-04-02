@@ -131,8 +131,10 @@ fn convert_to_kafka_changes(config: &KafkaConfig, changes: &[StreamingChange]) -
 /// This enum provides a type-safe way to handle configurations for different
 /// streaming engines through a single interface. It supports serialization
 /// and deserialization for storage and transmission.
+///
+/// We use streaming_engine_type because python 3.12 doesn't like type
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "streaming_engine_type")]
 pub enum StreamConfig {
     /// Configuration for Redpanda/Kafka topics
     Redpanda(KafkaStreamConfig),

@@ -1,9 +1,7 @@
-use crate::{
-    framework::{
-        core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
-        streaming::model::StreamingFunction,
-    },
-    utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
+use crate::framework::{
+    core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
+    languages::SupportedLanguages,
+    streaming::model::StreamingFunction,
 };
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
@@ -25,12 +23,18 @@ pub struct FunctionProcess {
 
     pub target_topic_id: String,
 
+    // In DMV1 this is the script that contains the function to be executed.
+    // In DMV2 this is the path to the main.py or index.ts file that direclty or transitively
+    // contains the function to be executed.
     pub executable: PathBuf,
 
     #[serde(default = "FunctionProcess::default_parallel_process_count")]
     pub parallel_process_count: usize,
 
     pub version: String,
+
+    pub language: SupportedLanguages,
+
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -57,6 +61,8 @@ impl FunctionProcess {
 
             executable: function.executable.clone(),
 
+            language: SupportedLanguages::from_file_path(&function.executable),
+
             parallel_process_count: function.source_data_model.config.parallelism,
 
             version: function.version.clone(),
@@ -68,11 +74,11 @@ impl FunctionProcess {
     }
 
     pub fn is_ts_function_process(&self) -> bool {
-        self.executable.extension().unwrap().to_str().unwrap() == TYPESCRIPT_FILE_EXTENSION
+        self.language == SupportedLanguages::Typescript
     }
 
     pub fn is_py_function_process(&self) -> bool {
-        self.executable.extension().unwrap().to_str().unwrap() == PYTHON_FILE_EXTENSION
+        self.language == SupportedLanguages::Python
     }
 
     pub fn id(&self) -> String {
@@ -116,11 +122,13 @@ impl FunctionProcess {
     }
 
     pub fn from_proto(proto: ProtoFunctionProcess) -> Self {
+        let executable = PathBuf::from(proto.executable);
         FunctionProcess {
             name: proto.name,
             source_topic_id: proto.source_topic,
             target_topic_id: proto.target_topic,
-            executable: PathBuf::from(proto.executable),
+            executable: executable.clone(),
+            language: SupportedLanguages::from_file_path(&executable),
             parallel_process_count: proto.parallel_process_count.unwrap_or(1) as usize,
             version: proto.version,
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),

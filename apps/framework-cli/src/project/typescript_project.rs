@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
-use crate::framework::versions::Version;
 use crate::utilities::constants::PACKAGE_JSON;
+use crate::{framework::versions::Version, utilities::constants::TYPESCRIPT_MAIN_FILE};
 use config::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
 
@@ -75,5 +75,9 @@ impl TypescriptProject {
         std::fs::write(&package_json_location, json)?;
 
         Ok(())
+    }
+
+    pub fn main_file(&self) -> &str {
+        TYPESCRIPT_MAIN_FILE
     }
 }

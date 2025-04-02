@@ -14,6 +14,7 @@ pub fn run(
     source_topic: &StreamConfig,
     target_topic: &StreamConfig,
     function_path: &Path,
+    is_dmv2: bool,
 ) -> Result<Child, std::io::Error> {
     let dir = function_path
         .parent()
@@ -21,6 +22,7 @@ pub fn run(
         .to_str()
         .unwrap()
         .to_string();
+
     let module_name = function_path
         .with_extension("")
         .file_name()
@@ -45,16 +47,20 @@ pub fn run(
         "--security_protocol",
         &kafka_config.security_protocol,
     );
+    if is_dmv2 {
+        args.push("--dmv2".to_string());
+    }
 
-    let mut streaming_function_process = executor::run_python_program(
+    let mut streaming_function_process = executor::run_python_command(
         project_location,
-        executor::PythonProgram::StreamingFunctionRunner { args },
+        executor::PythonCommand::StreamingFunctionRunner { args },
     )?;
 
     let stdout = streaming_function_process
         .stdout
         .take()
         .expect("Streaming process did not have a handle to stdout");
+
     let stderr = streaming_function_process
         .stderr
         .take()

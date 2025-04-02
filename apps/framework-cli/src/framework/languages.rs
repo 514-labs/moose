@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::utilities::constants;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
@@ -15,6 +17,14 @@ impl SupportedLanguages {
         match self {
             SupportedLanguages::Typescript => constants::TYPESCRIPT_FILE_EXTENSION,
             SupportedLanguages::Python => constants::PYTHON_FILE_EXTENSION,
+        }
+    }
+
+    pub fn from_file_path(path: &Path) -> Self {
+        match path.extension().unwrap().to_str().unwrap() {
+            constants::TYPESCRIPT_FILE_EXTENSION => SupportedLanguages::Typescript,
+            constants::PYTHON_FILE_EXTENSION => SupportedLanguages::Python,
+            _ => panic!("Unsupported language: {}", path.display()),
         }
     }
 

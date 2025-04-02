@@ -21,7 +21,7 @@ use config::ConfigError;
 use serde::{Deserialize, Serialize};
 
 use crate::framework::versions::Version;
-use crate::utilities::constants::{CLI_VERSION, PYTHON_MINIMUM_VERSION};
+use crate::utilities::constants::{CLI_VERSION, PYTHON_MAIN_FILE, PYTHON_MINIMUM_VERSION};
 use crate::{
     framework::python::{
         parser::{get_project_from_file, PythonParserError},
@@ -83,7 +83,6 @@ impl Default for PythonProject {
             version: Version::from_string("0.0".to_string()),
             python_requires,
             dependencies: vec![
-                format!("kafka-python-ng==2.2.2; {}", python_version).to_string(),
                 format!("clickhouse_connect==0.7.16; {}", python_version).to_string(),
                 format!("requests==2.32.3; {}", python_version).to_string(),
                 moose_cli_requirement,
@@ -123,6 +122,10 @@ impl PythonProject {
 
         get_project_from_file(&location)
             .map_err(|_| ConfigError::Message("Failed to load Python project".to_string()))
+    }
+
+    pub fn main_file(&self) -> &str {
+        PYTHON_MAIN_FILE
     }
 
     /// Writes the project configuration to disk

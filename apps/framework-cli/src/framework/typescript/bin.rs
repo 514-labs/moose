@@ -35,6 +35,7 @@ pub fn run(
         .env("PATH", bin_path)
         .env("TS_NODE_COMPILER_HOST", "true")
         .env("TS_NODE_EMIT", "true");
+
     if binary_command == "consumption-apis" || binary_command == "consumption-type-serializer" {
         command.env("TS_NODE_COMPILER", "ts-patch/compiler");
     }

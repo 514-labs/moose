@@ -226,6 +226,15 @@ impl Project {
         }
     }
 
+    pub fn main_file(&self) -> PathBuf {
+        let mut location = self.app_dir();
+        location.push(match &self.language_project_config {
+            LanguageProjectConfig::Typescript(p) => p.main_file(),
+            LanguageProjectConfig::Python(p) => p.main_file(),
+        });
+        location
+    }
+
     /// Creates a new project with the specified parameters
     ///
     /// # Arguments

@@ -1673,7 +1673,7 @@ impl InfrastructureMap {
         } else {
             load_main_py(&project.project_location).await?
         };
-        Ok(partial.into_infra_map(project.language))
+        Ok(partial.into_infra_map(project.language, &project.main_file()))
     }
 
     /// Gets a topic by its ID
@@ -1853,12 +1853,16 @@ impl PartialInfrastructureMap {
         }
     }
 
-    fn into_infra_map(self, language: SupportedLanguages) -> InfrastructureMap {
+    fn into_infra_map(
+        self,
+        language: SupportedLanguages,
+        main_file: &PathBuf,
+    ) -> InfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
-        let api_endpoints = self.convert_api_endpoints(language, &topics);
+        let api_endpoints = self.convert_api_endpoints(main_file, &topics);
         let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes(&topics);
-        let function_processes = self.create_function_processes(language, &topics);
+        let function_processes = self.create_function_processes(main_file, language, &topics);
 
         InfrastructureMap {
             topics,
@@ -1926,7 +1930,7 @@ impl PartialInfrastructureMap {
 
     fn convert_api_endpoints(
         &self,
-        language: SupportedLanguages,
+        main_file: &PathBuf,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, ApiEndpoint> {
         let mut api_endpoints = HashMap::new();
@@ -1963,11 +1967,7 @@ impl PartialInfrastructureMap {
                 columns: partial_api.columns.clone(),
                 // If this is the app directory, we should use the project reference so that
                 // if we rename the app folder we don't have to fish for references
-                abs_file_path: std::env::current_dir()
-                    .unwrap_or_default()
-                    .join("app")
-                    // The convention for py should be main no?
-                    .join(format!("index.{}", language.extension())),
+                abs_file_path: main_file.clone(),
             };
 
             let api_endpoint = ApiEndpoint {
@@ -2068,6 +2068,7 @@ impl PartialInfrastructureMap {
 
     fn create_function_processes(
         &self,
+        main_file: &PathBuf,
         language: SupportedLanguages,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, FunctionProcess> {
@@ -2078,6 +2079,11 @@ impl PartialInfrastructureMap {
                 continue;
             }
 
+            debug!(
+                "source_partial_topic: {:?} with name {}",
+                source_partial_topic, topic_name
+            );
+
             let not_found = &format!("Source topic '{}' not found", topic_name);
             let source_topic = topics
                 .values()
@@ -2085,6 +2091,8 @@ impl PartialInfrastructureMap {
                 .expect(not_found);
 
             for transformation_target in &source_partial_topic.transformation_targets {
+                debug!("transformation_target: {:?}", transformation_target);
+
                 let process_id = format!("{}_{}", topic_name, transformation_target.name);
 
                 let not_found = &format!("Target topic '{}' not found", transformation_target.name);
@@ -2097,10 +2105,8 @@ impl PartialInfrastructureMap {
                     name: process_id.clone(),
                     source_topic_id: source_topic.id(),
                     target_topic_id: target_topic.id(),
-                    executable: std::env::current_dir()
-                        .unwrap_or_default()
-                        .join("app")
-                        .join(format!("index.{}", language.extension())),
+                    executable: main_file.clone(),
+                    language,
                     parallel_process_count: target_topic.partition_count,
                     // TODO pass through version from the TS / PY api
                     version: "0.0".to_string(),

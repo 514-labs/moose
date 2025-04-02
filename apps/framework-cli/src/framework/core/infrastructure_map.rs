@@ -2068,7 +2068,7 @@ impl PartialInfrastructureMap {
 
     fn create_function_processes(
         &self,
-        main_file: &PathBuf,
+        main_file: &Path,
         language: SupportedLanguages,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, FunctionProcess> {
@@ -2105,7 +2105,7 @@ impl PartialInfrastructureMap {
                     name: process_id.clone(),
                     source_topic_id: source_topic.id(),
                     target_topic_id: target_topic.id(),
-                    executable: main_file.clone(),
+                    executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: target_topic.partition_count,
                     // TODO pass through version from the TS / PY api

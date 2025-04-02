@@ -78,9 +78,14 @@ describe("framework-cli", () => {
     }
 
     console.log("Initializing project...");
-    await execAsync(
-      `"${CLI_PATH}" init my-moose-app ts --location "${TEST_PROJECT_DIR}"`,
-    );
+    try {
+      await execAsync(
+        `"${CLI_PATH}" init my-moose-app ts --location "${TEST_PROJECT_DIR}"`,
+      );
+    } catch (error) {
+      console.error("Error during project initialization:", error);
+      throw error; // Re-throw if you want the test to fail
+    }
 
     console.log("Updating package.json to use local moose-lib...");
     const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");

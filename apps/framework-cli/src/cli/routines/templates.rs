@@ -14,6 +14,7 @@ use crate::cli::settings::user_directory;
 
 const TEMPLATE_REGISTRY_URL: &str = "https://templates.514.dev";
 const DOWLOAD_DIR: &str = "templates";
+const LOCAL_TEMPLATE_DIR: &str = "template-packages";
 
 // Add a new struct to represent template config
 #[derive(Debug)]
@@ -47,7 +48,33 @@ fn template_file_archive(template_name: &str, template_version: &str) -> PathBuf
     path
 }
 
+async fn download_from_local(template_name: &str) -> anyhow::Result<()> {
+    let local_template_path = Path::new(LOCAL_TEMPLATE_DIR).join(format!("{}.tgz", template_name));
+
+    if !local_template_path.exists() {
+        anyhow::bail!("Local template not found. Did you run scripts/package-templates.js?")
+    }
+
+    let mut dest: PathBuf = templates_download_dir();
+    dest.push("0.0.1"); // In local mode, we always use "latest"
+
+    // Create the directory if it doesn't exist
+    if !dest.exists() {
+        std::fs::create_dir_all(&dest)?;
+    }
+
+    dest.push(format!("{}.tgz", template_name));
+    std::fs::copy(local_template_path, dest)?;
+
+    Ok(())
+}
+
 async fn download(template_name: &str, template_version: &str) -> anyhow::Result<()> {
+    // If we're in test mode (0.0.1), use local templates
+    if template_version == "0.0.1" {
+        return download_from_local(template_name).await;
+    }
+
     let res = reqwest::get(format!(
         "{}/{}/{}.tgz",
         TEMPLATE_REGISTRY_URL, template_version, template_name
@@ -106,14 +133,7 @@ pub async fn generate_template(
     template_version: &str,
     target_dir: &Path,
 ) -> Result<(), RoutineFailure> {
-    // In dev we don't have a version, so we use the latest
-    let version = if template_version == "0.0.1" {
-        "latest".to_string()
-    } else {
-        template_version.to_string()
-    };
-
-    match download_and_unpack(template_name, &version, target_dir).await {
+    match download_and_unpack(template_name, template_version, target_dir).await {
         Ok(()) => {
             show_message!(
                 MessageType::Success,
@@ -132,6 +152,20 @@ pub async fn generate_template(
 }
 
 pub async fn get_template_manifest(template_version: &str) -> anyhow::Result<Value> {
+    // If we're in test mode (0.0.1), use local manifest
+    if template_version == "0.0.1" {
+        let manifest_path = Path::new(LOCAL_TEMPLATE_DIR).join("manifest.toml");
+        if !manifest_path.exists() {
+            anyhow::bail!(
+                "Local manifest not found. Did you run scripts/package-templates.js? {}",
+                manifest_path.display()
+            )
+        }
+        let content = std::fs::read_to_string(manifest_path)?;
+        let manifest: Value = toml::from_str(&content)?;
+        return Ok(manifest);
+    }
+
     let res = reqwest::get(format!(
         "{}/{}/manifest.toml",
         TEMPLATE_REGISTRY_URL, template_version

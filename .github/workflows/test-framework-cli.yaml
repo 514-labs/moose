@@ -38,6 +38,10 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Package Templates
+        working-directory: .
+        run: ./scripts/package-templates.js
+
       - name: Run cargo check
         uses: actions-rs/cargo@v1
         with:

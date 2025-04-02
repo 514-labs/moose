@@ -258,10 +258,17 @@ export class WorkflowClient {
       `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
     );
 
+    // Similar to rust client format Utc::now().format("%Y%m%d%H%M%S")
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[-:\.]/g, "")
+      .replace("T", "")
+      .slice(0, 14);
+
     const handle = await this.client!.workflow.start("ScriptWorkflow", {
       args: [`${process.cwd()}/app/scripts/${name}`, input_data],
       taskQueue: "typescript-script-queue",
-      workflowId: name,
+      workflowId: `${name}-${timestamp}`,
       workflowIdConflictPolicy: "FAIL",
       workflowIdReusePolicy: "ALLOW_DUPLICATE",
       retry: {

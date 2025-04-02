@@ -174,10 +174,13 @@ class WorkflowClient:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON input data: {e}")
 
+        # Similar to rust client format Utc::now().format("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
         workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
-            id=name,
+            id=f"{name}-{timestamp}",
             task_queue="python-script-queue",
             id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
             id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,

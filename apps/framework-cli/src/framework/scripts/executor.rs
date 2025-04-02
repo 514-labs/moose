@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::Utc;
 use log::info;
 use std::collections::HashMap;
 use std::path::Path;
@@ -148,7 +149,11 @@ fn create_workflow_execution_request(
 
     Ok(StartWorkflowExecutionRequest {
         namespace,
-        workflow_id: params.workflow_id.to_string(),
+        workflow_id: format!(
+            "{}-{}",
+            params.workflow_id,
+            Utc::now().format("%Y%m%d%H%M%S")
+        ),
         workflow_type: Some(WorkflowType {
             name: WORKFLOW_TYPE.to_string(),
         }),
@@ -164,6 +169,8 @@ fn create_workflow_execution_request(
         }),
         identity: MOOSE_CLI_IDENTITY.to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
+        // Allow duplicate doesn't actually allow concurrent runs of the same workflow ID
+        // It allows reuse of that workflow ID after the previous run has completed
         workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
         retry_policy: Some(RetryPolicy {
             maximum_attempts: params.config.retries as i32,

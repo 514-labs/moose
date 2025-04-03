@@ -1,2 +1,9 @@
 # env files (can opt-in for committing if needed)
 data/*
+
+.moose
+node_modules
+dist
+coverage
+.ts-node
+

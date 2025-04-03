@@ -1,4 +1,6 @@
-export default {
+import { render } from "@/components";
+
+const meta = {
   summary: "Summary",
   "packaging-moose-for-deployment": "Packaging Moose for deployment",
   "preparing-clickhouse-redpanda": "Preparing Infrastructure",
@@ -8,3 +10,5 @@ export default {
   "deploying-on-an-offline-server": "Offline Deployment",
   monitoring: "Monitoring Your App",
 } as const;
+
+export default render(meta);

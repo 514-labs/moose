@@ -52,14 +52,14 @@ moose workflow run getGithubEvents
 ```
 
 <Callout type="info" title="Scheduled Workflows">
-The workflow is scheduled to run every 60 seconds. [Learn how to schedule workflows here] (/moose/building/workflows#scheduling-workflows).
+The workflow is scheduled to run every 60 seconds. [Learn how to schedule workflows](/moose/building/workflows#scheduling-workflows).
 </Callout>
 
 
 ### (Bonus) Create a `.env` file and add your GitHub API Key
 You will be able to poll the GitHub API without any authentication credentials, but you will be limited to 60 requests per hour.
 
-To increase the limit, you can create a `.env` file and add your GitHub personal access token.
+To increase the limit, you can create a `.env` file and add your GitHub personal access token:
 
 ```bash filename="terminal" copy
 touch .env
@@ -68,8 +68,11 @@ touch .env
 ```.env filename=".env" copy
 GITHUB_TOKEN=<your-github-api-key>
 ```
- **DO NOT COMMIT THIS FILE TO VERSION CONTROL**:
-```gitignore filename=".gitignore" copy
+ 
+ **DO NOT COMMIT THIS FILE TO VERSION CONTROL** 
+ 
+ Add `.env` to your `.gitignore` file:
+```txt filename=".gitignore" copy
 .env
 ```
 
@@ -93,7 +96,7 @@ Go to [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
 ### Explore the API Powering the Dashboard
 
-The dashboard is powered by a Consumption API in the `moose` project. The code is located in the `app/apis/topicTimeseries.ts` file.
+The dashboard is powered by a Consumption API in the `moose-backend` project. The code is located in the `app/apis/topicTimeseries.ts` file.
 
 Feel free to check out how the code works, or even modify it to suit your own interests!
 

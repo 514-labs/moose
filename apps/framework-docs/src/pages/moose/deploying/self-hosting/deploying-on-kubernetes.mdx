@@ -243,4 +243,4 @@ lc_str=${lc_str//_/-}
 
 kubectl delete secret "sn-${lc_str}"
 kubectl create secret generic "sn-${lc_str}" --from-literal="sk-${lc_str}"=$2
-```../../../../components
+```

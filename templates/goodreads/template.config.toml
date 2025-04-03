@@ -10,11 +10,12 @@ post_install_print = """
 🛠️ Start dev server:
 	$ moose dev
 
-🔑 Add your Kaggle Settings file to the home directory of this project
-    See https://www.kaggle.com/docs/api
+🔑 Add your Kaggle credentials, kaggle.json to ~/.kaggle/kaggle.json per the Kaggle SDK instructions. 
+    If you don't have those credentials, see https://www.kaggle.com/docs/api.
 
 🏃‍♂️ Run python ingest script
-    $ python .aurora/ingest_goodreads_data.py
+    $ pip install -r get_data/requirements.txt
+    $ python get_data/ingest_goodreads_data.py
 """
 
 # we might need to add python dependencies install file

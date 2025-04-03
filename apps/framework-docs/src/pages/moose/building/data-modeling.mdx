@@ -528,6 +528,15 @@ def handle(request: RequestDataModel) -> ResponseDataModel:
 my_consumption_api = ConsumptionAPI[RequestDataModel, ResponseDataModel]("api_route_name"query_function=handle)
     ```
 </Python>
+
+## Validation
+Validation at runtime takes place at the following points:
+- The body of a `POST` request to an `IngestAPI` endpoint - [Learn more about Ingestion APIs](/moose/building/ingestion#validation)
+- The query parameters sent in a `GET` request to a Consumption API - [Learn more about Consumption APIs](/moose/building/consumption-apis#adding-advanced-type-validation)
+- The data being synced from a streaming topic to an `OlapTable` - [Learn more about Olap Tables](/moose/building/olap-table)
+
+
+
 <Callout type="info" title="Consumption APIs">
   [Learn more about Consumption APIs](/moose/building/consumption-apis)
 </Callout>

@@ -5,11 +5,11 @@ import uuid
 import json
 import urllib.request
 from datetime import datetime
- 
+
 @task
 def generate_random():  # The name of your script
     """
-    Description of what this script does
+    This is a sample task that generates random data for the `Foo` data model and sends it to the ingest API
     """
     for i in range(1000):
         # Generate random data
@@ -37,9 +37,14 @@ def generate_random():  # The name of your script
             headers={'Content-Type': 'application/json'}
         )
         urllib.request.urlopen(req)
+    ## Tasks must return a dictionary with the following keys:
+    # "task": The name of the task function
+    # "data": A dictionary of data to be returned to the workflow
     return {
-      "task_id": "generate",
+      "task": "generate_random",
       "data": {
           "completed_at": datetime.now().isoformat()
       }
     }
+    
+    

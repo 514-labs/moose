@@ -1,5 +1,5 @@
 language = "typescript" # Must be typescript or python
-description = ""
+description = "default ts project"
 post_install_print = """
 📂 Go to your project directory:
 	$ cd {project_dir}
@@ -9,7 +9,4 @@ post_install_print = """
 
 🛠️ Start dev server:
 	$ moose dev
-
-🏃 Run your workflows:
-	$ moose workflow run military_aircraft_tracking
 """

@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Investment Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f8fafc;
+      }
+      .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        margin: 20px 0;
+      }
+      .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .success-indicator {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.875rem;
+      }
+      .success-high {
+        background-color: #dcfce7;
+        color: #166534;
+      }
+      .success-medium {
+        background-color: #fef9c3;
+        color: #854d0e;
+      }
+      .success-low {
+        background-color: #fee2e2;
+        color: #991b1b;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .data-table th,
+      .data-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .data-table th {
+        background-color: #f8fafc;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <header class="text-center mb-16">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+          Book Investment Analytics Dashboard
+        </h1>
+        <p class="text-xl text-gray-600">
+          Predictive Analysis & Investment Decision Support
+        </p>
+      </header>
+
+      <!-- Success Prediction Model -->
+      <section class="mb-16">
+        <h2 class="text-3xl font-bold text-gray-900 mb-8">
+          📊 Success Prediction Model
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-6">Key Success Indicators</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>Weight</th>
+                  <th>Impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Series Potential</td>
+                  <td>30%</td>
+                  <td>
+                    <span class="success-indicator success-high">High</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Genre Alignment</td>
+                  <td>25%</td>
+                  <td>
+                    <span class="success-indicator success-high">High</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Market Timing</td>
+                  <td>20%</td>
+                  <td>
+                    <span class="success-indicator success-medium">Medium</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Author Platform</td>
+                  <td>15%</td>
+                  <td>
+                    <span class="success-indicator success-medium">Medium</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Production Cost</td>
+                  <td>10%</td>
+                  <td>
+                    <span class="success-indicator success-low">Low</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">ROI by Genre & Format</h3>
+            <div class="chart-container">
+              <canvas id="roiChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Market Analysis -->
+      <section class="mb-16">
+        <h2 class="text-3xl font-bold text-gray-900 mb-8">
+          📈 Market Analysis
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">
+              Success Rate by Investment Level
+            </h3>
+            <div class="chart-container">
+              <canvas id="investmentSuccessChart"></canvas>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">Risk-Adjusted Returns</h3>
+            <div class="chart-container">
+              <canvas id="riskReturnChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Investment Decision Matrix -->
+      <section class="mb-16">
+        <h2 class="text-3xl font-bold text-gray-900 mb-8">
+          🎯 Investment Decision Matrix
+        </h2>
+        <div class="metric-card">
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Investment Criteria</th>
+                  <th>High Potential</th>
+                  <th>Medium Potential</th>
+                  <th>Low Potential</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Series Potential</td>
+                  <td>Clear 3+ book arc</td>
+                  <td>Possible sequel</td>
+                  <td>Standalone only</td>
+                </tr>
+                <tr>
+                  <td>Genre Performance</td>
+                  <td>Fantasy/YA (4.03)</td>
+                  <td>Mystery/Thriller (3.98)</td>
+                  <td>Literary (3.87)</td>
+                </tr>
+                <tr>
+                  <td>Target Audience</td>
+                  <td>>500K potential</td>
+                  <td>100K-500K</td>
+                  <td><100K</td>
+                </tr>
+                <tr>
+                  <td>Digital Potential</td>
+                  <td>Multi-format ready</td>
+                  <td>E-book focused</td>
+                  <td>Print only</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Risk Assessment -->
+      <section class="mb-16">
+        <h2 class="text-3xl font-bold text-gray-900 mb-8">
+          ⚠️ Risk Assessment
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">Market Risk</h3>
+            <div class="chart-container h-48">
+              <canvas id="marketRiskChart"></canvas>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">Genre Saturation</h3>
+            <div class="chart-container h-48">
+              <canvas id="genreSaturationChart"></canvas>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3 class="text-xl font-semibold mb-4">Investment Recovery Time</h3>
+            <div class="chart-container h-48">
+              <canvas id="recoveryTimeChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // ROI Chart
+      new Chart(document.getElementById("roiChart"), {
+        type: "bar",
+        data: {
+          labels: [
+            "Fantasy Series",
+            "YA Series",
+            "Fantasy Standalone",
+            "Mystery Series",
+            "Romance Series",
+          ],
+          datasets: [
+            {
+              label: "Average ROI (%)",
+              data: [285, 245, 180, 165, 150],
+              backgroundColor: "rgba(59, 130, 246, 0.5)",
+              borderColor: "rgb(59, 130, 246)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: "ROI by Book Category",
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "ROI (%)",
+              },
+            },
+          },
+        },
+      });
+
+      // Investment Success Chart
+      new Chart(document.getElementById("investmentSuccessChart"), {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "Series Books",
+              data: [
+                { x: 50000, y: 85 },
+                { x: 75000, y: 92 },
+                { x: 100000, y: 95 },
+                { x: 150000, y: 98 },
+              ],
+              backgroundColor: "rgba(59, 130, 246, 0.5)",
+            },
+            {
+              label: "Standalone Books",
+              data: [
+                { x: 50000, y: 65 },
+                { x: 75000, y: 72 },
+                { x: 100000, y: 78 },
+                { x: 150000, y: 82 },
+              ],
+              backgroundColor: "rgba(245, 158, 11, 0.5)",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: "Investment Amount ($)",
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Success Rate (%)",
+              },
+            },
+          },
+        },
+      });
+
+      // Risk-Return Chart
+      new Chart(document.getElementById("riskReturnChart"), {
+        type: "bubble",
+        data: {
+          datasets: [
+            {
+              label: "Genre Risk-Return Profile",
+              data: [
+                { x: 15, y: 285, r: 20 }, // Fantasy Series
+                { x: 18, y: 245, r: 18 }, // YA Series
+                { x: 22, y: 180, r: 15 }, // Fantasy Standalone
+                { x: 25, y: 165, r: 12 }, // Mystery Series
+                { x: 28, y: 150, r: 10 }, // Romance Series
+              ],
+              backgroundColor: "rgba(147, 51, 234, 0.5)",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: "Risk Level (%)",
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Expected Return (%)",
+              },
+            },
+          },
+        },
+      });
+
+      // Market Risk Chart
+      new Chart(document.getElementById("marketRiskChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Low", "Medium", "High"],
+          datasets: [
+            {
+              data: [35, 45, 20],
+              backgroundColor: [
+                "rgba(16, 185, 129, 0.5)",
+                "rgba(245, 158, 11, 0.5)",
+                "rgba(239, 68, 68, 0.5)",
+              ],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        },
+      });
+
+      // Genre Saturation Chart
+      new Chart(document.getElementById("genreSaturationChart"), {
+        type: "radar",
+        data: {
+          labels: ["Fantasy", "YA", "Mystery", "Romance", "Literary"],
+          datasets: [
+            {
+              label: "Market Saturation (%)",
+              data: [75, 68, 82, 88, 45],
+              fill: true,
+              backgroundColor: "rgba(59, 130, 246, 0.2)",
+              borderColor: "rgb(59, 130, 246)",
+              pointBackgroundColor: "rgb(59, 130, 246)",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        },
+      });
+
+      // Recovery Time Chart
+      new Chart(document.getElementById("recoveryTimeChart"), {
+        type: "bar",
+        data: {
+          labels: ["Fantasy Series", "YA Series", "Standalone", "Literary"],
+          datasets: [
+            {
+              label: "Months to Break Even",
+              data: [8, 10, 14, 18],
+              backgroundColor: "rgba(16, 185, 129, 0.5)",
+              borderColor: "rgb(16, 185, 129)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

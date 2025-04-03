@@ -454,11 +454,12 @@ my_stream = Stream[MyDataModel]("TopicName")
 </Callout>
   
 ##### `IngestAPI`
+Creates an HTTP `POST` endpoint at "/ingest/api-route-name" that accepts and validates incoming data against your data model:
 <TypeScript>
 ```ts filename="app/index.ts" copy
 import { IngestAPI } from "@514labs/moose-lib";
 
-const myIngestAPI = new IngestAPI<MyDataModel>("api-route-name");
+const myIngestAPI = new IngestAPI<MyDataModel>("api-route-name"); // Creates an HTTP `POST` endpoint at "/ingest/api-route-name"
 ```
 </TypeScript>
 
@@ -531,17 +532,16 @@ my_consumption_api = ConsumptionAPI[RequestDataModel, ResponseDataModel]("api_ro
     ```
 </Python>
 
+<Callout type="info" title="Consumption APIs">
+  [Learn more about Consumption APIs](/moose/building/consumption-apis)
+</Callout>
+
 ## Validation
 Validation at runtime takes place at the following points:
 - The body of a `POST` request to an `IngestAPI` endpoint - [Learn more about Ingestion APIs](/moose/building/ingestion#validation)
 - The query parameters sent in a `GET` request to a Consumption API - [Learn more about Consumption APIs](/moose/building/consumption-apis#adding-advanced-type-validation)
 - The data being synced from a streaming topic to an `OlapTable` - [Learn more about Olap Tables](/moose/building/olap-table)
 
-
-
-<Callout type="info" title="Consumption APIs">
-  [Learn more about Consumption APIs](/moose/building/consumption-apis)
-</Callout>
 
 ## Next Steps
 

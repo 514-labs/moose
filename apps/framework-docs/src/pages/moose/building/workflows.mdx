@@ -6,7 +6,7 @@ import { Python, TypeScript, Callout, LanguageSwitcher } from "@/components";
 Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of tasks that execute in order. Each workflow follows these conventions:
 
 - Workflows live in folders inside the `/app/scripts` subdirectory, with the folder name being the workflow name.
-- Tasks are scripts with numerical prefixes (e.g., <Python NodeType="span">`1.first_task.py`</Python><TypeScript NodeType="span">`1.firstTask.ts`</TypeScript>).
+- Tasks are scripts with numerical prefixes (e.g., <Python inline>`1.first_task.py`</Python><TypeScript inline>`1.firstTask.ts`</TypeScript>).
 - Configuration is managed through `config.toml` files.
 
 <Callout type="info" title="Powered by Temporal">
@@ -412,7 +412,7 @@ name = "example_workflow"
 timeout = "1h"
 retries = 3
 schedule = "" ## DEFAULT: Blank
-tasks = [first_task, second_task]
+tasks = ["first_task", "second_task"]
 ```
 </Python>
 
@@ -556,7 +556,7 @@ name = "example_workflow" # Required. The name of the workflow. Matches the work
 timeout = "1h" # Required. Default: 1 hour
 retries = 3 # Required. Default: 3 retries
 schedule = "0 12 * * *" # Required. Default: Blank
-tasks = [firstTask, secondTask] # Required. The list of tasks to execute. Matches the task file names.
+tasks = "[firstTask", "secondTask"] # Required. The list of tasks to execute. Matches the task file names.
 ```
 </TypeScript>
 

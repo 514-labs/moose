@@ -1,5 +1,7 @@
 import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid, CheckmarkBullets, BulletPointsCard } from "@/components";
 import { FileTree, Tabs } from "nextra/components";
+import { paths } from "@/lib/paths";
+
 
 # Data Modeling
 <LanguageSwitcher />
@@ -545,17 +547,17 @@ Validation at runtime takes place at the following points:
 
 <FeatureGrid columns={3}>
   <FeatureCard
-    href="/moose/streams"
+    href={paths.streams}
     title="Streaming Deep Dive"
     description="Learn how to process, transform, and manage data streams in real-time."
   />
   <FeatureCard
-    href="/moose/olap-table"
+    href={paths.olapTable}
     title="Working with Tables"
     description="Discover how to optimize storage, querying, and analytics with OLAP tables."
   />
   <FeatureCard
-    href="/moose/ingestion"
+    href={paths.ingestion}
     title="Ingesting Data"
     description="Explore how to efficiently ingest data with automatic schema validation."
   />

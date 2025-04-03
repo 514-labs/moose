@@ -48,8 +48,6 @@ Common issues—if the MCP isn't giving you access to data
 
 - ensure the local development server is running (`moose dev`)
 
-**Warning, right now, there is an issue with Claude Desktop not passing the correct path the MCP, an easy work-around is to launch Claude from the project directory with** `open -a claude`.
-
 ### Cursor Global MCP
 
 To create a new project (for details, see CLI Reference)

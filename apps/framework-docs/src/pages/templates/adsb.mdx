@@ -1,0 +1,149 @@
+
+import { ZoomImg } from "@/components";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Steps } from "nextra/components";
+
+
+# Aircraft Transponder (ADS-B) Template
+
+This template allows you to ingest and analyze aircraft transponder data (ADS-B) from military aircraft. It demonstrates how to build a data pipeline that collects aircraft tracking information, processes it in real-time, and stores it in ClickHouse for analysis.
+
+<Link href="https://github.com/514-labs/moose/tree/main/templates/ads-b">
+  <Button variant="outline">View Source Code →</Button>
+</Link>
+
+## Getting Started
+
+
+### Prerequisites
+
+Before getting started, make sure you have the following installed:
+
+```bash filename="Requirements" copy
+- NodeJS
+- Docker Desktop
+```
+
+<Steps>
+### Install Moose and Aurora
+
+To get started, install Moose (open source developer platform for data engineering) and Aurora (AI data engineering product).
+
+```bash filename="terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
+```
+
+<Callout type="info" title="Anthropic API Key">
+This installation will ask for your Anthropic API key if you want to use the AI features. If you don't have one, you can follow the setup guide at Anthropic's website.
+</Callout>
+
+### Create a new project using the ADS-B template
+
+```bash filename="terminal" copy
+aurora init aircraft --template ADS-B --MCP claude-desktop
+```
+
+### Set up the project
+
+Navigate to the project directory and install dependencies:
+
+```bash filename="terminal" copy
+cd aircraft
+npm install
+```
+
+### Start the Docker services
+
+Make sure Docker Desktop is running, then start the Moose development server:
+
+```bash filename="terminal" copy
+moose dev
+```
+
+This will start all necessary local infrastructure including ClickHouse, Redpanda, Temporal, and the Rust ingest servers.
+
+### Run the data ingestion workflow
+
+Open a new terminal window and navigate to your project directory, then run:
+
+```bash filename="terminal" copy
+moose workflow run military_aircraft_tracking
+```
+
+This workflow will retrieve data from the adsb.lol military aircraft tracking API, process it according to the data model, and ingest it into ClickHouse.
+
+</Steps>
+
+## Explore the Data
+
+The template allows you to explore the ingested aircraft data using AI tools like Claude Desktop or Cursor.
+
+### Explore with Claude Desktop
+
+Claude Desktop can help you analyze the data through natural language queries.
+
+<Callout type="info" title="Example Questions for Claude">
+Try asking Claude exploratory questions like:
+- "Tell me about the data in my ClickHouse tables"
+- "Tell me about the flow of data in Moose project"
+- "Create a pie chart of the types of aircraft in the air right now"
+- "Create a visualization of aircraft type against altitude"
+</Callout>
+
+### Productionize Your Results with Cursor
+
+For a code-forward workflow, Cursor provides a great environment to productionize your queries.
+
+#### Configure Cursor with Aurora MCP
+
+```bash filename="terminal" copy
+cd path/to/your/project
+cursor .
+```
+
+Then run the Aurora command to configure the MCP for Cursor:
+
+```bash filename="terminal" copy
+aurora setup --mcp cursor-project
+```
+
+This will create a `/.cursor/mcp.json` file with Aurora's MCP configuration.
+
+Enable the MCP in Cursor by going to:
+`cursor > settings > cursor settings > MCP` and clicking `enable` and `refresh`.
+
+<Callout type="info" title="Example Question for Cursor">
+Try asking Cursor to help you productionize your analysis:
+"Could you create an egress API that, for a given aircraft type input, returns the altitude, and longitude of each instance of that aircraft?"
+</Callout>
+
+## Project Structure
+
+The template implements a data pipeline that:
+
+1. Fetches military aircraft data from the adsb.lol API
+2. Processes and normalizes the data (handling special cases like the "ground" altitude)
+3. Enriches the data with additional metrics like Z-order coordinates
+4. Stores the data in ClickHouse for analysis
+
+```
+aircraft/
+├── app/
+│   ├── datamodels/        # Data models for aircraft tracking
+│   ├── functions/         # Processing functions for aircraft data
+│   └── scripts/           # Workflow scripts for data ingestion
+└── README.md              # Project documentation
+```
+
+## Next Steps
+
+Once you have the data flowing, you can:
+
+1. Build custom visualizations of aircraft movement
+2. Create alerting systems for specific aircraft types or behaviors
+3. Analyze flight patterns and trends over time
+4. Create APIs to surface insights from your data
+
+Feel free to modify the data models, processing functions, or create new APIs to suit your specific needs!
+

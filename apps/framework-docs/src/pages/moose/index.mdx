@@ -11,7 +11,7 @@ import {
   Callout,
   QnABullets,
   CheckmarkBullets,
-  Icons
+  Icons,
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -48,7 +48,7 @@ Moose is an open source framework for developing data products & APIs on OLAP/st
   </Link>
 </div>
 
-##### Core Concepts
+## Core Capabilities
 
 <FeatureGrid>
   <FeatureCard
@@ -198,7 +198,7 @@ export const examplePipeline = new IngestPipeline<ExampleModel>("example", {
 <BulletPointsCard
   bulletStyle="x"
   divider={false}
-  title="No manual synchronization, no context switching between your code editor, your database console, your Kafka client, etc."
+  title="No More Context Switching"
   bullets={[
     {
       title: "“Does my Database table use snake_case or camelCase?”",
@@ -215,7 +215,7 @@ export const examplePipeline = new IngestPipeline<ExampleModel>("example", {
 ### Local Dev in Seconds
 
 <BulletPointsCard
-title="Benefits of Moose's Local Development"
+title="Local Dev Benefits"
 bullets={[
 {
 title: "One-command startup",
@@ -318,12 +318,44 @@ Hit save and youll see your changes hot reloaded to your local infrastructure:
 ### Modularity
 
 Moose is designed to be modular and configurable. You can pick and choose which components you need and configure them to your liking.
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="Default Moose Stack:"
+  bullets={[
+    {
+      title: "ClickHouse",
+      description: "OLAP database (always enabled)"
+    },
+    {
+      title: "Redpanda",
+      description: "Kafka-compatible event streaming platform (can be disabled)"
+    },
+    {
+      title: "Temporal",
+      description: "Workflow orchestration (can be disabled)"
+    }
+  ]}
+/>
 
-While Moose starts with these sane defaults, we're actively adding support for more backends:
+<Callout type="info" title="Learn how to enable/disable components in your stack">
+  [Review the Architecture Documentation](/moose/getting-started/architecture) for more details.
+</Callout>
 
-- Additional data warehouses like Snowflake, BigQuery, and Databricks
-- Alternative streaming platforms like Kafka and Kinesis
-- Different orchestration tools
+<BulletPointsCard
+  divider={false}
+  title="Planned Extensions:"
+  bullets={[
+    {
+      title: "Snowflake, Databricks, and BigQuery",  
+      description: "Cloud-native data warehouses"
+    },
+    {
+      title: "Kafka, Kinesis, and Pulsar",
+      description: "Kafka-compatible event streaming platforms"
+    }
+  ]}
+/>
 
 [Let us know](https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering) if you'd like to see support for specific platforms in your stack.
 

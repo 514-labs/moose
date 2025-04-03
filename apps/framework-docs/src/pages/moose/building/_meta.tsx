@@ -6,7 +6,7 @@ const meta = {
   streams: "Stream Processing",
   "olap-table": "Managing DB Tables",
   "materialized-views": "In-Database Transforms",
-  "consumption-apis": "Surfacing Data via API",
+  "consumption-apis": "Exposing Analytics via API",
   workflows: "Workflow Orchestration",
 };
 

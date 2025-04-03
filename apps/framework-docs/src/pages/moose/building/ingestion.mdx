@@ -1,4 +1,4 @@
-import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, CheckmarkBullets } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, CheckmarkBullets, ZoomImg } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Ingestion APIs
@@ -8,15 +8,15 @@ import { Tabs } from "nextra/components";
 Ingestion APIs are the entry point for data flowing into your Moose application. 
 
 <BulletPointsCard
-  title="How it works:"
+  title="Working with Ingestion APIs"
   bullets={[
     {
-      title: "Define your data model",
+      title: "Model data for API validation",
       description: "Create a type definition that validates incoming data"
     },
     {
       title: "Set up ingestion endpoints",
-      description: "Configure how data enters your pipeline with HTTP REST APIs"
+      description: "Configure how data enters your pipeline with HTTP REST APIs-- single record or batch"
     },
     {
       title: "Connect to destination streams",
@@ -31,7 +31,7 @@ You can create ingestion APIs in two ways:
 - High-level: Using the `IngestPipeline` class (recommended)
 - Low-level: Manually configuring the `IngestApi` component for more granular control
 
-### Basic Analytics Pipeline
+### Basic Ingestion Pipeline
 
 <Tabs items={["IngestPipeline (Recommended)", "Standalone IngestAPI"]}>
 <Tabs.Tab>
@@ -39,6 +39,8 @@ The `IngestPipeline` class provides a convenient way to set up ingestion endpoin
 
 <TypeScript>
 ```typescript filename="AnalyticsPipeline.ts" copy
+import { IngestPipeline, IngestionFormat } from "@514labs/moose-lib";
+
 interface ExampleSchema {
   id: string;
   name: string;
@@ -56,7 +58,7 @@ const examplePipeline = new IngestPipeline<ExampleSchema>("example", {
 
 <Python>
 ```python filename="IngestPipeline.py" copy
-from moose_lib import Key, IngestPipeline, IngestionFormat, Stream, OlapTable
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig
 from pydantic import BaseModel
 
 class ExampleSchema(BaseModel):
@@ -65,9 +67,16 @@ class ExampleSchema(BaseModel):
     value: int
     timestamp: datetime
 
+example_pipeline = IngestPipeline[ExampleSchema](
+    name="example",
+    config=IngestPipelineConfig(
+        ingest=True,
+        stream=True,
+        table=True
+    )
+)
 ```
 </Python>
-
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -106,7 +115,7 @@ By default, ingestion APIs accept a single `JSON` record at a time.
 
 ### Batch Ingestion Pipeline
 Use the `format` option to configure the ingestion API to accept arrays of records: 
-<Tabs items={["IngestPipeline", "Low-Level Components"]}>
+<Tabs items={["IngestPipeline (Recommended)", "Standalone IngestAPI"]}>
 <Tabs.Tab>
 ```typescript filename="BatchPipeline.ts" copy
 interface BatchRecord {
@@ -152,12 +161,24 @@ const batchRecordsApi = new IngestApi<BatchRecord>("batch_records", {
 </Tabs.Tab>
 </Tabs>
 
-<Callout type="info" title="Explanation">
-All data sent to the `POST /ingest/[name]` endpoint will be:
-1. Validated against your TypeScript interface
-2. Buffered in the associated stream (if configured)
-3. Automatically synced to the configured table (if enabled)
-</Callout>
+
+<BulletPointsCard
+  divider={false}
+  bulletStyle="check"
+  title="Ingest Pipeline Data Flow:"
+  bullets={[
+    {
+      title: "Received data is validated against your data model type",
+    },
+    {
+      title: "Moose writes validated data to the associated stream (if configured)",
+    },
+    {
+      title: "Moose automatically syncs buffered data to the configured table (if enabled)",
+    },
+  ]}
+/>
+
 
 ## Using Ingestion APIs
 
@@ -165,7 +186,7 @@ Moose operates a webserver on port 4000 by default. All ingestion endpoints are 
 
 ```bash
 # Single record ingestion
-curl -X POST http://localhost:4000/api/ingest/example \
+curl -X POST http://localhost:4000/ingest/example \
   -H "Content-Type: application/json" \
   -d '{
     "id": "pv_123",
@@ -175,7 +196,7 @@ curl -X POST http://localhost:4000/api/ingest/example \
   }'
 
 # Batch ingestion
-curl -X POST http://localhost:4000/api/ingest/batch_records \
+curl -X POST http://localhost:4000/ingest/batch_records \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -206,17 +227,39 @@ Moose automatically provides standard HTTP responses:
 
 Moose automatically generates OpenAPI documentation for all ingestion endpoints:
 
-```typescript filename="OpenAPIDocumentation.ts"
-// All specifications are automatically available at:
-// - Development: http://localhost:5001/openapi.yaml
-// - Production: https://your-domain.com/openapi.yaml
-// - Project file: .moose/openapi.yaml
-```
+<BulletPointsCard
+  divider={false}
+  title="Locating OpenAPI Spec"
+  bullets={[
+    {
+      title: "Development",
+      description: "http://localhost:5001/openapi.yaml"
+    },
+    {
+      title: "Production",
+      description: "https://your-domain.com/openapi.yaml"
+    },
+    {
+      title: "Project file",
+      description: ".moose/openapi.yaml"
+    }
+  ]}
+/>
 
-Generate type-safe clients using the OpenAPI specification:
+### Using OpenAPI UI Client
 
-<Callout type="info">
-Install the OpenAPI Generator CLI:
+<Callout type="info" title="Use OpenAPI Viewer IDE Extension:">
+We recommend the [OpenAPI Viewer](https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi) extension for VSCode.
+</Callout>
+
+<ZoomImg dark="/openapi-try.png" light="/openapi-try-dark.png" />
+
+The OpenAPI spec includes example data for each Data Model schema, which can be used to construct requests. If using the Swagger UI, you can use the example data to construct requests by clicking the `Try it out` button.
+
+
+### Generate SDKs with OpenAPI Generator
+
+<Callout type="info" title="Install the OpenAPI Generator:">
 ```bash
 npm install -g @openapitools/openapi-generator-cli
 ```
@@ -256,7 +299,9 @@ interface PipelineConfig<T> {
 ```
 
 ### Data Formats
-```typescript filename="FormatConfig.ts" copy
+```ts filename="FormatConfig.ts" copy
+import { IngestionFormat } from "@514labs/moose-lib";
+
 // Single record ingestion
 const singleRecordPipeline = new IngestPipeline<Record>("single_records", {
   ingest: {
@@ -272,164 +317,33 @@ const batchPipeline = new IngestPipeline<Record>("batch_records", {
 });
 ```
 
+## Using `IngestPipeline` vs. `IngestApi`
 
+<BulletPointsCard
+  uppercase={false}
+  bulletStyle="check"
+  divider={false}
+  title="Use IngestPipeline when:"
+  bullets={[
+    "You want to create a new ingestion endpoint, stream, and table",
+    "You want to simplify configuration and reduce boilerplate",
+  ]}
+/>
 
-### Production-Ready Ingestion
-
-<Tabs items={["IngestPipeline", "Low-Level Components"]}>
-<Tabs.Tab>
-```typescript filename="ProductionIngestion.ts" copy
-interface DataType {
-  id: string;
-  timestamp: Date;
-  // other fields...
-}
-
-const productionPipeline = new IngestPipeline<DataType>("production_events", {
-  ingest: {
-    format: IngestionFormat.JSON_ARRAY  // Batch ingestion for efficiency
-  },
-  stream: {
-    parallelism: 8,                     // Higher parallelism for throughput
-    retentionPeriod: 604800             // 7 days retention for reliability
-  },
-  table: {
-    orderByFields: ["id", "timestamp"],
-    deduplicate: true                   // Ensure only latest version is stored
-  }
-});
-```
-</Tabs.Tab>
-
-<Tabs.Tab>
-```typescript filename="ProductionIngestionManual.ts" copy
-interface DataType {
-  id: string;
-  timestamp: Date;
-  // other fields...
-}
-
-// Create the ClickHouse table
-const productionTable = new OlapTable<DataType>("production_events", {
-  orderByFields: ["id", "timestamp"],
-  deduplicate: true
-});
-
-// Create the stream with production-grade settings
-const productionStream = new Stream<DataType>("production_events", {
-  parallelism: 8,
-  retentionPeriod: 604800,        // 7 days retention
-  destination: productionTable
-});
-
-// Create the ingestion API with batch support
-const productionApi = new IngestApi<DataType>("production_events", {
-  destination: productionStream,
-  format: IngestionFormat.JSON_ARRAY
-});
-```
-</Tabs.Tab>
-</Tabs>
-
-<Callout type="info" title="When to Use Manual Configuration">
-While the IngestPipeline provides a simpler API, you might want to use the manual configuration approach when:
-
-1. You need to reference the individual components elsewhere in your code
-2. You want to create complex routing between components
-3. You're integrating with existing Stream or Table objects
-4. You need specific customization options not exposed by IngestPipeline
-</Callout>
-
-### Complex Data Pipeline
-
-<Tabs items={["IngestPipeline with Transforms", "Low-Level Components"]}>
-<Tabs.Tab>
-```typescript filename="ComplexPipeline.ts" copy
-interface RawEvent {
-  id: string;
-  timestamp: Date;
-  data: string;
-}
-
-interface ProcessedEvent {
-  eventId: string;
-  processedAt: Date;
-  originalTimestamp: Date;
-  parsedData: Record<string, unknown>;
-}
-
-// Create the raw pipeline
-const rawPipeline = new IngestPipeline<RawEvent>("raw_events", {
-  ingest: true,
-  stream: true,
-  table: true
-});
-
-// Create the processed pipeline
-const processedPipeline = new IngestPipeline<ProcessedEvent>("processed_events", {
-  ingest: false,  // No direct ingestion
-  stream: true,
-  table: {
-    orderByFields: ["eventId", "processedAt"]
-  }
-});
-
-// Connect the streams with a transform
-rawPipeline.stream.addTransform(processedPipeline.stream, (rawEvent) => ({
-  eventId: rawEvent.id,
-  processedAt: new Date(),
-  originalTimestamp: rawEvent.timestamp,
-  parsedData: JSON.parse(rawEvent.data)
-}));
-```
-</Tabs.Tab>
-
-<Tabs.Tab>
-```typescript filename="ComplexPipelineManual.ts" copy
-interface RawEvent {
-  id: string;
-  timestamp: Date;
-  data: string;
-}
-
-interface ProcessedEvent {
-  eventId: string;
-  processedAt: Date;
-  originalTimestamp: Date;
-  parsedData: Record<string, unknown>;
-}
-
-// Create raw data components
-const rawTable = new OlapTable<RawEvent>("raw_events");
-const rawStream = new Stream<RawEvent>("raw_events", {
-  destination: rawTable
-});
-const rawApi = new IngestApi<RawEvent>("raw_events", {
-  destination: rawStream
-});
-
-// Create processed data components
-const processedTable = new OlapTable<ProcessedEvent>("processed_events", {
-  orderByFields: ["eventId", "processedAt"]
-});
-const processedStream = new Stream<ProcessedEvent>("processed_events", {
-  destination: processedTable
-});
-
-// Connect the streams with a transform
-rawStream.addTransform(processedStream, (rawEvent) => ({
-  eventId: rawEvent.id,
-  processedAt: new Date(),
-  originalTimestamp: rawEvent.timestamp,
-  parsedData: JSON.parse(rawEvent.data)
-}));
-```
-</Tabs.Tab>
-</Tabs>
+<BulletPointsCard
+  uppercase={false}
+  bulletStyle="check"
+  divider={false}
+  title="Use IngestApi when:"
+  bullets={[
+    "You have an existing Stream object that you want to connect to",
+  ]}
+/>
 
 ## Validation Layer
 Moose's ingestion APIs automatically validate all incoming data against your TypeScript interface:
 
+<TypeScript>
 ```typescript filename="ValidationExample.ts" copy
 interface UserEvent {
   id: string;             // Required string
@@ -446,24 +360,33 @@ interface UserEvent {
 // ❌ Invalid: { "id": "event1" } // Missing required fields
 // ❌ Invalid: { "id": "event1", "userId": "user1", "timestamp": "not-a-date" } // Invalid date format
 ```
+</TypeScript>
 
 ## Best Practices
-1. **Schema Design**
-   - Define clear TypeScript interfaces with specific types
-   - Make required fields non-nullable
-   - Use optional fields (with `?`) only when necessary
-   - Document expected formats with type definitions
 
-2. **API Usage**
-   - Use batch ingestion for high-volume data
-   - Implement client-side retry logic
-   - Consider rate limiting implications
-   - Handle validation errors gracefully
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="API Usage"
+  bullets={[
+    "Use batch ingestion for high-volume data",
+    "Implement client-side retry logic",
+    "Consider rate limiting implications",
+    "Handle validation errors gracefully",
+  ]}
+/>
 
-3. **Performance Considerations**
-   - Configure proper stream parallelism based on load
-   - Use batch ingestion for high-throughput scenarios
-   - Monitor API response times
-   - Set appropriate retention periods
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="Performance Considerations"
+  bullets={[
+    "Configure proper stream parallelism based on load",
+    "Use batch ingestion for high-throughput scenarios",
+    "Monitor API response times",
+    "Set appropriate retention periods",
+  ]}
+/>
+
 
 See the [API Reference](./api-reference#ingestpipeline) for complete configuration options.

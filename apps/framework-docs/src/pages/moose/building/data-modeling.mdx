@@ -3,25 +3,30 @@ import { FileTree, Tabs } from "nextra/components";
 
 # Data Modeling
 <LanguageSwitcher />
-Data modeling is the core of Moose. You define your types once, then explicitly choose how to instantiate them across your infrastructure.
 
 ## Overview
-Unlike traditional data engineering workflows where you are responsible for manually syncing schemas between components, Moose lets you programmatically decide which infrastructure elements to generate from your types.
+
+Data models in Moose are type definitions that generate your data infrastructure. You write them as <TypeScript inline>TypeScript interfaces</TypeScript><Python inline>Pydantic models</Python>, export them from your app's root <TypeScript inline>index.ts</TypeScript><Python inline>main.py</Python> file, and Moose creates the corresponding database tables, APIs, and streams from your code.
+
 
 <BulletPointsCard
-  title="How it works:"
+  title="Working with Data Models"
   bullets={[
     {
-      title: "Define your schemas",
-      description: "Create type definitions in TypeScript or Python"
+      title: "Define your schema",
+      description: "Create a type definition with typed fields and a primary key using your language's type system"
     },
     {
-      title: "Choose your components",
-      description: "Decide which infrastructure pieces to create (APIs, streams, tables)"
+      title: "Create infrastructure",
+      description: "Use your model as a type parameter to create tables, APIs, streams, or views"
     },
     {
-      title: "Fine-tune behavior",
-      description: "More granular control over how your infrastructure should behave if desired"
+      title: "Export from root",
+      description: "Export all models and infrastructure from your app's root file (index.ts/main.py) - Moose reads these exports to generate infrastructure"
+    },
+    {
+      title: "Run dev server",
+      description: "When you create or modify data models, Moose automatically creates or updates all dependent infrastructure components with your latest code changes."
     }
   ]}
 />
@@ -68,7 +73,9 @@ my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", Ingest
 ```
 </Python>
 
-<CheckmarkBullets
+<BulletPointsCard
+  divider={false}
+  bulletStyle="check"
   title="Benefits:"
   bullets={[
     "End-to-end type safety across your code and infrastructure",
@@ -102,10 +109,12 @@ export interface BasicDataModel {
   someDate: Date;             // Timestamps
   someArray: string[];        // Arrays
   someObject: object;         // Objects
+  someInteger: number & tags.Type<"int64">; // Integer type possible with specific tags
   
-  // Optional fields
-  optionalField?: string;         // May not be present in all records
-  nullableField?: string | null;  // May be present or not
+  // Nullable fields
+  nullableField?: string;  // Optional field
+  nullableField2?: string | null;  // Union type
+
 }
 ```
 </TypeScript>
@@ -121,9 +130,9 @@ from pydantic import BaseModel, Field
 
 class BasicDataModel(BaseModel):
     # Required: Primary key for your data model
-    primary_key: Key[str] = Field(..., description="String primary key")
+    primary_key: Key[str]
     # or
-    numeric_key: Key[int] = Field(..., description="Numeric primary key")
+    numeric_key: Key[int]
     
     # Common types
     some_string: str             # Text
@@ -249,15 +258,100 @@ class Order(BaseModel):
 | `List[T]` | Array | Lists of values |
 | `Enum` | Enum | Enumerated values |
 | `Optional[T]` | Nullable | Values may be present or not |
+| `Any` | JSON | Any value, use with caution |
 
 </Python>
 
-<Callout type="info" title="Schema Evolution">
-When evolving your schemas, follow these guidelines:
-- Add new fields as optional to maintain backward compatibility
-- Avoid removing or renaming existing fields
-- Consider creating a new version of your model for major changes
-</Callout>
+### Data Modeling Dos and Don'ts
+
+<TypeScript>
+Do not use `any` or `unknown` types:
+```typescript filename="app/datamodels/AnyFields.ts"
+interface BadDataModel {
+  unknownField: unknown;
+  // or
+  anyField: any;
+}
+```
+</TypeScript>
+
+
+Do not use union types for flexible fields:
+
+<TypeScript>
+```ts filename="app/datamodels/FlexibleFields.ts"
+// DO NOT -> Use union types for conditional fields
+interface BadDataModel {
+  conditionalField: string | number;
+}
+
+// DO -> break out into multiple optional fields
+interface GoodDataModel {
+  conditionalString?: string; // Optional field
+  conditionalNumber?: number; // Optional field
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/FlexibleFields.py"
+
+# DO NOT -> Use union types for flexible fields
+class BadDataModel(BaseModel):
+    flexible_field: Union[str, int]
+
+# DO -> Use Any type for flexible fields
+class FlexibleDataModel(BaseModel):
+    flexible_field: Any ## Maps to JSON type in ClickHouse
+```
+</Python>
+
+Do not use union types for nullable fields:
+
+<TypeScript>
+```typescript filename="app/datamodels/NullableFields.ts"
+// DO NOT -> Use union types for nullable fields
+interface BadDataModel {
+  nullableField: string | null;
+}
+
+// DO -> Use Optional type
+interface GoodDataModel { 
+  nullableField?: string;
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/NullableFields.py"
+
+# DO NOT -> Use union types for nullable fields
+class BadDataModel(BaseModel):
+    nullable_field: Union[str, None]
+
+# DO -> Use Optional type
+class GoodDataModel(BaseModel):
+    nullable_field: Optional[str]
+```
+</Python>
+
+<Python>
+Do not use `dict` types:
+```python filename="app/datamodels/DictFields.py"
+
+# DO NOT -> Use dict types
+class BadDataModel(BaseModel):
+    dict_field: Dict[str, Any]
+
+class NestedObject(BaseModel):
+    nested_field: str
+
+# DO -> Use Nested type
+class GoodDataModel(BaseModel):
+    dict_field: NestedObject
+```
+</Python>
+
 
 ## Infrastructure Configuration
 
@@ -265,12 +359,10 @@ When evolving your schemas, follow these guidelines:
   This section covers how to apply your data models to infrastructure components.
 </Callout>
 
-### Component Types
+### Getting Data Into Your Database
 
-You can use your data models with different infrastructure components:
-
-#### Complete Ingestion Pipeline
-The most common pattern - combines ingestion, streaming, and storage.
+#### `IngestPipeline`
+The most common pattern - combines ingestion, streaming, and storage into a single component:
 
 <TypeScript>
 ```ts filename="app/index.ts"
@@ -296,16 +388,28 @@ my_pipeline = IngestPipeline[MyDataModel]("my_pipeline", IngestPipelineConfig(
 ```
 </Python>
 
-#### Individual Components
+<BulletPointsCard
+  divider={false}
+  bulletStyle="check"
+  title="What gets created?"
+  bullets={[
+    "An HTTP POST endpoint that accepts and validates incoming data against your data model",
+    "A typed Redpanda topic that buffers validated data from the ingest API",
+    "A ClickHouse table with the same schema as your data model",
+    "A Rust process that syncs data from the stream to the table"
+  ]}
+/>
+#### Standalone Components
+If you don't need all the components, you can create them individually and wire them together yourself:
 
-<Tabs items={['Database Tables', 'Streams', 'Ingest API', 'Materialized Views', 'Consumption APIs']}>
-  <Tabs.Tab>
+##### `OlapTable`
+    Creates a ClickHouse table with the same schema as your data model:
     <TypeScript>
     ```typescript filename="app/index.ts"
     import { OlapTable } from "@514labs/moose-lib";
     
     // Basic table
-    const myTable = new OlapTable<MyDataModel>("MyTable");
+    const myTable = new OlapTable<MyDataModel>("TableName");
     ```
     </TypeScript>
     
@@ -314,226 +418,119 @@ my_pipeline = IngestPipeline[MyDataModel]("my_pipeline", IngestPipelineConfig(
     from moose_lib import OlapTable
     
     # Basic table
-    my_table = OlapTable[MyDataModel]("MyTable")
+    my_table = OlapTable[MyDataModel]("TableName")
     ```
     </Python>
-    More information on [Olap Tables](/moose/olap-table)
-  </Tabs.Tab>
-  
-  <Tabs.Tab>
-    <TypeScript>
-    ```typescript filename="app/index.ts"
-    import { Stream } from "@514labs/moose-lib";
-    
-    // Basic stream
-    const myStream = new Stream<MyDataModel>("MyStream");
-    ```
-    </TypeScript>
-    
-    <Python>
-    ```python filename="app/index.py"
-    from moose_lib import Stream
-    
-    # Basic stream
-    my_stream = Stream[MyDataModel]("MyStream")
-    ```
-    </Python>
-    More information on [Streams](/moose/streams)
-  </Tabs.Tab>
-  
-  <Tabs.Tab>
-    <TypeScript>
-    ```typescript filename="app/index.ts"
-    import { IngestAPI } from "@514labs/moose-lib";
-    
-    const myIngestAPI = new IngestAPI<MyDataModel>("MyIngestAPI");
-    ```
-    </TypeScript>
-    
-    <Python>
-    ```python filename="app/index.py"
-    from moose_lib import IngestAPI
-    
-    my_ingest_api = IngestAPI[MyDataModel]("MyIngestAPI")
-    ```
-    </Python>
-    More information on [Ingest APIs](/moose/ingestion)
-  </Tabs.Tab>
-  
-  <Tabs.Tab>
-    <TypeScript>
-    ```typescript filename="app/index.ts"
-    import { MaterializedView } from "@514labs/moose-lib";
-    
-    const myMaterializedView = new MaterializedView<MyDataModel>("MyMaterializedView");
-    ```
-    </TypeScript>
-    
-    <Python>
-    ```python filename="app/index.py"
-    from moose_lib import MaterializedView
-    
-    my_materialized_view = MaterializedView[MyDataModel]("MyMaterializedView")
-    ```
-    </Python>
-    More information on [Materialized Views](/moose/materialized-views)
-  </Tabs.Tab>
-  
-  <Tabs.Tab>
-    <TypeScript>
-    ```typescript filename="app/index.ts"
-    import { ConsumptionAPI } from "@514labs/moose-lib";
-    
-    const myConsumptionAPI = new ConsumptionAPI<RequestDataModel, ResponseDataModel>("MyConsumptionAPI", (request: RequestDataModel) => {
-      // Do something with the request
-      return new ResponseDataModel();
-    });
-    ```
-    </TypeScript>
-    
-    <Python>
-    ```python filename="app/index.py"
-    from moose_lib import ConsumptionAPI
-    
-    my_consumption_api = ConsumptionAPI[MyDataModel]("MyConsumptionAPI")
-    ```
-    </Python>
-    More information on [Consumption APIs](/moose/consumption-apis)
-  </Tabs.Tab>
-</Tabs>
 
-### Common Configuration Scenarios
-
-#### Enabling Batch Ingestion
-
+    <Callout type="info" title="Olap Tables">
+      You might use an OlapTable if you do not need streaming ingest capabilities for your data.
+      [Learn more about Olap Tables](/moose/building/olap-table)
+    </Callout>
+  
+##### `Stream`
+Creates a Redpanda topic that can be configured to sync data to a ClickHouse table with the same schema:
 <TypeScript>
-```typescript
-const batchPipeline = new IngestPipeline<BatchDataModel>("batch_pipeline", {
-  ingest: {
-    format: IngestionFormat.JSON_ARRAY // Accept arrays of objects
-  },
-  stream: true,
-  table: true
-});
+```typescript filename="app/index.ts"
+import { Stream } from "@514labs/moose-lib";
+
+// Basic stream
+const myStream = new Stream<MyDataModel>("TopicName");
 ```
 </TypeScript>
 
 <Python>
-```python
-from moose_lib import DataModelConfig, IngestionConfig, IngestionFormat
+```python filename="app/index.py"
+from moose_lib import Stream
 
-batch_pipeline = IngestPipeline[BatchDataModel]("batch_pipeline", IngestPipelineConfig(
-    ingestion=IngestionConfig(
-        format=IngestionFormat.JSON_ARRAY  // Accept arrays of objects
-    ),
-    stream=True,
-    table=True
-))
+# Basic stream
+my_stream = Stream[MyDataModel]("TopicName")
 ```
 </Python>
 
-#### Optimizing Query Performance With Ordering
-
+<Callout type="info" title="Streams">
+  Standalone streams may make sense if you want to transform data on the fly before it is written to the table. [Learn more about stream processing](/moose/building/streams)
+</Callout>
+  
+##### `IngestAPI`
 <TypeScript>
-```typescript
-import { Key, IngestPipeline, IngestPipelineConfig } from "@514labs/moose-lib";
+```typescript filename="app/index.ts"
+import { IngestAPI } from "@514labs/moose-lib";
 
-export interface OrderByFieldsModel {
-  userId: Key<string>;
-  timestamp: Date;
-  someOtherField: string;
-  someOtherField2: number;
-  someOtherField3: boolean;
-}
-const optimizedQueryPipeline = new IngestPipeline<OrderByFieldsModel>("optimized_pipeline", {
-  ingest: true,
-  stream: true,
-  table: {
-    orderByFields: ["userId", "timestamp"]  // Fields for optimized querying
-  }
+const myIngestAPI = new IngestAPI<MyDataModel>("api-route-name");
+```
+</TypeScript>
+
+<Python>
+```python filename="app/index.py"
+from moose_lib import IngestAPI
+
+my_ingest_api = IngestAPI[MyDataModel]("api-route-name")
+```
+</Python>
+<Callout type="info" title="Ingest APIs">
+  Ingest APIs are almost always preferred as part of an `IngestPipeline` instead of being used standalone. [Learn more about Ingestion APIs](/moose/building/ingestion)
+</Callout>
+
+### Getting Data Out of Your Database
+Data models also power your downstream data processing workflows after data is stored, enabling you to create materialized views and typed APIs that prepare and expose your data for consumption:
+
+#### `MaterializedView`
+Materialized views are a way to pre-compute and store the results of complex queries on your data. This allows you to query the materialized view directly for faster results, or use it as the source for another derived table for cascading transformations:
+<TypeScript>
+```typescript filename="app/index.ts"
+import { MaterializedView } from "@514labs/moose-lib";
+
+const myMaterializedView = new MaterializedView<MyDataModel>({
+  selectStatement: sql`SELECT * FROM my_table`,
+  tableName: "my_table",
+  materializedViewName: "my_materialized_view"
 });
 ```
 </TypeScript>
 
 <Python>
-```python
-from moose_lib import IngestPipeline, IngestPipelineConfig
+```python filename="app/index.py"
+from moose_lib import MaterializedView
 
-class OrderByFieldsModel(BaseModel):
-    user_id: Key[str]
-    timestamp: datetime
-    some_other_field: str
-    some_other_field2: int
-    some_other_field3: bool
-
-optimized_query_config = IngestPipelineConfig(
-    ingest=True,
-    stream=True,
-    table=StorageConfig(
-        order_by_fields=["user_id", "timestamp"]  // Fields for optimized querying
-    )
+my_materialized_view = MaterializedView[MyDataModel](
+  select_statement="SELECT * FROM my_table",
+  table_name="my_table",
+  materialized_view_name="my_materialized_view"
 )
 ```
 </Python>
+<Callout type="info" title="Materialized Views">
+  [Learn more about Materialized Views](/moose/building/materialized-views)
+</Callout>
 
-#### Setting Up Deduplication
+#### `ConsumptionAPI`
+Consumption APIs are a way to expose your data to external consumers. They are typed and validateagainst your data models, ensuring that the client request parameters and response types are correct at runtime:
 
 <TypeScript>
-```typescript
-interface UniqueModel {
-  primaryKey: Key<string>;
-  timestamp: Date;
-  someOtherField: string;
-  someOtherField2: number;
-  someOtherField3: boolean;
-}
+```ts filename="app/index.ts"
+import { ConsumptionAPI } from "@514labs/moose-lib";
 
-const deduplicationPipeline = new IngestPipeline<UniqueModel>("deduplication_pipeline", {
-  ingest: true,
-  stream: true,
-  table: {
-    deduplicate: true,                         // Enable deduplication
-    orderByFields: ["primaryKey", "timestamp"]  // Fields for deduplication
-  }
+const myConsumptionAPI = new ConsumptionAPI<RequestDataModel, ResponseDataModel>("MyConsumptionAPI"async({request: RequestDataModel}, {client, sql}) => {
+      // Do something with the request
+  return new ResponseDataModel();
 });
 ```
 </TypeScript>
 
 <Python>
-```python
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig
-from pydantic import BaseModel
+```python filename="app/index.py"
+from moose_lib import ConsumptionAPI
 
-class UniqueModel(BaseModel):
-    primary_key: Key[str]
-    timestamp: datetime
-    some_other_field: str
-    some_other_field2: int
-    some_other_field3: bool
+def handle(request: RequestDataModel) -> ResponseDataModel:
+    # Do something with the request
+    return ResponseDataModel()
 
-deduplication_pipeline = IngestPipeline[UniqueModel]("deduplication_pipeline", IngestPipelineConfig(
-    ingest=True,
-    stream=True,
-    table=StorageConfig(
-        deduplicate=True,  // Enable deduplication
-        order_by_fields=["primary_key", "timestamp"]  // Fields for deduplication
-    )
-))
-```
+my_consumption_api = ConsumptionAPI[RequestDataModel, ResponseDataModel]("api_route_name"query_function=handle)
+    ```
 </Python>
-
-<Callout type="warning" title="Deduplication Caveats">
-Deduplication uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning duplicate records may not be removed immediately. This process can take time and is not guaranteed to be immediate. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
+<Callout type="info" title="Consumption APIs">
+  [Learn more about Consumption APIs](/moose/building/consumption-apis)
 </Callout>
-
-## Default Behaviors
-
-If you don't specify configuration options:
-
-1. Moose expects single JSON objects per request (not batches)
-2. A ClickHouse table will be created for your data model
-3. Deduplication will be disabled
-4. If your model includes a field with the `Key` type, it will be used for ordering
 
 ## Next Steps
 

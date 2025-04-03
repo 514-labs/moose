@@ -7,7 +7,7 @@ import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScri
 Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
 
 <BulletPointsCard
-  title="How it works:"
+  title="Working with Consumption APIs"
   bullets={[
     {
       title: "Model your API parameters",
@@ -28,15 +28,6 @@ Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfac
   ]}
 />
 
-<CheckmarkBullets
-  title="Moose automatically handles:"
-  bullets={[
-    "URL parameter validation and type conversion",
-    "SQL query interpolation and execution",
-    "Response formatting",
-    "Automated OpenAPI documentation"
-  ]}
-/>
 ## Creating API Endpoints
 
 <TypeScript>
@@ -108,6 +99,19 @@ The generic type parameters specify:
 <Callout type="info">
 You can name these types anything you want. The first type generates validation for query parameters, while the second defines the response structure for OpenAPI documentation.
 </Callout>
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="Moose automatically handles:"
+  bullets={[
+    "URL parameter validation and type conversion",
+    "SQL query interpolation and execution",
+    "Response formatting",
+    "Automated OpenAPI documentation"
+  ]}
+/>
+
 
 ## Defining Query Parameters
 

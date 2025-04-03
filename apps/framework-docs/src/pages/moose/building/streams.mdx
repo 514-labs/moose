@@ -1,15 +1,35 @@
-import { Callout } from "@/components";
+import { Callout, BulletPointsCard, LanguageSwitcher, TypeScript, Python } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Stream Processing
 
-Streams serve as the transport layer between your data sources and database tables. Built On Kafka/Redpanda topics, they provide a way to implement real-time data pipelines that:
-- **Enforce type safety** as data flows through your pipeline
-- **Buffer data between the ingestion layer and your database tables** to protect against data loss during high load or service disruptions
-- **Chain transformations on the fly** to process, reshape, and enrich data in-flight before landing in your database tables
-- **Guarantee at least once** delivery of data to your database tables
+<LanguageSwitcher />
 
-As part of Moose's unified type system, streams use the same data models you define for your APIs and tables, eliminating schema mismatches between pipeline components.
+## Overview
+Streams serve as the transport layer between your data sources and database tables. Built On Kafka/Redpanda topics, they provide a way to implement real-time pipelines for ingesting and processing incoming data.
+
+<BulletPointsCard
+  title="Working with streams"
+  bullets={[
+    {
+      title: "Type safe transport layer",
+      description: "The schema of your Redpanda topic is derived from the data model you define"
+    },
+    {
+      title: "Buffer data from APIs",
+      description: "Data is buffered in the stream to protect against data loss during high load or service disruptions"
+    },
+    {
+      title: "Chain transformations on the fly",
+      description: "Add transformations between streams to process, reshape, and enrich data in-flight before landing in your database tables"
+    },
+    {
+      title: "Sync data to destination tables",
+      description: "Moose automatically syncs data from streams to your database tables when a destination is specified in your stream configuration"
+    }
+  ]}
+/>
+
 
 ## Creating Streams
 You can create streams in two ways:
@@ -22,11 +42,12 @@ You can create streams in two ways:
 <Tabs.Tab title="Ingest Pipeline (Recommended)">
 The `IngestPipeline` class provides a convenient way to set up streams with ingestion APIs and tables. This is the recommended way to create streams for ingestion:
 
+<TypeScript>
 ```ts filename="IngestionStream.ts" copy {10}
-import { IngestPipeline } from "@514labs/moose-lib";
+import { IngestPipeline, Key } from "@514labs/moose-lib";
 
 interface RawData {
-  id: string;
+  id: Key<string>;
   value: number;
 }
 
@@ -36,12 +57,32 @@ const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
   table: true // Creates an OLAP table named `raw_data`
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="IngestionStream.py" copy {10}
+from moose_lib import IngestPipeline, Key
+from pydantic import BaseModel
+
+class RawData(BaseModel):
+    id: Key[str]
+    value: int
+
+raw_ingestion_stream = IngestPipeline[RawData]("raw_data", {
+  ingest: True, # Creates an ingestion API endpoint at `POST /ingest/raw_data`
+  stream: True, # Buffers data between the ingestion API and the database table
+  table: True, # Creates an OLAP table named `raw_data`
+})
+```
+</Python>
+
 </Tabs.Tab>
 
 <Tabs.Tab title="Manual Stream Configuration">
 
 While the `IngestPipeline` provides a convenient way to set up streams with ingestion APIs and tables, you can also configure these components individually for more granular control:
 
+<TypeScript>
 ```ts filename="StreamObject.ts" copy {8-12}
 interface RawData {
   id: string;
@@ -60,11 +101,48 @@ const rawIngestApi = new IngestApi<RawData>("raw_data" {
   destination: rawIngestionStream // Configure Moose to write all validated data to the stream
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="StreamObject.py" copy {8-12}
+from moose_lib import IngestPipeline, Key
+from pydantic import BaseModel
+
+class RawData(BaseModel):
+    id: Key[str]
+    value: int
+
+raw_table = OlapTable[RawData]("raw_data")
+raw_stream = Stream[RawData]("raw_data", {
+  destination: raw_table # Optional: Specify a destination table for the stream, sets up a process to sync data from the stream to the table
+})
+raw_ingest_api = IngestApi[RawData]("raw_data", {
+  destination: raw_stream # Configure Moose to write all validated data to the stream
+})
+```
+</Python>
 </Tabs.Tab>
 </Tabs>
-<Callout type="info" title="Explanation">
-All data sent to the `POST /ingest/raw_data` endpoint will be buffered in the `raw_data` stream. Then Moose will automatically execute a process to sync the data from the `raw_data` stream to the `raw_data` OLAP table.
-</Callout>
+
+
+<BulletPointsCard
+  divider={false}
+  title="Explanation"
+  bullets={[
+    {
+      title: "Ingest API Writes to Stream",
+      description: "Data sent to the `POST /ingest/raw_data` endpoint is buffered in the `raw_data` stream"
+    },
+    {
+      title: "Stream to Table Sync",
+      description: "Moose automatically executes a process to sync the data from the `raw_data` stream to the `raw_data` OLAP table"
+    },
+    {
+      title: "Destination Table",
+      description: "Data is stored in the `raw_data` OLAP table"
+    }
+  ]}
+/>
 
 
 ### Streams for Transformations
@@ -76,14 +154,15 @@ If the raw data needs to be transformed before landing in the database, you can 
 <Tabs.Tab title="Ingest Pipeline (Recommended)">
 <TypeScript>
 ```ts filename="TransformDestinationStream.ts" copy
+import { IngestPipeline, Key } from "@514labs/moose-lib";
 
 interface RawData {
-  id: string;
+  id: Key<string>;
   value: number;
 }
 
 interface TransformedData {
-  id: string;
+  id: Key<string>;
   transformedValue: number;
   transformedAt: Date;
 }
@@ -112,21 +191,69 @@ rawData.stream.addTransform(transformedData.stream, (record) => ({
 
 <Python>
 ```py filename="TransformDestinationStream.py" copy
+# Import required libraries
+from moose_lib import IngestPipeline, Key
+from pydantic import BaseModel
 
+# Define schema for raw incoming data
+class RawData(BaseModel):
+    id: Key[str]  # Primary key
+    value: int    # Value to be transformed
+
+# Define schema for transformed data
+class TransformedData(BaseModel):
+    id: Key[str]           # Primary key (preserved from raw data)
+    transformedValue: int  # Transformed value
+    transformedAt: Date    # Timestamp of transformation
+
+# Create pipeline for raw data - only for ingestion and streaming
+raw_data = IngestPipeline[RawData]("raw_data", {
+  ingest: True,   # Enable API endpoint
+  stream: True,   # Create stream for buffering
+  table: False    # No table needed for raw data
+})
+
+# Create pipeline for transformed data - for storage only
+transformed_data = IngestPipeline[TransformedData]("transformed_data", {
+  ingest: False,  # No direct API endpoint
+  stream: True,   # Create stream to receive transformed data
+  table: True     # Store transformed data in table
+})
+
+# Define a named transformation function
+def transform_function(record: RawData) -> TransformedData:
+  return TransformedData(
+    id=record.id,
+    transformedValue=record.value * 2,
+    transformedAt=datetime.now()
+  )
+
+# Connect the streams with the transformation function
+raw_data.get_stream().add_transform(
+  destination=transformed_data.get_stream(), # Use the get_stream() method to get the stream object from the IngestPipeline
+  transformation=transform_function # Can also define a lambda function
+)
 ```
+
+<Callout type="warning" title="Use getters to get the stream object">
+  Use the `get_stream()` method to get the stream object from the IngestPipeline to avoid errors when referencing the stream object.
+</Callout>
+
 </Python>
 </Tabs.Tab>
 
 <Tabs.Tab title="Standalone Stream">
 <TypeScript>
 ```ts filename="TransformDestinationStream.ts" copy
+import { Key, IngestApi, OlapTable, Stream } from "@514labs/moose-lib";
+
 interface RawData {
-  id: string;
+  id: Key<string>;
   value: number;
 }
 
 interface TransformedData {
-  id: string;
+  id: Key<string>;
   transformedValue: number;
   transformedAt: Date;
 }
@@ -153,58 +280,162 @@ rawDataStream.addTransform(transformedStream, (record) => ({
 </TypeScript>
 
 <Python>
-```py filename="TransformDestinationStream.py" copy
+You can use lambda functions to define transformations:
 
+```py filename="TransformDestinationStream.py" copy
+from moose_lib import Key, IngestApi, OlapTable, Stream
+from pydantic import BaseModel
+
+class RawData(BaseModel):
+    id: Key[str]
+    value: int
+
+class TransformedData(BaseModel):
+    id: Key[str]
+    transformedValue: int
+    transformedAt: Date
+
+# Create pipeline components for raw data - only for ingestion and streaming
+raw_stream = Stream[RawData]("raw_data") ## No destination table since we're not storing the raw data
+raw_api = IngestApi[RawData]("raw_data", StreamConfig(
+  destination=raw_stream ## Connect the ingestion API to the raw data stream
+))
+
+# Create pipeline components for transformed data - no ingestion API since we're not ingesting the transformed data
+transformed_table = OlapTable[TransformedData]("transformed_data") ## Store the transformed data in a table
+transformed_stream = Stream[TransformedData]("transformed_data", destination=transformed_table) ## Connect the transformed data stream to the destination table
+
+
+## Example transformation using a lambda function
+raw_stream.add_transform(
+  destination=transformed_stream, 
+  transformation=lambda record: TransformedData(
+    id=record.id,
+    transformedValue=record.value * 2,
+    transformedAt=datetime.now()
+  )
+) 
 ```
 </Python>
 </Tabs.Tab>
 </Tabs>
 
 #### Chaining Transformations
+For more complex transformations, you can chain multiple transformations together. This is a use case where using a standalone Stream for intermediate stages of your pipeline may be useful:
+
 <TypeScript>
 ```ts filename="ChainedTransformations.ts" copy
+import { IngestPipeline, Key } from "@514labs/moose-lib";
+
+// Define the schema for raw input data
 interface RawData {
-  id: string;
+  id: Key<string>;
   value: number;
 }
 
-interface TransformedData {
-  id: string;
+// Define the schema for intermediate transformed data
+interface IntermediateData {
+  id: Key<string>;
   transformedValue: number;
+  transformedAt: Date;
 }
 
-interface TransformedData2 {
-  id: string;
+// Define the schema for final transformed data
+interface FinalData {
+  id: Key<string>;
   transformedValue: number;
+  anotherTransformedValue: number;
+  transformedAt: Date;
 }
 
+// Create the first pipeline for raw data ingestion
+// Only create an API and a stream (no table) since we're ingesting the raw data
 const rawData = new IngestPipeline<RawData>("raw_data", {
-  ingest: true,
-  stream: true, // Buffers data between the ingestion API and the database table
-  table: false
+  ingest: true,   // Enable HTTP ingestion endpoint
+  stream: true,   // Create a stream to buffer data
+  table: false    // Don't store raw data in a table
 });
 
-const transformedStream = new Stream<TransformedData>("transformed_stream");
+// Create an intermediate stream to hold data between transformations (no api or table needed)
+const intermediateStream = new Stream<IntermediateData>("intermediate_stream");
 
-rawData.stream.addTransform(transformedStream, (record) => ({
+// First transformation: double the value and add timestamp
+rawData.stream.addTransform(intermediateStream, (record) => ({
   id: record.id,
-  transformedValue: record.value * 2,
-  transformedAt: new Date()
+  transformedValue: record.value * 2,  // Double the original value
+  transformedAt: new Date()            // Add current timestamp
 }));
 
-const transformedStream2 = new Stream<TransformedData2>("transformed_stream2");
+// Create the final pipeline that will store the fully transformed data
+const finalData = new IngestPipeline<FinalData>("final_stream", {
+  ingest: false,  // No direct ingestion to this pipeline
+  stream: true,   // Create a stream for processing
+  table: true     // Store final results in a table
+});
 
-transformedStream.addTransform(transformedStream2, (record) => ({
+// Second transformation: further transform the intermediate data
+intermediateStream.addTransform(finalData.stream, (record) => ({
   id: record.id,
-  transformedValue: record.transformedValue * 2,
-  transformedAt: new Date()
+  transformedValue: record.transformedValue * 2,       // Double the intermediate value
+  anotherTransformedValue: record.transformedValue * 3, // Triple the intermediate value
+  transformedAt: new Date()                            // Update timestamp
 }));
 ```
 </TypeScript>
 
 <Python>
 ```py filename="ChainedTransformations.py" copy
+from moose_lib import IngestPipeline, Key, Stream, IngestPipelineConfig
 
+# Define the schema for raw input data
+class RawData(BaseModel):
+    id: Key[str]
+    value: int
+
+# Define the schema for intermediate transformed data
+class IntermediateData(BaseModel):
+    id: Key[str]
+    transformedValue: int
+    transformedAt: Date
+
+# Define the schema for final transformed data
+class FinalData(BaseModel):
+    id: Key[str]
+    transformedValue: int
+    anotherTransformedValue: int
+    transformedAt: Date 
+
+# Create the first pipeline for raw data ingestion
+# Only create an API and a stream (no table) since we're ingesting the raw data
+raw_data = IngestPipeline[RawData]("raw_data", IngestPipelineConfig(
+  ingest=True,
+  stream=True,
+  table=False
+))
+
+# Create an intermediate stream to hold data between transformations (no api or table needed)
+intermediate_stream = Stream[IntermediateData]("intermediate_stream")
+
+# First transformation: double the value and add timestamp
+raw_data.get_stream().add_transform(destination=intermediate_stream, transformation=lambda record: IntermediateData(
+  id=record.id,
+  transformedValue=record.value * 2,
+  transformedAt=datetime.now()
+))
+
+# Create the final pipeline that will store the fully transformed data
+final_data = IngestPipeline[FinalData]("final_stream", IngestPipelineConfig(
+  ingest=False,
+  stream=True,
+  table=True
+))
+
+# Second transformation: further transform the intermediate data
+intermediate_stream.add_transform(destination=final_data.get_stream(), transformation=lambda record: FinalData(
+  id=record.id,
+  transformedValue=record.transformedValue * 2,
+  anotherTransformedValue=record.transformedValue * 3,
+  transformedAt=datetime.now()
 ```
 </Python>
 
@@ -215,8 +446,10 @@ Transform data shape or enrich records:
 
 <TypeScript>
 ```typescript filename="DataTransform.ts"
+import { Stream, Key } from "@514labs/moose-lib";
+
 interface RawEvent {
-  id: string;
+  id: Key<string>;
   timestamp: string;
   data: {
     user_id: string;
@@ -227,9 +460,9 @@ interface RawEvent {
 }
 
 interface EnrichedEvent {
-  eventId: string;
+  eventId: Key<string>;
   timestamp: Date;
-  userId: string;
+  userId: Key<string>;
   properties: {
     platform: string;
     version: string;
@@ -264,7 +497,53 @@ rawStream.addTransform(enrichedStream, async (record: RawEvent) => ({
 
 <Python>
 ```py filename="DataTransform.py" copy
+from moose_lib import Stream, Key
+from pydantic import BaseModel
 
+class EventProperties(BaseModel):
+    user_id: str
+    platform: str
+    app_version: str
+    ip_address: str
+
+class RawEvent(BaseModel):
+    id: Key[str]
+    timestamp: str
+    data: EventProperties
+
+class EnrichedEventProperties(BaseModel):
+    platform: str
+    version: str
+    country: str
+
+class EnrichedEventMetadata(BaseModel):
+    originalTimestamp: str
+    processedAt: Date
+
+class EnrichedEvent(BaseModel):
+    eventId: Key[str]
+    timestamp: Date
+    userId: Key[str]
+    properties: EnrichedEventProperties
+    metadata: EnrichedEventMetadata
+
+raw_stream = Stream[RawEvent]("raw_events")
+enriched_stream = Stream[EnrichedEvent]("enriched_events")
+
+raw_stream.add_transform(destination=enriched_stream, transformation=lambda record: EnrichedEvent(
+  eventId=record.id,
+  timestamp=record.timestamp,
+  userId=record.data.user_id,
+  properties=EnrichedEventProperties(
+    platform=record.data.platform,
+    version=record.data.app_version,
+    country=await lookupCountry(record.data.ip_address)
+  ),
+  metadata=EnrichedEventMetadata(
+    originalTimestamp=record.timestamp,
+    processedAt=datetime.now()
+  )
+))
 ```
 </Python>
 
@@ -308,10 +587,37 @@ inputStream.addTransform(validMetrics, (record) => {
 
 <Python>
 ```py filename="FilterStream.py" copy
+from moose_lib import Stream, Key
+from pydantic import BaseModel
 
+class MetricRecord(BaseModel):
+    id: Key[str]
+    name: str
+    value: float
+    timestamp: Date
+
+class ValidMetrics(BaseModel):
+    id: Key[str]
+    name: str
+    value: float
+    timestamp: Date
+
+input_stream = Stream[MetricRecord]("input_metrics")
+valid_metrics = Stream[ValidMetrics]("valid_metrics")
+
+def filter_function(record: MetricRecord) -> ValidMetrics | None:
+  if record.value > 0 and record.timestamp > getStartOfDay() and not record.name.startswith('debug_'):
+    return ValidMetrics(
+      id=record.id,
+      name=record.name,
+      value=record.value,
+      timestamp=record.timestamp
+    )
+  return None
+
+input_stream.add_transform(destination=valid_metrics, transformation=filter_function)
 ```
 </Python>
-
 
 ### Fan Out (1:N)
 Send data to multiple downstream processors:
@@ -365,6 +671,59 @@ orderStream.addTransform(archiveStream, (order) => ({
 
 <Python>
 ```py filename="FanOut.py" copy
+from moose_lib import Stream, Key
+from pydantic import BaseModel
+
+# Define data models
+class Order(BaseModel):
+    orderId: Key[str]
+    userId: Key[str]
+    amount: float
+    items: List[str]
+
+class HighPriorityOrder(Order):
+    priority: str = 'high'
+
+class ArchivedOrder(Order):
+    archivedAt: Date  
+
+# Create source and destination streams
+order_stream = Stream[Order]("orders")
+analytics_stream = Stream[Order]("order_analytics")
+notification_stream = Stream[HighPriorityOrder]("order_notifications")
+archive_stream = Stream[ArchivedOrder]("order_archive")
+
+# Send all orders to analytics
+def analytics_transform(order: Order) -> Order:
+  return order
+
+order_stream.add_transform(destination=analytics_stream, transformation=analytics_transform)
+
+# Send large orders to notifications
+def high_priority_transform(order: Order) -> HighPriorityOrder | None:
+  if order.amount > 1000:
+    return HighPriorityOrder(
+      orderId=order.orderId,
+      userId=order.userId,
+      amount=order.amount,
+      items=order.items,
+      priority='high'
+    )
+  return None  # Skip small orders
+
+order_stream.add_transform(destination=notification_stream, transformation=high_priority_transform)
+
+# Archive all orders with timestamp
+def archive_transform(order: Order) -> ArchivedOrder | None:
+  return ArchivedOrder(
+    orderId=order.orderId,
+    userId=order.userId,
+    amount=order.amount,
+    items=order.items,
+    archivedAt=datetime.now()
+  )
+
+order_stream.add_transform(destination=archive_stream, transformation=archive_transform)
 
 ```
 </Python>
@@ -374,12 +733,13 @@ Combine data from multiple sources:
 
 <TypeScript>
 ```typescript filename="FanIn.ts"
+import { Stream, OlapTable, Key } from "@514labs/moose-lib";
+
 interface UserEvent {
-  userId: string;
+  userId: Key<string>;
   eventType: string;
   timestamp: Date;
   source: string;
-  data: Record<string, unknown>;
 }
 
 // Source streams
@@ -387,7 +747,8 @@ const webEvents = new Stream<UserEvent>("web_events");
 const mobileEvents = new Stream<UserEvent>("mobile_events");
 const apiEvents = new Stream<UserEvent>("api_events");
 
-// Combined destination
+// Create a stream and table for the combined events
+const eventsTable = new OlapTable<UserEvent>("all_events");
 const allEvents = new Stream<UserEvent>("all_events", {
   destination: eventsTable
 });
@@ -417,7 +778,114 @@ apiEvents.addTransform(allEvents, (event) => ({
 
 <Python>
 ```py filename="FanIn.py" copy
+from moose_lib import Stream, OlapTable, Key, StreamConfig
 
+class UserEvent(BaseModel):
+    userId: Key[str]
+    eventType: str
+    timestamp: Date
+    source: str
+
+# Create source and destination streams
+web_events = Stream[UserEvent]("web_events")
+mobile_events = Stream[UserEvent]("mobile_events")
+api_events = Stream[UserEvent]("api_events")
+
+# Create a stream and table for the combined events
+events_table = OlapTable[UserEvent]("all_events")
+all_events = Stream[UserEvent]("all_events", StreamConfig(
+  destination=events_table
+))
+
+# Fan in from web
+def web_transform(event: UserEvent) -> UserEvent:
+  return UserEvent(
+    userId=event.userId,
+    eventType=event.eventType,
+    timestamp=event.timestamp,
+    source='web'
+  )
+
+web_events.add_transform(destination=all_events, transformation=web_transform)
+
+# Fan in from mobile
+def mobile_transform(event: UserEvent) -> UserEvent:
+  return UserEvent(
+    userId=event.userId,
+    eventType=event.eventType,
+    timestamp=event.timestamp,
+    source='mobile'
+  )
+
+mobile_events.add_transform(destination=all_events, transformation=mobile_transform)
+
+# Fan in from API
+def api_transform(event: UserEvent) -> UserEvent:
+  return UserEvent(
+    userId=event.userId,
+    eventType=event.eventType,
+    timestamp=event.timestamp,
+    source='api'
+  )
+
+api_events.add_transform(destination=all_events, transformation=api_transform)
+```
+</Python>
+
+### Unnesting
+Flatten nested records:
+
+<TypeScript>
+```typescript filename="Unnest.ts"
+import { Stream, Key } from "@514labs/moose-lib";
+
+interface NestedRecord {
+  id: Key<string>;
+  nested: {
+    value: number;
+  }[];
+}
+
+interface FlattenedRecord {
+  id: Key<string>;
+  value: number;
+}
+
+const nestedStream = new Stream<NestedRecord>("nested_records");
+const flattenedStream = new Stream<FlattenedRecord>("flattened_records");
+
+nestedStream.addTransform(flattenedStream, (record) => record.nested.map((n) => ({
+  id: record.id,
+  value: n.value
+})));
+```
+</TypeScript>
+
+<Python>
+```py filename="Unnest.py" copy
+from moose_lib import Stream, Key
+
+class NestedRecord(BaseModel):
+    id: Key[str]
+    nested: List[NestedValue]
+
+class FlattenedRecord(BaseModel):
+    id: Key[str]
+    value: int
+
+nested_stream = Stream[NestedRecord]("nested_records")
+flattened_stream = Stream[FlattenedRecord]("flattened_records")
+
+def unnest_transform(record: NestedRecord) -> List[FlattenedRecord]:
+  result = []
+  for nested in record.nested:
+    result.append(FlattenedRecord(
+      id=record.id,
+      value=nested.value
+    ))
+  return result
+
+nested_stream.add_transform(flattened_stream, unnest_transform)
 ```
 </Python>
 
@@ -438,70 +906,15 @@ const highThroughputStream = new Stream<Data>("high_throughput", {
 
 <Python>
 ```py filename="StreamConfig.py" copy
+from moose_lib import Stream, StreamConfig
 
+high_throughput_stream = Stream[Data]("high_throughput", StreamConfig(
+  parallelism=4, # Process 4 records simultaneously
+  retention_period=86400, # Keep data for 1 day
+))
 ```
 </Python>
 
-
-### Transform Return Types
-<TypeScript>
-```typescript filename="TransformTypes.ts"
-// Single record
-stream.addTransform(output, (record) => ({
-  ...record,
-  processed: true
-}));
-
-// Multiple records
-stream.addTransform(output, (record) => [
-  { ...record, type: 'original' },
-  { ...record, type: 'copy' }
-]);
-
-// Filter records
-stream.addTransform(output, (record) => {
-  if (record.value > 100) {
-    return record;
-  }
-  return undefined;  // Record will be filtered out
-});
-
-// Async transform
-stream.addTransform(output, async (record) => {
-  const enriched = await enrichData(record);
-  return enriched;
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="TransformTypes.py" copy
-
-```
-</Python>
-
-### Error Handling
-<TypeScript>
-```typescript filename="ErrorHandling.ts"
-try {
-  await stream.write(event);
-} catch (error) {
-  if (error instanceof ValidationError) {
-    // Handle schema validation errors
-    console.error("Invalid data:", error.details);
-  } else if (error instanceof BackpressureError) {
-    // Handle backpressure situations
-    await delay(1000); // Wait before retry
-  }
-}
-```
-</TypeScript>
-
-<Python>
-```py filename="ErrorHandling.py" copy
-
-```
-</Python> 
 
 
 See the [API Reference](./api-reference#stream) for complete configuration options. 

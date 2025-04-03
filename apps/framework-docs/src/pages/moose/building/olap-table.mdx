@@ -1,18 +1,16 @@
 import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python } from "@/components";
 import { Tabs } from "nextra/components";
 
-# Working with Database Tables
+# Database Tables
 <LanguageSwitcher />
-Tables are the foundation of Moose's data storage layer, designed to integrate with your entire data pipeline. They store data from your APIs and streams while powering your analytics queries for your downstream transformations, APIs, and more.
+Tables are the foundation of Moose's data storage layer, designed to integrate with your entire data pipeline. They store data ingested from your APIs and streams while powering your analytics queries for your downstream transformations, APIs, and more.
 
 ## Overview
 
-Tables in Moose provide a type-safe way to define your database schema directly in your code.
-
-Tables in Moose eliminate the tedious database administration tasks that typically interrupt your development flow:
+Tables in Moose provide a type-safe way to define your database schema directly in your code, eliminating the tedious database administration tasks that typically interrupt your development flow.
 
 <BulletPointsCard
-title="How it works:"
+title="Working with OLAP Tables"
 bullets={[
   {
     title: "Define your table schema as a data model",

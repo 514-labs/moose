@@ -1,0 +1,172 @@
+# Getting Data Into Moose
+
+Moose provides a complete, type-safe data ingestion pipeline from HTTP endpoints to database storage. There are three main components that work together to handle your data:
+
+## Overview
+
+```typescript
+// A complete data pipeline in 10 lines
+interface UserActivity {
+  id: string;
+  userId: string;
+  action: string;
+  timestamp: Date;
+}
+
+const pipeline = new IngestPipeline<UserActivity>("user_activities", {
+  ingest: true,   // HTTP endpoint
+  stream: true,   // Processing stream
+  table: true     // Database storage
+});
+```
+
+## Components
+
+### 1. Ingest API (HTTP `POST` endpoints)
+- Type-safe HTTP endpoints for data intake
+- Automatic request validation
+- Support for single records or batches
+- OpenAPI documentation and client generation
+- Built-in error handling
+
+### 2. Streams (Processing)
+- Real-time data processing
+- Transform and enrich data
+- Fan-out to multiple destinations
+- Combine multiple data sources
+- At-least-once delivery guarantee
+
+### 3. Tables (Storage)
+- Automatic schema management
+- Type-safe table definitions
+- Built-in deduplication
+- Optimized indexing
+- Real-time updates
+
+## Common Patterns
+
+### Complete Pipeline
+Best for most use cases. Creates an HTTP endpoint, processing stream, and database table:
+
+```typescript
+const pipeline = new IngestPipeline<Data>("complete", {
+  ingest: true,
+  stream: true,
+  table: true
+});
+```
+
+### Stream Processing Only
+When you need real-time processing without permanent storage:
+
+```typescript
+const pipeline = new IngestPipeline<Data>("processing", {
+  ingest: true,
+  stream: true,
+  table: false  // No storage needed
+});
+```
+
+### Custom Processing Chain
+When you need more control over the data flow:
+
+```typescript
+// Define your data types
+interface RawData {
+  id: string;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
+
+interface ProcessedData {
+  id: string;
+  timestamp: Date;
+  enriched: boolean;
+  data: Record<string, unknown>;
+}
+
+// Create components
+const ingestApi = new IngestApi<RawData>("raw_data");
+const processStream = new Stream<RawData>("processing");
+const enrichedStream = new Stream<ProcessedData>("enriched");
+const storage = new OlapTable<ProcessedData>("processed_data");
+
+// Connect components
+processStream.addTransform(enrichedStream, async (record) => ({
+  id: record.id,
+  timestamp: new Date(record.timestamp),
+  enriched: true,
+  data: await enrichData(record.data)
+}));
+
+enrichedStream.setDestination(storage);
+```
+
+## Choosing The Right Approach
+
+1. **Start Simple**
+   - Use `IngestPipeline` for most cases
+   - It provides everything you need to get started
+   - Can be customized as needs grow
+
+2. **When to Customize**
+   - Complex data transformations → Manual stream setup
+   - Multiple data destinations → Custom stream chains
+   - Specific storage requirements → Direct table configuration
+
+3. **Common Use Cases**
+   - Analytics data collection → Complete pipeline
+   - Real-time metrics → Stream-only pipeline
+   - Event processing → Custom processing chain
+   - Data warehousing → Table-focused setup
+
+## Best Practices
+
+1. **Type Safety**
+   - Define clear interfaces for your data
+   - Use specific types instead of `any`
+   - Let TypeScript guide your implementation
+
+2. **Data Flow**
+   - Start with `IngestPipeline` for simplicity
+   - Add custom processing as needed
+   - Consider data volume when configuring
+
+3. **Performance**
+   - Use batch ingestion for high volume
+   - Configure stream parallelism appropriately
+   - Enable deduplication when needed
+
+## Getting Started
+
+1. Start your development server:
+```bash
+moose dev
+```
+
+2. Define your data structure:
+```typescript
+interface MyData {
+  id: string;
+  timestamp: Date;
+  // ... your fields
+}
+```
+
+3. Create your pipeline:
+```typescript
+const pipeline = new IngestPipeline<MyData>("my_data", {
+  ingest: true,
+  stream: true,
+  table: true
+});
+```
+
+4. Send data to your endpoint:
+```bash
+curl -X POST http://localhost:4000/api/ingest/my_data \
+  -H "Content-Type: application/json" \
+  -d '{"id": "123", "timestamp": "2024-03-28T12:00:00Z"}'
+```
+
+See the detailed documentation for [Ingestion](./developing/ingestion), [Streams](./developing/streams), and [Tables](./developing/olap-table) for complete configuration options and advanced usage.

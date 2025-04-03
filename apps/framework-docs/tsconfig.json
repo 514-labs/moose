@@ -8,15 +8,18 @@
     ],
     "forceConsistentCasingInFileNames": true,
     "module": "NodeNext",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "**/*.jsx",
-    "src/pages/learn-moose/create-project.mdx"
+    "**/*.jsx"
   ],
   "exclude": ["node_modules"]
 }

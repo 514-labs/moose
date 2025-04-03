@@ -1,5 +1,5 @@
-import "@514labs/design-system-base/globals.css";
-import RootLayout from "../components/layouts";
+import "@/styles/globals.css";
+import RootLayout from "@/components/layouts";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Router from "next/router";

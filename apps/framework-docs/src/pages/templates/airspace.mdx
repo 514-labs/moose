@@ -1,0 +1,78 @@
+import { Button } from "@/components/ui/button";
+import { Github } from "lucide-react";
+import Link from "next/link";
+import { Steps } from "nextra/components";
+
+# Aircraft Tracking Data Processing
+
+> This project processes and transforms aircraft tracking data from various sources into a standardized format for analysis and visualization.
+
+<Link href="https://github.com/514-labs/moose/tree/main/templates/ads-b">
+    <Button variant="outline">
+        <Github className="w-4 h-4 mr-2" />
+        View on GitHub
+    </Button>
+</Link>
+
+## Getting Started
+
+<Steps>
+### Install dependencies:
+```bash filename="terminal" copy
+npm install
+```
+
+### Add your Anthropic API Key and run MCPs
+
+```bash filename=".cursor/mcp.json" copy {10}
+{
+  "mcpServers": {
+    "aurora": {
+      "command": "node",
+      "args": [
+        "/Users/johananottensooser/code/mcp-demo/mcp/dist/index.js",
+        "/Users/johananottensooser/code/agent-test"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": ""
+      }
+    }
+  }
+}
+```
+
+### Run Moose:
+```bash filename="terminal" copy
+moose dev
+```
+
+### Run ingest workflow
+```bash filename="terminal" copy
+moose workflow run military_aircraft_tracking
+```
+</Steps>
+
+### Chat! and use your egress agent!
+
+## Overview
+The system takes raw aircraft tracking data (such as ADS-B data) and transforms it into a flattened data model that's optimized for storage and querying.
+
+It is currently only pulling from military aircraft.
+
+## Project Structure
+
+### Data Models
+
+| Type | Name | Description |
+| ---- | ---- | ----------- |
+| **Raw** | `AircraftTrackingData_altBaroString` | Raw aircraft data where altitude may be represented as a string (e.g., "Ground" or numeric values) |
+| **Processed** | `FlattenedAircraftTrackingData` | Standardized data model with normalized fields and additional computed values |
+
+### Processing Functions
+
+| **Input Model** | **Output Model** | **Description** |
+| -------- | -------- | --------------- |
+| `AircraftTrackingData_altBaroString` | `FlattenedAircraftTrackingData` | Transforms the raw data into the flattened format, handling special cases like "Ground" altitude |
+
+
+

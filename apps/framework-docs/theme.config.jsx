@@ -2,38 +2,91 @@ import {
   Heading,
   HeadingLevel,
   SmallText,
-  SmallTextEmbed,
-  textBodyBase,
-} from "@514labs/design-system-components/typography";
-import { cn } from "@514labs/design-system-components/utils";
-import { Code, Rocket, Package, Library } from "lucide-react";
+  Text,
+} from "@/components/typography";
+
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
+import { LanguageSwitcher } from "./src/components/language-switcher";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+
+// Base text styles that match your typography components
+const baseTextStyles = {
+  small:
+    "text-muted-foreground text-sm sm:text-sm 2xl:text-base 3xl:text-md leading-normal",
+  regular:
+    "text-primary text-base sm:text-lg 2xl:text-xl 3xl:text-2xl leading-normal",
+  heading: "text-primary font-semibold",
+};
+
+export function Logo() {
+  return (
+    <Link href="https://www.fiveonefour.com" className="shrink-0">
+      <Image
+        src="/logo.png"
+        alt="logo"
+        width={48}
+        height={48}
+        priority
+        className="hidden dark:block"
+      />
+      <Image
+        src="/images/logo-light.png"
+        alt="logo"
+        width={48}
+        height={48}
+        priority
+        className="block dark:hidden"
+      />
+    </Link>
+  );
+}
+
+export function LogoBreadcrumb() {
+  return (
+    <Breadcrumb>
+      <BreadcrumbList className="flex-nowrap">
+        <BreadcrumbItem key="company">
+          <BreadcrumbLink
+            href="https://www.fiveonefour.com"
+            className={baseTextStyles.small}
+          >
+            Fiveonefour
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem key="docs">
+          <BreadcrumbLink
+            href="/"
+            className={cn(baseTextStyles.small, "text-muted-foreground")}
+          >
+            Docs
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
 
 export default {
   logo: () => (
-    <div className="flex flex-row items-center content-center w-[288px]">
-      <SmallText className="text-primary">Moose</SmallText>
-      <SmallText className="text-muted-foreground mx-1">Docs</SmallText>
+    <div className="flex items-center gap-2">
+      <Logo />
+      <LogoBreadcrumb />
     </div>
   ),
+  logoLink: false,
   project: {
     link: "https://github.com/514-labs/moose",
-    icon: (
-      <div className="md:w-64">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          width="24"
-          height="24"
-        >
-          <path
-            fill="white"
-            d="M12.5.75C6.146.75 1 5.896 1 12.25c0 5.089 3.292 9.387 7.863 10.91.575.101.79-.244.79-.546 0-.273-.014-1.178-.014-2.142-2.889.532-3.636-.704-3.866-1.35-.13-.331-.69-1.352-1.18-1.625-.402-.216-.977-.748-.014-.762.906-.014 1.553.834 1.769 1.179 1.035 1.74 2.688 1.25 3.349.948.1-.747.402-1.25.733-1.538-2.559-.287-5.232-1.279-5.232-5.678 0-1.25.445-2.285 1.178-3.09-.115-.288-.517-1.467.115-3.048 0 0 .963-.302 3.163 1.179.92-.259 1.897-.388 2.875-.388.977 0 1.955.13 2.875.388 2.2-1.495 3.162-1.179 3.162-1.179.633 1.581.23 2.76.115 3.048.733.805 1.179 1.825 1.179 3.09 0 4.413-2.688 5.39-5.247 5.678.417.36.776 1.05.776 2.128 0 1.538-.014 2.774-.014 3.162 0 .302.216.662.79.547C20.709 21.637 24 17.324 24 12.25 24 5.896 18.854.75 12.5.75Z"
-          ></path>
-        </svg>
-      </div>
-    ),
   },
   docsRepositoryBase:
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
@@ -42,115 +95,125 @@ export default {
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
     </>
   ),
+  navbar: {
+    extraContent: () => (
+      <Link href="https://www.boreal.cloud/sign-in">
+        <Button variant="default">Sign In</Button>
+      </Link>
+    ),
+  },
+  // main: ({ children }) => (
+  //   <div className="relative">
+  //     <div className="absolute right-0 top-0 z-10">
+  //       <LanguageSwitcher />
+  //     </div>
+  //     {children}
+  //   </div>
+  // ),
   navigation: {
     prev: true,
     next: true,
   },
   components: {
-    h1: ({ id, children }) => <Heading id={id}>{children}</Heading>,
-    h2: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l2} id={id}>
+    // Heading components with stable rendering
+    h1: ({ children, ...props }) => (
+      <Heading {...props} level={HeadingLevel.l1}>
         {children}
       </Heading>
     ),
-    h3: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l3} id={id}>
+    h2: ({ children, ...props }) => (
+      <Heading {...props} level={HeadingLevel.l2}>
         {children}
       </Heading>
     ),
-    h4: ({ id, children }) => (
-      <Heading longForm level={HeadingLevel.l4} id={id}>
+    h3: ({ children, ...props }) => (
+      <Heading {...props} level={HeadingLevel.l3}>
         {children}
       </Heading>
     ),
-    p: ({ children }) => <SmallText>{children}</SmallText>,
-    ul: (props) => (
-      <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
+    h4: ({ children, ...props }) => (
+      <Heading {...props} level={HeadingLevel.l4}>
+        {children}
+      </Heading>
     ),
-    ol: (props) => (
-      <ol className={cn("pl-8 list-decimal", textBodyBase)} {...props} />
+    // Text components with direct styling
+    p: ({ children, className, ...props }) => (
+      <p className={cn("my-5", baseTextStyles.small, className)} {...props}>
+        {children}
+      </p>
     ),
-    li: (props) => (
-      <li {...props} className="list-item">
-        <SmallTextEmbed className="mb-1">{props.children}</SmallTextEmbed>
+    // List components with consistent styling
+    ul: ({ children, className, ...props }) => (
+      <ul
+        className={cn(
+          "pl-8 list-disc leading-7",
+          baseTextStyles.small,
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </ul>
+    ),
+    ol: ({ children, className, ...props }) => (
+      <ol
+        className={cn(
+          "pl-8 list-decimal leading-7",
+          baseTextStyles.small,
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </ol>
+    ),
+    li: ({ children }) => (
+      <li className={cn("list-item list-disc my-0 py-0", baseTextStyles.small)}>
+        {children}
       </li>
     ),
-    Python: ({ children }) => <Python>{children}</Python>,
-    TypeScript: ({ children }) => <TypeScript>{children}</TypeScript>,
+    // Language-specific components
+    Python: ({ children, ...props }) => <Python {...props}>{children}</Python>,
+    TypeScript: ({ children, ...props }) => (
+      <TypeScript {...props}>{children}</TypeScript>
+    ),
+    // Link styling
+    a: ({ children, href, className }) => (
+      <a
+        href={href}
+        className={cn(
+          "text-moose-purple hover:text-moose-purple/90 transition-colors",
+          className,
+        )}
+      >
+        {children}
+      </a>
+    ),
   },
-  primaryHue: 220,
-  primarySaturation: 0,
+  color: {
+    hue: 220,
+    saturation: 0,
+  },
+  darkMode: true,
   sidebar: {
     defaultMenuCollapseLevel: 1,
-    titleComponent({ title, type }) {
-      if (type === "separator") {
-        return (
-          <div className="flex flex-row justify-start items-center text-muted-foreground gap-2">
-            <div className="h-full">
-              {(() => {
-                switch (title) {
-                  case "Get Started":
-                    return <Rocket className="h-[20px] w-[20px]" />;
-                  case "Develop":
-                    return <Code className="h-[20px] w-[20px]" />;
-                  case "Deploy":
-                    return <Package className="h-[20px] w-[20px]" />;
-                  case "Reference":
-                    return <Library className="h-[20px] w-[20px]" />;
-                  default:
-                    return null;
-                }
-              })()}
-            </div>
-            <SmallText className="my-0 text-muted-foreground">
-              {title}
-            </SmallText>
-          </div>
-        );
-      }
-      return (
-        <SmallText className="my-0 text-muted-foreground">{title}</SmallText>
-      );
-    },
-  },
-  toc: {
-    title: () => {
-      return <SmallTextEmbed> On this page </SmallTextEmbed>;
-    },
-    headingComponent({ children }) {
-      return (
-        <SmallText className="my-0 text-muted-foreground font-normal hover:text-primary">
-          {children}
-        </SmallText>
-      );
-    },
-    extraContent: () => {
-      return (
-        <div className="border rounded-xl">
-          <div className="m-4">
-            <SmallText className="my-0 text-xs">
-              Have a question or want to provide us with feedback?
-            </SmallText>
-            <Link href="https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CIntroduction%E2%80%9D&labels=feedback">
-              <SmallText className="text-pink my-0">Contact us</SmallText>
-            </Link>
-          </div>
-        </div>
-      );
-    },
-  },
-  feedback: {
-    content: null,
   },
   footer: {
-    content: (
-      <span>
-        MIT | {new Date().getFullYear()} ©{" "}
-        <a href="https://fiveonefour.com" target="_blank">
-          Fiveonefour Labs Inc
-        </a>
-        .
-      </span>
-    ),
+    content: () => {
+      const year = new Date().getFullYear();
+      return (
+        <p className={baseTextStyles.small}>
+          MIT | {year} ©{" "}
+          <a
+            href="https://fiveonefour.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+          >
+            Fiveonefour Labs Inc
+          </a>
+        </p>
+      );
+    },
   },
 };

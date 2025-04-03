@@ -1,0 +1,264 @@
+import { Callout, ToggleBlock, Python, TypeScript, LanguageSwitcher } from "@/components";
+import { Steps, FileTree } from "nextra/components";
+
+# Aggregate Programming Languages with Moose Blocks
+
+<LanguageSwitcher />
+To analyze which programming languages are most popular among your stargazers, we need to aggregate data from the `StargazerProjectInfo` table. This table contains details about each repository owned by your stargazers, but the data is spread across multiple rows and columns, making it hard to glean insights directly.
+
+We can use Moose **Blocks** to create a **Materialized View** that pre-aggregates this data for us. This way, we can efficiently query the most popular programming languages among all stargazers.
+
+<Callout type="info" title="What are Blocks?">
+  [Blocks](/db-processing) allow you to execute SQL statements against your database to set up or manage database objects. This includes creating views or materialized views to aggregate, join, or group data from various tables.
+</Callout>
+
+## Create a New Block: `TopLanguages`
+
+<Steps>
+
+### Initialize the Block with Moose CLI
+
+In your terminal, run:
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli block init TopLanguages
+```
+
+This command generates a new file `TopLanguages.ts` in the `/blocks` directory:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="blocks" open>
+      <FileTree.File name="TopLanguages.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli block init TopLanguages
+```
+
+This command generates a new file `TopLanguages.py` in the `/blocks` directory:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="blocks" open>
+      <FileTree.File name="TopLanguages.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
+
+### Inspect the Generated File
+
+Open <TypeScript NodeType="span">`TopLanguages.ts`</TypeScript><Python NodeType="span">`TopLanguages.py`</Python>. You should see:
+
+<TypeScript>
+```ts filename="app/blocks/TopLanguages.ts" copy
+import { Blocks } from "@514labs/moose-lib";
+
+export default {
+  setup: [
+    // Array of SQL statements for setting up database resources
+  ],
+  teardown: [
+    // Array of SQL statements for tearing down resources
+  ],
+} as Blocks;
+```
+</TypeScript>
+
+<Python>
+```py filename="app/blocks/TopLanguages.py" copy
+from moose_lib import (
+    AggregationCreateOptions,
+    AggregationDropOptions,
+    Blocks,
+    ClickHouseEngines,
+    TableCreateOptions,
+    create_aggregation,
+    drop_aggregation,
+)
+
+teardown_queries = []
+
+setup_queries = []
+
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
+```
+</Python>
+
+<Callout type="info" title="Understanding Blocks">
+- **Blocks**: Imported from <TypeScript NodeType="span"> `@514labs/moose-lib`</TypeScript><Python NodeType="span"> `moose_lib`</Python>, it provides type safety for the `setup` and `teardown` arrays.
+<TypeScript>
+- **Default Export**: An object conforming to the `Blocks` type.
+</TypeScript>
+<Python>
+- **`block`**: Is an instance of the `Blocks` class.
+</Python>
+- **`setup`**: An array of SQL statements executed to set up database resources when you start your dev server.
+- **`teardown`**: An array of SQL statements executed to clean up resources when you stop your dev server.
+</Callout>
+
+### Implement the Materialized View
+
+We'll create a materialized view that aggregates programming language data from `StargazerProjectInfo_0_0`. This view will automatically update as new data arrives, providing real-time insights into the most popular programming languages among your stargazers.
+
+Here's how to implement it:
+
+<TypeScript>
+```ts filename="app/blocks/TopLanguages.ts" copy
+import {
+  Blocks,
+  createAggregation,
+  dropAggregation,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
+
+const MV_NAME = "TopLanguages_MV";
+const TABLE_NAME = "TopLanguages";
+
+const TABLE_OPTIONS = {
+  name: TABLE_NAME,
+  columns: {
+    language: "String",
+    total_projects: "AggregateFunction(count, UInt64)",
+    total_repo_size_kb: "AggregateFunction(sum, Float64)",
+    average_repo_size_kb: "AggregateFunction(avg, Float64)",
+  },
+  engine: ClickHouseEngines.AggregatingMergeTree,
+  orderBy: "language",
+};
+
+const QUERY = `
+SELECT
+  language,
+  countState(*) AS total_projects,
+  sumState(repoSizeKb) AS total_repo_size_kb,
+  avgState(repoSizeKb) AS average_repo_size_kb
+FROM StargazerProjectInfo_0_0
+GROUP BY language
+`;
+
+export default {
+  teardown: [...dropAggregation({ viewName: MV_NAME, tableName: TABLE_NAME })],
+  setup: [
+    ...createAggregation({
+      materializedViewName: MV_NAME,
+      tableCreateOptions: TABLE_OPTIONS,
+      select: QUERY,
+    }),
+  ],
+} as Blocks;
+```
+</TypeScript>
+
+<Python>
+```py filename="app/blocks/TopLanguages.py" copy
+from moose_lib import (
+    AggregationCreateOptions,
+    AggregationDropOptions,
+    Blocks,
+    ClickHouseEngines,
+    TableCreateOptions,
+    create_aggregation,
+    drop_aggregation,
+)
+
+# Names for the materialized view and underlying table that will store aggregated language stats
+MV_NAME = "TopLanguages_MV"
+TABLE_NAME = "TopLanguages"
+
+# Define the schema for the aggregation table
+# - language: Programming language name
+# - total_projects: Count of repos using this language (using ClickHouse's AggregateFunction)
+# - total_repo_size_kb: Sum of repo sizes in KB for this language
+# - avg_repo_size_kb: Average repo size in KB for this language
+# Uses AggregatingMergeTree engine which is optimized for aggregation operations
+TABLE_OPTIONS = TableCreateOptions(
+    name=TABLE_NAME,
+    columns={
+        "language": "String",
+        "total_projects": "AggregateFunction(count, Int64)",
+        "total_repo_size_kb": "AggregateFunction(sum, Int64)", 
+        "avg_repo_size_kb": "AggregateFunction(avg, Int64)"
+    },
+    engine=ClickHouseEngines.AggregatingMergeTree,
+    order_by="language",
+)
+
+# SQL query that powers the materialized view
+# Aggregates data from StargazerProjectInfo_0_0 table by:
+# - Grouping by programming language
+# - Counting total projects per language
+# - Summing total KB of code per language
+# - Calculating average KB per repo per language
+# Uses *State functions which store partial aggregation results
+QUERY = f'''
+SELECT
+    language,
+    countState(*) AS total_projects,
+    sumState(repo_size_kb) AS total_repo_size_kb,
+    avgState(repo_size_kb) AS avg_repo_size_kb
+FROM StargazerProjectInfo_0_0
+GROUP BY language
+'''
+
+# Cleanup queries to remove the materialized view and table when needed
+teardown_queries = drop_aggregation(AggregationDropOptions(view_name=MV_NAME, table_name=TABLE_NAME))
+
+# Setup queries to create the materialized view and underlying table
+# The view will automatically stay up-to-date as new data arrives
+setup_queries = create_aggregation(AggregationCreateOptions(
+    materialized_view_name=MV_NAME,
+    select=QUERY,
+    table_create_options=TABLE_OPTIONS,
+))
+
+# Create a Blocks instance with our setup and teardown queries
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
+```
+</Python>
+
+**Explanation:**
+
+- `TABLE_OPTIONS` defines the setup and schema for the `TopLanguages` table, which will store the `QUERY` results.
+- `QUERY` aggregates data from `StargazerProjectInfo_0_0`, grouping by `language` and calculating counts and sums.
+- The `Blocks` object uses `create_aggregation` in `setup` to establish the materialized view and table. The `teardown` uses `drop_aggregation` to remove them when they are no longer needed.
+- We choose the `ClickHouseEngines.AggregatingMergeTree` engine for the table to optimize aggregation operations. It maintains and updates aggregation states efficiently as new data is inserted.
+
+### Save and Apply the Changes
+
+Save <TypeScript NodeType="span">`TopLanguages.ts`</TypeScript><Python NodeType="span">`TopLanguages.py`</Python>. Moose will automatically apply the changes, creating the new table and materialized view in your database.
+
+### Verify the Materialized View
+
+Open your ClickHouse database explorer and check that the `TopLanguages` table and `TopLanguages_MV` materialized view have been created. Query the `TopLanguages` table to see the aggregated data:
+
+```sql
+SELECT
+  language,
+  countMerge(total_projects) AS total_projects,
+  sumMerge(total_repo_size_kb) AS total_repo_size_kb,
+  avgMerge(average_repo_size_kb) AS average_repo_size_kb
+FROM TopLanguages
+ORDER BY total_projects DESC
+```
+
+<Callout type="info" title="Understanding the Query">
+In AggregatingMergeTree tables, `countState` and `sumState` store intermediate states (partial counts or sums). To get final results, `countMerge` and `sumMerge` combine these states into total counts or sums.
+</Callout>
+
+</Steps>
+
+<Callout type="success">
+  You've successfully aggregated programming language data! To recap:
+  - You initialized a new Block using the Moose CLI helper.
+  - You implemented a materialized view that aggregates data from `StargazerProjectInfo_0_0`.
+  - The setup automates the creation of the view and table, and Moose manages the execution of these SQL statements.
+
+  Your data is now pre-aggregated and ready for analysis or integration into applications.
+</Callout>

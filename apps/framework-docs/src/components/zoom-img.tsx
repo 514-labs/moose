@@ -4,10 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 
 interface ZoomImageProps {
-  src: string;
+  light: string;
+  dark: string;
   alt: string;
 }
-export function ZoomImg({ src, alt }: ZoomImageProps) {
+export function ZoomImg({ light, dark, alt }: ZoomImageProps) {
   const [isZoomed, setIsZoomed] = useState(false);
 
   const toggleZoom = () => {
@@ -17,11 +18,26 @@ export function ZoomImg({ src, alt }: ZoomImageProps) {
   return (
     <div className="relative w-full">
       <Image
-        src={src}
+        src={light}
         alt={alt || "default alt"}
         width={1000}
         height={1000}
-        className={`w-full h-auto transition-all duration-300 ${
+        className={`w-full h-auto transition-all duration-300 dark:hidden ${
+          isZoomed
+            ? "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-background"
+            : "relative z-0 cursor-zoom-in"
+        }`}
+        onClick={toggleZoom}
+        role="button"
+        aria-expanded={isZoomed}
+        aria-label={isZoomed ? "Zoom out" : "Zoom in"}
+      />
+      <Image
+        src={dark}
+        alt={alt || "default alt"}
+        width={1000}
+        height={1000}
+        className={`w-full h-auto transition-all duration-300 hidden dark:block ${
           isZoomed
             ? "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-background"
             : "relative z-0 cursor-zoom-in"

@@ -1,37 +1,36 @@
 import React from "react";
-import { cn } from "@514labs/design-system-components/utils";
-import { SmallTextEmbed } from "@514labs/design-system-components/typography";
+import { cn } from "@/lib/utils";
+import { SmallTextEmbed } from "@/components/typography";
 import { Lightbulb, StopCircle, FileWarning, PartyPopper } from "lucide-react";
-import {
-  Card,
-  CardContent,
-} from "@514labs/design-system-components/components";
+import { Card, CardContent } from "@/components/ui";
+import Link from "next/link";
 
 interface CalloutProps {
   type: CalloutType;
   title?: string;
+  href?: string;
   children: React.ReactNode;
 }
 
 const calloutVariants = {
   success: {
-    icon: <PartyPopper className="text-green" />,
+    icon: <PartyPopper className="text-moose-green" />,
     color: "bg-muted/20",
-    border: "border-green/20",
+    border: "border-moose-green/20",
     title: "Congrats!",
-    titleColor: "text-green",
+    titleColor: "text-moose-green",
   },
   info: {
     icon: <Lightbulb className="text-muted-foreground" />,
-    color: "bg-muted/20",
-    border: "border-accent",
+    color: "bg-card",
+    border: "border",
     title: "MooseTip:",
     titleColor: "text-muted-foreground",
   },
   warning: {
     icon: <StopCircle className="text-yellow" />,
     color: "bg-muted/20",
-    border: "border-yellow/20",
+    border: "border-moose-yellow/20",
     title: "Warning:",
     titleColor: "text-muted-foreground",
   },
@@ -46,8 +45,20 @@ const calloutVariants = {
 
 type CalloutType = keyof typeof calloutVariants;
 
-export function Callout({ type, title, children }: CalloutProps) {
+export function Callout({ type, title, href, children }: CalloutProps) {
   const variantProps = calloutVariants[type];
+
+  const TitleContent = () => (
+    <p
+      className={cn(
+        "font-semibold my-0 inline-block mr-2",
+        variantProps.titleColor,
+        href && "text-moose-purple hover:underline cursor-pointer",
+      )}
+    >
+      {title || variantProps.title}
+    </p>
+  );
 
   return (
     <Card
@@ -60,14 +71,13 @@ export function Callout({ type, title, children }: CalloutProps) {
       <CardContent className="flex items-start space-x-2 p-0">
         <div className="flex-shrink-0 mt-1">{variantProps.icon}</div>
         <div className="flex-1">
-          <SmallTextEmbed
-            className={cn(
-              "font-semibold my-0 inline-block mr-2",
-              variantProps.titleColor,
-            )}
-          >
-            {title || variantProps.title}
-          </SmallTextEmbed>
+          {href ? (
+            <Link href={href}>
+              <TitleContent />
+            </Link>
+          ) : (
+            <TitleContent />
+          )}
           {children}
         </div>
       </CardContent>

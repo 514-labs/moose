@@ -1,0 +1,61 @@
+
+# Quickstart
+*ADS-B (aircraft transponder) data for getting started*
+
+This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
+
+Requirements:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Node](https://nodejs.org/en)
+- Claude Desktop or Cursor
+
+### Install
+
+```
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+```
+
+This will install Moose (our open source developer framework for Data Engineering) and Aurora.
+
+This prompt you for an Anthropic token, if you don't have one, see: https://docs.anthropic.com/en/docs/initial-setup
+
+### Creating your project
+
+```
+aurora init <project-name> ads-b
+```
+
+This will create a new Moose projec using the ADS-B template t to gather ADS-B data that you can use to explore Aurora's MCP offerings. By default, it will create the project configured for use with Cursor (by creating `/.cursor/mcp.config`), but if you would like to use Claude Desktop, append `--mcp claude-desktop`.
+
+If you want to create an empty project, and build your own Data Models and ingestion, try `aurora init <project-name> typescript-empty` or `aurora init <project-name> python-empty`
+
+### Installing dependencies
+
+Navigate into the created project directory: `cd <project-name>`
+
+Install the dependencies: `npm i`
+
+### Open cursor and enable the MCPs
+
+Then open your code editor `cursor .`
+
+Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "aurora". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
+
+### Run the Moose dev server locally
+
+**Warning: make sure you have docker desktop running before this step!**
+
+You now have the project ready to go, run `moose dev` to start the dev server.
+
+### Start ingesting data
+
+Run the command to start ingesting data with the configured ingest scripts: `moose workflow run military_aircraft_tracking`
+
+You should start to see hundreds of live datapoints ingesting instantly!
+
+### Start using Aurora
+
+In the LLM discussion pane, ask your host about your Moose project, it should use Aurora MCP tools to deliver rich context!
+
+[Check out the related blog post for ideas on what you can build!](https://fiveonefour.com/blog/)

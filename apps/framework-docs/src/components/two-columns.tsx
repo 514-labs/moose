@@ -1,16 +1,8 @@
 import React from "react";
-import {
-  Grid,
-  HalfWidthContentContainer,
-} from "@514labs/design-system-components/components/containers";
-import {
-  Heading,
-  HeadingLevel,
-  SmallText,
-} from "@514labs/design-system-components/typography";
+import { Heading, HeadingLevel, SmallText } from "@/components/typography";
 
-import { cn } from "@514labs/design-system-components/utils";
-import { Card } from "@514labs/design-system-components/components";
+import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui";
 
 interface ColumnProps {
   heading: string;
@@ -38,7 +30,7 @@ export function Column({ heading, body, list, className }: ColumnProps) {
 export function Columns({ children }: { children: React.ReactNode }) {
   return (
     <Card className="mt-4 md:gap-x-0">
-      <Grid>{children}</Grid>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
     </Card>
   );
 }

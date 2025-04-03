@@ -1,0 +1,177 @@
+# Monitoring & Observability
+
+Learn how to monitor your Moose application and gain insights into its performance and health.
+
+## Monitoring Overview
+
+Moose provides built-in monitoring capabilities for all components:
+
+- **Metrics**: Quantitative measurements of your application
+- **Logs**: Detailed event records 
+- **Traces**: Request flows through your application
+- **Alerts**: Notifications when issues occur
+
+## Metrics Console
+
+Moose includes a built-in metrics console that provides real-time visibility into your application:
+
+```bash
+# Start the metrics console
+moose metrics
+```
+
+This opens the Metrics Console UI at `http://localhost:4002` with dashboards for:
+
+- Ingestion rates
+- Processing latency
+- API response times
+- Database query performance
+- Error rates
+- Resource utilization
+
+## Key Metrics
+
+### Ingestion Metrics
+
+| Metric | Description | Alert Threshold |
+|--------|-------------|----------------|
+| `ingestion.requests.count` | Total ingestion requests | - |
+| `ingestion.requests.rate` | Requests per second | >500/s |
+| `ingestion.error.rate` | Failed ingestion requests | >1% |
+| `ingestion.latency` | Request processing time | >200ms p95 |
+
+### Stream Processing Metrics
+
+| Metric | Description | Alert Threshold |
+|--------|-------------|----------------|
+| `stream.records.count` | Total records processed | - |
+| `stream.processing.rate` | Records per second | - |
+| `stream.lag` | Processing delay | >5s |
+| `stream.errors` | Processing errors | >0 |
+
+### Database Metrics
+
+| Metric | Description | Alert Threshold |
+|--------|-------------|----------------|
+| `db.query.count` | Total queries executed | - |
+| `db.query.latency` | Query execution time | >500ms |
+| `db.write.rate` | Records written per second | - |
+| `db.error.rate` | Database errors | >0 |
+
+## Log Collection
+
+Moose logs are structured for easy analysis:
+
+```json
+{
+  "timestamp": "2023-03-28T14:32:11.342Z",
+  "level": "info",
+  "service": "ingest-api",
+  "message": "Processed event batch",
+  "details": {
+    "batchId": "batch-123",
+    "recordCount": 52,
+    "processingTimeMs": 120
+  }
+}
+```
+
+### Log Levels
+
+- **ERROR**: Application errors requiring attention
+- **WARN**: Potential issues or degraded performance
+- **INFO**: Normal operations and key events
+- **DEBUG**: Detailed information for troubleshooting
+
+## Distributed Tracing
+
+Moose supports distributed tracing for request flows:
+
+```typescript
+// Trace context is automatically propagated
+ingestStream.addTransform(processedStream, async (record, context) => {
+  // Trace span is automatically created
+  // ...processing logic
+  return processedRecord;
+});
+```
+
+Key trace spans include:
+- Ingestion request handling
+- Stream processing
+- Database operations
+- External API calls
+
+## Alerting
+
+Configure alerts in `moose.config.toml`:
+
+```toml
+[monitoring.alerts]
+# Configure alert thresholds
+ingestion_error_rate = { threshold = 0.01, window = "5m" }
+processing_lag = { threshold = 10000, window = "1m" }
+api_latency_p95 = { threshold = 500, window = "5m" }
+
+# Configure notification channels
+[monitoring.notifications]
+email = "alerts@example.com"
+slack_webhook = "https://hooks.slack.com/services/..."
+```
+
+## Integration with External Tools
+
+Moose supports integration with common monitoring tools:
+
+### Prometheus / Grafana
+
+```toml
+[monitoring.exporters]
+prometheus = { enabled = true, port = 9090 }
+```
+
+### ELK Stack
+
+```toml
+[monitoring.exporters]
+elasticsearch = { 
+  enabled = true, 
+  endpoint = "https://elasticsearch:9200",
+  index = "moose-logs"
+}
+```
+
+### Datadog
+
+```toml
+[monitoring.exporters]
+datadog = { 
+  enabled = true, 
+  api_key = "YOUR_API_KEY"
+}
+```
+
+## Best Practices
+
+1. **Monitor All Components**:
+   - Ingestion endpoints
+   - Stream processing
+   - Database queries
+   - API responses
+
+2. **Use Structured Logging**:
+   - Include request IDs
+   - Add contextual information
+   - Use appropriate log levels
+
+3. **Set Up Alerts**:
+   - Define critical thresholds
+   - Configure notification channels
+   - Create runbooks for common issues
+
+4. **Performance Baseline**:
+   - Establish normal performance metrics
+   - Alert on significant deviations
+   - Track trends over time
+
+See the [Metrics Console](../metrics-console) documentation for more details on the built-in monitoring capabilities. 

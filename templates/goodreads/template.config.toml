@@ -1,0 +1,20 @@
+language = "typescript" # Must be typescript or python
+description = "A template ingesting goodreads data from Kaggle"
+post_install_print = """
+📂 Go to your project directory:
+	$ cd {project_dir}
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+	$ moose dev
+
+🔑 Add your Kaggle Settings file to the home directory of this project
+    See https://www.kaggle.com/docs/api
+
+🏃‍♂️ Run python ingest script
+    $ python .aurora/ingest_goodreads_data.py
+"""
+
+# we might need to add python dependencies install file

@@ -23,7 +23,7 @@ export interface StreamConfig<T> {
   destination?: OlapTable<T>;
 }
 
-export type DataModelConfigV2<T> = {
+export type IngestPipelineConfig<T> = {
   table: boolean | OlapConfig<T>;
   stream: boolean | Omit<StreamConfig<T>, "destination">;
   ingest: boolean | Omit<IngestConfig<T>, "destination">;
@@ -182,24 +182,24 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
   };
 }
 
-export class IngestPipeline<T> extends TypedBase<T, DataModelConfigV2<T>> {
+export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
   table?: OlapTable<T>;
   stream?: Stream<T>;
   ingestApi?: IngestApi<T>;
 
-  constructor(name: string, config: DataModelConfigV2<T>);
+  constructor(name: string, config: IngestPipelineConfig<T>);
 
   /** @internal **/
   constructor(
     name: string,
-    config: DataModelConfigV2<T>,
+    config: IngestPipelineConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
   );
 
   constructor(
     name: string,
-    config: DataModelConfigV2<T>,
+    config: IngestPipelineConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
   ) {
@@ -282,7 +282,7 @@ export class SqlResource {
   }
 }
 
-class View extends SqlResource {
+export class View extends SqlResource {
   constructor(name: string, selectStatement: string) {
     super(
       name,

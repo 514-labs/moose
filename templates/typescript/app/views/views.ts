@@ -1,5 +1,5 @@
 import typia from "typia";
-import { MaterializedView } from "@514labs/moose-lib/dist/dmv2";
+import { MaterializedView } from "@514labs/moose-lib";
 
 interface BarAggregated {
   dayOfMonth: number & typia.tags.Type<"int64">;

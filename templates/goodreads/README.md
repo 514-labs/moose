@@ -9,22 +9,26 @@ From the project home directory
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
+2. **Initiate your project**
+```bash
+aurora init books goodreads
+```
 
-2. **Install Dependencies**
+3. **Install Dependencies**
 ```bash
 npm install
 ```
 
-3. **Configure Kaggle**
+4. **Configure Kaggle**
 - Add your Kaggle Settings file to the home directory of this project
 - For more information, see https://www.kaggle.com/docs/api
 
-4. **Start Development Server**
+5. **Start Development Server**
 ```bash
 moose dev
 ```
 
-5. **Run Data Ingestion**
+6. **Run Data Ingestion**
 ```bash
 python .aurora/ingest_goodreads_data.py
 ```

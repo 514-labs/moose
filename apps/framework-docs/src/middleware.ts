@@ -21,6 +21,13 @@ export const config = {
   ],
 };
 export async function middleware(request: NextRequest) {
+  // Check if the host is docs.getmoose.dev and redirect
+  if (request.nextUrl.host === "docs.getmoose.dev") {
+    return NextResponse.redirect(
+      new URL("/moose", "https://docs.fiveonefour.com"),
+    );
+  }
+
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
   const host = request.nextUrl.host;
   const referrer = headers().get("referer") ?? request.referrer;

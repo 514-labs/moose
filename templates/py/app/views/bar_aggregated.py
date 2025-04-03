@@ -17,7 +17,7 @@ SELECT
   countIf(has_text) as rows_with_text,
   sum(text_length) as total_text_length,
   max(text_length) as max_text_length
-FROM bar
+FROM Bar
 GROUP BY toDayOfMonth(utc_timestamp)
 """
 

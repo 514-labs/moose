@@ -40,7 +40,7 @@ export function Logo() {
         className="hidden dark:block"
       />
       <Image
-        src="/images/logo-light.png"
+        src="/logo-light.png"
         alt="logo"
         width={48}
         height={48}

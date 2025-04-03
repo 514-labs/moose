@@ -25,13 +25,12 @@ export default render({
     href: "https://www.fiveonefour.com/blog",
     newWindow: true,
   },
-  tutorials: {
-    display: "hidden",
-  },
   templates: {
     type: "page",
     title: "Templates",
     href: "/templates",
   },
-  "usage-data": "Privacy",
+  "usage-data": {
+    display: "hidden",
+  },
 });

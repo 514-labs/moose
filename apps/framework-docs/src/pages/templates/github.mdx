@@ -1,6 +1,8 @@
-import { ZoomImg } from "@/components";
+import { ZoomImg, Callout } from "@/components";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Steps } from "nextra/components";
+
 
 # Github Trending Topics
 
@@ -10,22 +12,88 @@ This template is a simple example of how to build a data pipeline for Github tre
   <Button variant="outline">View Source Code →</Button>
 </Link>
 
+## Getting Started
+
+<Steps>
+### Clone the repository:
+To get started with this template, you can run the following command:
+
+```bash filename="terminal" copy
+npx create-moose-app moose-github-dev-trends github-dev-trends
+```
+
+### Install dependencies:
+```bash filename="terminal" copy
+cd moose-github-dev-trends/moose && npm install
+```
+
 ## Project Structure
 
 ```
-github-dev-trends/
+moose-github-dev-trends/
 ├── live-dev-trends-dashboard/ # Frontend dashboard application
-├── moose/ # Backend services
+├── moose-backend/ # Backend services
 └── README.md # Project documentation
 ```
 
 
-## Getting Started
-
-To get started with this template, you can run the following command:
+### Run the application
 
 ```bash filename="terminal" copy
-npx create-moose-app GitHubDevTrends --template github-dev-trends
+npm run dev
 ```
 
+### Start the Workflow to Poll GitHub for Trending Topics
+
+This workflow will run a script every 60 seconds to poll GitHub for trending topics:
+
+```bash filename="terminal" copy
+moose workflow run getGithubEvents
+```
+
+<Callout type="info" title="Scheduled Workflows">
+The workflow is scheduled to run every 60 seconds. [Learn how to schedule workflows here] (/moose/building/workflows#scheduling-workflows).
+</Callout>
+
+
+### (Bonus) Create a `.env` file and add your GitHub API Key
+You will be able to poll the GitHub API without any authentication credentials, but you will be limited to 60 requests per hour.
+
+To increase the limit, you can create a `.env` file and add your GitHub personal access token.
+
+```bash filename="terminal" copy
+touch .env
+```
+
+```.env filename=".env" copy
+GITHUB_TOKEN=<your-github-api-key>
+```
+ **DO NOT COMMIT THIS FILE TO VERSION CONTROL**:
+```gitignore filename=".gitignore" copy
+.env
+```
+
+<Callout type="info" title="Creating a GitHub Personal Access Token">
+[Learn how to create a GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic).
+</Callout>
+
+</Steps>
+
+## Explore the Data
+
+The template includes a dashboard application that you can use to explore the data. It is located in the `live-dev-trends-dashboard` directory.
+
+```bash filename="Terminal" copy
+cd moose-github-dev-trends/live-dev-trends-dashboard && npm install && npm run dev
+```
+
+<Callout type="info" title="View the Dashboard">
+Go to [http://localhost:3000](http://localhost:3000) to view the dashboard.
+</Callout>
+
+### Explore the API Powering the Dashboard
+
+The dashboard is powered by a Consumption API in the `moose` project. The code is located in the `app/apis/topicTimeseries.ts` file.
+
+Feel free to check out how the code works, or even modify it to suit your own interests!
 

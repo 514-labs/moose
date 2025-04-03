@@ -329,7 +329,30 @@ const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
 </TypeScript>
 
 <Python>
+```python filename="/apis/get-bar.py" copy
+from moose_lib import ConsumptionApi
+from app.views.bar_aggregated import BarAggregatedMV
 
+def run(params: QueryParams, client: MooseClient) -> None:
+    query = f"""
+    SELECT 
+      dayOfMonth,
+      {orderBy}
+    FROM {BarAggregatedMV.target_table.name}
+    WHERE 
+      dayOfMonth >= {startDay} 
+      AND dayOfMonth <= {endDay}
+    ORDER BY {orderBy} DESC
+    LIMIT {limit}
+    """
+    data = client.query.execute(query, {
+        "orderBy": params.orderBy,
+        "startDay": params.startDay,
+        "endDay": params.endDay,
+        "limit": params.limit
+    })
+    return data
+```
 </Python>
 
 
@@ -397,7 +420,10 @@ min_age = 18
 user_role = "admin"
 
 query = f"SELECT * FROM users WHERE age > {min_age} AND role = '{user_role}'"
-data = client.query.execute(query)
+data = client.query.execute(query, {
+    "min_age": min_age,
+    "user_role": user_role
+})
 ```
 </Python>
 
@@ -409,11 +435,11 @@ import { userTable } from "../tables/userTable";
 
 const query = sql`
   SELECT 
-    ${userTable.id},
-    ${userTable.name},
-    ${userTable.email}
+    ${userTable.columns.id},
+    ${userTable.columns.name},
+    ${userTable.columns.email}
   FROM ${userTable}
-  WHERE ${userTable.isActive} = true
+  WHERE ${userTable.columns.isActive} = true
 `;
 
 // EXECUTION: SELECT id, name, email FROM users WHERE is_active = true
@@ -426,11 +452,11 @@ from tables import userTable
 
 query = f"""
   SELECT 
-    {userTable.id}, 
-    {userTable.name}, 
-    {userTable.email} 
-  FROM {userTable} 
-  WHERE {userTable.isActive} = true
+    {userTable.columns["id"]}, 
+    {userTable.columns["name"]}, 
+    {userTable.columns["email"]} 
+  FROM {userTable.name} 
+  WHERE {userTable.columns["isActive"]} = true
 """
 
 data = client.query.execute(query)
@@ -495,21 +521,17 @@ const queryHandler = async ({ tableName = "users" }: QueryParams, { client, sql 
 ```
 </TypeScript>
 
-## TO-DO: FIX THIS
 <Python>
 ```python filename="DynamicColumns.py" copy
-query = f"""SELECT {columnList} FROM {tableName}"""
+from app.tables import myTable
+
+colName = "id"
+
+query = f"""SELECT {myTable.columns[colName]} FROM {myTable.name}"""
 data = client.query.execute(query)
-```
 
-```python filename="DynamicTables.py" copy
-
-def run(params: QueryParams, client: MooseClient) -> None:
-
-  query = f"""SELECT * FROM {tableName}"""
-  data = client.query.execute(query, {
-    "tableName": params.tableName
-  })
+## MooseClient will automatically interpolate the column name into the query as a valid ClickHouse identifier
+## EXECUTION: SELECT id FROM users
 ```
 </Python>
 
@@ -517,6 +539,7 @@ def run(params: QueryParams, client: MooseClient) -> None:
 
 Build `WHERE` clauses based on provided parameters:
 
+<TypeScript>
 ```ts filename="ConditionalColumns.ts" copy
 interface FilterParams {
   minAge?: number;
@@ -552,35 +575,37 @@ const buildQuery = ({ minAge, status, searchText }: FilterParams, { sql }) => {
   return query;
 };
 ```
+</TypeScript>
 
-#### Aggregations and `GROUP BY`
+<Python>
+```python filename="ConditionalColumns.py" copy   
 
-```ts filename="Aggregations.ts" copy
-import { orderTable } from "../tables/orderTable";
+def build_query(params: FilterParams, client: MooseClient) -> None:
+    conditions = []
+    interpolated = {}
+    if params.min_age:
+        conditions.append(f"age >= {min_age}")
+        interpolated["min_age"] = min_age
+    
+    if params.status:
+        conditions.append(f"status = {status}")
+        interpolated["status"] = status
+    
+    if params.search_text:
+        conditions.append(f"name ILIKE '%{search_text}%' OR email ILIKE '%{search_text}%'")
+        interpolated["search_text"] = search_text
 
-const query = sql`
-  SELECT 
-    ${orderTable.userId},
-    COUNT(*) as order_count,
-    SUM(${orderTable.amount}) as total_spent,
-    AVG(${orderTable.amount}) as avg_order_value,
-    MIN(${orderTable.createdAt}) as first_order_date,
-    MAX(${orderTable.createdAt}) as last_order_date
-  FROM ${orderTable}
-  WHERE ${orderTable.status} = 'completed'
-  GROUP BY ${orderTable.userId}
-  ORDER BY total_spent DESC
-`;
-
-const data = await client.query.execute(query);
-
-// EXECUTION: `SELECT userId, COUNT(*) as order_count, SUM(amount) as total_spent, AVG(amount) as avg_order_value, MIN(createdAt) as first_order_date, MAX(createdAt) as last_order_date FROM orders WHERE status = 'completed' GROUP BY userId ORDER BY total_spent DESC`
+    query = f"""SELECT * FROM users WHERE {" AND ".join(conditions)} ORDER BY created_at DESC"""
+    data = client.query.execute(query, interpolated)
+    return data
 ```
+</Python>
+
 
 ### Adding Authentication
 
 Moose supports authentication via JSON web tokens (JWTs). When your client makes a request to your Consumption API, Moose will automatically parse the JWT and pass the **authenticated** payload to your handler function as the `jwt` object:
-
+<TypeScript>
 ```typescript
 async (
   { orderBy = "totalRows", limit = 5 },
@@ -596,6 +621,17 @@ async (
   return client.query.execute(query);
 }
 ```
+</TypeScript>
+
+<Python>
+```python filename="Authentication.py" copy
+
+def run(params: QueryParams, client: MooseClient, jwt: dict) -> None:
+    query = f"""SELECT * FROM userReports WHERE user_id = {jwt["userId"]} LIMIT {limit}"""
+    data = client.query.execute(query)
+    return data
+```
+</Python>
 
 <Callout type="warning" title="JWT Error Handling">
 Moose validates the JWT signature and ensures the JWT is properly formatted. If the JWT authentication fails, Moose will return a `401 Unauthorized error`.

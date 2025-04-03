@@ -183,7 +183,6 @@ mod tests {
         assert_eq!(
             project.dependencies,
             vec![
-                "kafka-python-ng==2.2.2; python_version >= \"3.12\"".to_string(),
                 "clickhouse_connect==0.7.16; python_version >= \"3.12\"".to_string(),
                 "requests==2.32.3; python_version >= \"3.12\"".to_string(),
                 "moose-cli; python_version >= \"3.12\"".to_string(),

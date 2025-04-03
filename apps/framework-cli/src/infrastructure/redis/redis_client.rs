@@ -95,8 +95,7 @@ pub struct RedisLock {
 ///
 /// ## Configuration Options
 ///
-/// - `url`: The Redis connection URL in the format:
-///          `redis://[username:password@]host[:port][/db]`.
+/// - `url`: The Redis connection URL in the format: `redis://[username:password@]host[:port][/db]`.
 ///   Defaults to `redis://127.0.0.1:6379` (local Redis server on default port).
 ///
 /// - `key_prefix`: A namespace prefix added to all Redis keys to prevent

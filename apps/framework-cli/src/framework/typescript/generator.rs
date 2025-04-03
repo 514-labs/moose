@@ -299,8 +299,7 @@ pub fn generate_sdk(
     //! - `project` - The project to generate the SDK for.
     //! - `primitive_map` - The primitive map to generate the SDK for.
     //! - `sdk_dir` - Where to write the generated SDK.
-    //! - `packaged` - Whether or not to generate a full fledged package or just the source files in the
-    //!                language of choice.
+    //! - `packaged` - Whether or not to generate a full fledged package or just the source files in the language of choice.
     //!
     //! # Returns
     //! - `Result<(), TypescriptGeneratorError>` - A result indicating success or failure.

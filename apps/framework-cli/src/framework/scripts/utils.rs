@@ -1,3 +1,5 @@
+use crate::utilities::constants::DEFAULT_TEMPORTAL_NAMESPACE;
+
 #[derive(Debug, thiserror::Error)]
 pub enum TemporalExecutionError {
     #[error("Temportal connection error: {0}")]
@@ -85,9 +87,14 @@ pub fn get_temporal_domain_name(temporal_url: &str) -> &str {
         .unwrap_or("")
 }
 
-pub fn get_temporal_namespace(domain_name: &str) -> String {
-    domain_name
-        .strip_suffix(".tmprl.cloud")
-        .unwrap_or(domain_name)
-        .to_string()
+pub fn get_temporal_namespace(temporal_url: &str) -> String {
+    if temporal_url.contains("localhost") {
+        DEFAULT_TEMPORTAL_NAMESPACE.to_string()
+    } else {
+        let domain_name = get_temporal_domain_name(temporal_url);
+        domain_name
+            .strip_suffix(".tmprl.cloud")
+            .unwrap_or(domain_name)
+            .to_string()
+    }
 }

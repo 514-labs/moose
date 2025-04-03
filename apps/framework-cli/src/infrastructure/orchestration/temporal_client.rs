@@ -140,8 +140,7 @@ impl TemporalClientManager {
         let ca_cert_path = self.ca_cert.clone();
         let api_key = self.api_key.clone();
 
-        let domain_name = get_temporal_domain_name(&self.temporal_url);
-        let namespace = get_temporal_namespace(domain_name);
+        let namespace = get_temporal_namespace(&self.temporal_url);
 
         let ca_certificate = tonic::transport::Certificate::from_pem(
             std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,

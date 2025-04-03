@@ -65,8 +65,10 @@ impl Workflow {
                 if child_toml.exists() {
                     // Use the directory name as the referenced workflow name
                     if let Some(workflow_name) = path.file_name().and_then(|n| n.to_str()) {
-                        let workflow_name =
-                            workflow_name.split('.').last().unwrap_or(workflow_name);
+                        let workflow_name = workflow_name
+                            .split('.')
+                            .next_back()
+                            .unwrap_or(workflow_name);
                         if let Some(root_dir) = dir.parent() {
                             let referenced_workflow_path = root_dir.join(workflow_name);
                             if let Ok(child_workflow) = Self::from_dir(referenced_workflow_path) {

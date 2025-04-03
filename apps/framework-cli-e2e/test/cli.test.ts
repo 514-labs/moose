@@ -80,7 +80,7 @@ describe("framework-cli", () => {
     console.log("Initializing project...");
     try {
       await execAsync(
-        `"${CLI_PATH}" init my-moose-app ts --location "${TEST_PROJECT_DIR}"`,
+        `"${CLI_PATH}" init my-moose-app typescript --location "${TEST_PROJECT_DIR}"`,
       );
     } catch (error) {
       console.error("Error during project initialization:", error);

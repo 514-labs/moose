@@ -51,8 +51,7 @@ impl ConnectionManagerWrapper {
     ///
     /// # Parameters
     ///
-    /// - `client` - A reference to a Redis Client instance used to
-    ///    establish connections
+    /// - `client` - A reference to a Redis Client instance used to establish connections
     ///
     /// # Returns
     ///

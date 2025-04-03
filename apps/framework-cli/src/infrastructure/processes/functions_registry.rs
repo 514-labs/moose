@@ -47,8 +47,8 @@ impl FunctionProcessRegistry {
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
         match (
-            infra_map.get_topic_by_id(&function_process.source_topic_id),
-            infra_map.get_topic_by_id(&function_process.target_topic_id),
+            infra_map.find_topic_by_id(&function_process.source_topic_id),
+            infra_map.find_topic_by_id(&function_process.target_topic_id),
         ) {
             (Some(source_topic), Some(target_topic)) => {
                 // TODO This will need to be made generic

@@ -109,6 +109,7 @@ pub async fn execute_initial_infra_change(
     // Execute changes that are allowed on any instance
     let changes = plan.target_infra_map.init_processes(project);
     processes::execute_changes(
+        &project.redpanda_config,
         &plan.target_infra_map,
         &mut syncing_processes_registry,
         &mut process_registries,
@@ -176,6 +177,7 @@ pub async fn execute_online_change(
 
     processes::execute_leader_changes(process_registries, &plan.changes.processes_changes).await?;
     processes::execute_changes(
+        &project.redpanda_config,
         &plan.target_infra_map,
         sync_processes_registry,
         process_registries,

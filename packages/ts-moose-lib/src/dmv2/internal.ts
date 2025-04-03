@@ -158,7 +158,7 @@ export const getStreamingFunctions = async () => {
   registry.streams.forEach((stream) => {
     stream._transformations.forEach(([destination, f]) => {
       // TODO: Add version to dmv2 apis
-      const transformFunctionKey = `${stream.name}_0_0_${destination.name}_0_0`;
+      const transformFunctionKey = `${stream.name}_${destination.name}`;
       transformFunctions.set(transformFunctionKey, f);
     });
   });

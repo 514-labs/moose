@@ -5,31 +5,27 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
+  CardTitle,
   Button,
-} from "@/components/ui";
+} from "@514labs/design-system-components/components";
 import Link from "next/link";
 import {
   Heading,
   HeadingLevel,
   SmallText,
   Text,
-} from "@/components/typography";
-import { cn } from "@/lib/utils";
-import { ProductBadge } from "@/components/product-badge";
+} from "@514labs/design-system-components/typography";
+import { cn } from "@514labs/design-system-components/utils";
 
 interface CTACardProps {
   title: string;
   description: string;
   ctaLink: string;
   ctaLabel: string;
-  Icon?: React.ElementType;
-  badge?: {
-    variant: "boreal" | "aurora" | "moose" | "default";
-    text: string;
-  };
-  className?: string;
-  cardName?: string;
-  variant?: "default" | "gradient";
+  Icon: React.ElementType;
+  className: string;
+  cardName: string;
+  variant: "default" | "gradient";
 }
 
 export function CTACard({
@@ -39,20 +35,15 @@ export function CTACard({
   ctaLabel,
   cardName,
   Icon,
-  badge,
-  className = "",
+  className,
   variant = "default",
 }: CTACardProps) {
   return (
     <Card className={cn("h-full flex flex-col", className)}>
       <CardHeader>
         <div className="flex gap-2 items-center">
-          {badge ? (
-            <ProductBadge variant={badge.variant}>{badge.text}</ProductBadge>
-          ) : Icon ? (
-            <Icon className="h-[20px] w-[20px] text-moose-purple" />
-          ) : null}
-          <SmallText className="text-primary text-moose-purple my-0">
+          <Icon className="h-[20px] w-[20px] text-purple-400" />
+          <SmallText className="text-primary text-purple-400 my-0">
             {cardName}
           </SmallText>
         </div>

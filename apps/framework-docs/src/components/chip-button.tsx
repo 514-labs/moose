@@ -1,5 +1,8 @@
-import { SmallTextEmbed } from "@/components/typography";
-import { Button } from "@/components/ui";
+import {
+  SmallTextEmbed,
+  TextEmbed,
+} from "@514labs/design-system-components/typography";
+import { Button } from "@514labs/design-system-components/components";
 import Link from "next/link";
 
 interface ChipProps {

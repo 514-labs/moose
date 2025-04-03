@@ -90,48 +90,18 @@ importers:
 
   apps/framework-docs:
     dependencies:
+      '@514labs/design-system-base':
+        specifier: workspace:*
+        version: link:../../packages/design-system-base
+      '@514labs/design-system-components':
+        specifier: workspace:*
+        version: link:../../packages/design-system-components
+      '@514labs/event-capture':
+        specifier: workspace:*
+        version: link:../../packages/event-capture
       '@mux/mux-player-react':
         specifier: ^3.3.0
         version: 3.3.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-accordion':
-        specifier: ^1.2.3
-        version: 1.2.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-avatar':
-        specifier: ^1.0.4
-        version: 1.1.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-collapsible':
-        specifier: ^1.1.0
-        version: 1.1.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-dialog':
-        specifier: ^1.1.1
-        version: 1.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-dropdown-menu':
-        specifier: ^2.0.6
-        version: 2.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-hover-card':
-        specifier: ^1.0.7
-        version: 1.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-navigation-menu':
-        specifier: ^1.2.0
-        version: 1.2.5(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-select':
-        specifier: ^2.0.0
-        version: 2.1.6(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-separator':
-        specifier: ^1.0.3
-        version: 1.1.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-slot':
-        specifier: ^1.1.0
-        version: 1.1.2(@types/react@18.3.20)(react@18.3.1)
-      '@radix-ui/react-tabs':
-        specifier: ^1.0.4
-        version: 1.1.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      class-variance-authority:
-        specifier: ^0.7.0
-        version: 0.7.1
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       lucide-react:
         specifier: ^0.427.0
         version: 0.427.0(react@18.3.1)
@@ -162,12 +132,6 @@ importers:
       remark-mdx-disable-explicit-jsx:
         specifier: ^0.1.0
         version: 0.1.0
-      tailwind-merge:
-        specifier: ^2.4.0
-        version: 2.6.0
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.11.16(@swc/helpers@0.5.15))(@types/node@18.19.86)(typescript@5.8.2)))
     devDependencies:
       '@repo/eslint-config-custom':
         specifier: workspace:*
@@ -216,7 +180,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.49(@swc/core@1.11.16(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
+        version: 0.4.46(@swc/core@1.11.16(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -235,7 +199,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.49
+        version: 0.4.46
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -521,7 +485,7 @@ importers:
         version: link:../event-capture
       '@radix-ui/react-accordion':
         specifier: ^1.1.2
-        version: 1.2.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.2.0(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-avatar':
         specifier: ^1.0.4
         version: 1.1.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -776,8 +740,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.49':
-    resolution: {integrity: sha512-1KgD8ftm5MXf2nQz+iYOithIPI7bJQNayP5C8pHXLNiHR4B27Y4J4e6EfyNRtRhU7vQRH9a/OyDUsU6XPoJTlA==}
+  '@514labs/moose-cli-darwin-arm64@0.4.46':
+    resolution: {integrity: sha512-zxnE9QCQkoyBwKzgt6XQpg7Hv1t7EL80j22wNPGgUHSP2v7xWcDKumO6NiWhAQpB9KluiPG5Oraur27N2s8Omw==}
     cpu: [arm64]
     os: [darwin]
 
@@ -786,8 +750,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.49':
-    resolution: {integrity: sha512-qB5gz+KnD9IdI7mNzo3d4Ja6znDNrjmlJAxI2CU2wM9gJUEQrtwGz9zMSyeYpd2pUMB73I9UWHVRRI01yFcF1A==}
+  '@514labs/moose-cli-darwin-x64@0.4.46':
+    resolution: {integrity: sha512-MhHiNqQGqPyT8wzxiFdaPjB105eKgSC75u0796Eqoe7zZqcFOyBVWNEd8YBr3uvE3P2JdUVzfr4en4lFVDDUHw==}
     cpu: [x64]
     os: [darwin]
 
@@ -796,8 +760,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.49':
-    resolution: {integrity: sha512-JqMzKF7T39zoWBDbceDEO6IWpiUMM3si1wLb88J85jIUqtahpX7EE6GsUB3VVF7Eq4UOLa6U13pMGMFivSj4ug==}
+  '@514labs/moose-cli-linux-arm64@0.4.46':
+    resolution: {integrity: sha512-J/+84Mya7Zigfv1x06z0WvEzI2lmcdU0WavAb0fQbQKNRD6PGPItJf9g+mEKdpt+OhYSYZJYBiPYkPFDPjNjYA==}
     cpu: [arm64]
     os: [linux]
 
@@ -806,8 +770,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.49':
-    resolution: {integrity: sha512-F92cbS+Ndha54fR2viJycFXbWdCD+0UenF+VV6KNstj42dpQMD1Cx7psmeCIGILEyj+DSJQY98qrJDGVpkK3Hg==}
+  '@514labs/moose-cli-linux-x64@0.4.46':
+    resolution: {integrity: sha512-DPe9lTn/RNpK2FP1j+jCZIHRwscR5v//ibPyylCxnScvxp2ZZuAkSQQ4leYmwiOd5xYQjSWuVz0nz8iPXdWbTw==}
     cpu: [x64]
     os: [linux]
 
@@ -815,12 +779,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.49':
-    resolution: {integrity: sha512-RY5lAbImxPM9f1dodu2O1UNSzfLJsow8bxA5dNoFaMmTb7zCSpPHeSy/O/EiUXwhP7fiJYeKGKSkgIZC7pgnzQ==}
+  '@514labs/moose-cli@0.4.46':
+    resolution: {integrity: sha512-tcIxIWTW9DgFF7ZODL28wr3VFKb0WSIgamKM6O7vHBsH4CMWGVv3395xzXtLjCTSHulmTh8d3lA57QdTVZs1Og==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.49':
-    resolution: {integrity: sha512-9qTUIcSjaXZaSKPmlb9zo+3UD/q6aOU4pI9louJtguXpPh5pKbaPqkIWPDmC9C70K3NXH/9wEbXkDAErYbD8hQ==}
+  '@514labs/moose-lib@0.4.46':
+    resolution: {integrity: sha512-2tACUKCYww2ufU6+Ct9cJ6FGbAReqwczICcHDLGJ+TH8a7Y96L0rPdbH8MSDl7DYMCyuJLJlq7QrfKWDYelRYA==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -1816,19 +1780,6 @@ packages:
 
   '@radix-ui/react-accordion@1.2.0':
     resolution: {integrity: sha512-HJOzSX8dQqtsp/3jVxCU3CXEONF7/2jlGAB28oX8TTw1Dz8JYbEI1UcL8355PuLBE41/IRRMvCw7VkiK/jcUOQ==}
-    peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
-      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      '@types/react-dom':
-        optional: true
-
-  '@radix-ui/react-accordion@1.2.3':
-    resolution: {integrity: sha512-RIQ15mrcvqIkDARJeERSuXSry2N8uYnxkdDetpfmalT/+0ntOXLkFOsh9iwlAsCv+qcmhZjbdJogIm6WBa6c4A==}
     peerDependencies:
       '@types/react': '*'
       '@types/react-dom': '*'
@@ -4181,8 +4132,8 @@ packages:
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
-  electron-to-chromium@1.5.130:
-    resolution: {integrity: sha512-Ou2u7L9j2XLZbhqzyX0jWDj6gA8D3jIfVzt4rikLf3cGBa0VdReuFimBKS9tQJA4+XpeCxj1NoWlfBXzbMa9IA==}
+  electron-to-chromium@1.5.129:
+    resolution: {integrity: sha512-JlXUemX4s0+9f8mLqib/bHH8gOHf5elKS6KeWG3sk3xozb/JTq/RLXIv8OKUWiK4Ah00Wm88EFj5PYkFr4RUPA==}
 
   emittery@0.13.1:
     resolution: {integrity: sha512-DeWwawk6r5yR9jFgnDKYt4sLS0LmHJJi3ZOnb5/JdbYwj3nW+FxQnHIjhBKz8YLC7oRNPVM9NQ47I3CVx34eqQ==}
@@ -7754,25 +7705,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.49':
+  '@514labs/moose-cli-darwin-arm64@0.4.46':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.49':
+  '@514labs/moose-cli-darwin-x64@0.4.46':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.49':
+  '@514labs/moose-cli-linux-arm64@0.4.46':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.49':
+  '@514labs/moose-cli-linux-x64@0.4.46':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7782,14 +7733,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.49':
+  '@514labs/moose-cli@0.4.46':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.49
-      '@514labs/moose-cli-darwin-x64': 0.4.49
-      '@514labs/moose-cli-linux-arm64': 0.4.49
-      '@514labs/moose-cli-linux-x64': 0.4.49
+      '@514labs/moose-cli-darwin-arm64': 0.4.46
+      '@514labs/moose-cli-darwin-x64': 0.4.46
+      '@514labs/moose-cli-linux-arm64': 0.4.46
+      '@514labs/moose-cli-linux-x64': 0.4.46
 
-  '@514labs/moose-lib@0.4.49(@swc/core@1.11.16(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.46(@swc/core@1.11.16(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -8865,23 +8816,6 @@ snapshots:
       '@radix-ui/react-direction': 1.1.0(@types/react@18.3.20)(react@18.3.1)
       '@radix-ui/react-id': 1.1.0(@types/react@18.3.20)(react@18.3.1)
       '@radix-ui/react-primitive': 2.0.0(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-use-controllable-state': 1.1.0(@types/react@18.3.20)(react@18.3.1)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-    optionalDependencies:
-      '@types/react': 18.3.20
-      '@types/react-dom': 18.3.6(@types/react@18.3.20)
-
-  '@radix-ui/react-accordion@1.2.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@radix-ui/primitive': 1.1.1
-      '@radix-ui/react-collapsible': 1.1.3(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-collection': 1.1.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-compose-refs': 1.1.1(@types/react@18.3.20)(react@18.3.1)
-      '@radix-ui/react-context': 1.1.1(@types/react@18.3.20)(react@18.3.1)
-      '@radix-ui/react-direction': 1.1.0(@types/react@18.3.20)(react@18.3.1)
-      '@radix-ui/react-id': 1.1.0(@types/react@18.3.20)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@18.3.6(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.1.0(@types/react@18.3.20)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -10899,7 +10833,7 @@ snapshots:
   browserslist@4.24.4:
     dependencies:
       caniuse-lite: 1.0.30001707
-      electron-to-chromium: 1.5.130
+      electron-to-chromium: 1.5.129
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.24.4)
 
@@ -11550,7 +11484,7 @@ snapshots:
 
   eastasianwidth@0.2.0: {}
 
-  electron-to-chromium@1.5.130: {}
+  electron-to-chromium@1.5.129: {}
 
   emittery@0.13.1: {}
 
@@ -15694,10 +15628,6 @@ snapshots:
   tabbable@6.2.0: {}
 
   tailwind-merge@2.6.0: {}
-
-  tailwindcss-animate@1.0.7(tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.11.16(@swc/helpers@0.5.15))(@types/node@18.19.86)(typescript@5.8.2))):
-    dependencies:
-      tailwindcss: 3.4.17(ts-node@10.9.2(@swc/core@1.11.16(@swc/helpers@0.5.15))(@types/node@18.19.86)(typescript@5.8.2))
 
   tailwindcss-animate@1.0.7(tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.11.16(@swc/helpers@0.5.15))(@types/node@20.17.30)(typescript@5.8.2))):
     dependencies:

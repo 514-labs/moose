@@ -1,0 +1,87 @@
+import { FileTree } from "nextra/components";
+import { LanguageSwitcher } from "../components";
+
+# Project Structure
+
+<LanguageSwitcher />
+Moose relies heavily on structural conventions to make sure you can build quickly and reliably. That means the project structure is important.
+
+The following is the basic structure of a Moose project:
+
+<TypeScript>
+<FileTree>
+  <FileTree.Folder name=".moose" />
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.Folder name="datamodels" defaultOpen>
+      <FileTree.File name="models.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="SourceModel__DestinationModel.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="blocks" defaultOpen>
+      <FileTree.File name="aggregation.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="apis" defaultOpen>
+      <FileTree.File name="dataApi.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="scripts" defaultOpen>
+      <FileTree.Folder name="ExampleWorkflow" defaultOpen>
+        <FileTree.File name="1.firstTask.ts" />
+        <FileTree.File name="2.secondTask.ts" />
+        <FileTree.File name="config.toml" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+  <FileTree.File name="package.json" />
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name=".moose" defaultOpen>
+    <FileTree.File name="openapi.yaml" />
+  </FileTree.Folder>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.Folder name="datamodels" defaultOpen>
+      <FileTree.File name="models.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="SourceModel__DestinationModel.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="blocks" defaultOpen>
+      <FileTree.File name="aggregation.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="apis" defaultOpen>
+      <FileTree.File name="data_api.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="scripts" defaultOpen>
+      <FileTree.Folder name="ExampleWorkflow" defaultOpen>
+        <FileTree.File name="1.first_task.py" />
+        <FileTree.File name="2.second_task.py" />
+        <FileTree.File name="config.toml" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+</Python>
+
+## Top-level Folders and Files
+
+|                   |                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| app               | The main folder for your application.                                                                |
+| .moose            | Moose internals. Your auto-generated project documentation is stored here.                               |
+| package.json      | The default [npm package manifest file](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
+| moose.config.toml | Configuration file specific to Moose for your application.                                           |
+
+## App folders
+
+|            |                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| datamodels | The folder where you define your [Data Models](../data-models).                |
+| functions  | The folder where you define your [Streaming Functions](../stream-processing) |
+| blocks     | The folder where you define your [Blocks](../db-processing)                     |
+| apis       | The folder where you define your [Consumption APIs](../consumption-apis)       |
+| scripts    | The folder where you define your [Workflows](../workflows)                     |

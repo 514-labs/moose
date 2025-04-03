@@ -38,7 +38,10 @@ interface ProcessedAircraftData {
   timestamp: string;
 }
 
-async function mapToAircraftTrackingData(aircraft: any, timestamp: string): Promise<any> {
+async function mapToAircraftTrackingData(
+  aircraft: any,
+  timestamp: string,
+): Promise<any> {
   // Convert alt_baro to number and handle "ground" case
   let alt_baro = 0;
   let alt_baro_is_ground = false;
@@ -53,8 +56,10 @@ async function mapToAircraftTrackingData(aircraft: any, timestamp: string): Prom
   return {
     hex: aircraft.hex,
     transponder_type: aircraft.type || "",
+    transponder_type: aircraft.type || "",
     flight: aircraft.flight || "",
     r: aircraft.r || "",
+    aircraft_type: aircraft.t || "",
     aircraft_type: aircraft.t || "",
     dbFlags: aircraft.dbFlags || 0,
     lat: aircraft.lat || 0,
@@ -91,6 +96,7 @@ async function mapToAircraftTrackingData(aircraft: any, timestamp: string): Prom
     messages: aircraft.messages || 0,
     seen: aircraft.seen || 0,
     rssi: aircraft.rssi || 0,
+    timestamp: timestamp,
     timestamp: timestamp,
   };
 }
@@ -170,7 +176,10 @@ const fetchAndIngestMilitaryAircraft: TaskFunction = async (input: any) => {
     if (enrichedData.ac && Array.isArray(enrichedData.ac)) {
       for (const aircraft of enrichedData.ac) {
         try {
-          const mappedData = await mapToAircraftTrackingData(aircraft, timestamp);
+          const mappedData = await mapToAircraftTrackingData(
+            aircraft,
+            timestamp,
+          );
           await sendToMoose(mappedData, "AircraftTrackingData");
         } catch (error) {
           console.log(`Error processing aircraft ${aircraft.hex}: ${error}`);

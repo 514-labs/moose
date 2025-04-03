@@ -1,13 +1,16 @@
 import React from "react";
 import { useLanguage } from "./LanguageContext";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@514labs/design-system-components/components";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Heading, HeadingLevel } from "@/components/typography";
+  Heading,
+  HeadingLevel,
+} from "@514labs/design-system-components/typography";
 
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
@@ -22,7 +25,7 @@ export function LanguageSwitcher() {
       <Heading level={HeadingLevel.l5}>
         switch to{" "}
         <span
-          className="text-moose-purple hover:cursor-pointer"
+          className="text-pink hover:cursor-pointer"
           onClick={() => setLanguage(otherLanguage)}
         >
           {otherLanguage}

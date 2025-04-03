@@ -1,40 +1,41 @@
-"use client";
-
 import React, { ReactNode } from "react";
 import { useLanguage } from "./LanguageContext";
-import { cn } from "@/lib/utils";
+import { cn } from "@514labs/design-system-components/utils";
 
 interface LanguageProps {
   children: ReactNode;
-  inline?: boolean;
+  NodeType?: "div" | "span";
 }
 
 export const TypeScript: React.FC<LanguageProps> = ({
   children,
-  inline = false,
+  NodeType = "div",
 }) => {
   const { language } = useLanguage();
-  return inline ? (
-    <span className={cn(language === "typescript" ? "" : "hidden")}>
+  return (
+    <NodeType className={cn(language === "typescript" ? "" : "hidden")}>
       {children}
-    </span>
-  ) : (
-    <div className={cn(language === "typescript" ? "" : "hidden")}>
-      {children}
-    </div>
+    </NodeType>
   );
+  //return language === "typescript" ? <>{children}</> : null;
 };
 
 export const Python: React.FC<LanguageProps> = ({
   children,
-  inline = false,
+  NodeType = "div",
 }) => {
   const { language } = useLanguage();
-  return inline ? (
-    <span className={cn(language === "python" ? "" : "hidden")}>
+  return (
+    <NodeType className={cn(language === "python" ? "" : "hidden")}>
       {children}
-    </span>
-  ) : (
-    <div className={cn(language === "python" ? "" : "hidden")}>{children}</div>
+    </NodeType>
   );
+};
+
+export const LanguageSwitch: React.FC<{
+  typescript: ReactNode;
+  python: ReactNode;
+}> = ({ typescript, python }) => {
+  const { language } = useLanguage();
+  return <>{language === "typescript" ? typescript : python}</>;
 };

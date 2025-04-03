@@ -17,7 +17,7 @@ const withNextra = nextra({
 
 // your existing module.exports or default export
 const nextConfig = {
-  transpilePackages: [],
+  transpilePackages: ["@514labs/design-system"],
   reactStrictMode: true,
   images: {
     unoptimized: true,

@@ -26,7 +26,7 @@ This project aims to provide insights into GitHub development trends by collecti
 
 1. Clone the repository:
 ```bash filename="terminal" copy
-npx create-moose-app GitHubDevTrends --template github-dev-trends
+npx create-moose-app GitHubDevTrends github-dev-trends
 cd github-dev-trends
 ```
 

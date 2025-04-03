@@ -1,5 +1,4 @@
-# This is a [MooseJs](https://www.moosejs.com/) project bootstrapped with the 
-[`Moose CLI`](https://github.com/514-labs/moose/tree/main/apps/framework-cli).
+# This is a [MooseJs](https://www.moosejs.com/) project bootstrapped with the [`Moose CLI`](https://github.com/514-labs/moose/tree/main/apps/framework-cli).
 
 <a href="https://www.getmoose.dev/"><img src="https://raw.githubusercontent.com/514-labs/moose/main/logo-m-light.png" alt="moose logo" height="100px"></a>
 

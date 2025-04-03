@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::convert::TryFrom;
+use std::sync::Arc;
 
 use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
@@ -10,6 +11,7 @@ use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
 use crate::utilities::decode_object::decode_base64_to_json;
 use chrono::{DateTime, Utc};
+use futures::future::try_join_all;
 use temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution;
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
@@ -258,6 +260,87 @@ pub async fn terminate_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!("'{}' terminated successfully\n", name),
+    }))
+}
+
+pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+    let client_manager = Arc::new(TemporalClientManager::new(&project.temporal_config));
+
+    let request = ListWorkflowExecutionsRequest {
+        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        page_size: 1000,
+        query: "ExecutionStatus = 'Running'".to_string(),
+        ..Default::default()
+    };
+
+    let response = client_manager
+        .execute(|mut client| async move {
+            client
+                .list_workflow_executions(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
+        .await
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("Could not list workflows: {}", e),
+            })
+        })?;
+
+    let executions = response.into_inner().executions;
+    let total_workflows = executions.len();
+
+    if total_workflows == 0 {
+        return Ok(RoutineSuccess::success(Message {
+            action: "Workflow".to_string(),
+            details: "Found workflows: 0 | Terminated workflows: 0".to_string(),
+        }));
+    }
+
+    let termination_futures: Vec<_> = executions
+        .into_iter()
+        .filter_map(|execution| execution.execution)
+        .map(|execution_info| {
+            let client_manager = Arc::clone(&client_manager);
+            async move {
+                let request = TerminateWorkflowExecutionRequest {
+                    namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+                    workflow_execution: Some(WorkflowExecution {
+                        workflow_id: execution_info.workflow_id.clone(),
+                        run_id: execution_info.run_id,
+                    }),
+                    reason: "Bulk termination requested by user".to_string(),
+                    ..Default::default()
+                };
+
+                client_manager
+                    .execute(|mut client| async move {
+                        client
+                            .terminate_workflow_execution(request)
+                            .await
+                            .map_err(|e| anyhow::Error::msg(e.to_string()))
+                    })
+                    .await
+                    .map(|_| execution_info.workflow_id)
+            }
+        })
+        .collect();
+
+    let results = try_join_all(termination_futures).await.map_err(|e| {
+        RoutineFailure::error(Message {
+            action: "Workflow".to_string(),
+            details: format!("Failed to execute terminations: {}", e),
+        })
+    })?;
+
+    Ok(RoutineSuccess::success(Message {
+        action: "Workflow".to_string(),
+        details: format!(
+            "Found workflows: {} | Terminated workflows: {}",
+            total_workflows,
+            results.len()
+        ),
     }))
 }
 

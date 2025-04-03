@@ -77,9 +77,6 @@ While you have complete flexibility in organizing your implementation, here's a 
   <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
-    <FileTree.Folder name="models" defaultOpen>
-      <FileTree.File name="records.ts" />
-    </FileTree.Folder>
     <FileTree.Folder name="ingest" defaultOpen>
       <FileTree.File name="records.ts" />
     </FileTree.Folder>
@@ -103,9 +100,6 @@ While you have complete flexibility in organizing your implementation, here's a 
   <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="main.py" />
-    <FileTree.Folder name="models" defaultOpen>
-      <FileTree.File name="records.py" />
-    </FileTree.Folder>
     <FileTree.Folder name="ingest" defaultOpen>
       <FileTree.File name="records.py" />
     </FileTree.Folder>
@@ -129,10 +123,9 @@ While you have complete flexibility in organizing your implementation, here's a 
 |                |                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------- |
 | app/index.ts   | The critical file that exports all resources to be mapped to infrastructure |
-| models         | Define your [Data Models](/moose/building/data-modeling) that serve as schemas for all components |
-| ingest         | Create [IngestPipeline](/moose/building/ingestion) objects that combine ingest APIs, streams, and tables |
+| ingest         | Create [IngestPipeline](/moose/building/ingestion) data models and objects that combine ingest APIs, streams, and tables |
 | views          | Define in-database transformations using [Materialized Views](/moose/building/materialized-views) |
-| apis    | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
+| apis           | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
 | utils          | Helper functions and utilities |
 </TypeScript>
 
@@ -140,8 +133,7 @@ While you have complete flexibility in organizing your implementation, here's a 
 |                |                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------- |
 | app/main.py    | The critical file that exports all resources to be mapped to infrastructure |
-| models         | Define your [Data Models](/moose/building/data-modeling) that serve as schemas for all components |
-| ingest      | Create [IngestPipeline](/moose/building/ingestion) objects that combine ingest APIs, streams, and tables |
+| ingest         | Create [IngestPipeline](/moose/building/ingestion) data models and objects that combine ingest APIs, streams, and tables |
 | views          | Define in-database transformations using [Materialized Views](/moose/building/materialized-views) |
 | apis    | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
 | scripts    | Create [Workflows](/moose/building/workflows) to run ad-hoc tasks |
@@ -153,10 +145,12 @@ While you have complete flexibility in organizing your implementation, here's a 
 Here's how you might organize a typical data flow:
 
 <Steps>
-#### Define data models in the `models` directory
+#### Create Ingestion Pipelines in `app/ingest`
 
 <TypeScript>
-```ts filename="app/models/records.ts" copy
+```ts filename="app/ingest/records.ts" copy
+import { IngestPipeline, Key } from "@514labs/moose-lib";
+
 export interface RawRecord {
   id: Key<string>;
   sourceId: string;
@@ -171,33 +165,7 @@ export interface ProcessedRecord extends RawRecord {
     processingTime: number;
   };
 }
-```
-</TypeScript>
 
-<Python>
-```py filename="app/models/records.py" copy
-from pydantic import BaseModel
-from moose_lib import Key
-from datetime import datetime
-from typing import Dict, Any
-
-class RawRecord(BaseModel):
-    id: Key[str]
-    source_id: str
-    timestamp: datetime
-    status: str
-
-class ProcessedRecord(RawRecord):
-    processed_at: datetime
-    metadata: Dict[str, Any]
-```
-</Python>
-
-#### Create Ingestion Pipelines in `app/ingest`
-
-<TypeScript>
-```ts filename="app/ingest/records.ts" copy
-import { RawRecord, ProcessedRecord } from '../models/records';
 
 export const RawRecords = new IngestPipeline<RawRecord>("raw_records", {
   ingest: true,    // Creates a REST API endpoint 
@@ -226,9 +194,24 @@ RawRecords.stream!.addTransform(ProcessedRecords.stream!, (record) => {
 
 <Python>
 ```py filename="app/ingest/records.py" copy
-from app.models.records import RawRecord, ProcessedRecord
-from moose_lib import IngestPipeline, IngestPipelineConfig
+from pydantic import BaseModel
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig
 from datetime import datetime
+from typing import Dict, Any
+
+class RawRecord(BaseModel):
+    id: Key[str]
+    source_id: str
+    timestamp: datetime
+    status: str
+
+class Metadata(BaseModel):
+    version: str
+    processing_time: float
+
+class ProcessedRecord(RawRecord):
+    processed_at: datetime
+    metadata: Metadata
 
 RawRecords = IngestPipeline[RawRecord]("raw_records", IngestPipelineConfig(
     ingest=True,    // Creates a REST API endpoint 
@@ -253,7 +236,7 @@ def transform_record(record: RawRecord) -> ProcessedRecord:
         }
     )
 
-RawRecords.stream.add_transform(ProcessedRecords.stream, transform_record)
+RawRecords.get_stream().add_transform(destination=ProcessedRecords.get_stream(), transformation=transform_record)
 ```
 </Python>
 
@@ -404,7 +387,6 @@ For smaller projects, you might prefer an even simpler structure:
 ```
 app/
   index.ts
-  models.ts        # All data models
   ingestion.ts     # All ingestion pipelines
   views.ts # All materialized views
   apis.ts          # All consumption APIs
@@ -415,7 +397,6 @@ app/
 ```
 app/
   main.py
-  models.py        # All data models
   ingestion.py     # All ingestion pipelines
   views.py         # All materialized views
   apis.py          # All consumption APIs

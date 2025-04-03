@@ -14,7 +14,7 @@ export const paths = {
   dataModels: `${basePaths.build}/data-modeling`,
   ingestion: `${basePaths.build}/ingestion`,
   streams: `${basePaths.build}/streams`,
-  olapTables: `${basePaths.build}/olap-tables`,
+  olapTables: `${basePaths.build}/olap-table`,
   workflows: `${basePaths.build}/workflows`,
   materializedViews: `${basePaths.build}/materialized-views`,
   consumptionApis: `${basePaths.build}/consumption-apis`,

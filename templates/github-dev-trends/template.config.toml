@@ -1,0 +1,13 @@
+language = "typescript" # Must be typescript or python
+description = "A real-time look at top trending topics on GitHub. Collects & analyzes Star Events from the public events feed"
+post_install_print = """
+
+📂 Go to your project directory:
+	$ cd {project_dir}/moose-backend
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+	$ moose dev
+"""

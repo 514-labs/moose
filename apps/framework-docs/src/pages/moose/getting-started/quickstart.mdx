@@ -36,15 +36,25 @@ import { paths } from "@/lib/paths";
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx create-moose-app@latest my-moose-app ts
+npx create-moose-app@latest my-moose-app typescript
 cd my-moose-app && npm install
 ```
 </TypeScript>
 
 <Python>
+
+<Callout type="info" title="Recommended: Create a virtual environment">
+Best practice is to create a virtual environment and install Moose CLI in it:
+
+```bash filename="Terminal" copy
+python -m venv .venv
+source .venv/bin/activate
+```
+</Callout>
+
 ```bash filename="Terminal" copy
 pip install -U moose-cli
-moose-cli init my-moose-app py
+moose-cli init my-moose-app python
 cd my-moose-app && pip install .
 ```
 </Python>

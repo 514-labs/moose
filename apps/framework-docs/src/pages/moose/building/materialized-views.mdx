@@ -1,4 +1,4 @@
-import { LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python } from "@/components";
+import { LanguageSwitcher, BulletPointsCard, TypeScript, Python } from "@/components";
 
 # In-Database Transformations
 
@@ -30,7 +30,6 @@ Materialized views allow you to precompute and store the results of complex quer
 <TypeScript>
 ```ts filename="MaterializedView.ts" copy
 import { MaterializedView, sql } from "@514labs/moose-lib";
-import { sourceTable } from "./SourceTable";
 
 // 1. Define the schema of the materialized view result set
 interface TargetSchema {
@@ -41,18 +40,16 @@ interface TargetSchema {
 
 // 2. Write a SELECT query to compute the result set
 const exampleMaterializedView = new MaterializedView<TargetSchema>({
-  selectStatement: sql` SELECT * FROM ${sourceTable}`,
+  selectStatement: sql` SELECT * FROM source_table_name`,
   tableName: "my_table",
   materializedViewName: "example_materialized_view",
 });
 ```
 </TypeScript>
 
-## TODO: Review Python example
 <Python>
 ```py filename="MaterializedView.py" copy
 from moose_lib import MaterializedView, sql
-from source_table import source_table
 
 # 1. Define the schema of the materialized view result set
 class TargetSchema(BaseModel):
@@ -62,7 +59,7 @@ class TargetSchema(BaseModel):
 
 # 2. Write a SELECT query to compute the result set
 example_materialized_view = MaterializedView[TargetSchema](
-    select_statement=f"SELECT * FROM {source_table}",
+    select_statement=f"SELECT * FROM source_table_name",
     table_name="my_table",
     materialized_view_name="example_materialized_view",
 )
@@ -70,9 +67,9 @@ example_materialized_view = MaterializedView[TargetSchema](
 </Python>
 
 
-
-
-<CheckmarkBullets
+<BulletPointsCard
+  bulletStyle="checkmark"
+  divider={false}
   title="Key benefits:"
   bullets={[
     "Automatic refresh on new data",

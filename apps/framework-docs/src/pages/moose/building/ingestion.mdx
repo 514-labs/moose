@@ -184,6 +184,71 @@ const batchRecordsApi = new IngestApi<BatchRecord>("batch_records", {
 
 Moose operates a webserver on port 4000 by default. All ingestion endpoints are available at `POST localhost:4000/ingest/<name>`:
 
+<Callout type="info" title="Ingestion API Endpoint">
+The ingestion API endpoint is `POST localhost:4000/ingest/<name>`, where `<name>` is the string value you provided as the first argument to the `IngestPipeline` or `IngestApi` constructor.
+</Callout>
+
+<TypeScript>
+```typescript filename="Record.ts" copy
+import { IngestPipeline, IngestionFormat } from "@514labs/moose-lib";
+
+interface Record {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: Date;
+}
+
+const simplePipeline = new IngestPipeline<Record>("record", {
+  ingest: true, // Creates a REST API endpoint at POST localhost:4000/ingest/record
+  stream: true,
+  table: true
+});
+
+ // Creates a REST API endpoint at POST localhost:4000/ingest/batch_records
+const batchPipeline = new IngestPipeline<Record>("batch_records", {
+  ingest: {
+    format: IngestionFormat.JSON_ARRAY // Accept batch of records
+  },
+  stream: true,
+  table: true
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="Record.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig, IngestionFormat
+from pydantic import BaseModel
+
+class Record(BaseModel):
+    id: Key[str]
+    name: str
+    value: int
+    timestamp: datetime
+
+simple_pipeline = IngestPipeline[Record](
+    name="record", # Ingestion API endpoint is POST localhost:4000/ingest/record
+    config=IngestPipelineConfig(
+        ingest=True,
+        stream=True,
+        table=True    
+    )
+)
+
+batch_pipeline = IngestPipeline[Record](
+    name="batch_records", # Ingestion API endpoint is POST localhost:4000/ingest/batch_records
+    config=IngestPipelineConfig(
+        ingest=IngestConfig(
+            format=IngestionFormat.JSON_ARRAY # Accept batch of records
+        ),
+        stream=True,
+        table=True
+    )
+)
+```
+</Python>
+
 ```bash
 # Single record ingestion
 curl -X POST http://localhost:4000/ingest/example \

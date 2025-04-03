@@ -41,7 +41,8 @@ interface MyFirstTable {
   age: number;
 }
 
-const myTable = new OlapTable<MyFirstTable>("my_first_table");
+// Create a table named "first_table"
+const myTable = new OlapTable<MyFirstTable>("first_table");
 ```
 </TypeScript>
 
@@ -56,7 +57,9 @@ class MyFirstTable(BaseModel):
     name: str
     age: int
 
-my_table = OlapTable[MyFirstTable]("my_first_table")
+# Create a table named "first_table"
+my_table = OlapTable[MyFirstTable]("first_table") 
+
 ```
 </Python>
 
@@ -91,14 +94,13 @@ interface UserEvent {
   userId: string;
   timestamp: Date;
   eventType: string;
-  properties: object;
 }
 
 // Create a complete ingestion pipeline with a table
-const eventsPipeline = new IngestPipeline<UserEvent>("user_events_pipeline", {
-  ingest: true,    // Creates a REST API endpoint 
+const eventsPipeline = new IngestPipeline<UserEvent>("user_events", {
+  ingest: true,    // Creates a REST API endpoint at POST localhost:4000/ingest/user_events
   stream: true,    // Creates Kafka/Redpanda topic
-  table: {         // Creates and configures the table
+  table: {         // Creates and configures the table named "user_events"
     orderByFields: ["id", "timestamp"],
     deduplicate: true
   }
@@ -119,19 +121,18 @@ class UserEvent(BaseModel):
     user_id: str
     timestamp: Date
     event_type: str
-    properties: dict
 
-events_pipeline = IngestPipeline[UserEvent]("user_events_pipeline", {
-  ingest: True,
-  stream: True,
-  table: {
+events_pipeline = IngestPipeline[UserEvent]("user_events", {
+  ingest: True, # Creates a REST API endpoint at POST localhost:4000/ingest/user_events
+  stream: True, # Creates a Kafka/Redpanda topic
+  table: {      # Creates and configures the table named "user_events"
     orderByFields: ["id", "timestamp"],
     deduplicate: True
   }
 })
 
 # Access the table component when needed:
-events_table = events_pipeline.table
+events_table = events_pipeline.get_table()
 ```
 </Python>
 
@@ -157,7 +158,7 @@ interface ExampleSchema {
   integerField: number & tags.Type<"int64">; // Moose supports native tagged types so you can use Integers in typescript
 }
 
-// Create a standalone table
+// Create a standalone table named "example_table"
 const exampleTable = new OlapTable<ExampleSchema>("example_table", {
   orderByFields: ["id", "dateField"], // Optional when using a primary key
   deduplicate: true  // Optional: keep only the latest version of each record
@@ -181,6 +182,7 @@ class ExampleSchema(BaseModel):
     numeric_field: float
     boolean_field: bool
 
+# Create a standalone table named "example_table"
 example_table = OlapTable[ExampleSchema]("example_table", {
   orderByFields: ["id", "date_field"],
   deduplicate: True
@@ -188,17 +190,29 @@ example_table = OlapTable[ExampleSchema]("example_table", {
 ```
 </Python>
 
-Standalone tables are useful for:
-- When you need to do a bulk import of data
-- When you have in-memory ETL/ELT workflows that need to write directly to a table as opposed to a streaming ingestion pipeline
-- When you have some external service that is maintaining and writing to the table, like a CDC or other external ETL service
+<BulletPointsCard
+  divider={false}
+  bulletStyle="check"
+  title="Use Standalone Tables When:"
+  bullets={[
+    "Use when you need to do a bulk import of data",
+    "Use when you have in-memory ETL/ELT workflows that need to write directly to a table as opposed to a streaming ingestion pipeline",
+    "Use when you have some external service that is maintaining and writing to the table, like a CDC or other external ETL service"
+  ]}
+/>
 
 </Tabs.Tab>
 </Tabs>
 
 ## Querying Tables
 
+<TypeScript>
 Moose provides a `sql` tagged template literal function that you can use to write SQL queries on your tables, which supports interpolation of table names, column names, and values.
+</TypeScript>
+
+<Python>
+Moose lets you define `f` strings that you can use to write SQL queries on your tables, which supports interpolation of table names, column names, and values.
+</Python>
 
 This is useful for:
 - Transforming your data in your database and saving the results as regular views or [materialized views](/moose/materialized-views).
@@ -206,6 +220,7 @@ This is useful for:
 
 
 
+<TypeScript>
 ```ts filename="QueryingTables.ts"
 import { sql } from "@514labs/moose-lib";
 
@@ -226,6 +241,27 @@ const query = sql`
 ```
 
 This lets you write SQL that feels like TypeScript - get autocomplete for your table columns and catch typos at dev time instead of waiting for runtime.
+</TypeScript>
+
+<Python>
+```py filename="QueryingTables.py"
+from moose_lib import MooseClient, OlapTable, Key
+
+class MyTableSchema(BaseModel):
+    id: Key[str]
+    name: str
+    value: int
+
+my_table = OlapTable[MyTableSchema]("my_table")
+
+client = MooseClient()
+
+query = client.query.execute(
+  f"SELECT id, name, value FROM {my_table.name}" # Use a variable to interpolate the table name
+)
+```
+</Python>
+
 
 ## Configuring Table Indexes
 
@@ -234,6 +270,7 @@ You must configure table indexing using one of these approaches:
 2. Specify `orderByFields` in the table config
 3. Use both (all `Key` fields must come first in the `orderByFields` array)
 
+<TypeScript>
 ```ts filename="PrimaryKeyConfig.ts"
 import { OlapTable, Key } from '@514labs/moose-zlib';
 
@@ -244,11 +281,27 @@ interface Record1 {
   field2: number;
 }
 
-const table1 = new OlapTable<Record1>("table1");  // Uses id as orderByField automatically
+const table1 = new OlapTable<Record1>("table1");  // id is the primary key
 ```
+</TypeScript>
+
+<Python>
+```py filename="PrimaryKeyConfig.py"
+from moose_lib import Key, OlapTable
+from pydantic import BaseModel
+
+class Record1(BaseModel):
+    id: Key[str] # Primary key field
+    field1: str
+    field2: int
+
+table1 = OlapTable[Record1]("table1") # id is the primary key
+```
+</Python>
 
 ### Order By Fields Only
 
+<TypeScript>
 ```ts filename="OrderByFieldsOnly.ts"
 // Approach 2: Using orderByFields only
 interface SchemaWithoutPrimaryKey {
@@ -261,9 +314,31 @@ const tableWithOrderByFieldsOnly = new OlapTable<SchemaWithoutPrimaryKey>("table
   orderByFields: ["field1", "field2"]  // Specify ordering without primary key
 });
 ```
+</TypeScript>
+
+<Python>
+Leverage the `OlapTableConfig` class to configure your table:
+
+```py filename="OrderByFieldsOnly.py" copy
+from moose_lib import Key, OlapTable, OlapTableConfig
+from pydantic import BaseModel
+from datetime import datetime
+
+class SchemaWithoutPrimaryKey(BaseModel):
+    field1: str
+    field2: int
+    field3: datetime
+
+table2 = OlapTable[SchemaWithoutPrimaryKey]("table2", OlapTableConfig(
+  orderByFields=["field1", "field2"] # Specify ordering without primary key
+))
+```
+</Python>
 
 ### Using Both Primary Key and Order By Fields
-```ts filename="ComboKeyAndOrderByFields.ts"
+
+<TypeScript>
+```ts filename="ComboKeyAndOrderByFields.ts" copy
 // Approach 3: Using both (primary key must be first)
 interface SchemaWithKey {
   id: Key<string>;  // Primary key field
@@ -275,9 +350,28 @@ const tableWithKeyAndOrderByFields = new OlapTable<SchemaWithKey>("table3", {
   orderByFields: ["id", "field1"]  // Primary key must be first
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="ComboKeyAndOrderByFields.py" copy
+from moose_lib import Key, OlapTable, OlapTableConfig
+from pydantic import BaseModel
+
+class SchemaWithKey(BaseModel):
+    id: Key[str]
+    field1: str
+    field2: int
+
+table3 = OlapTable[SchemaWithKey]("table3", OlapTableConfig(
+  orderByFields=["id", "field1"] # Primary key must be first
+))
+```
+</Python>
 
 ### Using Multiple Primary Keys
-```ts filename="MultiKeyTable.ts"
+
+<TypeScript>
+```ts filename="MultiKeyTable.ts" copy
 interface MultiKeyRecord {
   key1: Key<string>;
   key2: Key<number>;
@@ -288,23 +382,58 @@ const multiKeyTable = new OlapTable<MultiKeyRecord>("multi_key_table", {
   orderByFields: ["key1", "key2", "field1"]  // Multiple keys must come first
 });
 ```
+</TypeScript>
+
+<Python>
+```py filename="MultiKeyTable.py" copy
+from moose_lib import Key, OlapTable, OlapTableConfig
+from pydantic import BaseModel
+
+class MultiKeyRecord(BaseModel):
+    key1: Key[str]
+    key2: Key[int]
+    field1: str
+
+multi_key_table = OlapTable[MultiKeyRecord]("multi_key_table", OlapTableConfig(
+  orderByFields=["key1", "key2", "field1"] # Multiple keys must come first
+))
+```
+</Python>
 
 ### Deduplication
 Keep only the latest record per key:
-```ts filename="DeduplicatedTable.ts"
+
+<TypeScript>
+```ts filename="DeduplicatedTable.ts" copy
 const table = new OlapTable<Record>("table", {
   orderByFields: ["id"],
   deduplicate: true
 });
 ```
+</TypeScript> 
+
+<Python>
+```py filename="DeduplicatedTable.py" copy
+from moose_lib import Key, OlapTable, OlapTableConfig
+
+class Record(BaseModel):
+    id: Key[str]
+
+table = OlapTable[Record]("table", OlapTableConfig(
+  orderByFields=["id"],
+  deduplicate=True
+))
+```
+</Python>
 
 <Callout type="warning" title="Deduplication Caveats">
 Deduplication uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning duplicate records may not be removed immediately. This process can take time and is not guaranteed to be immediate. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
 </Callout>
 
-
 ### Invalid Configurations
-```ts filename="InvalidConfig.ts"
+
+<TypeScript>
+```ts filename="InvalidConfig.ts" copy
 // Error: No primary key or orderByFields
 interface BadRecord1 {
   field1: string;
@@ -331,55 +460,37 @@ const badTable3 = new OlapTable<BadRecord3>("bad_table3", {
   orderByFields: ["id", "field2"]  // Can't have nullable field in orderByFields
 });
 ```
+</TypeScript>
 
-### Best Practices
-1. **Schema Design**
-   - Use non-nullable fields for sorting/indexing
-   - Make fields optional only when necessary
-   - Consider query patterns when choosing `orderByFields`
+<Python>
+```py filename="InvalidConfig.py"
+from moose_lib import Key, OlapTable, OlapTableConfig
+from typing import Optional
 
-2. **Performance**
-   - Order fields based on common query patterns
-   - Use deduplication for latest-version scenarios
-   - Consider data volume for partitioning
+class BadRecord1(BaseModel):
+    field1: str
+    field2: int
 
+bad_table1 = OlapTable[BadRecord1]("bad_table1") ## No primary key or orderByFields
 
-## How It Works
+class BadRecord2(BaseModel):
+    id: Key[str]
+    field1: str
 
-<BulletPointsCard
-  title="How it works:"
-  bullets={[
-    {
-      title: "Define your data model",
-      description: "Create a type definition that describes your table structure"
-    },
-    {
-      title: "Instantiate your table",
-      description: "Create a typed table instance from your model with one line of code"
-    },
-    {
-      title: "Configure storage options",
-      description: "Optionally specify ordering, partitioning, and other optimizations"
-    },
-    {
-      title: "Evolve your schema",
-      description: "Add fields to your model and tables update automatically"
-    }
-  ]}
-/>
+bad_table2 = OlapTable[BadRecord2]("bad_table2", OlapTableConfig(
+  orderByFields=["field1", "id"] # Wrong order - primary key must be first
+))
 
-// Code example goes here
+class BadRecord3(BaseModel):
+    id: Key[str]
+    field1: str
+    field2: Optional[int]
 
-<CheckmarkBullets
-  title="Benefits:"
-  bullets={[
-    "No SQL boilerplate or CREATE/ALTER TABLE statements",
-    "Type-safe schema evolution with automatic migration",
-    "Automatic index creation based on key definitions",
-    "Database types derived directly from your application types",
-    "Built-in validation before storage"
-  ]}
-/>
+bad_table3 = OlapTable[BadRecord3]("bad_table3", OlapTableConfig(
+  orderByFields=["id", "field2"] # Can't have nullable field in orderByFields
+))
+```
+</Python>
 
 ## Development Workflow
 
@@ -395,7 +506,9 @@ One of the powerful features of Moose is its integration with the local developm
    - Your tables are immediately available for testing
 
 For example, if you add a new field to your schema:
-```typescript
+
+<TypeScript>
+```ts filename="HotReloading.ts" copy
 // Before
 interface BasicSchema {
   id: Key<string>;
@@ -409,6 +522,22 @@ interface BasicSchema {
   createdAt: Date;  // New field
 }
 ```
+</TypeScript>
+
+<Python>
+```py filename="HotReloading.py" copy
+# Before
+class BasicSchema(BaseModel):
+    id: Key[str]
+    name: str
+
+# After adding a field
+class BasicSchema(BaseModel):
+    id: Key[str]
+    name: str
+    created_at: datetime
+```
+</Python>
 
 The Moose framework will:
 1. Detect the change when you save the file
@@ -423,8 +552,19 @@ You can verify your tables were created correctly using:
 moose ls
 ```
 
-Or by connecting directly to your local ClickHouse instance and running SQL commands.
+#### Connecting to your local ClickHouse instance
+You can connect to your local ClickHouse instance with your favorite database client. Your credentials are located in your `.moose/config.toml` file:
+
+```toml filename=".moose/config.toml" copy
+[clickhouse_config]
+db_name = "local"
+user = "panda"
+password = "pandapass"
+use_ssl = false
+host = "localhost"
+host_port = 18123
+native_port = 9000
+```
 
 
-See the [API Reference](./api-reference#olaptable) for complete configuration options and methods.
 

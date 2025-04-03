@@ -83,6 +83,7 @@ example_materialized_view = MaterializedView[TargetSchema](
 
 ### Configuration Options
 
+<TypeScript>
 ```typescript filename="ViewOptions.ts"
 interface MaterializedViewOptions<T> {
   selectStatement: string; // sql query to compute the materialized view
@@ -93,10 +94,32 @@ interface MaterializedViewOptions<T> {
   orderByFields?: (keyof T & string)[]; // default is the primary key of the source table
 }
 ```
+</TypeScript>
+
+<Python>
+```python filename="ViewOptions.py" copy
+from moose_lib import MaterializedView, sql
+from source_table import source_table
+
+class MaterializedViewOptions(BaseModel):
+    select_statement: str
+    table_name: str
+    materialized_view_name: str
+    engine: ClickHouseEngines = ClickHouseEngines.MergeTree
+    order_by_fields: List[str] = []
+```
+</Python>
 
 ## Working with Aggregations
 
+<TypeScript>
 Materialized views support aggregations using the `Aggregated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
+</TypeScript>
+
+<Python>
+Materialized views support aggregations using the `Annotated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
+</Python>
+
 
 ### Why Use ClickHouse Aggregate Functions
 
@@ -124,6 +147,7 @@ Some of the most useful aggregate functions for materialized views include:
 
 ### Aggregation Example
 
+<TypeScript>
 ```ts filename="Aggregations.ts" copy
 import { MaterializedView, ClickHouseEngines } from "@514labs/moose-lib";
 import { sourceTable } from "./SourceTable";
@@ -136,11 +160,11 @@ interface TargetSchema {
 
 const query = sql`
   SELECT 
-    ${sourceTable.id}, 
-    AVG(${sourceTable.rating}) as average_rating, 
-    COUNT(${sourceTable.id}) as num_reviews 
-  FROM ${sourceTable}
-  GROUP BY ${sourceTable.id}
+    ${sourceTable.columns["id"]}, 
+    AVG(${sourceTable.columns["rating"]}) as average_rating, 
+    COUNT(${sourceTable.columns["id"]}) as num_reviews 
+  FROM ${sourceTable.name}
+  GROUP BY ${sourceTable.columns["id"]}
   `;
 
 const exampleMaterializedView = new MaterializedView<TargetSchema>({
@@ -151,6 +175,14 @@ const exampleMaterializedView = new MaterializedView<TargetSchema>({
   orderByFields: ["id"],
 });
 ```
+</TypeScript>
+
+<Python>
+Example coming soon
+
+
+
+</Python>
 
 ### Best Practices for Aggregations
 
@@ -168,9 +200,15 @@ When these practices are followed, materialized views with aggregations can prov
 
 You can query materialized views just like any other table in Moose:
 
+<TypeScript>
 ```ts filename="QueryingMaterializedView.ts" copy
-const query = sql`SELECT * FROM ${exampleMaterializedView}`;
+const query = sql`SELECT * FROM ${exampleMaterializedView.targetTable.name}`;
 ```
+</TypeScript>
+
+<Python>
+Example coming soon
+</Python>
 
 ## How It Works
 

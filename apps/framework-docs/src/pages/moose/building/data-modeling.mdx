@@ -93,7 +93,7 @@ my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", Ingest
 ### Basic Types
 
 <TypeScript>
-```typescript filename="app/datamodels/BasicDataModel.ts"
+```ts filename="app/datamodels/BasicDataModel.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 export interface BasicDataModel {
@@ -151,7 +151,7 @@ class BasicDataModel(BaseModel):
 #### Nested Objects
 
 <TypeScript>
-```typescript filename="app/datamodels/NestedDataModel.ts"
+```ts filename="app/datamodels/NestedDataModel.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 // Define nested object separately
@@ -196,7 +196,7 @@ class DataModelWithNested(BaseModel):
 #### Using Enums
 
 <TypeScript>
-```typescript filename="app/datamodels/EnumDataModel.ts"
+```ts filename="app/datamodels/EnumDataModel.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 enum OrderStatus {
@@ -266,7 +266,7 @@ class Order(BaseModel):
 
 <TypeScript>
 Do not use `any` or `unknown` types:
-```typescript filename="app/datamodels/AnyFields.ts"
+```ts filename="app/datamodels/AnyFields.ts" copy
 interface BadDataModel {
   unknownField: unknown;
   // or
@@ -430,7 +430,7 @@ If you don't need all the components, you can create them individually and wire 
 ##### `Stream`
 Creates a Redpanda topic that can be configured to sync data to a ClickHouse table with the same schema:
 <TypeScript>
-```typescript filename="app/index.ts"
+```ts filename="app/index.ts" copy
 import { Stream } from "@514labs/moose-lib";
 
 // Basic stream
@@ -453,7 +453,7 @@ my_stream = Stream[MyDataModel]("TopicName")
   
 ##### `IngestAPI`
 <TypeScript>
-```typescript filename="app/index.ts"
+```ts filename="app/index.ts" copy
 import { IngestAPI } from "@514labs/moose-lib";
 
 const myIngestAPI = new IngestAPI<MyDataModel>("api-route-name");
@@ -477,7 +477,7 @@ Data models also power your downstream data processing workflows after data is s
 #### `MaterializedView`
 Materialized views are a way to pre-compute and store the results of complex queries on your data. This allows you to query the materialized view directly for faster results, or use it as the source for another derived table for cascading transformations:
 <TypeScript>
-```typescript filename="app/index.ts"
+```ts filename="app/index.ts" copy
 import { MaterializedView } from "@514labs/moose-lib";
 
 const myMaterializedView = new MaterializedView<MyDataModel>({
@@ -507,7 +507,7 @@ my_materialized_view = MaterializedView[MyDataModel](
 Consumption APIs are a way to expose your data to external consumers. They are typed and validateagainst your data models, ensuring that the client request parameters and response types are correct at runtime:
 
 <TypeScript>
-```ts filename="app/index.ts"
+```ts filename="app/index.ts" copy
 import { ConsumptionAPI } from "@514labs/moose-lib";
 
 const myConsumptionAPI = new ConsumptionAPI<RequestDataModel, ResponseDataModel>("MyConsumptionAPI"async({request: RequestDataModel}, {client, sql}) => {

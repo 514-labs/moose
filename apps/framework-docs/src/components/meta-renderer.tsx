@@ -73,7 +73,7 @@ const renderObjectWithIcon = (item: MetaItem): MetaItem => {
     ...item,
     title: (
       <UI.IconWithText
-        icon={item.Icon ? <item.Icon className="w-6 h-6" /> : undefined}
+        icon={item.Icon ? <item.Icon className="w-4 h-4" /> : undefined}
         text={item.title}
       />
     ),

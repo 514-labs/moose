@@ -1,4 +1,6 @@
-export default {
+import { render } from "@/components";
+
+const meta = {
   index: {
     title: "Introduction",
     theme: {
@@ -12,3 +14,5 @@ export default {
   "tool-reference": "Tool reference",
   "prompting-best-practices": "Prompting best practices",
 } as const;
+
+export default render(meta);

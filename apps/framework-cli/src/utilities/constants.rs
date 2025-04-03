@@ -98,3 +98,9 @@ pub const UTILS_WRAPPER_PACKAGE_NAME: &str = "utils";
 
 pub const PYTHON_MAIN_FILE: &str = "main.py";
 pub const TYPESCRIPT_MAIN_FILE: &str = "index.ts";
+
+pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
+pub const WORKFLOW_TYPE: &str = "ScriptWorkflow";
+pub const PYTHON_TASK_QUEUE: &str = "python-script-queue";
+pub const TYPESCRIPT_TASK_QUEUE: &str = "typescript-script-queue";
+pub const MOOSE_CLI_IDENTITY: &str = "moose-cli";

@@ -9,12 +9,14 @@ use super::config::WorkflowConfig;
 use crate::framework::{
     languages::SupportedLanguages,
     scripts::utils::{
-        get_temporal_domain_name, get_temporal_namespace, parse_schedule, parse_timeout_to_seconds,
-        TemporalExecutionError,
+        get_temporal_namespace, parse_schedule, parse_timeout_to_seconds, TemporalExecutionError,
     },
 };
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
+use crate::utilities::constants::{
+    MOOSE_CLI_IDENTITY, PYTHON_TASK_QUEUE, TYPESCRIPT_TASK_QUEUE, WORKFLOW_TYPE,
+};
 use temporal_sdk_core::protos::temporal::api::common::v1::{
     Payload, Payloads, RetryPolicy, WorkflowType,
 };
@@ -24,12 +26,6 @@ use temporal_sdk_core::protos::temporal::api::enums::v1::{
 
 use temporal_sdk_core::protos::temporal::api::taskqueue::v1::TaskQueue;
 use temporal_sdk_core::protos::temporal::api::workflowservice::v1::StartWorkflowExecutionRequest;
-
-const WORKFLOW_TYPE: &str = "ScriptWorkflow";
-const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
-const PYTHON_TASK_QUEUE: &str = "python-script-queue";
-const TYPESCRIPT_TASK_QUEUE: &str = "typescript-script-queue";
-const MOOSE_CLI_IDENTITY: &str = "moose-cli";
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkflowExecutionError {
@@ -99,12 +95,7 @@ async fn execute_workflow_for_language(
     let client_manager = TemporalClientManager::new(params.temporal_config);
 
     let temporal_url = params.temporal_config.temporal_url_with_scheme();
-    let domain_name = get_temporal_domain_name(&temporal_url);
-    let namespace = if temporal_url.contains("localhost") {
-        DEFAULT_TEMPORTAL_NAMESPACE.to_string()
-    } else {
-        get_temporal_namespace(domain_name)
-    };
+    let namespace = get_temporal_namespace(&temporal_url);
 
     info!("Using namespace: {}", namespace);
 

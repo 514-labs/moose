@@ -66,9 +66,9 @@ def handle_key(field_type: type) -> Tuple[bool, type]:
     return False, field_type
 
 
-def handle_annotation(t: type, md: list[any]) -> Tuple[type, list[any]]:
+def handle_annotation(t: type, md: list[Any]) -> Tuple[type, list[Any]]:
     if get_origin(t) is Annotated:
-        return handle_annotation(t.__origin__, md + t.__metadata__)
+        return handle_annotation(t.__origin__, md + t.__metadata__) # type: ignore
     if get_origin(t) is Aggregated:
         args = get_args(t)
         agg_func = args[1]
@@ -80,16 +80,18 @@ def handle_annotation(t: type, md: list[any]) -> Tuple[type, list[any]]:
 
 class Column(BaseModel):
     name: str
-    data_type: str
+    data_type: DataType
     required: bool
     unique: Literal[False]
     primary_key: bool
     annotations: list[Tuple[str, Any]] = []
 
 
-def py_type_to_column_type(t: type) -> Tuple[bool, list[any], DataType]:
+def py_type_to_column_type(t: type) -> Tuple[bool, list[Any], DataType]:
     t, md = handle_annotation(t, [])
     optional, t = handle_optional(t)
+
+    data_type: DataType
 
     if t is str:
         data_type = "String"

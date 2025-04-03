@@ -71,7 +71,7 @@ def moose_data_model(arg: Any = None) -> Any:
     def decorator(data_class: type) -> type:
         expected_file_name = os.environ.get("MOOSE_PYTHON_DM_DUMP")
         if expected_file_name and expected_file_name == get_file(data_class):
-            output = {
+            output: dict[str, str | dict] = {
                 'class_name': data_class.__name__
             }
             if arg:

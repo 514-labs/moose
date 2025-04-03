@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
+use crate::framework::scripts::utils::get_temporal_namespace;
 use crate::framework::scripts::Workflow;
-use crate::infrastructure::orchestration::temporal::DEFAULT_TEMPORTAL_NAMESPACE;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
@@ -60,6 +60,8 @@ pub async fn run_workflow(
     input: Option<String>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let workflow_dir = project.scripts_dir().join(name);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     // Check if workflow directory exists
     if !workflow_dir.exists() {
@@ -114,7 +116,7 @@ pub async fn run_workflow(
 
     let dashboard_url = format!(
         "http://localhost:8080/namespaces/{}/workflows/{}/{}/history",
-        DEFAULT_TEMPORTAL_NAMESPACE, name, run_id
+        namespace, name, run_id
     );
 
     Ok(RoutineSuccess::success(Message {
@@ -134,6 +136,8 @@ pub async fn list_workflows(
     let mut table_data = Vec::new();
 
     let client_manager = TemporalClientManager::new(&project.temporal_config);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     // Convert status string to Temporal status enum
     let status_filter = if let Some(status_str) = status {
@@ -156,7 +160,7 @@ pub async fn list_workflows(
 
     // List workflows from Temporal
     let request = ListWorkflowExecutionsRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace,
         page_size: limit as i32,
         query,
         ..Default::default()
@@ -220,9 +224,11 @@ pub async fn terminate_workflow(
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let client_manager = TemporalClientManager::new(&project.temporal_config);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     let request = TerminateWorkflowExecutionRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace,
         workflow_execution: Some(
             temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution {
                 workflow_id: name.to_string(),
@@ -265,9 +271,11 @@ pub async fn terminate_workflow(
 
 pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     let client_manager = Arc::new(TemporalClientManager::new(&project.temporal_config));
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     let request = ListWorkflowExecutionsRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace: namespace.clone(),
         page_size: 1000,
         query: "ExecutionStatus = 'Running'".to_string(),
         ..Default::default()
@@ -275,6 +283,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
 
     let response = client_manager
         .execute(|mut client| async move {
+            // page size is in the ListWorkflowExecutionsRequest above
             client
                 .list_workflow_executions(request)
                 .await
@@ -303,9 +312,10 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .filter_map(|execution| execution.execution)
         .map(|execution_info| {
             let client_manager = Arc::clone(&client_manager);
+            let namespace = namespace.clone();
             async move {
                 let request = TerminateWorkflowExecutionRequest {
-                    namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+                    namespace,
                     workflow_execution: Some(WorkflowExecution {
                         workflow_id: execution_info.workflow_id.clone(),
                         run_id: execution_info.run_id,
@@ -349,9 +359,11 @@ pub async fn pause_workflow(
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let client_manager = TemporalClientManager::new(&project.temporal_config);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     let request = SignalWorkflowExecutionRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace,
         workflow_execution: Some(
             temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution {
                 workflow_id: name.to_string(),
@@ -389,9 +401,11 @@ pub async fn unpause_workflow(
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let client_manager = TemporalClientManager::new(&project.temporal_config);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url);
 
     let request = SignalWorkflowExecutionRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace,
         workflow_execution: Some(
             temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution {
                 workflow_id: name.to_string(),
@@ -432,6 +446,8 @@ pub async fn get_workflow_status(
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let client_manager = TemporalClientManager::new(&project.temporal_config);
+    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let namespace = get_temporal_namespace(&temporal_url).to_string();
 
     // If no run_id provided, get the most recent one
     let execution_id = if let Some(id) = run_id {
@@ -439,7 +455,7 @@ pub async fn get_workflow_status(
     } else {
         // List workflows to get most recent
         let request = ListWorkflowExecutionsRequest {
-            namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+            namespace: namespace.clone(),
             page_size: 1,
             query: format!("WorkflowId = '{}'", name),
             ..Default::default()
@@ -473,7 +489,7 @@ pub async fn get_workflow_status(
 
     // Get workflow details
     let request = DescribeWorkflowExecutionRequest {
-        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        namespace: namespace.clone(),
         execution: Some(
             temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution {
                 workflow_id: name.to_string(),
@@ -533,7 +549,7 @@ pub async fn get_workflow_status(
 
     if verbose {
         let history_request = GetWorkflowExecutionHistoryRequest {
-            namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+            namespace: namespace.clone(),
             execution: Some(WorkflowExecution {
                 workflow_id: name.to_string(),
                 run_id: execution_id.clone(),
@@ -631,7 +647,7 @@ pub async fn get_workflow_status(
 
         if verbose {
             let history_request = GetWorkflowExecutionHistoryRequest {
-                namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+                namespace: namespace.clone(),
                 execution: Some(WorkflowExecution {
                     workflow_id: name.to_string(),
                     run_id: execution_id.clone(),

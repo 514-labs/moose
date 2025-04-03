@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TemporalConfig {
     #[serde(default = "default_db_user")]

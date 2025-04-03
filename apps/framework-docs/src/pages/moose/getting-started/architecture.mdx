@@ -24,14 +24,27 @@ Moose organizes your data pipeline into five distinct infrastructure modules:
 
 Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:
 
-```toml
+### Default Configuration
+```toml filename="moose.config.toml"
 [features]
 streaming_engine = true  # Include Redpanda for streaming
-workflows = false        # Disable Temporal for orchestration
+workflows = true        # Enable Temporal for orchestration
 ```
 <Callout type="warning">
-By default, workflows are disabled. You must set `workflows = true` to enable the workflow engine.
+By default, both `streaming_engine` and `workflows` are enabled. You must set the respective features to `false` to disable them.
 </Callout>
+
+### Disabling Streaming
+```toml filename="moose.config.toml"
+[features]
+streaming_engine = false  # Disable Redpanda for streaming
+```
+
+### Disabling Orchestration
+```toml filename="moose.config.toml"
+[features]
+workflows = false        # Disable Temporal for orchestration
+```
 
 ## Development Environment Details
 

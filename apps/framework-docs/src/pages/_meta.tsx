@@ -30,4 +30,7 @@ export default render({
     title: "Templates",
     href: "/templates",
   },
+  "usage-data": {
+    display: "hidden",
+  },
 });

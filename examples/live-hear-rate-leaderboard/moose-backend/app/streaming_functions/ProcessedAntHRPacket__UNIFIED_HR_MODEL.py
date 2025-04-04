@@ -2,7 +2,7 @@
 # Add your models & start the development server to import these types
 from app.datamodels.ProcessedAntHRPacket import ProcessedAntHRPacket
 from app.datamodels.UNIFIED_HR_MODEL import UNIFIED_HR_MODEL
-from moose_lib import StreamingFunction, Logger
+from moose_lib import StreamingFunction
 from typing import Optional
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,13 +11,13 @@ import json
 # Load the mock user db and return a dictionary of devices
 def load_device_dict():
     json_path = Path(__file__).parents[3] / 'mock-user-db.json'
-    logger = Logger(action="SF")
-    logger.info(f'Starting streaming function and loading mock user db from {json_path}')
+    # logger = Logger(action="SF")
+    # logger.info(f'Starting streaming function and loading mock user db from {json_path}')
 
     with open(json_path) as f:
         device_dict = json.load(f)
     
-    logger.info(f"Device dict: {device_dict}")
+    # logger.info(f"Device dict: {device_dict}")
     return device_dict
 
 device_dict = load_device_dict()

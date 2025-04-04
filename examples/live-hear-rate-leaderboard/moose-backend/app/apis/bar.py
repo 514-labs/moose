@@ -2,7 +2,7 @@
 # This file is where you can define your API templates for consuming your data
 
 from moose_lib import MooseClient
-from moose_lib.dmv2 import ConsumptionApi
+from moose_lib import ConsumptionApi
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.views.bar_aggregated import barAggregatedMV

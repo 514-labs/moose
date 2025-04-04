@@ -1,7 +1,7 @@
 
-from app.ingest import models, transforms
-import app.apis.bar as bar_api
-import app.views.bar_aggregated as bar_view
+# from app.ingest import models, transforms
+# import app.apis.bar as bar_api
+# import app.views.bar_aggregated as bar_view
 
 from app.apis.getHR import get_hr_api, QueryParams, QueryResult
 

@@ -66,7 +66,7 @@ pub async fn execute_changes(
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let source_topic = infra_map.get_topic(&sync.source_topic_id)?;
-                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, &source_topic);
+                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, source_topic);
 
                 let target_table = infra_map.get_table(&sync.target_table_id)?;
 
@@ -83,7 +83,7 @@ pub async fn execute_changes(
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let source_topic = infra_map.get_topic(&sync.source_topic_id)?;
-                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, &source_topic);
+                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, source_topic);
 
                 let target_table = infra_map.get_table(&sync.target_table_id)?;
 
@@ -95,14 +95,14 @@ pub async fn execute_changes(
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let before_source_topic = infra_map.get_topic(&before.source_topic_id)?;
                 let before_kafka_source_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, &before_source_topic);
+                    KafkaStreamConfig::from_topic(kafka_config, before_source_topic);
 
                 let before_target_table = infra_map.get_table(&before.target_table_id)?;
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let after_source_topic = infra_map.get_topic(&after.source_topic_id)?;
                 let after_kafka_source_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, &after_source_topic);
+                    KafkaStreamConfig::from_topic(kafka_config, after_source_topic);
 
                 let after_target_table = infra_map.get_table(&after.target_table_id)?;
 
@@ -125,10 +125,10 @@ pub async fn execute_changes(
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let source_topic = infra_map.get_topic(&sync.source_topic_id)?;
-                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, &source_topic);
+                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, source_topic);
 
                 let target_topic = infra_map.get_topic(&sync.target_topic_id)?;
-                let target_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, &target_topic);
+                let target_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, target_topic);
 
                 syncing_registry.start_topic_to_topic(
                     source_kafka_topic.name.clone(),
@@ -141,7 +141,7 @@ pub async fn execute_changes(
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let target_topic = infra_map.get_topic(&sync.target_topic_id)?;
-                let target_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, &target_topic);
+                let target_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, target_topic);
 
                 syncing_registry.stop_topic_to_topic(&target_kafka_topic.name)
             }
@@ -152,15 +152,15 @@ pub async fn execute_changes(
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let before_target_topic = infra_map.get_topic(&before.target_topic_id)?;
                 let before_kafka_target_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, &before_target_topic);
+                    KafkaStreamConfig::from_topic(kafka_config, before_target_topic);
 
                 let after_source_topic = infra_map.get_topic(&after.source_topic_id)?;
                 let after_kafka_source_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, &after_source_topic);
+                    KafkaStreamConfig::from_topic(kafka_config, after_source_topic);
 
                 let after_target_topic = infra_map.get_topic(&after.target_topic_id)?;
                 let after_kafka_target_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, &after_target_topic);
+                    KafkaStreamConfig::from_topic(kafka_config, after_target_topic);
 
                 syncing_registry.stop_topic_to_topic(&before_kafka_target_topic.name);
                 syncing_registry.start_topic_to_topic(

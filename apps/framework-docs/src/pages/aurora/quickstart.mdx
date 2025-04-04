@@ -20,7 +20,7 @@ This will install [Moose](/moose) (our open source developer framework for Data 
 
 This prompt you for an Anthropic token, if you don't have one, see: https://docs.anthropic.com/en/docs/initial-setup
 
-### Creating your project
+### Creating your Project
 
 ```bash filename="Terminal" copy
 aurora init <project-name> ads-b
@@ -30,7 +30,7 @@ This will create a new Moose projec using the ADS-B template t to gather ADS-B d
 
 If you want to create an empty project, and build your own Data Models and ingestion, try `aurora init <project-name> typescript-empty` or `aurora init <project-name> python-empty`
 
-### Installing dependencies
+### Installing Dependencies
 
 Navigate into the created project directory: 
 
@@ -44,25 +44,25 @@ Install the dependencies:
 npm i
 ```
 
-### Open cursor and enable the MCPs
+### Open Cursor and Enable the MCPs
 
 Then open your code editor `cursor .`
 
 Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "aurora". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
 
-### Run the Moose dev server locally
+### Run the Moose Dev Server Locally
 
 **Warning: make sure you have docker desktop running before this step!**
 
 You now have the project ready to go, run `moose dev` to start the dev server.
 
-### Start ingesting data
+### Start Ingesting Data
 
 Run the command to start ingesting data with the configured ingest scripts: `moose workflow run military_aircraft_tracking`
 
 You should start to see hundreds of live datapoints ingesting instantly!
 
-### Start using Aurora
+### Start Using Aurora
 
 In the LLM discussion pane, ask your host about your Moose project, it should use Aurora MCP tools to deliver rich context!
 

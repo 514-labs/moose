@@ -317,7 +317,7 @@ jobs:
               echo "Running in Docker container, installing required dependencies..."
               PROTOC_VERSION=24.4
               PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-              export POSTHOG_API_KEY=$POSTHOG_API_KEY 
+              export POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
               
               # Debian-based distribution
               apt install -y curl unzip

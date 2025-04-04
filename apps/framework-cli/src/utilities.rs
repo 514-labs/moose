@@ -6,6 +6,7 @@ pub mod constants;
 pub mod decode_object;
 pub mod docker;
 pub mod git;
+pub mod machine_id;
 pub mod package_managers;
 pub mod retry;
 pub mod system;

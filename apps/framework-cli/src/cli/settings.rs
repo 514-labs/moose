@@ -35,7 +35,6 @@ use log::warn;
 use serde::Deserialize;
 use std::path::PathBuf;
 use toml_edit::{table, value, DocumentMut, Item};
-use uuid::Uuid;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
@@ -55,8 +54,6 @@ pub struct MetricLabels {
 /// Telemetry configuration for usage tracking and metrics
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
-    /// Unique identifier for the machine running Moose
-    pub machine_id: String,
     /// Whether telemetry collection is enabled
     pub enabled: bool,
     /// Whether to export metrics to external systems
@@ -72,7 +69,6 @@ impl Default for Telemetry {
         Telemetry {
             enabled: true,
             is_moose_developer: false,
-            machine_id: Uuid::new_v4().to_string(),
             export_metrics: false,
         }
     }
@@ -205,12 +201,8 @@ pub fn init_config_file() -> Result<(), std::io::Error> {
 # Set this to false to opt-out
 enabled=true
 is_moose_developer=false
-machine_id="{{uuid}}"
 "#;
-        std::fs::write(
-            path,
-            contents_toml.replace("{{uuid}}", &Uuid::new_v4().to_string()),
-        )?;
+        std::fs::write(path, contents_toml)?;
     } else {
         let data = std::fs::read_to_string(&path)?;
         match data.parse::<DocumentMut>() {
@@ -229,9 +221,6 @@ machine_id="{{uuid}}"
 
                 table.entry("enabled").or_insert(value(true));
                 table.entry("is_moose_developer").or_insert(value(false));
-                table
-                    .entry("machine_id")
-                    .or_insert_with(|| value(Uuid::new_v4().to_string()));
 
                 std::fs::write(path, toml.to_string())?;
             }

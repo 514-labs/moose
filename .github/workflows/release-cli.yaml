@@ -222,6 +222,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -304,6 +305,7 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
+
           # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
           manylinux: ${{ (matrix.build.TARGET == 'aarch64-unknown-linux-gnu' || matrix.build.TARGET == 'x86_64-unknown-linux-gnu') && '2_28' || '' }}
           working-directory: ./apps/framework-cli
@@ -315,6 +317,7 @@ jobs:
               echo "Running in Docker container, installing required dependencies..."
               PROTOC_VERSION=24.4
               PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
+              export POSTHOG_API_KEY=$POSTHOG_API_KEY 
               
               # Debian-based distribution
               apt install -y curl unzip

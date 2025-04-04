@@ -1,3 +1,4 @@
+pub mod analytics;
 mod cli;
 pub mod framework;
 pub mod infrastructure;

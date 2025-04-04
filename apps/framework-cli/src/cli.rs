@@ -11,6 +11,7 @@ use super::metrics::Metrics;
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
 use crate::utilities::docker::DockerClient;
+use crate::utilities::machine_id::get_or_create_machine_id;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -217,6 +218,12 @@ async fn top_command_handler(
             );
             let project_arc = Arc::new(load_project()?);
 
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::CheckCommand,
+                Some(project_arc.name()),
+                &settings,
+            );
+
             check_project_name(&project_arc.name())?;
 
             check_system_reqs(&project_arc.language_project_config)
@@ -274,6 +281,8 @@ async fn top_command_handler(
                     )
                 })?;
             }
+
+            wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
                 "Checked".to_string(),
@@ -363,10 +372,12 @@ async fn top_command_handler(
                 })
             })?;
 
+            let machine_id = get_or_create_machine_id();
+
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
-                    machine_id: settings.telemetry.machine_id.clone(),
+                    machine_id,
                     metric_labels: settings.metric.labels.clone(),
                     is_moose_developer: settings.telemetry.is_moose_developer,
                     is_production: project_arc.is_production,
@@ -518,10 +529,12 @@ async fn top_command_handler(
                 })
             })?;
 
+            let machine_id = get_or_create_machine_id();
+
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
-                    machine_id: settings.telemetry.machine_id.clone(),
+                    machine_id,
                     metric_labels: settings.metric.labels.clone(),
                     is_moose_developer: settings.telemetry.is_moose_developer,
                     is_production: project_arc.is_production,
@@ -928,7 +941,17 @@ async fn top_command_handler(
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            peek(project_arc, data_model_name, *limit, file.clone(), *topic).await
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::PeekCommand,
+                Some(project_arc.name()),
+                &settings,
+            );
+
+            let result = peek(project_arc, data_model_name, *limit, file.clone(), *topic).await;
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
         }
         Commands::Workflow(workflow_args) => {
             let project = load_project()?;
@@ -940,7 +963,25 @@ async fn top_command_handler(
                 }));
             }
 
-            match &workflow_args.command {
+            let activity_type = match &workflow_args.command {
+                Some(WorkflowCommands::Init { .. }) => ActivityType::WorkflowInitCommand,
+                Some(WorkflowCommands::Run { .. }) => ActivityType::WorkflowRunCommand,
+                Some(WorkflowCommands::List { .. }) => ActivityType::WorkflowListCommand,
+                Some(WorkflowCommands::Resume { .. }) => ActivityType::WorkflowResumeCommand,
+                Some(WorkflowCommands::Terminate { .. }) => ActivityType::WorkflowTerminateCommand,
+                Some(WorkflowCommands::Pause { .. }) => ActivityType::WorkflowPauseCommand,
+                Some(WorkflowCommands::Unpause { .. }) => ActivityType::WorkflowUnpauseCommand,
+                Some(WorkflowCommands::Status { .. }) => ActivityType::WorkflowStatusCommand,
+                None => ActivityType::WorkflowCommand,
+            };
+
+            let capture_handle = crate::utilities::capture::capture_usage(
+                activity_type,
+                Some(project.name()),
+                &settings,
+            );
+
+            let result = match &workflow_args.command {
                 Some(WorkflowCommands::Init { name, tasks, task }) => {
                     init_workflow(&project, name, tasks.clone(), task.clone()).await
                 }
@@ -969,7 +1010,11 @@ async fn top_command_handler(
                     action: "Workflow".to_string(),
                     details: "No subcommand provided".to_string(),
                 })),
-            }
+            };
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
         }
     }
 }
@@ -992,7 +1037,8 @@ pub async fn cli_run() {
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();
-    setup_logging(&config.logger, &config.telemetry.machine_id).expect("Failed to setup logging");
+    let machine_id = get_or_create_machine_id();
+    setup_logging(&config.logger, &machine_id).expect("Failed to setup logging");
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 

@@ -582,16 +582,30 @@ jobs:
         run: |
           expect << EOF
           spawn pypi-cleanup -u 514 -p moose-cli -d 100 -r ".*" --do-it --yes
-          expect "Authentication code:"
-          send "$PYPI_OTP\r"
-          expect eof
+          expect {
+            "Authentication code:" {
+              send "$PYPI_OTP\r"
+              exp_continue
+            }
+            "No releases were found" {
+              # Nothing to do, this is fine
+            }
+            eof
+          }
           EOF
 
           expect << EOF
           spawn pypi-cleanup -u 514 -p moose-lib -d 100 -r ".*" --do-it --yes
-          expect "Authentication code:" 
-          send "$PYPI_OTP\r"
-          expect eof
+          expect {
+            "Authentication code:" {
+              send "$PYPI_OTP\r"
+              exp_continue
+            }
+            "No releases were found" {
+              # Nothing to do, this is fine
+            }
+            eof
+          }
           EOF
 
         env:

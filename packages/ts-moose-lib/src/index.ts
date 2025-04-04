@@ -41,6 +41,9 @@ export {
   IngestApi,
   ConsumptionApi,
   IngestPipeline,
+  SqlResource,
+  View,
+  MaterializedView,
 } from "./dmv2";
 
 export { createConsumptionApi } from "./consumption-apis/runner";

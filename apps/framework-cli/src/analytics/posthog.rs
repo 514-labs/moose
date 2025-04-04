@@ -60,7 +60,7 @@ impl PostHogClient {
         });
 
         self.http_client
-            .post(&format!("{}/capture/", self.host))
+            .post(format!("{}/capture/", self.host))
             .json(&payload)
             .send()
             .await

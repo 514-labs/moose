@@ -82,6 +82,21 @@ pub enum InfraMapProtoError {
     MissingField { field_name: String },
 }
 
+/// Error types for InfrastructureMap operations
+///
+/// This enum defines errors that can occur when working with the infrastructure map,
+/// particularly when trying to access components that don't exist.
+#[derive(Debug, thiserror::Error)]
+pub enum InfraMapError {
+    /// Error when a topic with the specified ID cannot be found
+    #[error("Topic {topic_id} not found in the infrastructure map")]
+    TopicNotFound { topic_id: String },
+
+    /// Error when a table with the specified ID cannot be found
+    #[error("Table {table_id} not found in the infrastructure map")]
+    TableNotFound { table_id: String },
+}
+
 /// Types of primitives that can be represented in the infrastructure
 ///
 /// These represent the core building blocks of the system that can be
@@ -1684,8 +1699,62 @@ impl InfrastructureMap {
     ///
     /// # Returns
     /// An Option containing a reference to the topic if found
-    pub fn get_topic_by_id(&self, id: &str) -> Option<&Topic> {
+    pub fn find_topic_by_id(&self, id: &str) -> Option<&Topic> {
         self.topics.get(id)
+    }
+
+    /// Gets a topic by its ID, returning an error if not found
+    ///
+    /// This method is similar to `find_topic_by_id` but returns a Result
+    /// instead of an Option, making it more suitable for contexts where
+    /// a missing topic should be treated as an error.
+    ///
+    /// # Arguments
+    /// * `id` - The ID of the topic to get
+    ///
+    /// # Returns
+    /// A Result containing a reference to the topic if found, or an InfraMapError if not found
+    ///
+    /// # Errors
+    /// Returns `InfraMapError::TopicNotFound` if no topic with the given ID exists
+    pub fn get_topic(&self, id: &str) -> Result<&Topic, InfraMapError> {
+        self.find_topic_by_id(id)
+            .ok_or(InfraMapError::TopicNotFound {
+                topic_id: id.to_string(),
+            })
+    }
+
+    /// Gets a table by its ID, returning an error if not found
+    ///
+    /// This method is similar to `find_table_by_id` but returns a Result
+    /// instead of an Option, making it more suitable for contexts where
+    /// a missing table should be treated as an error.
+    ///
+    /// # Arguments
+    /// * `id` - The ID of the table to get
+    ///
+    /// # Returns
+    /// A Result containing a reference to the table if found, or an InfraMapError if not found
+    ///
+    /// # Errors
+    /// Returns `InfraMapError::TableNotFound` if no table with the given ID exists
+    ///
+    pub fn get_table(&self, id: &str) -> Result<&Table, InfraMapError> {
+        self.find_table_by_id(id)
+            .ok_or(InfraMapError::TableNotFound {
+                table_id: id.to_string(),
+            })
+    }
+
+    /// Finds a table by its ID
+    ///
+    /// # Arguments
+    /// * `id` - The ID of the table to find
+    ///
+    /// # Returns
+    /// An Option containing a reference to the table if found
+    pub fn find_table_by_id(&self, id: &str) -> Option<&Table> {
+        self.tables.get(id)
     }
 
     /// Gets a topic by its name
@@ -1695,7 +1764,7 @@ impl InfrastructureMap {
     ///
     /// # Returns
     /// An Option containing a reference to the topic if found
-    pub fn get_topic_by_name(&self, name: &str) -> Option<&Topic> {
+    pub fn find_topic_by_name(&self, name: &str) -> Option<&Topic> {
         self.topics.values().find(|topic| topic.name == name)
     }
 }

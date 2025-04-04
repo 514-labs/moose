@@ -66,6 +66,9 @@ struct TopicToTopicSyncingProcess {
 }
 
 /// Registry that manages all synchronization processes
+///
+/// TODO make this more type safe, ie the topic names should not be strings but rather a struct
+/// so that a name from Topic could not be passed in
 pub struct SyncingProcessesRegistry {
     /// Map of topic-table processes by their combined key
     to_table_registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,

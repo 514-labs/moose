@@ -56,11 +56,16 @@ type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
  */
 type SlimKafkaMessage = { value: string };
 
+/**
+ * Configuration interface for Kafka topics including namespace and version support
+ */
 export interface TopicConfig {
-  name: string;
+  name: string; // Full topic name including namespace if present
   partitions: number;
   retentionPeriod: number;
   maxMessageBytes: number;
+  namespace?: string;
+  version?: string;
 }
 
 /**
@@ -382,7 +387,7 @@ async function loadStreamingFunctionV2(
   targetTopic?: TopicConfig,
 ) {
   const transformFunctions = await getStreamingFunctions();
-  const transformFunctionKey = `${sourceTopic.name}_${targetTopic?.name}`;
+  const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : "<no-target>"}`;
   return transformFunctions.get(transformFunctionKey);
 }
 
@@ -418,10 +423,16 @@ const startConsumer = async (
   streamingFuncId: string,
   targetTopic?: TopicConfig,
 ): Promise<void> => {
+  // Validate topic configurations
+  validateTopicConfig(sourceTopic);
+  if (targetTopic) {
+    validateTopicConfig(targetTopic);
+  }
+
   await consumer.connect();
 
   logger.log(
-    `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic.name} and target topic: ${targetTopic?.name}`,
+    `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic.name} and target topic: ${targetTopic?.name || "none"}`,
   );
 
   // We preload the function to not have to load it for each message
@@ -430,10 +441,7 @@ const startConsumer = async (
     : loadStreamingFunction(functionFilePath);
 
   await consumer.subscribe({
-    topics: [sourceTopic.name],
-    // to read records sent before subscriber is created for when the groupId is new
-    // and there are no committed offsets. If the groupId is not new, it will start
-    // from the last committed offset.
+    topics: [sourceTopic.name], // Use full topic name for Kafka operations
     fromBeginning: true,
   });
 
@@ -530,6 +538,68 @@ const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
 };
 
 /**
+ * Formats a version string into a topic suffix format by replacing dots with underscores
+ * Example: "1.2.3" -> "_1_2_3"
+ */
+export function formatVersionSuffix(version: string): string {
+  return `_${version.replace(/\./g, "_")}`;
+}
+
+/**
+ * Transforms a topic name by removing namespace prefix and version suffix
+ * to get the base stream name for function mapping
+ */
+export function topicNameToStreamName(config: TopicConfig): string {
+  let name = config.name;
+
+  // Handle version suffix if present
+  if (config.version) {
+    const versionSuffix = formatVersionSuffix(config.version);
+    if (name.endsWith(versionSuffix)) {
+      name = name.slice(0, -versionSuffix.length);
+    } else {
+      throw new Error(
+        `Version suffix ${versionSuffix} not found in topic name ${name}`,
+      );
+    }
+  }
+
+  // Handle namespace prefix if present
+  if (config.namespace && config.namespace !== "") {
+    const prefix = `${config.namespace}.`;
+    if (name.startsWith(prefix)) {
+      name = name.slice(prefix.length);
+    } else {
+      throw new Error(
+        `Namespace prefix ${prefix} not found in topic name ${name}`,
+      );
+    }
+  }
+
+  return name;
+}
+
+/**
+ * Validates a topic configuration for proper namespace and version formatting
+ */
+export function validateTopicConfig(config: TopicConfig): void {
+  if (config.namespace && !config.name.startsWith(`${config.namespace}.`)) {
+    throw new Error(
+      `Topic name ${config.name} must start with namespace ${config.namespace}`,
+    );
+  }
+
+  if (config.version) {
+    const versionSuffix = formatVersionSuffix(config.version);
+    if (!config.name.endsWith(versionSuffix)) {
+      throw new Error(
+        `Topic name ${config.name} must end with version ${config.version}`,
+      );
+    }
+  }
+}
+
+/**
  * Initializes and runs a clustered streaming function system that processes messages from Kafka
  *
  * This function:
@@ -563,15 +633,16 @@ const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
 export const runStreamingFunctions = async (
   args: StreamingFunctionArgs,
 ): Promise<void> => {
-  const streamingFuncId = `flow-${args.sourceTopic.name}-${args.targetTopic?.name}`;
+  // Validate topic configurations at startup
+  validateTopicConfig(args.sourceTopic);
+  if (args.targetTopic) {
+    validateTopicConfig(args.targetTopic);
+  }
+
+  // Use base stream names (without namespace/version) for function ID
+  const streamingFuncId = `function-${args.sourceTopic.name}-${args.targetTopic?.name || "<no-target>"}`;
 
   const cluster = new Cluster({
-    // This is an arbitrary value, we can adjust it as needed
-    // based on the performance of the streaming functions
-    // I would like it to be replaced by a value that could be dynamic and controlled
-    // by the Rust CLI. Since the Rust CLI is managing all the processes, it could
-    // abritrage the resources available between the different services
-    // (streaming, consumption api, ingest API).
     maxCpuUsageRatio: 0.5,
     maxWorkerCount: args.maxSubscriberCount,
     workerStart: async (worker, parallelism) => {

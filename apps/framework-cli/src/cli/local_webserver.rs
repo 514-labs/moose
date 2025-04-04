@@ -1072,7 +1072,7 @@ impl Webserver {
                             } => {
                                 // This is not namespaced
                                 let topic = infra_map
-                                    .get_topic_by_id(&target_topic_id)
+                                    .find_topic_by_id(&target_topic_id)
                                     .expect("Topic not found");
 
                                 // This is now a namespaced topic
@@ -1120,7 +1120,7 @@ impl Webserver {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
                                 let topic = infra_map
-                                    .get_topic_by_id(target_topic_id)
+                                    .find_topic_by_id(target_topic_id)
                                     .expect("Topic not found");
 
                                 let kafka_topic =

@@ -8,7 +8,7 @@ const MACHINE_ID_FILE: &str = ".fiveonefour/machine_id";
 
 /// Gets or creates a tracking ID from ~/.fiveonefour/machine_id
 /// If the file exists, returns the existing ID
-/// If not, generates a new UUIDv7-like ID and saves it
+/// If not, generates a new UUIDv4 and saves it
 pub fn get_or_create_machine_id() -> String {
     let machine_id_path = get_machine_id_path();
 

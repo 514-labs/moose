@@ -1,17 +1,17 @@
-# Host setup guide
+# Host Setup Guide
 
 | Host | Support | Best for |
 | --- | --- | --- |
-| Claude Desktop | ✅ - dynamic config management through aurora CLI | Exploring your data and generating visualizations |
-| Cursor: Global | ✅ - dynamic config management through aurora CLI | Almost always better to use project-based configuration |
-| Cursor: Project Based | ✅ - dynamic config management through aurora CLI | Creating code in your data engineering project or around it. |
+| Claude Desktop | ✅ - Dynamic config management through aurora CLI | Exploring your data and generating visualizations |
+| Cursor: Global | ✅ - Dynamic config management through aurora CLI | Almost always better to use project-based configuration |
+| Cursor: Project Based | ✅ - Dynamic config management through aurora CLI | Creating code in your data engineering project or around it |
 | Others | ⚠️ - Try at your own risk, JSON config below | Living on the edge. Tell us what you are using at aurora@fiveonefour.com |
 
-Our opinion on what each host is best for is based on our experience as of 27 March 2025 (this stuff changes quickly)!
+Our opinion on what each host is best for is based on our experience as of March 27th 2025 (this stuff changes quickly)!
 
 ### Claude Desktop
 
-Quick links
+Quick Links
 
 - 🔗 Install Claude Desktop: https://claude.ai/download
 - 🔗 Claude Desktop MCP reference: https://docs.anthropic.com/en/docs/agents-and-tools/mcp
@@ -30,7 +30,7 @@ aurora setup --mcp claude-desktop
 
 This will look to the directory Claude stores its MCP configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
-- if there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there, and there is no configuration, it will add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there with other MCPs, it will add the `"aurora"` JSON object to configure the aurora MCP
 
@@ -40,13 +40,13 @@ Note: you will have to restart Claude Desktop for the MCP to be picked up. If it
 
 Common issues—if Claude Desktop doesn't pick up Aurora MCP:
 
-- try restart Claude Desktop
-- refer to Claude Desktop MCP settings (`Claude > Settings > Developer`)
-- refer to Claude Desktop MCP documentation: https://docs.anthropic.com/en/docs/agents-and-tools/mcp
+- Try restart Claude Desktop
+- Refer to Claude Desktop MCP settings (`Claude > Settings > Developer`)
+- Refer to Claude Desktop MCP documentation: https://docs.anthropic.com/en/docs/agents-and-tools/mcp
 
 Common issues—if the MCP isn't giving you access to data
 
-- ensure the local development server is running (`moose dev`)
+- Ensure the local development server is running (`moose dev`)
 
 ### Cursor Global MCP
 
@@ -64,7 +64,7 @@ aurora setup --mcp cursor-global
 
 This will look to the directory Cursor stores its MCP configuration (`~/.cursor/mcp.json`):
 
-- if there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there, and there is no configuration, it will add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there with other MCPs, it will add the `"aurora"` JSON object to configure the aurora MCP
 
@@ -74,13 +74,13 @@ You will have to enable the MCP server in the Cursor MCP settings (`Cursor > Set
 
 Common issues—if Cursor doesn't 🟢 the MCP:
 
-- try disable and enable the MCP again
-- try refresh the MCP
+- Try disable and enable the MCP again
+- Try refresh the MCP
 - See Cursor MCP documentation: https://docs.cursor.com/chat/tools#mcp
 
 Common issues—if the MCP isn't giving you access to data
 
-- ensure the local development server is running (`moose dev`)
+- Ensure the local development server is running (`moose dev`)
 
 ### Cursor Project Based MCP (preferred)
 
@@ -100,7 +100,7 @@ aurora setup
 
 This will look within the project for where Cursor stores its MCP configuration (`<path/to/project-root>/.cursor/mcp.json`):
 
-- if there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there, and there is no configuration, it will add the appropriate configuration JSON that allows it to use Aurora MCP
 - If there is an existing file there with other MCPs, it will add the `"aurora"` JSON object to configure the aurora MCP
 
@@ -110,13 +110,13 @@ You will have to enable the MCP server in the Cursor MCP settings (`Cursor > Set
 
 Common issues—if Cursor doesn't 🟢 the MCP:
 
-- try disable and enable the MCP again
-- try refresh the MCP
+- Try disable and enable the MCP again
+- Try refresh the MCP
 - See Cursor MCP documentation: https://docs.cursor.com/chat/tools#mcp
 
 Common issues—if the MCP isn't giving you access to data
 
-- ensure the local development server is running (`moose dev`)
+- Ensure the local development server is running (`moose dev`)
 
 ### Cursor FAQ:
 

@@ -145,6 +145,7 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
+    machine_id: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     match commands {
         Commands::Init {
@@ -162,6 +163,7 @@ async fn top_command_handler(
                 ActivityType::InitTemplateCommand,
                 Some(name.to_string()),
                 &settings,
+                machine_id.clone(),
             );
 
             check_project_name(name)?;
@@ -222,6 +224,7 @@ async fn top_command_handler(
                 ActivityType::CheckCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -305,6 +308,7 @@ async fn top_command_handler(
                     ActivityType::DockerCommand,
                     Some(project_arc.name()),
                     &settings,
+                    machine_id.clone(),
                 );
 
                 let docker_client = DockerClient::new(&settings);
@@ -323,6 +327,7 @@ async fn top_command_handler(
                     ActivityType::BuildCommand,
                     Some(project_arc.name()),
                     &settings,
+                    machine_id.clone(),
                 );
 
                 // Use the new build_package function instead of Docker build
@@ -358,6 +363,7 @@ async fn top_command_handler(
                 ActivityType::DevCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let docker_client = DockerClient::new(&settings);
@@ -372,12 +378,10 @@ async fn top_command_handler(
                 })
             })?;
 
-            let machine_id = get_or_create_machine_id();
-
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
-                    machine_id,
+                    machine_id: machine_id.clone(),
                     metric_labels: settings.metric.labels.clone(),
                     is_moose_developer: settings.telemetry.is_moose_developer,
                     is_production: project_arc.is_production,
@@ -421,6 +425,7 @@ async fn top_command_handler(
                     ActivityType::GenerateHashCommand,
                     Some(project_arc.name()),
                     &settings,
+                    machine_id.clone(),
                 );
 
                 check_project_name(&project_arc.name())?;
@@ -475,6 +480,7 @@ async fn top_command_handler(
                     ActivityType::GenerateSDKCommand,
                     Some(project.name()),
                     &settings,
+                    machine_id.clone(),
                 );
 
                 with_spinner_async(
@@ -529,12 +535,10 @@ async fn top_command_handler(
                 })
             })?;
 
-            let machine_id = get_or_create_machine_id();
-
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
-                    machine_id,
+                    machine_id: machine_id.clone(),
                     metric_labels: settings.metric.labels.clone(),
                     is_moose_developer: settings.telemetry.is_moose_developer,
                     is_production: project_arc.is_production,
@@ -556,6 +560,7 @@ async fn top_command_handler(
                 ActivityType::ProdCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             routines::start_production_mode(&settings, project_arc, arc_metrics, redis_client)
@@ -582,6 +587,7 @@ async fn top_command_handler(
                 ActivityType::PlanCommand,
                 Some(project.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             check_project_name(&project.name())?;
@@ -610,6 +616,7 @@ async fn top_command_handler(
                 ActivityType::CleanCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -637,6 +644,7 @@ async fn top_command_handler(
                         ActivityType::FuncInitCommand,
                         Some(project_arc.name()),
                         &settings,
+                        machine_id.clone(),
                     );
 
                     check_project_name(&project_arc.name())?;
@@ -664,6 +672,7 @@ async fn top_command_handler(
                         ActivityType::DataModelInitCommand,
                         Some(project.name()),
                         &settings,
+                        machine_id.clone(),
                     );
 
                     let file = std::fs::read_to_string(&args.sample).map_err(|e| {
@@ -716,6 +725,7 @@ async fn top_command_handler(
                         ActivityType::BlockInitCommand,
                         Some(project_arc.name()),
                         &settings,
+                        machine_id.clone(),
                     );
 
                     check_project_name(&project_arc.name())?;
@@ -740,6 +750,7 @@ async fn top_command_handler(
                         ActivityType::ConsumptionInitCommand,
                         Some(project_arc.name()),
                         &settings,
+                        machine_id.clone(),
                     );
 
                     check_project_name(&project_arc.name())?;
@@ -763,6 +774,7 @@ async fn top_command_handler(
                 ActivityType::LogsCommand,
                 Some(project.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             check_project_name(&project.name())?;
@@ -799,6 +811,7 @@ async fn top_command_handler(
                 ActivityType::PsCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let result = show_processes(project_arc);
@@ -821,6 +834,7 @@ async fn top_command_handler(
                 ActivityType::LsCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let res = if *streaming {
@@ -839,6 +853,7 @@ async fn top_command_handler(
                 ActivityType::MetricsCommand,
                 None,
                 &settings,
+                machine_id.clone(),
             );
 
             let result = run_console().await;
@@ -861,6 +876,7 @@ async fn top_command_handler(
                 ActivityType::ImportCommand,
                 Some(project.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let primitive_map = crate::framework::core::primitive_map::PrimitiveMap::load(&project)
@@ -945,6 +961,7 @@ async fn top_command_handler(
                 ActivityType::PeekCommand,
                 Some(project_arc.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let result = peek(project_arc, data_model_name, *limit, file.clone(), *topic).await;
@@ -979,6 +996,7 @@ async fn top_command_handler(
                 activity_type,
                 Some(project.name()),
                 &settings,
+                machine_id.clone(),
             );
 
             let result = match &workflow_args.command {
@@ -1043,7 +1061,7 @@ pub async fn cli_run() {
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 
     let cli = Cli::parse();
-    let cli_result = top_command_handler(config, &cli.command).await;
+    let cli_result = top_command_handler(config, &cli.command, machine_id).await;
     match cli_result {
         Ok(s) => {
             show_message!(s.message_type, s.message);
@@ -1094,8 +1112,9 @@ mod tests {
         ]);
 
         let config = read_settings().unwrap();
+        let machine_id = get_or_create_machine_id();
 
-        top_command_handler(config, &cli.command).await
+        top_command_handler(config, &cli.command, machine_id).await
     }
 
     #[tokio::test]

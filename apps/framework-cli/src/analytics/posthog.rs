@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use serde_json::json;
 
 use crate::cli::settings::Settings;
-use crate::utilities::machine_id::get_or_create_machine_id;
 
 // Build-time environment variable for PostHog API key
 const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
@@ -34,11 +33,11 @@ pub struct PostHogClient {
 }
 
 impl PostHogClient {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &Settings, machine_id: String) -> Self {
         Self {
             api_key: POSTHOG_API_KEY.map(String::from),
             host: POSTHOG_HOST.to_string(),
-            machine_id: get_or_create_machine_id(),
+            machine_id,
             is_moose_developer: settings.telemetry.is_moose_developer,
             http_client: reqwest::Client::new(),
         }

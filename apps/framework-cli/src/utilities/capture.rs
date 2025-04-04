@@ -81,10 +81,11 @@ pub fn capture_usage(
     activity_type: ActivityType,
     project_name: Option<String>,
     settings: &Settings,
+    machine_id: String,
 ) -> Option<tokio::task::JoinHandle<()>> {
     // Ignore our deployments & internal testing
     if settings.telemetry.enabled {
-        let posthog = PostHogClient::new(settings);
+        let posthog = PostHogClient::new(settings, machine_id);
         let sequence_id = CONTEXT.get(CTX_SESSION_ID).unwrap().clone();
         let event_id = Uuid::new_v4();
         let project = project_name.unwrap_or("N/A".to_string());

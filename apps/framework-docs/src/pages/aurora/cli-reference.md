@@ -1,4 +1,4 @@
-# CLI reference
+# CLI Reference
 
 ### Installation
 
@@ -37,7 +37,7 @@ aurora setup [path] <--mcp <host>>
 
 Configure Aurora settings
 
-### Config focus
+### Config Focus
 
 List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at once.
 
@@ -45,7 +45,7 @@ List Aurora configured projects, allows selection of project globally configured
 aurora config focus
 ```
 
-### Config keys
+### Config Keys
 
 Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key.
 
@@ -57,9 +57,9 @@ aurora config keys <KEY>
 
 ### Config Models
 
-[Coming Soon] will allow you to configure which models Aurora agents use.
+[Coming Soon]. Allows you to configure which models Aurora agents use.
 
-### Config tools
+### Config Tools
 
 Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental`set.
 
@@ -67,9 +67,9 @@ Toggles availability of experimental MCP tools. See Tools documentation for whic
 aurora config tools [EXPERIMENTAL_PREFERENCE]
 ```
 
-- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools [default: `standard`] [possible values: `standard`, `experimental`]
+- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools [default: `standard`] [possible values: `standard`, `experimental`].
 
-### login
+### Login
 
 [Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.
 

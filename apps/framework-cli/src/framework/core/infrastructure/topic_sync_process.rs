@@ -41,8 +41,7 @@ impl TopicToTableSyncProcess {
         TopicToTableSyncProcess {
             source_topic_id: topic.id(),
             columns: topic.columns.clone(),
-            // TODO - MIGRATE - should become id() when we migrate over to the new core
-            target_table_id: table.name.clone(),
+            target_table_id: table.id(),
             version: topic.version.clone(),
             source_primitive: topic.source_primitive.clone(),
         }

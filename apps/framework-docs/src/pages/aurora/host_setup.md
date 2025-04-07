@@ -72,7 +72,7 @@ It will also list the project directory in the `~/.aurora/config.toml` file such
 
 You will have to enable the MCP server in the Cursor MCP settings (`Cursor > Settings > Cursor Settings > MCP`). You may then need to refresh the MCP server for it to work.
 
-Common issues—if Cursor doesn't 🟢 the MCP:
+Common issues—if Cursor doesn't allow "🟢" the MCP:
 
 - Try disable and enable the MCP again
 - Try refresh the MCP

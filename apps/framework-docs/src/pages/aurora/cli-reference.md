@@ -39,7 +39,7 @@ Configure Aurora settings
 
 ### Config Focus
 
-List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at once.
+List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at a time.
 
 ```
 aurora config focus
@@ -61,7 +61,7 @@ aurora config keys <KEY>
 
 ### Config Tools
 
-Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental`set.
+Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` set.
 
 ```
 aurora config tools [EXPERIMENTAL_PREFERENCE]

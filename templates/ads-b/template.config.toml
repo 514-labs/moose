@@ -5,7 +5,7 @@ post_install_print = """
 	$ cd {project_dir}
 
 📦 Install Dependencies:
-    $ npm install
+        $ npm install
 
 🛠️ Start dev server:
 	$ moose dev

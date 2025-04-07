@@ -1328,38 +1328,40 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
 
     // Shutdown the Docker containers if needed
     if !project.is_production {
-        super::display::show_message_wrapper(
-            MessageType::Highlight,
-            Message {
-                action: "Shutdown".to_string(),
-                details: "Stopping workflows...".to_string(),
-            },
-        );
-
-        let termination_result = with_spinner_async(
-            "Stopping all workflows",
-            async { terminate_all_workflows(project).await },
-            true,
-        )
-        .await;
-        info!("Workflow termination result: {:?}", termination_result);
-
-        match termination_result {
-            Ok(_) => super::display::show_message_wrapper(
-                MessageType::Success,
+        if project.features.workflows {
+            super::display::show_message_wrapper(
+                MessageType::Highlight,
                 Message {
                     action: "Shutdown".to_string(),
-                    details: "All workflows stopped successfully".to_string(),
+                    details: "Stopping workflows...".to_string(),
                 },
-            ),
-            Err(_) => super::display::show_message_wrapper(
-                MessageType::Error,
-                Message {
-                    action: "Shutdown".to_string(),
-                    details: "Failed to stop all workflows".to_string(),
-                },
-            ),
-        };
+            );
+
+            let termination_result = with_spinner_async(
+                "Stopping all workflows",
+                async { terminate_all_workflows(project).await },
+                true,
+            )
+            .await;
+            info!("Workflow termination result: {:?}", termination_result);
+
+            match termination_result {
+                Ok(_) => super::display::show_message_wrapper(
+                    MessageType::Success,
+                    Message {
+                        action: "Shutdown".to_string(),
+                        details: "All workflows stopped successfully".to_string(),
+                    },
+                ),
+                Err(_) => super::display::show_message_wrapper(
+                    MessageType::Error,
+                    Message {
+                        action: "Shutdown".to_string(),
+                        details: "Failed to stop all workflows".to_string(),
+                    },
+                ),
+            };
+        }
 
         // Use the centralized settings function to check if containers should be shutdown
         let should_shutdown_containers = settings.should_shutdown_containers();

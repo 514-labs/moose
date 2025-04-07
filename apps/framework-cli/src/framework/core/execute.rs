@@ -20,6 +20,7 @@ use super::{
     plan::InfraPlan,
 };
 use crate::{
+    framework::scripts::executor::execute_scheduled_workflows,
     infrastructure::{
         api,
         olap::{self, OlapChangesError},
@@ -55,6 +56,10 @@ pub enum ExecutionError {
     /// Error occurred while checking leadership status
     #[error("Leadership check failed")]
     LeadershipCheckFailed(anyhow::Error),
+
+    /// Error occurred while executing scheduled workflows
+    #[error("Failed to execute scheduled workflows")]
+    WorkflowExecutionError(anyhow::Error),
 }
 
 /// Executes the initial infrastructure changes when the system starts up.
@@ -117,6 +122,10 @@ pub async fn execute_initial_infra_change(
         metrics,
     )
     .await?;
+
+    execute_scheduled_workflows(project)
+        .await
+        .map_err(|e| ExecutionError::WorkflowExecutionError(e.into()))?;
 
     // Check if this process instance has the "leadership" lock
     if redis_client

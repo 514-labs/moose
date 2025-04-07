@@ -11,9 +11,11 @@ use crate::framework::{
     scripts::utils::{
         get_temporal_namespace, parse_schedule, parse_timeout_to_seconds, TemporalExecutionError,
     },
+    scripts::Workflows,
 };
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
+use crate::project::Project;
 use crate::utilities::constants::{
     MOOSE_CLI_IDENTITY, PYTHON_TASK_QUEUE, TYPESCRIPT_TASK_QUEUE, WORKFLOW_TYPE,
 };
@@ -109,6 +111,62 @@ async fn execute_workflow_for_language(
         })
         .await
         .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))
+}
+
+/// Automatically starts all workflows that have a schedule configured.
+///
+/// # Assumptions:
+/// - Can only start workflows that don't require input parameters, as there's no way
+///   to determine what the input parameters should be at startup time.
+/// - Workflows must have a non-empty schedule string in their config.toml
+///
+/// # Arguments
+/// * `project` - The project configuration containing workflow settings and paths
+///
+/// # Returns
+/// * `Result<(), WorkflowExecutionError>` - Success or an error if workflow startup fails
+pub(crate) async fn execute_scheduled_workflows(
+    project: &Project,
+) -> Result<(), WorkflowExecutionError> {
+    if project.features.workflows {
+        info!("Auto-starting scheduled workflows");
+
+        let workflows = Workflows::from_dir(project.scripts_dir()).map_err(|e| {
+            WorkflowExecutionError::ConfigError(format!(
+                "Failed to read workflows during auto-start: {}",
+                e
+            ))
+        })?;
+
+        info!(
+            "Auto-start workflows found {} workflows",
+            workflows.get_defined_workflows().len()
+        );
+
+        for workflow in workflows.get_defined_workflows() {
+            if !workflow.config.schedule.is_empty() {
+                info!("Auto-starting workflow: {}", workflow.name);
+
+                workflow
+                    .start(&project.temporal_config, None)
+                    .await
+                    .map_err(|e| {
+                        WorkflowExecutionError::TemporalError(
+                            TemporalExecutionError::TemporalClientError(e.to_string()),
+                        )
+                    })?;
+            } else {
+                info!(
+                    "Workflow {} has no schedule configured. Not auto-starting.",
+                    workflow.name
+                );
+            }
+        }
+    } else {
+        info!("Workflows are not enabled for this project. Not auto-starting scheduled workflows");
+    }
+
+    Ok(())
 }
 
 fn create_workflow_execution_request(

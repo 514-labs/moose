@@ -198,6 +198,78 @@ async fn top_command_handler(
             templates::generate_template(&template.to_lowercase(), CLI_VERSION, dir_path).await?;
             let project = Project::new(dir_path, name.clone(), language);
             let project_arc = Arc::new(project);
+
+            // Update project configuration based on language
+            match language {
+                SupportedLanguages::Typescript => {
+                    let package_json_path = dir_path.join("package.json");
+                    if package_json_path.exists() {
+                        let mut package_json: serde_json::Value = serde_json::from_str(
+                            &std::fs::read_to_string(&package_json_path).map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Init".to_string(),
+                                    details: format!("Failed to read package.json: {}", e),
+                                })
+                            })?,
+                        )
+                        .map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Init".to_string(),
+                                details: format!("Failed to parse package.json: {}", e),
+                            })
+                        })?;
+
+                        if let Some(obj) = package_json.as_object_mut() {
+                            obj.insert("name".to_string(), serde_json::Value::String(name.clone()));
+                            std::fs::write(
+                                &package_json_path,
+                                serde_json::to_string_pretty(&package_json).map_err(|e| {
+                                    RoutineFailure::error(Message {
+                                        action: "Init".to_string(),
+                                        details: format!("Failed to serialize package.json: {}", e),
+                                    })
+                                })?,
+                            )
+                            .map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Init".to_string(),
+                                    details: format!("Failed to write package.json: {}", e),
+                                })
+                            })?;
+                        }
+                    }
+                }
+                SupportedLanguages::Python => {
+                    let setup_py_path = dir_path.join("setup.py");
+                    if setup_py_path.exists() {
+                        let setup_py_content =
+                            std::fs::read_to_string(&setup_py_path).map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Init".to_string(),
+                                    details: format!("Failed to read setup.py: {}", e),
+                                })
+                            })?;
+
+                        // Replace the name in setup.py
+                        let name_pattern = Regex::new(r"name='[^']*'").map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Init".to_string(),
+                                details: format!("Failed to create regex pattern: {}", e),
+                            })
+                        })?;
+                        let new_setup_py =
+                            name_pattern.replace(&setup_py_content, &format!("name='{}'", name));
+
+                        std::fs::write(&setup_py_path, new_setup_py.as_bytes()).map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Init".to_string(),
+                                details: format!("Failed to write setup.py: {}", e),
+                            })
+                        })?;
+                    }
+                }
+            }
+
             maybe_create_git_repo(dir_path, project_arc);
             wait_for_usage_capture(capture_handle).await;
 

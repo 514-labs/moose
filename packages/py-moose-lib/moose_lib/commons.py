@@ -16,9 +16,17 @@ class CliLogData:
 
 
 def cli_log(log: CliLogData) -> None:
-    url = "http://localhost:5001/logs"
-    headers = {'Content-Type': 'application/json'}
-    requests.post(url, data=json.dumps(log.__dict__), headers=headers)
+    try:
+        # When dmv2 starts up, it imports all the dmv2 definitions. In python,
+        # import_module executes code at the module level (but not inside functions).
+        # If the user has a function being called at the module level, and that function
+        # tries to send logs when moose hasn't fully started, the requests will fail.
+        # The try catch is to ignore those errors.
+        url = "http://localhost:5001/logs"
+        headers = {'Content-Type': 'application/json'}
+        requests.post(url, data=json.dumps(log.__dict__), headers=headers)
+    except:
+        pass
 
 
 class Logger:

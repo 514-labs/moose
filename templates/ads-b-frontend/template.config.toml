@@ -1,0 +1,28 @@
+language = "typescript" # Must be typescript or python
+description = ""
+post_install_print = """
+Initialize Moose project
+📂 Go to your moose project:
+	$ cd {project_dir}/moose
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+	$ moose dev
+
+🏃 Run your workflows:
+	$ moose workflow run military_aircraft_tracking
+
+Initialize frontend
+
+In another terminal: 
+📂 Go to your frontend project:
+	$ cd {project_dir}/frontend
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+	$ npm run dev
+"""

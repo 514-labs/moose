@@ -56,7 +56,7 @@ export interface AircraftTrackingData {
   rssi: number;
 
   // Timestamp
-  timestamp: string;
+  timestamp: Date;
 }
 
 export interface AircraftTrackingProcessed extends AircraftTrackingData {

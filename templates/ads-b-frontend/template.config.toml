@@ -2,6 +2,7 @@ language = "typescript" # Must be typescript or python
 description = ""
 post_install_print = """
 🫎🫎🫎 Initialize Moose project 🫎🫎🫎
+
 📂 Go to your moose project:
 	$ cd {project_dir}/moose
 

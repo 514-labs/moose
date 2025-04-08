@@ -1,7 +1,8 @@
 language = "typescript" # Must be typescript or python
 description = ""
 post_install_print = """
-Initialize Moose project
+🫎🫎🫎 Initialize Moose project 🫎🫎🫎
+
 📂 Go to your moose project:
 	$ cd {project_dir}/moose
 
@@ -11,10 +12,11 @@ Initialize Moose project
 🛠️ Start dev server:
 	$ moose dev
 
+In another terminal:
 🏃 Run your workflows:
 	$ moose workflow run military_aircraft_tracking
 
-Initialize frontend
+📺📺📺 Initialize frontend 📺📺📺
 
 In another terminal: 
 📂 Go to your frontend project:

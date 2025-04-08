@@ -3,9 +3,8 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Subcommand};
-
 use crate::framework::languages::SupportedLanguages;
+use clap::{Args, Subcommand};
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -84,16 +83,28 @@ pub enum Commands {
     /// View Moose primitives & infrastructure
     Ls {
         /// Limit output to a specific number of data models
-        #[arg(short, long, default_value = "10")]
+        #[arg(short, long, default_value = "10", hide = true)]
         limit: u16,
 
         /// View a specific version of data models & database infrastructure (default: latest)
-        #[arg(short, long)]
+        #[arg(short, long, hide = true)]
         version: Option<String>,
 
         /// View streaming topics
-        #[arg(short, long, default_value = "false")]
+        #[arg(short, long, default_value = "false", hide = true)]
         streaming: bool,
+
+        /// Filter by infrastructure type (tables, streams, ingestion, sql_resource, consumption)
+        #[arg(long)]
+        _type: Option<String>,
+
+        /// Filter by name (supports partial matching)
+        #[arg(long)]
+        name: Option<String>,
+
+        /// Output results in JSON format
+        #[arg(long, default_value = "false")]
+        json: bool,
     },
 
     /// Opens metrics console for viewing live metrics from your moose app

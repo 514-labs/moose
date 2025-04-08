@@ -298,7 +298,7 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
         .load_preset(UTF8_FULL)
         .apply_modifier(UTF8_ROUND_CORNERS);
     table.set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(headers.into_iter().map(|s| s.to_string()));
+    table.set_header(headers);
 
     for row in rows {
         table.add_row(row);

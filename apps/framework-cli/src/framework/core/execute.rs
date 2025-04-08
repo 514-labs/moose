@@ -56,10 +56,6 @@ pub enum ExecutionError {
     /// Error occurred while checking leadership status
     #[error("Leadership check failed")]
     LeadershipCheckFailed(anyhow::Error),
-
-    /// Error occurred while executing scheduled workflows
-    #[error("Failed to execute scheduled workflows")]
-    WorkflowExecutionError(anyhow::Error),
 }
 
 /// Executes the initial infrastructure changes when the system starts up.

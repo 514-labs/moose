@@ -387,7 +387,7 @@ async function loadStreamingFunctionV2(
   targetTopic?: TopicConfig,
 ) {
   const transformFunctions = await getStreamingFunctions();
-  const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : "<no-target>"}`;
+  const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : ""}`;
   return transformFunctions.get(transformFunctionKey);
 }
 
@@ -640,7 +640,9 @@ export const runStreamingFunctions = async (
   }
 
   // Use base stream names (without namespace/version) for function ID
-  const streamingFuncId = `function-${args.sourceTopic.name}-${args.targetTopic?.name || "<no-target>"}`;
+  // We use flow- instead of function- because that's what the ACLs in boreal are linked with
+  // When migrating - make sure the ACLs are updated to use the new prefix.
+  const streamingFuncId = `flow-${args.sourceTopic.name}-${args.targetTopic?.name || ""}`;
 
   const cluster = new Cluster({
     maxCpuUsageRatio: 0.5,

@@ -240,7 +240,10 @@ sasl_config = {
     'mechanism': args.sasl_mechanism
 }
 
-streaming_function_id = f'streaming-function-{source_topic.name}-{target_topic.name}'
+# We use flow- instead of function- because that's what the ACLs in boreal are linked with
+# When migrating - make sure the ACLs are updated to use the new prefix. 
+# And make sure the prefixes are the same in the ts-moose-lib and py-moose-lib
+streaming_function_id = f'flow-{source_topic.name}-{target_topic.name}'
 log_prefix = f"{source_topic.name} -> {target_topic.name}"
 
 def log(msg: str) -> None:

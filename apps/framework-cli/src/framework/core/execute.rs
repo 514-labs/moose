@@ -20,6 +20,7 @@ use super::{
     plan::InfraPlan,
 };
 use crate::{
+    framework::scripts::executor::execute_scheduled_workflows,
     infrastructure::{
         api,
         olap::{self, OlapChangesError},
@@ -117,6 +118,8 @@ pub async fn execute_initial_infra_change(
         metrics,
     )
     .await?;
+
+    execute_scheduled_workflows(project).await;
 
     // Check if this process instance has the "leadership" lock
     if redis_client

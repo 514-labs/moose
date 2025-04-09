@@ -66,6 +66,7 @@ use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
+use crate::cli::routines::ls::ls_dmv2;
 use anyhow::Result;
 
 #[derive(Parser)]
@@ -896,6 +897,9 @@ async fn top_command_handler(
             version,
             limit,
             streaming,
+            _type,
+            name,
+            json,
         } => {
             info!("Running ls command");
 
@@ -909,7 +913,9 @@ async fn top_command_handler(
                 machine_id.clone(),
             );
 
-            let res = if *streaming {
+            let res = if project_arc.features.data_model_v2 {
+                ls_dmv2(&project_arc, _type.as_deref(), name.as_deref(), *json).await
+            } else if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
                 list_db(project_arc, version, limit).await

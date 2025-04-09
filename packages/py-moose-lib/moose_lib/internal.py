@@ -37,7 +37,7 @@ class TopicConfig(BaseModel):
     partition_count: int
     transformation_targets: List[Target]
     has_multi_transform: bool
-
+    has_consumers: bool
 
 class IngestApiConfig(BaseModel):
     model_config = model_config
@@ -110,7 +110,8 @@ def to_infra_map() -> dict:
             retention_period=stream.config.retention_period,
             partition_count=stream.config.parallelism,
             transformation_targets=transformation_targets,
-            has_multi_transform=stream._multipleTransformations is not None
+            has_multi_transform=stream._multipleTransformations is not None,
+            has_consumers=len(stream.consumers) > 0
         )
 
     for name, api in _ingest_apis.items():

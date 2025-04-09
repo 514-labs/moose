@@ -37,6 +37,7 @@ interface StreamJson {
   partitionCount: number;
   targetTable?: string;
 
+  hasConsumers: boolean;
   transformationTargets: Target[];
   hasMultiTransform: boolean;
 }
@@ -46,11 +47,13 @@ interface IngestApiJson {
   format: IngestionFormat;
   writeTo: Target;
 }
+
 interface EgressApiJson {
   name: string;
   queryParams: Column[];
   responseSchema: IJsonSchemaCollection.IV3_1;
 }
+
 interface SqlResourceJson {
   name: string;
   setup: readonly string[];
@@ -83,6 +86,9 @@ const toInfraMap = (registry: typeof moose_internal) => {
         name: destination.name,
       });
     });
+
+    let hasConsumers = stream._consumers.length > 0;
+
     topics[stream.name] = {
       name: stream.name,
       columns: stream.columnArray,
@@ -91,6 +97,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       partitionCount: stream.config.parallelism ?? 1,
       transformationTargets,
       hasMultiTransform: stream._multipleTransformations === undefined,
+      hasConsumers,
     };
   });
 
@@ -160,6 +167,12 @@ export const getStreamingFunctions = async () => {
       // TODO: Add version to dmv2 apis
       const transformFunctionKey = `${stream.name}_${destination.name}`;
       transformFunctions.set(transformFunctionKey, f);
+    });
+
+    stream._consumers.forEach((consumer) => {
+      // TODO: Add version to dmv2 apis
+      const consumerFunctionKey = `${stream.name}_<no-target>`;
+      transformFunctions.set(consumerFunctionKey, consumer);
     });
   });
 

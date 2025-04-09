@@ -21,7 +21,7 @@ pub struct FunctionProcess {
 
     pub source_topic_id: String,
 
-    pub target_topic_id: String,
+    pub target_topic_id: Option<String>,
 
     // In DMV1 this is the script that contains the function to be executed.
     // In DMV2 this is the path to the main.py or index.ts file that direclty or transitively
@@ -50,14 +50,10 @@ impl FunctionProcess {
             source_topic_id: get_latest_topic_id(topics, &function.source_data_model.name)
                 .unwrap_or_else(|| function.source_data_model.name.clone()),
 
-            target_topic_id: function
-                .target_data_model
-                .as_ref()
-                .map(|target_model| {
-                    get_latest_topic_id(topics, &target_model.name)
-                        .unwrap_or_else(|| target_model.name.clone())
-                })
-                .unwrap_or_default(),
+            target_topic_id: function.target_data_model.as_ref().map(|target_model| {
+                get_latest_topic_id(topics, &target_model.name)
+                    .unwrap_or_else(|| target_model.name.clone())
+            }),
 
             executable: function.executable.clone(),
 
@@ -82,17 +78,28 @@ impl FunctionProcess {
     }
 
     pub fn id(&self) -> String {
-        format!(
-            "{}_{}_{}_{}",
-            self.name, self.source_topic_id, self.target_topic_id, self.version
-        )
+        if let Some(target_topic_id) = &self.target_topic_id {
+            format!(
+                "{}_{}_{}_{}",
+                self.name, self.source_topic_id, target_topic_id, self.version
+            )
+        } else {
+            format!("{}_{}_{}", self.name, self.source_topic_id, self.version)
+        }
     }
 
     pub fn expanded_display(&self) -> String {
-        format!(
-            "Reloading Function: from topic {} to topic {} - Version: {} with {} instances",
-            self.source_topic_id, self.target_topic_id, self.version, self.parallel_process_count
-        )
+        if let Some(target_topic_id) = &self.target_topic_id {
+            format!(
+                "Reloading Function: from topic {} to topic {} - Version: {} with {} instances",
+                self.source_topic_id, target_topic_id, self.version, self.parallel_process_count
+            )
+        } else {
+            format!(
+                "Reloading Consumer Functions: from topic {} - Version: {} with {} instances",
+                self.source_topic_id, self.version, self.parallel_process_count
+            )
+        }
     }
 
     pub fn short_display(&self) -> String {

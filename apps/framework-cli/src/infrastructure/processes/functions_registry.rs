@@ -48,7 +48,10 @@ impl FunctionProcessRegistry {
     ) -> Result<(), FunctionRegistryError> {
         match (
             infra_map.find_topic_by_id(&function_process.source_topic_id),
-            infra_map.find_topic_by_id(&function_process.target_topic_id),
+            function_process
+                .target_topic_id
+                .as_ref()
+                .and_then(|id| infra_map.find_topic_by_id(&id)),
         ) {
             (Some(source_topic), Some(target_topic)) => {
                 // TODO This will need to be made generic
@@ -66,7 +69,7 @@ impl FunctionProcessRegistry {
                         &self.project.project_location,
                         &self.project.redpanda_config,
                         &source_topic,
-                        &target_topic,
+                        Some(&target_topic),
                         &function_process.executable,
                         self.project.features.data_model_v2,
                     )?)
@@ -74,7 +77,49 @@ impl FunctionProcessRegistry {
                     Ok(typescript::streaming::run(
                         &self.project.redpanda_config,
                         &source_topic,
-                        &target_topic,
+                        Some(&target_topic),
+                        &function_process.executable,
+                        &self.project.project_location,
+                        function_process.parallel_process_count,
+                        self.project.features.data_model_v2,
+                    )?)
+                } else {
+                    Err(FunctionRegistryError::UnsupportedFunctionLanguage {
+                        file_name: function_process
+                            .executable
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string(),
+                    })
+                }?;
+
+                self.registry.insert(function_process.id(), child);
+
+                Ok(())
+            }
+            (Some(_), None) => {
+                let source_topic = StreamConfig::Redpanda(KafkaStreamConfig::from_topic(
+                    &self.project.redpanda_config,
+                    &infra_map
+                        .find_topic_by_id(&function_process.source_topic_id)
+                        .unwrap(),
+                ));
+
+                let child = if function_process.is_py_function_process() {
+                    Ok(python::streaming::run(
+                        &self.project.project_location,
+                        &self.project.redpanda_config,
+                        &source_topic,
+                        None,
+                        &function_process.executable,
+                        self.project.features.data_model_v2,
+                    )?)
+                } else if function_process.is_ts_function_process() {
+                    Ok(typescript::streaming::run(
+                        &self.project.redpanda_config,
+                        &source_topic,
+                        None,
                         &function_process.executable,
                         &self.project.project_location,
                         function_process.parallel_process_count,

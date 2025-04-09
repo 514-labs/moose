@@ -56,6 +56,7 @@ type ZeroOrMany<T> = T | T[] | undefined | null;
 type SyncOrAsyncTransform<T, U> = (
   record: T,
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
+type Consumer<T> = (record: T) => Promise<void> | void;
 
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   constructor(name: string, config?: StreamConfig<T>);
@@ -84,12 +85,17 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     [Stream<any>, SyncOrAsyncTransform<T, any>]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
+  _consumers = new Array<Consumer<T>>();
 
   addTransform = <U>(
     destination: Stream<U>,
     transformation: SyncOrAsyncTransform<T, U>,
   ) => {
     this._transformations.set(destination.name, [destination, transformation]);
+  };
+
+  addConsumer = (consumer: Consumer<T>) => {
+    this._consumers.push(consumer);
   };
 
   routed = (values: ZeroOrMany<T>) => new RoutedMessage(this, values);

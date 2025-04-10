@@ -293,7 +293,7 @@ var load = function (input) {
           });
           return [
             4 /*yield*/,
-            fetch("http://localhost:4000/ingest/WatchEventWithRepo", {
+            fetch("http://localhost:4000/ingest/watch-event", {
               method: "POST",
               body: JSON.stringify(mooseEventWithRepo),
             }),

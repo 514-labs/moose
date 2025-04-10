@@ -1,5 +1,10 @@
-import { ConsumptionApi, ConsumptionUtil } from "@514labs/moose-lib";
+import {
+  ConsumptionApi,
+  ConsumptionUtil,
+  ConsumptionHelpers as CH,
+} from "@514labs/moose-lib";
 import { tags } from "typia";
+import { watchEventPipeline } from "../ingest/WatchEvent";
 
 interface QueryParams {
   interval?: "minute" | "hour" | "day";
@@ -9,15 +14,15 @@ interface QueryParams {
 
 interface ResponseBody {
   time: string;
-  topicStats: Array<{
+  topicStats: {
     topic: string;
     eventCount: number;
     uniqueRepos: number;
     uniqueUsers: number;
-  }>;
+  }[];
 }
 
-export default new ConsumptionApi<QueryParams>(
+export default new ConsumptionApi<QueryParams, ResponseBody[]>(
   "topicTimeseries",
   async (
     { interval = "minute", limit = 10, exclude = "" }: QueryParams,
@@ -66,7 +71,7 @@ export default new ConsumptionApi<QueryParams>(
                     count() AS totalEvents,
                     uniqExact(repoId) AS uniqueReposCount,
                     uniqExact(actorId) AS uniqueUsersCount
-                FROM WatchEventWithRepo_0_0
+                FROM ${CH.table(watchEventPipeline.table!.name)}
                 WHERE length(repoTopics) > 0
                 ${exclude ? sql`AND arrayAll(x -> x NOT IN (${exclude}), repoTopics)` : sql``}
                 ${intervalMap[interval].groupBy}
@@ -77,6 +82,8 @@ export default new ConsumptionApi<QueryParams>(
             ORDER BY time;
         `;
 
-    return await client.query.execute<ResponseBody>(query);
+    const resultSet = await client.query.execute(query);
+    const data = (await resultSet.json()) as ResponseBody[];
+    return data;
   },
 );

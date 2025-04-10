@@ -47,7 +47,7 @@ interface ResultItem {
 
 type ResponseBody = ResultItem[];
 
-const exampleApi = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",  
+const exampleApi = new ConsumptionApi<QueryParams, ResponseBody[]>("example_endpoint",  
     async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
         const query = sql`
         SELECT 
@@ -58,7 +58,8 @@ const exampleApi = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoi
         WHERE category = ${filterField}
         LIMIT ${maxResults}`;
         
-        return client.query.execute(query);
+        const resultSet = await client.query.execute<ResponseBody>(query);
+        return await resultSet.json() as ResponseBody[];
     });
 ```
 </TypeScript>
@@ -307,7 +308,7 @@ const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
   async (
     { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
     { client, sql }
-  ) => {
+  ): Promise<ResponseBody[]> => {
     const query = sql`
       SELECT 
         dayOfMonth,
@@ -321,8 +322,8 @@ const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
     `;
 
     // Execute query and return results
-    const data = await client.query.execute(query);
-    return data;
+    const data = await client.query.execute<ResponseBody[]>(query);
+    return await data.json() as ResponseBody[];
   }
 );
 ```
@@ -352,6 +353,8 @@ def run(params: QueryParams, client: MooseClient) -> None:
         "limit": params.limit
     })
     return data
+
+api = ConsumptionApi[QueryParams, ResponseBody](name="my_api_route", query_function=run)
 ```
 </Python>
 
@@ -435,11 +438,11 @@ import { userTable } from "../tables/userTable";
 
 const query = sql`
   SELECT 
-    ${userTable.columns.id},
-    ${userTable.columns.name},
-    ${userTable.columns.email}
-  FROM ${userTable}
-  WHERE ${userTable.columns.isActive} = true
+    ${userTable.columns.id.name},
+    ${userTable.columns.name.name},
+    ${userTable.columns.email.name}
+  FROM ${userTable.name}
+  WHERE ${userTable.columns.isActive.name} = true
 `;
 
 // EXECUTION: SELECT id, name, email FROM users WHERE is_active = true
@@ -647,3 +650,155 @@ Moose automatically provides standard HTTP responses:
 | 400         | Validation error        | `{ "error": "Detailed message"}`|
 | 401         | Unauthorized            | `{ "error": "Unauthorized"}`     |
 | 500         | Internal server error   | `{ "error": "Internal server error"}` |
+
+## Post-Processing Query Results
+
+After executing your database query, you can transform the data before returning it to the client. This allows you to:
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="Common post-processing operations:"
+  bullets={[
+    "Transform field names or data formats",
+    "Calculate derived values",
+    "Filter or sort results",
+    "Aggregate or group data",
+    "Apply business logic"
+  ]}
+/>
+
+<TypeScript>
+```ts filename="PostProcessingExample.ts" copy
+interface QueryParams {
+  category: string;
+  maxResults: number;
+}
+
+interface ResponseBody {
+  itemId: number;
+  displayName: string;
+  formattedValue: string;
+  isHighValue: boolean;
+  date: string;
+}
+
+const processDataApi = new ConsumptionApi<QueryParams, ResponseBody>(
+  "process_data_endpoint",
+  async ({ category, maxResults = 10 }, { client, sql }) => {
+    // 1. Fetch raw data
+    const query = sql`
+      SELECT id, name, value, timestamp
+      FROM data_table
+      WHERE category = ${category}
+      LIMIT ${maxResults}
+    `;
+    
+    const rawResults = await client.query.execute<{
+      id: number;
+      name: string;
+      value: number;
+      timestamp: string;
+    }>(query);
+    
+    // 2. Post-process the results
+    return rawResults.map(row => ({
+      // Transform field names
+      itemId: row.id,
+      displayName: row.name.toUpperCase(),
+      
+      // Add derived fields
+      formattedValue: `$${row.value.toFixed(2)}`,
+      isHighValue: row.value > 1000,
+      
+      // Format dates
+      date: new Date(row.timestamp).toISOString().split('T')[0]
+    }));
+  }
+);
+```
+</TypeScript>
+
+<Python>
+```python filename="PostProcessingExample.py" copy
+from datetime import datetime
+from moose_lib import ConsumptionApi
+from pydantic import BaseModel
+
+class QueryParams(BaseModel):
+    category: str
+    maxResults: int = 10
+
+class ResponseItem(BaseModel):
+    itemId: int
+    displayName: str
+    formattedValue: str
+    isHighValue: bool
+    date: str
+
+def run(params: QueryParams, client: MooseClient) -> list[ResponseItem]:
+    # 1. Fetch raw data
+    query = f"""
+    SELECT id, name, value, timestamp
+    FROM data_table
+    WHERE category = '{params.category}'
+    LIMIT {params.maxResults}
+    """
+    
+    raw_results = client.query.execute(query)
+    
+    # 2. Post-process the results
+    processed_results = []
+    for row in raw_results:
+        processed_results.append(ResponseItem(
+            # Transform field names
+            itemId=row['id'],
+            displayName=row['name'].upper(),
+            
+            # Add derived fields
+            formattedValue=f"${row['value']:.2f}",
+            isHighValue=row['value'] > 1000,
+            
+            # Format dates
+            date=datetime.fromisoformat(row['timestamp']).date().isoformat()
+        ))
+    
+    return processed_results
+
+# Create the API
+process_data_api = ConsumptionApi[QueryParams, list[ResponseItem]](name="process_data_endpoint", query_function=run)
+```
+</Python>
+
+
+### Best Practices
+
+<BulletPointsCard
+  title="Post-Processing Best Practices"
+  bullets={[
+    {
+      title: "Prefer database processing for large datasets",
+      description: "When working with large amounts of data, perform as much filtering, grouping, and aggregation as possible in your SQL query"
+    },
+    {
+      title: "Keep response size reasonable",
+      description: "Post-process to reduce response size when needed, especially for user-facing APIs"
+    },
+    {
+      title: "Format dates and numbers consistently",
+      description: "Ensure consistent formatting for dates, currencies, and other values in your responses"
+    },
+    {
+      title: "Handle sensitive data appropriately",
+      description: "Use post-processing to remove or mask sensitive information before returning data to clients"
+    },
+    {
+      title: "Add clear error handling",
+      description: "Include appropriate error handling in your post-processing logic"
+    }
+  ]}
+/>
+
+<Callout type="info">
+While post-processing gives you flexibility, remember that database operations are typically more efficient for heavy data manipulation. Reserve post-processing for transformations that are difficult to express in SQL or that involve application-specific logic.
+</Callout>

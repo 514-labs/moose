@@ -67,7 +67,7 @@ Remote planning requires authentication. You can configure your moose server wit
 
 1. Generate a token using `moose-cli auth generate`
 2. Project config for the server check: 
-```yaml filename="moose.yaml" copy
+```toml filename="moose.config.toml" copy
 [authentication]
 admin_api_key = "your-hashed-token"
 ```
@@ -128,4 +128,3 @@ For production deployments:
 1. **Authentication Errors**
    - Verify your authentication token
    - Generate a new token using `moose-cli auth generate`
-../../components../../../components

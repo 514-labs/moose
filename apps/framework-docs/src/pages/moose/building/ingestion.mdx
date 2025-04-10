@@ -364,6 +364,8 @@ interface PipelineConfig<T> {
 ```
 
 ### Data Formats
+
+<TypeScript>
 ```ts filename="FormatConfig.ts" copy
 import { IngestionFormat } from "@514labs/moose-lib";
 
@@ -371,16 +373,56 @@ import { IngestionFormat } from "@514labs/moose-lib";
 const singleRecordPipeline = new IngestPipeline<Record>("single_records", {
   ingest: {
     format: IngestionFormat.JSON  // Default
-  }
+  },
+  stream: true,
+  table: true
 });
 
 // Batch record ingestion
 const batchPipeline = new IngestPipeline<Record>("batch_records", {
   ingest: {
     format: IngestionFormat.JSON_ARRAY
-  }
+  },
+  stream: true,
+  table: true
 });
 ```
+</TypeScript>
+
+<Python>
+```python filename="FormatConfig.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig, IngestionFormat
+from pydantic import BaseModel
+
+class Record(BaseModel):
+    id: Key[str]
+    name: str
+    value: int
+    timestamp: datetime
+
+single_record_pipeline = IngestPipeline[Record](
+    name="single_records",
+    config=IngestPipelineConfig(
+        ingest=IngestConfig(
+            format=IngestionFormat.JSON
+        ),
+        stream=True,
+        table=True
+    )
+)
+
+batch_record_pipeline = IngestPipeline[Record](
+    name="batch_records",
+    config=IngestPipelineConfig(
+        ingest=IngestConfig(
+            format=IngestionFormat.JSON_ARRAY
+        ),
+        stream=True,
+        table=True
+    )
+)
+```
+</Python>
 
 ## Using `IngestPipeline` vs. `IngestApi`
 
@@ -426,6 +468,28 @@ interface UserEvent {
 // ❌ Invalid: { "id": "event1", "userId": "user1", "timestamp": "not-a-date" } // Invalid date format
 ```
 </TypeScript>
+
+<Python>
+```python filename="ValidationExample.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
+from pydantic import BaseModel
+
+class Properties(BaseModel):
+    device: Optional[str] 
+    version: Optional[int]
+
+class UserEvent(BaseModel):
+    id: str
+    userId: str
+    timestamp: datetime
+    properties: Properties
+
+# This will be validated against the interface:
+# ✅ Valid: { "id": "event1", "userId": "user1", "timestamp": "2023-05-10T15:30:00Z" }
+# ❌ Invalid: { "id": "event1" } # Missing required fields
+# ❌ Invalid: { "id": "event1", "userId": "user1", "timestamp": "not-a-date" } # Invalid date format
+```
+</Python>
 
 ## Best Practices
 

@@ -39,27 +39,26 @@ function parseNavModes(navModes?: string[]): {
   };
 }
 
-if (
-  AircraftTrackingDataPipeline.stream &&
-  AircraftTrackingProcessedPipeline.stream
-) {
-  AircraftTrackingDataPipeline.stream.addTransform(
-    AircraftTrackingProcessedPipeline.stream,
-    (record: AircraftTrackingData): AircraftTrackingProcessed => {
-      const zorderCoordinate = calculateZOrder(record.lat, record.lon);
-      const { approach, autopilot, althold, lnav, tcas } = parseNavModes(
-        record.nav_modes,
-      );
-
-      return {
-        ...record,
-        zorderCoordinate,
-        approach,
-        autopilot,
-        althold,
-        lnav,
-        tcas,
-      };
-    },
+function transformAircraft(
+  record: AircraftTrackingData,
+): AircraftTrackingProcessed {
+  const zorderCoordinate = calculateZOrder(record.lat, record.lon);
+  const { approach, autopilot, althold, lnav, tcas } = parseNavModes(
+    record.nav_modes,
   );
+  return {
+    ...record,
+    zorderCoordinate,
+    approach,
+    autopilot,
+    althold,
+    lnav,
+    tcas,
+    timestamp: new Date(record.timestamp),
+  };
 }
+
+AircraftTrackingDataPipeline!.stream!.addTransform(
+  AircraftTrackingProcessedPipeline!.stream!,
+  transformAircraft,
+);

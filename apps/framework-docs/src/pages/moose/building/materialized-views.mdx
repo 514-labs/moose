@@ -109,67 +109,69 @@ class MaterializedViewOptions(BaseModel):
 
 ## Working with Aggregations
 
-<TypeScript>
 Materialized views support aggregations using the `Aggregated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
-</TypeScript>
-
-<Python>
-Materialized views support aggregations using the `Annotated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
-</Python>
-
 
 ### Why Use ClickHouse Aggregate Functions
 
 ClickHouse's aggregate functions offer several advantages when used in materialized views:
 
-1. **Incremental computation**: ClickHouse can update aggregations incrementally when new data arrives, rather than recomputing the entire result set
-2. **Memory efficiency**: Aggregate states are stored in a compact format optimized for the specific function
-3. **High performance**: Native implementation of complex statistical functions that scale with your data volume
-<TypeScript>
-4. **Type safety**: The `Aggregated<T>` type in Moose ensures correct mapping between TypeScript and ClickHouse aggregation types
-</TypeScript>
+1. **Incremental computation**: ClickHouse can update aggregations incrementally when new data arrives, rather than recomputing the entire result set.
+2. **Memory efficiency**: Aggregate states are stored in a compact format optimized for the specific function.
+3. **High performance**: Native implementation of complex statistical functions that scale with your data volume.
+4. **Type safety**: The `Aggregated` type in Moose ensures correct mapping between your code and ClickHouse aggregation types.
 
 When using the `AggregatingMergeTree` engine, ClickHouse maintains the state of your aggregations between updates, making it much more efficient than re-aggregating from raw data each time.
 
 ### Common Aggregate Functions
 
+#### TypeScript
+
+In TypeScript, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
+
+`Aggregated<AggregationFunction extends string, ArgTypes extends any[]>`
+
+- `AggregationFunction`: A string that specifies the aggregation function to be applied. Common functions include `sum`, `avg`, `count`, `uniq`, `min`, and `max`.
+- `ArgTypes`: An optional array of types that define the parameters the aggregation function will operate on. This ensures type safety and helps in mapping the function to the correct data types.
+
+
 <Python>
-Examples coming soon
+
+In Python, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
+
+`Aggregated[U, AggregateFunction(...)]`:
+- `U`: Represents the type of the aggregated result. For example, float for sums and averages, int for counts.
+- `AggregateFunction(...)`: Specifies the aggregation operation to be performed. It includes:
+  - `agg_func`: A string indicating the aggregation function, such as "sum", "avg", "count", "uniq", "min", or "max".
+  - `param_types`: An optional list that defines the types of parameters the aggregation function will operate on. This ensures type safety and clarity in the schema definition.
+
 </Python>
 
-<TypeScript>
-Some of the most useful aggregate functions for materialized views include:
+<Callout type="info">
+View the ClickHouse documentation for more information on the aggregate functions:
 
+- [ClickHouse Aggregate Functions](https://clickhouse.com/docs/en/sql-reference/aggregate-functions/index)
 
-| Function | Description | TypeScript Usage |
-|----------|-------------|-----------------|
-| `sum` | Sum of values | `number & Aggregated<"sum">` |
-| `avg` | Average of values | `number & Aggregated<"avg">` |
-| `count` | Count of records | `number & Aggregated<"count">` |
-| `uniq` | Approximate unique count | `number & Aggregated<"uniq">` |
-| `min` | Minimum value | `number & Aggregated<"min">` |
-| `max` | Maximum value | `number & Aggregated<"max">` |
-</TypeScript>
-
+</Callout>
 
 ### Aggregation Example
 
 <TypeScript>
+
 ```ts filename="Aggregations.ts" copy
 import { MaterializedView, ClickHouseEngines } from "@514labs/moose-lib";
 import { sourceTable } from "./SourceTable";
 
 interface TargetSchema {
   id: string;
-  average_rating: number & Aggregated<"avg">;
-  num_reviews: number & Aggregated<"sum">;
+  average_rating: number & Aggregated<"avg", [number]>;
+  num_reviews: number & Aggregated<"sum", [number]>;
 }
 
 const query = sql`
   SELECT 
     ${sourceTable.columns["id"]}, 
-    AVG(${sourceTable.columns["rating"]}) as average_rating, 
-    COUNT(${sourceTable.columns["id"]}) as num_reviews 
+    avgState(${sourceTable.columns["rating"]}) as average_rating, 
+    countState(${sourceTable.columns["id"]}) as num_reviews 
   FROM ${sourceTable.name}
   GROUP BY ${sourceTable.columns["id"]}
   `;
@@ -185,7 +187,34 @@ const exampleMaterializedView = new MaterializedView<TargetSchema>({
 </TypeScript>
 
 <Python>
-Example coming soon
+
+```py filename="Aggregations.py" copy
+from moose_lib import MaterializedView, ClickHouseEngines
+from source_table import source_table
+
+class TargetSchema(BaseModel):
+    id: str
+    average_rating: float & Aggregated[float, AggregateFunction(agg_func="avg", param_types=[float])]
+    num_reviews: int & Aggregated[int, AggregateFunction(agg_func="sum", param_types=[int])]
+
+query = f"""
+  SELECT 
+    id, 
+    avgState(rating) as average_rating, 
+    countState(id) as num_reviews 
+  FROM {source_table.name}
+  GROUP BY id
+"""
+
+example_materialized_view = MaterializedView[TargetSchema](MaterializedViewOptions(
+    select_statement=query,
+    table_name="my_table",
+    materialized_view_name="example_materialized_view",
+    engine=ClickHouseEngines.AggregatingMergeTree,
+    order_by_fields=["id"],
+))
+```
+
 
 </Python>
 
@@ -212,7 +241,9 @@ const query = sql`SELECT * FROM ${exampleMaterializedView.targetTable.name}`;
 </TypeScript>
 
 <Python>
-Example coming soon
+```py filename="QueryingMaterializedView.py" copy
+query = f"SELECT * FROM {example_materialized_view.target_table.name}"
+```
 </Python>
 
 ## How It Works

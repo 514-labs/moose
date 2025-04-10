@@ -124,21 +124,29 @@ When using the `AggregatingMergeTree` engine, ClickHouse maintains the state of 
 
 ### Common Aggregate Functions
 
-#### TypeScript
+<TypeScript>
 
 In TypeScript, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
 
+```ts filename="Aggregated.ts" copy
 `Aggregated<AggregationFunction extends string, ArgTypes extends any[]>`
+```
 
 - `AggregationFunction`: A string that specifies the aggregation function to be applied. Common functions include `sum`, `avg`, `count`, `uniq`, `min`, and `max`.
 - `ArgTypes`: An optional array of types that define the parameters the aggregation function will operate on. This ensures type safety and helps in mapping the function to the correct data types.
 
 
+</TypeScript>
+
 <Python>
 
 In Python, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
 
-`Aggregated[U, AggregateFunction(...)]`:
+```python filename="Aggregated.py" copy
+from moose_lib import Aggregated
+
+Aggregated[U, AggregateFunction(...)]
+```
 - `U`: Represents the type of the aggregated result. For example, float for sums and averages, int for counts.
 - `AggregateFunction(...)`: Specifies the aggregation operation to be performed. It includes:
   - `agg_func`: A string indicating the aggregation function, such as "sum", "avg", "count", "uniq", "min", or "max".
@@ -158,7 +166,7 @@ View the ClickHouse documentation for more information on the aggregate function
 <TypeScript>
 
 ```ts filename="Aggregations.ts" copy
-import { MaterializedView, ClickHouseEngines } from "@514labs/moose-lib";
+import { MaterializedView, ClickHouseEngines, Aggregated, sql } from "@514labs/moose-lib";
 import { sourceTable } from "./SourceTable";
 
 interface TargetSchema {
@@ -189,8 +197,8 @@ const exampleMaterializedView = new MaterializedView<TargetSchema>({
 <Python>
 
 ```py filename="Aggregations.py" copy
-from moose_lib import MaterializedView, ClickHouseEngines
-from source_table import source_table
+from moose_lib import MaterializedView, ClickHouseEngines, Aggregated, AggregateFunction, MaterializedViewOptions
+from app.source_table import source_table
 
 class TargetSchema(BaseModel):
     id: str

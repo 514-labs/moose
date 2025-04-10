@@ -1,4 +1,4 @@
-import { ConsumptionApi, ConsumptionUtil } from "@514labs/moose-lib";
+import { ConsumptionApi, ConsumptionUtil, ResultSet } from "@514labs/moose-lib";
 import { tags } from "typia";
 
 interface QueryParams {
@@ -17,12 +17,12 @@ interface ResponseBody {
   }>;
 }
 
-export default new ConsumptionApi<QueryParams>(
+export default new ConsumptionApi<QueryParams, ResponseBody[]>(
   "topicTimeseries",
   async (
     { interval = "minute", limit = 10, exclude = "" }: QueryParams,
     { client, sql }: ConsumptionUtil,
-  ) => {
+  ): Promise<ResponseBody[]> => {
     const intervalMap = {
       hour: {
         select: sql`toStartOfHour(createdAt) AS time`,
@@ -77,6 +77,8 @@ export default new ConsumptionApi<QueryParams>(
             ORDER BY time;
         `;
 
-    return await client.query.execute<ResponseBody>(query);
+    const resultSet = await client.query.execute<ResponseBody>(query);
+    const data = (await resultSet.json()) as ResponseBody[];
+    return data;
   },
 );

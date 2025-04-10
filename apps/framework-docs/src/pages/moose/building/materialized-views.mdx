@@ -177,9 +177,9 @@ interface TargetSchema {
 
 const query = sql`
   SELECT 
-    ${sourceTable.columns["id"]}, 
-    avgState(${sourceTable.columns["rating"]}) as average_rating, 
-    countState(${sourceTable.columns["id"]}) as num_reviews 
+    id, 
+    avgState(rating) as average_rating, 
+    countState(id) as num_reviews 
   FROM ${sourceTable.name}
   GROUP BY ${sourceTable.columns["id"]}
   `;

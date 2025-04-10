@@ -183,7 +183,7 @@ async fn watch(
                                         &plan_result,
                                         route_update_channel.clone(),
                                         syncing_process_registry,
-                                        &mut *project_registries,
+                                        &mut project_registries,
                                         metrics.clone(),
                                     )
                                     .await

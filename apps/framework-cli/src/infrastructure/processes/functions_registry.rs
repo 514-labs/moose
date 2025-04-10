@@ -51,7 +51,7 @@ impl FunctionProcessRegistry {
             function_process
                 .target_topic_id
                 .as_ref()
-                .and_then(|id| infra_map.find_topic_by_id(&id)),
+                .and_then(|id| infra_map.find_topic_by_id(id)),
         ) {
             (Some(source_topic), Some(target_topic)) => {
                 // TODO This will need to be made generic
@@ -101,7 +101,7 @@ impl FunctionProcessRegistry {
             (Some(_), None) => {
                 let source_topic = StreamConfig::Redpanda(KafkaStreamConfig::from_topic(
                     &self.project.redpanda_config,
-                    &infra_map
+                    infra_map
                         .find_topic_by_id(&function_process.source_topic_id)
                         .unwrap(),
                 ));

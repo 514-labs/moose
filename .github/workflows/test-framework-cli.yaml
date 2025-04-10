@@ -6,20 +6,52 @@ on:
     branches:
       - "**"
       - "!main"
-    paths:
-      - ".github/workflows/test-framework-cli.yaml"
-      - "apps/framework-cli-e2e/**"
-      - "apps/framework-cli/**"
-      - "templates/python/**"
-      - "templates/typescript/**"
-      - "packages/**"
 
 defaults:
   run:
     working-directory: ./apps/framework-cli
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      framework-cli: ${{ steps.check-changes.outputs.framework-cli }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for relevant changes
+        id: check-changes
+        shell: bash
+        run: |
+          # Define patterns to check - one per line for readability
+          PATTERNS=(
+            "^\.github/workflows/test-framework-cli\.yaml"
+            "^apps/framework-cli-e2e/"
+            "^apps/framework-cli/"
+            "^templates/python/"
+            "^templates/typescript/"
+            "^packages/"
+          )
+
+          # Join patterns with | for grep
+          GREP_PATTERN=$(IFS="|"; echo "${PATTERNS[*]}")
+
+          # Get changed files
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
+
+          # Check if any relevant files were changed
+          if grep -q -E "${GREP_PATTERN}" changes.txt; then
+            echo "framework-cli=true" >> $GITHUB_OUTPUT
+          else
+            echo "framework-cli=false" >> $GITHUB_OUTPUT
+          fi
+
   check:
+    needs: changes
+    if: ${{ needs.changes.outputs.framework-cli == 'true' }}
     name: Check
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -53,6 +85,8 @@ jobs:
         run: cargo build --release --locked
 
   test-macos:
+    needs: changes
+    if: ${{ needs.changes.outputs.framework-cli == 'true' }}
     name: Test Suite (MacOS)
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -100,6 +134,8 @@ jobs:
           cat ~/.moose/*-cli.log
 
   test-ubuntu:
+    needs: changes
+    if: ${{ needs.changes.outputs.framework-cli == 'true' }}
     name: Test Suite (Ubuntu)
     runs-on: ubuntu-4
     env:
@@ -152,6 +188,8 @@ jobs:
           cat ~/.moose/*-cli.log
 
   lints:
+    needs: changes
+    if: ${{ needs.changes.outputs.framework-cli == 'true' }}
     name: Lints
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -193,7 +231,7 @@ jobs:
           args: --manifest-path ./apps/framework-cli/Cargo.toml -- -D warnings
 
   notify-slack-on-failure:
-    needs: [check, test-macos, test-ubuntu, lints]
+    needs: [changes, check, test-macos, test-ubuntu, lints]
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
     steps:

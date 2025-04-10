@@ -373,10 +373,19 @@ impl DockerClient {
         let mut handlebars = Handlebars::new();
         handlebars.register_escape_fn(handlebars::no_escape);
 
-        let data = json!({
+        let mut data = json!({
             "scripts_feature": settings.features.scripts || project.features.workflows,
             "streaming_engine": project.features.streaming_engine
         });
+
+        // Add the clickhouse host data path if it's set
+        if let Some(path) = &project.clickhouse_config.host_data_path {
+            if let Some(path_str) = path.to_str() {
+                if let Some(obj) = data.as_object_mut() {
+                    obj.insert("clickhouse_host_data_path".to_string(), json!(path_str));
+                }
+            }
+        }
 
         let rendered = handlebars
             .render_template(COMPOSE_FILE, &data)

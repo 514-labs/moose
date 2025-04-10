@@ -194,19 +194,19 @@ pub async fn get_template_manifest(template_version: &str) -> anyhow::Result<Val
         }
         let content = std::fs::read_to_string(manifest_path)?;
         let manifest: Value = toml::from_str(&content)?;
-        return Ok(manifest);
+        Ok(manifest)
+    } else {
+        let res = reqwest::get(format!(
+            "{}/{}/manifest.toml",
+            TEMPLATE_REGISTRY_URL, template_version
+        ))
+        .await?
+        .error_for_status()?;
+
+        let content = res.text().await?;
+        let manifest: Value = toml::from_str(&content)?;
+        Ok(manifest)
     }
-
-    let res = reqwest::get(format!(
-        "{}/{}/manifest.toml",
-        TEMPLATE_REGISTRY_URL, template_version
-    ))
-    .await?
-    .error_for_status()?;
-
-    let content = res.text().await?;
-    let manifest: Value = toml::from_str(&content)?;
-    Ok(manifest)
 }
 
 pub async fn get_template_config(

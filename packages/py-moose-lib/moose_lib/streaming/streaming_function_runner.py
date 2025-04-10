@@ -181,7 +181,7 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
         if source_py_stream_name != source_topic.topic_name_to_stream_name():
             continue
 
-        if stream.has_consumers and target_topic is None:
+        if stream.has_consumers() and target_topic is None:
             return stream.model_type, stream.consumers[0]
 
         # Check each transformation in the stream
@@ -337,7 +337,7 @@ def create_producer() -> Optional[KafkaProducer]:
             security_protocol=args.security_protocol,
             max_request_size=target_topic.max_message_bytes
         )
-    elif target_topic is None:
+    elif target_topic is not None:
         log("No sasl mechanism specified. Using default producer.")
         return KafkaProducer(
             bootstrap_servers=broker,

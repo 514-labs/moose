@@ -2,11 +2,11 @@ language = "python" # Must be typescript or python
 description = "default python project"
 post_install_print = """
 📂 Go to your project directory:
-    $ cd {project_dir}
+	$ cd {project_dir}
 
 📦 Install Dependencies:
-    $ pip install .
+	$ pip install -r ./requirements.txt
 
-🛠️ Start dev server:
-    $ moose dev
+🛠️ Start Moose Server:
+	$ moose dev
 """

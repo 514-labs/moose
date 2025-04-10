@@ -565,7 +565,7 @@ impl From<FunctionProcess> for StreamTransformationInfo {
     fn from(value: FunctionProcess) -> Self {
         Self {
             source: value.source_topic_id,
-            destinations: vec![value.target_topic_id],
+            destinations: value.target_topic_id.into_iter().collect(),
         }
     }
 }

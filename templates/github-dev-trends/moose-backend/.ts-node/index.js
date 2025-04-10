@@ -31,4 +31,5 @@ var __exportStar =
   };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./ingest/WatchEvent"), exports);
+__exportStar(require("./apis/topicTimeseries"), exports);
 //# sourceMappingURL=index.js.map

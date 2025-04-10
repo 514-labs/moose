@@ -47,7 +47,7 @@ interface ResultItem {
 
 type ResponseBody = ResultItem[];
 
-const exampleApi = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",  
+const exampleApi = new ConsumptionApi<QueryParams, ResponseBody[]>("example_endpoint",  
     async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
         const query = sql`
         SELECT 
@@ -58,7 +58,8 @@ const exampleApi = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoi
         WHERE category = ${filterField}
         LIMIT ${maxResults}`;
         
-        return client.query.execute(query);
+        const resultSet = await client.query.execute<ResponseBody>(query);
+        return await resultSet.json() as ResponseBody[];
     });
 ```
 </TypeScript>

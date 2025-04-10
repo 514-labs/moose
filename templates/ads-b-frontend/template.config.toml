@@ -4,27 +4,23 @@ post_install_print = """
 🫎 Initialize Moose project
 
 📂 Go to your moose project:
-	$ cd {project_dir}/moose
+    $ cd {project_dir}/moose
 
 📦 Install Dependencies:
-        $ npm install
+    $ npm install
 
 🛠️ Start dev server:
-	$ moose dev
-
-In another terminal:
-🏃 Run your workflows:
-	$ moose workflow run military_aircraft_tracking
+    $ moose dev
 
 📺 Initialize frontend
 
-In another terminal: 
+ℹ️ In another terminal: 
 📂 Go to your frontend project:
-	$ cd {project_dir}/frontend
+    $ cd {project_dir}/frontend
 
 📦 Install Dependencies:
-        $ npm install
+    $ npm install
 
 🛠️ Start dev server:
-	$ npm run dev
+    $ npm run dev
 """

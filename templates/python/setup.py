@@ -7,7 +7,7 @@ with open(requirements_path, "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name='demo',
+    name='py',
     version='0.0',
     install_requires=requirements,
 )

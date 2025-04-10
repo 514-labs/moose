@@ -5,6 +5,8 @@ from typing import List, Optional
 from .workflow import ScriptWorkflow
 from .activity import create_activity_for_script
 from .logging import log
+import asyncio
+import signal
 from .utils.temporal import create_temporal_connection
 
 # Maintain a global set of activity names we've already created
@@ -114,18 +116,66 @@ async def start_worker(temporal_url: str, script_dir: str, client_cert: str, cli
         ValueError: If no scripts are found to register
     """
     log.info(f"Starting worker for script directory: {script_dir}")
+
+    loop = asyncio.get_running_loop()
+
     worker = await register_workflows(temporal_url, script_dir, client_cert, client_key, api_key)
 
     if worker is None:
         msg = f"No scripts found to register in {script_dir}"
         log.error(msg)
         raise ValueError(msg)
+
+    shutdown_task = None
+
+    # Define shutdown coroutine
+    async def shutdown():
+        log.info("Initiating graceful shutdown...")
+        try:
+            await asyncio.wait_for(worker.shutdown(), timeout=5.0)
+        except asyncio.TimeoutError:
+            log.warning("Worker shutdown timed out after 5 seconds")
+        except Exception as e:
+            log.error(f"Error during worker shutdown: {e}")
+
+    # Define your signal handler
+    def handle_signal(signame):
+        nonlocal shutdown_task
+        if shutdown_task is None:  # Prevent multiple shutdown tasks
+            log.info(f"Received signal {signame}, initiating shutdown...")
+            shutdown_task = asyncio.create_task(shutdown())
+
+    # Add signal handlers
+    for signame in ('SIGTERM', 'SIGQUIT', 'SIGHUP'):
+        loop.add_signal_handler(getattr(signal, signame), lambda s=signame: handle_signal(s))
     
     log.info("Starting Python worker...")
     try:
-        await worker.run()
+        worker_task = asyncio.create_task(worker.run())
+        
+        # Loop and check for shutdown
+        while True:
+            if shutdown_task is not None:
+                # Wait for shutdown to complete
+                try:
+                    await asyncio.wait_for(shutdown_task, timeout=10.0)
+                except asyncio.TimeoutError:
+                    log.error("Shutdown timed out")
+                break
+            await asyncio.sleep(0.1)  # Small sleep to prevent busy loop
+
     except Exception as e:
         log.error(f"Worker failed to start: {e}")
         raise
+    finally:
+        # Cancel any remaining tasks
+        if shutdown_task is not None and not shutdown_task.done():
+            shutdown_task.cancel()
+        if not worker_task.done():
+            worker_task.cancel()
+            try:
+                await asyncio.wait_for(worker_task, timeout=5.0)
+            except asyncio.TimeoutError:
+                log.warning("Worker task did not complete after cancellation")
     
     return worker

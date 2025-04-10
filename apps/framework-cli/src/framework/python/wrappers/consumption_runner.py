@@ -378,6 +378,7 @@ def main():
     httpd.moose_client = moose_client
     
     def shutdown_server():
+        temporal_client
         httpd.shutdown()
         print("\nShutting down server...")
         httpd.server_close()
@@ -393,6 +394,8 @@ def main():
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGQUIT, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
     
     print(f"Starting server on http://localhost:4001")
     

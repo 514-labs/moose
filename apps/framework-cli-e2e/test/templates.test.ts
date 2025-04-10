@@ -26,13 +26,178 @@ const MOOSE_LIB_PATH = path.resolve(
   __dirname,
   "../../../packages/ts-moose-lib",
 );
+const MOOSE_PY_LIB_PATH = path.resolve(
+  __dirname,
+  "../../../packages/py-moose-lib",
+);
+
+// Common test configuration
+const TEST_CONFIG = {
+  clickhouse: {
+    url: "http://localhost:18123",
+    username: "panda",
+    password: "pandapass",
+    database: "local",
+  },
+  server: {
+    url: "http://localhost:4000",
+    startupTimeout: 90_000,
+    startupMessage:
+      "Your local development server is running at: http://localhost:4000/ingest",
+  },
+  timestamp: 1739952000, // 2025-02-21 00:00:00 UTC
+};
+
+// Test utilities
+const utils = {
+  removeTestProject: (dir: string) => {
+    console.log(`deleting ${dir}`);
+    fs.rmSync(dir, { recursive: true, force: true });
+  },
+
+  waitForServerStart: async (
+    devProcess: ChildProcess,
+    timeout: number,
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      let serverStarted = false;
+      devProcess.stdout?.on("data", async (data) => {
+        const output = data.toString();
+        console.log("Dev server output:", output);
+
+        if (
+          !serverStarted &&
+          output.includes(TEST_CONFIG.server.startupMessage)
+        ) {
+          resolve();
+          serverStarted = true;
+        }
+      });
+
+      devProcess.stderr?.on("data", (data) => {
+        console.error("Dev server stderr:", data.toString());
+      });
+
+      devProcess.on("exit", (code) => {
+        console.log(`Dev process exited with code ${code}`);
+        expect(code).to.equal(0);
+      });
+
+      (async () => {
+        await setTimeoutAsync(timeout);
+        if (devProcess.killed) return;
+        console.error("Dev server did not start or complete in time");
+        devProcess.kill("SIGINT");
+        reject(new Error("Dev server timeout"));
+      })();
+    });
+  },
+
+  stopDevProcess: async (devProcess: ChildProcess | null): Promise<void> => {
+    if (devProcess && !devProcess.killed) {
+      console.log("Stopping dev process...");
+      devProcess.kill("SIGINT");
+
+      await new Promise<void>((resolve) => {
+        devProcess!.on("exit", () => {
+          console.log("Dev process has exited");
+          resolve();
+        });
+      });
+    }
+  },
+  cleanupDocker: async (projectDir: string, appName: string): Promise<void> => {
+    console.log(`Cleaning up Docker resources for ${appName}...`);
+    try {
+      // Stop containers and remove volumes
+      await execAsync(
+        "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",
+        { cwd: projectDir },
+      );
+
+      // Additional cleanup for any orphaned volumes
+      const { stdout: volumeList } = await execAsync(
+        `docker volume ls --filter name=${appName}_ --format '{{.Name}}'`,
+      );
+
+      if (volumeList.trim()) {
+        const volumes = volumeList.split("\n").filter(Boolean);
+        for (const volume of volumes) {
+          console.log(`Removing volume: ${volume}`);
+          await execAsync(`docker volume rm -f ${volume}`);
+        }
+      }
+
+      console.log("Docker cleanup completed successfully");
+    } catch (error) {
+      console.error("Error during Docker cleanup:", error);
+    }
+  },
+
+  verifyClickhouseData: async (
+    tableName: string,
+    eventId: string,
+    primaryKeyField: string,
+  ): Promise<void> => {
+    const client = createClient(TEST_CONFIG.clickhouse);
+    try {
+      const result = await client.query({
+        query: `SELECT * FROM ${tableName}`,
+        format: "JSONEachRow",
+      });
+      const rows: any[] = await result.json();
+      console.log(`${tableName} data:`, rows);
+
+      expect(rows).to.have.lengthOf(
+        1,
+        `Expected exactly one row in ${tableName}`,
+      );
+      expect(rows[0][primaryKeyField]).to.equal(
+        eventId,
+        `${primaryKeyField} in ${tableName} should match the generated UUID`,
+      );
+    } catch (error) {
+      console.error("Error querying ClickHouse:", error);
+      throw error;
+    } finally {
+      await client.close();
+    }
+  },
+
+  verifyConsumptionApi: async (
+    endpoint: string,
+    expectedResponse: any,
+  ): Promise<void> => {
+    const response = await fetch(
+      `${TEST_CONFIG.server.url}/consumption/${endpoint}`,
+    );
+    if (response.ok) {
+      console.log("Test request sent successfully");
+      const json = await response.json();
+      expect(json).to.deep.equal(expectedResponse);
+    } else {
+      console.error("Response code:", response.status);
+      const text = await response.text();
+      console.error(`Test request failed: ${text}`);
+      throw new Error(`${response.status}: ${text}`);
+    }
+  },
+};
+
+it("should return the dummy version in debug build", async () => {
+  const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
+  const version = stdout.trim();
+  const expectedVersion = "moose-cli 0.0.1";
+  expect(version).to.equal(expectedVersion);
+});
 
 describe("Moose Templates", () => {
   describe("typescript template", () => {
     let devProcess: ChildProcess | null = null;
-    const TEST_PROJECT_DIR = path.join(__dirname, "test-project");
+    const TEST_PROJECT_DIR = path.join(__dirname, "test-project-ts");
 
     before(async function () {
+      this.timeout(120_000);
       try {
         await fs.promises.access(CLI_PATH, fs.constants.F_OK);
       } catch (err) {
@@ -41,74 +206,25 @@ describe("Moose Templates", () => {
         );
         throw err;
       }
-    });
-
-    const removeTestProj = () => {
-      console.log(`deleting ${TEST_PROJECT_DIR}`);
-      fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
-    };
-
-    after(async function () {
-      if (devProcess && !devProcess.killed) {
-        this.timeout(10_000);
-
-        console.log("Stopping dev process...");
-        devProcess.kill("SIGINT");
-
-        // Wait for the devProcess to exit
-        await new Promise<void>((resolve) => {
-          devProcess!.on("exit", () => {
-            console.log("Dev process has exited");
-            resolve();
-          });
-        });
-      }
-      console.log("Stopping Docker containers and removing volumes...");
-      try {
-        await execAsync(
-          "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",
-          { cwd: TEST_PROJECT_DIR },
-        );
-        console.log("Docker containers stopped successfully");
-      } catch (error) {
-        console.error("Error stopping Docker containers:", error);
-      }
-
-      removeTestProj();
-    });
-
-    it("should return the dummy version in debug build", async () => {
-      const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
-      const version = stdout.trim();
-      const expectedVersion = "moose-cli 0.0.1";
-      expect(version).to.equal(expectedVersion);
-    });
-
-    it("should init a project, install dependencies, run dev command, send a request", async function () {
-      this.timeout(120_000); // 2 minutes
 
       if (fs.existsSync(TEST_PROJECT_DIR)) {
-        removeTestProj();
+        utils.removeTestProject(TEST_PROJECT_DIR);
       }
 
-      console.log("Initializing project...");
-      try {
-        await execAsync(
-          `"${CLI_PATH}" init my-moose-app typescript --location "${TEST_PROJECT_DIR}"`,
-        );
-      } catch (error) {
-        console.error("Error during project initialization:", error);
-        throw error;
-      }
+      // Initialize project
+      console.log("Initializing TypeScript project...");
+      await execAsync(
+        `"${CLI_PATH}" init moose-ts-app typescript --location "${TEST_PROJECT_DIR}"`,
+      );
 
+      // Update package.json to use local moose-lib
       console.log("Updating package.json to use local moose-lib...");
       const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-
       packageJson.dependencies["@514labs/moose-lib"] = `file:${MOOSE_LIB_PATH}`;
-
       fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
+      // Install dependencies
       console.log("Installing dependencies...");
       await new Promise<void>((resolve, reject) => {
         const npmInstall = spawn("npm", ["install"], {
@@ -123,130 +239,64 @@ describe("Moose Templates", () => {
         });
       });
 
+      // Start dev server
       console.log("Starting dev server...");
       devProcess = spawn(CLI_PATH, ["dev"], {
         stdio: "pipe",
         cwd: TEST_PROJECT_DIR,
       });
 
-      await new Promise<void>((resolve, reject) => {
-        let serverStarted = false;
-        devProcess!.stdout?.on("data", async (data) => {
-          const output = data.toString();
-          console.log("Dev server output:", output);
-
-          if (
-            !serverStarted &&
-            output.includes(
-              "Your local development server is running at: http://localhost:4000/ingest",
-            )
-          ) {
-            resolve();
-            serverStarted = true;
-          }
-        });
-
-        devProcess!.stderr?.on("data", (data) => {
-          console.error("Dev server stderr:", data.toString());
-        });
-
-        devProcess!.on("exit", (code) => {
-          console.log(`Dev process exited with code ${code}`);
-          expect(code).to.equal(0);
-        });
-
-        (async () => {
-          await setTimeoutAsync(70_000);
-          if (devProcess!.killed) return;
-          console.error("Dev server did not start or complete in time");
-          devProcess!.kill("SIGINT");
-          reject(new Error("Dev server timeout"));
-        })();
-      });
-
-      console.log("Server started, waiting before sending test request...");
+      await utils.waitForServerStart(
+        devProcess,
+        TEST_CONFIG.server.startupTimeout,
+      );
+      console.log("Server started, waiting before running tests...");
       await setTimeoutAsync(10000);
+    });
 
+    after(async function () {
+      this.timeout(10_000);
+      await utils.stopDevProcess(devProcess);
+      await utils.cleanupDocker(TEST_PROJECT_DIR, "moose-ts-app");
+      utils.removeTestProject(TEST_PROJECT_DIR);
+    });
+
+    it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-
-      const response = await fetch("http://localhost:4000/ingest/Foo", {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           primaryKey: eventId,
-          timestamp: 1739990000,
+          timestamp: TEST_CONFIG.timestamp,
           optionalText: "Hello world",
         }),
       });
 
-      if (response.ok) {
-        console.log("Test request sent successfully");
-      } else {
+      if (!response.ok) {
         console.error("Response code:", response.status);
         const text = await response.text();
         console.error(`Test request failed: ${text}`);
         throw new Error(`${response.status}: ${text}`);
       }
 
-      // Wait for data to be processed
       await setTimeoutAsync(5000);
-
-      // Query the database
-      const client = createClient({
-        url: "http://localhost:18123",
-        username: "panda",
-        password: "pandapass",
-        database: "local",
-      });
-
-      try {
-        const result = await client.query({
-          query: "SELECT * FROM Bar",
-          format: "JSONEachRow",
-        });
-        const rows: any[] = await result.json();
-        console.log("Foo data:", rows);
-
-        expect(rows).to.have.lengthOf(1, "Expected exactly one row in Bar");
-        expect(rows[0].primaryKey).to.equal(
-          eventId,
-          "PrimaryKey in Foo should match the generated UUID",
-        );
-      } catch (error) {
-        console.error("Error querying ClickHouse:", error);
-        throw error;
-      } finally {
-        await client.close();
-      }
-
-      console.log("Sending consumption request...");
-      const consumptionResponse = await fetch(
-        "http://localhost:4000/consumption/bar?orderBy=totalRows",
-      );
-
-      if (consumptionResponse.ok) {
-        console.log("Test request sent successfully");
-        let json = await consumptionResponse.json();
-        expect(json).to.deep.equal([
-          {
-            dayOfMonth: 21,
-            totalRows: "1",
-          },
-        ]);
-      } else {
-        console.error("Response code:", consumptionResponse.status);
-        const text = await consumptionResponse.text();
-        console.error(`Test request failed: ${text}`);
-        throw new Error(`${consumptionResponse.status}: ${text}`);
-      }
+      await utils.verifyClickhouseData("Bar", eventId, "primaryKey");
+      await utils.verifyConsumptionApi("bar?orderBy=totalRows", [
+        {
+          dayOfMonth: 19,
+          totalRows: "1",
+        },
+      ]);
     });
   });
 
   describe("python template", () => {
     let devProcess: ChildProcess | null = null;
-    const TEST_PROJECT_DIR = path.join(__dirname, "test-python-project");
+    const TEST_PROJECT_DIR = path.join(__dirname, "test-project-py");
 
     before(async function () {
+      this.timeout(180_000);
       try {
         await fs.promises.access(CLI_PATH, fs.constants.F_OK);
       } catch (err) {
@@ -255,59 +305,18 @@ describe("Moose Templates", () => {
         );
         throw err;
       }
-    });
-
-    const removeTestProj = () => {
-      console.log(`deleting ${TEST_PROJECT_DIR}`);
-      fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
-    };
-
-    after(async function () {
-      this.timeout(30_000); // 30 seconds for cleanup
-
-      if (devProcess && !devProcess.killed) {
-        console.log("Stopping dev process...");
-        devProcess.kill("SIGINT");
-
-        // Wait for the devProcess to exit
-        await new Promise<void>((resolve) => {
-          devProcess!.on("exit", () => {
-            console.log("Dev process has exited");
-            resolve();
-          });
-        });
-      }
-      console.log("Stopping Docker containers and removing volumes...");
-      try {
-        await execAsync(
-          "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",
-          { cwd: TEST_PROJECT_DIR },
-        );
-        console.log("Docker containers stopped successfully");
-      } catch (error) {
-        console.error("Error stopping Docker containers:", error);
-      }
-
-      removeTestProj();
-    });
-
-    it("should init a project, install dependencies, run dev command, send a request", async function () {
-      this.timeout(180_000); // 3 minutes - Python setup might take longer than TypeScript
 
       if (fs.existsSync(TEST_PROJECT_DIR)) {
-        removeTestProj();
+        utils.removeTestProject(TEST_PROJECT_DIR);
       }
 
-      console.log("Initializing project...");
-      try {
-        await execAsync(
-          `"${CLI_PATH}" init my-moose-app python --location "${TEST_PROJECT_DIR}"`,
-        );
-      } catch (error) {
-        console.error("Error during project initialization:", error);
-        throw error;
-      }
+      // Initialize project
+      console.log("Initializing Python project...");
+      await execAsync(
+        `"${CLI_PATH}" init moose-py-app python --location "${TEST_PROJECT_DIR}"`,
+      );
 
+      // Set up Python environment and install dependencies
       console.log(
         "Setting up Python virtual environment and installing dependencies...",
       );
@@ -323,31 +332,57 @@ describe("Moose Templates", () => {
             return;
           }
 
-          // Install dependencies using pip from the virtual environment
-          const pipCmd = spawn(
+          // First install project dependencies from requirements.txt
+          const pipReqCmd = spawn(
             process.platform === "win32"
               ? ".venv\\Scripts\\pip"
               : ".venv/bin/pip",
-            ["install", "-e", "."],
+            ["install", "-r", "requirements.txt"],
             {
               stdio: "inherit",
               cwd: TEST_PROJECT_DIR,
             },
           );
-          pipCmd.on("close", (pipCode) => {
-            console.log(`pip install exited with code ${pipCode}`);
-            pipCode === 0
-              ? resolve()
-              : reject(new Error(`pip install failed with code ${pipCode}`));
+
+          pipReqCmd.on("close", (reqPipCode) => {
+            if (reqPipCode !== 0) {
+              reject(
+                new Error(
+                  `requirements.txt pip install failed with code ${reqPipCode}`,
+                ),
+              );
+              return;
+            }
+
+            // Then install the local moose lib
+            const pipMooseCmd = spawn(
+              process.platform === "win32"
+                ? ".venv\\Scripts\\pip"
+                : ".venv/bin/pip",
+              ["install", "-e", MOOSE_PY_LIB_PATH],
+              {
+                stdio: "inherit",
+                cwd: TEST_PROJECT_DIR,
+              },
+            );
+
+            pipMooseCmd.on("close", (moosePipCode) => {
+              if (moosePipCode !== 0) {
+                reject(
+                  new Error(
+                    `moose lib pip install failed with code ${moosePipCode}`,
+                  ),
+                );
+                return;
+              }
+              resolve();
+            });
           });
         });
       });
 
+      // Start dev server
       console.log("Starting dev server...");
-      const pythonPath =
-        process.platform === "win32"
-          ? ".venv\\Scripts\\python"
-          : ".venv/bin/python";
       devProcess = spawn(CLI_PATH, ["dev"], {
         stdio: "pipe",
         cwd: TEST_PROJECT_DIR,
@@ -358,116 +393,48 @@ describe("Moose Templates", () => {
         },
       });
 
-      await new Promise<void>((resolve, reject) => {
-        let serverStarted = false;
-        devProcess!.stdout?.on("data", async (data) => {
-          const output = data.toString();
-          console.log("Dev server output:", output);
-
-          if (
-            !serverStarted &&
-            output.includes(
-              "Your local development server is running at: http://localhost:4000/ingest",
-            )
-          ) {
-            resolve();
-            serverStarted = true;
-          }
-        });
-
-        devProcess!.stderr?.on("data", (data) => {
-          console.error("Dev server stderr:", data.toString());
-        });
-
-        devProcess!.on("exit", (code) => {
-          console.log(`Dev process exited with code ${code}`);
-          expect(code).to.equal(0);
-        });
-
-        (async () => {
-          await setTimeoutAsync(90_000);
-          if (devProcess!.killed) return;
-          console.error("Dev server did not start or complete in time");
-          devProcess!.kill("SIGINT");
-          reject(new Error("Dev server timeout"));
-        })();
-      });
-
-      console.log("Server started, waiting before sending test request...");
+      await utils.waitForServerStart(
+        devProcess,
+        TEST_CONFIG.server.startupTimeout,
+      );
+      console.log("Server started, waiting before running tests...");
       await setTimeoutAsync(10000);
+    });
 
+    after(async function () {
+      this.timeout(30_000);
+      await utils.stopDevProcess(devProcess);
+      await utils.cleanupDocker(TEST_PROJECT_DIR, "moose-py-app");
+      utils.removeTestProject(TEST_PROJECT_DIR);
+    });
+
+    it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-
-      const response = await fetch("http://localhost:4000/ingest/foo", {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           primary_key: eventId,
-          timestamp: 1739990000,
+          timestamp: TEST_CONFIG.timestamp,
           optional_text: "Hello from Python",
         }),
       });
 
-      if (response.ok) {
-        console.log("Test request sent successfully");
-      } else {
+      if (!response.ok) {
         console.error("Response code:", response.status);
         const text = await response.text();
         console.error(`Test request failed: ${text}`);
         throw new Error(`${response.status}: ${text}`);
       }
 
-      // Wait for data to be processed
       await setTimeoutAsync(5000);
-
-      // Query the database
-      const client = createClient({
-        url: "http://localhost:18123",
-        username: "panda",
-        password: "pandapass",
-        database: "local",
-      });
-
-      try {
-        const result = await client.query({
-          query: "SELECT * FROM bar",
-          format: "JSONEachRow",
-        });
-        const rows: any[] = await result.json();
-        console.log("Foo data:", rows);
-
-        expect(rows).to.have.lengthOf(1, "Expected exactly one row in bar");
-        expect(rows[0].primary_key).to.equal(
-          eventId,
-          "primary_key in foo should match the generated UUID",
-        );
-      } catch (error) {
-        console.error("Error querying ClickHouse:", error);
-        throw error;
-      } finally {
-        await client.close();
-      }
-
-      console.log("Sending consumption request...");
-      const consumptionResponse = await fetch(
-        "http://localhost:4000/consumption/bar?order_by=total_rows",
-      );
-
-      if (consumptionResponse.ok) {
-        console.log("Test request sent successfully");
-        let json = await consumptionResponse.json();
-        expect(json).to.deep.equal([
-          {
-            day_of_month: 21,
-            total_rows: "1",
-          },
-        ]);
-      } else {
-        console.error("Response code:", consumptionResponse.status);
-        const text = await consumptionResponse.text();
-        console.error(`Test request failed: ${text}`);
-        throw new Error(`${consumptionResponse.status}: ${text}`);
-      }
+      await utils.verifyClickhouseData("Bar", eventId, "primary_key");
+      await utils.verifyConsumptionApi("bar?order_by=total_rows", [
+        {
+          day_of_month: 19,
+          total_rows: 1,
+        },
+      ]);
     });
   });
 });

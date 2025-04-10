@@ -213,9 +213,13 @@ async function registerWorkflows(
 export async function runScripts(
   config: ScriptsConfig,
 ): Promise<Worker | null> {
-  // Not sure why temporal doesn't like importing the logger
-  // so have to pass it around
   const logger = initializeLogger();
+
+  // Add process-level uncaught exception handler
+  process.on("uncaughtException", (error) => {
+    console.error(`[PROCESS] Uncaught Exception: ${error}`);
+    process.exit(1);
+  });
 
   logger.info(`Starting worker for script directory: ${config.scriptDir}`);
   const worker = await registerWorkflows(logger, config);
@@ -225,12 +229,63 @@ export async function runScripts(
     return null;
   }
 
+  let isShuttingDown = false;
+
+  // Handle shutdown signals
+  async function handleSignal(signal: string) {
+    console.log(`[PROCESS] Received ${signal} signal`);
+
+    if (isShuttingDown) {
+      console.log(`[PROCESS] Already shutting down, ignoring ${signal}`);
+      return;
+    }
+
+    isShuttingDown = true;
+    console.log("[PROCESS] Starting graceful shutdown...");
+
+    try {
+      console.log("[PROCESS] Attempting worker shutdown...");
+      if (!worker) {
+        console.log("[PROCESS] No worker to shutdown");
+        process.exit(0);
+      }
+      await Promise.race([
+        worker.shutdown(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Shutdown timeout")), 3000),
+        ),
+      ]);
+      console.log("[PROCESS] Worker shutdown completed");
+      process.exit(0);
+    } catch (error) {
+      console.error(`[PROCESS] Shutdown error: ${error}`);
+      process.exit(1);
+    }
+  }
+
+  // Register signal handlers immediately
+  ["SIGTERM", "SIGINT", "SIGHUP", "SIGQUIT"].forEach((signal) => {
+    process.on(signal, () => {
+      console.log(`[PROCESS] Signal handler triggered for ${signal}`);
+      handleSignal(signal).catch((error) => {
+        console.error(
+          `[PROCESS] Fatal error during ${signal} handling:`,
+          error,
+        );
+        process.exit(1);
+      });
+    });
+    console.log(`[PROCESS] Registered signal handler for ${signal}`);
+  });
+
   logger.info("Starting TypeScript worker...");
   try {
+    console.log("[PROCESS] Starting worker execution");
     await worker.run();
+    console.log("[PROCESS] Worker execution completed normally");
   } catch (error) {
-    logger.error(`Worker failed to start: ${error}`);
-    throw error;
+    console.error(`[PROCESS] Worker execution failed: ${error}`);
+    process.exit(1);
   }
 
   return worker;

@@ -478,13 +478,45 @@ def main():
     def shutdown(signum, frame):
         """Handle shutdown signals gracefully"""
         log("Received shutdown signal, cleaning up...")
+        running.clear()  # This will trigger the main loop to exit
+
+    # Set up signal handlers
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGHUP, shutdown)  # Handle parent process termination
+    signal.signal(signal.SIGQUIT, shutdown)  # Handle quit signal from parent
+
+    # Start the metrics thread
+    metrics_thread = threading.Thread(target=send_message_metrics)
+    metrics_thread.daemon = True
+    metrics_thread.start()
+
+    # Start the message processing thread
+    processing_thread = threading.Thread(target=process_messages)
+    processing_thread.daemon = True
+    processing_thread.start()
+
+    log(f"Streaming function Started")
+
+    try:
+        # Main thread waits for threads to complete
+        while running.is_set():
+            time.sleep(1)
+    finally:
+        # Ensure cleanup happens even if main thread gets interrupted
         running.clear()
+        log("Shutting down threads...")
         
-        # Wait for threads to finish
+        # Give threads a chance to exit gracefully with timeout
         metrics_thread.join(timeout=5)
         processing_thread.join(timeout=5)
         
-        # Additional cleanup if threads didn't exit cleanly
+        if metrics_thread.is_alive():
+            log("Metrics thread did not exit cleanly")
+        if processing_thread.is_alive():
+            log("Processing thread did not exit cleanly")
+        
+        # Clean up Kafka resources regardless of thread state
         if kafka_refs['consumer']:
             try:
                 kafka_refs['consumer'].close()
@@ -500,26 +532,6 @@ def main():
         
         log("Shutdown complete")
         sys.exit(0)
-
-    # Set up signal handlers
-    signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGINT, shutdown)
-
-    # Start the metrics thread
-    metrics_thread = threading.Thread(target=send_message_metrics)
-    metrics_thread.daemon = True
-    metrics_thread.start()
-
-    # Start the message processing thread
-    processing_thread = threading.Thread(target=process_messages)
-    processing_thread.daemon = True
-    processing_thread.start()
-
-    log(f"Streaming function Started")
-
-    # Main thread waits for threads to complete
-    while running.is_set():
-        time.sleep(1)
 
 if __name__ == "__main__":
     main()

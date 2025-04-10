@@ -2,14 +2,11 @@ language = "typescript" # Must be typescript or python
 description = ""
 post_install_print = """
 📂 Go to your project directory:
-	$ cd {project_dir}
+    $ cd {project_dir}
 
 📦 Install Dependencies:
-        $ npm install
+    $ npm install
 
 🛠️ Start dev server:
-	$ moose dev
-
-🏃 Run your workflows:
-	$ moose workflow run military_aircraft_tracking
+    $ moose dev
 """

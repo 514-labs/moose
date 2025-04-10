@@ -1,15 +1,22 @@
 language = "typescript" # Must be typescript or python
 description = ""
 post_install_print = """
-	$ cd {project_dir}/moose
+📂 Go to your project directory:
+    $ cd {project_dir}/moose
 
-Install Dependencies:
-	$ npm i
-Start Moose Server:
-	$ moose dev
+📦 Install Dependencies:
+    $ npm i
 
-In another terminal window:
-	$ cd {project_dir}/frontend
-	$ npm i
+🛠️ Start dev server:
+    $ moose dev
+
+ℹ️ In another terminal window:
+📂 Go to your frontend project:
+    $ cd {project_dir}/frontend
+
+📦 Install Dependencies:
+    $ npm i
+
+🛠️ Start frontend dev server:
 	$ npm run dev
 """

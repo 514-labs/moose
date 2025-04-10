@@ -111,7 +111,7 @@ def to_infra_map() -> dict:
             partition_count=stream.config.parallelism,
             transformation_targets=transformation_targets,
             has_multi_transform=stream._multipleTransformations is not None,
-            has_consumers=len(stream.consumers) > 0
+            has_consumers=stream.has_consumers()
         )
 
     for name, api in _ingest_apis.items():

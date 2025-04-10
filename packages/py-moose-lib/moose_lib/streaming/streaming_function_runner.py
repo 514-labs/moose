@@ -247,7 +247,7 @@ sasl_config = {
 # When migrating - make sure the ACLs are updated to use the new prefix. 
 # And make sure the prefixes are the same in the ts-moose-lib and py-moose-lib
 streaming_function_id = f'flow-{source_topic.name}-{target_topic.name}' if target_topic else f'flow-{source_topic.name}'
-log_prefix = f"{source_topic.name} -> {target_topic.name}" if target_topic else f"{source_topic.name}-consumer"
+log_prefix = f"{source_topic.name} -> {target_topic.name}" if target_topic else f"{source_topic.name} -> None"
 
 def log(msg: str) -> None:
     """Log a message with the source->target topic prefix."""
@@ -443,7 +443,7 @@ def main():
                             with metrics_lock:
                                 metrics['count_in'] += len(output_data_list)
                             
-                            cli_log(CliLogData(action="Received", message=f'{source_topic.name} -> {target_topic.name} {len(output_data_list)} message(s)'))
+                            cli_log(CliLogData(action="Received", message=f'{log_prefix} {len(output_data_list)} message(s)'))
 
                             if producer is not None:
                                 for item in output_data_list:

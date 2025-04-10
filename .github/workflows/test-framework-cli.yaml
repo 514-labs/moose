@@ -10,6 +10,8 @@ on:
       - ".github/workflows/test-framework-cli.yaml"
       - "apps/framework-cli-e2e/**"
       - "apps/framework-cli/**"
+      - "templates/python/**"
+      - "templates/typescript/**"
       - "packages/**"
 
 defaults:

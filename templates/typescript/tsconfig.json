@@ -3,7 +3,7 @@
     "outDir": "dist",
     "esModuleInterop": true,
     "paths": {
-      "datamodels/*": ["./app/ingest/*"],
+      "datamodels/*": ["app/datamodels/*"],
       "versions/*": ["./.moose/versions/*"]
     },
     "plugins": [

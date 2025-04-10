@@ -57,15 +57,16 @@ fn default_temporal_port() -> u16 {
 }
 
 fn default_temporal_version() -> String {
-    "1.22.3".to_string()
+    "1.27".to_string()
 }
 
 fn default_admin_tools_version() -> String {
-    "1.22.3".to_string()
+    "1.27".to_string()
 }
 
 fn default_ui_version() -> String {
-    "2.21.3".to_string()
+    // Minor version is mandatory for the UI
+    "2.37.0".to_string()
 }
 
 fn default_ui_port() -> u16 {

@@ -181,6 +181,9 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
         if source_py_stream_name != source_topic.topic_name_to_stream_name():
             continue
 
+        if stream.has_consumers() and target_topic is None:
+            return stream.model_type, stream.consumers[0]
+
         # Check each transformation in the stream
         for dest_stream_py_name, (_, transform_fn) in stream.transformations.items():
             # The source topic name should match the stream name
@@ -201,7 +204,6 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
 parser = argparse.ArgumentParser(description='Run a streaming function')
 
 parser.add_argument('source_topic_json', type=str, help='The source topic for the streaming function')
-parser.add_argument('target_topic_json', type=str, help='The target topic for the streaming function')
 # In DMV2 is the dir is the dir of the main.py or index.ts file
 # and the function_file_name is the file name of main.py or index.ts
 # In DMV1 the dir is the dir of the streaming function file
@@ -209,6 +211,7 @@ parser.add_argument('target_topic_json', type=str, help='The target topic for th
 parser.add_argument('function_file_dir', type=str, help='The dir of the streaming function file')
 parser.add_argument('function_file_name', type=str, help='The file name of the streaming function without the .py extension')
 parser.add_argument('broker', type=str, help='The broker to use for the streaming function')
+parser.add_argument('--target_topic_json', type=str, help='The target topic for the streaming function')
 parser.add_argument('--sasl_username', type=str, help='The SASL username to use for the streaming function')
 parser.add_argument('--sasl_password', type=str, help='The SASL password to use for the streaming function')
 parser.add_argument('--sasl_mechanism', type=str, help='The SASL mechanism to use for the streaming function')
@@ -219,7 +222,7 @@ args = parser.parse_args()
 
 print(args)
 source_topic = KafkaTopicConfig(**json.loads(args.source_topic_json))
-target_topic = KafkaTopicConfig(**json.loads(args.target_topic_json))
+target_topic = KafkaTopicConfig(**json.loads(args.target_topic_json)) if args.target_topic_json else None
 function_file_dir = args.function_file_dir
 function_file_name = args.function_file_name
 broker = args.broker
@@ -243,8 +246,8 @@ sasl_config = {
 # We use flow- instead of function- because that's what the ACLs in boreal are linked with
 # When migrating - make sure the ACLs are updated to use the new prefix. 
 # And make sure the prefixes are the same in the ts-moose-lib and py-moose-lib
-streaming_function_id = f'flow-{source_topic.name}-{target_topic.name}'
-log_prefix = f"{source_topic.name} -> {target_topic.name}"
+streaming_function_id = f'flow-{source_topic.name}-{target_topic.name}' if target_topic else f'flow-{source_topic.name}'
+log_prefix = f"{source_topic.name} -> {target_topic.name}" if target_topic else f"{source_topic.name} -> None"
 
 def log(msg: str) -> None:
     """Log a message with the source->target topic prefix."""
@@ -316,7 +319,7 @@ def create_consumer():
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
         )
 
-def create_producer():
+def create_producer() -> Optional[KafkaProducer]:
     """
     Create a Kafka producer configured for the target topic.
     
@@ -325,7 +328,7 @@ def create_producer():
     Returns:
         Configured KafkaProducer instance
     """
-    if sasl_config['mechanism'] is not None:
+    if sasl_config['mechanism'] is not None and target_topic is not None:
         return KafkaProducer(
             bootstrap_servers=broker,
             sasl_plain_username=sasl_config['username'],
@@ -334,13 +337,16 @@ def create_producer():
             security_protocol=args.security_protocol,
             max_request_size=target_topic.max_message_bytes
         )
-    else:
+    elif target_topic is not None:
         log("No sasl mechanism specified. Using default producer.")
         return KafkaProducer(
             bootstrap_servers=broker,
             max_in_flight_requests_per_connection=1,
             max_request_size=target_topic.max_message_bytes
         )
+    else:
+        log("No target topic specified. Not creating producer.")
+        return None
 
 
 def main():
@@ -381,7 +387,7 @@ def main():
                         'count_in': metrics['count_in'],
                         'count_out': metrics['count_out'],
                         'bytes': metrics['bytes_count'],
-                        'function_name': f'{source_topic.name} -> {target_topic.name}'
+                        'function_name': log_prefix
                     }
                 )
                 metrics['count_in'] = 0
@@ -437,18 +443,19 @@ def main():
                             with metrics_lock:
                                 metrics['count_in'] += len(output_data_list)
                             
-                            cli_log(CliLogData(action="Received", message=f'{source_topic.name} -> {target_topic.name} {len(output_data_list)} message(s)'))
+                            cli_log(CliLogData(action="Received", message=f'{log_prefix} {len(output_data_list)} message(s)'))
 
-                            for item in output_data_list:
-                                # Ignore flow function returning null
-                                if item is not None:
-                                    record = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
-                                    
-                                    producer.send(target_topic.name, record)
-                                    
-                                    with metrics_lock:
-                                        metrics['bytes_count'] += len(record)
-                                        metrics['count_out'] += 1
+                            if producer is not None:
+                                for item in output_data_list:
+                                    # Ignore flow function returning null
+                                    if item is not None:
+                                        record = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
+                                        
+                                        producer.send(target_topic.name, record)
+                                        
+                                        with metrics_lock:
+                                            metrics['bytes_count'] += len(record)
+                                            metrics['count_out'] += 1
 
                 except Exception as e:
                     cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))
@@ -462,7 +469,7 @@ def main():
             try:
                 if consumer:
                     consumer.close()
-                if producer:
+                if producer and producer is not None:
                     producer.flush()
                     producer.close()
             except Exception as e:
@@ -471,32 +478,13 @@ def main():
     def shutdown(signum, frame):
         """Handle shutdown signals gracefully"""
         log("Received shutdown signal, cleaning up...")
-        running.clear()
-        
-        # Wait for threads to finish
-        metrics_thread.join(timeout=5)
-        processing_thread.join(timeout=5)
-        
-        # Additional cleanup if threads didn't exit cleanly
-        if kafka_refs['consumer']:
-            try:
-                kafka_refs['consumer'].close()
-            except Exception as e:
-                log(f"Error closing consumer: {e}")
-                
-        if kafka_refs['producer']:
-            try:
-                kafka_refs['producer'].flush()
-                kafka_refs['producer'].close()
-            except Exception as e:
-                log(f"Error closing producer: {e}")
-        
-        log("Shutdown complete")
-        sys.exit(0)
+        running.clear()  # This will trigger the main loop to exit
 
     # Set up signal handlers
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGHUP, shutdown)  # Handle parent process termination
+    signal.signal(signal.SIGQUIT, shutdown)  # Handle quit signal from parent
 
     # Start the metrics thread
     metrics_thread = threading.Thread(target=send_message_metrics)
@@ -510,9 +498,40 @@ def main():
 
     log(f"Streaming function Started")
 
-    # Main thread waits for threads to complete
-    while running.is_set():
-        time.sleep(1)
+    try:
+        # Main thread waits for threads to complete
+        while running.is_set():
+            time.sleep(1)
+    finally:
+        # Ensure cleanup happens even if main thread gets interrupted
+        running.clear()
+        log("Shutting down threads...")
+        
+        # Give threads a chance to exit gracefully with timeout
+        metrics_thread.join(timeout=5)
+        processing_thread.join(timeout=5)
+        
+        if metrics_thread.is_alive():
+            log("Metrics thread did not exit cleanly")
+        if processing_thread.is_alive():
+            log("Processing thread did not exit cleanly")
+        
+        # Clean up Kafka resources regardless of thread state
+        if kafka_refs['consumer']:
+            try:
+                kafka_refs['consumer'].close()
+            except Exception as e:
+                log(f"Error closing consumer: {e}")
+                
+        if kafka_refs['producer'] and kafka_refs['producer'] is not None:
+            try:
+                kafka_refs['producer'].flush()
+                kafka_refs['producer'].close()
+            except Exception as e:
+                log(f"Error closing producer: {e}")
+        
+        log("Shutdown complete")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

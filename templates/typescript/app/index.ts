@@ -1,5 +1,5 @@
 export * from "./datamodels/models";
+export * from "./datamodels/transforms";
 
-export * from "./functions/process";
 export * from "./apis/bar";
 export * from "./blocks/views";

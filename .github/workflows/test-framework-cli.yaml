@@ -6,18 +6,55 @@ on:
     branches:
       - "**"
       - "!main"
-    paths:
-      - ".github/workflows/test-framework-cli.yaml"
-      - "apps/framework-cli-e2e/**"
-      - "apps/framework-cli/**"
-      - "packages/**"
 
 defaults:
   run:
     working-directory: ./apps/framework-cli
 
 jobs:
+  # Initial check for changes
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check-changes.outputs.should_run }}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for relevant changes
+        id: check-changes
+        shell: bash
+        run: |
+          # Define patterns to check - one per line for readability
+          PATTERNS=(
+            "^\.github/workflows/test-framework-cli\.yaml"
+            "^apps/framework-cli-e2e/"
+            "^apps/framework-cli/"
+            "^templates/python/"
+            "^templates/typescript/"
+            "^packages/"
+          )
+
+          # Join patterns with | for grep
+          GREP_PATTERN=$(IFS="|"; echo "${PATTERNS[*]}")
+
+          # Get changed files
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
+
+          # Check if any relevant files were changed
+          if grep -q -E "${GREP_PATTERN}" changes.txt; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
   check:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_run == 'true'
     name: Check
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -51,6 +88,8 @@ jobs:
         run: cargo build --release --locked
 
   test-macos:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_run == 'true'
     name: Test Suite (MacOS)
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -98,6 +137,8 @@ jobs:
           cat ~/.moose/*-cli.log
 
   test-ubuntu:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_run == 'true'
     name: Test Suite (Ubuntu)
     runs-on: ubuntu-4
     env:
@@ -150,6 +191,8 @@ jobs:
           cat ~/.moose/*-cli.log
 
   lints:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_run == 'true'
     name: Lints
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -190,10 +233,50 @@ jobs:
           command: clippy
           args: --manifest-path ./apps/framework-cli/Cargo.toml -- -D warnings
 
+  # Final status check that depends on all jobs
+  changes:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, check, test-macos, test-ubuntu, lints]
+    if: always()
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Check final status
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect-changes.outputs.should_run }}" == "false" ]]; then
+            echo "No relevant changes detected, marking as success"
+            exit 0
+          fi
+
+          # Check if any required jobs failed
+          if [[ "${{ needs.check.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-macos.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ubuntu.result }}" == "failure" ]] || \
+             [[ "${{ needs.lints.result }}" == "failure" ]]; then
+            echo "One or more required jobs failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.check.result }}" == "success" ]] && \
+             [[ "${{ needs.test-macos.result }}" == "success" ]] && \
+             [[ "${{ needs.test-ubuntu.result }}" == "success" ]] && \
+             [[ "${{ needs.lints.result }}" == "success" ]]; then
+            echo "All required jobs succeeded"
+            exit 0
+          fi
+
+          echo "Unexpected state in dependent jobs"
+          exit 1
+
   notify-slack-on-failure:
-    needs: [check, test-macos, test-ubuntu, lints]
+    needs: [changes]
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Notify Slack on failure
         uses: 514-labs/slack-notification-action@1.0.0

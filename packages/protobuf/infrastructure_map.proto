@@ -115,7 +115,7 @@ message FunctionProcess {
   string name = 1;
   string source_topic = 2;
   repeated Column source_columns = 3;
-  string target_topic = 4;
+  optional string target_topic = 4;
   map<string, string> target_topic_config = 5;
   repeated Column target_columns = 6;
   string executable = 7;

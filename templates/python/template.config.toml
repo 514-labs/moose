@@ -5,8 +5,8 @@ post_install_print = """
     $ cd {project_dir}
 
 📦 Install Dependencies:
-    $ pip install .
+    $ pip install -r ./requirements.txt
 
-🛠️ Start dev server:
+🛠️ Start Moose Server:
     $ moose dev
 """

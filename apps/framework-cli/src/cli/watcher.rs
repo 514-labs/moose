@@ -122,7 +122,7 @@ async fn watch(
     route_update_channel: tokio::sync::mpsc::Sender<(InfrastructureMap, ApiChange)>,
     infrastructure_map: &'static RwLock<InfrastructureMap>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
-    project_registries: &mut ProcessRegistries,
+    project_registries: Arc<RwLock<ProcessRegistries>>,
     metrics: Arc<Metrics>,
     redis_client: Arc<RedisClient>,
 ) -> Result<(), anyhow::Error> {
@@ -177,12 +177,13 @@ async fn watch(
                                     framework::core::plan_validator::validate(&project, &plan_result)?;
 
                                     display::show_changes(&plan_result);
+                                    let mut project_registries = project_registries.write().await;
                                     match framework::core::execute::execute_online_change(
                                         &project,
                                         &plan_result,
                                         route_update_channel.clone(),
                                         syncing_process_registry,
-                                        project_registries,
+                                        &mut project_registries,
                                         metrics.clone(),
                                     )
                                     .await
@@ -276,7 +277,7 @@ impl FileWatcher {
         route_update_channel: tokio::sync::mpsc::Sender<(InfrastructureMap, ApiChange)>,
         infrastructure_map: &'static RwLock<InfrastructureMap>,
         syncing_process_registry: SyncingProcessesRegistry,
-        project_registries: ProcessRegistries,
+        project_registries: Arc<RwLock<ProcessRegistries>>,
         metrics: Arc<Metrics>,
         redis_client: Arc<RedisClient>,
     ) -> Result<(), Error> {
@@ -288,7 +289,6 @@ impl FileWatcher {
         });
 
         let mut syncing_process_registry = syncing_process_registry;
-        let mut project_registry = project_registries;
 
         // Move everything into the spawned task to avoid Send issues
         let watch_task = async move {
@@ -297,7 +297,7 @@ impl FileWatcher {
                 route_update_channel,
                 infrastructure_map,
                 &mut syncing_process_registry,
-                &mut project_registry,
+                project_registries,
                 metrics,
                 redis_client,
             )

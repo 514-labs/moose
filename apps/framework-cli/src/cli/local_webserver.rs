@@ -91,6 +91,7 @@ use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure::table::Table;
+use crate::infrastructure::processes::process_registry::ProcessRegistries;
 
 /// Request wrapper for router handling.
 /// This struct combines the HTTP request with the route table for processing.
@@ -1160,6 +1161,7 @@ impl Webserver {
         project: Arc<Project>,
         metrics: Arc<Metrics>,
         openapi_path: Option<PathBuf>,
+        process_registry: Arc<RwLock<ProcessRegistries>>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
@@ -1285,7 +1287,7 @@ impl Webserver {
             }
         }
 
-        shutdown(settings, &project, graceful).await;
+        shutdown(settings, &project, graceful, process_registry).await;
     }
 }
 
@@ -1312,7 +1314,12 @@ fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
         _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }
-async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShutdown) -> ! {
+async fn shutdown(
+    settings: &Settings,
+    project: &Project,
+    graceful: GracefulShutdown,
+    process_registry: Arc<RwLock<ProcessRegistries>>,
+) -> ! {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 
@@ -1323,6 +1330,31 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
         },
         _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
             warn!("timed out wait for all connections to close");
+        }
+    }
+
+    // Stop all managed processes using the existing process registry
+    let mut process_registry = process_registry.write().await;
+    match process_registry.stop().await {
+        Ok(_) => {
+            info!("Successfully stopped all managed processes");
+            super::display::show_message_wrapper(
+                MessageType::Success,
+                Message {
+                    action: "Shutdown".to_string(),
+                    details: "All processes stopped successfully".to_string(),
+                },
+            );
+        }
+        Err(e) => {
+            error!("Failed to stop some managed processes: {}", e);
+            super::display::show_message_wrapper(
+                MessageType::Error,
+                Message {
+                    action: "Shutdown".to_string(),
+                    details: format!("Failed to stop all processes: {}", e),
+                },
+            );
         }
     }
 
@@ -1403,12 +1435,12 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
     }
 
     // Final delay before exit to ensure any remaining tasks complete
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
     // Exit the process cleanly
     info!("Exiting application");
 
-    // CLear terminal using crossterm
+    // Clear terminal using crossterm
     crossterm::execute!(
         std::io::stdout(),
         crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)

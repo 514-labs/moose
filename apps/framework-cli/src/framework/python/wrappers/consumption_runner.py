@@ -378,7 +378,6 @@ def main():
     httpd.moose_client = moose_client
     
     def shutdown_server():
-        temporal_client
         httpd.shutdown()
         print("\nShutting down server...")
         httpd.server_close()

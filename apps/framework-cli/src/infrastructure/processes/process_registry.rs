@@ -36,7 +36,7 @@ pub struct ProcessRegistries {
 #[derive(thiserror::Error, Debug)]
 pub enum ProcessRegistryError {
     /// Error that occurs when stopping a function process fails
-    #[error("Failed to stop the consumption process")]
+    #[error("Failed to stop the function process")]
     FunctionProcessError(#[from] FunctionRegistryError),
 
     /// Error that occurs when stopping orchestration worker processes fails

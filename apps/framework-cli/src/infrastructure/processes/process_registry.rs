@@ -23,7 +23,7 @@ pub struct ProcessRegistries {
     pub functions: FunctionProcessRegistry,
 
     /// Registry for block processes that handle data processing blocks
-    pub blocks: BlocksProcessRegistry,
+    pub blocks: Option<BlocksProcessRegistry>,
 
     /// Registry for consumption processes that provide API access to data
     pub consumption: ConsumptionProcessRegistry,
@@ -62,12 +62,18 @@ impl ProcessRegistries {
     /// * `Self` - A new ProcessRegistries instance
     pub fn new(project: &Project, settings: &Settings) -> Self {
         let functions = FunctionProcessRegistry::new(project.clone());
-        let blocks = BlocksProcessRegistry::new(
-            project.language,
-            project.blocks_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-        );
+
+        let blocks = if project.features.data_model_v2 {
+            None
+        } else {
+            Some(BlocksProcessRegistry::new(
+                project.language,
+                project.blocks_dir(),
+                project.project_location.clone(),
+                project.clickhouse_config.clone(),
+            ))
+        };
+
         let consumption = ConsumptionProcessRegistry::new(
             project.language,
             project.clickhouse_config.clone(),

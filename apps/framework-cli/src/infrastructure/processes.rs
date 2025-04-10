@@ -238,19 +238,19 @@ pub async fn execute_leader_changes(
     changes: &[ProcessChange],
 ) -> Result<(), SyncProcessChangesError> {
     for change in changes.iter() {
-        match change {
-            ProcessChange::OlapProcess(Change::Added(olap_process)) => {
+        match (change, &mut process_registry.blocks) {
+            (ProcessChange::OlapProcess(Change::Added(olap_process)), Some(blocks)) => {
                 log::info!("Starting Blocks process: {:?}", olap_process.id());
-                process_registry.blocks.start(olap_process)?;
+                blocks.start(olap_process)?;
             }
-            ProcessChange::OlapProcess(Change::Removed(olap_process)) => {
+            (ProcessChange::OlapProcess(Change::Removed(olap_process)), Some(blocks)) => {
                 log::info!("Stopping Blocks process: {:?}", olap_process.id());
-                process_registry.blocks.stop(olap_process).await?;
+                blocks.stop(olap_process).await?;
             }
-            ProcessChange::OlapProcess(Change::Updated { before, after }) => {
+            (ProcessChange::OlapProcess(Change::Updated { before, after }), Some(blocks)) => {
                 log::info!("Updating Blocks process: {:?}", before.id());
-                process_registry.blocks.stop(before).await?;
-                process_registry.blocks.start(after)?;
+                blocks.stop(before).await?;
+                blocks.start(after)?;
             }
             _ => {}
         }

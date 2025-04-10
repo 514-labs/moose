@@ -61,7 +61,11 @@ services:
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
     volumes:
+      {{#if clickhouse_host_data_path}}
+      - "{{clickhouse_host_data_path}}:/var/lib/clickhouse/"
+      {{else}}
       - clickhouse-0-data:/var/lib/clickhouse/
+      {{/if}}
       - clickhouse-0-logs:/var/log/clickhouse-server/
       - clickhouse-0-users:/etc/clickhouse-server/users.d
     environment:

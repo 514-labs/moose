@@ -6,6 +6,7 @@
 //!
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 fn default_native_port() -> i32 {
     9000
@@ -21,6 +22,10 @@ pub struct ClickHouseConfig {
     pub host_port: i32, // e.g. 18123
     #[serde(default = "default_native_port")]
     pub native_port: i32, // e.g. 9000
+    /// Optional path on the host machine to mount as the ClickHouse data volume.
+    /// If not specified, a Docker-managed volume will be used.
+    #[serde(default)]
+    pub host_data_path: Option<PathBuf>,
 }
 
 impl Default for ClickHouseConfig {
@@ -33,6 +38,7 @@ impl Default for ClickHouseConfig {
             host: "localhost".to_string(),
             host_port: 18123,
             native_port: default_native_port(),
+            host_data_path: None,
         }
     }
 }

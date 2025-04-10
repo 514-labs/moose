@@ -222,9 +222,22 @@ example_materialized_view = MaterializedView[TargetSchema](MaterializedViewOptio
     order_by_fields=["id"],
 ))
 ```
-
-
 </Python>
+
+<Callout type="info" title="Note">
+When using the `AggregatingMergeTree` engine, you need to use the [`State` suffix](https://clickhouse.com/docs/sql-reference/aggregate-functions/combinators#-state) at the end of your aggregate function in your SQL query:
+
+```sql
+avgState(rating) as average_rating, 
+countState(id) as num_reviews 
+```
+
+When querying the materialized view, you need to use the `Merge` suffix at the end of your aggregate function:
+
+```sql
+SELECT avgMerge(average_rating), countMerge(num_reviews) FROM my_table
+```
+</Callout>
 
 ### Best Practices for Aggregations
 

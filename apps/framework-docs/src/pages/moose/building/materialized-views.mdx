@@ -129,7 +129,7 @@ When using the `AggregatingMergeTree` engine, ClickHouse maintains the state of 
 In TypeScript, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
 
 ```ts filename="Aggregated.ts" copy
-`Aggregated<AggregationFunction extends string, ArgTypes extends any[]>`
+Aggregated<AggregationFunction extends string, ArgTypes extends any[]>
 ```
 
 - `AggregationFunction`: A string that specifies the aggregation function to be applied. Common functions include `sum`, `avg`, `count`, `uniq`, `min`, and `max`.

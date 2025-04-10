@@ -13,14 +13,19 @@ interface QueryParams {
 export const BarApi = new ConsumptionApi<QueryParams>(
   "bar",
   async (
-    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
+    {
+      orderBy = "totalRows",
+      limit = 5,
+      startDay = 1,
+      endDay = 31,
+    }: QueryParams,
     { client, sql },
   ) => {
     const query = sql`
         SELECT 
-          dayOfMonth,
+          ${BarAggregatedMV.targetTable.columns.dayOfMonth.name} as dayOfMonth,
           ${BarAggregatedMV.targetTable.columns[orderBy]}
-        FROM BarAggregated_MV
+        FROM ${BarAggregatedMV.targetTable.name}
         WHERE 
           dayOfMonth >= ${startDay} 
           AND dayOfMonth <= ${endDay}

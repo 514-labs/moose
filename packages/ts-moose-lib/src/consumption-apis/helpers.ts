@@ -177,6 +177,27 @@ export class MooseClient {
   }
 }
 
+export const toQuery = (sql: Sql): [string, { [pN: string]: any }] => {
+  const parameterizedStubs = sql.values.map((v, i) =>
+    createClickhouseParameter(i, v),
+  );
+
+  const query = sql.strings
+    .map((s, i) =>
+      s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
+    )
+    .join("");
+
+  const query_params = sql.values.reduce(
+    (acc: Record<string, unknown>, v, i) => ({
+      ...acc,
+      [`p${i}`]: getValueFromParameter(v),
+    }),
+    {},
+  );
+  return [query, query_params];
+};
+
 export class QueryClient {
   client: ClickHouseClient;
   query_id_prefix: string;
@@ -188,23 +209,7 @@ export class QueryClient {
   async execute<T = any>(
     sql: Sql,
   ): Promise<ResultSet<"JSONEachRow"> & { __query_result_t?: T[] }> {
-    const parameterizedStubs = sql.values.map((v, i) =>
-      createClickhouseParameter(i, v),
-    );
-
-    const query = sql.strings
-      .map((s, i) =>
-        s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
-      )
-      .join("");
-
-    const query_params = sql.values.reduce(
-      (acc: Record<string, unknown>, v, i) => ({
-        ...acc,
-        [`p${i}`]: getValueFromParameter(v),
-      }),
-      {},
-    );
+    const [query, query_params] = toQuery(sql);
 
     return this.client.query({
       query,

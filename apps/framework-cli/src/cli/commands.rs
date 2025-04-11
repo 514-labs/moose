@@ -63,10 +63,13 @@ pub enum Commands {
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
+    #[command(hide = true)]
     Function(FunctionArgs),
     /// Shapes & manipulates batches of data using SQL
+    #[command(hide = true)]
     Block(BlockArgs),
     /// Defines consumption APIs
+    #[command(hide = true)]
     Consumption(ConsumptionArgs),
     /// View Moose logs
     Logs {
@@ -120,6 +123,7 @@ pub enum Commands {
         #[arg(long)]
         version: Option<String>,
     },
+    #[command(hide = true)]
     DataModel(DataModelArgs),
     /// View some data from a data model
     Peek {

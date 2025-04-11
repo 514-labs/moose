@@ -416,7 +416,7 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
     var processedParams = assertGuard(searchParams);
     return (function (_a, _b) {
       return __awaiter(void 0, [_a, _b], void 0, function (_c, _d) {
-        var query, data;
+        var BACols, query, data;
         var _e = _c.orderBy,
           orderBy = _e === void 0 ? "totalRows" : _e,
           _f = _c.limit,
@@ -430,6 +430,7 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
         return __generator(this, function (_j) {
           switch (_j.label) {
             case 0:
+              BACols = views_1.BarAggregatedMV.targetTable.columns;
               query = sql(
                 templateObject_1 ||
                   (templateObject_1 = __makeTemplateObject(
@@ -454,18 +455,20 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
                       "\n      ",
                     ],
                   )),
-                views_1.BarAggregatedMV.targetTable.columns.dayOfMonth.name,
-                views_1.BarAggregatedMV.targetTable.columns[orderBy],
+                BACols.dayOfMonth,
+                BACols[orderBy],
                 views_1.BarAggregatedMV.targetTable.name,
                 startDay,
                 endDay,
-                views_1.BarAggregatedMV.targetTable.columns[orderBy],
+                BACols[orderBy],
                 limit,
               );
               return [4 /*yield*/, client.query.execute(query)];
             case 1:
               data = _j.sent();
-              return [2 /*return*/, data];
+              return [4 /*yield*/, data.json()];
+            case 2:
+              return [2 /*return*/, _j.sent()];
           }
         });
       });
@@ -521,9 +524,38 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
   {
     version: "3.1",
     components: {
-      schemas: {},
+      schemas: {
+        ResponseBody: {
+          type: "object",
+          properties: {
+            dayOfMonth: {
+              type: "number",
+            },
+            totalRows: {
+              type: "number",
+            },
+            rowsWithText: {
+              type: "number",
+            },
+            maxTextLength: {
+              type: "number",
+            },
+            totalTextLength: {
+              type: "number",
+            },
+          },
+          required: ["dayOfMonth"],
+        },
+      },
     },
-    schemas: [{}],
+    schemas: [
+      {
+        type: "array",
+        items: {
+          $ref: "#/components/schemas/ResponseBody",
+        },
+      },
+    ],
   },
 );
 var templateObject_1;

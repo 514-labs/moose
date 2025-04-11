@@ -1,8 +1,8 @@
-import { ConsumptionApi } from "@514labs/moose-lib";
+import { ConsumptionApi, ConsumptionHelpers as CH } from "@514labs/moose-lib";
 import { BarAggregatedMV } from "../views/views";
 import { tags } from "typia";
 
-// This file is where you can define your APIs to consume your data
+// Define the query parameters for the GET API endpoint
 interface QueryParams {
   orderBy?: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
   limit?: number;
@@ -10,7 +10,15 @@ interface QueryParams {
   endDay?: number & tags.Type<"int32">;
 }
 
-export const BarApi = new ConsumptionApi<QueryParams>(
+interface ResponseBody {
+  dayOfMonth: number;
+  totalRows?: number;
+  rowsWithText?: number;
+  maxTextLength?: number;
+  totalTextLength?: number;
+}
+
+export const BarApi = new ConsumptionApi<QueryParams, ResponseBody[]>(
   "bar",
   async (
     {
@@ -21,26 +29,22 @@ export const BarApi = new ConsumptionApi<QueryParams>(
     }: QueryParams,
     { client, sql },
   ) => {
+    const BACols = BarAggregatedMV.targetTable!.columns;
+
     const query = sql`
         SELECT 
-          ${BarAggregatedMV.targetTable.columns.dayOfMonth.name} as dayOfMonth,
-          ${BarAggregatedMV.targetTable.columns[orderBy]}
+          ${BACols.dayOfMonth} as dayOfMonth,
+          ${BACols[orderBy]}
         FROM ${BarAggregatedMV.targetTable.name}
         WHERE 
           dayOfMonth >= ${startDay} 
           AND dayOfMonth <= ${endDay}
-        ORDER BY ${BarAggregatedMV.targetTable.columns[orderBy]} DESC
+        ORDER BY ${BACols[orderBy]} DESC
         LIMIT ${limit}
       `;
 
-    const data = await client.query.execute<{
-      dayOfMonth: number;
-      totalRows?: number;
-      rowsWithText?: number;
-      maxTextLength?: number;
-      totalTextLength?: number;
-    }>(query);
+    const data = await client.query.execute(query);
 
-    return data;
+    return (await data.json()) as ResponseBody[];
   },
 );

@@ -9,15 +9,15 @@ exports.BarAggregatedMV = void 0;
 var typia_1 = __importDefault(require("typia"));
 var moose_lib_1 = require("@514labs/moose-lib");
 var models_1 = require("../ingest/models");
-var BarTable = models_1.BarPipeline.table;
+var BTCols = models_1.BarPipeline.table.columns;
 var query = "SELECT\n    toDayOfMonth("
-  .concat(BarTable.columns.utcTimestamp.name, ") as dayOfMonth,\n    count(")
-  .concat(BarTable.columns.primaryKey.name, ") as totalRows,\n    countIf(")
-  .concat(BarTable.columns.hasText.name, ") as rowsWithText,\n    sum(")
-  .concat(BarTable.columns.textLength.name, ") as totalTextLength,\n    max(")
-  .concat(BarTable.columns.textLength.name, ") as maxTextLength\n  FROM ")
-  .concat(BarTable.name, "\n  GROUP BY toDayOfMonth(")
-  .concat(BarTable.columns.utcTimestamp.name, ")\n  ");
+  .concat(BTCols.utcTimestamp.name, ") as dayOfMonth,\n    count(")
+  .concat(BTCols.primaryKey.name, ") as totalRows,\n    countIf(")
+  .concat(BTCols.hasText.name, ") as rowsWithText,\n    sum(")
+  .concat(BTCols.textLength.name, ") as totalTextLength,\n    max(")
+  .concat(BTCols.textLength.name, ") as maxTextLength\n  FROM ")
+  .concat(models_1.BarPipeline.table.name, "\n  GROUP BY toDayOfMonth(")
+  .concat(BTCols.utcTimestamp.name, ")\n  ");
 exports.BarAggregatedMV = new moose_lib_1.MaterializedView(
   {
     tableName: "BarAggregated",

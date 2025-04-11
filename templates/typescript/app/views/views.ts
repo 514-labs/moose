@@ -1,5 +1,5 @@
 import typia from "typia";
-import { MaterializedView } from "@514labs/moose-lib";
+import { MaterializedView, sql } from "@514labs/moose-lib";
 import { BarPipeline } from "../ingest/models";
 
 interface BarAggregated {
@@ -10,16 +10,16 @@ interface BarAggregated {
   maxTextLength: number & typia.tags.Type<"int64">;
 }
 
-const BarTable = BarPipeline.table!;
+const BTCols = BarPipeline.table!.columns;
 
 const query = `SELECT
-    toDayOfMonth(${BarTable.columns.utcTimestamp.name}) as dayOfMonth,
-    count(${BarTable.columns.primaryKey.name}) as totalRows,
-    countIf(${BarTable.columns.hasText.name}) as rowsWithText,
-    sum(${BarTable.columns.textLength.name}) as totalTextLength,
-    max(${BarTable.columns.textLength.name}) as maxTextLength
-  FROM ${BarTable.name}
-  GROUP BY toDayOfMonth(${BarTable.columns.utcTimestamp.name})
+    toDayOfMonth(${BTCols.utcTimestamp.name}) as dayOfMonth,
+    count(${BTCols.primaryKey.name}) as totalRows,
+    countIf(${BTCols.hasText.name}) as rowsWithText,
+    sum(${BTCols.textLength.name}) as totalTextLength,
+    max(${BTCols.textLength.name}) as maxTextLength
+  FROM ${BarPipeline.table!.name}
+  GROUP BY toDayOfMonth(${BTCols.utcTimestamp.name})
   `;
 
 export const BarAggregatedMV = new MaterializedView<BarAggregated>({

@@ -253,7 +253,7 @@ interface QueryParams {
   optionalParam?: string; // Not required for client to provide
 }
 
-const api = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",
+const api = new ConsumptionApi<QueryParams, ResponseBody[]>("example_endpoint",
   async ({ filterField = "example", maxResults = 10, optionalParam = "default" }, { client, sql }) => {
     // Your logic here...
   }
@@ -281,7 +281,7 @@ Consunmption API route handlers are regular functions, so you can implement what
 <TypeScript>
 ```ts filename="/apis/getBar.ts" copy
 import {
-  createConsumptionApi,
+  ConsumptionApi,
   ConsumptionHelpers as CH,
 } from "@514labs/moose-lib";
 import { tags } from "typia";
@@ -303,7 +303,7 @@ interface ResponseBody {
 }
 
 // ConsumptionApi uses compile time code generation to generate a parser for QueryParams
-const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
+const myApi = new ConsumptionApi<QueryParams, ResponseBody[]>("my_api_route",
   async (
     { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
     { client, sql }

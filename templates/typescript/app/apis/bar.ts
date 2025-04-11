@@ -10,6 +10,7 @@ interface QueryParams {
   endDay?: number & tags.Type<"int32">;
 }
 
+//Define the data model for the response body from the API endpoint
 interface ResponseBody {
   dayOfMonth: number;
   totalRows?: number;
@@ -31,6 +32,7 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseBody[]>(
   ) => {
     const BACols = BarAggregatedMV.targetTable!.columns;
 
+    //Define the query for the API endpoint - plug in the query parameters and data model fields as variables
     const query = sql`
         SELECT 
           ${BACols.dayOfMonth} as dayOfMonth,

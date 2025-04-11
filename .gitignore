@@ -66,5 +66,9 @@ apps/framework-internal-app/package-lock.json
 
 packages/ts-moose-proto/generated/
 
+# ignore all package-lock.json files
+package-lock.json
+**/package-lock.json
+
 # ignore all scratch files and folders
 scratch*

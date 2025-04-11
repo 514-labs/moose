@@ -10,6 +10,7 @@ var typia_1 = __importDefault(require("typia"));
 var moose_lib_1 = require("@514labs/moose-lib");
 var models_1 = require("../ingest/models");
 var BTCols = models_1.BarPipeline.table.columns;
+//Define the query for the materialized view
 var query = "SELECT\n    toDayOfMonth("
   .concat(BTCols.utcTimestamp.name, ") as dayOfMonth,\n    count(")
   .concat(BTCols.primaryKey.name, ") as totalRows,\n    countIf(")
@@ -18,6 +19,8 @@ var query = "SELECT\n    toDayOfMonth("
   .concat(BTCols.textLength.name, ") as maxTextLength\n  FROM ")
   .concat(models_1.BarPipeline.table.name, "\n  GROUP BY toDayOfMonth(")
   .concat(BTCols.utcTimestamp.name, ")\n  ");
+//Create the materialized view
+//Automatically generates the materialized view in the underlying OLAP database as defined by the query and data model above
 exports.BarAggregatedMV = new moose_lib_1.MaterializedView(
   {
     tableName: "BarAggregated",

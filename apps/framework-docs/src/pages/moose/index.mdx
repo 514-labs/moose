@@ -35,7 +35,7 @@ import { paths } from "@/lib/paths";
 
 # Moose
 
-Moose is an open source framework for developing data products & APIs on OLAP/streaming infra using native TypeScript/Python
+Moose is an open source framework for building analytical backends on top of OLAP/streaming infra using native TypeScript/Python
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
   <Link href={paths.quickstart}>
@@ -236,10 +236,18 @@ description: "See your changes reflected instantly throughout the stack",
 ]}
 />
 
-Moose comes with a pre-configured and fully integrated data stack that runs entirely on your laptop. Spin it up with one command:
+Moose comes with a pre-configured and fully integrated data stack that runs entirely on your laptop. 
+
+Install it with one command (requires Docker & Node 20+ | Python 3.12+):
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+Spin it up with one command:
 ```bash filename="Terminal" copy
 moose dev
 ```
+
 All the infrastructure is automatically spun up:
 ```txt
 ⡏ Starting local infrastructure

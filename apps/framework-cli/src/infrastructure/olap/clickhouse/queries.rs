@@ -291,6 +291,9 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
                 "field_nullable": if let ClickHouseColumnType::Nullable(_) = column.column_type {
                     // if type is Nullable, do not add extra specifier
                     "".to_string()
+                } else if let ClickHouseColumnType::Nested(_) = column.column_type {
+                    // Nested type ... cannot be inside Nullable type.
+                    "".to_string()
                 } else if column.required || column.is_array() {
                     // Clickhouse doesn't allow array fields to be nullable
                     "NOT NULL".to_string()

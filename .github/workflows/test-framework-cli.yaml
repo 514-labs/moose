@@ -75,9 +75,6 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Check
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-22-8-core
     steps:
       - name: Install Protoc (Needed for Temporal)
@@ -91,14 +88,8 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --manifest-path ./apps/framework-cli/Cargo.toml
+        run: cargo check
 
       - name: Check for unused dependencies
         uses: bnjbvr/cargo-machete@main
@@ -111,8 +102,6 @@ jobs:
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test Suite (MacOS)
     env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
       RUST_BACKTRACE: full
     runs-on: macos-latest
     strategy:
@@ -139,9 +128,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
 
@@ -161,8 +147,6 @@ jobs:
     name: Test Suite (Ubuntu)
     runs-on: ubuntu-4
     env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
       RUST_BACKTRACE: full
     strategy:
       fail-fast: false
@@ -188,9 +172,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
 
@@ -213,9 +194,6 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Lints
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Install Protoc (Needed for Temporal)
@@ -231,26 +209,15 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       # to trigger code gen
       - name: Run cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --manifest-path ./apps/framework-cli/Cargo.toml --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --manifest-path ./apps/framework-cli/Cargo.toml -- -D warnings
+        run: cargo clippy -- -D warnings
 
   # Final status check that depends on all jobs
   changes:

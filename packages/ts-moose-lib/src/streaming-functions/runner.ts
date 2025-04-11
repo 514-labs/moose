@@ -387,7 +387,7 @@ async function loadStreamingFunctionV2(
   targetTopic?: TopicConfig,
 ) {
   const transformFunctions = await getStreamingFunctions();
-  const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : ""}`;
+  const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : "<no-target>"}`;
   return transformFunctions.get(transformFunctionKey);
 }
 

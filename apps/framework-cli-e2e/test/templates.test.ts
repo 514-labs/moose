@@ -182,6 +182,30 @@ const utils = {
       throw new Error(`${response.status}: ${text}`);
     }
   },
+
+  verifyConsumerLogs: async (
+    projectDir: string,
+    expectedOutput: string[],
+  ): Promise<void> => {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+    const mooseDir = path.join(homeDir, ".moose");
+    const today = new Date();
+    const logFileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}-cli.log`;
+    const logPath = path.join(mooseDir, logFileName);
+
+    console.log("Checking consumer logs in:", logPath);
+
+    // Wait for logs to be written
+    await setTimeoutAsync(2000);
+
+    const logContent = fs.readFileSync(logPath, "utf-8");
+    for (const expected of expectedOutput) {
+      expect(logContent).to.include(
+        expected,
+        `Log should contain "${expected}"`,
+      );
+    }
+  },
 };
 
 it("should return the dummy version in debug build", async () => {
@@ -287,6 +311,13 @@ describe("Moose Templates", () => {
           dayOfMonth: 19,
           totalRows: "1",
         },
+      ]);
+
+      // Verify consumer logs
+      await utils.verifyConsumerLogs(TEST_PROJECT_DIR, [
+        "Received Foo event:",
+        `Primary Key: ${eventId}`,
+        "Optional Text: Hello world",
       ]);
     });
   });
@@ -434,6 +465,13 @@ describe("Moose Templates", () => {
           day_of_month: 19,
           total_rows: 1,
         },
+      ]);
+
+      // Verify consumer logs
+      await utils.verifyConsumerLogs(TEST_PROJECT_DIR, [
+        "Received Foo event:",
+        `Primary Key: ${eventId}`,
+        "Optional Text: Hello from Python",
       ]);
     });
   });

@@ -19,7 +19,7 @@ interface ResponseBody {
 }
 
 export const BarApi = new ConsumptionApi<QueryParams, ResponseBody[]>(
-  "bar",
+  "BarAggregated",
   async (
     {
       orderBy = "totalRows",

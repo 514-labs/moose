@@ -228,7 +228,7 @@ var typia_1 = __importDefault(require("typia"));
 var moose_lib_1 = require("@514labs/moose-lib");
 var views_1 = require("../views/views");
 exports.BarApi = new moose_lib_1.ConsumptionApi(
-  "bar",
+  "BarAggregated",
   function (params, utils) {
     var assertGuard = (function () {
       var _io0 = function (input) {

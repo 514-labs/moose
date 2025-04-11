@@ -48,6 +48,7 @@ target/
 *.pdb
 
 .moose/
+.ts-node/
 
 console.db
 

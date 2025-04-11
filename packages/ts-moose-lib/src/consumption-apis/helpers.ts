@@ -10,6 +10,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { Column } from "../dataModels/dataModelTypes";
 import { AggregationFunction } from "../dataModels/typeConvert";
+import { OlapTable } from "../dmv2";
 
 /**
  * Convert the JS type (source is JSON format by API query parameter) to the corresponding ClickHouse type for generating named placeholder of parameterized query.
@@ -64,8 +65,14 @@ export type Value = string | number | boolean | Date | [string, string];
  */
 export type RawValue = Value | Sql;
 
-const isColumn = (value: RawValue | Column): value is Column =>
-  typeof value === "object" && "name" in value;
+const isColumn = (value: RawValue | Column | OlapTable<any>): value is Column =>
+  typeof value === "object" && "name" in value && "annotations" in value;
+
+const isTable = (
+  value: RawValue | Column | OlapTable<any>,
+): value is OlapTable<any> =>
+  typeof value === "object" &&
+  Object.getPrototypeOf(value).constructor.name === "OlapTable";
 
 /**
  * A SQL instance can be nested within each other to build SQL strings.
@@ -76,7 +83,7 @@ export class Sql {
 
   constructor(
     rawStrings: readonly string[],
-    rawValues: readonly (RawValue | Column)[],
+    rawValues: readonly (RawValue | Column | OlapTable<any>)[],
   ) {
     if (rawStrings.length - 1 !== rawValues.length) {
       if (rawStrings.length === 0) {
@@ -91,9 +98,13 @@ export class Sql {
     }
 
     const valuesLength = rawValues.reduce<number>(
-      (len: number, value: RawValue | Column) =>
+      (len: number, value: RawValue | Column | OlapTable<any>) =>
         len +
-        (value instanceof Sql ? value.values.length : isColumn(value) ? 0 : 1),
+        (value instanceof Sql
+          ? value.values.length
+          : isColumn(value) || isTable(value)
+            ? 0
+            : 1),
       0,
     );
 
@@ -134,6 +145,9 @@ export class Sql {
           this.strings[pos] += `\`${child.name}\``;
         }
         this.strings[pos] += rawString;
+      } else if (isTable(child)) {
+        this.strings[pos] += `\`${child.name}\``;
+        this.strings[pos] += rawString;
       } else {
         this.values[pos++] = child;
         this.strings[pos] = rawString;
@@ -144,7 +158,7 @@ export class Sql {
 
 export function sql(
   strings: readonly string[],
-  ...values: readonly (RawValue | Column)[]
+  ...values: readonly (RawValue | Column | OlapTable<any>)[]
 ) {
   return new Sql(strings, values);
 }

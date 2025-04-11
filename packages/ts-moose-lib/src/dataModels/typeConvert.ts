@@ -169,7 +169,7 @@ const tsTypeToDataType = (
               : nonNull.isClassOrInterface() ||
                   (nonNull.flags & TypeFlags.Object) !== 0
                 ? {
-                    name: t.symbol.name,
+                    name: getNestedName(nonNull, fieldName),
                     columns: toColumns(nonNull, checker),
                     jwt: isJwt,
                   }
@@ -178,6 +178,11 @@ const tsTypeToDataType = (
                   : throwUnknownType(t, fieldName, typeName);
 
   return [nullable, aggregationFunction, dataType];
+};
+
+const getNestedName = (t: ts.Type, fieldName: string) => {
+  const name = t.symbol.name;
+  return name === "__type" ? fieldName : name;
 };
 
 const hasWrapping = (

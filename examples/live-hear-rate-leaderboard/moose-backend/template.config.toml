@@ -1,0 +1,10 @@
+language = "python" # Must be typescript or python
+description = "default python project"
+post_install_print = """
+	$ cd {project_dir}
+
+Install Dependencies:
+	$ pip install .
+Start Moose Server:
+	$ moose dev
+"""

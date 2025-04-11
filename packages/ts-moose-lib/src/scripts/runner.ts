@@ -223,30 +223,27 @@ export async function runScripts(
 
   logger.info(`Starting worker for script directory: ${config.scriptDir}`);
   const worker = await registerWorkflows(logger, config);
+
   if (!worker) {
     const msg = `No scripts found to register in ${config.scriptDir}`;
     logger.warn(msg);
-    return null;
+    process.exit(0);
   }
 
   let isShuttingDown = false;
 
   // Handle shutdown signals
   async function handleSignal(signal: string) {
-    console.log(`[PROCESS] Received ${signal} signal`);
+    console.log(`[SHUTDOWN] Received ${signal}`);
 
     if (isShuttingDown) {
-      console.log(`[PROCESS] Already shutting down, ignoring ${signal}`);
       return;
     }
 
     isShuttingDown = true;
-    console.log("[PROCESS] Starting graceful shutdown...");
 
     try {
-      console.log("[PROCESS] Attempting worker shutdown...");
       if (!worker) {
-        console.log("[PROCESS] No worker to shutdown");
         process.exit(0);
       }
       await Promise.race([
@@ -255,10 +252,9 @@ export async function runScripts(
           setTimeout(() => reject(new Error("Shutdown timeout")), 3000),
         ),
       ]);
-      console.log("[PROCESS] Worker shutdown completed");
       process.exit(0);
     } catch (error) {
-      console.error(`[PROCESS] Shutdown error: ${error}`);
+      console.log(`[SHUTDOWN] Error: ${error}`);
       process.exit(1);
     }
   }
@@ -266,25 +262,18 @@ export async function runScripts(
   // Register signal handlers immediately
   ["SIGTERM", "SIGINT", "SIGHUP", "SIGQUIT"].forEach((signal) => {
     process.on(signal, () => {
-      console.log(`[PROCESS] Signal handler triggered for ${signal}`);
       handleSignal(signal).catch((error) => {
-        console.error(
-          `[PROCESS] Fatal error during ${signal} handling:`,
-          error,
-        );
+        console.log(`[SHUTDOWN] Error: ${error}`);
         process.exit(1);
       });
     });
-    console.log(`[PROCESS] Registered signal handler for ${signal}`);
   });
 
   logger.info("Starting TypeScript worker...");
   try {
-    console.log("[PROCESS] Starting worker execution");
     await worker.run();
-    console.log("[PROCESS] Worker execution completed normally");
   } catch (error) {
-    console.error(`[PROCESS] Worker execution failed: ${error}`);
+    console.log(`[SHUTDOWN] Error: ${error}`);
     process.exit(1);
   }
 

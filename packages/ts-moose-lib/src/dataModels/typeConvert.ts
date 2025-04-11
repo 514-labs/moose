@@ -182,6 +182,7 @@ const tsTypeToDataType = (
 
 const getNestedName = (t: ts.Type, fieldName: string) => {
   const name = t.symbol.name;
+  // replace default name
   return name === "__type" ? fieldName : name;
 };
 

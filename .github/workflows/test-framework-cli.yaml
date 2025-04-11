@@ -24,6 +24,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Fetch main branch
+        run: git fetch origin main:main
 
       - name: Check for relevant changes
         id: check-changes
@@ -42,13 +47,27 @@ jobs:
           # Join patterns with | for grep
           GREP_PATTERN=$(IFS="|"; echo "${PATTERNS[*]}")
 
-          # Get changed files
-          git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
+          # Get changed files between main and current branch
+          git diff --name-only origin/main...HEAD > changes.txt
+
+          echo "::group::🔍 All Changed Files"
+          cat changes.txt
+          echo "::endgroup::"
+
+          echo "::group::📋 Files Matching Patterns"
+          echo "Looking for files matching these patterns:"
+          printf '%s\n' "${PATTERNS[@]}"
+          echo "---"
+          echo "Matching files:"
+          grep -E "${GREP_PATTERN}" changes.txt || echo "No files match patterns"
+          echo "::endgroup::"
 
           # Check if any relevant files were changed
           if grep -q -E "${GREP_PATTERN}" changes.txt; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "::notice title=✅ Running Tests::Detected relevant changes in the codebase. Tests will run."
+            echo "should_run=true" >> $GITHUB_OUTPUT 
           else
+            echo "::notice title=⏭️ Skipping Tests::No relevant changes detected. Tests will be skipped."
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
 

@@ -247,6 +247,9 @@ impl ClickHouseColumn {
     pub fn is_array(&self) -> bool {
         matches!(&self.column_type, ClickHouseColumnType::Array(_))
     }
+    pub fn is_nested(&self) -> bool {
+        matches!(&self.column_type, ClickHouseColumnType::Nested(_))
+    }
 }
 
 pub enum ClickHouseRuntimeEnum {

@@ -1,6 +1,6 @@
 import { IngestPipeline, Key } from "@514labs/moose-lib";
 
-//Sample data model "Foo"
+//Define the data model "Foo"
 export interface Foo {
   primaryKey: Key<string>;
   timestamp: number;
@@ -15,7 +15,7 @@ export const FooPipeline = new IngestPipeline<Foo>("Foo", {
   ingest: true,
 });
 
-//Sample data model "Bar"
+//Define the data model "Bar"
 export interface Bar {
   primaryKey: Key<string>;
   utcTimestamp: Date;

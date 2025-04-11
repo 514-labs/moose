@@ -16,7 +16,7 @@ const FUNCTION_RUNNER_BIN: &str = "streaming-functions";
 pub fn run(
     kafka_config: &KafkaConfig,
     source_topic: &StreamConfig,
-    target_topic: &StreamConfig,
+    target_topic: Option<&StreamConfig>,
     streaming_function_file: &Path,
     project_path: &Path,
     max_subscriber_count: usize,
@@ -26,16 +26,19 @@ pub fn run(
     let subscriber_count_str = max_subscriber_count.to_string();
 
     let source_topic_config_str = source_topic.as_json_string();
-    let target_topic_config_str = target_topic.as_json_string();
+    let target_topic_config_str = target_topic.map(|t| t.as_json_string());
 
     let mut args: Vec<&str> = vec![
         source_topic_config_str.as_str(),
         streaming_function_file.to_str().unwrap(),
         &kafka_config.broker,
         &subscriber_count_str,
-        "--target-topic",
-        target_topic_config_str.as_str(),
     ];
+
+    if let Some(ref target_str) = target_topic_config_str {
+        args.push("--target-topic");
+        args.push(target_str.as_str());
+    }
 
     info!(
         "Starting a streaming function with the following public arguments: {:#?}",

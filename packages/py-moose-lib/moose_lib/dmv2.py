@@ -115,18 +115,28 @@ class Stream(TypedMooseResource, Generic[T]):
     """
     config: StreamConfig
     transformations: dict[str, Tuple["Stream[Any]", Callable[[T], ZeroOrMany[Any]]]]
+    consumers: list[Callable[[T], None]]
     _multipleTransformations: Optional[Callable[[T], list[_RoutedMessage]]] = None
 
     def __init__(self, name: str, config: StreamConfig = StreamConfig(), **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
+        self.consumers = []
         self.transformations = {}
         _streams[name] = self
 
     def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]]):
         """Add a transformation that sends records to a single destination stream."""
         self.transformations[destination.name] = (destination, transformation)
+
+    def add_consumer(self, consumer: Callable[[T], None]):
+        """Add a consumer that will be called for each record in the stream."""
+        self.consumers.append(consumer)
+
+    def has_consumers(self) -> bool:
+        """Check if the stream has any consumers."""
+        return len(self.consumers) > 0
 
     def routed(self, values: ZeroOrMany[T]) -> _RoutedMessage:
         """Create a routed message targeting this stream.

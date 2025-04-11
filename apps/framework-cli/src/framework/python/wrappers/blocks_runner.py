@@ -5,7 +5,7 @@ from importlib import import_module
 import argparse
 import os
 import sys
-
+import signal
 from moose_lib import cli_log, CliLogData
 
 
@@ -106,6 +106,18 @@ async def async_worker(task):
 
 async def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
+
+    loop = asyncio.get_running_loop()
+
+    # Define your signal handler
+    def handle_signal(signame):
+        print(f"Received signal {signame}, shutting down.")
+        for task in asyncio.all_tasks():
+            task.cancel()
+
+    # Add signal handlers
+    for signame in ('SIGTERM', 'SIGQUIT', 'SIGHUP'):
+        loop.add_signal_handler(getattr(signal, signame), lambda: handle_signal(signame))
 
     ch_client = get_client(interface=interface, host=host,
                            port=port, database=db, username=user, password=password)

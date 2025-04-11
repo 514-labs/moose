@@ -1,5 +1,5 @@
 import { ConsumptionApi } from "@514labs/moose-lib";
-import { BarAggregatedMV } from "../views/views";
+import { BarAggregatedMV } from "../blocks/views";
 import { tags } from "typia";
 
 // This file is where you can define your APIs to consume your data

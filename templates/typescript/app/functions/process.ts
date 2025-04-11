@@ -1,4 +1,4 @@
-import { FooPipeline, BarPipeline, Foo, Bar } from "../ingest/models";
+import { FooPipeline, BarPipeline, Foo, Bar } from "../datamodels/models";
 
 FooPipeline.stream!.addTransform(BarPipeline.stream!, (foo: Foo): Bar => {
   return {

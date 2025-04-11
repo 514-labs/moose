@@ -12,7 +12,7 @@ pub fn run(
     project_location: &Path,
     kafka_config: &KafkaConfig,
     source_topic: &StreamConfig,
-    target_topic: &StreamConfig,
+    target_topic: Option<&StreamConfig>,
     function_path: &Path,
     is_dmv2: bool,
 ) -> Result<Child, std::io::Error> {
@@ -33,12 +33,13 @@ pub fn run(
 
     let mut args = vec![
         source_topic.as_json_string(),
-        target_topic.as_json_string(),
         dir,
         module_name,
         kafka_config.broker.clone(),
     ];
 
+    let target_topic_str = target_topic.map(|t| t.as_json_string());
+    add_optional_arg(&mut args, "--target_topic_json", &target_topic_str);
     add_optional_arg(&mut args, "--sasl_username", &kafka_config.sasl_username);
     add_optional_arg(&mut args, "--sasl_password", &kafka_config.sasl_password);
     add_optional_arg(&mut args, "--sasl_mechanism", &kafka_config.sasl_mechanism);

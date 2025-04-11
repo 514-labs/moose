@@ -126,4 +126,16 @@ impl OrchestrationWorkersRegistry {
         }
         Ok(())
     }
+
+    /// Stops all running orchestration worker processes
+    ///
+    /// # Returns
+    /// * `Result<(), OrchestrationWorkersRegistryError>` - Ok if all workers stopped successfully, Error otherwise
+    pub async fn stop_all(&mut self) -> Result<(), OrchestrationWorkersRegistryError> {
+        for (id, running_function_process) in self.workers.iter_mut() {
+            info!("Stopping orchestration worker {:?}...", id);
+            kill_child(running_function_process).await?;
+        }
+        Ok(())
+    }
 }

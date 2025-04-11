@@ -383,9 +383,8 @@ pub async fn start_development_mode(
         &redis_client,
     )
     .await?;
-    // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
-    // Storing the result of the changes in the table
+    let process_registry = Arc::new(RwLock::new(process_registry));
 
     let openapi_file = openapi(&project, &plan.target_infra_map).await?;
 
@@ -400,7 +399,7 @@ pub async fn start_development_mode(
         route_update_channel,
         infra_map,
         syncing_registry,
-        process_registry,
+        process_registry.clone(),
         metrics.clone(),
         redis_client.clone(),
     )?;
@@ -415,6 +414,7 @@ pub async fn start_development_mode(
             project,
             metrics,
             Some(openapi_file),
+            process_registry,
         )
         .await;
 
@@ -478,7 +478,7 @@ pub async fn start_production_mode(
         .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
-    execute_initial_infra_change(
+    let (_, process_registry) = execute_initial_infra_change(
         &project,
         settings,
         &plan,
@@ -501,6 +501,7 @@ pub async fn start_production_mode(
             project,
             metrics,
             None,
+            Arc::new(RwLock::new(process_registry)),
         )
         .await;
 

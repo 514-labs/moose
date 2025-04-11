@@ -1788,6 +1788,7 @@ struct PartialTopic {
     pub partition_count: usize,
     pub transformation_targets: Vec<TransformationTarget>,
     pub target_table: Option<String>,
+    pub has_consumers: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2193,10 +2194,30 @@ impl PartialInfrastructureMap {
                 let function_process = FunctionProcess {
                     name: process_id.clone(),
                     source_topic_id: source_topic.id(),
-                    target_topic_id: target_topic.id(),
+                    target_topic_id: Some(target_topic.id()),
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: target_topic.partition_count,
+                    // TODO pass through version from the TS / PY api
+                    version: "0.0".to_string(),
+                    source_primitive: PrimitiveSignature {
+                        name: topic_name.clone(),
+                        primitive_type: PrimitiveTypes::DataModel,
+                    },
+                };
+
+                function_processes.insert(process_id.clone(), function_process);
+            }
+
+            if source_partial_topic.has_consumers {
+                let process_id = format!("{}_{}", topic_name, "consumer");
+                let function_process = FunctionProcess {
+                    name: process_id.clone(),
+                    source_topic_id: source_topic.id(),
+                    target_topic_id: None,
+                    executable: main_file.to_path_buf(),
+                    language,
+                    parallel_process_count: source_partial_topic.partition_count,
                     // TODO pass through version from the TS / PY api
                     version: "0.0".to_string(),
                     source_primitive: PrimitiveSignature {

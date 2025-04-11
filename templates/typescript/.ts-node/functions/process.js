@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var models_1 = require("../ingest/models");
+//Function to transform Foo->Bar
+//Automatically generates a streaming transformation that is orchestrated on each event from the Foo stream and writes to the Bar stream
 models_1.FooPipeline.stream.addTransform(
   models_1.BarPipeline.stream,
   function (foo) {

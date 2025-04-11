@@ -35,7 +35,7 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseBody[]>(
         SELECT 
           ${BACols.dayOfMonth} as dayOfMonth,
           ${BACols[orderBy]}
-        FROM ${BarAggregatedMV.targetTable.name}
+        FROM BarAggregated
         WHERE 
           dayOfMonth >= ${startDay} 
           AND dayOfMonth <= ${endDay}

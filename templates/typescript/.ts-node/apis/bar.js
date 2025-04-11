@@ -437,8 +437,7 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
                     [
                       "\n        SELECT \n          ",
                       " as dayOfMonth,\n          ",
-                      "\n        FROM ",
-                      "\n        WHERE \n          dayOfMonth >= ",
+                      "\n        FROM BarAggregated\n        WHERE \n          dayOfMonth >= ",
                       " \n          AND dayOfMonth <= ",
                       "\n        ORDER BY ",
                       " DESC\n        LIMIT ",
@@ -447,8 +446,7 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
                     [
                       "\n        SELECT \n          ",
                       " as dayOfMonth,\n          ",
-                      "\n        FROM ",
-                      "\n        WHERE \n          dayOfMonth >= ",
+                      "\n        FROM BarAggregated\n        WHERE \n          dayOfMonth >= ",
                       " \n          AND dayOfMonth <= ",
                       "\n        ORDER BY ",
                       " DESC\n        LIMIT ",
@@ -457,7 +455,6 @@ exports.BarApi = new moose_lib_1.ConsumptionApi(
                   )),
                 BACols.dayOfMonth,
                 BACols[orderBy],
-                views_1.BarAggregatedMV.targetTable.name,
                 startDay,
                 endDay,
                 BACols[orderBy],

@@ -9,6 +9,7 @@ use tar::Archive;
 use toml::Value;
 
 use super::RoutineFailure;
+use super::RoutineSuccess;
 use crate::cli::display::{Message, MessageType};
 use crate::cli::settings::user_directory;
 
@@ -265,4 +266,165 @@ pub async fn get_template_config(
         })?;
 
     Ok(template_config)
+}
+
+pub async fn list_available_templates(
+    template_version: &str,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let manifest = get_template_manifest(template_version).await.map_err(|e| {
+        RoutineFailure::error(Message {
+            action: "Templates".to_string(),
+            details: format!("Failed to load template manifest: {:?}", e),
+        })
+    })?;
+
+    let templates = manifest.get("templates").ok_or_else(|| {
+        RoutineFailure::error(Message {
+            action: "Templates".to_string(),
+            details: "Invalid manifest: missing templates section".to_string(),
+        })
+    })?;
+
+    let available_templates: Vec<String> = templates
+        .as_table()
+        .map(|table| {
+            table
+                .iter()
+                .filter_map(|(name, config)| {
+                    TemplateConfig::from_toml(config).map(|config| {
+                        format!(
+                            "  - {} ({}) - {}",
+                            name, config.language, config.description
+                        )
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let output = format!(
+        "Available templates for version {}:
+{}",
+        template_version,
+        available_templates.join(
+            "
+"
+        )
+    );
+
+    Ok(RoutineSuccess::success(Message::new(
+        "Templates".to_string(),
+        output,
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    // Helper function to set up the test environment by copying necessary files
+    fn setup_test_environment() -> anyhow::Result<()> {
+        let crate_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
+        let workspace_root = crate_dir.parent().unwrap().parent().unwrap();
+
+        let source_dir = workspace_root.join("template-packages");
+        let target_dir = workspace_root.join("target/template-packages");
+
+        if !source_dir.exists() {
+            anyhow::bail!(
+                "Source template package directory not found: {}. Run scripts/package-templates.js",
+                source_dir.display()
+            );
+        }
+
+        // Ensure the target directory exists
+        fs::create_dir_all(&target_dir)?;
+
+        // Files to copy (add more if other tests need different template .tgz files)
+        let files_to_copy = ["manifest.toml", "default.tgz", "python.tgz"];
+
+        for file_name in files_to_copy {
+            let source_file = source_dir.join(file_name);
+            let target_file = target_dir.join(file_name);
+
+            if source_file.exists() {
+                fs::copy(&source_file, &target_file)?;
+            } else {
+                // Optionally warn or error if a source file is missing
+                eprintln!(
+                    "Warning: Source file {} not found, skipping copy.",
+                    source_file.display()
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_available_templates_local() {
+        setup_test_environment().expect("Failed to set up test environment");
+        // Use version "0.0.1" to test against the local manifest
+        let result = list_available_templates("0.0.1").await;
+
+        assert!(
+            result.is_ok(),
+            "Failed to list available templates: {:?}",
+            result.err()
+        );
+        let success_message = result.unwrap().message.details;
+
+        // Basic check to see if the output contains expected template info structure
+        assert!(success_message.contains("Available templates for version 0.0.1"));
+        // Check for specific templates expected in the local manifest
+        assert!(success_message.contains("- typescript (typescript)"));
+        assert!(success_message.contains("- python (python)"));
+    }
+
+    #[tokio::test]
+    async fn test_get_template_config_success() {
+        setup_test_environment().expect("Failed to set up test environment");
+        // Test getting a valid template config ("default") using the local manifest
+        let result = get_template_config("typescript", "0.0.1").await;
+        assert!(result.is_ok());
+        let config = result.unwrap();
+        assert_eq!(config.language, "typescript");
+        assert_eq!(config.description, "default ts project");
+        // Add more assertions if needed for post_install_print etc.
+    }
+
+    #[tokio::test]
+    async fn test_get_template_config_not_found() {
+        setup_test_environment().expect("Failed to set up test environment");
+        // Test getting a non-existent template config using the local manifest
+        let result = get_template_config("non_existent_template", "0.0.1").await;
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().message.details;
+        assert!(error_message.contains("Template 'non_existent_template' not found"));
+        assert!(error_message.contains("Available templates:")); // Check if it lists available templates
+    }
+
+    #[tokio::test]
+    async fn test_get_template_manifest_local() {
+        setup_test_environment().expect("Failed to set up test environment");
+        // Test getting the local manifest (version "0.0.1")
+        let result = get_template_manifest("0.0.1").await;
+        assert!(
+            result.is_ok(),
+            "Failed to get local manifest: {:?}",
+            result.err()
+        );
+        let manifest = result.unwrap();
+
+        // Check if the manifest has the 'templates' table
+        assert!(manifest.get("templates").is_some());
+        assert!(manifest["templates"].is_table());
+
+        // Check for the existence of specific template configurations within the 'templates' table
+        let templates_table = manifest["templates"].as_table().unwrap();
+        assert!(templates_table.contains_key("typescript"));
+        assert!(templates_table.contains_key("python"));
+    }
 }

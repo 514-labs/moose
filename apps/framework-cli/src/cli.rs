@@ -15,7 +15,7 @@ use crate::utilities::machine_id::get_or_create_machine_id;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
-    GenerateCommand, WorkflowCommands,
+    GenerateCommand, TemplateSubCommands, WorkflowCommands,
 };
 use config::ConfigError;
 use display::{with_spinner, with_spinner_async};
@@ -35,6 +35,7 @@ use routines::scripts::{
     get_workflow_status, init_workflow, list_workflows, pause_workflow, run_workflow,
     terminate_workflow, unpause_workflow,
 };
+use routines::templates::list_available_templates;
 
 use settings::{read_settings, Settings};
 use std::path::Path;
@@ -68,6 +69,7 @@ use crate::utilities::git::is_git_repo;
 
 use crate::cli::routines::ls::ls_dmv2;
 use anyhow::Result;
+use clap::error::ErrorKind;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -1112,6 +1114,27 @@ async fn top_command_handler(
 
             result
         }
+        Commands::Template(template_args) => {
+            info!("Running template command");
+
+            let template_cmd = template_args.command.as_ref().unwrap();
+            match template_cmd {
+                TemplateSubCommands::List {} => {
+                    let capture_handle = crate::utilities::capture::capture_usage(
+                        ActivityType::TemplateListCommand,
+                        None,
+                        &settings,
+                        machine_id.clone(),
+                    );
+
+                    let result = list_available_templates(CLI_VERSION).await;
+
+                    wait_for_usage_capture(capture_handle).await;
+
+                    result
+                }
+            }
+        }
     }
 }
 
@@ -1138,9 +1161,32 @@ pub async fn cli_run() {
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 
-    let cli = Cli::parse();
-    let cli_result = top_command_handler(config, &cli.command, machine_id).await;
-    match cli_result {
+    let cli_result = Cli::try_parse();
+
+    let cli = match cli_result {
+        Ok(cli) => cli,
+        Err(e) => {
+            println!("Actual Error: {:?}", e);
+            // Check if the error is a missing required argument for '<TEMPLATE>' (positional argument)
+            if e.kind() == ErrorKind::MissingRequiredArgument
+                && e.to_string().contains("<TEMPLATE>")
+            // Changed from "--template"
+            {
+                // Print our custom error message and exit
+                eprintln!(
+                    "error: Missing template name. Please specify a template using 'moose init <project_name> <template_name>'.\\n\\nUse 'moose template list' to see available options.\\n\\nFor more information, try '--help'"
+                );
+                exit(1);
+            }
+
+            // For any other error, let clap handle it
+            e.exit();
+        }
+    };
+
+    let command_result = top_command_handler(config, &cli.command, machine_id).await;
+
+    match command_result {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             exit(0);
@@ -1229,5 +1275,37 @@ mod tests {
             let file_name = file_name.to_str().unwrap();
             assert!(file_name.ends_with(".py"));
         }
+    }
+
+    #[tokio::test]
+    async fn test_list_templates() {
+        let cli = Cli::parse_from(["moose", "template", "list"]);
+
+        let config = read_settings().unwrap();
+        let machine_id = get_or_create_machine_id();
+
+        let result = top_command_handler(config, &cli.command, machine_id).await;
+
+        assert!(result.is_ok());
+        let success_message = result.unwrap().message.details;
+
+        // Basic check to see if the output contains expected template info structure
+        assert!(success_message.contains("Available templates for version"));
+        assert!(success_message.contains("- typescript (typescript)"));
+        assert!(success_message.contains("- python (python)"));
+    }
+
+    #[tokio::test]
+    async fn test_init_missing_template_custom_error() {
+        let cli = Cli::parse_from(["moose", "init", "project_name"]);
+        let config = read_settings().unwrap();
+        let machine_id = get_or_create_machine_id();
+
+        let result = top_command_handler(config, &cli.command, machine_id).await;
+
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().message.details;
+        assert!(error_message.contains("Missing template name"));
+        assert!(error_message.contains("Use 'moose template list' to see available options"));
     }
 }

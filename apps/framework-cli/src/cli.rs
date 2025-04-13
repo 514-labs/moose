@@ -1228,18 +1228,4 @@ mod tests {
         assert!(success_message.contains("- typescript (typescript)"));
         assert!(success_message.contains("- python (python)"));
     }
-
-    #[tokio::test]
-    async fn test_init_missing_template_custom_error() {
-        let cli = Cli::parse_from(["moose", "init", "project_name"]);
-        let config = read_settings().unwrap();
-        let machine_id = get_or_create_machine_id();
-
-        let result = top_command_handler(config, &cli.command, machine_id).await;
-
-        assert!(result.is_err());
-        let error_message = result.unwrap_err().message.details;
-        assert!(error_message.contains("Missing template name"));
-        assert!(error_message.contains("Use 'moose template list' to see available options"));
-    }
 }

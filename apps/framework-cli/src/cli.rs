@@ -3,7 +3,7 @@ pub(crate) mod display;
 
 mod commands;
 pub mod local_webserver;
-mod logger;
+pub mod logger;
 mod routines;
 pub mod settings;
 mod watcher;
@@ -11,7 +11,6 @@ use super::metrics::Metrics;
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
 use crate::utilities::docker::DockerClient;
-use crate::utilities::machine_id::get_or_create_machine_id;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -21,7 +20,6 @@ use config::ConfigError;
 use display::{with_spinner, with_spinner_async};
 use home::home_dir;
 use log::{debug, info};
-use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::build::build_package;
@@ -37,9 +35,8 @@ use routines::scripts::{
 };
 use routines::templates::list_available_templates;
 
-use settings::{read_settings, Settings};
+use settings::Settings;
 use std::path::Path;
-use std::process::exit;
 use std::sync::Arc;
 
 use crate::cli::routines::logs::{follow_logs, show_logs};
@@ -52,7 +49,6 @@ use crate::cli::settings::user_directory;
 use crate::cli::{
     display::{Message, MessageType},
     routines::dev::run_local_infrastructure,
-    settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::check::check_system_reqs;
@@ -69,17 +65,16 @@ use crate::utilities::git::is_git_repo;
 
 use crate::cli::routines::ls::ls_dmv2;
 use anyhow::Result;
-use clap::error::ErrorKind;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
-struct Cli {
+pub struct Cli {
     /// Turn debugging information on
     #[arg(short, long)]
     debug: bool,
 
     #[command(subcommand)]
-    command: Commands,
+    pub command: Commands,
 }
 
 fn load_project() -> Result<Project, RoutineFailure> {
@@ -145,7 +140,7 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
     }
 }
 
-async fn top_command_handler(
+pub async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
     machine_id: String,
@@ -1138,71 +1133,10 @@ async fn top_command_handler(
     }
 }
 
-pub async fn cli_run() {
-    let user_directory = setup_user_directory();
-    if let Err(e) = user_directory {
-        show_message!(
-            MessageType::Error,
-            Message {
-                action: "Init".to_string(),
-                details: format!(
-                    "Failed to initialize ~/.moose, please check your permissions: {:?}",
-                    e
-                ),
-            }
-        );
-        exit(1);
-    }
-    init_config_file().unwrap();
-
-    let config = read_settings().unwrap();
-    let machine_id = get_or_create_machine_id();
-    setup_logging(&config.logger, &machine_id).expect("Failed to setup logging");
-
-    info!("CLI Configuration loaded and logging setup: {:?}", config);
-
-    let cli_result = Cli::try_parse();
-
-    let cli = match cli_result {
-        Ok(cli) => cli,
-        Err(e) => {
-            println!("Actual Error: {:?}", e);
-            // Check if the error is a missing required argument for '<TEMPLATE>' (positional argument)
-            if e.kind() == ErrorKind::MissingRequiredArgument
-                && e.to_string().contains("<TEMPLATE>")
-            // Changed from "--template"
-            {
-                // Print our custom error message and exit
-                eprintln!(
-                    "error: Missing template name. Please specify a template using 'moose init <project_name> <template_name>'.\\n\\nUse 'moose template list' to see available options.\\n\\nFor more information, try '--help'"
-                );
-                exit(1);
-            }
-
-            // For any other error, let clap handle it
-            e.exit();
-        }
-    };
-
-    let command_result = top_command_handler(config, &cli.command, machine_id).await;
-
-    match command_result {
-        Ok(s) => {
-            show_message!(s.message_type, s.message);
-            exit(0);
-        }
-        Err(e) => {
-            show_message!(e.message_type, e.message);
-            if let Some(err) = e.error {
-                eprintln!("{:?}", err)
-            }
-            exit(1);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::{cli::settings::read_settings, utilities::machine_id::get_or_create_machine_id};
+
     use super::*;
 
     fn set_test_temp_dir() {

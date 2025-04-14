@@ -14,7 +14,7 @@ use crate::cli::display::{Message, MessageType};
 use crate::cli::settings::user_directory;
 
 const TEMPLATE_REGISTRY_URL: &str = "https://templates.514.dev";
-const DOWLOAD_DIR: &str = "templates";
+const DOWNLOAD_DIR: &str = "templates";
 const LOCAL_TEMPLATE_DIR: &str = "template-packages";
 
 // Add a new struct to represent template config
@@ -38,7 +38,7 @@ impl TemplateConfig {
 // TODO - no need to download every time, once cached once, use the cached version
 fn templates_download_dir() -> PathBuf {
     let mut path = user_directory();
-    path.push(DOWLOAD_DIR);
+    path.push(DOWNLOAD_DIR);
     path
 }
 

@@ -90,6 +90,9 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
+      - name: install toml package # for package-templates.js
+        run: npm i @iarna/toml@3.0.0
+
       - name: Run cargo check
         run: cargo check
 
@@ -210,6 +213,9 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
+
+      - name: install toml package # for package-templates.js
+        run: npm i @iarna/toml@3.0.0
 
       # to trigger code gen
       - name: Run cargo build

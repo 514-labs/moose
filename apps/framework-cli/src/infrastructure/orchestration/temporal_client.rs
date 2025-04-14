@@ -99,7 +99,10 @@ impl TemporalClientManager {
         WorkflowServiceClient::connect(endpoint).await.map_err(|e| {
             eprintln!("{}", e);
             Error::msg(format!(
-                "Could not connect to Temporal. Please ensure the Temporal server is running: {}",
+                r#"Could not connect to Temporal: {}
+
+Please ensure the Temporal server is running.
+Is the Moose development server running? Start it with `moose dev`."#,
                 e
             ))
         })

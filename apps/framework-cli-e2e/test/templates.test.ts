@@ -215,9 +215,13 @@ const utils = {
 
 it("should return the dummy version in debug build", async () => {
   try {
-    await execAsync(`"${CLI_PATH}" --version`);
+    const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
+    console.error("stdout", stdout);
   } catch (e) {
-    console.log("asdfasdfaed", e);
+    console.error("asdfasdfaed", e);
+    if (e instanceof Error) {
+      console.error("e.stack", e.stack);
+    }
   }
   const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
   const version = stdout.trim();

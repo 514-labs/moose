@@ -89,6 +89,8 @@ pub async fn peek(
 
         consumer_ref = create_consumer(&project.redpanda_config, &[("group.id", &group_id)]);
         let consumer = &consumer_ref;
+        // in dmv2 we still have version as the suffix for topics
+        // but not so for tables. we might want to change that
         let topic_versioned = format!("{}_{}", data_model_name, version_suffix);
 
         let topic = infra
@@ -142,14 +144,18 @@ pub async fn peek(
                 .map(Result::unwrap),
         )
     } else {
-        // ¯\_(ツ)_/¯
-        let dm_with_version = format!("{}_{}_{}", data_model_name, version_suffix, version_suffix);
+        let expected_key = if project.features.data_model_v2 {
+            data_model_name.to_string()
+        } else {
+            // ¯\_(ツ)_/¯
+            format!("{}_{}_{}", data_model_name, version_suffix, version_suffix)
+        };
 
         let table = infra
             .tables
             .iter()
             .find_map(|(key, table)| {
-                if key.to_lowercase() == dm_with_version.to_lowercase() {
+                if key.to_lowercase() == expected_key.to_lowercase() {
                     Some(table)
                 } else {
                     None

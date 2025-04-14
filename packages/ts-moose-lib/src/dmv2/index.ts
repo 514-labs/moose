@@ -8,6 +8,8 @@ import {
   dropView,
   IngestionFormat,
   populateTable,
+  Sql,
+  toQuery,
 } from "../index";
 
 export type OlapConfig<T> = {
@@ -261,7 +263,7 @@ export type Aggregated<
   _argTypes?: ArgTypes;
 };
 interface MaterializedViewOptions<T> {
-  selectStatement: string;
+  selectStatement: string | Sql;
 
   tableName: string;
   materializedViewName: string;
@@ -317,17 +319,28 @@ export class MaterializedView<TargetTable> extends SqlResource {
     targetSchema?: IJsonSchemaCollection.IV3_1,
     targetColumns?: Column[],
   ) {
+    let selectStatement = options.selectStatement;
+    if (typeof selectStatement !== "string") {
+      const [query, params] = toQuery(selectStatement);
+      if (Object.keys(params).length !== 0) {
+        throw new Error(
+          "Dynamic SQL is not allowed in the select statement in materialized view creation.",
+        );
+      }
+      selectStatement = query;
+    }
+
     super(
       options.materializedViewName,
       [
         createMaterializedView({
           name: options.materializedViewName,
           destinationTable: options.tableName,
-          select: options.selectStatement,
+          select: selectStatement,
         }),
         populateTable({
           destinationTable: options.tableName,
-          select: options.selectStatement,
+          select: selectStatement,
         }),
       ],
       [dropView(options.materializedViewName)],

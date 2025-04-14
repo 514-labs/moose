@@ -63,7 +63,13 @@ const utils = {
       let serverStarted = false;
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
-        console.log("Dev server output:", output);
+        if (!output.matchAll(/[⢹⢺⢼⣸⣇⡧⡗⡏] Starting local infrastructure/)) {
+          if (output.includes("local infrastructure")) {
+            console.log(btoa(output));
+          }
+
+          console.log("Dev server output:", output);
+        }
 
         if (
           !serverStarted &&

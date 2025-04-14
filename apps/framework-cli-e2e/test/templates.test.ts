@@ -63,7 +63,9 @@ const utils = {
       let serverStarted = false;
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
-        console.log("Dev server output:", output);
+        if (!output.match(/^[⢹⢺⢼⣸⣇⡧⡗⡏] Starting local infrastructure$/)) {
+          console.log("Dev server output:", output);
+        }
 
         if (
           !serverStarted &&
@@ -111,7 +113,7 @@ const utils = {
     try {
       // Stop containers and remove volumes
       await execAsync(
-        "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",
+        `docker compose -f .moose/docker-compose.yml -p ${appName} down -v`,
         { cwd: projectDir },
       );
 

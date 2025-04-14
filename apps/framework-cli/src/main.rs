@@ -49,11 +49,12 @@ fn main() {
                 eprintln!("{}", e);
                 eprintln!("To view available templates, run:");
                 eprintln!("\n  moose template list");
+                std::process::exit(1)
             } else {
                 // For other errors, use Clap's default error format
-                eprintln!("{}", e);
+                // this includes the --version and --help string
+                e.exit()
             }
-            std::process::exit(1);
         }
     };
 

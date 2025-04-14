@@ -79,7 +79,7 @@ pub async fn list_db(
         .api_endpoints
         .values()
         .filter_map(|endpoint| {
-            if &endpoint.version == project.cur_version() {
+            if endpoint.version == Some(project.cur_version().clone()) {
                 Some((
                     endpoint.name.clone(),
                     vec![

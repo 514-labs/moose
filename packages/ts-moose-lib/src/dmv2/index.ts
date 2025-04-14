@@ -17,18 +17,21 @@ export type OlapConfig<T> = {
   // equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`
   deduplicate?: boolean;
   engine?: ClickHouseEngines;
+  version?: string;
 };
 
 export interface StreamConfig<T> {
   parallelism?: number;
   retentionPeriod?: number; // seconds
   destination?: OlapTable<T>;
+  version?: string;
 }
 
 export type IngestPipelineConfig<T> = {
   table: boolean | OlapConfig<T>;
   stream: boolean | Omit<StreamConfig<T>, "destination">;
   ingest: boolean | Omit<IngestConfig<T>, "destination">;
+  version?: string;
 };
 
 export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
@@ -119,6 +122,7 @@ class RoutedMessage {
 interface IngestConfig<T> {
   destination: Stream<T>;
   format?: IngestionFormat; // TODO: we may not need this
+  version?: string;
 }
 
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
@@ -149,7 +153,9 @@ type ConsumptionHandler<T, R> = (
   utils: ConsumptionUtil,
 ) => Promise<R>;
 
-interface EgressConfig<T> {}
+interface EgressConfig<T> {
+  version?: string;
+}
 
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
   _handler: ConsumptionHandler<T, R>;
@@ -214,7 +220,10 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     super(name, config, schema, columns);
 
     if (config.table) {
-      const tableConfig = config.table === true ? {} : config.table;
+      const tableConfig = {
+        ...(typeof config.table === "object" ? config.table : {}),
+        ...(config.version && { version: config.version }),
+      };
       this.table = new OlapTable(
         name,
         tableConfig,
@@ -226,7 +235,8 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     if (config.stream) {
       const streamConfig = {
         destination: this.table,
-        ...(config.stream === true ? {} : config.stream),
+        ...(typeof config.stream === "object" ? config.stream : {}),
+        ...(config.version && { version: config.version }),
       };
       this.stream = new Stream(
         name,
@@ -243,7 +253,8 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
 
       const ingestConfig = {
         destination: this.stream,
-        ...(config.ingest === true ? {} : config.ingest),
+        ...(typeof config.ingest === "object" ? config.ingest : {}),
+        ...(config.version && { version: config.version }),
       };
       this.ingestApi = new IngestApi(
         name,

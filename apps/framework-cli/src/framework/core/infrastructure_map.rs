@@ -1302,7 +1302,7 @@ impl InfrastructureMap {
                     }
                     if table.version != target_table.version {
                         log::debug!(
-                            "  - Version changed: {} -> {}",
+                            "  - Version changed: {:?} -> {:?}",
                             table.version,
                             target_table.version
                         );
@@ -1777,6 +1777,7 @@ struct PartialTable {
     pub order_by: Vec<String>,
     pub deduplicate: bool,
     pub engine: Option<String>,
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1789,6 +1790,8 @@ struct PartialTopic {
     pub transformation_targets: Vec<TransformationTarget>,
     pub target_table: Option<String>,
     pub has_consumers: bool,
+    pub target_table_version: Option<String>,
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1816,6 +1819,7 @@ struct PartialIngestApi {
     pub columns: Vec<Column>,
     pub format: EndpointIngestionFormat,
     pub write_to: WriteTo,
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1824,6 +1828,7 @@ struct PartialEgressApi {
     pub name: String,
     pub query_params: Vec<Column>,
     pub response_schema: serde_json::Value,
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -1867,8 +1872,6 @@ pub struct PartialInfrastructureMap {
     function_processes: HashMap<String, FunctionProcess>,
     block_db_processes: Option<OlapProcess>,
     consumption_api_web_server: Option<ConsumptionApiWebServer>,
-    #[serde(default)]
-    orchestration_workers: HashMap<String, OrchestrationWorker>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1940,7 +1943,7 @@ impl PartialInfrastructureMap {
                 .split("end___MOOSE_STUFF___")
                 .next()
                 .ok_or_else(output_format)?;
-            log::debug!("load_from_user_code inframap json: {}", json);
+            log::info!("load_from_user_code inframap json: {}", json);
 
             Ok(serde_json::from_str(json)
                 .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
@@ -1951,8 +1954,14 @@ impl PartialInfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
         let api_endpoints = self.convert_api_endpoints(main_file, &topics);
-        let topic_to_table_sync_processes = self.create_topic_to_table_sync_processes(&topics);
+        let topic_to_table_sync_processes =
+            self.create_topic_to_table_sync_processes(&tables, &topics);
         let function_processes = self.create_function_processes(main_file, language, &topics);
+
+        // Why does dmv1 InfrastructureMap::new do this?
+        let mut orchestration_workers = HashMap::new();
+        let orchestration_worker = OrchestrationWorker::new(language);
+        orchestration_workers.insert(orchestration_worker.id(), orchestration_worker);
 
         InfrastructureMap {
             topics,
@@ -1967,28 +1976,37 @@ impl PartialInfrastructureMap {
             consumption_api_web_server: self
                 .consumption_api_web_server
                 .unwrap_or(ConsumptionApiWebServer {}),
-            orchestration_workers: self.orchestration_workers,
+            orchestration_workers,
         }
     }
 
     fn convert_tables(&self) -> HashMap<String, Table> {
         self.tables
-            .iter()
-            .map(|(id, partial_table)| {
+            .values()
+            .map(|partial_table| {
+                let version: Option<Version> = partial_table
+                    .version
+                    .as_ref()
+                    .map(|v_str| Version::from_string(v_str.clone()));
+
                 let table = Table {
-                    name: partial_table.name.clone(),
+                    // In dmv1, DataModel.to_table uses version in the name
+                    name: version
+                        .as_ref()
+                        .map_or(partial_table.name.clone(), |version| {
+                            format!("{}_{}", partial_table.name, version.as_suffix())
+                        }),
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
                     deduplicate: partial_table.deduplicate,
                     engine: partial_table.engine.clone(),
-                    // TODO pass through version from the TS / PY api
-                    version: Version::from_string("0.0".to_string()),
+                    version,
                     source_primitive: PrimitiveSignature {
                         name: partial_table.name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,
                     },
                 };
-                (id.clone(), table)
+                (table.id(), table)
             })
             .collect()
     }
@@ -2005,15 +2023,16 @@ impl PartialInfrastructureMap {
                         partial_topic.retention_period,
                     ),
                     partition_count: partial_topic.partition_count,
-                    // TODO pass through version from the TS / PY api
-                    version: Version::from_string("0.0".to_string()),
+                    version: partial_topic
+                        .version
+                        .as_ref()
+                        .map(|v_str| Version::from_string(v_str.clone())),
                     source_primitive: PrimitiveSignature {
                         name: partial_topic.name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,
                     },
                 };
-                // TODO pass through version from the TS / PY api
-                (format!("{}_0_0", partial_topic.name), topic)
+                (topic.id(), topic)
             })
             .collect()
     }
@@ -2038,7 +2057,7 @@ impl PartialInfrastructureMap {
 
             let data_model = crate::framework::data_model::model::DataModel {
                 name: partial_api.name.clone(),
-                // TODO pass through version from the TS / PY api
+                // TODO: what is this version?
                 version: Version::from_string("0.0".to_string()),
                 config: crate::framework::data_model::config::DataModelConfig {
                     ingestion: crate::framework::data_model::config::IngestionConfig {
@@ -2067,19 +2086,27 @@ impl PartialInfrastructureMap {
                     data_model: Some(data_model),
                     format: partial_api.format,
                 },
-                path: PathBuf::from(format!("ingest/{}", partial_api.name)),
+                path: PathBuf::from_iter(
+                    [
+                        "ingest",
+                        &partial_api.name,
+                        partial_api.version.as_deref().unwrap_or_default(),
+                    ]
+                    .into_iter()
+                    .filter(|s| !s.is_empty()),
+                ),
                 method: Method::POST,
-                // TODO pass through version from the TS / PY api
-                version: Version::from_string("0.0".to_string()),
+                version: partial_api
+                    .version
+                    .as_ref()
+                    .map(|v_str| Version::from_string(v_str.clone())),
                 source_primitive: PrimitiveSignature {
                     name: partial_api.name.clone(),
                     primitive_type: PrimitiveTypes::DataModel,
                 },
             };
 
-            let key = format!("INGRESS_{}", partial_api.name);
-
-            api_endpoints.insert(key, api_endpoint);
+            api_endpoints.insert(api_endpoint.id(), api_endpoint);
         }
 
         for partial_api in self.egress_apis.values() {
@@ -2099,16 +2126,17 @@ impl PartialInfrastructureMap {
                 },
                 path: PathBuf::from(partial_api.name.clone()),
                 method: Method::GET,
-                // TODO pass through version from the TS / PY api
-                version: Version::from_string("0.0".to_string()),
+                version: partial_api
+                    .version
+                    .as_ref()
+                    .map(|v_str| Version::from_string(v_str.clone())),
                 source_primitive: PrimitiveSignature {
                     name: partial_api.name.clone(),
                     primitive_type: PrimitiveTypes::ConsumptionAPI,
                 },
             };
 
-            let key = format!("EGRESS_{}", partial_api.name);
-            api_endpoints.insert(key, api_endpoint);
+            api_endpoints.insert(api_endpoint.id(), api_endpoint);
         }
 
         api_endpoints
@@ -2116,33 +2144,42 @@ impl PartialInfrastructureMap {
 
     fn create_topic_to_table_sync_processes(
         &self,
+        tables: &HashMap<String, Table>,
         topics: &HashMap<String, Topic>,
     ) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
         for (topic_name, partial_topic) in &self.topics {
-            if let Some(target_table) = &partial_topic.target_table {
-                let not_found = &format!("Source topic '{}' not found", topic_name);
+            if let Some(target_table_name) = &partial_topic.target_table {
+                let topic_not_found = &format!("Source topic '{}' not found", topic_name);
                 let source_topic = topics
                     .values()
                     .find(|topic| &topic.name == topic_name)
-                    .expect(not_found);
-                let source_topic_id = source_topic.id();
+                    .expect(topic_not_found);
 
-                let sync_id = format!("{}_{}", source_topic_id, target_table);
+                let target_table_version: Option<Version> = partial_topic
+                    .target_table_version
+                    .as_ref()
+                    .map(|v_str| Version::from_string(v_str.clone()));
 
-                let sync_process = TopicToTableSyncProcess {
-                    source_topic_id,
-                    target_table_id: target_table.to_string(),
-                    columns: partial_topic.columns.clone(),
-                    // TODO pass through version from the TS / PY api
-                    version: Version::from_string("0.0".to_string()),
-                    source_primitive: PrimitiveSignature {
-                        name: target_table.to_string(),
-                        primitive_type: PrimitiveTypes::DataModel,
-                    },
-                };
+                let table_not_found = &format!(
+                    "Target table '{}' version '{:?}' not found",
+                    target_table_name, target_table_version
+                );
+                let target_table = tables
+                    .values()
+                    .find(|table| {
+                        let name_matches = table.name.starts_with(target_table_name);
+                        let version_matches = match &target_table_version {
+                            Some(target_v) => table.version.as_ref() == Some(target_v),
+                            None => true,
+                        };
+                        name_matches && version_matches
+                    })
+                    .expect(table_not_found);
 
+                let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);
+                let sync_id = sync_process.id();
                 sync_processes.insert(sync_id.clone(), sync_process);
                 log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
             } else {
@@ -2183,7 +2220,8 @@ impl PartialInfrastructureMap {
             for transformation_target in &source_partial_topic.transformation_targets {
                 debug!("transformation_target: {:?}", transformation_target);
 
-                let process_id = format!("{}_{}", topic_name, transformation_target.name);
+                // In dmv1, the process name was the file name which had double underscores
+                let process_name = format!("{}__{}", topic_name, transformation_target.name);
 
                 let not_found = &format!("Target topic '{}' not found", transformation_target.name);
                 let target_topic = topics
@@ -2192,21 +2230,21 @@ impl PartialInfrastructureMap {
                     .expect(not_found);
 
                 let function_process = FunctionProcess {
-                    name: process_id.clone(),
+                    name: process_name.clone(),
                     source_topic_id: source_topic.id(),
                     target_topic_id: Some(target_topic.id()),
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: target_topic.partition_count,
-                    // TODO pass through version from the TS / PY api
+                    // TODO: what is this version? topic? which one?
                     version: "0.0".to_string(),
                     source_primitive: PrimitiveSignature {
-                        name: topic_name.clone(),
-                        primitive_type: PrimitiveTypes::DataModel,
+                        name: process_name.clone(),
+                        primitive_type: PrimitiveTypes::Function,
                     },
                 };
 
-                function_processes.insert(process_id.clone(), function_process);
+                function_processes.insert(function_process.id(), function_process);
             }
 
             if source_partial_topic.has_consumers {
@@ -2468,7 +2506,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string()],
-            version: Version::from_string("1.0".to_string()),
+            version: Some(Version::from_string("1.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -2509,7 +2547,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
-            version: Version::from_string("1.1".to_string()),
+            version: Some(Version::from_string("1.1".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,

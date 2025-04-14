@@ -60,7 +60,7 @@ impl KafkaStreamConfig {
             retention_ms: topic.retention_period.as_millis(),
             max_message_bytes: topic.max_message_bytes,
             namespace: kafka_config.namespace.clone(),
-            version: Some(topic.version.clone()),
+            version: topic.version.clone(),
         }
     }
 
@@ -288,7 +288,10 @@ pub fn extract_version_from_topic_name(topic_name: &str) -> Option<Version> {
 /// # Returns
 /// * A String containing the full topic name with version
 fn topic_name(namespace: &Option<String>, topic: &Topic) -> String {
-    let version_suffix = format!("_{}", topic.version.as_str().replace('.', "_"));
+    let version_suffix = topic
+        .version
+        .as_ref()
+        .map_or_else(|| "".to_string(), |v| format!("_{}", v.as_suffix()));
 
     if let Some(ns) = namespace {
         format!(

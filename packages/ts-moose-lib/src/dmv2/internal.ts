@@ -25,6 +25,7 @@ interface TableJson {
   orderBy: string[];
   deduplicate: boolean;
   engine?: string;
+  version?: string;
 }
 interface Target {
   name: string;
@@ -36,8 +37,9 @@ interface StreamJson {
   retentionPeriod: number;
   partitionCount: number;
   targetTable?: string;
-
+  targetTableVersion?: string;
   hasConsumers: boolean;
+  version?: string;
   transformationTargets: Target[];
   hasMultiTransform: boolean;
 }
@@ -46,12 +48,14 @@ interface IngestApiJson {
   columns: Column[];
   format: IngestionFormat;
   writeTo: Target;
+  version?: string;
 }
 
 interface EgressApiJson {
   name: string;
   queryParams: Column[];
   responseSchema: IJsonSchemaCollection.IV3_1;
+  version?: string;
 }
 
 interface SqlResourceJson {
@@ -74,6 +78,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       orderBy: table.config.orderByFields ?? [],
       deduplicate: table.config.deduplicate ?? false,
       engine: table.config.engine,
+      version: table.config.version,
     };
   });
 
@@ -93,8 +98,10 @@ const toInfraMap = (registry: typeof moose_internal) => {
       name: stream.name,
       columns: stream.columnArray,
       targetTable: stream.config.destination?.name,
+      targetTableVersion: stream.config.destination?.config.version,
       retentionPeriod: stream.config.retentionPeriod ?? defaultRetentionPeriod,
       partitionCount: stream.config.parallelism ?? 1,
+      version: stream.config.version,
       transformationTargets,
       hasMultiTransform: stream._multipleTransformations === undefined,
       hasConsumers,
@@ -106,6 +113,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       name: api.name,
       columns: api.columnArray,
       format: api.config.format ?? IngestionFormat.JSON,
+      version: api.config.version,
       writeTo: {
         kind: "stream",
         name: api.config.destination.name,
@@ -118,6 +126,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       name: api.name,
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
+      version: api.config.version,
     };
   });
 

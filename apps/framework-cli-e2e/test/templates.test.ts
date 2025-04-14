@@ -214,6 +214,11 @@ const utils = {
 };
 
 it("should return the dummy version in debug build", async () => {
+  try {
+    await execAsync(`"${CLI_PATH}" --version`);
+  } catch (e) {
+    console.log("asdfasdfaed", e);
+  }
   const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
   const version = stdout.trim();
   const expectedVersion = "moose-cli 0.0.1";

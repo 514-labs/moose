@@ -64,9 +64,6 @@ const utils = {
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
         if (!output.match(/^[⢹⢺⢼⣸⣇⡧⡗⡏] Starting local infrastructure$/)) {
-          if (output.includes("local infrastructure")) {
-            console.log(btoa(output));
-          }
           console.log("Dev server output:", output);
         }
 
@@ -214,15 +211,6 @@ const utils = {
 };
 
 it("should return the dummy version in debug build", async () => {
-  try {
-    const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
-    console.error("stdout", stdout);
-  } catch (e) {
-    console.error("asdfasdfaed", e);
-    if (e instanceof Error) {
-      console.error("e.stack", e.stack);
-    }
-  }
   const { stdout } = await execAsync(`"${CLI_PATH}" --version`);
   const version = stdout.trim();
   const expectedVersion = "moose-cli 0.0.1";

@@ -19,15 +19,15 @@ import { paths } from "@/lib/paths";
 
 <Callout type="info" title="Prerequisites">
 <TypeScript>
-- **Node.js**: [version 20+](https://nodejs.org/en/download)
+- **Node.js**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
 </TypeScript>
 
 <Python>
-- **Python**: [version 3.12+](https://www.python.org/downloads/)
+- **Python**: [version 3.12+](https://www.python.org/downloads/) 
 </Python>
 
 - **OS**: macOS or Linux (WSL supported for Windows)
-- **Docker**: [Installation instructions](https://docs.docker.com/get-started/get-docker/)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
 </Callout>
 
 ## Create Your Project
@@ -73,6 +73,44 @@ moose-cli dev
 ```
 </Python>
 
+<ToggleBlock openText="Need Help?" closeText="Hide">
+Common issues and solutions:
+- Docker is not running: Run `open -a Docker` on macOS
+- Port conflicts: Run `lsof -i :4000,18123,19092` to identify conflicts.
+
+<TypeScript>
+- Missing Dependencies: Run `npm install` from your project root
+- Incorrect Node.js version: Use `nvm` or `n` to make sure you have a compatible Node.js version installed:
+<Tabs items={["nvm", "n"]}>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+nvm install 20
+nvm use 20
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+n install 20
+n use 20
+```
+</Tabs.Tab>
+</Tabs>
+</TypeScript>
+
+<Python>
+- Missing Dependencies: Run `pip install` from your project root
+- Incorrect Python version: Use `pyenv` to make sure you have a compatible Python version installed:
+<Tabs items={["pyenv"]}>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+pyenv install 3.12
+pyenv use 3.12
+```
+</Tabs.Tab>
+</Tabs>
+</Python>
+</ToggleBlock>
+
 ### Understand Project Structure
 Your project contains:
 
@@ -88,8 +126,8 @@ app/
 │
 └── apis/            # Analytics APIs
 |   └── bar.py
-├── scripts/          # Orchestrated scripts
-│   └── ingest-foo/   # Background job for ingesting foo data
+├── scripts/          
+│   └── ingest-foo/   # Random data generator for testing
 │
 └── moose.config.toml    # Project config
 ```
@@ -107,8 +145,10 @@ app/
 │
 └── apis/            # Analytics APIs
     └── bar.ts      
-
-moose.config.toml    # Project config
+├── scripts/
+│   └── ingest-foo/   # Random data generator for testing
+│
+└── moose.config.toml    # Project config
 ```
 </TypeScript>
 </Steps>
@@ -139,7 +179,7 @@ moose.config.toml    # Project config
 />
 
 ### Send Test Data
-<Tabs items={["Using Ingest Script", "Using OpenAPI"]}>
+<Tabs items={["Using Data Generator Script", "Using OpenAPI UI"]}>
 <Tabs.Tab>
 Your project includes a script to generate sample data to test your pipeline:
 
@@ -154,10 +194,26 @@ npx moose-cli workflow run ingestFoo
 moose-cli workflow run ingest-foo
 ```
 </Python>
+
+
+You should see a bunch of logs printed to the terminal like the following:
+
+```txt
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 17 row(s) successfully written to DB table (Bar)
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 8 row(s) successfully written to DB table (Bar)
+
+          ...
+```
 </Tabs.Tab>
 
 <Tabs.Tab>
-Moose automatically generates an OpenAPI spec for all ingestion and consumption APIs defined in your project. It is located in the `.moose/openapi.yaml` file:
+Moose automatically generates docs for all APIs defined in your project in the `.moose/openapi.yaml` file:
 
 <FileTree>
 <FileTree.Folder name=".moose" defaultOpen>
@@ -171,7 +227,9 @@ Moose automatically generates an OpenAPI spec for all ingestion and consumption 
 </FileTree.Folder>
 </FileTree>
 
-Install the [OpenAPI (Swagger) Viewer](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) extension from the VSCode Marketplace and open the `openapi.yaml` file to test your APIs.
+<Callout type="info" title="Install the OpenAPI (Swagger) Viewer extension" href="https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi">
+Open `openapi.yaml` in your IDE and click the magnifying glass icon to launch the OpenAPI UI.
+</Callout>
 
 <MuxVideo 
   playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
@@ -184,11 +242,40 @@ Install the [OpenAPI (Swagger) Viewer](https://marketplace.cursorapi.com/items?i
 />
 
 
+After hitting the `Try it out` button, you should see something like the following output in your terminal:
+
+```txt
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 1 row(s) successfully written to DB table (Bar)
+```
+
+
 </Tabs.Tab>
 </Tabs>
+
+<Callout type="success" title="Data landed in ClickHouse!">
+- You sent raw data via HTTP `POST` to the `/ingest/Foo` endpoint
+- Data is validated and written to the `Foo` stream
+- Moose transformed the data into the `Bar` stream
+- Transformed data is automatically synced to the `Bar` ClickHouse table
+</Callout>
+
+<ToggleBlock openText="(Bonus) Peek at your ClickHouse tables" closeText="Hide instructions">
+Take a look at the data you just landed into ClickHouse:
+```bash filename="Terminal" copy
+moose peek Bar --limit 10
+```
+<Callout type="info" title="Learn more">
+  Run `moose peek --help` to see all the options available.
+</Callout>
+</ToggleBlock>
 ### Query Your Data
 Test your analytics API:
 
+<Tabs items={["Using curl", "Using OpenAPI UI"]}>
+<Tabs.Tab>
 ```bash filename="Terminal" copy
 # Get default results
 curl "http://localhost:4000/consumption/bar"
@@ -214,8 +301,32 @@ curl "http://localhost:4000/consumption/bar?order_by=rows_with_text"
 curl "http://localhost:4000/consumption/bar?start_day=1&end_day=10"
 ```
 </Python>
+</Tabs.Tab>
+
+<Tabs.Tab>
+Locate your project's OpenAPI spec and hit the `Try it out` button to test your `GET /consumption/bar` endpoint:
+
+Try setting the query parameters to filter the results:
+<TypeScript>
+```txt filename="Swagger UI" copy
+orderBy=rowsWithText
+startDay=1
+endDay=10
+```
+</TypeScript>
+
+<Python>
+```txt filename="Swagger UI" copy
+order_by=rows_with_text
+start_day=1
+end_day=10
+```
+</Python>
+</Tabs.Tab>
+</Tabs>
 
 ## Next Steps
+Take a deeper dive into core Moose concepts:
 
 <FeatureGrid columns={3}>
 <FeatureCard

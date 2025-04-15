@@ -232,6 +232,8 @@ fn std_field_type_to_typescript_field_mapper(
                     .collect::<Result<Vec<InterfaceField>, TypescriptGeneratorError>>()?,
             })))
         }
+        // add typia †ag when we want to fully support UUID
+        ColumnType::Uuid => Ok(InterfaceFieldType::String),
     }
 }
 

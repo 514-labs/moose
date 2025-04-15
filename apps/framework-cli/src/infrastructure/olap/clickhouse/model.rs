@@ -56,6 +56,7 @@ pub enum ClickHouseColumnType {
         // the return type of the aggregation function
         Box<ClickHouseColumnType>,
     ),
+    Uuid,
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -111,6 +112,7 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::AggregateFunction(_, return_type) => {
                 return return_type.to_std_column_type();
             }
+            ClickHouseColumnType::Uuid => ColumnType::Uuid,
         };
         (column_type, required)
     }

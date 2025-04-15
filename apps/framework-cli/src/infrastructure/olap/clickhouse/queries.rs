@@ -276,6 +276,7 @@ pub fn basic_field_type_to_string(
                 function_name, inner_type_string
             ))
         }
+        ClickHouseColumnType::Uuid => Ok("UUID".to_string()),
     }
 }
 

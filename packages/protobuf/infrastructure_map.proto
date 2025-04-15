@@ -150,7 +150,7 @@ enum SimpleColumnType {
   DECIMAL = 5;
   DATETIME = 6;
 
-  UUID = 13;
+  UUID_TYPE = 13;
   JSON_COLUMN = 14;
   BYTES = 15;
 }

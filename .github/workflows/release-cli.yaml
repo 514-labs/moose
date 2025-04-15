@@ -267,6 +267,10 @@ jobs:
         if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - uses: pnpm/action-setup@v4
+      - name: pnpm install for scripts # for package-templates.js
+        run: pnpm install --filter=@repo/scripts --frozen-lockfile
+
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
         # For aarch64 we need to install protoc manually inside the before-script-Linux

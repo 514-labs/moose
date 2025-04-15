@@ -5,7 +5,7 @@ This project processes and transforms aircraft tracking data from various source
 # Getting Started
 
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
-2. Create project `aurora init aircraft ads-b-frontend`
+2. Create project `aurora init aircraft ads-b`
 3. Install dependencies: `cd aircraft && npm install`
 5. Run Moose: `moose dev`
 

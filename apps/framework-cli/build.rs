@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::io::{Error, Result};
 use std::process::Command;
 
 fn package_templates() -> Result<()> {
@@ -10,10 +10,17 @@ fn package_templates() -> Result<()> {
 
     let package_templates_dir = root_dir.join("scripts/package-templates.js");
 
-    Command::new(&package_templates_dir)
+    let status = Command::new(&package_templates_dir)
         .current_dir(root_dir)
         .status()?;
-    Ok(())
+    if status.success() {
+        Ok(())
+    } else {
+        Err(Error::other(format!(
+            "package-templates.js failed: {}",
+            status
+        )))
+    }
 }
 
 fn main() -> Result<()> {

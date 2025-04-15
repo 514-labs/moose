@@ -141,6 +141,8 @@ pub enum Commands {
     },
     /// Manage data processing workflows
     Workflow(WorkflowArgs),
+    /// Manage templates
+    Template(TemplateCommands),
 }
 
 #[derive(Debug, Args)]
@@ -334,4 +336,17 @@ pub enum WorkflowCommands {
         #[arg(long)]
         json: bool,
     },
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct TemplateCommands {
+    #[command(subcommand)]
+    pub command: Option<TemplateSubCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TemplateSubCommands {
+    /// List available templates
+    List {},
 }

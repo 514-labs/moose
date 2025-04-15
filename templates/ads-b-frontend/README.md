@@ -8,9 +8,8 @@ This project processes and transforms aircraft tracking data from various source
 2. Create project `aurora init aircraft ads-b-frontend`
 3. Install dependencies: `cd aircraft/moose && npm install`
 5. Run Moose: `moose dev`
-6. In a new terminal, navigate to the project directory and run ingest workflow `moose workflow run military_aircraft_tracking`
-7. In a new terminal, install frontend dependencies `cd aircraft/frontend && npm install`
-8. Run frontend: `npm run dev`
+6. In a new terminal, install frontend dependencies `cd aircraft/frontend && npm install`
+7. Run frontend: `npm run dev`
 
 You are ready to go!
 

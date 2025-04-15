@@ -30,6 +30,7 @@ Materialized views allow you to precompute and store the results of complex quer
 <TypeScript>
 ```ts filename="MaterializedView.ts" copy
 import { MaterializedView, sql } from "@514labs/moose-lib";
+import { sourceTable } from "path/to/SourceTable";
 
 // 1. Define the schema of the materialized view result set
 interface TargetSchema {
@@ -40,11 +41,16 @@ interface TargetSchema {
 
 // 2. Write a SELECT query to compute the result set
 const exampleMaterializedView = new MaterializedView<TargetSchema>({
-  selectStatement: sql` SELECT * FROM source_table_name`,
+  selectStatement: sql` SELECT * FROM ${sourceTable}`,
   tableName: "my_table",
   materializedViewName: "example_materialized_view",
 });
 ```
+
+<Callout type="info">
+Use the `sql` function to interpolate tables and columns from your project
+</Callout>
+
 </TypeScript>
 
 <Python>
@@ -83,7 +89,7 @@ example_materialized_view = MaterializedView[TargetSchema](
 <TypeScript>
 ```typescript filename="ViewOptions.ts"
 interface MaterializedViewOptions<T> {
-  selectStatement: string; // sql query to compute the materialized view
+  selectStatement: sql; // sql query to compute the materialized view
   tableName: string; // name of the table where materialized view result set will be stored
   materializedViewName: string; // name of the materialized view in the database
 
@@ -169,7 +175,7 @@ View the ClickHouse documentation for more information on the aggregate function
 import { MaterializedView, ClickHouseEngines, Aggregated, sql } from "@514labs/moose-lib";
 import { sourceTable } from "./SourceTable";
 
-interface TargetSchema {
+interface TargetTableSchema {
   id: string;
   average_rating: number & Aggregated<"avg", [number]>;
   num_reviews: number & Aggregated<"sum", [number]>;
@@ -178,13 +184,13 @@ interface TargetSchema {
 const query = sql`
   SELECT 
     id, 
-    avgState(rating) as average_rating, 
-    countState(id) as num_reviews 
-  FROM ${sourceTable.name}
-  GROUP BY ${sourceTable.columns["id"]}
+    avgState(${sourceTable.columns.rating}) as average_rating, 
+    countState(${sourceTable.columns.id}) as num_reviews 
+  FROM ${sourceTable}
+  GROUP BY ${sourceTable.columns.id}
   `;
 
-const exampleMaterializedView = new MaterializedView<TargetSchema>({
+const exampleMaterializedView = new MaterializedView<TargetTableSchema>({
   selectStatement: query,
   tableName: "my_table",
   materializedViewName: "example_materialized_view",
@@ -200,7 +206,7 @@ const exampleMaterializedView = new MaterializedView<TargetSchema>({
 from moose_lib import MaterializedView, ClickHouseEngines, Aggregated, AggregateFunction, MaterializedViewOptions
 from app.source_table import source_table
 
-class TargetSchema(BaseModel):
+class TargetTableSchema(BaseModel):
     id: str
     average_rating: float & Aggregated[float, AggregateFunction(agg_func="avg", param_types=[float])]
     num_reviews: int & Aggregated[int, AggregateFunction(agg_func="sum", param_types=[int])]
@@ -214,7 +220,7 @@ query = f"""
   GROUP BY id
 """
 
-example_materialized_view = MaterializedView[TargetSchema](MaterializedViewOptions(
+example_materialized_view = MaterializedView[TargetTableSchema](MaterializedViewOptions(
     select_statement=query,
     table_name="my_table",
     materialized_view_name="example_materialized_view",
@@ -253,17 +259,29 @@ When these practices are followed, materialized views with aggregations can prov
 
 ## Querying Materialized Views
 
-You can query materialized views just like any other table in Moose:
+You can query materialized views just like any other table in Moose. When instantiating a `MaterializedView`, Moose will create an `OlapTable` for the materialized view result set. You can access the `OlapTable` from the `MaterializedView` object:
 
 <TypeScript>
 ```ts filename="QueryingMaterializedView.ts" copy
-const query = sql`SELECT * FROM ${exampleMaterializedView.targetTable.name}`;
+import { sql } from "@514labs/moose-lib";
+
+// Query the materialized view
+const query = sql`SELECT * FROM ${exampleMaterializedView.targetTable}`;
+
+// Retrieve the materialized view result set as an OlapTable
+const table: OlapTable<TargetTableSchema> = exampleMaterializedView.targetTable;
 ```
 </TypeScript>
 
 <Python>
 ```py filename="QueryingMaterializedView.py" copy
-query = f"SELECT * FROM {example_materialized_view.target_table.name}"
+from moose_lib import OlapTable
+
+## Querying the materialized view
+query = f"SELECT * FROM {example_materialized_view.target_table}"
+
+## Or
+table: OlapTable[TargetTableSchema] = example_materialized_view.target_table
 ```
 </Python>
 
@@ -279,6 +297,21 @@ When you create a materialized view in Moose:
 6. The update uses the <TypeScript inline>`selectStatement`</TypeScript><Python inline>`select_statement`</Python> to compute the latest results from the source data
 
 This ensures your precomputed views stay in sync with your underlying data without manual intervention.
+
+<Python>
+
+<Callout type="info">
+🚀 **Help Shape the Future of Moose**  
+We're planning to improve the SQL query interpolation developer experience in Python when Python template strings are released ([see discussion](https://news.ycombinator.com/item?id=43647716)).  
+**We'd love your feedback and ideas!**  
+Join our community on Slack to discuss, share your use cases, and help us build the best experience for you.
+</Callout>
+
+</Python>
+
+
+
+
 
 
 

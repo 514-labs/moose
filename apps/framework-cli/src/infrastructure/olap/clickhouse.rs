@@ -973,6 +973,7 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
             })
         }
         "JSON" => Ok(ColumnType::Json),
+        "UUID" => Ok(ColumnType::Uuid),
         _ => Err(format!("Unsupported ClickHouse type: {}", ch_type)),
     }?;
 

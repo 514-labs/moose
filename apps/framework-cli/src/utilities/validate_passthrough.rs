@@ -150,6 +150,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
                 formatter.write_str("a value matching the column type")
             }
+            ColumnType::Uuid => formatter.write_str("a UUID"),
         }?;
         write!(formatter, " at {}", self.get_path())
     }
@@ -235,6 +236,9 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                         v
                     )))
                 }
+            }
+            ColumnType::Uuid if uuid::Uuid::parse_str(v).is_ok() => {
+                self.write_to.serialize_value(v).map_err(Error::custom)
             }
             _ => Err(Error::invalid_type(serde::de::Unexpected::Str(v), &self)),
         }

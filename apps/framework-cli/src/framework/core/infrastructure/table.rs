@@ -119,6 +119,7 @@ pub enum ColumnType {
     Nested(Nested),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
+    Uuid,
 }
 
 impl fmt::Display for ColumnType {
@@ -139,6 +140,7 @@ impl fmt::Display for ColumnType {
             ColumnType::Nested(n) => write!(f, "Nested<{}>", n.name),
             ColumnType::Json => write!(f, "Json"),
             ColumnType::Bytes => write!(f, "Bytes"),
+            ColumnType::Uuid => write!(f, "UUID"),
         }
     }
 }
@@ -177,6 +179,7 @@ impl Serialize for ColumnType {
             }
             ColumnType::Json => serializer.serialize_str("Json"),
             ColumnType::Bytes => serializer.serialize_str("Bytes"),
+            ColumnType::Uuid => serializer.serialize_str("UUID"),
         }
     }
 }
@@ -240,6 +243,8 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             ColumnType::Json
         } else if v == "Bytes" {
             ColumnType::Bytes
+        } else if v == "UUID" {
+            ColumnType::Uuid
         } else {
             return Err(E::custom(format!("Unknown column type {}.", v)));
         };
@@ -381,6 +386,7 @@ impl ColumnType {
             ColumnType::Nested(nested) => column_type::T::Nested(nested.to_proto()),
             ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
+            ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -401,6 +407,7 @@ impl ColumnType {
                     SimpleColumnType::DATETIME => ColumnType::DateTime,
                     SimpleColumnType::JSON_COLUMN => ColumnType::Json,
                     SimpleColumnType::BYTES => ColumnType::Bytes,
+                    SimpleColumnType::UUID => ColumnType::Uuid,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),

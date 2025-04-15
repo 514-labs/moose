@@ -1509,7 +1509,6 @@ mod tests {
         assert!(convert_clickhouse_type_to_column_type("Enum8('RED' = x)").is_err());
 
         // Test unsupported types
-        assert!(convert_clickhouse_type_to_column_type("UUID").is_err());
         assert!(convert_clickhouse_type_to_column_type("IPv4").is_err());
         assert!(convert_clickhouse_type_to_column_type("IPv6").is_err());
 

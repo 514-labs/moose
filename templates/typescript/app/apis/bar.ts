@@ -1,5 +1,5 @@
 import { ConsumptionApi } from "@514labs/moose-lib";
-import { BarAggregatedMV } from "../blocks/views";
+import { BarAggregatedMV } from "../views/barAggregated";
 import { tags } from "typia";
 
 // This file is where you can define your APIs to consume your data
@@ -10,7 +10,15 @@ interface QueryParams {
   endDay?: number & tags.Type<"int32">;
 }
 
-export const BarApi = new ConsumptionApi<QueryParams>(
+interface ResponseData {
+  dayOfMonth: number;
+  totalRows?: number;
+  rowsWithText?: number;
+  maxTextLength?: number;
+  totalTextLength?: number;
+}
+
+export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
   "bar",
   async (
     { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
@@ -28,14 +36,8 @@ export const BarApi = new ConsumptionApi<QueryParams>(
         LIMIT ${limit}
       `;
 
-    const data = await client.query.execute<{
-      dayOfMonth: number;
-      totalRows?: number;
-      rowsWithText?: number;
-      maxTextLength?: number;
-      totalTextLength?: number;
-    }>(query);
+    const data = await client.query.execute<ResponseData>(query);
 
-    return data;
+    return await data.json();
   },
 );

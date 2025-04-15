@@ -6,10 +6,8 @@ This project processes and transforms aircraft tracking data from various source
 
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
 2. Create project `aurora init aircraft ads-b`
-3. Install dependencies: `npm install`
-4. Add your Anthropic API Key to `/ads-b/.cursor/mcp.json`, and ensure your MCPs are running
+3. Install dependencies: `cd aircraft && npm install`
 5. Run Moose: `moose dev`
-6. In a new terminal, navigate to the project directory and run ingest workflow `moose workflow run military_aircraft_tracking`
 
 You are ready to go!
 

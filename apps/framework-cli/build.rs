@@ -1,33 +1,6 @@
-use std::io::{Error, Result};
-use std::process::Command;
-
-fn package_templates() -> Result<()> {
-    let root_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap();
-
-    let package_templates_dir = root_dir.join("scripts/package-templates.js");
-
-    let status = Command::new(&package_templates_dir)
-        .current_dir(root_dir)
-        .status()?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(Error::other(format!(
-            "package-templates.js failed: {}",
-            status
-        )))
-    }
-}
+use std::io::Result;
 
 fn main() -> Result<()> {
-    // Package templates first
-    println!("cargo:rerun-if-changed=../../templates");
-    package_templates()?;
-
     println!("cargo:rerun-if-changed=../../packages/protobuf");
 
     // Pass PostHog API key from environment variable at build time

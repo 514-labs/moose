@@ -87,3 +87,53 @@ export default new ConsumptionApi<QueryParams, ResponseBody[]>(
     return data;
   },
 );
+interface StripeEvent {
+  id: string;
+  object: string;
+  api_version: string;
+  created: number;
+  data: {
+    object: {
+      id: string;
+      object: string;
+      application?: string;
+      automatic_payment_methods?: string;
+      cancellation_reason?: string;
+      client_secret: string;
+      created: number;
+      customer?: string;
+      description?: string;
+      flow_directions?: string;
+      last_setup_error?: string;
+      latest_attempt?: string;
+      livemode: boolean;
+      mandate?: string;
+      metadata: Record<string, unknown>;
+      next_action?: string;
+      on_behalf_of?: string;
+      payment_method: string;
+      payment_method_options: {
+        acss_debit: {
+          currency: string;
+          mandate_options: {
+            interval_description: string;
+            payment_schedule: string;
+            transaction_type: string;
+          };
+          verification_method: string;
+        };
+      };
+      payment_method_types: string[];
+      single_use_mandate?: string;
+      status: string;
+      usage: string;
+    };
+  };
+  livemode: boolean;
+  pending_webhooks: number;
+  request: {
+    id?: any;
+    idempotency_key?: string;
+  };
+  type: string;
+}

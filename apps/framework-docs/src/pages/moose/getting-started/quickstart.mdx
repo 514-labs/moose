@@ -1,12 +1,13 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo } from "@/components";
-import { RectangleEllipsis, Square, Workflow, Database, FileCode } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard } from "@/components";
+import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play } from "lucide-react";
 import { paths } from "@/lib/paths";
 
-# Quick Start
+# Moose Quickstart Guide
 
 <LanguageSwitcher />
 
+<TypeScript>
 <MuxVideo 
   playbackId="ZB502hG1rKXg9fKR1muI4ABu4vjH83aIFNtts2ONb9Cw"
   title="Moose Quickstart Video"
@@ -14,25 +15,36 @@ import { paths } from "@/lib/paths";
   height="50%"
   poster="https://image.mux.com/ZB502hG1rKXg9fKR1muI4ABu4vjH83aIFNtts2ONb9Cw/thumbnail.png?width=214&height=121&time=0"
 />
-
-<Callout type="info" title="Prerequisites">
-
-<TypeScript>
-- **Node.js**: [version 20+](https://nodejs.org/en/download)
 </TypeScript>
 
 <Python>
-- **Python**: [version 3.12+](https://www.python.org/downloads/)
+<MuxVideo 
+  playbackId="7b6BmW9005WdBQnBrA1l2dHKNvLKyKIrlz9700k9NV71o"
+  title="Moose Quickstart Video"
+  width="50%"
+  height="50%"
+  poster="https://image.mux.com/7b6BmW9005WdBQnBrA1l2dHKNvLKyKIrlz9700k9NV71o/thumbnail.png?width=214&height=121&time=29"
+/>
+</Python>
+
+<Callout type="info" title="Prerequisites">
+<TypeScript>
+- **Node.js**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+</TypeScript>
+
+<Python>
+- **Python**: [version 3.12+](https://www.python.org/downloads/) 
 </Python>
 
 - **OS**: macOS or Linux (WSL supported for Windows)
-- **Docker**: [Installation instructions](https://docs.docker.com/get-started/get-docker/)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
 </Callout>
 
-## Create Your First Pipeline
+## Create Your Project
 
 <Steps>
 ### Initialize Project
+First, create a new Moose project:
 
 <TypeScript>
 ```bash filename="Terminal" copy
@@ -42,10 +54,7 @@ cd my-moose-app && npm install
 </TypeScript>
 
 <Python>
-
 <Callout type="info" title="Recommended: Create a virtual environment">
-Best practice is to create a virtual environment and install Moose CLI in it:
-
 ```bash filename="Terminal" copy
 python -m venv .venv
 source .venv/bin/activate
@@ -60,6 +69,7 @@ cd my-moose-app && pip install .
 </Python>
 
 ### Start Development Server
+Start your local development environment:
 
 <TypeScript>
 ```bash filename="Terminal" copy
@@ -73,57 +83,288 @@ moose-cli dev
 ```
 </Python>
 
-### Send Your First Data Point
+<ToggleBlock openText="Need Help?" closeText="Hide">
+Common issues and solutions:
+- Docker is not running: Run `open -a Docker` on macOS
+- Port conflicts: Run `lsof -i :4000,18123,19092` to identify conflicts.
 
+<TypeScript>
+- Missing Dependencies: Run `npm install` from your project root
+- Incorrect Node.js version: Use `nvm` or `n` to make sure you have a compatible Node.js version installed:
+<Tabs items={["nvm", "n"]}>
+<Tabs.Tab>
 ```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" \
-  -H "Content-Type: application/json" \
-  -d '{"primaryKey": "test", "timestamp": 1546300801.0, "optionalString": "hello world"}'
+nvm install 20
+nvm use 20
 ```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+n install 20
+n use 20
+```
+</Tabs.Tab>
+</Tabs>
+</TypeScript>
 
-### Verify Data Ingestion
+<Python>
+- Missing Dependencies: Run `pip install` from your project root
+- Incorrect Python version: Use `pyenv` to make sure you have a compatible Python version installed:
+<Tabs items={["pyenv"]}>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+pyenv install 3.12
+pyenv use 3.12
+```
+</Tabs.Tab>
+</Tabs>
+</Python>
+</ToggleBlock>
+
+### Understand Project Structure
+Your project contains:
+
+<Python>
+```text
+app/
+├── ingest/           # Raw data ingestion and streaming
+│   ├── models.py     
+│   └── transform.py  
+│
+├── views/            # Materialized views and aggregations
+│   └── bar_aggregated.py
+│
+└── apis/            # Analytics APIs
+|   └── bar.py
+├── scripts/          
+│   └── ingest-foo/   # Random data generator for testing
+│
+└── moose.config.toml    # Project config
+```
+</Python>
+
+<TypeScript>
+```text
+app/
+├── ingest/           # Raw data ingestion and streaming
+│   ├── models.ts     
+│   └── transform.ts  
+│
+├── views/            # Materialized views and aggregations
+│   └── barAggregated.ts
+│
+└── apis/            # Analytics APIs
+    └── bar.ts      
+├── scripts/
+│   └── ingest-foo/   # Random data generator for testing
+│
+└── moose.config.toml    # Project config
+```
+</TypeScript>
+</Steps>
+
+## Test Your Pipeline
+
+<BulletPointsCard
+  title="How Data Flows"
+  bulletStyle="number"
+  bullets={[
+    {
+      title: "Data Ingestion",
+      description: "Raw data enters through HTTP endpoints into your Foo stream"
+    },
+    {
+      title: "Stream Processing",
+      description: "Data is transformed on the fly into your Bar stream before landing in ClickHouse"
+    },
+    {
+      title: "Live Aggregations",
+      description: "Materialized views continuously update aggregated data tables in real-time"
+    },
+    {
+      title: "Analytics APIs",
+      description: "Query your aggregated data through type-safe REST endpoints with filtering and sorting"
+    }
+  ]}
+/>
+
+### Send Test Data
+<Tabs items={["Using Data Generator Script", "Using OpenAPI UI"]}>
+<Tabs.Tab>
+Your project includes a script to generate sample data to test your pipeline:
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli peek Foo
+npx moose-cli workflow run ingestFoo
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-moose-cli peek Foo
+moose-cli workflow run ingest-foo
 ```
 </Python>
 
-</Steps>
 
-## What's Next?
+You should see a bunch of logs printed to the terminal like the following:
+
+```txt
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 17 row(s) successfully written to DB table (Bar)
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 8 row(s) successfully written to DB table (Bar)
+
+          ...
+```
+</Tabs.Tab>
+
+<Tabs.Tab>
+Moose automatically generates docs for all APIs defined in your project in the `.moose/openapi.yaml` file:
+
+<FileTree>
+<FileTree.Folder name=".moose" defaultOpen>
+<FileTree.File name="openapi.yaml" />
+</FileTree.Folder>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.Folder name="ingest" />
+<FileTree.Folder name="views" />
+<FileTree.Folder name="apis" />
+<FileTree.Folder name="scripts" />
+</FileTree.Folder>
+</FileTree>
+
+<Callout type="info" title="Install the OpenAPI (Swagger) Viewer extension" href="https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi">
+Open `openapi.yaml` in your IDE and click the magnifying glass icon to launch the OpenAPI UI.
+</Callout>
+
+<MuxVideo 
+  playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
+  title="Using the OpenAPI Swagger UI for Data Ingestion"
+  width="50%"
+  height="50%"
+  autoPlay={true}
+  muted={true}
+  loop={true}
+/>
+
+
+After hitting the `Try it out` button, you should see something like the following output in your terminal:
+
+```txt
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 1 row(s) successfully written to DB table (Bar)
+```
+
+
+</Tabs.Tab>
+</Tabs>
+
+<Callout type="success" title="Data landed in ClickHouse!">
+- You sent raw data via HTTP `POST` to the `/ingest/Foo` endpoint
+- Data is validated and written to the `Foo` stream
+- Moose transformed the data into the `Bar` stream
+- Transformed data is automatically synced to the `Bar` ClickHouse table
+</Callout>
+
+<ToggleBlock openText="(Bonus) Peek at your ClickHouse tables" closeText="Hide instructions">
+Take a look at the data you just landed into ClickHouse:
+```bash filename="Terminal" copy
+moose peek Bar --limit 10
+```
+<Callout type="info" title="Learn more">
+  Run `moose peek --help` to see all the options available.
+</Callout>
+</ToggleBlock>
+### Query Your Data
+Test your analytics API:
+
+<Tabs items={["Using curl", "Using OpenAPI UI"]}>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+# Get default results
+curl "http://localhost:4000/consumption/bar"
+```
+
+Try different query parameters:
+<TypeScript>
+```bash filename="Terminal" copy
+# Change the order by column  
+curl "http://localhost:4000/consumption/bar?orderBy=rowsWithText"
+
+# Filter by date range
+curl "http://localhost:4000/consumption/bar?startDay=1&endDay=10"
+```
+</TypeScript> 
+
+<Python>
+```bash filename="Terminal" copy
+# Change the order by column  
+curl "http://localhost:4000/consumption/bar?order_by=rows_with_text"
+
+# Filter by date range
+curl "http://localhost:4000/consumption/bar?start_day=1&end_day=10"
+```
+</Python>
+</Tabs.Tab>
+
+<Tabs.Tab>
+Locate your project's OpenAPI spec and hit the `Try it out` button to test your `GET /consumption/bar` endpoint:
+
+Try setting the query parameters to filter the results:
+<TypeScript>
+```txt filename="Swagger UI" copy
+orderBy=rowsWithText
+startDay=1
+endDay=10
+```
+</TypeScript>
+
+<Python>
+```txt filename="Swagger UI" copy
+order_by=rows_with_text
+start_day=1
+end_day=10
+```
+</Python>
+</Tabs.Tab>
+</Tabs>
+
+## Next Steps
+Take a deeper dive into core Moose concepts:
 
 <FeatureGrid columns={3}>
 <FeatureCard
-  title="Data Modeling Basics"
-  description="Learn how to build your first data model in Moose" 
+  title="Build Data Models"
+  description="Create your own data streams"
   href={paths.dataModels}
+  Icon={Database}
 />
 <FeatureCard
-  title="Working with Database Tables"
-  description="Learn how to work with database tables in Moose" 
-  href={paths.olapTables}
+  title="Add Views"
+  description="Define custom aggregations"
+  href={paths.materializedViews}
+  Icon={Square}
 />
 <FeatureCard 
-  title="Building Analytics APIs"
-  description="Serve data from your OLAP database to client applications" 
+  title="Create APIs"
+  description="Design your analytics endpoints"
   href={paths.consumptionApis}
+  Icon={FileCode}
 />
 </FeatureGrid>
 
-<ToggleBlock openText="Need Help?" closeText="Hide Help">
-
-<Tabs items={["Common Issues", "Connect to Database"]}>
+<ToggleBlock openText="Need Help?" closeText="Hide">
+<Tabs items={["Common Issues", "Database Connection"]}>
 <Tabs.Tab>
-- **Docker not running**: Run `open -a Docker` on macOS
-- **Port conflicts**: Check `lsof -i :4000` for conflicts
-- **Installation issues**: Clear cache and reinstall
+- **Docker**: Run `open -a Docker` on macOS
+- **Port conflicts**: Check `lsof -i :4000`
+- **Installation**: Clear cache and reinstall
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -135,9 +376,6 @@ password = "pandapass"
 host = "localhost"
 host_port = 18123
 ```
-
-Install [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) for VSCode integration
 </Tabs.Tab>
 </Tabs>
-
 </ToggleBlock>

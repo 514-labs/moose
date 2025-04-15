@@ -67,3 +67,7 @@ packages/ts-moose-proto/generated/
 
 # ignore all scratch files and folders
 scratch*
+
+# ignore all virtual environments
+venv/
+.venv/

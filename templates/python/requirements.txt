@@ -3,3 +3,4 @@ clickhouse-connect==0.7.16
 requests==2.32.3
 moose-cli
 moose-lib
+faker

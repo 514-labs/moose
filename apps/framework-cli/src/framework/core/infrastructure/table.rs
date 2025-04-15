@@ -386,7 +386,7 @@ impl ColumnType {
             ColumnType::Nested(nested) => column_type::T::Nested(nested.to_proto()),
             ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
-            ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID.into()),
+            ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID_TYPE.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -407,7 +407,7 @@ impl ColumnType {
                     SimpleColumnType::DATETIME => ColumnType::DateTime,
                     SimpleColumnType::JSON_COLUMN => ColumnType::Json,
                     SimpleColumnType::BYTES => ColumnType::Bytes,
-                    SimpleColumnType::UUID => ColumnType::Uuid,
+                    SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),

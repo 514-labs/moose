@@ -267,6 +267,12 @@ jobs:
         if: ${{ matrix.build.OS != 'ubuntu-22-8-core' }}
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - uses: pnpm/action-setup@v4
       - name: pnpm install for scripts # for package-templates.js
         run: pnpm install --filter=@repo/scripts --frozen-lockfile
@@ -343,12 +349,6 @@ jobs:
         with:
           name: wheels-linux-${{ matrix.build.TARGET }}
           path: ./apps/framework-cli/dist
-
-      - name: Install node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Publish to NPM Moose
         if: ${{ !inputs.dry-run }}

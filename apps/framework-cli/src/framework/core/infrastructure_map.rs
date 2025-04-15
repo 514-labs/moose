@@ -2202,10 +2202,6 @@ impl PartialInfrastructureMap {
         let mut function_processes = self.function_processes.clone();
 
         for (topic_name, source_partial_topic) in &self.topics {
-            if source_partial_topic.transformation_targets.is_empty() {
-                continue;
-            }
-
             debug!(
                 "source_partial_topic: {:?} with name {}",
                 source_partial_topic, topic_name
@@ -2248,9 +2244,9 @@ impl PartialInfrastructureMap {
             }
 
             if source_partial_topic.has_consumers {
-                let process_id = format!("{}_{}", topic_name, "consumer");
                 let function_process = FunctionProcess {
-                    name: process_id.clone(),
+                    // In dmv1, consumer process has the id format!("{}_{}_{}", self.name, self.source_topic_id, self.version)
+                    name: topic_name.clone(),
                     source_topic_id: source_topic.id(),
                     target_topic_id: None,
                     executable: main_file.to_path_buf(),
@@ -2264,7 +2260,7 @@ impl PartialInfrastructureMap {
                     },
                 };
 
-                function_processes.insert(process_id.clone(), function_process);
+                function_processes.insert(function_process.id(), function_process);
             }
         }
 

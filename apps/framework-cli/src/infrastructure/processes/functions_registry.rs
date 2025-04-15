@@ -24,7 +24,7 @@ pub enum FunctionRegistryError {
     #[error("Cannot run function_process {file_name}. Unsupported function_process type")]
     UnsupportedFunctionLanguage { file_name: String },
 
-    #[error("Topic not found in the infrastructure map")]
+    #[error("Topic {topic_id} not found in the infrastructure map")]
     TopicNotFound { topic_id: String },
 }
 

@@ -133,7 +133,7 @@ jobs:
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
       - name: package templates
-        run: ./scripts/package-templates.js
+        run: ../../scripts/package-templates.js
 
       - name: Run Tests
         run: cargo test
@@ -179,7 +179,7 @@ jobs:
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
       - name: package templates
-        run: ./scripts/package-templates.js
+        run: ../../scripts/package-templates.js
 
       - name: Run Tests
         run: cargo test

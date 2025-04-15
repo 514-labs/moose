@@ -90,6 +90,7 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Bytes".to_string(),
         }),
+        ColumnType::Uuid => Ok(ClickHouseColumnType::Uuid),
     }
 }
 

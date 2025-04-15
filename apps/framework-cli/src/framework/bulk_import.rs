@@ -66,6 +66,7 @@ pub async fn import_csv_file(
                             ColumnType::Array { .. }
                             | ColumnType::Nested(_)
                             | ColumnType::Json
+                            | ColumnType::Uuid
                             | ColumnType::Bytes => {
                                 bail!("CSV importing does not support complex types");
                             }

@@ -225,6 +225,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::Decimal
         | ClickHouseColumnType::DateTime
         | ClickHouseColumnType::Json
+        | ClickHouseColumnType::Uuid
         | ClickHouseColumnType::AggregateFunction { .. }
         | ClickHouseColumnType::Bytes => None,
         ClickHouseColumnType::Array(t) => column_type_to_enum_mapping(t.as_ref()),

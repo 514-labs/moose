@@ -34,6 +34,7 @@ use crate::infrastructure::stream::kafka::client::{create_producer, send_with_ba
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::metrics::{MetricEvent, Metrics};
 use tokio::select;
+use uuid::Uuid;
 
 /// Consumer group ID for table synchronization
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
@@ -772,6 +773,13 @@ fn map_json_value_to_clickhouse_value(
         ColumnType::BigInt => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
+        ColumnType::Uuid => match value.as_str().filter(|s| Uuid::try_parse(s).is_ok()) {
+            None => Err(MappingError::TypeMismatch {
+                column_type: ColumnType::Uuid,
+                value: value.clone(),
+            }),
+            Some(uuid_str) => Ok(ClickHouseValue::new_string(uuid_str.to_string())),
+        },
     }
 }
 

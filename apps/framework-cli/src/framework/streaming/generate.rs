@@ -155,6 +155,10 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
         (ColumnType::Nested(inner), SupportedLanguages::Python) => format!("{}()", inner.name),
         (ColumnType::Json, _) => "{}".to_string(),
         (ColumnType::Bytes, _) => "[]".to_string(),
+        (ColumnType::Uuid, SupportedLanguages::Typescript) => {
+            "'4f487363-a767-491c-84ea-00b7724383d2'".to_string()
+        }
+        (ColumnType::Uuid, SupportedLanguages::Python) => "uuid.uuid4()".to_string(),
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {

@@ -323,6 +323,10 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+    use std::process::Command;
+    use std::sync::Once;
+
+    static SETUP: Once = Once::new();
 
     // Helper function to set up the test environment by copying necessary files
     fn setup_test_environment() -> anyhow::Result<()> {
@@ -332,10 +336,23 @@ mod tests {
         let source_dir = workspace_root.join("template-packages");
         let target_dir = workspace_root.join("target/template-packages");
 
+        // Run the package-templates.js script to generate the templates
+        println!("Running scripts/package-templates.js to generate templates...");
+        let script_path = workspace_root.join("scripts/package-templates.js");
+
+        let status = Command::new("node")
+            .current_dir(workspace_root)
+            .arg(script_path)
+            .status()?;
+
+        if !status.success() {
+            anyhow::bail!("Failed to run scripts/package-templates.js");
+        }
+
         if !source_dir.exists() {
             anyhow::bail!(
-                "Source template package directory not found: {}. Run scripts/package-templates.js",
-                source_dir.display()
+                "Source template package directory not found even after running scripts/package-templates.js: {:?}",
+                source_dir
             );
         }
 
@@ -363,9 +380,15 @@ mod tests {
         Ok(())
     }
 
+    fn ensure_test_environment() {
+        SETUP.call_once(|| {
+            setup_test_environment().expect("Failed to set up test environment");
+        });
+    }
+
     #[tokio::test]
     async fn test_list_available_templates_local() {
-        setup_test_environment().expect("Failed to set up test environment");
+        ensure_test_environment();
         // Use version "0.0.1" to test against the local manifest
         let result = list_available_templates("0.0.1").await;
 
@@ -385,7 +408,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_template_config_success() {
-        setup_test_environment().expect("Failed to set up test environment");
+        ensure_test_environment();
         // Test getting a valid template config ("default") using the local manifest
         let result = get_template_config("typescript", "0.0.1").await;
         assert!(result.is_ok());
@@ -397,7 +420,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_template_config_not_found() {
-        setup_test_environment().expect("Failed to set up test environment");
+        ensure_test_environment();
         // Test getting a non-existent template config using the local manifest
         let result = get_template_config("non_existent_template", "0.0.1").await;
         assert!(result.is_err());
@@ -408,7 +431,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_template_manifest_local() {
-        setup_test_environment().expect("Failed to set up test environment");
+        ensure_test_environment();
         // Test getting the local manifest (version "0.0.1")
         let result = get_template_manifest("0.0.1").await;
         assert!(

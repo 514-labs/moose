@@ -20,7 +20,7 @@ export const BarApi = new ConsumptionApi<QueryParams>(
         SELECT 
           dayOfMonth,
           ${BarAggregatedMV.targetTable.columns[orderBy]}
-        FROM BarAggregated_MV
+        FROM ${BarAggregatedMV.targetTable}
         WHERE 
           dayOfMonth >= ${startDay} 
           AND dayOfMonth <= ${endDay}

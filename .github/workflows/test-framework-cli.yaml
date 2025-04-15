@@ -131,10 +131,7 @@ jobs:
           toolchain: stable
 
       - name: Run pnpm install
-        run: pnpm install --filter=@repo/scripts
-      - name: package templates
-        working-directory: .
-        run: ./scripts/package-templates.js
+        run: pnpm install --filter=@repo/scripts # for package-templates.js
 
       - name: Run Tests
         run: cargo test
@@ -178,10 +175,7 @@ jobs:
           toolchain: stable
 
       - name: Run pnpm install
-        run: pnpm install --filter=@repo/scripts
-      - name: package templates
-        working-directory: .
-        run: ./scripts/package-templates.js
+        run: pnpm install --filter=@repo/scripts # for package-templates.js
 
       - name: Run Tests
         run: cargo test

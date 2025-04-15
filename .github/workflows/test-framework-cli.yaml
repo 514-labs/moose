@@ -90,10 +90,6 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - uses: pnpm/action-setup@v4
-      - name: pnpm install for scripts # for package-templates.js
-        run: pnpm install --filter=@repo/scripts --frozen-lockfile
-
       - name: Run cargo check
         run: cargo check
 
@@ -136,6 +132,9 @@ jobs:
 
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
+      - name: package templates
+        working-directory: .
+        run: ./scripts/package-templates.js
 
       - name: Run Tests
         run: cargo test
@@ -180,6 +179,9 @@ jobs:
 
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts
+      - name: package templates
+        working-directory: .
+        run: ./scripts/package-templates.js
 
       - name: Run Tests
         run: cargo test
@@ -214,10 +216,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
-
-      - uses: pnpm/action-setup@v4
-      - name: pnpm install for scripts # for package-templates.js
-        run: pnpm install --filter=@repo/scripts --frozen-lockfile
 
       # to trigger code gen
       - name: Run cargo build

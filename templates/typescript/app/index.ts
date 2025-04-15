@@ -1,5 +1,5 @@
-export * from "./datamodels/models";
-export * from "./datamodels/transforms";
+export * from "./ingest/models";
+export * from "./ingest/transforms";
 
 export * from "./apis/bar";
-export * from "./blocks/views";
+export * from "./views/barAggregated";

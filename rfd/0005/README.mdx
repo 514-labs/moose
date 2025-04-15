@@ -25,14 +25,13 @@ This RFD focuses specifically on the Moose CLI version management system. The fo
 The system follows these rules for selecting which version of the CLI to use:
 
 1. Inside a Moose Project:
-   - Use the version specified in the project's package.json or requirements.txt
+   - Use the version specified in the project's lock file (package-lock.json, yarn.lock, etc.) then fallsback to the package.json or requirements.txt.
    - This ensures compatibility between CLI and project libraries
 
 2. Outside a Moose Project:
    - Always use the latest installed version
    - This applies to commands like `moose init` for creating new projects
-   - If no version is installed, automatically fetch and use the latest available version
-   - New projects will be initialized with this latest version
+   - New projects will be initialized with this latest installed version
 
 ## User Benefit
 
@@ -87,10 +86,19 @@ The script will detect which CLI is being installed and apply the appropriate in
 
 ```bash
 # Aurora - direct installation (unchanged behavior)
-curl -sSL https://www.fiveonefour.com/install.sh | sh -s aurora
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora
 
 # Moose - new version management behavior
-curl -sSL https://www.fiveonefour.com/install.sh | sh -s moose
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
+
+# Installing both at the same time
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora,moose
+
+# Installing a specific version
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose@1.0.0,aurora@1.0.0
+
+# Specifying a channel
+RELEASE_CHANNEL=dev bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
 ```
 
 ### Implementation Details
@@ -124,18 +132,40 @@ Versions will be stored in:
 ```
 ~/.moose/
   versions/
-    1.0.0/
-      moose      # CLI binary only
-      .last_used # Timestamp of last usage
-    1.1.0/
-      moose      # CLI binary only
-      .last_used # Timestamp of last usage
+    stable/
+      1.0.0/
+        moose      # CLI binary only
+        .last_used # Timestamp of last usage
+    dev/
+      1.1.0/
+        moose      # CLI binary only
+        .last_used # Timestamp of last usage
     ...
   current -> versions/1.1.0  # Symlink to latest version
+  dev-current -> versions/dev/1.1.0  # Symlink to latest version
   wrapper    # The version-aware wrapper script
   config.toml    # Global configuration
   bin/      # Directory added to PATH
     moose   # Main entry point wrapper script
+```
+
+```config.toml
+[channels]
+default = "stable"
+default_cache_limit = 20
+default_retention_days = 7
+
+[channels.stable]
+latest_version = ""
+auto_update = true
+cache_limit = 100
+retention_days = 90
+
+[channels.dev]
+latest_version = ""
+auto_update = false
+cache_limit = 20
+retention_days = 7
 ```
 
 ##### Cache Limits and Cleanup
@@ -201,15 +231,6 @@ curl -sSL https://www.fiveonefour.com/install.sh | sh -s aurora
 
 # Install Moose wrapper
 curl -sSL https://www.fiveonefour.com/install.sh | sh -s moose
-
-# Install specific Moose version
-moose install 1.0.0
-
-# Install latest Moose version
-moose install latest
-
-# Update Moose project version
-moose update latest  # Updates project config files
 ```
 
 ### Alternatives Considered
@@ -304,9 +325,6 @@ pip install -r requirements.txt  # For Python projects
 # Switch to project with different version (automatic)
 cd other-project
 moose build  # Uses version from project config
-
-# Get absolute path for MCP
-moose --binary-path  # Returns absolute path to current version
 ```
 
 ### User Impact
@@ -337,15 +355,7 @@ Goal: Basic version management with complete channel support and backward compat
    - Automatic version detection from both channels
    - Channel selection in project configuration
 
-3. Essential Commands:
-   ```bash
-   moose install <version>  # Install specific version
-   moose install latest    # Install latest from stable
-   moose install latest --channel dev  # Install latest from dev
-   moose install @branch-name --channel dev  # Install from git branch
-   ```
-
-4. Backward Compatibility:
+3. Backward Compatibility:
    - Support existing project structures
    - Handle legacy version specifications
    - Maintain existing CLI behaviors during transition
@@ -354,7 +364,7 @@ Goal: Basic version management with complete channel support and backward compat
    - Read versions from package.json/requirements.txt
    - Basic version switching based on project
    - Use latest for moose init
-   - Channel specification in project files
+   - Channel specification in cli config file
 
 ### Phase 1: Enhanced Version Management
 Goal: Improve version management reliability and user experience
@@ -366,15 +376,7 @@ Goal: Improve version management reliability and user experience
    - Preserve active versions
    - Per-channel cache management
 
-2. Additional Commands:
-   ```bash
-   moose cleanup           # Basic cleanup
-   moose versions         # List installed versions
-   moose current         # Show current version
-   moose channel         # Show/switch channels
-   ```
-
-3. Improved Error Handling:
+2. Improved Error Handling:
    - Handle network failures
    - Version verification
    - Corrupted installation recovery
@@ -390,19 +392,8 @@ Goal: Add power user features and improved management
    - Manual cache control
    - Channel-specific cache policies
 
-2. New Commands:
-   ```bash
-   moose cleanup --keep N  # Keep N versions
-   moose cleanup --days N  # Keep N days of versions
-   moose versions --stats  # Show usage statistics
-   moose channel list     # List available channels
-   ```
-
-3. CI/CD Integration:
-   - Special handling for CI environments
-   - Version locking mechanisms
-   - Offline mode support
-   - Channel pinning for deployments
+2. Command helpers
+   - `moose versions`
 
 ### Cutover Strategy
 

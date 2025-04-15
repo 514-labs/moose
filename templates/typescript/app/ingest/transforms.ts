@@ -5,7 +5,7 @@ FooPipeline.stream?.addTransform(
   BarPipeline.stream!,
   (foo: Foo): Bar => ({
     primaryKey: foo.primaryKey,
-    utcTimestamp: new Date(foo.timestamp * 1000), // Convert timestamp to Date
+    utcTimestamp: new Date(foo.timestamp), // Convert timestamp to Date
     hasText: foo.optionalText !== undefined,
     textLength: foo.optionalText?.length ?? 0,
   }),

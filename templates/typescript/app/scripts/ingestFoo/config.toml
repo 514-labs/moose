@@ -1,0 +1,5 @@
+name = 'ingestFoo'
+schedule = ''
+retries = 3
+timeout = '1h'
+tasks=["generateRandom"]

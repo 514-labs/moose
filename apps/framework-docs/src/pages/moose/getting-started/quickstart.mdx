@@ -1,12 +1,13 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo } from "@/components";
-import { RectangleEllipsis, Square, Workflow, Database, FileCode } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard } from "@/components";
+import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play } from "lucide-react";
 import { paths } from "@/lib/paths";
 
-# Quick Start
+# Moose Quickstart Guide
 
 <LanguageSwitcher />
 
+<TypeScript>
 <MuxVideo 
   playbackId="ZB502hG1rKXg9fKR1muI4ABu4vjH83aIFNtts2ONb9Cw"
   title="Moose Quickstart Video"
@@ -14,9 +15,9 @@ import { paths } from "@/lib/paths";
   height="50%"
   poster="https://image.mux.com/ZB502hG1rKXg9fKR1muI4ABu4vjH83aIFNtts2ONb9Cw/thumbnail.png?width=214&height=121&time=0"
 />
+</TypeScript>
 
 <Callout type="info" title="Prerequisites">
-
 <TypeScript>
 - **Node.js**: [version 20+](https://nodejs.org/en/download)
 </TypeScript>
@@ -29,10 +30,11 @@ import { paths } from "@/lib/paths";
 - **Docker**: [Installation instructions](https://docs.docker.com/get-started/get-docker/)
 </Callout>
 
-## Create Your First Pipeline
+## Create Your Project
 
 <Steps>
 ### Initialize Project
+First, create a new Moose project:
 
 <TypeScript>
 ```bash filename="Terminal" copy
@@ -42,10 +44,7 @@ cd my-moose-app && npm install
 </TypeScript>
 
 <Python>
-
 <Callout type="info" title="Recommended: Create a virtual environment">
-Best practice is to create a virtual environment and install Moose CLI in it:
-
 ```bash filename="Terminal" copy
 python -m venv .venv
 source .venv/bin/activate
@@ -60,6 +59,7 @@ cd my-moose-app && pip install .
 </Python>
 
 ### Start Development Server
+Start your local development environment:
 
 <TypeScript>
 ```bash filename="Terminal" copy
@@ -73,57 +73,177 @@ moose-cli dev
 ```
 </Python>
 
-### Send Your First Data Point
+### Understand Project Structure
+Your project contains:
 
-```bash filename="Terminal" copy
-curl -X POST "http://localhost:4000/ingest/Foo" \
-  -H "Content-Type: application/json" \
-  -d '{"primaryKey": "test", "timestamp": 1546300801.0, "optionalString": "hello world"}'
+<Python>
+```text
+app/
+├── ingest/           # Raw data ingestion and streaming
+│   ├── models.py     
+│   └── transform.py  
+│
+├── views/            # Materialized views and aggregations
+│   └── bar_aggregated.py
+│
+└── apis/            # Analytics APIs
+|   └── bar.py
+├── scripts/          # Orchestrated scripts
+│   └── ingest-foo/   # Background job for ingesting foo data
+│
+└── moose.config.toml    # Project config
 ```
+</Python>
 
-### Verify Data Ingestion
+<TypeScript>
+```text
+app/
+├── ingest/           # Raw data ingestion and streaming
+│   ├── models.ts     
+│   └── transform.ts  
+│
+├── views/            # Materialized views and aggregations
+│   └── barAggregated.ts
+│
+└── apis/            # Analytics APIs
+    └── bar.ts      
+
+moose.config.toml    # Project config
+```
+</TypeScript>
+</Steps>
+
+## Test Your Pipeline
+
+<BulletPointsCard
+  title="How Data Flows"
+  bulletStyle="number"
+  bullets={[
+    {
+      title: "Data Ingestion",
+      description: "Raw data enters through HTTP endpoints into your Foo stream"
+    },
+    {
+      title: "Stream Processing",
+      description: "Data is transformed on the fly into your Bar stream before landing in ClickHouse"
+    },
+    {
+      title: "Live Aggregations",
+      description: "Materialized views continuously update aggregated data tables in real-time"
+    },
+    {
+      title: "Analytics APIs",
+      description: "Query your aggregated data through type-safe REST endpoints with filtering and sorting"
+    }
+  ]}
+/>
+
+### Send Test Data
+<Tabs items={["Using Ingest Script", "Using OpenAPI"]}>
+<Tabs.Tab>
+Your project includes a script to generate sample data to test your pipeline:
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli peek Foo
+npx moose-cli workflow run ingestFoo
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-moose-cli peek Foo
+moose-cli workflow run ingest-foo
+```
+</Python>
+</Tabs.Tab>
+
+<Tabs.Tab>
+Moose automatically generates an OpenAPI spec for all ingestion and consumption APIs defined in your project. It is located in the `.moose/openapi.yaml` file:
+
+<FileTree>
+<FileTree.Folder name=".moose" defaultOpen>
+<FileTree.File name="openapi.yaml" />
+</FileTree.Folder>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.Folder name="ingest" />
+<FileTree.Folder name="views" />
+<FileTree.Folder name="apis" />
+<FileTree.Folder name="scripts" />
+</FileTree.Folder>
+</FileTree>
+
+Install the [OpenAPI (Swagger) Viewer](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) extension from the VSCode Marketplace and open the `openapi.yaml` file to test your APIs.
+
+<MuxVideo 
+  playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
+  title="Using the OpenAPI Swagger UI for Data Ingestion"
+  width="50%"
+  height="50%"
+  autoPlay={true}
+  muted={true}
+  loop={true}
+/>
+
+
+</Tabs.Tab>
+</Tabs>
+### Query Your Data
+Test your analytics API:
+
+```bash filename="Terminal" copy
+# Get default results
+curl "http://localhost:4000/consumption/bar"
+```
+
+Try different query parameters:
+<TypeScript>
+```bash filename="Terminal" copy
+# Change the order by column  
+curl "http://localhost:4000/consumption/bar?orderBy=rowsWithText"
+
+# Filter by date range
+curl "http://localhost:4000/consumption/bar?startDay=1&endDay=10"
+```
+</TypeScript> 
+
+<Python>
+```bash filename="Terminal" copy
+# Change the order by column  
+curl "http://localhost:4000/consumption/bar?order_by=rows_with_text"
+
+# Filter by date range
+curl "http://localhost:4000/consumption/bar?start_day=1&end_day=10"
 ```
 </Python>
 
-</Steps>
-
-## What's Next?
+## Next Steps
 
 <FeatureGrid columns={3}>
 <FeatureCard
-  title="Data Modeling Basics"
-  description="Learn how to build your first data model in Moose" 
+  title="Build Data Models"
+  description="Create your own data streams"
   href={paths.dataModels}
+  Icon={Database}
 />
 <FeatureCard
-  title="Working with Database Tables"
-  description="Learn how to work with database tables in Moose" 
-  href={paths.olapTables}
+  title="Add Views"
+  description="Define custom aggregations"
+  href={paths.materializedViews}
+  Icon={Square}
 />
 <FeatureCard 
-  title="Building Analytics APIs"
-  description="Serve data from your OLAP database to client applications" 
+  title="Create APIs"
+  description="Design your analytics endpoints"
   href={paths.consumptionApis}
+  Icon={FileCode}
 />
 </FeatureGrid>
 
-<ToggleBlock openText="Need Help?" closeText="Hide Help">
-
-<Tabs items={["Common Issues", "Connect to Database"]}>
+<ToggleBlock openText="Need Help?" closeText="Hide">
+<Tabs items={["Common Issues", "Database Connection"]}>
 <Tabs.Tab>
-- **Docker not running**: Run `open -a Docker` on macOS
-- **Port conflicts**: Check `lsof -i :4000` for conflicts
-- **Installation issues**: Clear cache and reinstall
+- **Docker**: Run `open -a Docker` on macOS
+- **Port conflicts**: Check `lsof -i :4000`
+- **Installation**: Clear cache and reinstall
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -135,9 +255,6 @@ password = "pandapass"
 host = "localhost"
 host_port = 18123
 ```
-
-Install [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) for VSCode integration
 </Tabs.Tab>
 </Tabs>
-
 </ToggleBlock>

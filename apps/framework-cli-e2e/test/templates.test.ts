@@ -314,7 +314,8 @@ describe("Moose Templates", () => {
       await utils.verifyClickhouseData("Bar", eventId, "primaryKey");
       await utils.verifyConsumptionApi("bar?orderBy=totalRows", [
         {
-          dayOfMonth: 19,
+          // output_format_json_quote_64bit_integers is true by default in ClickHouse
+          dayOfMonth: "19",
           totalRows: "1",
         },
       ]);

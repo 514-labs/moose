@@ -40,6 +40,17 @@ import { paths } from "@/lib/paths";
 - **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
 </Callout>
 
+
+## Install Moose
+The easiest way to install Moose is to use the one-liner below:
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+<Callout type="info" title="Moose CLI Version Manager">
+The Moose CLI has a built in version manager that will automatically install the correct version of Moose for your project.
+</Callout>
+
 ## Create Your Project
 
 <Steps>
@@ -48,40 +59,48 @@ First, create a new Moose project:
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx create-moose-app@latest my-moose-app typescript
-cd my-moose-app && npm install
+moose init my-moose-app typescript
+cd my-moose-app
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose init my-moose-app python
+cd my-moose-app
+```
+</Python>
+
+
+### Install Project Dependencies
+
+<TypeScript>
+```bash filename="Terminal" copy
+npm install
 ```
 </TypeScript>
 
 <Python>
 <Callout type="info" title="Recommended: Create a virtual environment">
-```bash filename="Terminal" copy
-python -m venv .venv
-source .venv/bin/activate
-```
+We recommend creating a virtual environment to avoid dependency conflicts.
 </Callout>
 
 ```bash filename="Terminal" copy
-pip install -U moose-cli
-moose-cli init my-moose-app python
-cd my-moose-app && pip install .
+python3 -m venv .venv
+source .venv/bin/activate
 ```
+
+```bash filename="Terminal" copy
+pip install .
+``` 
 </Python>
 
 ### Start Development Server
 Start your local development environment:
 
-<TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli dev
+moose dev
 ```
-</TypeScript>
-
-<Python>
-```bash filename="Terminal" copy
-moose-cli dev
-```
-</Python>
 
 <ToggleBlock openText="Need Help?" closeText="Hide">
 Common issues and solutions:
@@ -195,13 +214,13 @@ Your project includes a script to generate sample data to test your pipeline:
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli workflow run ingestFoo
+moose workflow run ingestFoo
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-moose-cli workflow run ingest-foo
+moose workflow run ingest-foo
 ```
 </Python>
 

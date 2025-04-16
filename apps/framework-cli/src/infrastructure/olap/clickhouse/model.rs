@@ -43,7 +43,10 @@ pub enum ClickHouseColumnType {
     Boolean,
     ClickhouseInt(ClickHouseInt),
     ClickhouseFloat(ClickHouseFloat),
-    Decimal,
+    Decimal {
+        precision: u8,
+        scale: u8,
+    },
     DateTime,
     Json,
     Bytes,
@@ -57,6 +60,10 @@ pub enum ClickHouseColumnType {
         Box<ClickHouseColumnType>,
     ),
     Uuid,
+    Date32,
+    DateTime64 {
+        precision: u8,
+    },
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -74,7 +81,7 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::Boolean => ColumnType::Boolean,
             ClickHouseColumnType::ClickhouseInt(_) => ColumnType::Int,
             ClickHouseColumnType::ClickhouseFloat(_) => ColumnType::Float,
-            ClickHouseColumnType::Decimal => ColumnType::Decimal,
+            ClickHouseColumnType::Decimal { .. } => ColumnType::Decimal,
             ClickHouseColumnType::DateTime => ColumnType::DateTime,
             ClickHouseColumnType::Json => ColumnType::Json,
             ClickHouseColumnType::Bytes => ColumnType::Bytes,
@@ -113,6 +120,9 @@ impl ClickHouseColumnType {
                 return return_type.to_std_column_type();
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
+            ClickHouseColumnType::Date32 | ClickHouseColumnType::DateTime64 { .. } => {
+                ColumnType::DateTime
+            }
         };
         (column_type, required)
     }
@@ -142,8 +152,36 @@ impl ClickHouseColumnType {
             "Float64" => Self::ClickhouseFloat(ClickHouseFloat::Float64),
 
             // Other types
-            t if t.starts_with("Decimal") => Self::Decimal,
-            "DateTime" | "DateTime('UTC')" | "DateTime64" | "Date" => Self::DateTime,
+            t if t.starts_with("Decimal(") => {
+                let precision_and_scale = t
+                    .trim_start_matches("Decimal(")
+                    .trim_end_matches(')')
+                    .split(',')
+                    .map(|s| s.trim().parse::<u8>().ok())
+                    .collect::<Vec<Option<u8>>>();
+
+                let default_precision = Some(10);
+                let default_scale = Some(0);
+
+                // outer option is existence, inner option is parsing
+                // if parsing failed, return None
+                let precision = (*precision_and_scale.get(0).unwrap_or(&default_precision))?;
+                let scale = (*precision_and_scale.get(1).unwrap_or(&default_scale))?;
+                Self::Decimal { precision, scale }
+            }
+
+            t if t.starts_with("DateTime64(") => {
+                let precision = t
+                    .trim_start_matches("DateTime64(")
+                    .trim_end_matches(')')
+                    .trim()
+                    .parse::<u8>()
+                    .ok()?;
+
+                Self::DateTime64 { precision }
+            }
+            "Date32" => Self::Date32,
+            "DateTime" | "DateTime('UTC')" | "Date" => Self::DateTime,
             "JSON" => Self::Json,
 
             // recursively parsing Nullable and Array

@@ -901,7 +901,7 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
     }
 
     // Handle DateTime types with parameters
-    if ch_type.starts_with("DateTime") {
+    if ch_type.starts_with("DateTime") || ch_type == "Date32" {
         // All DateTime variants map to ColumnType::DateTime
         // We could store precision and timezone as metadata if needed in the future
         return Ok((ColumnType::DateTime, false));

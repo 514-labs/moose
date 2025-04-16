@@ -58,7 +58,10 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Float => Ok(ClickHouseColumnType::ClickhouseFloat(
             ClickHouseFloat::Float64,
         )),
-        ColumnType::Decimal => Ok(ClickHouseColumnType::Decimal),
+        ColumnType::Decimal => Ok(ClickHouseColumnType::Decimal {
+            precision: 10,
+            scale: 0,
+        }),
         ColumnType::DateTime => Ok(ClickHouseColumnType::DateTime),
         ColumnType::Enum(x) => Ok(ClickHouseColumnType::Enum(x)),
         ColumnType::Array {

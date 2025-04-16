@@ -215,7 +215,9 @@ pub fn basic_field_type_to_string(
             ClickHouseFloat::Float32 => Ok(float.to_string()),
             ClickHouseFloat::Float64 => Ok(float.to_string()),
         },
-        ClickHouseColumnType::Decimal => Ok(field_type.to_string()),
+        ClickHouseColumnType::Decimal { precision, scale } => {
+            Ok(format!("Decimal({}, {})", precision, scale))
+        }
         ClickHouseColumnType::DateTime => Ok("DateTime('UTC')".to_string()),
         ClickHouseColumnType::Enum(data_enum) => {
             let enum_statement = data_enum
@@ -277,6 +279,8 @@ pub fn basic_field_type_to_string(
             ))
         }
         ClickHouseColumnType::Uuid => Ok("UUID".to_string()),
+        ClickHouseColumnType::Date32 => Ok("Date32".to_string()),
+        ClickHouseColumnType::DateTime64 { precision } => Ok(format!("DateTime64({})", precision)),
     }
 }
 

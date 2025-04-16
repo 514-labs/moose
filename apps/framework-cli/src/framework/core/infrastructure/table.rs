@@ -22,7 +22,7 @@ pub struct Table {
     #[serde(default)]
     pub engine: Option<String>,
 
-    pub version: Version,
+    pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -30,12 +30,14 @@ impl Table {
     // This is only to be used in the context of the new core
     // currently name includes the version, here we are separating that out.
     pub fn id(&self) -> String {
-        format!("{}_{}", self.name, self.version.as_suffix())
+        self.version.as_ref().map_or(self.name.clone(), |v| {
+            format!("{}_{}", self.name, v.as_suffix())
+        })
     }
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Table: {} Version {} - {} - {} - deduplicate: {}",
+            "Table: {} Version {:?} - {} - {} - deduplicate: {}",
             self.name,
             self.version,
             self.columns
@@ -49,7 +51,7 @@ impl Table {
     }
 
     pub fn short_display(&self) -> String {
-        format!("Table: {} Version {}", self.name, self.version)
+        format!("Table: {} Version {:?}", self.name, self.version)
     }
 
     pub fn to_proto(&self) -> ProtoTable {
@@ -57,7 +59,11 @@ impl Table {
             name: self.name.clone(),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
             order_by: self.order_by.clone(),
-            version: self.version.to_string(),
+            version: self
+                .version
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
 
             deduplicate: self.deduplicate,
@@ -74,7 +80,7 @@ impl Table {
             name: proto.name,
             columns: proto.columns.into_iter().map(Column::from_proto).collect(),
             order_by: proto.order_by,
-            version: Version::from_string(proto.version),
+            version: Some(Version::from_string(proto.version)),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
             deduplicate: proto.deduplicate,
             engine: proto.engine.into_option().map(|wrapper| wrapper.value),

@@ -37,7 +37,7 @@ impl DataModel {
             order_by: self.config.storage.order_by_fields.clone(),
             deduplicate: self.config.storage.deduplicate,
             engine: None,
-            version: self.version.clone(),
+            version: Some(self.version.clone()),
             source_primitive: PrimitiveSignature {
                 name: self.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,

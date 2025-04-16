@@ -836,7 +836,7 @@ impl OlapOperations for ConfiguredDBClient {
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
                 deduplicate: engine.contains("ReplacingMergeTree"),
                 engine: Some(engine),
-                version, // Still store the version for reference
+                version: Some(version), // Still store the version for reference
                 source_primitive,
             };
             debug!("Created table object: {:?}", table);

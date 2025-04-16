@@ -30,6 +30,7 @@ use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::framework::core::infrastructure_map::{InfraChanges, OlapChange, TableChange};
+use crate::framework::versions::Version;
 use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
@@ -117,6 +118,8 @@ pub struct RouteMeta {
     pub format: EndpointIngestionFormat,
     /// The data model associated with this route
     pub data_model: DataModel,
+    /// The version of the the api
+    pub version: Option<Version>,
 }
 
 /// Configuration for the local webserver.
@@ -867,20 +870,62 @@ async fn router(
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
     let res = match (configured_producer, req.method(), &route_split[..]) {
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
-            ingest_route(
-                req,
-                // without explicit version, go to current project version
-                if !project.features.data_model_v2 {
-                    route.join(current_version)
-                } else {
-                    route
-                },
-                configured_producer,
-                route_table,
-                is_prod,
-                jwt_config,
-            )
-            .await
+            if project.features.data_model_v2 {
+                // For v2, find the latest version if no version specified
+                let route_table_read = route_table.read().await;
+                let base_path = route.to_str().unwrap();
+                let mut latest_version: Option<&Version> = None;
+
+                // First find matching routes, then get latest version
+                for (path, meta) in route_table_read.iter() {
+                    let path_str = path.to_str().unwrap();
+                    if path_str.starts_with(base_path) {
+                        if let Some(version) = &meta.version {
+                            if latest_version.is_none() || version > latest_version.unwrap() {
+                                latest_version = Some(version);
+                            }
+                        }
+                    }
+                }
+
+                match latest_version {
+                    // If latest version exists, use it
+                    Some(version) => {
+                        ingest_route(
+                            req,
+                            route.join(version.to_string()),
+                            configured_producer,
+                            route_table,
+                            is_prod,
+                            jwt_config,
+                        )
+                        .await
+                    }
+                    None => {
+                        // Otherwise, try direct route
+                        ingest_route(
+                            req,
+                            route,
+                            configured_producer,
+                            route_table,
+                            is_prod,
+                            jwt_config,
+                        )
+                        .await
+                    }
+                }
+            } else {
+                // For v1, append current version as before
+                ingest_route(
+                    req,
+                    route.join(&current_version),
+                    configured_producer,
+                    route_table,
+                    is_prod,
+                    jwt_config,
+                )
+                .await
+            }
         }
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(
@@ -1072,9 +1117,10 @@ impl Webserver {
                                 format,
                             } => {
                                 // This is not namespaced
-                                let topic = infra_map
-                                    .find_topic_by_id(&target_topic_id)
-                                    .expect("Topic not found");
+                                let topic =
+                                    infra_map.find_topic_by_id(&target_topic_id).unwrap_or_else(
+                                        || panic!("Topic not found: {}", target_topic_id),
+                                    );
 
                                 // This is now a namespaced topic
                                 let kafka_topic =
@@ -1086,6 +1132,7 @@ impl Webserver {
                                         format,
                                         data_model: data_model.unwrap(),
                                         kafka_topic_name: kafka_topic.name,
+                                        version: api_endpoint.version,
                                     },
                                 );
                             }
@@ -1134,6 +1181,7 @@ impl Webserver {
                                         format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
                                         kafka_topic_name: kafka_topic.name,
+                                        version: after.version,
                                     },
                                 );
                             }
@@ -1921,7 +1969,7 @@ mod tests {
             order_by: vec!["id".to_string()],
             engine: None,
             deduplicate: false,
-            version: Version::from_string("1.0.0".to_string()),
+            version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,

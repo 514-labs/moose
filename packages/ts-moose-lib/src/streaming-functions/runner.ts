@@ -219,7 +219,7 @@ const stopConsumer = async (
  */
 const handleMessage = async (
   logger: Logger,
-  streamingFunction: StreamingFunction,
+  streamingFunctions: StreamingFunction[],
   message: KafkaMessage,
 ): Promise<SlimKafkaMessage[] | undefined> => {
   if (message.value === undefined || message.value === null) {
@@ -228,8 +228,9 @@ const handleMessage = async (
   }
 
   try {
-    const transformedData = await streamingFunction(
-      JSON.parse(message.value.toString(), jsonDateReviver),
+    const parsedData = JSON.parse(message.value.toString(), jsonDateReviver);
+    const transformedData = await Promise.all(
+      streamingFunctions.map((fn) => fn(parsedData)),
     );
 
     if (transformedData) {
@@ -388,7 +389,22 @@ async function loadStreamingFunctionV2(
 ) {
   const transformFunctions = await getStreamingFunctions();
   const transformFunctionKey = `${topicNameToStreamName(sourceTopic)}_${targetTopic ? topicNameToStreamName(targetTopic) : "<no-target>"}`;
-  return transformFunctions.get(transformFunctionKey);
+
+  const matchingFunctions = Array.from(transformFunctions.entries())
+    .filter(([key]) => key.startsWith(transformFunctionKey))
+    .map(([_, fn]) => fn);
+
+  if (matchingFunctions.length === 0) {
+    const message = `No functions found for ${transformFunctionKey}`;
+    cliLog({
+      action: "Function",
+      message: `${message}`,
+      message_type: "Error",
+    });
+    throw new Error(message);
+  }
+
+  return matchingFunctions;
 }
 
 /**
@@ -412,36 +428,33 @@ async function loadStreamingFunctionV2(
  * 5. Commit offsets after successful processing
  */
 const startConsumer = async (
-  isDmv2: boolean,
+  args: StreamingFunctionArgs,
   logger: Logger,
   metrics: Metrics,
   parallelism: number,
-  functionFilePath: string,
-  sourceTopic: TopicConfig,
   consumer: Consumer,
   producer: Producer,
   streamingFuncId: string,
-  targetTopic?: TopicConfig,
 ): Promise<void> => {
   // Validate topic configurations
-  validateTopicConfig(sourceTopic);
-  if (targetTopic) {
-    validateTopicConfig(targetTopic);
+  validateTopicConfig(args.sourceTopic);
+  if (args.targetTopic) {
+    validateTopicConfig(args.targetTopic);
   }
 
   await consumer.connect();
 
   logger.log(
-    `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic.name} and target topic: ${targetTopic?.name || "none"}`,
+    `Starting consumer group '${streamingFuncId}' with source topic: ${args.sourceTopic.name} and target topic: ${args.targetTopic?.name || "none"}`,
   );
 
   // We preload the function to not have to load it for each message
-  const streamingFunction: StreamingFunction = isDmv2
-    ? await loadStreamingFunctionV2(sourceTopic, targetTopic)
-    : loadStreamingFunction(functionFilePath);
+  const streamingFunctions: StreamingFunction[] = args.isDmv2
+    ? await loadStreamingFunctionV2(args.sourceTopic, args.targetTopic)
+    : [loadStreamingFunction(args.functionFilePath)];
 
   await consumer.subscribe({
-    topics: [sourceTopic.name], // Use full topic name for Kafka operations
+    topics: [args.sourceTopic.name], // Use full topic name for Kafka operations
     fromBeginning: true,
   });
 
@@ -476,7 +489,7 @@ const startConsumer = async (
               ) {
                 await heartbeat();
               }
-              return handleMessage(logger, streamingFunction, message);
+              return handleMessage(logger, streamingFunctions, message);
             },
             {
               concurrency: MAX_STREAMING_CONCURRENCY,
@@ -488,7 +501,7 @@ const startConsumer = async (
         .flat()
         .filter((msg) => msg !== undefined);
 
-      if (targetTopic === undefined || processedMessages.length === 0) {
+      if (args.targetTopic === undefined || processedMessages.length === 0) {
         return;
       }
 
@@ -498,7 +511,7 @@ const startConsumer = async (
         await sendMessages(
           logger,
           metrics,
-          targetTopic,
+          args.targetTopic,
           producer,
           filteredMessages as SlimKafkaMessage[],
         );
@@ -703,16 +716,13 @@ export const runStreamingFunctions = async (
 
         try {
           await startConsumer(
-            args.isDmv2,
+            args,
             logger,
             metrics,
             parallelism,
-            args.functionFilePath,
-            args.sourceTopic,
             consumer,
             producer,
             streamingFuncId,
-            args.targetTopic,
           );
         } catch (e) {
           logger.error("Failed to start kafka consumer: ");

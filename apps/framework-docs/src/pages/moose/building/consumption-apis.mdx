@@ -497,7 +497,7 @@ export const UserTable = new OlapTable<UserSchema>("users")
 The MooseClient enables you to execute queries and other database operations. Specifically by using `f-strings` to build your queries. The client will automatically interpolate the parameters into the query
 ```python filename="ExampleApi.py" copy {1}
 
-def run(params: QueryParams, client: MooseClient) -> None:
+def run(client: MooseClient, params: QueryParams) -> None:
     query = f"SELECT * FROM users"
     data = client.query.execute(query)
 ```
@@ -691,8 +691,8 @@ from app.tables import myTable
 
 colName = "id"
 
-query = f"""SELECT {myTable.columns[colName]} FROM {myTable.name}"""
-data = client.query.execute(query)
+query = f"""SELECT {colName} FROM {myTable.name}"""
+data = client.query.execute(query, {"colName": colName})
 
 ## MooseClient will automatically interpolate the column name into the query as a valid ClickHouse identifier
 ## EXECUTION: SELECT id FROM users
@@ -897,7 +897,7 @@ class ResponseItem(BaseModel):
     isHighValue: bool
     date: str
 
-def run(params: QueryParams, client: MooseClient) -> list[ResponseItem]:
+def run(client: MooseClient, params: QueryParams):
     # 1. Fetch raw data
     query = f"""
     SELECT id, name, value, timestamp
@@ -927,7 +927,7 @@ def run(params: QueryParams, client: MooseClient) -> list[ResponseItem]:
     return processed_results
 
 # Create the API
-process_data_api = ConsumptionApi[QueryParams, list[ResponseItem]](name="process_data_endpoint", query_function=run)
+process_data_api = ConsumptionApi[QueryParams, ResponseItem](name="process_data_endpoint", query_function=run)
 ```
 </Python>
 

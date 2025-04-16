@@ -91,7 +91,7 @@ source .venv/bin/activate
 ```
 
 ```bash filename="Terminal" copy
-pip install .
+pip install -r requirements.txt
 ``` 
 </Python>
 
@@ -102,42 +102,107 @@ Start your local development environment:
 moose dev
 ```
 
-<ToggleBlock openText="Need Help?" closeText="Hide">
+<ToggleBlock openText="Need Help?" closeText="Hide Troubleshooting">
 Common issues and solutions:
-- Docker is not running: Run `open -a Docker` on macOS
-- Port conflicts: Run `lsof -i :4000,18123,19092` to identify conflicts.
-
+<Tabs items={["Incompatible version", "Missing dependencies", "Docker not running", "Port conflicts"]}>
+<Tabs.Tab>
 <TypeScript>
-- Missing Dependencies: Run `npm install` from your project root
-- Incorrect Node.js version: Use `nvm` or `n` to make sure you have a compatible Node.js version installed:
+<Callout type="info" title="You must have at least Node.js version 20 installed." href="https://nodejs.org/en/download/package-manager">
+</Callout>
+
+Check your Node.js version:
+```bash filename="Terminal" copy
+node -v
+```
+If you don't have Node.js version 20 installed, use `nvm` or `n` to install it: 
 <Tabs items={["nvm", "n"]}>
 <Tabs.Tab>
 ```bash filename="Terminal" copy
 nvm install 20
 nvm use 20
 ```
+<Callout type="info" title="Don't have nvm installed?">
+[Follow the installation instructions in the nvm README](https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script) for more information.
+</Callout>
+
 </Tabs.Tab>
 <Tabs.Tab>
 ```bash filename="Terminal" copy
-n install 20
-n use 20
+n latest
 ```
+
+<Callout type="info" title="Don't have n installed?">
+[Follow the installation instructions in the n README](https://github.com/tj/n?tab=readme-ov-file#installation) for more information. Or, you can install via npm:
+
+```bash filename="Terminal" copy
+npm install -g n
+```
+</Callout>
+
 </Tabs.Tab>
 </Tabs>
 </TypeScript>
 
 <Python>
-- Missing Dependencies: Run `pip install` from your project root
-- Incorrect Python version: Use `pyenv` to make sure you have a compatible Python version installed:
-<Tabs items={["pyenv"]}>
-<Tabs.Tab>
+<Callout type="info" title="You must have at least Python version 3.12 installed." href="https://www.python.org/downloads/">
+</Callout>
+
+Check your Python version:
+```bash filename="Terminal" copy
+python3 --version
+```
+If you don't have Python version 3.12 installed, use `pyenv` to install it and set it as the local version:
+
 ```bash filename="Terminal" copy
 pyenv install 3.12
-pyenv use 3.12
+pyenv local 3.12
+```
+
+<Callout type="info" title="Don't have pyenv installed?">
+[Follow the installation instructions in the pyenv README](https://github.com/pyenv/pyenv?tab=readme-ov-file#installation) for more information.
+</Callout>
+</Python>
+</Tabs.Tab>
+<Tabs.Tab>
+
+<TypeScript>
+Make sure you have `@514labs/moose-lib` installed. To check, run:
+```bash filename="Terminal" copy
+npm list
+```
+If its missing from the terminal output, run:
+
+```bash filename="Terminal" copy
+npm install
+```
+</TypeScript>
+<Python>
+Make sure you have `moose_lib` installed. To check, run:
+```bash filename="Terminal" copy
+pip list
+```
+If its missing from the terminal output, run:
+
+```bash filename="Terminal" copy
+pip install -r requirements.txt
+```
+</Python>
+</Tabs.Tab>
+
+
+<Tabs.Tab>
+Launch Docker Desktop and then re-run `moose dev`:
+```bash filename="Terminal" copy
+open -a Docker
+moose dev
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+lsof -i :4000,18123,19092
 ```
 </Tabs.Tab>
 </Tabs>
-</Python>
 </ToggleBlock>
 
 ### Understand Project Structure
@@ -146,26 +211,25 @@ Your project contains:
 <Python>
 ```text
 app/
-├── ingest/           # Raw data ingestion and streaming
+├── main.py            # Entrypoint for your Moose app
+├── ingest/            # Raw data ingestion and streaming
 │   ├── models.py     
 │   └── transform.py  
-│
-├── views/            # Materialized views and aggregations
+├── views/             # Materialized views and aggregations
 │   └── bar_aggregated.py
-│
-└── apis/            # Analytics APIs
-|   └── bar.py
+├── apis/              # Analytics APIs
+│   └── bar.py
 ├── scripts/          
-│   └── ingest-foo/   # Random data generator for testing
-│
-└── moose.config.toml    # Project config
+│   └── generator/    # Random data generator for testing
+└── moose.config.toml  # Project config
 ```
 </Python>
 
 <TypeScript>
 ```text
 app/
-├── ingest/           # Raw data ingestion and streaming
+├── index.ts            # Entrypoint for your Moose app
+├── ingest/             # Raw data ingestion and streaming
 │   ├── models.ts     
 │   └── transform.ts  
 │
@@ -175,7 +239,7 @@ app/
 └── apis/            # Analytics APIs
     └── bar.ts      
 ├── scripts/
-│   └── ingest-foo/   # Random data generator for testing
+│   └── generator/   # Random data generator for testing
 │
 └── moose.config.toml    # Project config
 ```
@@ -207,20 +271,56 @@ app/
   ]}
 />
 
+### Setting up the OpenAPI UI
+Moose auto-generates an OpenAPI spec for your APIs, enabling direct testing from your editor. To set up:
+
+1. Install the [OpenAPI (Swagger) Viewer extension](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) in your IDE
+2. Open `.moose/openapi.yaml` in your IDE
+3. Click the "Preview" icon (magnifying glass) in the top-right corner to launch the OpenAPI UI
+
+<MuxVideo 
+  playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
+  title="Using the OpenAPI Swagger UI for Moose APIs"
+  width="50%"
+  height="50%"
+  autoPlay={true}
+  muted={true}
+  loop={true}
+/>
+
 ### Send Test Data
-<Tabs items={["Using Data Generator Script", "Using OpenAPI UI"]}>
+<Tabs items={["Using OpenAPI UI", "Using Data Generator Script"]}>
 <Tabs.Tab>
-Your project includes a script to generate sample data to test your pipeline:
+<Callout type="info" title="Make sure you followed the OpenAPI UI setup steps above" href="#setting-up-the-openapi-ui">
+</Callout>
+
+1. Navigate to the `POST /ingest/Foo` endpoint in the OpenAPI UI
+2. Click "Try it out"
+3. Use the sample request body provided or modify it
+4. Click "Execute" to send the request
+
+You should see output like this in your terminal:
+
+```txt
+          POST ingest/Foo
+        [POST] Data received at ingest API sink for Foo
+      Received Foo_0_0 -> Bar_0_0 1 message(s)
+          [DB] 1 row(s) successfully written to DB table (Bar)
+```
+</Tabs.Tab>
+
+<Tabs.Tab>
+Your project includes a script to generate sample data (powered by <TypeScript inline>[Faker](https://fakerjs.dev/)</TypeScript><Python inline>[Faker](https://github.com/joke2k/faker)</Python>) to test your pipeline:
 
 <TypeScript>
 ```bash filename="Terminal" copy
-moose workflow run ingestFoo
+moose workflow run generator
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy
-moose workflow run ingest-foo
+moose workflow run generator
 ```
 </Python>
 
@@ -240,48 +340,6 @@ You should see a bunch of logs printed to the terminal like the following:
           ...
 ```
 </Tabs.Tab>
-
-<Tabs.Tab>
-Moose automatically generates docs for all APIs defined in your project in the `.moose/openapi.yaml` file:
-
-<FileTree>
-<FileTree.Folder name=".moose" defaultOpen>
-<FileTree.File name="openapi.yaml" />
-</FileTree.Folder>
-<FileTree.Folder name="app" defaultOpen>
-<FileTree.Folder name="ingest" />
-<FileTree.Folder name="views" />
-<FileTree.Folder name="apis" />
-<FileTree.Folder name="scripts" />
-</FileTree.Folder>
-</FileTree>
-
-<Callout type="info" title="Install the OpenAPI (Swagger) Viewer extension" href="https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi">
-Open `openapi.yaml` in your IDE and click the magnifying glass icon to launch the OpenAPI UI.
-</Callout>
-
-<MuxVideo 
-  playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
-  title="Using the OpenAPI Swagger UI for Data Ingestion"
-  width="50%"
-  height="50%"
-  autoPlay={true}
-  muted={true}
-  loop={true}
-/>
-
-
-After hitting the `Try it out` button, you should see something like the following output in your terminal:
-
-```txt
-          POST ingest/Foo
-        [POST] Data received at ingest API sink for Foo
-      Received Foo_0_0 -> Bar_0_0 1 message(s)
-          [DB] 1 row(s) successfully written to DB table (Bar)
-```
-
-
-</Tabs.Tab>
 </Tabs>
 
 <Callout type="success" title="Data landed in ClickHouse!">
@@ -300,10 +358,33 @@ moose peek Bar --limit 10
   Run `moose peek --help` to see all the options available.
 </Callout>
 </ToggleBlock>
+
 ### Query Your Data
 Test your analytics API:
 
-<Tabs items={["Using curl", "Using OpenAPI UI"]}>
+<Tabs items={["Using OpenAPI UI", "Using curl"]}>
+<Tabs.Tab>
+<Callout type="info" title="Make sure you followed the OpenAPI UI setup steps above" href="#setting-up-the-openapi-ui">
+</Callout>
+
+1. Locate the `GET /consumption/bar` endpoint
+2. Click "Try it out"
+3. Experiment with query parameters:
+   <TypeScript>
+   - `orderBy`: Try "rowsWithText"
+   - `startDay`: Enter a number (e.g., 1)
+   - `endDay`: Enter a number (e.g., 10)
+   </TypeScript>
+   <Python>
+   - `order_by`: Try "rows_with_text"
+   - `start_day`: Enter a number (e.g., 1)
+   - `end_day`: Enter a number (e.g., 10)
+   </Python>
+4. Click "Execute" to see the results
+
+The UI will show both the request URL and the response data in a formatted view.
+</Tabs.Tab>
+
 <Tabs.Tab>
 ```bash filename="Terminal" copy
 # Get default results
@@ -328,27 +409,6 @@ curl "http://localhost:4000/consumption/bar?order_by=rows_with_text"
 
 # Filter by date range
 curl "http://localhost:4000/consumption/bar?start_day=1&end_day=10"
-```
-</Python>
-</Tabs.Tab>
-
-<Tabs.Tab>
-Locate your project's OpenAPI spec and hit the `Try it out` button to test your `GET /consumption/bar` endpoint:
-
-Try setting the query parameters to filter the results:
-<TypeScript>
-```txt filename="Swagger UI" copy
-orderBy=rowsWithText
-startDay=1
-endDay=10
-```
-</TypeScript>
-
-<Python>
-```txt filename="Swagger UI" copy
-order_by=rows_with_text
-start_day=1
-end_day=10
 ```
 </Python>
 </Tabs.Tab>

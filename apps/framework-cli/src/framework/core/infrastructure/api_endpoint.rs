@@ -52,7 +52,7 @@ pub struct ApiEndpoint {
     pub path: PathBuf,
     pub method: Method,
 
-    pub version: Version,
+    pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -72,7 +72,7 @@ impl ApiEndpoint {
                 .join(data_model.name.clone())
                 .join(data_model.version.as_str()),
             method: Method::POST,
-            version: data_model.version.clone(),
+            version: Some(data_model.version.clone()),
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -83,19 +83,21 @@ impl ApiEndpoint {
     pub fn id(&self) -> String {
         // TODO have a proper version object that standardizes transformations
         format!(
-            "{}_{}_{}",
+            "{}_{}{}",
             match self.api_type {
                 APIType::INGRESS { .. } => "INGRESS",
                 APIType::EGRESS { .. } => "EGRESS",
             },
             self.name,
-            self.version.as_suffix()
+            self.version
+                .as_ref()
+                .map_or("".to_string(), |v| format!("_{}", v.as_suffix()))
         )
     }
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "API Endpoint: {} - Version: {} - Path: {} - Method: {:?} - Format: {:?}",
+            "API Endpoint: {} - Version: {:?} - Path: {} - Method: {:?} - Format: {:?}",
             self.name,
             self.version,
             self.path.to_string_lossy(),
@@ -112,7 +114,7 @@ impl ApiEndpoint {
     }
 
     pub fn short_display(&self) -> String {
-        format!("API Endpoint: {} - Version: {}", self.name, self.version)
+        format!("API Endpoint: {} - Version: {:?}", self.name, self.version)
     }
 
     pub fn to_proto(&self) -> ProtoApiEndpoint {
@@ -121,7 +123,11 @@ impl ApiEndpoint {
             api_type: Some(self.api_type.to_proto()),
             path: self.path.to_string_lossy().to_string(),
             method: EnumOrUnknown::new(self.method.to_proto()),
-            version: self.version.to_string(),
+            version: self
+                .version
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -138,7 +144,7 @@ impl ApiEndpoint {
                     .enum_value()
                     .expect("Invalid method enum value"),
             ),
-            version: Version::from_string(proto.version),
+            version: Some(Version::from_string(proto.version)),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }
@@ -159,7 +165,8 @@ impl From<EndpointFile> for ApiEndpoint {
             },
             path: value.path.clone(),
             method: Method::GET,
-            version: Version::from_string("0.0.0".to_string()),
+            // TODO: why does consumption api use patch version, but others only have major.minor?
+            version: Some(Version::from_string("0.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: value.path.to_string_lossy().to_string(),
                 primitive_type: PrimitiveTypes::ConsumptionAPI,

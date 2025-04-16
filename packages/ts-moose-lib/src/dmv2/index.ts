@@ -17,18 +17,21 @@ export type OlapConfig<T> = {
   // equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`
   deduplicate?: boolean;
   engine?: ClickHouseEngines;
+  version?: string;
 };
 
 export interface StreamConfig<T> {
   parallelism?: number;
   retentionPeriod?: number; // seconds
   destination?: OlapTable<T>;
+  version?: string;
 }
 
 export type IngestPipelineConfig<T> = {
   table: boolean | OlapConfig<T>;
   stream: boolean | Omit<StreamConfig<T>, "destination">;
   ingest: boolean | Omit<IngestConfig<T>, "destination">;
+  version?: string;
 };
 
 export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
@@ -60,6 +63,14 @@ type SyncOrAsyncTransform<T, U> = (
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
 type Consumer<T> = (record: T) => Promise<void> | void;
 
+export interface TransformConfig {
+  version?: string;
+}
+
+export interface ConsumerConfig {
+  version?: string;
+}
+
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   constructor(name: string, config?: StreamConfig<T>);
 
@@ -84,20 +95,43 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
 
   _transformations = new Map<
     string,
-    [Stream<any>, SyncOrAsyncTransform<T, any>]
+    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig][]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
-  _consumers = new Array<Consumer<T>>();
+  _consumers = new Array<{ consumer: Consumer<T>; config: ConsumerConfig }>();
 
   addTransform = <U>(
     destination: Stream<U>,
     transformation: SyncOrAsyncTransform<T, U>,
+    config?: TransformConfig,
   ) => {
-    this._transformations.set(destination.name, [destination, transformation]);
+    const transformConfig = config ?? {};
+
+    if (this._transformations.has(destination.name)) {
+      const existingTransforms = this._transformations.get(destination.name)!;
+      const hasVersion = existingTransforms.some(
+        ([_, __, cfg]) => cfg.version === transformConfig.version,
+      );
+
+      if (!hasVersion) {
+        existingTransforms.push([destination, transformation, transformConfig]);
+      }
+    } else {
+      this._transformations.set(destination.name, [
+        [destination, transformation, transformConfig],
+      ]);
+    }
   };
 
-  addConsumer = (consumer: Consumer<T>) => {
-    this._consumers.push(consumer);
+  addConsumer = (consumer: Consumer<T>, config?: ConsumerConfig) => {
+    const consumerConfig = config ?? {};
+    const hasVersion = this._consumers.some(
+      (existing) => existing.config.version === consumerConfig.version,
+    );
+
+    if (!hasVersion) {
+      this._consumers.push({ consumer, config: consumerConfig });
+    }
   };
 
   routed = (values: ZeroOrMany<T>) => new RoutedMessage(this, values);
@@ -119,6 +153,7 @@ class RoutedMessage {
 interface IngestConfig<T> {
   destination: Stream<T>;
   format?: IngestionFormat; // TODO: we may not need this
+  version?: string;
 }
 
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
@@ -149,7 +184,9 @@ type ConsumptionHandler<T, R> = (
   utils: ConsumptionUtil,
 ) => Promise<R>;
 
-interface EgressConfig<T> {}
+interface EgressConfig<T> {
+  version?: string;
+}
 
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
   _handler: ConsumptionHandler<T, R>;
@@ -214,7 +251,10 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     super(name, config, schema, columns);
 
     if (config.table) {
-      const tableConfig = config.table === true ? {} : config.table;
+      const tableConfig = {
+        ...(typeof config.table === "object" ? config.table : {}),
+        ...(config.version && { version: config.version }),
+      };
       this.table = new OlapTable(
         name,
         tableConfig,
@@ -226,7 +266,8 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     if (config.stream) {
       const streamConfig = {
         destination: this.table,
-        ...(config.stream === true ? {} : config.stream),
+        ...(typeof config.stream === "object" ? config.stream : {}),
+        ...(config.version && { version: config.version }),
       };
       this.stream = new Stream(
         name,
@@ -243,7 +284,8 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
 
       const ingestConfig = {
         destination: this.stream,
-        ...(config.ingest === true ? {} : config.ingest),
+        ...(typeof config.ingest === "object" ? config.ingest : {}),
+        ...(config.version && { version: config.version }),
       };
       this.ingestApi = new IngestApi(
         name,

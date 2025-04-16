@@ -977,7 +977,10 @@ pub async fn top_command_handler(
                         && matches!(endpoint.api_type, APIType::INGRESS { .. })
                         && match version {
                             None => true,
-                            Some(v) => endpoint.version.as_str() == v,
+                            Some(v) => endpoint
+                                .version
+                                .as_ref()
+                                .is_some_and(|endpoint_version| endpoint_version.to_string() == *v),
                         }
                 })
                 .ok_or_else(|| {

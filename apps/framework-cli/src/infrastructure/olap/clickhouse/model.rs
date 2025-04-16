@@ -416,7 +416,7 @@ pub struct ClickHouseSystemTable {
 #[derive(Debug, Clone)]
 pub struct ClickHouseTable {
     pub name: String,
-    pub version: Version,
+    pub version: Option<Version>,
     pub columns: Vec<ClickHouseColumn>,
     pub order_by: Vec<String>,
     pub engine: ClickhouseEngine,

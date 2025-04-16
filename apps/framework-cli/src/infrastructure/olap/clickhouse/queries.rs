@@ -398,7 +398,7 @@ mod tests {
     #[test]
     fn test_create_table_query_basic() {
         let table = ClickHouseTable {
-            version: Version::from_string("1".to_string()),
+            version: Some(Version::from_string("1".to_string())),
             name: "test_table".to_string(),
             columns: vec![
                 ClickHouseColumn {
@@ -438,7 +438,7 @@ PRIMARY KEY (`id`)
     #[test]
     fn test_create_table_query_replacing_merge_tree() {
         let table = ClickHouseTable {
-            version: Version::from_string("1".to_string()),
+            version: Some(Version::from_string("1".to_string())),
             name: "test_table".to_string(),
             columns: vec![ClickHouseColumn {
                 name: "id".to_string(),
@@ -467,7 +467,7 @@ ORDER BY (`id`) "#;
     #[test]
     fn test_create_table_query_replacing_merge_tree_error() {
         let table = ClickHouseTable {
-            version: Version::from_string("1".to_string()),
+            version: Some(Version::from_string("1".to_string())),
             name: "test_table".to_string(),
             columns: vec![ClickHouseColumn {
                 name: "id".to_string(),
@@ -491,7 +491,7 @@ ORDER BY (`id`) "#;
     #[test]
     fn test_create_table_query_complex() {
         let table = ClickHouseTable {
-            version: Version::from_string("1".to_string()),
+            version: Some(Version::from_string("1".to_string())),
             name: "test_table".to_string(),
             columns: vec![
                 ClickHouseColumn {

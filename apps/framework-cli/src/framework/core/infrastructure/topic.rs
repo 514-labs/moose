@@ -15,7 +15,7 @@ pub const DEFAULT_MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
-    pub version: Version,
+    pub version: Option<Version>,
     pub name: String,
     pub retention_period: Duration,
 
@@ -33,7 +33,7 @@ impl Topic {
     pub fn from_data_model(data_model: &DataModel) -> Self {
         Topic {
             name: data_model.name.clone(),
-            version: data_model.version.clone(),
+            version: Some(data_model.version.clone()),
             // TODO configure this from DataModelConfig
             retention_period: Topic::default_duration(),
             partition_count: data_model.config.parallelism,
@@ -59,7 +59,7 @@ impl Topic {
 
         let source_topic = Topic {
             name: name("input"),
-            version: function.source_data_model.version.clone(),
+            version: Some(function.source_data_model.version.clone()),
             partition_count: function.source_data_model.config.parallelism,
             retention_period: Topic::default_duration(),
             max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
@@ -75,7 +75,7 @@ impl Topic {
             .as_ref()
             .map(|target_data_model| Topic {
                 name: name("output"),
-                version: target_data_model.version.clone(),
+                version: Some(target_data_model.version.clone()),
                 partition_count: target_data_model.config.parallelism,
                 retention_period: Topic::default_duration(),
                 max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
@@ -98,14 +98,14 @@ impl Topic {
             | PrimitiveTypes::DBBlock
             | PrimitiveTypes::ConsumptionAPI => {
                 // TODO have a proper version object that standardizes transformations
-                format!("{}_{}", self.name, self.version.as_suffix())
+                self.version.as_ref().map_or(self.name.clone(), |v| format!("{}_{}", self.name, v.as_suffix()))
             }
         }
     }
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Topic: {} - Version: {} - Retention Period: {}s - Partition Count: {}",
+            "Topic: {} - Version: {:?} - Retention Period: {}s - Partition Count: {}",
             self.name,
             self.version,
             self.retention_period.as_secs(),
@@ -114,7 +114,7 @@ impl Topic {
     }
 
     pub fn short_display(&self) -> String {
-        format!("Topic: {} - Version: {}", self.name, self.version)
+        format!("Topic: {} - Version: {:?}", self.name, self.version)
     }
 
     fn default_duration() -> Duration {
@@ -123,7 +123,11 @@ impl Topic {
 
     pub fn to_proto(&self) -> ProtoTopic {
         ProtoTopic {
-            version: self.version.to_string(),
+            version: self
+                .version
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
             name: self.name.clone(),
             retention_period: MessageField::some(
                 protobuf::well_known_types::duration::Duration::from(self.retention_period),
@@ -142,7 +146,7 @@ impl Topic {
 
     pub fn from_proto(proto: ProtoTopic) -> Self {
         Topic {
-            version: Version::from_string(proto.version),
+            version: Some(Version::from_string(proto.version)),
             name: proto.name,
             retention_period: proto.retention_period.unwrap().into(),
             partition_count: proto.partition_count.unwrap_or(1) as usize,

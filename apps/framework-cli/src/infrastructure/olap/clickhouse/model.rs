@@ -165,7 +165,7 @@ impl ClickHouseColumnType {
 
                 // outer option is existence, inner option is parsing
                 // if parsing failed, return None
-                let precision = (*precision_and_scale.get(0).unwrap_or(&default_precision))?;
+                let precision = (*precision_and_scale.first().unwrap_or(&default_precision))?;
                 let scale = (*precision_and_scale.get(1).unwrap_or(&default_scale))?;
                 Self::Decimal { precision, scale }
             }

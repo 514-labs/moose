@@ -25,7 +25,7 @@ This RFD focuses specifically on the Moose CLI version management system. The fo
 The system follows these rules for selecting which version of the CLI to use:
 
 1. Inside a Moose Project:
-   - Use the version specified in the project's lock file (package-lock.json, yarn.lock, etc.) then fallsback to the package.json or requirements.txt.
+   - Use the version that's the same as the current version of moose-lib in the project.
    - This ensures compatibility between CLI and project libraries
 
 2. Outside a Moose Project:
@@ -71,7 +71,7 @@ The installation script will handle two distinct installation patterns:
 #### Aurora CLI Installation
 - Maintains current direct installation behavior
 - Single version installation
-- No version management wrapper
+- No explicit version management wrapper
 - Preserves existing update mechanisms
 
 #### Moose CLI Installation
@@ -106,13 +106,13 @@ RELEASE_CHANNEL=dev bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) 
 #### Version Detection
 
 The wrapper script will:
-1. Check if current directory is within a Moose project:
+1. Check if current directory is within a Moose project by looking for `moose.config.toml`:
    - If yes, look for version information in:
-     - `package.json` for TypeScript projects (moose-libs version specified in dependencies)
-     - `pyproject.toml`/`requirements.txt` for Python projects (moose-libs version specified in dependencies)
-   - If no, use latest installed version
+     - For Node.js projects: Check `package.json` for `@514labs/moose-lib` version
+     - For Python projects: Check installed packages via `pip list` for `moose_lib` version
+   - If no project is detected (reached root directory), use latest installed version
 2. For project contexts:
-   - Extract the required Moose version from dependency files
+   - Extract the required Moose version from context
    - Install that version if not already cached
 3. For non-project contexts (e.g., `moose init`):
    - Use latest installed version
@@ -123,7 +123,7 @@ The wrapper script will:
 When a required version is not found locally:
 1. The wrapper downloads the appropriate version from the remote repository
 2. Verifies the binary signature
-3. Stores it in a local version cache (`~/.moose/versions/`)
+3. Stores it in a local version cache (`~/.moose/versions/<channel>/<version>`)
 4. Updates symlinks and path references
 
 #### Version Cache Management
@@ -184,7 +184,6 @@ To prevent unlimited growth of cached versions:
 3. Cleanup Strategy:
    - Triggered when:
      - Installing a new version would exceed the limit
-     - Running the `moose cleanup` command
    - Process:
      1. Read all `.last_used` timestamps
      2. Sort versions by last use
@@ -193,25 +192,6 @@ To prevent unlimited growth of cached versions:
         - Latest version
         - Currently used versions in local projects
         - Versions used in the last 30 days
-
-4. Manual Control:
-   ```bash
-   # Force cleanup to specific number of versions
-   moose cleanup --keep 50
-   
-   # Keep only versions used in last N days
-   moose cleanup --days 60
-   
-   # List version usage statistics
-   moose versions --stats
-   ```
-
-#### MCP Integration
-
-Special considerations for MCP:
-1. Wrapper script provides absolute paths to binaries
-2. Configuration includes explicit paths for Claude's limited PATH environment
-3. Version management respects MCP's path requirements
 
 #### Installation Script Changes
 
@@ -310,10 +290,10 @@ curl -sSL https://www.fiveonefour.com/install.sh | sh -s moose
 Example workflow:
 ```bash
 # Install Aurora (unchanged)
-curl -sSL https://www.fiveonefour.com/install.sh | sh -s aurora
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora
 
 # Install Moose wrapper
-curl -sSL https://www.fiveonefour.com/install.sh | sh -s moose
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
 
 # Create new project (automatically installs required version)
 moose init my-project
@@ -391,9 +371,6 @@ Goal: Add power user features and improved management
    - Usage analytics
    - Manual cache control
    - Channel-specific cache policies
-
-2. Command helpers
-   - `moose versions`
 
 ### Cutover Strategy
 

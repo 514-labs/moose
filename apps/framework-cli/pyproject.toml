@@ -4,8 +4,13 @@ build-backend = "maturin"
 
 [project]
 name = "moose-cli"
-description = "Moose CLI"
-requires-python = ">=3.7"
+description_content_type = "text/markdown"
+requires-python = ">=3.12"
+
+[project.urls]
+homepage = "https://www.fiveonefour.com"
+documentation = "https://docs.fiveonefour.com/moose"
+repository = "https://github.com/514labs/moose"
 
 [tool.maturin]
 bindings = "bin"
@@ -18,3 +23,4 @@ macos-deployment-target = "13.0"
 [tool.maturin.target.aarch64-apple-darwin]
 # macOS deployment target SDK version
 macos-deployment-target = "14.0"
+

@@ -30,7 +30,13 @@ interface TableJson {
 interface Target {
   name: string;
   kind: "stream"; // may add `| "table"` in the future
+  version?: string;
 }
+
+interface Consumer {
+  version?: string;
+}
+
 interface StreamJson {
   name: string;
   columns: Column[];
@@ -38,10 +44,10 @@ interface StreamJson {
   partitionCount: number;
   targetTable?: string;
   targetTableVersion?: string;
-  hasConsumers: boolean;
   version?: string;
   transformationTargets: Target[];
   hasMultiTransform: boolean;
+  consumers: Consumer[];
 }
 interface IngestApiJson {
   name: string;
@@ -84,15 +90,23 @@ const toInfraMap = (registry: typeof moose_internal) => {
 
   registry.streams.forEach((stream) => {
     const transformationTargets: Target[] = [];
+    const consumers: Consumer[] = [];
 
-    stream._transformations.forEach(([destination, f]) => {
-      transformationTargets.push({
-        kind: "stream",
-        name: destination.name,
+    stream._transformations.forEach((transforms, destinationName) => {
+      transforms.forEach(([destination, _, config]) => {
+        transformationTargets.push({
+          kind: "stream",
+          name: destinationName,
+          version: config.version,
+        });
       });
     });
 
-    let hasConsumers = stream._consumers.length > 0;
+    stream._consumers.forEach((consumer) => {
+      consumers.push({
+        version: consumer.config.version,
+      });
+    });
 
     topics[stream.name] = {
       name: stream.name,
@@ -104,7 +118,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       version: stream.config.version,
       transformationTargets,
       hasMultiTransform: stream._multipleTransformations === undefined,
-      hasConsumers,
+      consumers,
     };
   });
 
@@ -172,16 +186,17 @@ export const getStreamingFunctions = async () => {
   const transformFunctions = new Map<string, (data: unknown) => unknown>();
 
   registry.streams.forEach((stream) => {
-    stream._transformations.forEach(([destination, f]) => {
-      // TODO: Add version to dmv2 apis
-      const transformFunctionKey = `${stream.name}_${destination.name}`;
-      transformFunctions.set(transformFunctionKey, f);
+    stream._transformations.forEach((transforms, destinationName) => {
+      transforms.forEach(([_, transform, config]) => {
+        const transformFunctionKey = `${stream.name}_${destinationName}${config.version ? `_${config.version}` : ""}`;
+        console.log(`getStreamingFunctions: ${transformFunctionKey}`);
+        transformFunctions.set(transformFunctionKey, transform);
+      });
     });
 
     stream._consumers.forEach((consumer) => {
-      // TODO: Add version to dmv2 apis
-      const consumerFunctionKey = `${stream.name}_<no-target>`;
-      transformFunctions.set(consumerFunctionKey, consumer);
+      const consumerFunctionKey = `${stream.name}_<no-target>${consumer.config.version ? `_${consumer.config.version}` : ""}`;
+      transformFunctions.set(consumerFunctionKey, consumer.consumer);
     });
   });
 

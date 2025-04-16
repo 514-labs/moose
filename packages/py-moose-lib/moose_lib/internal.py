@@ -16,6 +16,8 @@ class Target(BaseModel):
     kind: Literal["stream"]
     name: str
 
+class Consumer(BaseModel):
+    version: Optional[str] = None
 
 class TableConfig(BaseModel):
     model_config = model_config
@@ -25,7 +27,6 @@ class TableConfig(BaseModel):
     order_by: List[str]
     deduplicate: bool
     engine: Optional[str]
-
 
 class TopicConfig(BaseModel):
     model_config = model_config
@@ -37,7 +38,7 @@ class TopicConfig(BaseModel):
     partition_count: int
     transformation_targets: List[Target]
     has_multi_transform: bool
-    has_consumers: bool
+    consumers: List[Consumer]
 
 class IngestApiConfig(BaseModel):
     model_config = model_config
@@ -111,7 +112,8 @@ def to_infra_map() -> dict:
             partition_count=stream.config.parallelism,
             transformation_targets=transformation_targets,
             has_multi_transform=stream._multipleTransformations is not None,
-            has_consumers=stream.has_consumers()
+            # TODO: Implement versioning
+            consumers=[Consumer()] if stream.has_consumers() else []
         )
 
     for name, api in _ingest_apis.items():

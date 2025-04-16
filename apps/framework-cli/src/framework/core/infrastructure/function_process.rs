@@ -31,7 +31,7 @@ pub struct FunctionProcess {
     #[serde(default = "FunctionProcess::default_parallel_process_count")]
     pub parallel_process_count: usize,
 
-    pub version: String,
+    pub version: Option<String>,
 
     pub language: SupportedLanguages,
 
@@ -61,7 +61,7 @@ impl FunctionProcess {
 
             parallel_process_count: function.source_data_model.config.parallelism,
 
-            version: function.version.clone(),
+            version: Some(function.version.clone()),
             source_primitive: PrimitiveSignature {
                 name: function.name.clone(),
                 primitive_type: PrimitiveTypes::Function,
@@ -78,25 +78,28 @@ impl FunctionProcess {
     }
 
     pub fn id(&self) -> String {
-        if let Some(target_topic_id) = &self.target_topic_id {
-            format!(
-                "{}_{}_{}_{}",
-                self.name, self.source_topic_id, target_topic_id, self.version
-            )
-        } else {
-            format!("{}_{}_{}", self.name, self.source_topic_id, self.version)
+        let base = match &self.target_topic_id {
+            Some(target_topic_id) => {
+                format!("{}_{}_{}", self.name, self.source_topic_id, target_topic_id)
+            }
+            None => format!("{}_{}", self.name, self.source_topic_id),
+        };
+
+        match &self.version {
+            Some(version) => format!("{}_{}", base, version),
+            None => base,
         }
     }
 
     pub fn expanded_display(&self) -> String {
         if let Some(target_topic_id) = &self.target_topic_id {
             format!(
-                "Reloading Function: from topic {} to topic {} - Version: {} with {} instances",
+                "Reloading Function: from topic {} to topic {} - Version: {:?} with {} instances",
                 self.source_topic_id, target_topic_id, self.version, self.parallel_process_count
             )
         } else {
             format!(
-                "Reloading Consumer Functions: from topic {} - Version: {} with {} instances",
+                "Reloading Consumer Functions: from topic {} - Version: {:?} with {} instances",
                 self.source_topic_id, self.version, self.parallel_process_count
             )
         }
@@ -122,7 +125,7 @@ impl FunctionProcess {
             target_columns: vec![],
             executable: self.executable.to_str().unwrap_or_default().to_string(),
             parallel_process_count: Some(self.parallel_process_count as i32),
-            version: self.version.clone(),
+            version: self.version.clone().unwrap_or_default(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -137,7 +140,7 @@ impl FunctionProcess {
             executable: executable.clone(),
             language: SupportedLanguages::from_file_path(&executable),
             parallel_process_count: proto.parallel_process_count.unwrap_or(1) as usize,
-            version: proto.version,
+            version: Some(proto.version),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }

@@ -1789,9 +1789,9 @@ struct PartialTopic {
     pub partition_count: usize,
     pub transformation_targets: Vec<TransformationTarget>,
     pub target_table: Option<String>,
-    pub has_consumers: bool,
     pub target_table_version: Option<String>,
     pub version: Option<String>,
+    pub consumers: Vec<Consumer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1810,6 +1810,12 @@ pub struct WriteTo {
 pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
+    pub version: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Consumer {
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2055,9 +2061,9 @@ impl PartialInfrastructureMap {
                 .find(|topic| topic.name == target_topic_name)
                 .expect(not_found);
 
+            // TODO: Remove data model from api endpoints when dmv1 is removed
             let data_model = crate::framework::data_model::model::DataModel {
                 name: partial_api.name.clone(),
-                // TODO: what is this version?
                 version: Version::from_string("0.0".to_string()),
                 config: crate::framework::data_model::config::DataModelConfig {
                     ingestion: crate::framework::data_model::config::IngestionConfig {
@@ -2232,8 +2238,7 @@ impl PartialInfrastructureMap {
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: target_topic.partition_count,
-                    // TODO: what is this version? topic? which one?
-                    version: "0.0".to_string(),
+                    version: transformation_target.version.clone(),
                     source_primitive: PrimitiveSignature {
                         name: process_name.clone(),
                         primitive_type: PrimitiveTypes::Function,
@@ -2243,7 +2248,7 @@ impl PartialInfrastructureMap {
                 function_processes.insert(function_process.id(), function_process);
             }
 
-            if source_partial_topic.has_consumers {
+            for consumer in &source_partial_topic.consumers {
                 let function_process = FunctionProcess {
                     // In dmv1, consumer process has the id format!("{}_{}_{}", self.name, self.source_topic_id, self.version)
                     name: topic_name.clone(),
@@ -2252,8 +2257,7 @@ impl PartialInfrastructureMap {
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: source_partial_topic.partition_count,
-                    // TODO pass through version from the TS / PY api
-                    version: "0.0".to_string(),
+                    version: consumer.version.clone(),
                     source_primitive: PrimitiveSignature {
                         name: topic_name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,

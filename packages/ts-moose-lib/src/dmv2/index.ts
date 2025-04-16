@@ -63,6 +63,14 @@ type SyncOrAsyncTransform<T, U> = (
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
 type Consumer<T> = (record: T) => Promise<void> | void;
 
+export interface TransformConfig {
+  version?: string;
+}
+
+export interface ConsumerConfig {
+  version?: string;
+}
+
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   constructor(name: string, config?: StreamConfig<T>);
 
@@ -87,20 +95,43 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
 
   _transformations = new Map<
     string,
-    [Stream<any>, SyncOrAsyncTransform<T, any>]
+    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig][]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
-  _consumers = new Array<Consumer<T>>();
+  _consumers = new Array<{ consumer: Consumer<T>; config: ConsumerConfig }>();
 
   addTransform = <U>(
     destination: Stream<U>,
     transformation: SyncOrAsyncTransform<T, U>,
+    config?: TransformConfig,
   ) => {
-    this._transformations.set(destination.name, [destination, transformation]);
+    const transformConfig = config ?? {};
+
+    if (this._transformations.has(destination.name)) {
+      const existingTransforms = this._transformations.get(destination.name)!;
+      const hasVersion = existingTransforms.some(
+        ([_, __, cfg]) => cfg.version === transformConfig.version,
+      );
+
+      if (!hasVersion) {
+        existingTransforms.push([destination, transformation, transformConfig]);
+      }
+    } else {
+      this._transformations.set(destination.name, [
+        [destination, transformation, transformConfig],
+      ]);
+    }
   };
 
-  addConsumer = (consumer: Consumer<T>) => {
-    this._consumers.push(consumer);
+  addConsumer = (consumer: Consumer<T>, config?: ConsumerConfig) => {
+    const consumerConfig = config ?? {};
+    const hasVersion = this._consumers.some(
+      (existing) => existing.config.version === consumerConfig.version,
+    );
+
+    if (!hasVersion) {
+      this._consumers.push({ consumer, config: consumerConfig });
+    }
   };
 
   routed = (values: ZeroOrMany<T>) => new RoutedMessage(this, values);

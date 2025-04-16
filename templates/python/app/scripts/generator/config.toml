@@ -1,4 +1,4 @@
-name = "ingest-foo"
+name = "generator"
 timeout = "1h"
 retries = 3
 schedule = ""

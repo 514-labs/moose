@@ -1,8 +1,7 @@
 
 # This file is where you can define your API templates for consuming your data
 
-from moose_lib import MooseClient
-from moose_lib.dmv2 import ConsumptionApi
+from moose_lib import MooseClient, ConsumptionApi
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.views.bar_aggregated import barAggregatedMV
@@ -62,3 +61,5 @@ def run(client: MooseClient, params: QueryParams):
    
     return client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
 
+
+bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)

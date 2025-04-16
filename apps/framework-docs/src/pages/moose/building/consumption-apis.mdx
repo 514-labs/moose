@@ -1,4 +1,4 @@
-import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python } from "@/components";
+import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python , ToggleBlock} from "@/components";
 
 # Consumption APIs
 <LanguageSwitcher />
@@ -33,41 +33,71 @@ Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfac
 <TypeScript>
 ```ts filename="ExampleApi.ts" copy
 import { ConsumptionApi } from "@514labs/moose-lib";
+import { SourcePipeline } from "path/to/SourcePipeline"; 
 
+// Define the query parameters
 interface QueryParams {
   filterField: string;
   maxResults: number;
 }
 
+// Model the query result type
 interface ResultItem {
   id: number;
   name: string;
   value: number;
 }
 
-type ResponseBody = ResultItem[];
 
-const exampleApi = new ConsumptionApi<QueryParams, ResponseBody[]>("example_endpoint",  
+const SourceTable = SourcePipeline.table!; // Use `!` to assert that the table is not null
+const cols = SourceTable.columns;
+
+// Define the result type as an array of the result item type
+const exampleApi = new ConsumptionApi<QueryParams, ResultItem[]>("example_endpoint",  
     async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
         const query = sql`
         SELECT 
-          id,
-          name,
-          value
-        FROM example_table
+          ${cols.id},
+          ${cols.name},
+          ${cols.value}
+        FROM ${SourceTable}
         WHERE category = ${filterField}
         LIMIT ${maxResults}`;
         
-        const resultSet = await client.query.execute<ResponseBody>(query);
-        return await resultSet.json() as ResponseBody[];
+        // Set the result type to the type of the each row in the result set
+        const resultSet = await client.query.execute<ResultItem>(query);
+
+        // Return the result set as an array of the result item type
+        return await resultSet.json();
     });
 ```
+<ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
+```ts filename="SourcePipeline.ts" copy
+import { IngestPipeline } from "@514labs/moose-lib";
+
+interface SourceSchema {
+  id: number;
+  name: string;
+  value: number;
+}
+
+export const SourcePipeline = new IngestPipeline<SourceSchema>("Source" {
+  ingest: false,
+  stream: true,
+  table: true,
+})
+```
+</ToggleBlock>
+
 </TypeScript>
 
 <Python>
 ```python filename="ExampleApi.py" copy
 from moose_lib import ConsumptionApi
 from pydantic import BaseModel
+
+## Import the source pipeline
+from app.path.to.SourcePipeline import SourcePipeline
 
 # Define the query parameters
 class QueryParams(BaseModel):
@@ -78,15 +108,46 @@ class QueryParams(BaseModel):
 class ResponseBody(BaseModel):
     id: int
     name: str
+    value: float
+
+
+SourceTable = SourcePipeline.get_table()
 
 # Define the route handler function
-def run(params: QueryParams) -> ResponseBody:
-    ## Your logic here...
-    return ResponseBody(id=1, name="Example")
+def run(client: MooseClient, params: QueryParams) -> list[ResponseBody]:
+    query = f"""
+    SELECT 
+      id
+      name,
+      value
+    FROM {SourceTable.name}
+    WHERE category = {params.filterField}
+    LIMIT {params.maxResults}
+    """
+
+    return client.query.execute(query, {"filterField": params.filterField, "maxResults": params.maxResults})
 
 # Create the API
 example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
 ```
+<ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
+```python filename="SourcePipeline.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, Key
+from pydantic import BaseModel
+
+class SourceSchema(BaseModel):
+  id: Key[int]
+  name: str
+  value: float
+
+SourcePipeline = IngestPipeline<SourceSchema>("Source", IngestPipelineConfig(
+  ingest=False,
+  stream=True,
+  table=True,
+))
+```
+</ToggleBlock>
+
 </Python>
 
 The `ConsumptionApi` class takes:
@@ -133,11 +194,12 @@ Define your API's parameters as a Pydantic model:
 
 ```python filename="ExampleQueryParams.py" copy
 from pydantic import BaseModel
+from typing import Optional
 
 class QueryParams(BaseModel):
     filterField: str
     maxResults: int
-    optionalParam?: str | None = None
+    optionalParam: Optional[str] = None
 ```
 </Python>
 
@@ -280,22 +342,20 @@ class QueryParams(BaseModel):
 Consunmption API route handlers are regular functions, so you can implement whatever arbitrary logic you want inside these functions. The primary purpose of the handler function is to construct a SQL query and return the results to the client:
 
 <TypeScript>
-```ts filename="/apis/getBar.ts" copy
-import {
-  createConsumptionApi,
-  ConsumptionHelpers as CH,
-} from "@514labs/moose-lib";
+```ts filename="/apis/getBar.ts" copy {33}{38}
+import { ConsumptionApi } from "@514labs/moose-lib";
+import { BarAggregatedMV } from "../views/barAggregated";
 import { tags } from "typia";
 
-// Define expected parameters and their types
+// This file is where you can define your APIs to consume your data
 interface QueryParams {
-  orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
+  orderBy?: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
   limit?: number;
-  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
-  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  startDay?: number & tags.Type<"int32">;
+  endDay?: number & tags.Type<"int32">;
 }
 
-interface ResponseBody {
+interface ResponseData {
   dayOfMonth: number;
   totalRows?: number;
   rowsWithText?: number;
@@ -303,58 +363,100 @@ interface ResponseBody {
   totalTextLength?: number;
 }
 
-// ConsumptionApi uses compile time code generation to generate a parser for QueryParams
-const myApi = new ConsumptionApi<QueryParams, ResponseBody>("my_api_route",
+// Utility to get the columns of the target table
+const cols = BarAggregatedMV.targetTable.columns
+
+export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
+  "bar",
   async (
     { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
-    { client, sql }
-  ): Promise<ResponseBody[]> => {
+    { client, sql },
+  ) => {
     const query = sql`
-      SELECT 
-        dayOfMonth,
-        ${CH.column(orderBy)}
-      FROM BarAggregated_MV
-      WHERE 
-        dayOfMonth >= ${startDay} 
-        AND dayOfMonth <= ${endDay}
-      ORDER BY ${CH.column(orderBy)} DESC
-      LIMIT ${limit}
-    `;
+        SELECT 
+          ${cols.dayOfMonth},
+          ${cols[orderBy]}
+        FROM ${BarAggregatedMV.targetTable}
+        WHERE 
+          dayOfMonth >= ${startDay} 
+          AND dayOfMonth <= ${endDay}
+        ORDER BY ${cols[orderBy]} DESC
+        LIMIT ${limit}
+      `;
 
-    // Execute query and return results
-    const data = await client.query.execute<ResponseBody[]>(query);
-    return await data.json() as ResponseBody[];
-  }
+    const data = await client.query.execute<ResponseData>(query);
+    return await data.json();
+  },
 );
+
 ```
 </TypeScript>
 
 <Python>
 ```python filename="/apis/get-bar.py" copy
-from moose_lib import ConsumptionApi
-from app.views.bar_aggregated import BarAggregatedMV
 
-def run(params: QueryParams, client: MooseClient) -> None:
+from moose_lib import MooseClient, ConsumptionApi
+from pydantic import BaseModel, Field
+from typing import Optional
+from app.views.bar_aggregated import barAggregatedMV
+
+# Query params are defined as Pydantic models and are validated automatically
+class QueryParams(BaseModel):
+    order_by: Optional[str] = Field(
+        default="total_rows",
+        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
+        description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
+    )
+    limit: Optional[int] = Field(
+        default=5,
+        gt=0,
+        le=100,
+        description="Must be between 1 and 100"
+    )
+    start_day: Optional[int] = Field(
+        default=1,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+    end_day: Optional[int] = Field(
+        default=31,
+        gt=0,
+        le=31,
+        description="Must be between 1 and 31"
+    )
+
+class QueryResult(BaseModel):
+    day_of_month: int
+    total_rows: int
+    rows_with_text: int
+    max_text_length: int
+    total_text_length: int
+    
+    
+## The run function is where you can define your API logic
+def run(client: MooseClient, params: QueryParams):
+    
+    start_day = params.start_day
+    end_day = params.end_day
+    limit = params.limit
+    order_by = params.order_by
+    
     query = f"""
     SELECT 
-      dayOfMonth,
-      {orderBy}
-    FROM {BarAggregatedMV.target_table.name}
-    WHERE 
-      dayOfMonth >= {startDay} 
-      AND dayOfMonth <= {endDay}
-    ORDER BY {orderBy} DESC
+        day_of_month,
+        {order_by}
+    FROM {barAggregatedMV.target_table.name} 
+    WHERE day_of_month >= {start_day} 
+    AND day_of_month <= {end_day} 
+    ORDER BY {order_by} DESC
     LIMIT {limit}
-    """
-    data = client.query.execute(query, {
-        "orderBy": params.orderBy,
-        "startDay": params.startDay,
-        "endDay": params.endDay,
-        "limit": params.limit
-    })
-    return data
+    """    
+   
+    return client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
 
-api = ConsumptionApi[QueryParams, ResponseBody](name="my_api_route", query_function=run)
+
+bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
 ```
 </Python>
 
@@ -365,19 +467,37 @@ Moose provides an instance of a `MooseClient` to your route handler function. Th
 <TypeScript>
 
 ```ts filename="ExampleApi.ts" copy {1}
+import { ConsumptionUtil } from "@514labs/moose-lib";
+import { UserTable } from "./UserTable";
 
 async function handler({ client, sql }: ConsumptionUtil) {
-  const query = sql`SELECT * FROM users`;
-  const data = await client.query.execute(query);
+  const query = sql`SELECT * FROM ${UserTable}`;
+  const data = await client.query.execute<UserSchema>(query);
 }
 ```
+
+Pass the type of the result to the `execute<T>` method to ensure type safety.
+
+<ToggleBlock openText="Show UserTable" closeText="Hide UserTable">
+```ts filename="UserTable.ts" copy
+import { OlapTable } from "@514labs/moose-lib";
+
+interface UserSchema {
+  id: Key<number>
+  name: string
+  email: string
+}
+
+export const UserTable = new OlapTable<UserSchema>("users")
+```
+</ToggleBlock>
 </TypeScript>
 
 <Python>
-The MooseClient enables you to execute queries and other database operations. Specifically by using `f-string` interpolation to build your queries:
+The MooseClient enables you to execute queries and other database operations. Specifically by using `f-strings` to build your queries. The client will automatically interpolate the parameters into the query
 ```python filename="ExampleApi.py" copy {1}
 
-def run(params: QueryParams, client: MooseClient) -> None:
+def run(client: MooseClient, params: QueryParams) -> None:
     query = f"SELECT * FROM users"
     data = client.query.execute(query)
 ```
@@ -399,21 +519,35 @@ The MooseClient enables you to execute queries and other database operations. Sp
 
 <TypeScript>
 ```ts filename="BasicInterpolation.ts" copy
+import { UserTable } from "./UserTable";
 
 const minAge = 18;
 const userRole = "admin";
 
 const query = sql`
-  SELECT * FROM users 
+  SELECT * FROM ${UserTable}
   WHERE age > ${minAge} 
   AND role = ${userRole}
 `;
 
 // MooseClient handles type conversion and escaping
-const data = await client.query.execute(query);
+const data = await client.query.execute<UserSchema>(query);
 
 // EXECUTION: SELECT * FROM users WHERE age > 18 AND role = 'admin'
 ```
+<ToggleBlock openText="Show UserTable" closeText="Hide UserTable">
+```ts filename="UserTable.ts" copy
+import { OlapTable } from "@514labs/moose-lib";
+
+interface UserSchema {
+  id: Key<number>
+  name: string
+  email: string
+}
+
+export const UserTable = new OlapTable<UserSchema>("users")
+```
+</ToggleBlock>
 </TypeScript>
 
 <Python>
@@ -438,37 +572,64 @@ import { userTable } from "../tables/userTable";
 
 const query = sql`
   SELECT 
-    ${userTable.columns.id.name},
-    ${userTable.columns.name.name},
-    ${userTable.columns.email.name}
-  FROM ${userTable.name}
-  WHERE ${userTable.columns.isActive.name} = true
+    ${UserTable.columns.id},
+    ${UserTable.columns.name},
+    ${UserTable.columns.email}
+  FROM ${UserTable}
+  WHERE ${UserTable.columns.isActive} = true
 `;
 
 // EXECUTION: SELECT id, name, email FROM users WHERE is_active = true
 ```
-</TypeScript>
+<ToggleBlock openText="Show UserTable" closeText="Hide UserTable">
+```ts filename="UserTable.ts" copy
+import { OlapTable } from "@514labs/moose-lib";
 
-<Python>
-```python filename="ExampleTableColumnQuery.py" copy
-from tables import userTable
+interface UserSchema {
+  id: Key<number>
+  name: string
+  email: string
+}
 
-query = f"""
-  SELECT 
-    {userTable.columns["id"]}, 
-    {userTable.columns["name"]}, 
-    {userTable.columns["email"]} 
-  FROM {userTable.name} 
-  WHERE {userTable.columns["isActive"]} = true
-"""
-
-data = client.query.execute(query)
+export const UserTable = new OlapTable<UserSchema>("users")
 ```
-</Python>
+</ToggleBlock>
 
 <Callout type="info" title="Type Safety">
 Static type checking ensures you only reference columns that actually exist.
 </Callout>
+
+</TypeScript>
+
+<Python>
+```python filename="ExampleTableColumnQuery.py" copy
+from app import UserTable
+
+query = f"""
+  SELECT 
+    id, 
+    name, 
+    email 
+  FROM {UserTable.name} 
+  WHERE is_active = true
+"""
+
+data = client.query.execute(query)
+```
+<ToggleBlock openText="Show UserTable" closeText="Hide UserTable">
+```python filename="UserTable.py" copy
+from moose_lib import OlapTable
+
+class UserSchema(BaseModel):
+  id: Key[int]
+  name: str
+  email: str
+
+UserTable = OlapTable[UserSchema]("users")
+```
+</ToggleBlock>
+</Python>
+
 
 ### Advanced Query Patterns
 
@@ -530,8 +691,8 @@ from app.tables import myTable
 
 colName = "id"
 
-query = f"""SELECT {myTable.columns[colName]} FROM {myTable.name}"""
-data = client.query.execute(query)
+query = f"""SELECT {colName} FROM {myTable.name}"""
+data = client.query.execute(query, {"colName": colName})
 
 ## MooseClient will automatically interpolate the column name into the query as a valid ClickHouse identifier
 ## EXECUTION: SELECT id FROM users
@@ -736,7 +897,7 @@ class ResponseItem(BaseModel):
     isHighValue: bool
     date: str
 
-def run(params: QueryParams, client: MooseClient) -> list[ResponseItem]:
+def run(client: MooseClient, params: QueryParams):
     # 1. Fetch raw data
     query = f"""
     SELECT id, name, value, timestamp
@@ -766,7 +927,7 @@ def run(params: QueryParams, client: MooseClient) -> list[ResponseItem]:
     return processed_results
 
 # Create the API
-process_data_api = ConsumptionApi[QueryParams, list[ResponseItem]](name="process_data_endpoint", query_function=run)
+process_data_api = ConsumptionApi[QueryParams, ResponseItem](name="process_data_endpoint", query_function=run)
 ```
 </Python>
 

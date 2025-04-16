@@ -4,6 +4,10 @@ post_install_print = """
 📂 Go to your project directory:
     $ cd {project_dir}
 
+🥄 Create a virtual environment (optional, recommended):
+    $ python3 -m venv .venv
+    $ source .venv/bin/activate
+
 📦 Install Dependencies:
     $ pip install -r ./requirements.txt
 

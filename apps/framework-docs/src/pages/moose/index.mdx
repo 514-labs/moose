@@ -35,7 +35,22 @@ import { paths } from "@/lib/paths";
 
 # Moose
 
-Moose is an open source framework for developing data products & APIs on OLAP/streaming infra using native TypeScript/Python
+## What is Moose?
+
+Moose is an open source framework for building analytical backends—to power user-facing or operational analytics—using 
+native TypeScript/Python.
+
+You use Moose's TS/Py primitives to define the logical components of your analytical backend: including data models, 
+transformations, and API endpoints. These primitives become reusable and type-safe across your entire full stack application.
+
+Under the hood, Moose implements your components by abstracting, configuring, and orchestrating your OLAP and streaming infrastructure. 
+This allows you to focus on the unique and interesting parts of your analytical app, instead of spending time on integration 
+and boilerplate. 
+
+At the infrastructure level, Moose currently supports a best-in-class open source analytical stack, including 
+[Clickhouse](https://github.com/ClickHouse/ClickHouse) (realtime OLAP database), 
+[RedPanda](https://github.com/redpanda-data/redpanda) (streaming), and 
+[Temporal](https://github.com/temporalio/temporal) (orchstration).
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
   <Link href={paths.quickstart}>
@@ -83,14 +98,14 @@ Moose is an open source framework for developing data products & APIs on OLAP/st
     href={paths.consumptionApis}
     Icon={Icons.api}
     title="Analytics APIs"
-    description="Build and expose fully-typed APIs to consume your processed data"
+    description="Build and expose secure, authenticated, fully-typed APIs to consume your processed data"
   />
   
   <FeatureCard
     href={paths.workflows}
     Icon={Icons.workflows}
-    title="Workflow Orchestration"
-    description="Schedule jobs or trigger on events using simple, language-native workflow definitions"
+    title="Script Orchestration"
+    description="Schedule jobs or trigger scripts on events using simple, language-native workflow definitions"
   />
 </FeatureGrid>
 

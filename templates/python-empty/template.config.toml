@@ -9,7 +9,7 @@ post_install_print = """
     $ source .venv/bin/activate
 
 📦 Install Dependencies:
-    $ pip install .
+    $ pip install -r ./requirements.txt
 
 🛠️ Start dev server:
     $ moose dev

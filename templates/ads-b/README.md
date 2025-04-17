@@ -2,6 +2,12 @@ This is a [Moose](https://docs.fiveonefour.com/moose) project bootstrapped with 
 
 ## Getting Started
 
+Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* [Node](https://nodejs.org/en)
+* [An Anthropic API Key](https://docs.anthropic.com/en/api/getting-started)
+* [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download)
+
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
 2. Create project `aurora init aircraft ads-b`
 3. Install dependencies: `cd aircraft && npm install`

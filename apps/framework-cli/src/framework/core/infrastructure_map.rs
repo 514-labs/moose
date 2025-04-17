@@ -1882,7 +1882,7 @@ mod diff_tests {
 
     #[test]
     fn test_column_addition() {
-        let mut before = create_test_table("test", "1.0");
+        let before = create_test_table("test", "1.0");
         let mut after = create_test_table("test", "1.0");
 
         after.columns.push(Column {

@@ -1,3 +1,38 @@
+//! Partial Infrastructure Map Module
+//!
+//! This module provides functionality for loading and converting infrastructure definitions from user code
+//! into a complete infrastructure map. It serves as a bridge between user-defined infrastructure specifications
+//! (typically written in TypeScript or Python) and the internal Rust representation used by the framework.
+//!
+//! # Key Components
+//!
+//! * [`PartialInfrastructureMap`] - The main structure that represents a partially defined infrastructure
+//! * [`PartialTable`], [`PartialTopic`], [`PartialIngestApi`], [`PartialEgressApi`] - Components for different infrastructure elements
+//! * [`DmV2LoadingError`] - Error type for handling failures during infrastructure loading
+//!
+//! # Usage
+//!
+//! The module is primarily used during the framework's initialization phase to:
+//! 1. Load infrastructure definitions from user code
+//! 2. Validate and transform these definitions
+//! 3. Create a complete infrastructure map for the framework to use
+//!
+//! # Example
+//!
+//! ```no_run
+//! use framework_cli::framework::core::partial_infrastructure_map::PartialInfrastructureMap;
+//! use tokio::process::Child;
+//! use std::path::Path;
+//!
+//! async fn load_infrastructure(process: Child, file_name: &str) {
+//!     let partial_map = PartialInfrastructureMap::from_subprocess(process, file_name).await.unwrap();
+//!     let complete_map = partial_map.into_infra_map(
+//!         SupportedLanguages::TypeScript,
+//!         Path::new("main.ts")
+//!     );
+//! }
+//! ```
+
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -30,6 +65,10 @@ use super::{
     infrastructure_map::{InfrastructureMap, PrimitiveSignature, PrimitiveTypes, SqlResource},
 };
 
+/// Represents a table definition from user code before it's converted into a complete [`Table`].
+///
+/// This structure captures the essential properties needed to create a table in the infrastructure,
+/// including column definitions, ordering, and deduplication settings.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialTable {
@@ -41,6 +80,10 @@ struct PartialTable {
     pub version: Option<String>,
 }
 
+/// Represents a topic definition from user code before it's converted into a complete [`Topic`].
+///
+/// Topics are message queues that can be used for streaming data between different parts of the system.
+/// They can have multiple consumers and transformation targets.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialTopic {
@@ -55,12 +98,21 @@ struct PartialTopic {
     pub consumers: Vec<Consumer>,
 }
 
+/// Specifies the type of destination for write operations.
+///
+/// Currently only supports stream destinations, but could be extended for other types
+/// of write targets in the future.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WriteToKind {
+    /// Indicates that data should be written to a stream (topic)
     Stream,
 }
 
+/// Represents an ingestion API endpoint definition before conversion to a complete [`ApiEndpoint`].
+///
+/// Ingestion APIs are HTTP endpoints that accept data and write it to a specified destination
+/// (typically a topic).
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialIngestApi {
@@ -71,6 +123,9 @@ struct PartialIngestApi {
     pub version: Option<String>,
 }
 
+/// Represents an egress API endpoint definition before conversion to a complete [`ApiEndpoint`].
+///
+/// Egress APIs are HTTP endpoints that allow consumers to query and retrieve data from the system.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialEgressApi {
@@ -80,12 +135,18 @@ struct PartialEgressApi {
     pub version: Option<String>,
 }
 
+/// Specifies a write destination for data ingestion.
+///
+/// Contains both the type of destination and its identifier.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WriteTo {
     pub kind: WriteToKind,
     pub name: String,
 }
 
+/// Specifies a transformation target for topic data.
+///
+/// Used to define where transformed data should be written and optionally specify a version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransformationTarget {
     pub kind: WriteToKind,
@@ -93,28 +154,58 @@ pub struct TransformationTarget {
     pub version: Option<String>,
 }
 
+/// Configuration for a topic consumer.
+///
+/// Currently only contains version information but could be extended with additional
+/// consumer-specific configuration in the future.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Consumer {
     pub version: Option<String>,
 }
 
+/// Errors that can occur during the loading of Data Model V2 infrastructure definitions.
+///
+/// This error type follows the Rust error handling best practices and provides
+/// specific error variants for different failure modes.
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to load Data Model V2")]
 #[non_exhaustive]
 pub enum DmV2LoadingError {
+    /// Errors from Tokio async I/O operations
     Tokio(#[from] tokio::io::Error),
+
+    /// Errors when collecting Moose resources from user code
     #[error("Error collecting Moose resources from {user_code_file_name}:\n{message}")]
     StdErr {
         user_code_file_name: String,
         message: String,
     },
+
+    /// JSON parsing errors
     JsonParsing(#[from] serde_json::Error),
+
+    /// Catch-all for other types of errors
     #[error("{message}")]
-    Other {
-        message: String,
-    },
+    Other { message: String },
 }
 
+/// Represents a partial infrastructure map loaded from user code.
+///
+/// This structure is the main entry point for loading and converting infrastructure
+/// definitions from user code into the framework's internal representation.
+///
+/// # Loading Process
+///
+/// 1. User code is executed in a subprocess
+/// 2. The subprocess outputs JSON describing the infrastructure
+/// 3. The JSON is parsed into this structure
+/// 4. The structure is converted into a complete [`InfrastructureMap`]
+///
+/// # Fields
+///
+/// All fields are optional HashMaps containing partial definitions for different
+/// infrastructure components. During conversion to a complete map, these partial
+/// definitions are validated and transformed into their complete counterparts.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialInfrastructureMap {
@@ -141,6 +232,24 @@ pub struct PartialInfrastructureMap {
 }
 
 impl PartialInfrastructureMap {
+    /// Creates a new [`PartialInfrastructureMap`] by executing and reading from a subprocess.
+    ///
+    /// This method is used to load infrastructure definitions from user code written in languages
+    /// like TypeScript or Python. The subprocess is expected to output JSON in a specific format
+    /// that can be parsed into a [`PartialInfrastructureMap`].
+    ///
+    /// # Arguments
+    ///
+    /// * `process` - The subprocess that will output the infrastructure definition
+    /// * `user_code_file_name` - Name of the file containing the user's code
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`DmV2LoadingError`] if:
+    /// * The subprocess fails to execute
+    /// * The subprocess output cannot be parsed
+    /// * Required dependencies are missing
+    /// * The output format is invalid
     pub async fn from_subprocess(
         process: Child,
         user_code_file_name: &str,
@@ -199,6 +308,21 @@ impl PartialInfrastructureMap {
         }
     }
 
+    /// Converts this partial infrastructure map into a complete [`InfrastructureMap`].
+    ///
+    /// This method performs the final transformation of user-defined infrastructure components
+    /// into their complete, validated forms. It ensures all references between components are
+    /// valid and sets up the necessary processes and workers.
+    ///
+    /// # Arguments
+    ///
+    /// * `language` - The programming language of the user's code
+    /// * `main_file` - Path to the main file containing the user's code
+    ///
+    /// # Returns
+    ///
+    /// Returns a complete [`InfrastructureMap`] containing all the validated and transformed
+    /// infrastructure components.
     pub fn into_infra_map(
         self,
         language: SupportedLanguages,
@@ -233,6 +357,10 @@ impl PartialInfrastructureMap {
         }
     }
 
+    /// Converts partial table definitions into complete [`Table`] instances.
+    ///
+    /// This method handles versioning and naming of tables, ensuring that versioned tables
+    /// have appropriate suffixes in their names.
     fn convert_tables(&self) -> HashMap<String, Table> {
         self.tables
             .values()
@@ -264,6 +392,10 @@ impl PartialInfrastructureMap {
             .collect()
     }
 
+    /// Converts partial topic definitions into complete [`Topic`] instances.
+    ///
+    /// Creates topics with appropriate retention periods, partition counts, and other
+    /// configuration settings.
     fn convert_topics(&self) -> HashMap<String, Topic> {
         self.topics
             .values()
@@ -290,6 +422,15 @@ impl PartialInfrastructureMap {
             .collect()
     }
 
+    /// Converts partial API endpoint definitions into complete [`ApiEndpoint`] instances.
+    ///
+    /// Handles both ingestion and egress API endpoints, setting up appropriate paths,
+    /// methods, and data models.
+    ///
+    /// # Arguments
+    ///
+    /// * `main_file` - Path to the main file containing the user's code
+    /// * `topics` - Map of available topics that API endpoints might reference
     fn convert_api_endpoints(
         &self,
         main_file: &Path,
@@ -395,6 +536,15 @@ impl PartialInfrastructureMap {
         api_endpoints
     }
 
+    /// Creates synchronization processes between topics and tables.
+    ///
+    /// These processes ensure that data from topics is properly synchronized to their
+    /// target tables, respecting versioning and other configuration settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `tables` - Map of available tables
+    /// * `topics` - Map of available topics
     fn create_topic_to_table_sync_processes(
         &self,
         tables: &HashMap<String, Table>,
@@ -446,6 +596,17 @@ impl PartialInfrastructureMap {
         sync_processes
     }
 
+    /// Creates function processes for transformations and consumers.
+    ///
+    /// Function processes handle data transformations between topics and process
+    /// data for consumers. This method sets up the necessary processes with
+    /// appropriate parallelism and versioning.
+    ///
+    /// # Arguments
+    ///
+    /// * `main_file` - Path to the main file containing the user's code
+    /// * `language` - The programming language of the user's code
+    /// * `topics` - Map of available topics
     fn create_function_processes(
         &self,
         main_file: &Path,

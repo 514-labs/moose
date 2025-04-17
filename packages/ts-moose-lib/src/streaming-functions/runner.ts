@@ -94,6 +94,14 @@ interface Logger {
   warn: (message: string) => void;
 }
 
+const logError = (logger: Logger, e: Error): void => {
+  logger.error(e.message);
+  const stack = e.stack;
+  if (stack) {
+    logger.error(stack);
+  }
+};
+
 /**
  * Maximum number of concurrent streaming operations, configurable via environment
  */
@@ -244,7 +252,7 @@ const handleMessage = async (
     // TODO: Track failure rate
     logger.error(`Failed to transform data`);
     if (e instanceof Error) {
-      logger.error(e.message);
+      logError(logger, e);
     }
   }
 
@@ -323,7 +331,7 @@ const sendMessages = async (
   } catch (e) {
     logger.error(`Failed to send transformed data`);
     if (e instanceof Error) {
-      logger.error(e.message);
+      logError(logger, e);
     }
     // This is needed for retries
     throw e;
@@ -727,13 +735,13 @@ export const runStreamingFunctions = async (
         } catch (e) {
           logger.error("Failed to start kafka consumer: ");
           if (e instanceof Error) {
-            logger.error(e.message);
+            logError(logger, e);
           }
         }
       } catch (e) {
         logger.error("Failed to start kafka producer: ");
         if (e instanceof Error) {
-          logger.error(e.message);
+          logError(logger, e);
         }
       }
 

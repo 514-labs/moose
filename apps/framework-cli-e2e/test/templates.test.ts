@@ -95,6 +95,39 @@ const utils = {
     });
   },
 
+  waitForDBWrite: async (
+    devProcess: ChildProcess,
+    tableName: string,
+    expectedRecords: number = 1,
+    timeout: number = 30000,
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      let writeConfirmed = false;
+      const expectedMessage = `[DB] ${expectedRecords} row(s) successfully written to DB table (${tableName})`;
+
+      devProcess.stdout?.on("data", async (data) => {
+        const output = data.toString();
+        console.log("Dev server output:", output);
+
+        if (!writeConfirmed && output.includes(expectedMessage)) {
+          resolve();
+          writeConfirmed = true;
+        }
+      });
+
+      devProcess.stderr?.on("data", (data) => {
+        console.error("Dev server stderr:", data.toString());
+      });
+
+      (async () => {
+        await setTimeoutAsync(timeout);
+        if (devProcess.killed || writeConfirmed) return;
+        console.error("DB write confirmation not received in time");
+        reject(new Error("DB write timeout"));
+      })();
+    });
+  },
+
   stopDevProcess: async (devProcess: ChildProcess | null): Promise<void> => {
     if (devProcess && !devProcess.killed) {
       console.log("Stopping dev process...");
@@ -310,7 +343,7 @@ describe("Moose Templates", () => {
         throw new Error(`${response.status}: ${text}`);
       }
 
-      await setTimeoutAsync(5000);
+      await utils.waitForDBWrite(devProcess!, "Bar", 1);
       await utils.verifyClickhouseData("Bar", eventId, "primaryKey");
       await utils.verifyConsumptionApi("bar?orderBy=totalRows", [
         {
@@ -465,7 +498,7 @@ describe("Moose Templates", () => {
         throw new Error(`${response.status}: ${text}`);
       }
 
-      await setTimeoutAsync(5000);
+      await utils.waitForDBWrite(devProcess!, "Bar", 1);
       await utils.verifyClickhouseData("Bar", eventId, "primary_key");
       await utils.verifyConsumptionApi("bar?order_by=total_rows", [
         {

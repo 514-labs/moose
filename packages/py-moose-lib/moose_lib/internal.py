@@ -15,6 +15,7 @@ model_config = ConfigDict(alias_generator=AliasGenerator(
 class Target(BaseModel):
     kind: Literal["stream"]
     name: str
+    version: Optional[str] = None
 
 class Consumer(BaseModel):
     version: Optional[str] = None
@@ -27,6 +28,7 @@ class TableConfig(BaseModel):
     order_by: List[str]
     deduplicate: bool
     engine: Optional[str]
+    version: Optional[str] = None
 
 class TopicConfig(BaseModel):
     model_config = model_config
@@ -34,6 +36,8 @@ class TopicConfig(BaseModel):
     name: str
     columns: List[Column]
     target_table: Optional[str] = None
+    target_table_version: Optional[str] = None
+    version: Optional[str] = None
     retention_period: int
     partition_count: int
     transformation_targets: List[Target]
@@ -47,7 +51,7 @@ class IngestApiConfig(BaseModel):
     columns: List[Column]
     format: str
     write_to: Target
-
+    version: Optional[str] = None
 
 class EgressApiConfig(BaseModel):
     model_config = model_config
@@ -55,7 +59,7 @@ class EgressApiConfig(BaseModel):
     name: str
     query_params: List[Column]
     response_schema: JsonSchemaValue
-
+    version: Optional[str] = None
 
 class SqlResourceConfig(BaseModel):
     model_config = model_config
@@ -95,25 +99,33 @@ def to_infra_map() -> dict:
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
-            engine=None if engine is None else engine.value
+            engine=None if engine is None else engine.value,
+            version=table.config.version
         )
 
     for name, stream in _streams.items():
         transformation_targets = [
-            Target(kind="stream", name=dest_name)
-            for dest_name, (destination, _) in stream.transformations.items()
+            Target(kind="stream", name=dest_name, version=transform.config.version)
+            for dest_name, transforms in stream.transformations.items()
+            for transform in transforms
+        ]
+
+        consumers = [
+            Consumer(version=consumer.config.version)
+            for consumer in stream.consumers
         ]
 
         topics[name] = TopicConfig(
             name=name,
             columns=_to_columns(stream._t),
             target_table=stream.config.destination.name if stream.config.destination else None,
+            target_table_version=stream.config.destination.config.version if stream.config.destination else None,
             retention_period=stream.config.retention_period,
             partition_count=stream.config.parallelism,
+            version=stream.config.version,
             transformation_targets=transformation_targets,
             has_multi_transform=stream._multipleTransformations is not None,
-            # TODO: Implement versioning
-            consumers=[Consumer()] if stream.has_consumers() else []
+            consumers=consumers
         )
 
     for name, api in _ingest_apis.items():
@@ -121,6 +133,7 @@ def to_infra_map() -> dict:
             name=name,
             columns=_to_columns(api._t),
             format=api.config.format.value,
+            version=api.config.version,
             write_to=Target(
                 kind="stream",
                 name=api.config.destination.name
@@ -131,7 +144,8 @@ def to_infra_map() -> dict:
         egress_apis[name] = EgressApiConfig(
             name=name,
             query_params=_to_columns(api.model_type),
-            response_schema=api.get_response_schema()
+            response_schema=api.get_response_schema(),
+            version=api.config.version
         )
 
     for name, resource in _sql_resources.items():

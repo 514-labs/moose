@@ -78,6 +78,7 @@ class OlapConfig(BaseModel):
     # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
     deduplicate: bool = False
     engine: Optional[ClickHouseEngines] = None
+    version: Optional[str] = None
 
 
 class OlapTable(TypedMooseResource, Generic[T]):
@@ -95,13 +96,36 @@ class StreamConfig(BaseModel):
     parallelism: int = 1
     retention_period: int = 60 * 60 * 24 * 7  # 7 days
     destination: Optional[OlapTable[Any]] = None
+    version: Optional[str] = None
 
+class TransformConfig(BaseModel):
+    """Configuration for transformations."""
+    version: Optional[str] = None
+
+class ConsumerConfig(BaseModel):
+    """Configuration for consumers."""
+    version: Optional[str] = None
 
 @dataclasses.dataclass
 class _RoutedMessage:
     """Internal class representing a message routed to a specific stream."""
     destination: "Stream[Any]"
     values: ZeroOrMany[Any]
+
+
+@dataclasses.dataclass
+class ConsumerEntry(Generic[T]):
+    """Internal class representing a consumer with its configuration."""
+    consumer: Callable[[T], None]
+    config: ConsumerConfig
+
+
+@dataclasses.dataclass
+class TransformEntry(Generic[T]):
+    """Internal class representing a transformation with its configuration."""
+    destination: "Stream[Any]"
+    transformation: Callable[[T], ZeroOrMany[Any]]
+    config: TransformConfig
 
 
 class Stream(TypedMooseResource, Generic[T]):
@@ -114,8 +138,8 @@ class Stream(TypedMooseResource, Generic[T]):
     - Optional connection to a destination table
     """
     config: StreamConfig
-    transformations: dict[str, Tuple["Stream[Any]", Callable[[T], ZeroOrMany[Any]]]]
-    consumers: list[Callable[[T], None]]
+    transformations: dict[str, list[TransformEntry[T]]]
+    consumers: list[ConsumerEntry[T]]
     _multipleTransformations: Optional[Callable[[T], list[_RoutedMessage]]] = None
 
     def __init__(self, name: str, config: StreamConfig = StreamConfig(), **kwargs):
@@ -126,13 +150,22 @@ class Stream(TypedMooseResource, Generic[T]):
         self.transformations = {}
         _streams[name] = self
 
-    def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]]):
+    def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]], config: TransformConfig = TransformConfig()):
         """Add a transformation that sends records to a single destination stream."""
-        self.transformations[destination.name] = (destination, transformation)
+        if destination.name in self.transformations:
+            existing_transforms = self.transformations[destination.name]
+            # Check if a transform with this version already exists
+            has_version = any(t.config.version == config.version for t in existing_transforms)
+            if not has_version:
+                existing_transforms.append(TransformEntry(destination=destination, transformation=transformation, config=config))
+        else:
+            self.transformations[destination.name] = [TransformEntry(destination=destination, transformation=transformation, config=config)]
 
-    def add_consumer(self, consumer: Callable[[T], None]):
+    def add_consumer(self, consumer: Callable[[T], None], config: ConsumerConfig = ConsumerConfig()):
         """Add a consumer that will be called for each record in the stream."""
-        self.consumers.append(consumer)
+        has_version = any(c.config.version == config.version for c in self.consumers)
+        if not has_version:
+            self.consumers.append(ConsumerEntry(consumer=consumer, config=config))
 
     def has_consumers(self) -> bool:
         """Check if the stream has any consumers."""
@@ -164,6 +197,7 @@ class Stream(TypedMooseResource, Generic[T]):
 class IngestConfig(BaseModel):
     """Basic ingestion configuration."""
     format: IngestionFormat = IngestionFormat.JSON
+    version: Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -171,6 +205,7 @@ class IngestConfigWithDestination[T: BaseModel]:
     """Ingestion configuration that includes a destination stream."""
     destination: Stream[T]
     format: IngestionFormat = IngestionFormat.JSON
+    version: Optional[str] = None
 
 
 class IngestPipelineConfig(BaseModel):
@@ -178,6 +213,7 @@ class IngestPipelineConfig(BaseModel):
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
     ingest: bool | IngestConfig = True
+    version: Optional[str] = None
 
 
 class IngestApi(TypedMooseResource, Generic[T]):
@@ -227,12 +263,16 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         if config.table:
             table_config = OlapConfig() if config.table is True else config.table
+            if config.version:
+                table_config.version = config.version
             self.table = OlapTable(name, table_config, t=self._t)
         if config.stream:
             stream_config = StreamConfig() if config.stream is True else config.stream
             if config.table and stream_config.destination is not None:
                 raise ValueError("The destination of the stream should be the table created in the IngestPipeline")
             stream_config.destination = self.table
+            if config.version:
+                stream_config.version = config.version
             self.stream = Stream(name, stream_config, t=self._t)
         if config.ingest:
             if self.stream is None:
@@ -241,13 +281,15 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
                 IngestConfig() if config.ingest is True else config.ingest
             ).model_dump()
             ingest_config_dict["destination"] = self.stream
+            if config.version:
+                ingest_config_dict["version"] = config.version
             ingest_config = IngestConfigWithDestination(**ingest_config_dict)
             self.ingest_api = IngestApi(name, ingest_config, t=self._t)
 
 
 class EgressConfig(BaseModel):
     """Configuration for Consumption APIs."""
-    pass
+    version: Optional[str] = None
 
 
 class ConsumptionApi(BaseTypedResource, Generic[T, U]):

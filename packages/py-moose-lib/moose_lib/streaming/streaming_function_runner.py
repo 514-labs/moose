@@ -150,7 +150,7 @@ def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str
 
     return run_input_type, streaming_function_run
 
-def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[type, Callable]:
+def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[type, list[Callable]]:
     """
     Load a DMV2 streaming function by finding the stream transformation that matches
     the source and target topics.
@@ -160,9 +160,9 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
         function_file_name: Name of the main.py file (without extension)
         
     Returns:
-        Tuple of (input_type, transformation_function) where:
+        Tuple of (input_type, transformation_functions) where:
             - input_type is the Pydantic model type of the source stream
-            - transformation_function is the function that transforms source to target data
+            - transformation_functions is a list of functions that transform source to target data
             
     Raises:
         SystemExit: If module import fails or if no matching transformation is found
@@ -182,16 +182,22 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
             continue
 
         if stream.has_consumers() and target_topic is None:
-            return stream.model_type, stream.consumers[0]
+            consumers = [entry.consumer for entry in stream.consumers]
+            if not consumers:
+                continue
+            return stream.model_type, consumers
 
         # Check each transformation in the stream
-        for dest_stream_py_name, (_, transform_fn) in stream.transformations.items():
+        for dest_stream_py_name, transform_entries in stream.transformations.items():
             # The source topic name should match the stream name
             # The destination topic name should match the destination stream name
             if source_py_stream_name == source_topic.topic_name_to_stream_name() and dest_stream_py_name == target_topic.topic_name_to_stream_name():
                 # Found the matching transformation
-                return stream.model_type, transform_fn
-                
+                transformations = [entry.transformation for entry in transform_entries]
+                if not transformations:
+                    continue
+                return stream.model_type, transformations
+
     # If we get here, no matching transformation was found
     cli_log(CliLogData(
         action="Function", 
@@ -397,12 +403,13 @@ def main():
     def process_messages():
         try:
             streaming_function_input_type = None
-            streaming_function_callable = None
+            streaming_function_callables = None
             if args.dmv2:
-                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv2(function_file_dir, function_file_name)
+                streaming_function_input_type, streaming_function_callables = load_streaming_function_dmv2(function_file_dir, function_file_name)
             else:
                 streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv1(function_file_dir, function_file_name)
 
+                streaming_function_callables = [streaming_function_callable]
 
             # Initialize Kafka connections in the processing thread
             consumer = create_consumer()
@@ -435,18 +442,23 @@ def main():
                             input_data = parse_input(streaming_function_input_type, message.value)
 
                             # Run the flow
-                            output_data = streaming_function_callable(input_data)
+                            all_outputs = []
+                            for streaming_function_callable in streaming_function_callables:
+                                output_data = streaming_function_callable(input_data)
+                                if output_data is None:
+                                    continue
 
-                            # Handle streaming function returning an array or a single object
-                            output_data_list = output_data if isinstance(output_data, list) else [output_data]
+                                # Handle streaming function returning an array or a single object
+                                output_data_list = output_data if isinstance(output_data, list) else [output_data]
+                                all_outputs.extend(output_data_list)
 
-                            with metrics_lock:
-                                metrics['count_in'] += len(output_data_list)
-                            
-                            cli_log(CliLogData(action="Received", message=f'{log_prefix} {len(output_data_list)} message(s)'))
+                                with metrics_lock:
+                                    metrics['count_in'] += len(output_data_list)
+
+                                cli_log(CliLogData(action="Received", message=f'{log_prefix} {len(output_data_list)} message(s)'))
 
                             if producer is not None:
-                                for item in output_data_list:
+                                for item in all_outputs:
                                     # Ignore flow function returning null
                                     if item is not None:
                                         record = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')

@@ -1,8 +1,20 @@
-# Aircraft Tracking Data Processing
+This is a [Moose](https://docs.fiveonefour.com/moose) project bootstrapped with [`moose init`](https://docs.fiveonefour.com/moose/reference/moose-cli#init) or [`aurora init`](https://docs.fiveonefour.com/aurora/cli-reference#init)
 
-This project processes and transforms aircraft tracking data from various sources into a standardized format for analysis and visualization.
+This project is structured as follows
+```
+ads-b-frontend/
+├── frontend/ # Frontend placeholder in Node
+├── moose/ # Backend services
+└── README.md # Project documentation
+```
 
-# Getting Started
+## Getting Started
+
+Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* [Node](https://nodejs.org/en)
+* [An Anthropic API Key](https://docs.anthropic.com/en/api/getting-started)
+* [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download)
 
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
 2. Create project `aurora init aircraft ads-b-frontend`
@@ -13,27 +25,34 @@ This project processes and transforms aircraft tracking data from various source
 
 You are ready to go!
 
-## Overview
+You can start editing the app by modifying primitives in the `app` subdirectory. The dev server auto-updates as you edit the file.
 
-The system takes raw aircraft tracking data (such as ADS-B data) and transforms it into a flattened data model that's optimized for storage and querying. 
+This project gets data from http://adsb.lol.
 
-It is currently only pulling from military aircraft.
+## Learn More
 
-## Data Models
+To learn more about Moose, take a look at the following resources:
 
-### Input Data Models
+- [Moose Documentation](https://docs.fiveonefour.com/moose) - learn about Moose.
+- [Aurora Documentation](https://docs.fiveonefour.com/aurora) - learn about Aurora, the MCP interface for data engineering.
 
-- `AircraftTrackingData_altBaroString`: Raw aircraft data where altitude may be represented as a string (e.g., "Ground" or numeric values)
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-### Output Data Models
+## Deploy on Boreal
 
-- `FlattenedAircraftTrackingData`: Standardized data model with normalized fields and additional computed values
+The easiest way to deploy your Moose app is to use the [Boreal](https://www.fiveonefour.com/boreal) from Fiveonefour, the creators of Moose and Aurora.
 
-## Processing Functions
+[Sign up](https://www.boreal.cloud/sign-up).
 
-- `AircraftTrackingData__FlattenedAircraftTrackingData.ts`: Transforms the raw data into the flattened format, handling special cases like "Ground" altitude
+# Template: ADS-B
 
+This project processes and transforms aircraft tracking data from various sources into a standardized format for analysis and visualization. It is currently only pulling from military aircraft.
 
+It has example workflows, data models and streaming functions. If you want to explore egress primitives, try using [Aurora](https://docs.fiveonefour.com/aurora) to generate them.
+
+This project also has a seed frontend written in Node, to be used when generating frontend applications on top of this.
 
 ## License
+
+This template is MIT licenced.
 

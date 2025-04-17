@@ -33,37 +33,50 @@
 //!
 //! This module is essential for maintaining consistency between the defined infrastructure
 //! and the actual deployed components.
-use super::infrastructure::api_endpoint::{APIType, ApiEndpoint, Method};
+use super::infrastructure::api_endpoint::ApiEndpoint;
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::orchestration_worker::OrchestrationWorker;
 use super::infrastructure::table::{Column, Table};
-use super::infrastructure::topic::{Topic, DEFAULT_MAX_MESSAGE_BYTES};
+use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
+use super::partial_infrastructure_map::PartialInfrastructureMap;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
-use crate::framework::consumption::model::ConsumptionQueryParam;
 use crate::framework::core::infrastructure_map::Change::Added;
-use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::datamodel_config::load_main_py;
-use crate::framework::versions::Version;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::project::Project;
 use crate::proto::infrastructure_map::{
     InfrastructureMap as ProtoInfrastructureMap, SqlResource as ProtoSqlResource,
 };
-use crate::utilities::constants;
 use anyhow::{Context, Result};
-use log::debug;
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tokio::process::Child;
+use std::path::Path;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct SqlResource {
+    pub name: String,
+    pub setup: Vec<String>,
+    pub teardown: Vec<String>,
+}
+
+impl SqlResource {
+    fn to_proto(&self) -> ProtoSqlResource {
+        ProtoSqlResource {
+            name: self.name.clone(),
+            setup: self.setup.clone(),
+            teardown: self.teardown.clone(),
+            special_fields: Default::default(),
+        }
+    }
+}
 
 /// Error types for InfrastructureMap protocol buffer operations
 ///
@@ -1255,128 +1268,7 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
-                    // Debug logging to identify what's different
-                    log::debug!("Table '{}' has differences:", id);
-                    if table.name != target_table.name {
-                        log::debug!(
-                            "  - Name changed: '{}' -> '{}'",
-                            table.name,
-                            target_table.name
-                        );
-                    }
-                    if table.columns != target_table.columns {
-                        log::debug!("  - Column differences detected");
-                        // Detail column differences
-                        for col in &table.columns {
-                            if !target_table
-                                .columns
-                                .iter()
-                                .any(|c| c.name == col.name && c == col)
-                            {
-                                if target_table.columns.iter().any(|c| c.name == col.name) {
-                                    log::debug!("    * Column '{}' modified", col.name);
-                                } else {
-                                    log::debug!("    * Column '{}' removed", col.name);
-                                }
-                            }
-                        }
-                        for col in &target_table.columns {
-                            if !table.columns.iter().any(|c| c.name == col.name) {
-                                log::debug!("    * Column '{}' added", col.name);
-                            }
-                        }
-                    }
-                    if table.order_by != target_table.order_by {
-                        log::debug!(
-                            "  - Order by changed: {:?} -> {:?}",
-                            table.order_by,
-                            target_table.order_by
-                        );
-                    }
-                    if table.deduplicate != target_table.deduplicate {
-                        log::debug!(
-                            "  - Deduplicate changed: {} -> {}",
-                            table.deduplicate,
-                            target_table.deduplicate
-                        );
-                    }
-                    if table.version != target_table.version {
-                        log::debug!(
-                            "  - Version changed: {:?} -> {:?}",
-                            table.version,
-                            target_table.version
-                        );
-                    }
-                    if table.source_primitive != target_table.source_primitive {
-                        log::debug!(
-                            "  - Source primitive changed: {:?} -> {:?}",
-                            table.source_primitive,
-                            target_table.source_primitive
-                        );
-                    }
-
-                    let column_changes = compute_table_diff(table, target_table);
-
-                    // Log column change details
-                    if !column_changes.is_empty() {
-                        log::debug!("Column changes for table '{}':", table.name);
-                        for change in &column_changes {
-                            match change {
-                                ColumnChange::Added(col) => {
-                                    log::debug!(
-                                        "  - Added column: {} ({})",
-                                        col.name,
-                                        col.data_type
-                                    );
-                                }
-                                ColumnChange::Removed(col) => {
-                                    log::debug!(
-                                        "  - Removed column: {} ({})",
-                                        col.name,
-                                        col.data_type
-                                    );
-                                }
-                                ColumnChange::Updated { before, after } => {
-                                    log::debug!("  - Updated column: {}", before.name);
-                                    if before.data_type != after.data_type {
-                                        log::debug!(
-                                            "    * Type changed: {:?} -> {:?}",
-                                            before.data_type,
-                                            after.data_type
-                                        );
-                                    }
-                                    if before.required != after.required {
-                                        log::debug!(
-                                            "    * Required changed: {:?} -> {:?}",
-                                            before.required,
-                                            after.required
-                                        );
-                                    }
-                                    if before.unique != after.unique {
-                                        log::debug!(
-                                            "    * Unique changed: {:?} -> {:?}",
-                                            before.unique,
-                                            after.unique
-                                        );
-                                    }
-                                    if before.primary_key != after.primary_key {
-                                        log::debug!(
-                                            "    * Primary key changed: {:?} -> {:?}",
-                                            before.primary_key,
-                                            after.primary_key
-                                        );
-                                    }
-                                    if before.default != after.default {
-                                        log::debug!(
-                                            "    * Default value changed: {:?} -> {:?}",
-                                            before.default,
-                                            after.default
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    let column_changes = compute_table_columns_diff(table, target_table);
 
                     let order_by_change = if table.order_by != target_table.order_by {
                         OrderByChange {
@@ -1769,509 +1661,6 @@ impl InfrastructureMap {
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialTable {
-    pub name: String,
-    pub columns: Vec<Column>,
-    pub order_by: Vec<String>,
-    pub deduplicate: bool,
-    pub engine: Option<String>,
-    pub version: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialTopic {
-    pub name: String,
-    pub columns: Vec<Column>,
-    pub retention_period: u64,
-    pub partition_count: usize,
-    pub transformation_targets: Vec<TransformationTarget>,
-    pub target_table: Option<String>,
-    pub target_table_version: Option<String>,
-    pub version: Option<String>,
-    pub consumers: Vec<Consumer>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum WriteToKind {
-    Stream,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WriteTo {
-    pub kind: WriteToKind,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransformationTarget {
-    pub kind: WriteToKind,
-    pub name: String,
-    pub version: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Consumer {
-    pub version: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialIngestApi {
-    pub name: String,
-    pub columns: Vec<Column>,
-    pub format: EndpointIngestionFormat,
-    pub write_to: WriteTo,
-    pub version: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialEgressApi {
-    pub name: String,
-    pub query_params: Vec<Column>,
-    pub response_schema: serde_json::Value,
-    pub version: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct SqlResource {
-    pub name: String,
-    pub setup: Vec<String>,
-    pub teardown: Vec<String>,
-}
-
-impl SqlResource {
-    fn to_proto(&self) -> ProtoSqlResource {
-        ProtoSqlResource {
-            name: self.name.clone(),
-            setup: self.setup.clone(),
-            teardown: self.teardown.clone(),
-            special_fields: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PartialInfrastructureMap {
-    #[serde(default)]
-    topics: HashMap<String, PartialTopic>,
-    #[serde(default)]
-    ingest_apis: HashMap<String, PartialIngestApi>,
-    #[serde(default)]
-    egress_apis: HashMap<String, PartialEgressApi>,
-    #[serde(default)]
-    tables: HashMap<String, PartialTable>,
-    #[serde(default)]
-    views: HashMap<String, View>,
-    #[serde(default)]
-    sql_resources: HashMap<String, SqlResource>,
-    #[serde(default)]
-    topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
-    #[serde(default)]
-    topic_to_topic_sync_processes: HashMap<String, TopicToTopicSyncProcess>,
-    #[serde(default)]
-    function_processes: HashMap<String, FunctionProcess>,
-    block_db_processes: Option<OlapProcess>,
-    consumption_api_web_server: Option<ConsumptionApiWebServer>,
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to load Data Model V2")]
-#[non_exhaustive]
-pub enum DmV2LoadingError {
-    Tokio(#[from] tokio::io::Error),
-    #[error("Error collecting Moose resources from {user_code_file_name}:\n{message}")]
-    StdErr {
-        user_code_file_name: String,
-        message: String,
-    },
-    JsonParsing(#[from] serde_json::Error),
-    #[error("{message}")]
-    Other {
-        message: String,
-    },
-}
-
-impl PartialInfrastructureMap {
-    pub async fn from_subprocess(
-        process: Child,
-        user_code_file_name: &str,
-    ) -> Result<PartialInfrastructureMap, DmV2LoadingError> {
-        let output = process.wait_with_output().await?;
-
-        // needs from_utf8_lossy_owned
-        let raw_string_stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        if !raw_string_stderr.is_empty() {
-            let error_message = if raw_string_stderr.contains("MODULE_NOT_FOUND")
-                || raw_string_stderr.contains("ModuleNotFoundError")
-            {
-                let install_command = if user_code_file_name
-                    .ends_with(constants::TYPESCRIPT_FILE_EXTENSION)
-                {
-                    "npm install"
-                } else if user_code_file_name.ends_with(constants::PYTHON_FILE_EXTENSION) {
-                    "pip install ."
-                } else {
-                    return Err(DmV2LoadingError::Other {
-                        message: format!("Unsupported file extension in: {}", user_code_file_name),
-                    });
-                };
-
-                format!("Missing dependencies detected. Please run '{}' and try again.\nOriginal error: {}", 
-                    install_command,
-                    raw_string_stderr
-                )
-            } else {
-                raw_string_stderr
-            };
-
-            Err(DmV2LoadingError::StdErr {
-                user_code_file_name: user_code_file_name.to_string(),
-                message: error_message,
-            })
-        } else {
-            let raw_string_stdout: String = String::from_utf8_lossy(&output.stdout).to_string();
-
-            let output_format = || DmV2LoadingError::Other {
-                message: "invalid output format".to_string(),
-            };
-
-            let json = raw_string_stdout
-                .split("___MOOSE_STUFF___start")
-                .nth(1)
-                .ok_or_else(output_format)?
-                .split("end___MOOSE_STUFF___")
-                .next()
-                .ok_or_else(output_format)?;
-            log::info!("load_from_user_code inframap json: {}", json);
-
-            Ok(serde_json::from_str(json)
-                .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
-        }
-    }
-
-    fn into_infra_map(self, language: SupportedLanguages, main_file: &Path) -> InfrastructureMap {
-        let tables = self.convert_tables();
-        let topics = self.convert_topics();
-        let api_endpoints = self.convert_api_endpoints(main_file, &topics);
-        let topic_to_table_sync_processes =
-            self.create_topic_to_table_sync_processes(&tables, &topics);
-        let function_processes = self.create_function_processes(main_file, language, &topics);
-
-        // Why does dmv1 InfrastructureMap::new do this?
-        let mut orchestration_workers = HashMap::new();
-        let orchestration_worker = OrchestrationWorker::new(language);
-        orchestration_workers.insert(orchestration_worker.id(), orchestration_worker);
-
-        InfrastructureMap {
-            topics,
-            api_endpoints,
-            tables,
-            views: self.views,
-            sql_resources: self.sql_resources,
-            topic_to_table_sync_processes,
-            topic_to_topic_sync_processes: self.topic_to_topic_sync_processes,
-            function_processes,
-            block_db_processes: self.block_db_processes.unwrap_or(OlapProcess {}),
-            consumption_api_web_server: self
-                .consumption_api_web_server
-                .unwrap_or(ConsumptionApiWebServer {}),
-            orchestration_workers,
-        }
-    }
-
-    fn convert_tables(&self) -> HashMap<String, Table> {
-        self.tables
-            .values()
-            .map(|partial_table| {
-                let version: Option<Version> = partial_table
-                    .version
-                    .as_ref()
-                    .map(|v_str| Version::from_string(v_str.clone()));
-
-                let table = Table {
-                    // In dmv1, DataModel.to_table uses version in the name
-                    name: version
-                        .as_ref()
-                        .map_or(partial_table.name.clone(), |version| {
-                            format!("{}_{}", partial_table.name, version.as_suffix())
-                        }),
-                    columns: partial_table.columns.clone(),
-                    order_by: partial_table.order_by.clone(),
-                    deduplicate: partial_table.deduplicate,
-                    engine: partial_table.engine.clone(),
-                    version,
-                    source_primitive: PrimitiveSignature {
-                        name: partial_table.name.clone(),
-                        primitive_type: PrimitiveTypes::DataModel,
-                    },
-                };
-                (table.id(), table)
-            })
-            .collect()
-    }
-
-    fn convert_topics(&self) -> HashMap<String, Topic> {
-        self.topics
-            .values()
-            .map(|partial_topic| {
-                let topic = Topic {
-                    name: partial_topic.name.clone(),
-                    columns: partial_topic.columns.clone(),
-                    max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
-                    retention_period: std::time::Duration::from_secs(
-                        partial_topic.retention_period,
-                    ),
-                    partition_count: partial_topic.partition_count,
-                    version: partial_topic
-                        .version
-                        .as_ref()
-                        .map(|v_str| Version::from_string(v_str.clone())),
-                    source_primitive: PrimitiveSignature {
-                        name: partial_topic.name.clone(),
-                        primitive_type: PrimitiveTypes::DataModel,
-                    },
-                };
-                (topic.id(), topic)
-            })
-            .collect()
-    }
-
-    fn convert_api_endpoints(
-        &self,
-        main_file: &Path,
-        topics: &HashMap<String, Topic>,
-    ) -> HashMap<String, ApiEndpoint> {
-        let mut api_endpoints = HashMap::new();
-
-        for partial_api in self.ingest_apis.values() {
-            let target_topic_name = match &partial_api.write_to.kind {
-                WriteToKind::Stream => partial_api.write_to.name.clone(),
-            };
-
-            let not_found = &format!("Target topic '{}' not found", target_topic_name);
-            let target_topic = topics
-                .values()
-                .find(|topic| topic.name == target_topic_name)
-                .expect(not_found);
-
-            // TODO: Remove data model from api endpoints when dmv1 is removed
-            let data_model = crate::framework::data_model::model::DataModel {
-                name: partial_api.name.clone(),
-                version: Version::from_string("0.0".to_string()),
-                config: crate::framework::data_model::config::DataModelConfig {
-                    ingestion: crate::framework::data_model::config::IngestionConfig {
-                        format: partial_api.format,
-                    },
-                    // TODO pass through parallelism from the TS / PY api
-                    storage: crate::framework::data_model::config::StorageConfig {
-                        enabled: true,
-                        order_by_fields: vec![],
-                        deduplicate: false,
-                        name: None,
-                    },
-                    // TODO pass through parallelism from the TS / PY api
-                    parallelism: 1,
-                },
-                columns: partial_api.columns.clone(),
-                // If this is the app directory, we should use the project reference so that
-                // if we rename the app folder we don't have to fish for references
-                abs_file_path: main_file.to_path_buf(),
-            };
-
-            let api_endpoint = ApiEndpoint {
-                name: partial_api.name.clone(),
-                api_type: APIType::INGRESS {
-                    target_topic_id: target_topic.id(),
-                    data_model: Some(data_model),
-                    format: partial_api.format,
-                },
-                path: PathBuf::from_iter(
-                    [
-                        "ingest",
-                        &partial_api.name,
-                        partial_api.version.as_deref().unwrap_or_default(),
-                    ]
-                    .into_iter()
-                    .filter(|s| !s.is_empty()),
-                ),
-                method: Method::POST,
-                version: partial_api
-                    .version
-                    .as_ref()
-                    .map(|v_str| Version::from_string(v_str.clone())),
-                source_primitive: PrimitiveSignature {
-                    name: partial_api.name.clone(),
-                    primitive_type: PrimitiveTypes::DataModel,
-                },
-            };
-
-            api_endpoints.insert(api_endpoint.id(), api_endpoint);
-        }
-
-        for partial_api in self.egress_apis.values() {
-            let api_endpoint = ApiEndpoint {
-                name: partial_api.name.clone(),
-                api_type: APIType::EGRESS {
-                    query_params: partial_api
-                        .query_params
-                        .iter()
-                        .map(|column| ConsumptionQueryParam {
-                            name: column.name.clone(),
-                            data_type: column.data_type.clone(),
-                            required: column.required,
-                        })
-                        .collect(),
-                    output_schema: partial_api.response_schema.clone(),
-                },
-                path: PathBuf::from(partial_api.name.clone()),
-                method: Method::GET,
-                version: partial_api
-                    .version
-                    .as_ref()
-                    .map(|v_str| Version::from_string(v_str.clone())),
-                source_primitive: PrimitiveSignature {
-                    name: partial_api.name.clone(),
-                    primitive_type: PrimitiveTypes::ConsumptionAPI,
-                },
-            };
-
-            api_endpoints.insert(api_endpoint.id(), api_endpoint);
-        }
-
-        api_endpoints
-    }
-
-    fn create_topic_to_table_sync_processes(
-        &self,
-        tables: &HashMap<String, Table>,
-        topics: &HashMap<String, Topic>,
-    ) -> HashMap<String, TopicToTableSyncProcess> {
-        let mut sync_processes = self.topic_to_table_sync_processes.clone();
-
-        for (topic_name, partial_topic) in &self.topics {
-            if let Some(target_table_name) = &partial_topic.target_table {
-                let topic_not_found = &format!("Source topic '{}' not found", topic_name);
-                let source_topic = topics
-                    .values()
-                    .find(|topic| &topic.name == topic_name)
-                    .expect(topic_not_found);
-
-                let target_table_version: Option<Version> = partial_topic
-                    .target_table_version
-                    .as_ref()
-                    .map(|v_str| Version::from_string(v_str.clone()));
-
-                let table_not_found = &format!(
-                    "Target table '{}' version '{:?}' not found",
-                    target_table_name, target_table_version
-                );
-                let target_table = tables
-                    .values()
-                    .find(|table| {
-                        let name_matches = table.name.starts_with(target_table_name);
-                        let version_matches = match &target_table_version {
-                            Some(target_v) => table.version.as_ref() == Some(target_v),
-                            None => true,
-                        };
-                        name_matches && version_matches
-                    })
-                    .expect(table_not_found);
-
-                let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);
-                let sync_id = sync_process.id();
-                sync_processes.insert(sync_id.clone(), sync_process);
-                log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
-            } else {
-                log::info!(
-                    "<dmv2> Topic {} has no target_table specified, skipping sync process creation",
-                    partial_topic.name
-                );
-            }
-        }
-
-        sync_processes
-    }
-
-    fn create_function_processes(
-        &self,
-        main_file: &Path,
-        language: SupportedLanguages,
-        topics: &HashMap<String, Topic>,
-    ) -> HashMap<String, FunctionProcess> {
-        let mut function_processes = self.function_processes.clone();
-
-        for (topic_name, source_partial_topic) in &self.topics {
-            debug!(
-                "source_partial_topic: {:?} with name {}",
-                source_partial_topic, topic_name
-            );
-
-            let not_found = &format!("Source topic '{}' not found", topic_name);
-            let source_topic = topics
-                .values()
-                .find(|topic| &topic.name == topic_name)
-                .expect(not_found);
-
-            for transformation_target in &source_partial_topic.transformation_targets {
-                debug!("transformation_target: {:?}", transformation_target);
-
-                // In dmv1, the process name was the file name which had double underscores
-                let process_name = format!("{}__{}", topic_name, transformation_target.name);
-
-                let not_found = &format!("Target topic '{}' not found", transformation_target.name);
-                let target_topic = topics
-                    .values()
-                    .find(|topic| topic.name == transformation_target.name)
-                    .expect(not_found);
-
-                let function_process = FunctionProcess {
-                    name: process_name.clone(),
-                    source_topic_id: source_topic.id(),
-                    target_topic_id: Some(target_topic.id()),
-                    executable: main_file.to_path_buf(),
-                    language,
-                    parallel_process_count: target_topic.partition_count,
-                    version: transformation_target.version.clone(),
-                    source_primitive: PrimitiveSignature {
-                        name: process_name.clone(),
-                        primitive_type: PrimitiveTypes::Function,
-                    },
-                };
-
-                function_processes.insert(function_process.id(), function_process);
-            }
-
-            for consumer in &source_partial_topic.consumers {
-                let function_process = FunctionProcess {
-                    // In dmv1, consumer process has the id format!("{}_{}_{}", self.name, self.source_topic_id, self.version)
-                    name: topic_name.clone(),
-                    source_topic_id: source_topic.id(),
-                    target_topic_id: None,
-                    executable: main_file.to_path_buf(),
-                    language,
-                    parallel_process_count: source_partial_topic.partition_count,
-                    version: consumer.version.clone(),
-                    source_primitive: PrimitiveSignature {
-                        name: topic_name.clone(),
-                        primitive_type: PrimitiveTypes::DataModel,
-                    },
-                };
-
-                function_processes.insert(function_process.id(), function_process);
-            }
-        }
-
-        function_processes
-    }
-}
-
 /// Computes the detailed differences between two table versions
 ///
 /// This function performs a column-by-column comparison between two tables
@@ -2284,86 +1673,47 @@ impl PartialInfrastructureMap {
 ///
 /// # Returns
 /// A vector of `ColumnChange` objects describing the differences
-pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
-    log::debug!("Computing detailed diff for table '{}'", before.name);
+fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
     let mut diff = Vec::new();
 
-    // Check for added or modified columns
-    for after_col in &after.columns {
-        match before.columns.iter().find(|c| c.name == after_col.name) {
-            // If the column is in the before table, but different, then it is modified
-            Some(before_col) if before_col != after_col => {
-                log::trace!("Column '{}' has been modified", before_col.name);
-                // Log specific differences
-                if before_col.data_type != after_col.data_type {
-                    log::trace!(
-                        "  - Type changed: {:?} -> {:?}",
-                        before_col.data_type,
-                        after_col.data_type
-                    );
-                }
-                if before_col.required != after_col.required {
-                    log::trace!(
-                        "  - Required changed: {} -> {}",
-                        before_col.required,
-                        after_col.required
-                    );
-                }
-                if before_col.unique != after_col.unique {
-                    log::trace!(
-                        "  - Unique changed: {} -> {}",
-                        before_col.unique,
-                        after_col.unique
-                    );
-                }
-                if before_col.primary_key != after_col.primary_key {
-                    log::trace!(
-                        "  - Primary key changed: {} -> {}",
-                        before_col.primary_key,
-                        after_col.primary_key
-                    );
-                }
-                if before_col.default != after_col.default {
-                    log::trace!(
-                        "  - Default value changed: {:?} -> {:?}",
-                        before_col.default,
-                        after_col.default
-                    );
-                }
+    // Create a HashMap of the 'before' columns: O(n)
+    let before_columns: HashMap<&String, &Column> =
+        before.columns.iter().map(|col| (&col.name, col)).collect();
 
+    // Create a HashMap of the 'after' columns: O(n)
+    let after_columns: HashMap<&String, &Column> =
+        after.columns.iter().map(|col| (&col.name, col)).collect();
+
+    // Process additions and updates: O(n)
+    for after_col in &after.columns {
+        if let Some(&before_col) = before_columns.get(&after_col.name) {
+            if before_col != after_col {
+                log::debug!(
+                    "Column '{}' modified from {:?} to {:?}",
+                    after_col.name,
+                    before_col,
+                    after_col
+                );
                 diff.push(ColumnChange::Updated {
                     before: before_col.clone(),
                     after: after_col.clone(),
                 });
+            } else {
+                log::debug!("Column '{}' unchanged", after_col.name);
             }
-            // If the column is not in the before table, then it is added
-            None => {
-                log::trace!(
-                    "Column '{}' has been added with type {:?}",
-                    after_col.name,
-                    after_col.data_type
-                );
-                diff.push(ColumnChange::Added(after_col.clone()));
-            }
-            _ => {
-                log::trace!("Column '{}' unchanged", after_col.name);
-            }
+        } else {
+            diff.push(ColumnChange::Added(after_col.clone()));
         }
     }
 
-    // Check for dropped columns
+    // Process removals: O(n)
     for before_col in &before.columns {
-        if !after.columns.iter().any(|c| c.name == before_col.name) {
-            log::trace!("Column '{}' has been removed", before_col.name);
+        if !after_columns.contains_key(&before_col.name) {
+            log::debug!("Column '{}' has been removed", before_col.name);
             diff.push(ColumnChange::Removed(before_col.clone()));
         }
     }
 
-    log::debug!(
-        "Found {} column changes for table '{}'",
-        diff.len(),
-        before.name
-    );
     diff
 }
 
@@ -2394,81 +1744,14 @@ impl Default for InfrastructureMap {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
 
-    use crate::framework::versions::Version;
-    use crate::{
-        framework::{
-            core::{
-                infrastructure::table::{Column, ColumnType, Table},
-                infrastructure_map::{
-                    compute_table_diff, ColumnChange, PrimitiveSignature, PrimitiveTypes,
-                },
-                primitive_map::PrimitiveMap,
-            },
-            data_model::model::DataModel,
-            languages::SupportedLanguages,
+    use crate::framework::core::{
+        infrastructure::table::{Column, ColumnType, Table},
+        infrastructure_map::{
+            compute_table_columns_diff, ColumnChange, PrimitiveSignature, PrimitiveTypes,
         },
-        project::Project,
     };
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_infra_map() {
-        let project = Project::new(
-            Path::new("/Users/nicolas/code/514/test"),
-            "test".to_string(),
-            SupportedLanguages::Typescript,
-        );
-        let primitive_map = PrimitiveMap::load(&project).await;
-        println!("{:?}", primitive_map);
-        assert!(primitive_map.is_ok());
-
-        let infra_map = super::InfrastructureMap::new(&project, primitive_map.unwrap());
-        println!("{:?}", infra_map);
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_infra_diff_map() {
-        let project = Project::new(
-            Path::new("/Users/nicolas/code/514/test"),
-            "test".to_string(),
-            SupportedLanguages::Typescript,
-        );
-        let primitive_map = PrimitiveMap::load(&project).await.unwrap();
-        let mut new_target_primitive_map = primitive_map.clone();
-
-        let data_model_name = "test";
-        let data_model_version = "1.0.0";
-
-        let new_data_model = DataModel {
-            name: data_model_name.to_string(),
-            version: Version::from_string(data_model_version.to_string()),
-            config: Default::default(),
-            columns: vec![],
-            abs_file_path: PathBuf::new(),
-        };
-        // Making some changes to the map
-        new_target_primitive_map
-            .datamodels
-            .add(new_data_model)
-            .unwrap();
-
-        new_target_primitive_map
-            .datamodels
-            .remove(data_model_name, data_model_version);
-
-        println!("Base Primitive Map: {:?} \n", primitive_map);
-        println!("Target Primitive Map {:?} \n", new_target_primitive_map);
-
-        let infra_map = super::InfrastructureMap::new(&project, primitive_map);
-        let new_infra_map = super::InfrastructureMap::new(&project, new_target_primitive_map);
-
-        let diffs = infra_map.diff(&new_infra_map);
-
-        print!("Diffs: {:?}", diffs);
-    }
+    use crate::framework::versions::Version;
 
     #[test]
     fn test_compute_table_diff() {
@@ -2554,7 +1837,7 @@ mod tests {
             },
         };
 
-        let diff = compute_table_diff(&before, &after);
+        let diff = compute_table_columns_diff(&before, &after);
 
         assert_eq!(diff.len(), 3);
         assert!(
@@ -2562,5 +1845,599 @@ mod tests {
         );
         assert!(matches!(&diff[1], ColumnChange::Added(col) if col.name == "age"));
         assert!(matches!(&diff[2], ColumnChange::Removed(col) if col.name == "to_be_removed"));
+    }
+}
+
+#[cfg(test)]
+mod diff_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{Column, ColumnDefaults, ColumnType};
+    use crate::framework::versions::Version;
+    use serde_json::Value as JsonValue;
+
+    // Helper function to create a basic test table
+    fn create_test_table(name: &str, version: &str) -> Table {
+        Table {
+            name: name.to_string(),
+            engine: None,
+            deduplicate: false,
+            columns: vec![],
+            order_by: vec![],
+            version: Some(Version::from_string(version.to_string())),
+            source_primitive: PrimitiveSignature {
+                name: "test_primitive".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        }
+    }
+
+    #[test]
+    fn test_empty_tables_no_changes() {
+        let table1 = create_test_table("test", "1.0");
+        let table2 = create_test_table("test", "1.0");
+
+        let diff = compute_table_columns_diff(&table1, &table2);
+        assert!(diff.is_empty(), "Expected no changes between empty tables");
+    }
+
+    #[test]
+    fn test_column_addition() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        after.columns.push(Column {
+            name: "new_column".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 1, "Expected one change");
+        match &diff[0] {
+            ColumnChange::Added(col) => {
+                assert_eq!(col.name, "new_column");
+                assert_eq!(col.data_type, ColumnType::Int);
+            }
+            _ => panic!("Expected Added change"),
+        }
+    }
+
+    #[test]
+    fn test_column_removal() {
+        let mut before = create_test_table("test", "1.0");
+        let after = create_test_table("test", "1.0");
+
+        before.columns.push(Column {
+            name: "to_remove".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 1, "Expected one change");
+        match &diff[0] {
+            ColumnChange::Removed(col) => {
+                assert_eq!(col.name, "to_remove");
+                assert_eq!(col.data_type, ColumnType::Int);
+            }
+            _ => panic!("Expected Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_column_type_change() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        before.columns.push(Column {
+            name: "age".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        after.columns.push(Column {
+            name: "age".to_string(),
+            data_type: ColumnType::BigInt,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 1, "Expected one change");
+        match &diff[0] {
+            ColumnChange::Updated {
+                before: b,
+                after: a,
+            } => {
+                assert_eq!(b.name, "age");
+                assert_eq!(b.data_type, ColumnType::Int);
+                assert_eq!(a.data_type, ColumnType::BigInt);
+            }
+            _ => panic!("Expected Updated change"),
+        }
+    }
+
+    #[test]
+    fn test_multiple_changes() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        // Add columns to before table
+        before.columns.extend(vec![
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "to_remove".to_string(),
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "to_modify".to_string(),
+                data_type: ColumnType::Int,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+        ]);
+
+        // Add columns to after table
+        after.columns.extend(vec![
+            Column {
+                name: "id".to_string(), // unchanged
+                data_type: ColumnType::Int,
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "to_modify".to_string(), // modified
+                data_type: ColumnType::Int,
+                required: true, // changed
+                unique: true,   // changed
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "new_column".to_string(), // added
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+        ]);
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 3, "Expected three changes");
+
+        // Count each type of change
+        let mut added = 0;
+        let mut removed = 0;
+        let mut updated = 0;
+
+        for change in diff {
+            match change {
+                ColumnChange::Added(col) => {
+                    assert_eq!(col.name, "new_column");
+                    added += 1;
+                }
+                ColumnChange::Removed(col) => {
+                    assert_eq!(col.name, "to_remove");
+                    removed += 1;
+                }
+                ColumnChange::Updated {
+                    before: b,
+                    after: a,
+                } => {
+                    assert_eq!(b.name, "to_modify");
+                    assert_eq!(a.name, "to_modify");
+                    assert!(!b.required && a.required);
+                    assert!(!b.unique && a.unique);
+                    updated += 1;
+                }
+            }
+        }
+
+        assert_eq!(added, 1, "Expected one addition");
+        assert_eq!(removed, 1, "Expected one removal");
+        assert_eq!(updated, 1, "Expected one update");
+    }
+
+    #[test]
+    fn test_order_by_changes() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        before.order_by = vec!["id".to_string()];
+        after.order_by = vec!["id".to_string(), "name".to_string()];
+
+        let mut changes = Vec::new();
+        InfrastructureMap::diff_tables(
+            &HashMap::from([("test".to_string(), before)]),
+            &HashMap::from([("test".to_string(), after)]),
+            &mut changes,
+        );
+
+        assert_eq!(changes.len(), 1, "Expected one change");
+        match &changes[0] {
+            OlapChange::Table(TableChange::Updated {
+                order_by_change, ..
+            }) => {
+                assert_eq!(order_by_change.before, vec!["id"]);
+                assert_eq!(order_by_change.after, vec!["id", "name"]);
+            }
+            _ => panic!("Expected Updated change with order_by modification"),
+        }
+    }
+
+    #[test]
+    fn test_deduplicate_flag_change() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        before.deduplicate = false;
+        after.deduplicate = true;
+
+        let mut changes = Vec::new();
+        InfrastructureMap::diff_tables(
+            &HashMap::from([("test".to_string(), before)]),
+            &HashMap::from([("test".to_string(), after)]),
+            &mut changes,
+        );
+
+        assert_eq!(changes.len(), 1, "Expected one change");
+        match &changes[0] {
+            OlapChange::Table(TableChange::Updated {
+                before: b,
+                after: a,
+                ..
+            }) => {
+                assert!(!b.deduplicate);
+                assert!(a.deduplicate);
+            }
+            _ => panic!("Expected Updated change with deduplicate modification"),
+        }
+    }
+
+    #[test]
+    fn test_column_default_value_change() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        before.columns.push(Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: Some(ColumnDefaults::AutoIncrement),
+            annotations: vec![],
+        });
+
+        after.columns.push(Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: Some(ColumnDefaults::Now),
+            annotations: vec![],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 1, "Expected one change");
+        match &diff[0] {
+            ColumnChange::Updated {
+                before: b,
+                after: a,
+            } => {
+                assert_eq!(b.default, Some(ColumnDefaults::AutoIncrement));
+                assert_eq!(a.default, Some(ColumnDefaults::Now));
+            }
+            _ => panic!("Expected Updated change"),
+        }
+    }
+
+    #[test]
+    fn test_no_changes_with_reordered_columns() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        // Add columns in one order
+        before.columns.extend(vec![
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "name".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+        ]);
+
+        // Add same columns in different order
+        after.columns.extend(vec![
+            Column {
+                name: "name".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+        ]);
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert!(
+            diff.is_empty(),
+            "Expected no changes despite reordered columns"
+        );
+    }
+
+    #[test]
+    fn test_large_table_performance() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        // Add 1000 columns to both tables
+        for i in 0..1000 {
+            let col = Column {
+                name: format!("col_{}", i),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            };
+            before.columns.push(col.clone());
+            after.columns.push(col);
+        }
+
+        // Add one change in the middle
+        if let Some(col) = after.columns.get_mut(500) {
+            col.data_type = ColumnType::BigInt;
+        }
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 1, "Expected one change in large table");
+    }
+
+    #[test]
+    fn test_all_column_types() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        let column_types = vec![
+            ColumnType::Int,
+            ColumnType::BigInt,
+            ColumnType::Float,
+            ColumnType::String,
+            ColumnType::Boolean,
+            ColumnType::DateTime,
+            ColumnType::Json,
+            ColumnType::Uuid,
+        ];
+
+        for (i, col_type) in column_types.iter().enumerate() {
+            before.columns.push(Column {
+                name: format!("col_{}", i),
+                data_type: col_type.clone(),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            });
+
+            // Change every other column type in the after table
+            let after_type = if i % 2 == 0 {
+                col_type.clone()
+            } else {
+                // For odd-numbered columns, always change the type
+                match col_type {
+                    ColumnType::Int => ColumnType::BigInt,
+                    ColumnType::BigInt => ColumnType::Int,
+                    ColumnType::Float => ColumnType::Decimal,
+                    ColumnType::String => ColumnType::Json,
+                    ColumnType::Boolean => ColumnType::Int,
+                    ColumnType::DateTime => ColumnType::String,
+                    ColumnType::Json => ColumnType::String,
+                    ColumnType::Uuid => ColumnType::String,
+                    _ => ColumnType::String, // Fallback for any other types
+                }
+            };
+
+            println!(
+                "Column {}: before={:?}, after={:?}",
+                i, col_type, after_type
+            );
+
+            after.columns.push(Column {
+                name: format!("col_{}", i),
+                data_type: after_type,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            });
+        }
+
+        let diff = compute_table_columns_diff(&before, &after);
+        println!("Found {} changes", diff.len());
+        for change in &diff {
+            match change {
+                ColumnChange::Updated { before, after } => {
+                    println!(
+                        "Column {} changed from {:?} to {:?}",
+                        before.name, before.data_type, after.data_type
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(
+            diff.len(),
+            column_types.len() / 2,
+            "Expected changes for half of the columns"
+        );
+    }
+
+    #[test]
+    fn test_complex_annotation_changes() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        before.columns.push(Column {
+            name: "annotated_col".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![
+                ("index".to_string(), JsonValue::Bool(true)),
+                ("deprecated".to_string(), JsonValue::Bool(true)),
+            ],
+        });
+
+        after.columns.push(Column {
+            name: "annotated_col".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![
+                ("index".to_string(), JsonValue::Bool(true)),
+                ("new_annotation".to_string(), JsonValue::Bool(true)),
+            ],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(
+            diff.len(),
+            1,
+            "Expected one change for annotation modification"
+        );
+        match &diff[0] {
+            ColumnChange::Updated {
+                before: b,
+                after: a,
+            } => {
+                assert_eq!(b.annotations.len(), 2);
+                assert_eq!(a.annotations.len(), 2);
+                assert_eq!(b.annotations[0].0, "index");
+                assert_eq!(b.annotations[1].0, "deprecated");
+                assert_eq!(a.annotations[0].0, "index");
+                assert_eq!(a.annotations[1].0, "new_annotation");
+            }
+            _ => panic!("Expected Updated change"),
+        }
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        let mut before = create_test_table("test", "1.0");
+        let mut after = create_test_table("test", "1.0");
+
+        // Test empty string column name
+        before.columns.push(Column {
+            name: "".to_string(),
+            data_type: ColumnType::Int,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        after.columns.push(Column {
+            name: "".to_string(),
+            data_type: ColumnType::BigInt,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        // Test special characters in column name
+        before.columns.push(Column {
+            name: "special!@#$%^&*()".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        after.columns.push(Column {
+            name: "special!@#$%^&*()".to_string(),
+            data_type: ColumnType::String,
+            required: false,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        let diff = compute_table_columns_diff(&before, &after);
+        assert_eq!(diff.len(), 2, "Expected changes for edge case columns");
     }
 }

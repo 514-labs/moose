@@ -6,11 +6,12 @@ use std::{
     path::{absolute, Path},
 };
 
-use crate::framework::core::infrastructure_map::{DmV2LoadingError, PartialInfrastructureMap};
-use crate::framework::python::executor::{run_python_command, PythonCommand};
+use crate::framework::core::partial_infrastructure_map::{
+    DmV2LoadingError, PartialInfrastructureMap,
+};
 use crate::framework::{
     data_model::config::{ConfigIdentifier, DataModelConfig, ModelConfigurationError},
-    python::executor::run_python_file,
+    python::executor::{run_python_command, run_python_file, PythonCommand},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]

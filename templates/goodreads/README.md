@@ -13,8 +13,7 @@ Prerequisites
 2. Create project `aurora init books goodreads`
 3. Install dependencies: `cd books && npm install`
 4. Add your Kaggle Settings file to authenticate (For more information, see https://www.kaggle.com/docs/api)
-6. Run Moose: `moose dev`
-
+5. Run Moose: `moose dev`
 You are ready to go!
 
 You can start editing the app by modifying primitives in the `app` subdirectory. The dev server auto-updates as you edit the file.

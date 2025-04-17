@@ -2,7 +2,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40514labs%2Fmoose-cli?logo=npm)](https://www.npmjs.com/package/@514labs/moose-cli?activeTab=readme)
 [![Moose Community](https://img.shields.io/badge/slack-moose_community-purple.svg?logo=slack)](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
-[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/quickstart)
+[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 [![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 [Moose](https://docs.fiveonefour.com/moose) is an open source developer framework for building analytical backends. Moose is designed to help you quickly prototype, productionize, and scale data products, data pipelines, and data APIs - on OLAP and streaming infrastructure - using native TypeScript or Python.
@@ -13,7 +13,7 @@ Install with:
 ```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose```
 
 Get up and running with your own Moose project in minutes:
-* Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/quickstart)
+* Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 * Moose documentation: [https://docs.fiveonefour.com/moose](https://docs.fiveonefour.com/moose)
 * Moose pre-configured templates: [https://docs.fiveonefour.com/templates](https://docs.fiveonefour.com/templates)
 

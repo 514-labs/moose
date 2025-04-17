@@ -19,8 +19,8 @@ Prerequisites
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
 2. Create project `aurora init <project-name> next-app-empty`
 3. Install dependencies: `cd <project-name>/moose && npm install`
-5. Run Moose: `moose dev`
-6. In a new terminal, install frontend dependencies `cd <project-name>/frontend && npm install`
+4. Run Moose: `moose dev`
+5. In a new terminal, install frontend dependencies `cd <project-name>/frontend && npm install`
 7. Run frontend: `npm run dev`
 
 You are ready to go!

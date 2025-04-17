@@ -2,7 +2,7 @@ This is a [Moose](https://docs.fiveonefour.com/moose) project bootstrapped with 
 
 This project is structured as follows
 ```
-ads-b-frontend/
+next-app-empty/
 ├── frontend/ # Frontend placeholder in Node
 ├── moose/ # Backend services
 └── README.md # Project documentation
@@ -17,10 +17,10 @@ Prerequisites
 * [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download)
 
 1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
-2. Create project `aurora init aircraft ads-b-frontend`
-3. Install dependencies: `cd aircraft/moose && npm install`
-5. Run Moose: `moose dev`
-6. In a new terminal, install frontend dependencies `cd aircraft/frontend && npm install`
+2. Create project `aurora init <project-name> next-app-empty`
+3. Install dependencies: `cd <project-name>/moose && npm install`
+4. Run Moose: `moose dev`
+5. In a new terminal, install frontend dependencies `cd <project-name>/frontend && npm install`
 7. Run frontend: `npm run dev`
 
 You are ready to go!
@@ -43,14 +43,6 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Moose app is to use the [Boreal](https://www.fiveonefour.com/boreal) from Fiveonefour, the creators of Moose and Aurora.
 
 [Sign up](https://www.boreal.cloud/sign-up).
-
-# Template: ADS-B
-
-This project processes and transforms aircraft tracking data from various sources into a standardized format for analysis and visualization. It is currently only pulling from military aircraft.
-
-It has example workflows, data models and streaming functions. If you want to explore egress primitives, try using [Aurora](https://docs.fiveonefour.com/aurora) to generate them.
-
-This project also has a seed frontend written in Node, to be used when generating frontend applications on top of this.
 
 ## License
 

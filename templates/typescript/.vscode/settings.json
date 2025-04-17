@@ -3,7 +3,7 @@
     {
       "server": "http://localhost",
       "port": 18123,
-      "database": "default",
+      "database": "local",
       "useJWT": false,
       "requestTimeout": 30000,
       "enableTls": false,

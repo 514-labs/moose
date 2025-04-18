@@ -47,17 +47,5 @@ export interface IRepoStarEvent extends IGhEvent {
   repoOrgId?: number;
   repoOrgUrl?: string;
   repoOrgLogin?: string;
-  // repoHomepage?: string;
+  repoHomepage?: string;
 }
-
-export const GhEvent = new IngestPipeline<IGhEvent>("GhEvent", {
-  ingest: true,
-  table: true,
-  stream: true,
-});
-
-export const RepoStarEvent = new IngestPipeline<IRepoStarEvent>("RepoStar", {
-  ingest: false,
-  stream: true,
-  table: true,
-});

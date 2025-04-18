@@ -1,19 +1,10 @@
-import {
-  GhEvent,
-  RepoStarEvent,
-  GitHubEventType,
-  IRepoStarEvent,
-  IGhEvent,
-} from "./models";
+import { GitHubEventType, IRepoStarEvent, IGhEvent } from "./models";
 import { createOctokit, RepoResponseType } from "../utils";
 import { cliLog } from "@514labs/moose-lib";
 
 const octokit = createOctokit();
 
-const ghStream = GhEvent.stream!;
-const repoStarStream = RepoStarEvent.stream!;
-
-async function transformGhEvent(
+export async function transformGhEvent(
   event: IGhEvent,
 ): Promise<IRepoStarEvent | undefined> {
   // Only transform watch events for now
@@ -53,9 +44,7 @@ async function transformGhEvent(
       repoOrgId: repoData.organization?.id,
       repoOrgUrl: repoData.organization?.url,
       repoOrgLogin: repoData.organization?.login,
-      // repoHomepage: repoData.homepage,
+      repoHomepage: repoData.homepage ?? undefined,
     };
   }
 }
-
-ghStream.addTransform(repoStarStream, transformGhEvent);

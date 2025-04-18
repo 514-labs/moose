@@ -1,9 +1,34 @@
-# env files (can opt-in for committing if needed)
+# Dependencies
+node_modules/
+package-lock.json
+.pnpm-store/
+
+# Build outputs and cache
+dist/
+coverage/
+.ts-node/
+*.tsbuildinfo
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.vscode/
+*.code-workspace
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Project specific
+.moose/
 data/*
-
-.moose
-node_modules
-dist
-coverage
-.ts-node
-

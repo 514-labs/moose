@@ -10,7 +10,7 @@
 # Get started with Moose
 
 Get up and running with your own Moose project in minutes:
-* Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/quickstart)
+* Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 * Moose documentation: [https://docs.fiveonefour.com/moose](https://docs.fiveonefour.com/moose)
 * Moose pre-configured templates: [https://docs.fiveonefour.com/templates](https://docs.fiveonefour.com/templates)
 

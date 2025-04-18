@@ -31,7 +31,6 @@ export function TrendingTopicsChart() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["topicTimeseries", interval, limit, exclude],
     queryFn: async () => {
-      console.log("queryFn", interval, limit, exclude);
       const result = await mooseClient.consumptionTopicTimeseriesGet({
         interval,
         limit,
@@ -87,10 +86,8 @@ export function TrendingTopicsChart() {
     {},
   );
 
-  console.log("Raw topicStats:", data[currentTimeIndex].topicStats);
-
   const chartData = data[currentTimeIndex].topicStats.map((stat) => ({
-    eventCount: parseInt(stat.eventCount),
+    eventCount: stat.eventCount,
     topic: stat.topic,
     fill: `var(--color-${stat.topic})`,
   }));

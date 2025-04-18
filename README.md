@@ -9,6 +9,9 @@
 
 # Get started with Moose
 
+Install with:
+```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose```
+
 Get up and running with your own Moose project in minutes:
 * Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/quickstart)
 * Moose documentation: [https://docs.fiveonefour.com/moose](https://docs.fiveonefour.com/moose)

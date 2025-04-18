@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: demo
+Version: 0.0
+Requires-Dist: kafka-python-ng==2.2.2
+Requires-Dist: clickhouse_connect==0.7.16
+Requires-Dist: requests==2.32.3
+Requires-Dist: moose-cli
+Requires-Dist: moose-lib
+Dynamic: requires-dist

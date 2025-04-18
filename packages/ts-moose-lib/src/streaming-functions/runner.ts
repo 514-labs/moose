@@ -507,7 +507,7 @@ const startConsumer = async (
 
       const filteredMessages = processedMessages
         .flat()
-        .filter((msg) => msg !== undefined);
+        .filter((msg) => msg !== undefined && msg.value !== undefined);
 
       if (args.targetTopic === undefined || processedMessages.length === 0) {
         return;

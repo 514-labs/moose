@@ -1,19 +1,4 @@
 "use strict";
-var __assign =
-  (this && this.__assign) ||
-  function () {
-    __assign =
-      Object.assign ||
-      function (t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-          s = arguments[i];
-          for (var p in s)
-            if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-        }
-        return t;
-      };
-    return __assign.apply(this, arguments);
-  };
 var __awaiter =
   (this && this.__awaiter) ||
   function (thisArg, _arguments, P, generator) {
@@ -187,10 +172,8 @@ var __asyncValues =
   };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = createTask;
-var rest_1 = require("@octokit/rest");
-var octokit = new rest_1.Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
+var utils_1 = require("../../utils");
+var octokit = (0, utils_1.createOctokit)();
 // The initial input data and data passed between tasks can be
 // defined in the task function parameter
 var load = function (input) {
@@ -203,15 +186,11 @@ var load = function (input) {
       _i,
       _b,
       event_1,
-      mooseEvent,
-      repo,
-      repoData,
-      mooseEventWithRepo,
+      ghEvent,
       e_1_1;
     var _c, e_1, _d, _e;
-    var _f, _g, _h;
-    return __generator(this, function (_j) {
-      switch (_j.label) {
+    return __generator(this, function (_f) {
+      switch (_f.label) {
         case 0:
           return [
             4 /*yield*/,
@@ -220,115 +199,79 @@ var load = function (input) {
             }),
           ];
         case 1:
-          responses = _j.sent();
-          _j.label = 2;
+          responses = _f.sent();
+          _f.label = 2;
         case 2:
-          _j.trys.push([2, 11, 12, 17]);
+          _f.trys.push([2, 10, 11, 16]);
           (_a = true), (responses_1 = __asyncValues(responses));
-          _j.label = 3;
+          _f.label = 3;
         case 3:
           return [4 /*yield*/, responses_1.next()];
         case 4:
-          if (!((responses_1_1 = _j.sent()), (_c = responses_1_1.done), !_c))
-            return [3 /*break*/, 10];
+          if (!((responses_1_1 = _f.sent()), (_c = responses_1_1.done), !_c))
+            return [3 /*break*/, 9];
           _e = responses_1_1.value;
           _a = false;
           response = _e;
           (_i = 0), (_b = response.data);
-          _j.label = 5;
+          _f.label = 5;
         case 5:
-          if (!(_i < _b.length)) return [3 /*break*/, 9];
+          if (!(_i < _b.length)) return [3 /*break*/, 8];
           event_1 = _b[_i];
-          if (!(event_1.type === "WatchEvent")) return [3 /*break*/, 8];
-          mooseEvent = {
+          ghEvent = {
+            eventType: event_1.type,
             eventId: event_1.id,
             actorLogin: event_1.actor.login,
             actorId: event_1.actor.id,
             actorUrl: event_1.actor.url,
             actorAvatarUrl: event_1.actor.avatar_url,
-            repoName: event_1.repo.name,
+            repoFullName: event_1.repo.name,
+            repoOwner: event_1.repo.name.split("/")[0],
+            repoName: event_1.repo.name.split("/")[1],
             repoUrl: event_1.repo.url,
             repoId: event_1.repo.id,
-            createdAt: event_1.created_at ? new Date(event_1.created_at) : null,
+            createdAt: event_1.created_at
+              ? new Date(event_1.created_at)
+              : new Date(),
           };
           return [
             4 /*yield*/,
-            octokit.rest.repos.get({
-              owner: event_1.repo.name.split("/")[0],
-              repo: event_1.repo.name.split("/")[1],
+            fetch("http://localhost:4000/ingest/GhEvent", {
+              method: "POST",
+              body: JSON.stringify(ghEvent),
             }),
           ];
         case 6:
-          repo = _j.sent();
-          repoData = repo.data;
-          mooseEventWithRepo = __assign(__assign({}, mooseEvent), {
-            repoDescription: repoData.description,
-            repoTopics: repoData.topics,
-            repoLanguage: repoData.language,
-            repoStars: repoData.stargazers_count,
-            repoForks: repoData.forks_count,
-            repoWatchers: repoData.watchers_count,
-            repoOpenIssues: repoData.open_issues_count,
-            repoCreatedAt: repoData.created_at
-              ? new Date(repoData.created_at)
-              : null,
-            repoOwnerLogin: repoData.owner.login,
-            repoOwnerId: repoData.owner.id,
-            repoOwnerUrl: repoData.owner.url,
-            repoOwnerAvatarUrl: repoData.owner.avatar_url,
-            repoOwnerType: repoData.owner.type,
-            repoOrgId:
-              (_f = repoData.organization) === null || _f === void 0
-                ? void 0
-                : _f.id,
-            repoOrgUrl:
-              (_g = repoData.organization) === null || _g === void 0
-                ? void 0
-                : _g.url,
-            repoOrgLogin:
-              (_h = repoData.organization) === null || _h === void 0
-                ? void 0
-                : _h.login,
-            repoHomepage: repoData.homepage,
-          });
-          return [
-            4 /*yield*/,
-            fetch("http://localhost:4000/ingest/watch-event", {
-              method: "POST",
-              body: JSON.stringify(mooseEventWithRepo),
-            }),
-          ];
+          _f.sent();
+          _f.label = 7;
         case 7:
-          _j.sent();
-          _j.label = 8;
-        case 8:
           _i++;
           return [3 /*break*/, 5];
-        case 9:
+        case 8:
           _a = true;
           return [3 /*break*/, 3];
-        case 10:
-          return [3 /*break*/, 17];
-        case 11:
-          e_1_1 = _j.sent();
-          e_1 = { error: e_1_1 };
-          return [3 /*break*/, 17];
-        case 12:
-          _j.trys.push([12, , 15, 16]);
-          if (!(!_a && !_c && (_d = responses_1.return)))
-            return [3 /*break*/, 14];
-          return [4 /*yield*/, _d.call(responses_1)];
-        case 13:
-          _j.sent();
-          _j.label = 14;
-        case 14:
+        case 9:
           return [3 /*break*/, 16];
-        case 15:
+        case 10:
+          e_1_1 = _f.sent();
+          e_1 = { error: e_1_1 };
+          return [3 /*break*/, 16];
+        case 11:
+          _f.trys.push([11, , 14, 15]);
+          if (!(!_a && !_c && (_d = responses_1.return)))
+            return [3 /*break*/, 13];
+          return [4 /*yield*/, _d.call(responses_1)];
+        case 12:
+          _f.sent();
+          _f.label = 13;
+        case 13:
+          return [3 /*break*/, 15];
+        case 14:
           if (e_1) throw e_1.error;
           return [7 /*endfinally*/];
-        case 16:
+        case 15:
           return [7 /*endfinally*/];
-        case 17:
+        case 16:
           return [
             2 /*return*/,
             {

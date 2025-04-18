@@ -7,7 +7,7 @@
     "dev": "moose-cli dev"
   },
   "dependencies": {
-    "@514labs/moose-lib": "^0.4.78",
+    "@514labs/moose-lib": "^0.4.113",
     "@octokit/rest": "^21.1.1",
     "axios": "^1.7.7",
     "dotenv": "^16.4.7",

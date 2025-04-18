@@ -30,6 +30,7 @@ var __exportStar =
         __createBinding(exports, m, p);
   };
 Object.defineProperty(exports, "__esModule", { value: true });
-__exportStar(require("./ingest/WatchEvent"), exports);
+__exportStar(require("./ingest/models"), exports);
+__exportStar(require("./ingest/transform"), exports);
 __exportStar(require("./apis/topicTimeseries"), exports);
 //# sourceMappingURL=index.js.map

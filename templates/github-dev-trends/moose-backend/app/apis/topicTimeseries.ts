@@ -4,7 +4,7 @@ import {
   ConsumptionHelpers as CH,
 } from "@514labs/moose-lib";
 import { tags } from "typia";
-import { watchEventPipeline } from "../ingest/WatchEvent";
+import { RepoStarEvent } from "../ingest/models";
 
 interface QueryParams {
   interval?: "minute" | "hour" | "day";
@@ -28,21 +28,24 @@ export default new ConsumptionApi<QueryParams, ResponseBody[]>(
     { interval = "minute", limit = 10, exclude = "" }: QueryParams,
     { client, sql }: ConsumptionUtil,
   ) => {
+    const RepoTable = RepoStarEvent.table!;
+    const cols = RepoTable.columns;
+
     const intervalMap = {
       hour: {
-        select: sql`toStartOfHour(createdAt) AS time`,
+        select: sql`toStartOfHour(${cols.createdAt}) AS time`,
         groupBy: sql`GROUP BY time, topic`,
         orderBy: sql`ORDER BY time, totalEvents DESC`,
         limit: sql`LIMIT ${limit} BY time`,
       },
       day: {
-        select: sql`toStartOfDay(createdAt) AS time`,
+        select: sql`toStartOfDay(${cols.createdAt}) AS time`,
         groupBy: sql`GROUP BY time, topic`,
         orderBy: sql`ORDER BY time, totalEvents DESC`,
         limit: sql`LIMIT ${limit} BY time`,
       },
       minute: {
-        select: sql`toStartOfFifteenMinutes(createdAt) AS time`,
+        select: sql`toStartOfFifteenMinutes(${cols.createdAt}) AS time`,
         groupBy: sql`GROUP BY time, topic`,
         orderBy: sql`ORDER BY time, totalEvents DESC`,
         limit: sql`LIMIT ${limit} BY time`,
@@ -67,13 +70,13 @@ export default new ConsumptionApi<QueryParams, ResponseBody[]>(
             FROM (
                 SELECT
                     ${intervalMap[interval].select},
-                    arrayJoin(repoTopics) AS topic,
+                    arrayJoin(${cols.repoTopics!}) AS topic,
                     count() AS totalEvents,
-                    uniqExact(repoId) AS uniqueReposCount,
-                    uniqExact(actorId) AS uniqueUsersCount
-                FROM ${CH.table(watchEventPipeline.table!.name)}
-                WHERE length(repoTopics) > 0
-                ${exclude ? sql`AND arrayAll(x -> x NOT IN (${exclude}), repoTopics)` : sql``}
+                    uniqExact(${cols.repoId}) AS uniqueReposCount,
+                    uniqExact(${cols.actorId}) AS uniqueUsersCount
+                FROM ${RepoStarEvent.table!}
+                WHERE length(${cols.repoTopics!}) > 0
+                ${exclude ? sql`AND arrayAll(x -> x NOT IN (${exclude}), ${cols.repoTopics!})` : sql``}
                 ${intervalMap[interval].groupBy}
                 ${intervalMap[interval].orderBy}
                 ${intervalMap[interval].limit}
@@ -82,58 +85,7 @@ export default new ConsumptionApi<QueryParams, ResponseBody[]>(
             ORDER BY time;
         `;
 
-    const resultSet = await client.query.execute(query);
-    const data = (await resultSet.json()) as ResponseBody[];
-    return data;
+    const resultSet = await client.query.execute<ResponseBody>(query);
+    return await resultSet.json();
   },
 );
-interface StripeEvent {
-  id: string;
-  object: string;
-  api_version: string;
-  created: number;
-  data: {
-    object: {
-      id: string;
-      object: string;
-      application?: string;
-      automatic_payment_methods?: string;
-      cancellation_reason?: string;
-      client_secret: string;
-      created: number;
-      customer?: string;
-      description?: string;
-      flow_directions?: string;
-      last_setup_error?: string;
-      latest_attempt?: string;
-      livemode: boolean;
-      mandate?: string;
-      metadata: Record<string, unknown>;
-      next_action?: string;
-      on_behalf_of?: string;
-      payment_method: string;
-      payment_method_options: {
-        acss_debit: {
-          currency: string;
-          mandate_options: {
-            interval_description: string;
-            payment_schedule: string;
-            transaction_type: string;
-          };
-          verification_method: string;
-        };
-      };
-      payment_method_types: string[];
-      single_use_mandate?: string;
-      status: string;
-      usage: string;
-    };
-  };
-  livemode: boolean;
-  pending_webhooks: number;
-  request: {
-    id?: any;
-    idempotency_key?: string;
-  };
-  type: string;
-}

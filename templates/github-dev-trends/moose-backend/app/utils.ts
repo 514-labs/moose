@@ -89,6 +89,9 @@ export const saveEtag = (etag: string): void => {
 
 // Create a new authenticated Octokit instance
 export const createOctokit = () => {
+  if (!process.env.GITHUB_TOKEN) {
+    return new Octokit();
+  }
   return new Octokit({
     auth: process.env.GITHUB_TOKEN,
   });

@@ -1,7 +1,4 @@
----
-title: Live Heart Rate Leaderboard
-description: A real-time heart rate monitoring dashboard with leaderboard functionality
----
+import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python , ToggleBlock } from "@/components";
 
 # Live Heart Rate Leaderboard Template
 
@@ -47,7 +44,7 @@ The Streamlit dashboard (`streamlit_app.py`) provides:
 
 ## Getting Started
 
-<Callout title="Prerequisites" variant="info">
+<Callout title="Prerequisites" type="info">
 Python 3.12+
 Moose CLI
 
@@ -96,6 +93,10 @@ The template exposes two main API endpoints:
 
 ### UnifiedHRPacket
 ```python
+from moose_lib import Key
+from pydantic import BaseModel
+from datetime import datetime
+
 class UnifiedHRPacket(BaseModel):
     user_id: Key[int]
     user_name: str
@@ -121,11 +122,3 @@ You can customize the template by:
 - Adjusting performance calculation formulas
 - Extending the data pipeline with additional metrics
 - Customizing the dashboard layout and visualizations
-
-## Technical Requirements
-
-- Python 3.12+
-- Streamlit
-- Moose Framework
-- Plotly for visualizations
-- Pandas for data processing

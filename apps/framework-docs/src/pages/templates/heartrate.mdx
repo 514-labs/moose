@@ -1,0 +1,115 @@
+---
+title: Live Heart Rate Leaderboard
+description: A real-time heart rate monitoring dashboard with leaderboard functionality
+---
+
+# Live Heart Rate Leaderboard Template
+
+## Overview
+
+The Live Heart Rate Leaderboard template demonstrates how to build a real-time health monitoring application using Moose. It features a Streamlit-based dashboard that displays live heart rate data, calculates performance metrics, and maintains a competitive leaderboard.
+
+## Features
+
+- Real-time heart rate monitoring with interactive graphs
+- Live leaderboard tracking multiple users
+- Heart rate zone visualization
+- Performance metrics calculation (power output and calories burned)
+- User-specific data tracking and visualization
+
+## Architecture
+
+### Data Pipeline
+
+The template implements a three-stage data processing pipeline:
+
+1. **Raw Data Ingestion** (`RawAntHRPacket`)
+   - Captures raw heart rate data from ANT+ devices
+   - Includes basic device and timestamp information
+
+2. **Data Processing** (`ProcessedAntHRPacket`)
+   - Transforms raw data into processed format
+   - Adds calculated metrics and validation
+
+3. **Unified Format** (`UnifiedHRPacket`)
+   - Standardizes heart rate data for consumption
+   - Includes user information and derived metrics
+
+### Frontend Dashboard
+
+The Streamlit dashboard (`streamlit_app.py`) provides:
+
+- Real-time heart rate visualization
+- Performance metrics display
+- Interactive user selection
+- Live-updating leaderboard
+- Heart rate zone indicators
+
+## Getting Started
+
+1. Install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Configure your environment variables in `.env`
+
+3. Start the Moose pipeline:
+```bash
+python main.py
+```
+
+4. Launch the Streamlit dashboard:
+```bash
+streamlit run app/streamlit_app.py
+```
+
+## API Endpoints
+
+The template exposes two main API endpoints:
+
+- `/consumption/getUserLiveHeartRateStats`
+  - Parameters: user_name, window_seconds
+  - Returns: Recent heart rate statistics for a specific user
+
+- `/consumption/getLeaderboard`
+  - Parameters: time_window_seconds, limit
+  - Returns: Ranked list of users based on performance metrics
+
+## Data Models
+
+### UnifiedHRPacket
+```python
+class UnifiedHRPacket(BaseModel):
+    user_id: Key[int]
+    user_name: str
+    device_id: int
+    hr_timestamp_seconds: float
+    hr_value: float
+    rr_interval_ms: float
+    processed_timestamp: datetime
+```
+
+## Performance Calculations
+
+The template includes calculations for:
+- Heart rate zones (1-5)
+- Estimated power output
+- Cumulative calories burned
+- Average performance metrics
+
+## Customization
+
+You can customize the template by:
+- Modifying heart rate zone thresholds
+- Adjusting performance calculation formulas
+- Extending the data pipeline with additional metrics
+- Customizing the dashboard layout and visualizations
+
+## Technical Requirements
+
+- Python 3.12+
+- Streamlit
+- Moose Framework
+- Plotly for visualizations
+- Pandas for data processing

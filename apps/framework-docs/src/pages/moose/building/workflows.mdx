@@ -21,17 +21,9 @@ This workflow abstraction is powered by Temporal under the hood. You can use the
 
 To create a new workflow, run the following command:
 
-<Python>
 ```bash filename="Terminal" copy
-moose-cli workflow init example_workflow --tasks first_task,second_task
+moose workflow init example --tasks first,second
 ```
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow init ExampleWorkflow --tasks firstTask,secondTask
-```
-</TypeScript>
 
 ## Workflow Structure
 
@@ -41,9 +33,9 @@ A typical workflow looks like this:
 <FileTree>
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="scripts" open>
-<FileTree.Folder name="example_workflow" open>
-<FileTree.File name="1.first_task.py" />
-<FileTree.File name="2.second_task.py" />
+<FileTree.Folder name="example" open>
+<FileTree.File name="1.first.py" />
+<FileTree.File name="2.second.py" />
 <FileTree.File name="config.toml" />
 </FileTree.Folder>
 </FileTree.Folder>
@@ -55,9 +47,9 @@ A typical workflow looks like this:
 <FileTree>
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="scripts" open>
-<FileTree.Folder name="ExampleWorkflow" open>
-<FileTree.File name="1.firstTask.ts" />
-<FileTree.File name="2.secondTask.ts" />
+<FileTree.Folder name="example" open>
+<FileTree.File name="1.first.ts" />
+<FileTree.File name="2.second.ts" />
 <FileTree.File name="config.toml" />
 </FileTree.Folder>
 </FileTree.Folder>
@@ -71,19 +63,19 @@ A typical workflow looks like this:
 
 Tasks are Python functions decorated with `@task`. Each task can receive inputs and return outputs:
 
-```python filename="app/scripts/example_workflow/1.first_task.py" copy
+```python filename="app/scripts/example/1.first.py" copy
 from moose_lib import task, Logger
 
 @task
-def first_task(input: dict):
-    logger = Logger('first_task')
+def first(input: dict):
+    logger = Logger('first')
     logger.info(f'Received data: {input}')
     
     # Example operation: Increment a counter
     result = input.get("counter", 0) + 1
     
     return {
-        "task": "first_task",
+        "task": "first",
         "data": {
             "counter": result,
             "timestamp": datetime.now().isoformat()
@@ -96,19 +88,19 @@ def first_task(input: dict):
 
 Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `task` and `data`.
 
-```typescript filename="app/scripts/example_workflow/1.firstTask.ts" copy
+```typescript filename="app/scripts/example/1.first.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface FirstTaskInput {
     name: string;
 }
 
-const firstTask: TaskFunction = async (input: FirstTaskInput) => {
+const first: TaskFunction = async (input: FirstTaskInput) => {
     const name = input.name ?? "world";
     const greeting = `hello, ${name}!`;
     
     return {
-        task: "firstTask",
+        task: "first",
         data: {
             name: name,
             greeting: greeting,
@@ -119,7 +111,7 @@ const firstTask: TaskFunction = async (input: FirstTaskInput) => {
 
 export default function createTask() {
     return {
-        task: firstTask,
+        task: first,
     } as TaskDefinition;
 };
 ```
@@ -136,12 +128,12 @@ Tasks communicate through their return values. Each task can return a dictionary
 - Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
 
 <Python>
-```python filename="app/scripts/example_workflow/1.first_task.py" copy
+```python filename="app/scripts/example/1.first.py" copy
 from moose_lib import task, Logger
 
 @task
-def first_task(input: dict):
-    logger = Logger('first_task')
+def first(input: dict):
+    logger = Logger('first')
     logger.info(f'Received input: {input}')
 
     name = input.get("name", "no name")
@@ -150,7 +142,7 @@ def first_task(input: dict):
 
 
     return {
-        "task": "first_task",
+        "task": "first",
         "data": {
             "name": name,
             "greeting": greeting,
@@ -158,13 +150,13 @@ def first_task(input: dict):
         }
     }
 ```
-```python filename="app/scripts/example_workflow/2.second_task.py" copy
+```python filename="app/scripts/example/2.second.py" copy
 from moose_lib import task, Logger
 
 @task
-def second_task(input: dict):
+def second(input: dict):
 
-    logger = Logger('second_task')
+    logger = Logger('second')
     logger.info(f'Received input: {input}')
 
     name = input.get("name", "no name")
@@ -175,7 +167,7 @@ def second_task(input: dict):
     expanded_greeting = f"{greeting} Your name is {name_length} characters long"
     
     return {
-        "task": "second_task",
+        "task": "second",
         "data": {
             "name": name,
             "greeting": expanded_greeting,
@@ -187,19 +179,19 @@ def second_task(input: dict):
 </Python>
 
 <TypeScript>
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" copy
+```typescript filename="app/scripts/example/1.first.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface FirstTaskInput {
     name: string;
 }
 
-const firstTask: TaskFunction = async (input: FirstTaskInput) => {
+const first: TaskFunction = async (input: FirstTaskInput) => {
     const name = input.name ?? "world";
     const greeting = `hello, ${name}!`;
     
     return {
-        task: "firstTask",
+        task: "first",
         data: {
             name: name,
             greeting: greeting,
@@ -210,11 +202,11 @@ const firstTask: TaskFunction = async (input: FirstTaskInput) => {
 
 export default function createTask() {
     return {
-        task: firstTask,
+        task: first,
     } as TaskDefinition;
 }; 
 ```
-```typescript filename="app/scripts/example_workflow/2.secondTask.ts" copy
+```typescript filename="app/scripts/example/2.second.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface SecondTaskInput {
@@ -223,7 +215,7 @@ interface SecondTaskInput {
     counter: number;
 }
 
-const secondTask: TaskFunction = async (input: SecondTaskInput) => {
+const second: TaskFunction = async (input: SecondTaskInput) => {
     const nameLength = input.name.length;
     const expandedGreeting = `${input.greeting} Your name is ${nameLength} characters long`;
 
@@ -243,7 +235,7 @@ const secondTask: TaskFunction = async (input: SecondTaskInput) => {
 
 export default function createTask() {
     return {
-        task: secondTask,
+        task: second,
     } as TaskDefinition;
 };
 ```
@@ -253,95 +245,56 @@ export default function createTask() {
 
 As you develop workflows, you can run them directly using the Moose CLI:
 
-<Python>
 ```bash filename="Terminal" copy
-moose-cli workflow run example_workflow
+moose workflow run example
 ```
 The terminal will print the following:
 ```txt filename="Terminal"
-      Workflow 'example_workflow' started successfully.
-View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/example_workflow/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
+      Workflow 'example' started successfully.
+View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/example/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
 ```
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow run ExampleWorkflow
-```
-The terminal will print the following:
-```txt filename="Terminal"
-      Workflow 'ExampleWorkflow' started successfully.
-View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/ExampleWorkflow/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
-```
-</TypeScript>
 
 Notice that you are given a URL to view the workflow in the Temporal dashboard. This is a helpful way to monitor the workflow execution in real time and debug any issues through a GUI.
 
 ### Passing Input to Workflows
 When you run a workflow, you can pass input to the workflow by using the `--input` flag.
 
-<Python>
 ```bash filename="Terminal" copy
-moose-cli workflow run example_workflow --input '{"name": "John"}'
+moose workflow run example --input '{"name": "John"}'
 ```
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow run ExampleWorkflow --input '{"name": "John"}'
-```
-</TypeScript>
 
 The input is passed to the workflow as a JSON string.
 
 ## Debugging Workflows
 While the Temporal dashboard is a helpful tool for debugging, you can also leverage the Moose CLI to monitor and debug workflows. This is useful if you want to monitor a workflow without having to leave your terminal.
 
-Use the `moose-cli workflow status` command to monitor a workflow:
+Use the `moose workflow status` command to monitor a workflow:
 
-<Python>
 ```bash filename="Terminal" copy
-moose-cli workflow status example_workflow
+moose workflow status example
 ```
 
 This will print high level information about the workflow run:
 
 ```txt filename="Terminal"
-      Workflow Workflow Status: example_workflow
+      Workflow Workflow Status: example
 Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
 Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
 Execution Time: 66s
 ```
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow status ExampleWorkflow
-```
-
-This will print high level information about the workflow run:
-
-```txt filename="Terminal"
-      Workflow Workflow Status: ExampleWorkflow
-Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
-Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
-Execution Time: 66s
-```
-</TypeScript>
 
 If you want more detailed information about the workflow's status, including task level logs and inputs/outputs, you can use the `--verbose` flag:
 
-<Python>
 ```bash filename="Terminal" copy
-moose-cli workflow status example_workflow --verbose
+moose workflow status example --verbose
 ```
 
 ```txt filename="Terminal"
-      Workflow Workflow Status: example_workflow
+      Workflow Workflow Status: example
 Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
 Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
 Execution Time: 66s
-Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "example_workflow", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
+Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "example", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
 
 Found 17 events
 Event History:
@@ -350,7 +303,7 @@ Event History:
   • [2025-02-21T14:16:56.259341847+00:00] EVENT_TYPE_WORKFLOW_TASK_STARTED
   • [2025-02-21T14:16:56.329856180+00:00] EVENT_TYPE_WORKFLOW_TASK_COMPLETED
   • [2025-02-21T14:16:56.329951889+00:00] EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
-    Activity: example_workflow/1.first_task
+    Activity: example/1.first
   • [2025-02-21T14:16:56.333761680+00:00] EVENT_TYPE_ACTIVITY_TASK_STARTED
   • [2025-02-21T14:16:56.497156055+00:00] EVENT_TYPE_ACTIVITY_TASK_COMPLETED
     Result: 
@@ -360,46 +313,9 @@ Event History:
           "greeting": "hello, no name!",
           "name": "no name"
         },
-        "task": "first_task"
-      }
-
-```
-
-</Python>   
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow status ExampleWorkflow --verbose
-```
-
-```txt filename="Terminal"
-      Workflow Workflow Status: ExampleWorkflow
-Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
-Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
-Execution Time: 66s
-Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "ExampleWorkflow", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
-
-Found 17 events
-Event History:
-  • [2025-02-21T14:16:56.234808764+00:00] EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
-  • [2025-02-21T14:16:56.235132389+00:00] EVENT_TYPE_WORKFLOW_TASK_SCHEDULED
-  • [2025-02-21T14:16:56.259341847+00:00] EVENT_TYPE_WORKFLOW_TASK_STARTED
-  • [2025-02-21T14:16:56.329856180+00:00] EVENT_TYPE_WORKFLOW_TASK_COMPLETED
-  • [2025-02-21T14:16:56.329951889+00:00] EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
-    Activity: ExampleWorkflow/1.firstTask
-  • [2025-02-21T14:16:56.333761680+00:00] EVENT_TYPE_ACTIVITY_TASK_STARTED
-  • [2025-02-21T14:16:56.497156055+00:00] EVENT_TYPE_ACTIVITY_TASK_COMPLETED
-    Result: 
-      {
-        "data": {
-          "counter": 1,
-          "greeting": "hello, no name!",
-          "name": "no name"
-        },
-        "task": "firstTask"
+        "task": "first"
       }
 ```
-</TypeScript>
 
 With this more detailed output, you can see the exact sequence of events and the inputs and outputs of each task. This is useful for debugging and understanding the workflow's behavior.
 The result of each task is included in the output, allowing you to inspect the data that was passed between task for debugging purposes.
@@ -410,39 +326,20 @@ If your workflow fails due to some runtime error, you can use the event history 
 Workflows can be configured to run on a schedule using cron expressions or a string `"@every <interval>"`. The `schedule` field in `config.toml` is used to specify the schedule. This field is optional, and blank by default:
 
 ### Cron Expressions
-<Python>
-```toml filename="app/scripts/example_workflow/config.toml" {4}
-name = "example_workflow"
+```toml filename="app/scripts/example/config.toml" {4}
+name = "example"
 timeout = "1h"
 retries = 3
 schedule = "" ## DEFAULT: Blank
-tasks = ["first_task", "second_task"]
+tasks = ["first", "second"]
 ```
-</Python>
-
-<TypeScript>
-```toml filename="app/scripts/example_workflow/config.toml" {4} 
-name = "example_workflow"
-timeout = "1h"
-retries = 3
-schedule = "" ## DEFAULT: Blank
-tasks = ["firstTask", "secondTask"]
-```
-</TypeScript>
 
 By setting a cron expression in this field, the workflow will be scheduled to run at the specified interval. The schedule field uses standard cron expression syntax:
 
-<Python>
-```toml filename="app/scripts/example_workflow/config.toml"
+```toml filename="app/scripts/example/config.toml"
 schedule = "0 12 * * *" # Runs at 12:00 PM every day
 ```
-</Python>
 
-<TypeScript>
-```toml filename="app/scripts/ExampleWorkflow/config.toml"
-schedule = "0 12 * * *" # Runs at 12:00 PM every day
-```
-</TypeScript>
 
 ```text
 |------------------------------- Minute (0-59)
@@ -475,17 +372,10 @@ If your dev server is running, you should see logs in the terminal when your sch
 
 Interval schedules are specified as a string `"@every <interval>"`. The interval is a string that follows the format `"1h"`, `"1m"`, `"1s"`, etc.
 
-<Python>
-```toml filename="app/scripts/example_workflow/config.toml"
+```toml filename="app/scripts/example/config.toml" copy
 schedule = "@every 1h"
 ```
-</Python>
 
-<TypeScript>
-```toml filename="app/scripts/ExampleWorkflow/config.toml"
-schedule = "@every 1h"
-```
-</TypeScript>
 
 
 ## Advanced: Triggering Workflows Programmatically
@@ -502,7 +392,7 @@ interface WorkflowParams {
 
 const triggerApi = new ConsumptionAPI<WorkflowParams>("/trigger-workflow", (client: MooseClient) => {
     client.workflows.execute(
-        workflow="example_workflow",
+        workflow="example",
         params={input_value: params.input_value}
     )
 })
@@ -513,7 +403,7 @@ const triggerApi = new ConsumptionAPI<WorkflowParams>("/trigger-workflow", (clie
 
 
 ```python filename="app/apis/trigger_workflow.py" copy
-from moose_lib import MooseClient
+from moose_lib import MooseClient, ConsumptionAPI
 from pydantic import BaseModel, Field
 
 class WorkflowParams(BaseModel):
@@ -521,16 +411,28 @@ class WorkflowParams(BaseModel):
 
 def run(client: MooseClient, params: WorkflowParams) -> dict:
     return client.workflows.execute(
-        workflow="example_workflow",
+        workflow="example",
         params={input_value: params.input_value}
     )
+
+api = ConsumptionAPI[WorkflowParams]("trigger-workflow", run)
 ```
 
-For more information on how to set up a Moose API, see the [Consumption API](/moose/consumption-apis) documentation.
+For more information on how to set up a Moose API, see the [Consumption API](/moose/building/consumption-apis) documentation.
 </Python>
 
 <TypeScript>
-This feature is coming soon.
+```ts filename="app/apis/trigger_workflow.ts" copy
+import { ConsumptionAPI } from "@514labs/moose-lib";
+
+interface WorkflowParams {
+    inputValue: string;
+}
+
+const triggerApi = new ConsumptionAPI<WorkflowParams>("trigger-workflow", ({inputValue}: WorkflowParams, {client, sql}) => {
+    client.workflows.execute(workflow="example", params={inputValue: inputValue})
+})
+```
 </TypeScript>
 
 
@@ -544,25 +446,14 @@ Moose automatically catches any runtime errors during workflow execution. Errors
 
 In your workflow's `config.toml` file, you can configure the following options to control workflow behavior, including timeouts and retries:
 
-<Python>
-```toml filename="app/scripts/example_workflow/config.toml" {2-3} copy
-name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
+```toml filename="app/scripts/example/config.toml" {2-3} copy
+name = "example" # Required. The name of the workflow. Matches the workflow folder name.
 timeout = "1h" # Required. Default: 1 hour
 retries = 3 # Required. Default: 3 retries
 schedule = "0 12 * * *" # Required. Default: Blank
-tasks = [first_task, second_task] # Required. The list of tasks to execute. Matches the task file names.
+tasks = ["first", "second"] # Required. The list of tasks to execute. Matches the task file names.
 ```
-</Python>
 
-<TypeScript>
-```toml filename="app/scripts/example_workflow/config.toml" {2-3} copy
-name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
-timeout = "1h" # Required. Default: 1 hour
-retries = 3 # Required. Default: 3 retries
-schedule = "0 12 * * *" # Required. Default: Blank
-tasks = "[firstTask", "secondTask"] # Required. The list of tasks to execute. Matches the task file names.
-```
-</TypeScript>
 
 <Callout type="warning" title="Config.toml">
 When you initialize a new workflow, the `config.toml` file is automatically created with the default values.
@@ -580,14 +471,14 @@ For more granular control over task-level errors and retries, you can configure 
 <Python>
 To configure a task to have its own retry behavior, you can use the `retries` parameter in the `@task` decorator:
 
-```python filename="app/scripts/example_workflow/1.first_task.py" {3} copy
+```python filename="app/scripts/example/1.first_task.py" {3} copy
 from moose_lib import task
 
 @task(retries=3) 
-def first_task(input: dict):
+def first(input: dict):
     raise Exception("This is a test error")
     return {
-        "task": "first_task",
+        "task": "first",
         "data": {}
     }
 ```
@@ -596,20 +487,20 @@ def first_task(input: dict):
 <TypeScript>
 To configure a task to have its own retry behavior, you can add a `config` object to the task definition, and specify a number of `retries` within that object:
 
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18} copy
+```typescript filename="app/scripts/example/1.first.ts" {16-18} copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const firstTask: TaskFunction = async () => {
+const first: TaskFunction = async () => {
     throw new Error("This is a test error");
     return {
-        task: "firstTask",
+        task: "first",
         data: {}
     };
 };
 
 export default function createTask() {
     return {
-        task: firstTask,
+        task: first,
         config: {
             retries: 3 // This is optional. If you don't explicitly set retries, it will default to 3. 
         }
@@ -624,18 +515,18 @@ When configuring retries, it's important to understand how workflow-level and ta
 
 <Python>
 - **Workflow Retry Policy**: 2 attempts
-```toml filename="app/scripts/example_workflow/config.toml" {2}
+```toml filename="app/scripts/example/config.toml" {2}
 retries = 2
 ```
 
 - **Task Retry Policy**: 3 attempts
-```python filename="app/scripts/example_workflow/1.first_task.py" {3}
+```python filename="app/scripts/example/1.first.py" {3}
 @task(retries=3) 
-def first_task(input: dict):
+def first(input: dict):
     raise Exception("This is a test error")
     
     return {
-        "task": "first_task",
+        "task": "first",
         "data": {}
     }
 ```
@@ -643,25 +534,25 @@ def first_task(input: dict):
 
 <TypeScript>
 - **Workflow Retry Policy**: 2 attempts
-```toml filename="app/scripts/ExampleWorkflow/config.toml" {2}
+```toml filename="app/scripts/example/config.toml" {2}
 retries = 2
 ```
 
 - **Task Retry Policy**: 3 attempts
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18} copy
+```typescript filename="app/scripts/example/1.first.ts" {16-18} copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const firstTask: TaskFunction = async () => {
+const first: TaskFunction = async () => {
     throw new Error("This is a test error");
     return {
-        task: "firstTask",
+        task: "first",
         data: {}
     };
 };
 
 export default function createTask() {
     return {
-        task: firstTask,
+        task: first,
         config: {
             retries: 3 // This is optional. If you don't explicitly set retries, it will default to 3. 
         }
@@ -690,17 +581,9 @@ In this example, the workflow will make a total of 2 attempts, and each task wit
 
 To terminate a workflow before it has finished running, use the `workflow terminate` command.
 
-<Python>
-```bash
-moose-cli workflow terminate <workflow_name>
+```bash filename="Terminal" copy
+moose workflow terminate example
 ```
-</Python>
-
-<TypeScript>
-```bash
-npx moose-cli workflow terminate <workflow_name>
-```
-</TypeScript>
 
 <Callout type="warning" title="Terminating Workflows">
 You cannot run the same workflow concurrently. Use the `terminate` command to stop the workflow before triggering it again.

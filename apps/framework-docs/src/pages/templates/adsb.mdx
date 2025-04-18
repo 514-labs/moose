@@ -1,17 +1,48 @@
-
 import { ZoomImg, Callout } from "@/components";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Steps } from "nextra/components";
 
-
 # Aircraft Transponder (ADS-B) Template
 
-This template allows you to ingest and analyze aircraft transponder data (ADS-B) from military aircraft. It demonstrates how to build a data pipeline that collects aircraft tracking information, processes it in real-time, and stores it in ClickHouse for analysis.
+This template demonstrates how to build a modern full-stack application that ingests and analyzes aircraft transponder data (ADS-B) from military aircraft. It showcases a complete architecture combining a Next.js frontend with a Moose backend for real-time data processing and storage.
 
-<Link href="https://github.com/514-labs/moose/tree/main/templates/ads-b">
+<Link href="https://github.com/514-labs/moose/tree/main/templates/ads-b-frontend">
   <Button variant="outline">View Source Code →</Button>
 </Link>
+
+## Architecture Overview
+
+The template implements a modern full-stack architecture with the following components:
+
+1. **Frontend Layer (Next.js)**
+   - Modern React-based web application
+   - Real-time aircraft visualization
+   - Interactive data querying interface
+   - Built with TypeScript for type safety
+
+2. **Backend Layer (Moose)**
+   - Data ingestion from adsb.lol API
+   - Real-time data processing pipeline
+   - Event streaming with Redpanda
+   - Data storage in ClickHouse
+   - HTTP API endpoints for frontend consumption
+
+3. **Infrastructure Layer**
+   - Redpanda for event streaming
+   - ClickHouse for analytics storage
+   - Temporal for workflow orchestration
+   - Redis for caching
+   - HTTP server for API endpoints
+
+```mermaid
+graph TD
+    A[Next.js Frontend] --> B[Moose HTTP API]
+    B --> C[Moose Processing Pipeline]
+    C --> D[Redpanda Events]
+    D --> E[ClickHouse Storage]
+    F[ADS-B Data Source] --> C
+```
 
 ## Getting Started
 
@@ -120,25 +151,79 @@ Try asking Cursor to help you productionize your analysis:
 
 ## Project Structure
 
-The template implements a data pipeline that:
-
-1. Fetches military aircraft data from the adsb.lol API
-2. Processes and normalizes the data (handling special cases like the "ground" altitude)
-3. Enriches the data with additional metrics like Z-order coordinates
-4. Stores the data in ClickHouse for analysis
+The template is organized into two main components:
 
 ```
-aircraft/
-├── app/
-│   ├── datamodels/        # Data models for aircraft tracking
-│   ├── functions/         # Processing functions for aircraft data
-│   └── scripts/           # Workflow scripts for data ingestion
-└── README.md              # Project documentation
+project/
+├── frontend/              # Next.js frontend application
+│   ├── src/
+│   │   ├── app/          # Next.js app router
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   └── lib/          # Utility functions
+│   └── package.json
+│
+├── moose/                # Moose backend
+│   ├── app/
+│   │   ├── datamodels/   # Data models for aircraft tracking
+│   │   ├── functions/    # Processing functions
+│   │   └── scripts/      # Workflow scripts
+│   ├── moose.config.toml # Moose configuration
+│   └── package.json
 ```
+
+## Integration Points
+
+The frontend and Moose backend are integrated through several key touchpoints:
+
+1. **HTTP API Endpoints**
+   - Moose exposes REST endpoints on port 4000
+   - Frontend consumes these endpoints for real-time data
+
+2. **Data Flow**
+   - Aircraft data is ingested through Moose workflows
+   - Processed data is stored in ClickHouse
+   - Frontend queries ClickHouse through Moose API endpoints
+   - Real-time updates via WebSocket connections
+
+3. **Configuration**
+   - Moose services run on preconfigured ports
+   - CORS is configured for local development
+   - Environment variables handle production settings
+
+## Development Workflow
+
+When developing with this template, you'll work with two main components:
+
+1. **Moose Backend Development**
+   - Edit data models in `moose/app/datamodels`
+   - Modify processing functions in `moose/app/functions`
+   - Update workflows in `moose/app/scripts`
+   - Test changes with `moose dev`
+
+2. **Frontend Development**
+   - Modify React components in `frontend/src/components`
+   - Update pages in `frontend/src/app`
+   - Add new features using the Moose API
+   - Test changes with `npm run dev`
+
+## Production Deployment
+
+When deploying to production:
+
+1. **Frontend Deployment**
+   - Deploy Next.js application to Vercel or similar
+   - Configure environment variables for API endpoints
+   - Set up proper CORS and security headers
+
+2. **Moose Backend Deployment**
+   - Deploy Moose infrastructure using Docker Compose
+   - Configure production-ready Redpanda and ClickHouse
+   - Set up proper monitoring and logging
 
 ## Next Steps
 
-Once you have the data flowing, you can:
+Once you have the data flowing, you can ask Aurora to help with any of the following:
 
 1. Build custom visualizations of aircraft movement
 2. Create alerting systems for specific aircraft types or behaviors

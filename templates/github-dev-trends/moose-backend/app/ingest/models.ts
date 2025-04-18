@@ -1,4 +1,4 @@
-import { Key, IngestPipeline } from "@514labs/moose-lib";
+import { Key } from "@514labs/moose-lib";
 
 export enum GitHubEventType {
   Watch = "WatchEvent",

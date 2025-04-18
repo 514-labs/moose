@@ -1,10 +1,6 @@
-import {
-  ConsumptionApi,
-  ConsumptionUtil,
-  ConsumptionHelpers as CH,
-} from "@514labs/moose-lib";
+import { ConsumptionApi, ConsumptionUtil } from "@514labs/moose-lib";
 import { tags } from "typia";
-import { RepoStarEvent } from "../ingest/models";
+import { RepoStarEvent } from "../index";
 
 interface QueryParams {
   interval?: "minute" | "hour" | "day";
@@ -12,14 +8,16 @@ interface QueryParams {
   exclude?: string & tags.Pattern<"^([^,]+)(,[^,]+)*$">; // comma separated list of tags to exclude
 }
 
+interface TopicStats {
+  topic: string;
+  eventCount: number;
+  uniqueRepos: number;
+  uniqueUsers: number;
+}
+
 interface ResponseBody {
   time: string;
-  topicStats: {
-    topic: string;
-    eventCount: number;
-    uniqueRepos: number;
-    uniqueUsers: number;
-  }[];
+  topicStats: TopicStats[];
 }
 
 export default new ConsumptionApi<QueryParams, ResponseBody[]>(

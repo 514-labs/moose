@@ -5,6 +5,8 @@ import { Steps } from "nextra/components";
 
 # Github Trending Topics
 
+<ZoomImg light="/github-dashboard.jpeg" dark="/github-dashboard.jpeg" alt="Github Dashboard" />
+
 This template demonstrates how to build a real-time data pipeline and dashboard for tracking GitHub trending topics. It showcases a complete full-stack architecture that combines a Next.js frontend with a Moose backend for data ingestion, processing, and API generation.
 
 <Link href="https://github.com/514-labs/moose/tree/main/templates/github-dev-trends">
@@ -63,7 +65,7 @@ The template is organized into two main components:
 
 ```
 moose-github-dev-trends/
-├── live-dev-trends-dashboard/    # Frontend dashboard
+├── dashboard/                    # Frontend dashboard
 │   ├── app/                      # Next.js pages and routes
 │   ├── components/               # React components
 │   ├── generated-client/         # Auto-generated API client
@@ -164,7 +166,7 @@ When running the following command, make sure:
 
 ```bash filename="Terminal" copy
 cd moose-backend
-openapi-generator-cli generate -i .moose/openapi.yaml -g typescript-fetch -o ../live-dev-trends-dashboard/generated-client
+openapi-generator-cli generate -i .moose/openapi.yaml -g typescript-fetch -o ../dashboard/generated-client
 ```
 
 <Callout type="warning" title="When to Regenerate">
@@ -253,7 +255,7 @@ return (
 
 #### Start the Frontend
 ```bash filename="terminal" copy
-cd live-dev-trends-dashboard && npm install && npm run dev
+cd dashboard && npm install && npm run dev
 ```
 Visit [http://localhost:3000](http://localhost:3000) to see real-time trending topics.
 </Steps>

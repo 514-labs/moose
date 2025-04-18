@@ -2,17 +2,20 @@ import { Callout, ToggleBlock, FeatureGrid, FeatureCard, CTACard } from "@/compo
 
 # Aurora Research Preview
 
-Aurora is your data engineering AI team. It is an agentic data engineering [MCP](https://modelcontextprotocol.io/introduction) that actually understands your data engineering project, and helps you grok your data, ship data ingest, transformation, views and materialized views, and egress—and works where you work, without getting in your way.
+Aurora is your data engineering AI team. It is an agentic data engineering [MCP](https://modelcontextprotocol.io/introduction) that has your code, data, and infrastructure in context. Will help you build and build with your data systems. Won't get in your way.
+
+Install Moose (Fiveonefour's open source developer framework for Data Engineering) and Aurora:
 
 ```
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
 
-This will install Moose (Fiveonefour's open source developer framework for Data Engineering) and Aurora.
+- Requires an [Anthropic token](https://www.anthropic.com/), as some tools are agentic.
+- Requires [Docker](https://www.docker.com/) and [Node](https://nodejs.org/en) for Typescript use.  
+- Requires [Docker](https://www.docker.com/) and [Python 3.12+](https://www.python.org/downloads/) for Python use. 
+- Some templates have other dependencies. 
 
-Requires Docker and Node for Typescript use.  Requires an Anthropic token.
-
-Supports Claude Desktop and Cursor. May work with other hosts.
+Supports [Claude Desktop](https://claude.ai/download) and [Cursor](https://www.cursor.com/). May work with other hosts.
 
 ### Quick Links:
 
@@ -20,60 +23,15 @@ Supports Claude Desktop and Cursor. May work with other hosts.
 - 🔗 [MCP tools](https://docs.fiveonefour.com/aurora/tool-reference)
 - 🔗 [CLI reference](https://docs.fiveonefour.com/aurora/cli-reference)
 
-## What is Aurora
-
-Aurora is your data engineering AI team. It’s an agentic, MCP that actually understands your data project—code, data, infrastructure, and business logic. It helps you grok your data infrastructure, ship ingest, pipelines  and transformations, build views and materialized views, and expose egress APIs. It works where you work, whether that’s your IDE, your terminal, or an AI-native interface—and it does it without getting in your way.
-
-To get this done effectively, Aurora works especially well with projects built in [**Moose**](https://docs.fiveonefour.com/moose), Fiveonefour’s open-source data engineering framework inspired by modern software dev tools like Next.js. Moose exposes clean, high-level primitives for ingest, transformation, and serving, while abstracting away boilerplate infrastructure like workflows, streaming, and OLAP storage.
-
-The research preview ships with the **Analytics Engineer** toolset: a context-aware copilot that understands your project’s structure and your data (in systems like ClickHouse and Redpanda), lets you explore it in plain language, and helps you productionize analytics via type-safe, documented egress APIs. Use it to get more value out of your OLAP stack, migrate legacy systems, build new features, or extend what you’ve already shipped. It’s already saving engineers time and reducing friction—now it’s your turn.
-
-### What are the jobs to be done that Aurora helps with
-
-The research preview is releasing the Analytics Engineering toolset. With this toolset, Aurora can help you with:
-
-- **"Shoulder Tap" Data Question Answering**
-    - Instantly get answers from your project data—ask plain-language questions and receive insights, queries, and visualizations. Trustworthy answers with provable provenance as AI isn't answering the question, but generating the auditable code to answer the question!
-- **Free-Form Data Exploration**
-    - Dive deep into your data with an interactive, AI-powered workflow—analyze trends, test hypotheses, and refine queries without manual SQL.
-- **Creating Scalable Data Applications on Top of Your Data**
-    - Turn your insights into **production-ready, type-safe APIs** with a single command—making analytics easily accessible to applications and teams.
-
-### What are the agents that we have already, what order are they going to be developed in:
-
-The Analytics agent is released with this research preview, but other agents are coming!
-
-- The Architect: focused on helping you plan the best solution for a given data problem—based on earlier experiments we conducted with a supervisory agent.
-- The Wrangler: focused on wrangling data from disorganized, raw sources into a form that can be easily analyzed.
-- The Pipeliner: focused on creating durable pipelines that transform data—think enrichment, mapping or data product creation.
-- The DataOps Agent: focused on improving the efficiency of your data infrastructure to ensure reliability, reduce cost and improve speed and efficiency.
-
-## Alpha Warning
+### Alpha Warning
 
 - This is a research preview
 - Limitations
     - Your tokens / no Boreal login
-    - Typescript is the only officially supported language, but some testing has been done on Python
+    - [Several tools remain experimental](https://docs.fiveonefour.com/aurora/tool-reference#experimental-tools)
 
 ### Getting Involved / Giving Feedback / Community
-
-ℹ️ This is an alpha product, so we appreciate your feedback!
 
 - [Email aurora@fiveonefour.com](mailto:aurora@fiveonefour.com)
 - [Join our Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
 - [Star / follow us on Github](https://github.com/514-labs/moose)
-
-
-## Requirements
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Node](https://nodejs.org/en)
-
-# Relevant Blog Posts
-
-- Introducing Aurora Research Preview: the Analytics Engineer
-- [MCP configuration management by CLI](https://www.fiveonefour.com/blog/mcp-configuration-management-by-cli)
-- [Template: ATS-B](https://docs.fiveonefour.com/templates/adsb); [blog](https://www.fiveonefour.com/blog/ads-b)
-- Template: Goodreads data; [blog](https://www.fiveonefour.com/blog/goodreads)
-- Template: Telecommunications
-- [Template: Github data](https://docs.fiveonefour.com/templates/github)

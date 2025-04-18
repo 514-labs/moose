@@ -620,7 +620,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Int => {
+        ColumnType::Int(_) => {
             if let Some(value_int) = value.as_i64() {
                 Ok(ClickHouseValue::new_int_64(value_int))
             } else {
@@ -630,7 +630,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Float => {
+        ColumnType::Float(_) => {
             if let Some(value_float) = value.as_f64() {
                 Ok(ClickHouseValue::new_float_64(value_float))
             } else {
@@ -640,7 +640,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Decimal => Err(MappingError::UnsupportedColumnType {
+        ColumnType::Decimal { .. } => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
         ColumnType::DateTime => {
@@ -780,6 +780,19 @@ fn map_json_value_to_clickhouse_value(
             }),
             Some(uuid_str) => Ok(ClickHouseValue::new_string(uuid_str.to_string())),
         },
+        ColumnType::Date => {
+            if let Some(value_str) = value
+                .as_str()
+                .filter(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok())
+            {
+                Ok(ClickHouseValue::new_string(value_str.to_string()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: column_type.clone(),
+                    value: value.clone(),
+                })
+            }
+        }
     }
 }
 

@@ -191,9 +191,9 @@ fn std_field_type_to_typescript_field_mapper(
     match field_type {
         ColumnType::String => Ok(InterfaceFieldType::String),
         ColumnType::Boolean => Ok(InterfaceFieldType::Boolean),
-        ColumnType::Int => Ok(InterfaceFieldType::Number),
-        ColumnType::Float => Ok(InterfaceFieldType::Number),
-        ColumnType::Decimal => Ok(InterfaceFieldType::Number),
+        ColumnType::Int(_) => Ok(InterfaceFieldType::Number),
+        ColumnType::Float(_) => Ok(InterfaceFieldType::Number),
+        ColumnType::Decimal { .. } => Ok(InterfaceFieldType::Number),
         ColumnType::DateTime => Ok(InterfaceFieldType::Date),
         ColumnType::Array {
             element_type,
@@ -232,8 +232,9 @@ fn std_field_type_to_typescript_field_mapper(
                     .collect::<Result<Vec<InterfaceField>, TypescriptGeneratorError>>()?,
             })))
         }
-        // add typia †ag when we want to fully support UUID
+        // add typia †ag when we want to fully support UUID or Date
         ColumnType::Uuid => Ok(InterfaceFieldType::String),
+        ColumnType::Date => Ok(InterfaceFieldType::String),
     }
 }
 

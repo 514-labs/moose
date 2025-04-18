@@ -45,7 +45,7 @@ use std::time::Duration;
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, EnumMember, EnumValue, Table,
+    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Table,
 };
 use crate::framework::core::infrastructure::view::ViewType;
 use crate::framework::core::infrastructure_map::{
@@ -901,10 +901,31 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
     }
 
     // Handle DateTime types with parameters
-    if ch_type.starts_with("DateTime") || ch_type == "Date32" {
+    if ch_type.starts_with("DateTime") {
         // All DateTime variants map to ColumnType::DateTime
         // We could store precision and timezone as metadata if needed in the future
         return Ok((ColumnType::DateTime, false));
+    }
+
+    // Handle DateTime types with parameters
+    if ch_type == "Date32" {
+        // All DateTime variants map to ColumnType::DateTime
+        // We could store precision and timezone as metadata if needed in the future
+        return Ok((ColumnType::Date, false));
+    }
+    // TODO: this function should call ClickHouseColumnType::from_type_str and not have duplicate logic
+    if ch_type.starts_with("Decimal(") {
+        let precision_and_scale = ch_type
+            .trim_start_matches("Decimal(")
+            .trim_end_matches(')')
+            .split(',')
+            .map(|s| s.trim().parse::<u8>().map_err(|e| e.to_string()))
+            .collect::<Result<Vec<u8>, String>>()?;
+
+        let precision = precision_and_scale.first().copied().unwrap_or(10);
+        let scale = precision_and_scale.get(1).copied().unwrap_or(0);
+
+        return Ok((ColumnType::Decimal { precision, scale }, false));
     }
 
     // Handle Enum types first since they contain parentheses which would interfere with the base type extraction
@@ -953,10 +974,20 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
 
     let column_type = match base_type {
         "String" => Ok(ColumnType::String),
-        "UInt8" | "UInt16" | "UInt32" | "Int8" | "Int16" | "Int32" => Ok(ColumnType::Int),
-        "UInt64" | "Int64" => Ok(ColumnType::BigInt),
-        "Float32" | "Float64" => Ok(ColumnType::Float),
-        "Decimal" | "Decimal32" | "Decimal64" | "Decimal128" => Ok(ColumnType::Decimal),
+        "Int8" => Ok(ColumnType::Int(IntType::Int8)),
+        "Int16" => Ok(ColumnType::Int(IntType::Int16)),
+        "Int32" => Ok(ColumnType::Int(IntType::Int32)),
+        "Int64" => Ok(ColumnType::Int(IntType::Int64)),
+        "Int128" => Ok(ColumnType::Int(IntType::Int128)),
+        "Int256" => Ok(ColumnType::Int(IntType::Int256)),
+        "UInt8" => Ok(ColumnType::Int(IntType::UInt8)),
+        "UInt16" => Ok(ColumnType::Int(IntType::UInt16)),
+        "UInt32" => Ok(ColumnType::Int(IntType::UInt32)),
+        "UInt64" => Ok(ColumnType::Int(IntType::UInt64)),
+        "UInt128" => Ok(ColumnType::Int(IntType::UInt128)),
+        "UInt256" => Ok(ColumnType::Int(IntType::UInt256)),
+        "Float32" => Ok(ColumnType::Float(FloatType::Float32)),
+        "Float64" => Ok(ColumnType::Float(FloatType::Float64)),
         "Bool" | "Boolean" => Ok(ColumnType::Boolean),
         "Array" => {
             // Extract the inner type from Array(...) format

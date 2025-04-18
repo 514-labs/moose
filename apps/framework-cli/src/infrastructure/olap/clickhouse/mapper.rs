@@ -1,4 +1,6 @@
-use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+use crate::framework::core::infrastructure::table::{
+    Column, ColumnType, FloatType, IntType, Table,
+};
 use serde_json::Value;
 
 use crate::infrastructure::olap::clickhouse::model::{
@@ -54,14 +56,51 @@ pub fn std_field_type_to_clickhouse_type_mapper(
     match field_type {
         ColumnType::String => Ok(ClickHouseColumnType::String),
         ColumnType::Boolean => Ok(ClickHouseColumnType::Boolean),
-        ColumnType::Int => Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64)),
-        ColumnType::Float => Ok(ClickHouseColumnType::ClickhouseFloat(
+        ColumnType::Int(IntType::Int8) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int8))
+        }
+        ColumnType::Int(IntType::Int16) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int16))
+        }
+        ColumnType::Int(IntType::Int32) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32))
+        }
+        ColumnType::Int(IntType::Int64) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64))
+        }
+        ColumnType::Int(IntType::Int128) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int128))
+        }
+        ColumnType::Int(IntType::Int256) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int256))
+        }
+        ColumnType::Int(IntType::UInt8) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt8))
+        }
+        ColumnType::Int(IntType::UInt16) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt16))
+        }
+        ColumnType::Int(IntType::UInt32) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt32))
+        }
+        ColumnType::Int(IntType::UInt64) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt64))
+        }
+        ColumnType::Int(IntType::UInt128) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt128))
+        }
+        ColumnType::Int(IntType::UInt256) => {
+            Ok(ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt256))
+        }
+        ColumnType::Float(FloatType::Float32) => Ok(ClickHouseColumnType::ClickhouseFloat(
+            ClickHouseFloat::Float32,
+        )),
+        ColumnType::Float(FloatType::Float64) => Ok(ClickHouseColumnType::ClickhouseFloat(
             ClickHouseFloat::Float64,
         )),
-        ColumnType::Decimal => Ok(ClickHouseColumnType::Decimal {
-            precision: 10,
-            scale: 0,
-        }),
+        ColumnType::Decimal { precision, scale } => {
+            Ok(ClickHouseColumnType::Decimal { precision, scale })
+        }
         ColumnType::DateTime => Ok(ClickHouseColumnType::DateTime),
         ColumnType::Enum(x) => Ok(ClickHouseColumnType::Enum(x)),
         ColumnType::Array {
@@ -94,6 +133,7 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             type_name: "Bytes".to_string(),
         }),
         ColumnType::Uuid => Ok(ClickHouseColumnType::Uuid),
+        ColumnType::Date => Ok(ClickHouseColumnType::Date32),
     }
 }
 

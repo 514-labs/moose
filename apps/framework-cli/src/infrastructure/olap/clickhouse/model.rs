@@ -1,6 +1,8 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
-use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, Nested};
+use crate::framework::core::infrastructure::table::{
+    Column, ColumnType, DataEnum, FloatType, IntType, Nested,
+};
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
@@ -79,9 +81,53 @@ impl ClickHouseColumnType {
         let column_type = match self {
             ClickHouseColumnType::String => ColumnType::String,
             ClickHouseColumnType::Boolean => ColumnType::Boolean,
-            ClickHouseColumnType::ClickhouseInt(_) => ColumnType::Int,
-            ClickHouseColumnType::ClickhouseFloat(_) => ColumnType::Float,
-            ClickHouseColumnType::Decimal { .. } => ColumnType::Decimal,
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int8) => {
+                ColumnType::Int(IntType::Int8)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int16) => {
+                ColumnType::Int(IntType::Int16)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32) => {
+                ColumnType::Int(IntType::Int32)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64) => {
+                ColumnType::Int(IntType::Int64)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int128) => {
+                ColumnType::Int(IntType::Int128)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int256) => {
+                ColumnType::Int(IntType::Int256)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt8) => {
+                ColumnType::Int(IntType::UInt8)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt16) => {
+                ColumnType::Int(IntType::UInt16)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt32) => {
+                ColumnType::Int(IntType::UInt32)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt64) => {
+                ColumnType::Int(IntType::UInt64)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt128) => {
+                ColumnType::Int(IntType::UInt128)
+            }
+            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt256) => {
+                ColumnType::Int(IntType::UInt256)
+            }
+
+            ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float32) => {
+                ColumnType::Float(FloatType::Float32)
+            }
+            ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64) => {
+                ColumnType::Float(FloatType::Float64)
+            }
+            ClickHouseColumnType::Decimal { precision, scale } => ColumnType::Decimal {
+                precision: *precision,
+                scale: *scale,
+            },
             ClickHouseColumnType::DateTime => ColumnType::DateTime,
             ClickHouseColumnType::Json => ColumnType::Json,
             ClickHouseColumnType::Bytes => ColumnType::Bytes,

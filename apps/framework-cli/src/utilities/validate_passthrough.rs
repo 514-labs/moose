@@ -139,17 +139,19 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
         match self.t {
             ColumnType::Boolean => formatter.write_str("a boolean value"),
-            ColumnType::Int => formatter.write_str("an integer value"),
-            ColumnType::Float => formatter.write_str("a floating-point value"),
+            ColumnType::Int(_) => formatter.write_str("an integer value"),
+            ColumnType::Float(_) => formatter.write_str("a floating-point value"),
             ColumnType::String => formatter.write_str("a string value"),
             ColumnType::DateTime => formatter.write_str("a datetime value"),
             ColumnType::Enum(_) => formatter.write_str("an enum value"),
             ColumnType::Array { .. } => formatter.write_str("an array value"),
             ColumnType::Nested(_) => formatter.write_str("a nested object"),
 
-            ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
-                formatter.write_str("a value matching the column type")
-            }
+            ColumnType::BigInt
+            | ColumnType::Date
+            | ColumnType::Decimal { .. }
+            | ColumnType::Json
+            | ColumnType::Bytes => formatter.write_str("a value matching the column type"),
             ColumnType::Uuid => formatter.write_str("a UUID"),
         }?;
         write!(formatter, " at {}", self.get_path())
@@ -169,8 +171,8 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
@@ -181,8 +183,8 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),
@@ -205,7 +207,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     .serialize_value(&date.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true))
                     .map_err(Error::custom)
             }
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Float(v), &self)),
         }
     }

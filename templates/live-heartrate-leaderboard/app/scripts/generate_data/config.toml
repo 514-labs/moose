@@ -1,0 +1,5 @@
+name = 'generate_data'
+schedule = ''
+retries = 3
+timeout = '1h'
+tasks = ['generate_mock_ant_hr_data']

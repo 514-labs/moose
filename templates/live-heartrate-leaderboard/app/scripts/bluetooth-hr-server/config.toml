@@ -1,5 +1,0 @@
-name = 'bluetooth-hr-server'
-schedule = ''
-retries = 3
-timeout = '1h'
-tasks = ['run_bluetooth_server']

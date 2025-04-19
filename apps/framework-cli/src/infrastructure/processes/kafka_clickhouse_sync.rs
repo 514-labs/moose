@@ -798,7 +798,7 @@ fn map_json_value_to_clickhouse_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::Nested;
+    use crate::framework::core::infrastructure::table::{IntType, Nested};
 
     use super::*;
 
@@ -918,7 +918,7 @@ mod tests {
                 },
                 Column {
                     name: "D".to_string(),
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: false,
                     unique: false,
                     primary_key: false,

@@ -597,7 +597,9 @@ fn is_nested_with_jwt(column_type: &ColumnType) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
+    use crate::framework::core::infrastructure::table::{
+        DataEnum, EnumMember, FloatType, IntType, Nested,
+    };
 
     use super::*;
 
@@ -615,7 +617,7 @@ mod tests {
             },
             Column {
                 name: "int_col".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -624,7 +626,7 @@ mod tests {
             },
             Column {
                 name: "float_col".to_string(),
-                data_type: ColumnType::Float,
+                data_type: ColumnType::Float(FloatType::Float64),
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -704,7 +706,7 @@ mod tests {
         let columns = vec![Column {
             name: "array_col".to_string(),
             data_type: ColumnType::Array {
-                element_type: Box::new(ColumnType::Int),
+                element_type: Box::new(ColumnType::Int(IntType::Int64)),
                 element_nullable: false,
             },
             required: true,
@@ -801,7 +803,7 @@ mod tests {
             },
             Column {
                 name: "nested_int".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -891,7 +893,7 @@ mod tests {
             },
             Column {
                 name: "optional_field".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -938,7 +940,7 @@ mod tests {
             },
             Column {
                 name: "exp".to_string(),
-                data_type: ColumnType::Float,
+                data_type: ColumnType::Float(FloatType::Float64),
                 required: true,
                 unique: false,
                 primary_key: false,

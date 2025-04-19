@@ -1745,6 +1745,7 @@ impl Default for InfrastructureMap {
 #[cfg(test)]
 mod tests {
 
+    use crate::framework::core::infrastructure::table::IntType;
     use crate::framework::core::{
         infrastructure::table::{Column, ColumnType, Table},
         infrastructure_map::{
@@ -1762,7 +1763,7 @@ mod tests {
             columns: vec![
                 Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -1821,7 +1822,7 @@ mod tests {
                 },
                 Column {
                     name: "age".to_string(), // New column
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: false,
                     unique: false,
                     primary_key: false,
@@ -1851,7 +1852,9 @@ mod tests {
 #[cfg(test)]
 mod diff_tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{Column, ColumnDefaults, ColumnType};
+    use crate::framework::core::infrastructure::table::{
+        Column, ColumnDefaults, ColumnType, FloatType, IntType,
+    };
     use crate::framework::versions::Version;
     use serde_json::Value as JsonValue;
 
@@ -1887,7 +1890,7 @@ mod diff_tests {
 
         after.columns.push(Column {
             name: "new_column".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -1900,7 +1903,7 @@ mod diff_tests {
         match &diff[0] {
             ColumnChange::Added(col) => {
                 assert_eq!(col.name, "new_column");
-                assert_eq!(col.data_type, ColumnType::Int);
+                assert_eq!(col.data_type, ColumnType::Int(IntType::Int64));
             }
             _ => panic!("Expected Added change"),
         }
@@ -1913,7 +1916,7 @@ mod diff_tests {
 
         before.columns.push(Column {
             name: "to_remove".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -1926,7 +1929,7 @@ mod diff_tests {
         match &diff[0] {
             ColumnChange::Removed(col) => {
                 assert_eq!(col.name, "to_remove");
-                assert_eq!(col.data_type, ColumnType::Int);
+                assert_eq!(col.data_type, ColumnType::Int(IntType::Int64));
             }
             _ => panic!("Expected Removed change"),
         }
@@ -1939,7 +1942,7 @@ mod diff_tests {
 
         before.columns.push(Column {
             name: "age".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -1965,7 +1968,7 @@ mod diff_tests {
                 after: a,
             } => {
                 assert_eq!(b.name, "age");
-                assert_eq!(b.data_type, ColumnType::Int);
+                assert_eq!(b.data_type, ColumnType::Int(IntType::Int64));
                 assert_eq!(a.data_type, ColumnType::BigInt);
             }
             _ => panic!("Expected Updated change"),
@@ -1981,7 +1984,7 @@ mod diff_tests {
         before.columns.extend(vec![
             Column {
                 name: "id".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,
@@ -1999,7 +2002,7 @@ mod diff_tests {
             },
             Column {
                 name: "to_modify".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -2012,7 +2015,7 @@ mod diff_tests {
         after.columns.extend(vec![
             Column {
                 name: "id".to_string(), // unchanged
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,
@@ -2021,7 +2024,7 @@ mod diff_tests {
             },
             Column {
                 name: "to_modify".to_string(), // modified
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true, // changed
                 unique: true,   // changed
                 primary_key: false,
@@ -2138,7 +2141,7 @@ mod diff_tests {
 
         before.columns.push(Column {
             name: "count".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -2148,7 +2151,7 @@ mod diff_tests {
 
         after.columns.push(Column {
             name: "count".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -2179,7 +2182,7 @@ mod diff_tests {
         before.columns.extend(vec![
             Column {
                 name: "id".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,
@@ -2210,7 +2213,7 @@ mod diff_tests {
             },
             Column {
                 name: "id".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,
@@ -2235,7 +2238,7 @@ mod diff_tests {
         for i in 0..1000 {
             let col = Column {
                 name: format!("col_{}", i),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -2261,9 +2264,9 @@ mod diff_tests {
         let mut after = create_test_table("test", "1.0");
 
         let column_types = vec![
-            ColumnType::Int,
+            ColumnType::Int(IntType::Int64),
             ColumnType::BigInt,
-            ColumnType::Float,
+            ColumnType::Float(FloatType::Float64),
             ColumnType::String,
             ColumnType::Boolean,
             ColumnType::DateTime,
@@ -2288,11 +2291,14 @@ mod diff_tests {
             } else {
                 // For odd-numbered columns, always change the type
                 match col_type {
-                    ColumnType::Int => ColumnType::BigInt,
-                    ColumnType::BigInt => ColumnType::Int,
-                    ColumnType::Float => ColumnType::Decimal,
+                    ColumnType::Int(IntType::Int64) => ColumnType::BigInt,
+                    ColumnType::BigInt => ColumnType::Int(IntType::Int64),
+                    ColumnType::Float(FloatType::Float64) => ColumnType::Decimal {
+                        precision: 10,
+                        scale: 0,
+                    },
                     ColumnType::String => ColumnType::Json,
-                    ColumnType::Boolean => ColumnType::Int,
+                    ColumnType::Boolean => ColumnType::Int(IntType::Int64),
                     ColumnType::DateTime => ColumnType::String,
                     ColumnType::Json => ColumnType::String,
                     ColumnType::Uuid => ColumnType::String,
@@ -2344,7 +2350,7 @@ mod diff_tests {
 
         before.columns.push(Column {
             name: "annotated_col".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -2357,7 +2363,7 @@ mod diff_tests {
 
         after.columns.push(Column {
             name: "annotated_col".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,
@@ -2398,7 +2404,7 @@ mod diff_tests {
         // Test empty string column name
         before.columns.push(Column {
             name: "".to_string(),
-            data_type: ColumnType::Int,
+            data_type: ColumnType::Int(IntType::Int64),
             required: true,
             unique: false,
             primary_key: false,

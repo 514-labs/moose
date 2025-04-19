@@ -485,7 +485,7 @@ struct TableDetail {
 /// ```rust
 /// let changes = vec![ColumnChange::Added(Column {
 ///     name: "new_column".to_string(),
-///     data_type: ColumnType::Int,
+///     data_type: ColumnType::Int(IntType::Int64),
 ///     required: true,
 ///     ..Default::default()
 /// })];
@@ -881,7 +881,7 @@ impl OlapOperations for ConfiguredDBClient {
 /// # Example
 /// ```rust
 /// let (framework_type, is_nullable) = convert_clickhouse_type_to_column_type("Nullable(Int32)")?;
-/// assert_eq!(framework_type, ColumnType::Int);
+/// assert_eq!(framework_type, ColumnType::Int(IntType::Int64));
 /// assert!(is_nullable);
 /// ```
 fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, bool), String> {
@@ -1081,7 +1081,7 @@ mod tests {
         let diff = vec![ColumnChange::Added(Column {
             name: "prices".to_string(),
             data_type: ColumnType::Array {
-                element_type: Box::new(ColumnType::Float),
+                element_type: Box::new(ColumnType::Float(FloatType::Float64)),
                 element_nullable: false,
             },
             required: false,
@@ -1105,7 +1105,7 @@ mod tests {
         let diff = vec![
             ColumnChange::Added(Column {
                 name: "age".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -1124,7 +1124,7 @@ mod tests {
             ColumnChange::Updated {
                 before: Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -1133,7 +1133,7 @@ mod tests {
                 },
                 after: Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::Float,
+                    data_type: ColumnType::Float(FloatType::Float64),
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -1285,7 +1285,7 @@ mod tests {
         // Test basic nullable types
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(Int32)"),
-            Ok((ColumnType::Int, true))
+            Ok((ColumnType::Int(IntType::Int64), true))
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(String)"),
@@ -1293,7 +1293,7 @@ mod tests {
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(Float64)"),
-            Ok((ColumnType::Float, true))
+            Ok((ColumnType::Float(FloatType::Float64), true))
         );
 
         // Test nullable datetime
@@ -1315,7 +1315,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
                 assert!(!element_nullable);
             }
             _ => panic!("Expected Array type"),
@@ -1344,7 +1344,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
                 assert!(element_nullable); // But its elements are nullable
             }
             _ => panic!("Expected Array type"),
@@ -1559,7 +1559,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),
@@ -1574,7 +1574,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
                 assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),

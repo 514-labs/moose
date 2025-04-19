@@ -233,7 +233,7 @@ mod tests {
     use crate::cli::local_webserver::LocalWebserverConfig;
     use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
     use crate::framework::core::infrastructure::olap_process::OlapProcess;
-    use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
     use crate::framework::core::infrastructure_map::{
         PrimitiveSignature, PrimitiveTypes, TableChange,
     };
@@ -292,7 +292,7 @@ mod tests {
             name: name.to_string(),
             columns: vec![Column {
                 name: "id".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,

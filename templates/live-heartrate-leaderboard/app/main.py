@@ -9,17 +9,16 @@ from app.datamodels.RawAntHRPacket import RawAntHRPacket
 from app.datamodels.BluetoothHRPacket import BluetoothHRPacket
 
 # Instantiate functions for kafka stream processing
-from app.functions.raw_to_processed import RawAntHRPacket__ProcessedAntHRPacket
-from app.functions.processed_to_unified import processedAntHRPacket__UNIFIED_HR_PACKET
-from app.functions.bluetooth_to_unified import bluetoothHRPacket__UNIFIED_HRM_MODEL
+from app.functions.raw_ant_to_processed_ant_packet import RawAntHRPacket__ProcessedAntHRPacket
+from app.functions.processed_ant_to_unified_packet import processedAntHRPacket__UNIFIED_HR_PACKET
+from app.functions.bluetooth_to_unified_packet import bluetoothHRPacket__UNIFIED_HRM_MODEL
 
 # Instatiated materialized views for in DB processing
 from app.views.aggregated_per_second import aggregateHeartRateSummaryPerSecondMV
 
 # Instantiate APIs
-import app.apis.__init__ as __init___apis
-import app.apis.get_leaderboard as get_leaderboard_apis
-import app.apis.get_user_live_heart_rate_stats as get_user_live_heart_rate_stats_apis
+from app.apis.get_leaderboard import LeaderboardQueryParams, LeaderboardResponse, get_leaderboard_function
+from app.apis.get_user_live_heart_rate_stats import LiveHeartRateStatsQueryParams, HeartRateStats, get_user_live_heart_rate_stats_function
 
 # Initalize Ingest Pipeline Infrastructure
 rawAntHRPipeline = IngestPipeline[RawAntHRPacket]("raw_ant_hr_packet", IngestPipelineConfig(
@@ -63,6 +62,13 @@ bluetoothHRPipeline.get_stream().add_transform(
     transformation=bluetoothHRPacket__UNIFIED_HRM_MODEL
 )
 
-
-
-
+# Instantiate the API endpoint
+get_leaderboard_api = ConsumptionApi[LeaderboardQueryParams, LeaderboardResponse](
+    name="getLeaderboard",
+    query_function=get_leaderboard_function
+)
+# Create the API endpoint
+get_user_live_heart_rate_stats_api = ConsumptionApi[LiveHeartRateStatsQueryParams, HeartRateStats](
+    name="getUserLiveHeartRateStats",
+    query_function=get_user_live_heart_rate_stats_function
+)

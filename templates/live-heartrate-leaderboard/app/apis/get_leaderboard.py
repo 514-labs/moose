@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List
 
 # Define the query parameters
-class QueryParams(BaseModel):
+class LeaderboardQueryParams(BaseModel):
     time_window_seconds: int = Field(
         default=300, 
         gt=0, 

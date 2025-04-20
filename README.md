@@ -9,6 +9,8 @@
 
 # Get started with Moose
 
+THIS IS A TEST THAT SHOUYLD NOT BE MERGED
+
 Install with:
 ```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose```
 

@@ -28,17 +28,9 @@ Moose tracks changes across:
 
 Development mode automatically plans and applies changes as you work:
 
-<TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli dev
+moose dev
 ```
-</TypeScript>
-
-<Python>
-```bash filename="Terminal" copy
-moose-cli dev
-```
-</Python>
 
 This will:
 1. Watch for changes in your code
@@ -50,28 +42,21 @@ This will:
 
 For production deployments, use remote planning to preview changes:
 
-<TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli plan --url https://your-production-instance
+moose plan --url https://your-production-instance
 ```
-</TypeScript>
 
-<Python>
-```bash filename="Terminal" copy
-moose-cli plan --url https://your-production-instance
-```
-</Python>
 
 <Callout type="warning" title="Authentication Required">
 Remote planning requires authentication. You can configure your moose server with the following steps:
 
-1. Generate a token using `moose-cli auth generate`
+1. Generate a token using `moose generate hash-token`
 2. Project config for the server check: 
 ```toml filename="moose.config.toml" copy
 [authentication]
 admin_api_key = "your-hashed-token"
 ```
-3. Supply the token when running `moose-cli plan`: `--token your-auth-token`
+3. Supply the token when running `moose plan`: `--token your-auth-token`
 
 </Callout>
 
@@ -127,4 +112,4 @@ For production deployments:
 
 1. **Authentication Errors**
    - Verify your authentication token
-   - Generate a new token using `moose-cli auth generate`
+   - Generate a new token using `moose generate hash-token`

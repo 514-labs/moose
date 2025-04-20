@@ -372,6 +372,8 @@ impl PartialInfrastructureMap {
 
                 let table = Table {
                     // In dmv1, DataModel.to_table uses version in the name
+                    // I wonder if we should change that, in the Topics, the namespace and the version are separate so that it can be
+                    // more flexible depending on the target stream.
                     name: version
                         .as_ref()
                         .map_or(partial_table.name.clone(), |version| {
@@ -569,10 +571,11 @@ impl PartialInfrastructureMap {
                     "Target table '{}' version '{:?}' not found",
                     target_table_name, target_table_version
                 );
+
                 let target_table = tables
                     .values()
                     .find(|table| {
-                        let name_matches = table.name.starts_with(target_table_name);
+                        let name_matches = *table.name == *target_table_name;
                         let version_matches = match &target_table_version {
                             Some(target_v) => table.version.as_ref() == Some(target_v),
                             None => true,

@@ -4,10 +4,6 @@ on:
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
-  push:
-    branches:
-      - "**"
-      - "!main"
 
 defaults:
   run:
@@ -25,9 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           fetch-tags: true
-          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Fetch main branch
         run: git fetch origin main:main
@@ -89,6 +86,9 @@ jobs:
 
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
@@ -119,6 +119,9 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: pnpm/action-setup@v4
 
@@ -163,6 +166,9 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: pnpm/action-setup@v4
 
@@ -207,7 +213,10 @@ jobs:
           version: "23.x"
 
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

@@ -61,13 +61,15 @@ aurora config keys <KEY>
 
 ### Config Tools
 
-Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` set.
+Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` sets.
 
 ```
 aurora config tools [EXPERIMENTAL_PREFERENCE]
 ```
 
-- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools [default: `standard`] [possible values: `standard`, `experimental`].
+- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools. 
+
+Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.
 
 ### Login
 

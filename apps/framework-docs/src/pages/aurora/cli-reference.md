@@ -67,7 +67,7 @@ Toggles availability of experimental MCP tools. See Tools documentation for whic
 aurora config tools [EXPERIMENTAL_PREFERENCE]
 ```
 
-- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools [default: `standard`] [possible values: `standard`, `experimental`].
+- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools. 
 
 Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.
 

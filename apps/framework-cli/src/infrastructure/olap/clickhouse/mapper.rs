@@ -101,7 +101,10 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Decimal { precision, scale } => {
             Ok(ClickHouseColumnType::Decimal { precision, scale })
         }
-        ColumnType::DateTime => Ok(ClickHouseColumnType::DateTime),
+        ColumnType::DateTime { precision: None } => Ok(ClickHouseColumnType::DateTime),
+        ColumnType::DateTime {
+            precision: Some(precision),
+        } => Ok(ClickHouseColumnType::DateTime64 { precision }),
         ColumnType::Enum(x) => Ok(ClickHouseColumnType::Enum(x)),
         ColumnType::Array {
             element_type,

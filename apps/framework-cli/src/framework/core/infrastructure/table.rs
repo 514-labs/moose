@@ -1,12 +1,12 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
-use crate::proto::infrastructure_map::column_type;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
+use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
 use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
@@ -147,7 +147,9 @@ pub enum ColumnType {
         precision: u8,
         scale: u8,
     },
-    DateTime,
+    DateTime {
+        precision: Option<u8>,
+    },
     Date,
     Enum(DataEnum),
     Array {
@@ -171,7 +173,10 @@ impl fmt::Display for ColumnType {
             ColumnType::Decimal { precision, scale } => {
                 write!(f, "Decimal({}, {})", precision, scale)
             }
-            ColumnType::DateTime => write!(f, "DateTime"),
+            ColumnType::DateTime { precision: None } => write!(f, "DateTime"),
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => write!(f, "DateTime({})", precision),
             ColumnType::Enum(e) => write!(f, "Enum<{}>", e.name),
             ColumnType::Array {
                 element_type: inner,
@@ -197,7 +202,10 @@ impl Serialize for ColumnType {
             ColumnType::Decimal { precision, scale } => {
                 serializer.serialize_str(&format!("Decimal({}, {})", precision, scale))
             }
-            ColumnType::DateTime => serializer.serialize_str("DateTime"),
+            ColumnType::DateTime { precision: None } => serializer.serialize_str("DateTime"),
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => serializer.serialize_str(&format!("DateTime({})", precision)),
             ColumnType::Enum(data_enum) => {
                 let mut state = serializer.serialize_struct("Enum", 2)?;
                 state.serialize_field("name", &data_enum.name)?;
@@ -329,7 +337,17 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             }
             ColumnType::Decimal { precision, scale }
         } else if v == "DateTime" {
-            ColumnType::DateTime
+            ColumnType::DateTime { precision: None }
+        } else if v.starts_with("DateTime(") {
+            let precision = v
+                .strip_prefix("DateTime(")
+                .unwrap()
+                .strip_suffix(")")
+                .and_then(|p| p.trim().parse::<u8>().ok())
+                .ok_or_else(|| E::custom(format!("Invalid DateTime precision: {}", v)))?;
+            ColumnType::DateTime {
+                precision: Some(precision),
+            }
         } else if v == "Date" {
             ColumnType::Date
         } else if v == "Json" {
@@ -492,7 +510,15 @@ impl ColumnType {
                 scale: *scale as i32,
                 special_fields: Default::default(),
             }),
-            ColumnType::DateTime => column_type::T::Simple(SimpleColumnType::DATETIME.into()),
+            ColumnType::DateTime { precision: None } => {
+                column_type::T::Simple(SimpleColumnType::DATETIME.into())
+            }
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => column_type::T::DateTime(DateType {
+                precision: (*precision).into(),
+                special_fields: Default::default(),
+            }),
             ColumnType::Enum(data_enum) => column_type::T::Enum(data_enum.to_proto()),
             ColumnType::Array {
                 element_type,
@@ -527,7 +553,7 @@ impl ColumnType {
                         precision: 10,
                         scale: 0,
                     },
-                    SimpleColumnType::DATETIME => ColumnType::DateTime,
+                    SimpleColumnType::DATETIME => ColumnType::DateTime { precision: None },
                     SimpleColumnType::JSON_COLUMN => ColumnType::Json,
                     SimpleColumnType::BYTES => ColumnType::Bytes,
                     SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
@@ -566,6 +592,9 @@ impl ColumnType {
                 ProtoIntType::UINT128 => IntType::UInt128,
                 ProtoIntType::UINT256 => IntType::UInt256,
             }),
+            T::DateTime(DateType { precision, .. }) => ColumnType::DateTime {
+                precision: Some(precision.to_u8().unwrap()),
+            },
         }
     }
 }

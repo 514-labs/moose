@@ -142,7 +142,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             ColumnType::Int(_) => formatter.write_str("an integer value"),
             ColumnType::Float(_) => formatter.write_str("a floating-point value"),
             ColumnType::String => formatter.write_str("a string value"),
-            ColumnType::DateTime => formatter.write_str("a datetime value"),
+            ColumnType::DateTime { .. } => formatter.write_str("a datetime value"),
             ColumnType::Enum(_) => formatter.write_str("an enum value"),
             ColumnType::Array { .. } => formatter.write_str("an array value"),
             ColumnType::Nested(_) => formatter.write_str("a nested object"),
@@ -198,7 +198,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::DateTime => {
+            ColumnType::DateTime { .. } => {
                 let seconds = v.trunc() as i64;
                 let nanos = ((v.fract() * 1_000_000_000.0).round() as u32).min(999_999_999);
                 let date = chrono::DateTime::from_timestamp(seconds, nanos)
@@ -218,7 +218,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     {
         match self.t {
             ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
-            ColumnType::DateTime => {
+            ColumnType::DateTime { .. } => {
                 chrono::DateTime::parse_from_rfc3339(v).map_err(|_| {
                     E::custom(format!("Invalid date format at {}", self.get_path()))
                 })?;
@@ -644,7 +644,7 @@ mod tests {
             },
             Column {
                 name: "date_col".to_string(),
-                data_type: ColumnType::DateTime,
+                data_type: ColumnType::DateTime { precision: None },
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -676,7 +676,7 @@ mod tests {
     fn test_bad_date_format() {
         let columns = vec![Column {
             name: "date_col".to_string(),
-            data_type: ColumnType::DateTime,
+            data_type: ColumnType::DateTime { precision: None },
             required: true,
             unique: false,
             primary_key: false,

@@ -50,7 +50,7 @@ pub async fn import_csv_file(
                         match t {
                             ColumnType::Date
                             | ColumnType::String
-                            | ColumnType::DateTime
+                            | ColumnType::DateTime { .. }
                             | ColumnType::Enum(_) => {
                                 json_map.insert(key, json!(value));
                             }

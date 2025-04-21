@@ -147,8 +147,8 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
         (ColumnType::Float(_), SupportedLanguages::Typescript) => "0".to_string(),
         (ColumnType::Float(_), SupportedLanguages::Python) => "0.0".to_string(),
         (ColumnType::Decimal { .. }, _) => "0".to_string(),
-        (ColumnType::DateTime, SupportedLanguages::Typescript) => "new Date()".to_string(),
-        (ColumnType::DateTime, SupportedLanguages::Python) => "datetime.now()".to_string(),
+        (ColumnType::DateTime { .. }, SupportedLanguages::Typescript) => "new Date()".to_string(),
+        (ColumnType::DateTime { .. }, SupportedLanguages::Python) => "datetime.now()".to_string(),
         (ColumnType::Enum(_), _) => "any".to_string(),
         (ColumnType::Array { .. }, _) => "[]".to_string(),
         (ColumnType::Nested(_), SupportedLanguages::Typescript) => "{}".to_string(),
@@ -291,7 +291,7 @@ export default function run(source: Foo): Bar | null {
             Either::Left(&DataModel {
                 columns: to_columns(vec![
                     ("eventId", ColumnType::String, true),
-                    ("timestamp", ColumnType::DateTime, false),
+                    ("timestamp", ColumnType::DateTime { precision: None }, false),
                     ("userId", ColumnType::String, false),
                     ("activity", ColumnType::String, false),
                 ]),

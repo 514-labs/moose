@@ -194,7 +194,7 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Int(_) => Ok(InterfaceFieldType::Number),
         ColumnType::Float(_) => Ok(InterfaceFieldType::Number),
         ColumnType::Decimal { .. } => Ok(InterfaceFieldType::Number),
-        ColumnType::DateTime => Ok(InterfaceFieldType::Date),
+        ColumnType::DateTime { .. } => Ok(InterfaceFieldType::Date),
         ColumnType::Array {
             element_type,
             element_nullable: _,

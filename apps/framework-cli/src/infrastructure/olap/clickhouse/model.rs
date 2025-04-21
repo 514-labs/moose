@@ -128,7 +128,11 @@ impl ClickHouseColumnType {
                 precision: *precision,
                 scale: *scale,
             },
-            ClickHouseColumnType::DateTime => ColumnType::DateTime,
+            ClickHouseColumnType::Date32 => ColumnType::Date,
+            ClickHouseColumnType::DateTime => ColumnType::DateTime { precision: None },
+            ClickHouseColumnType::DateTime64 { precision } => ColumnType::DateTime {
+                precision: Some(*precision),
+            },
             ClickHouseColumnType::Json => ColumnType::Json,
             ClickHouseColumnType::Bytes => ColumnType::Bytes,
             ClickHouseColumnType::Array(inner_type) => {
@@ -166,9 +170,6 @@ impl ClickHouseColumnType {
                 return return_type.to_std_column_type();
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
-            ClickHouseColumnType::Date32 | ClickHouseColumnType::DateTime64 { .. } => {
-                ColumnType::DateTime
-            }
         };
         (column_type, required)
     }

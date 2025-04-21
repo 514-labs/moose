@@ -901,10 +901,30 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
     }
 
     // Handle DateTime types with parameters
+    if ch_type.starts_with("DateTime64(") {
+        let precision = ch_type
+            .strip_prefix("DateTime64(")
+            .unwrap()
+            .split(")")
+            .next()
+            .and_then(|s| s.split(",").next())
+            .and_then(|precision| precision.trim().parse::<u8>().ok())
+            .ok_or_else(|| format!("Invalid DateTime64 precision: {}", ch_type))?;
+        // All DateTime variants map to ColumnType::DateTime
+        // We could store precision and timezone as metadata if needed in the future
+        return Ok((
+            ColumnType::DateTime {
+                precision: Some(precision),
+            },
+            false,
+        ));
+    }
+
+    // Handle DateTime types with parameters
     if ch_type.starts_with("DateTime") {
         // All DateTime variants map to ColumnType::DateTime
         // We could store precision and timezone as metadata if needed in the future
-        return Ok((ColumnType::DateTime, false));
+        return Ok((ColumnType::DateTime { precision: None }, false));
     }
 
     // Handle DateTime types with parameters
@@ -1207,25 +1227,25 @@ mod tests {
         // Test basic DateTime
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: None }, false))
         );
 
         // Test DateTime64 with precision
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime64(3)"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: Some(3) }, false))
         );
 
         // Test DateTime with timezone
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime('UTC')"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: None }, false))
         );
 
         // Test DateTime64 with precision and timezone
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime64(6, 'America/New_York')"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: Some(6) }, false))
         );
     }
 
@@ -1285,7 +1305,7 @@ mod tests {
         // Test basic nullable types
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(Int32)"),
-            Ok((ColumnType::Int(IntType::Int64), true))
+            Ok((ColumnType::Int(IntType::Int32), true))
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(String)"),
@@ -1299,11 +1319,11 @@ mod tests {
         // Test nullable datetime
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(DateTime)"),
-            Ok((ColumnType::DateTime, true))
+            Ok((ColumnType::DateTime { precision: None }, true))
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(DateTime64(3))"),
-            Ok((ColumnType::DateTime, true))
+            Ok((ColumnType::DateTime { precision: Some(3) }, true))
         );
 
         // Test nullable array
@@ -1315,7 +1335,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(!element_nullable);
             }
             _ => panic!("Expected Array type"),
@@ -1344,7 +1364,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // But its elements are nullable
             }
             _ => panic!("Expected Array type"),
@@ -1574,7 +1594,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int64));
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),

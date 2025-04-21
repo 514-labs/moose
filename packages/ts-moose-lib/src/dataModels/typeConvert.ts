@@ -15,6 +15,7 @@ import {
   UnknownType,
   UnsupportedFeature,
 } from "./dataModelTypes";
+import { DecimalRegex } from "./types";
 
 const dateType = (checker: TypeChecker) =>
   checker
@@ -111,7 +112,21 @@ const handleNumberType = (
             checker.getStringLiteralType("int64"),
           )
         ) {
-          return "Int";
+          return "Int64";
+        } else if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("int32"),
+          )
+        ) {
+          return "Int32";
+        } else if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("int8"),
+          )
+        ) {
+          return "Int8";
         } else {
           const typeString = valueTypeLiteral.isStringLiteral()
             ? valueTypeLiteral.value
@@ -133,6 +148,104 @@ export interface AggregationFunction {
   argumentTypes: DataType[];
 }
 
+const handleStringType = (
+  t: ts.Type,
+  checker: TypeChecker,
+  fieldName: string,
+): string => {
+  const tagSymbol = t.getProperty("typia.tag");
+  if (tagSymbol === undefined) {
+    return "String";
+  } else {
+    const typiaProps = checker.getNonNullableType(
+      checker.getTypeOfSymbol(tagSymbol),
+    );
+    const props: ts.Type[] = typiaProps.isIntersection()
+      ? typiaProps.types
+      : [typiaProps];
+
+    for (const prop of props) {
+      const valueSymbol = prop.getProperty("value");
+      if (valueSymbol === undefined) {
+        console.log(`Props.value is undefined for ${fieldName}`);
+      } else {
+        const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
+        if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("uuid"),
+          )
+        ) {
+          return "UUID";
+        } else if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("date-time"),
+          )
+        ) {
+          let precision = 9;
+
+          const precisionSymbol = t.getProperty("_clickhouse_precision");
+          if (precisionSymbol !== undefined) {
+            const precisionType = checker.getNonNullableType(
+              checker.getTypeOfSymbol(precisionSymbol),
+            );
+            if (precisionType.isNumberLiteral()) {
+              precision = precisionType.value;
+            }
+          }
+          return `DateTime(${precision})`;
+        } else if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType("date"),
+          )
+        ) {
+          return "Date";
+        } else if (
+          checker.isTypeAssignableTo(
+            valueTypeLiteral,
+            checker.getStringLiteralType(DecimalRegex),
+          )
+        ) {
+          let precision = 10;
+          let scale = 0;
+
+          const precisionSymbol = t.getProperty("_clickhouse_precision");
+          if (precisionSymbol !== undefined) {
+            const precisionType = checker.getNonNullableType(
+              checker.getTypeOfSymbol(precisionSymbol),
+            );
+            if (precisionType.isNumberLiteral()) {
+              precision = precisionType.value;
+            }
+          }
+
+          const scaleSymbol = t.getProperty("_clickhouse_scale");
+          if (scaleSymbol !== undefined) {
+            const scaleType = checker.getNonNullableType(
+              checker.getTypeOfSymbol(scaleSymbol),
+            );
+            if (scaleType.isNumberLiteral()) {
+              scale = scaleType.value;
+            }
+          }
+
+          return `Decimal(${precision}, ${scale})`;
+        } else {
+          const typeString = valueTypeLiteral.isStringLiteral()
+            ? valueTypeLiteral.value
+            : "unknown";
+
+          console.log(`Unknown format: ${typeString} in field ${fieldName}`);
+        }
+      }
+    }
+
+    return "String";
+  }
+};
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -149,7 +262,7 @@ const tsTypeToDataType = (
   const dataType: DataType = isEnum(nonNull)
     ? enumConvert(nonNull)
     : checker.isTypeAssignableTo(nonNull, checker.getStringType())
-      ? "String"
+      ? handleStringType(nonNull, checker, fieldName)
       : isNumberType(nonNull, checker)
         ? handleNumberType(nonNull, checker, fieldName)
         : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())

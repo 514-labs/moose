@@ -272,7 +272,7 @@ fn name_node_to_base_column_type(
         "int" => Ok(ColumnType::Int(IntType::Int64)),
         "float" => Ok(ColumnType::Float(FloatType::Float64)),
         "bool" => Ok(ColumnType::Boolean),
-        "datetime" => Ok(ColumnType::DateTime),
+        "datetime" => Ok(ColumnType::DateTime { precision: None }),
         _ => Err(PythonParserError::UnsupportedDataTypeError {
             field_name: field_name.to_string(),
             type_name: name_node.id.to_string(),

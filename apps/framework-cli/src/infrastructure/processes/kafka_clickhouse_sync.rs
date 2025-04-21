@@ -643,7 +643,7 @@ fn map_json_value_to_clickhouse_value(
         ColumnType::Decimal { .. } => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
-        ColumnType::DateTime => {
+        ColumnType::DateTime { .. } => {
             if let Some(value_str) = value.as_str() {
                 if let Ok(date_time) = chrono::DateTime::parse_from_rfc3339(value_str) {
                     Ok(ClickHouseValue::new_date_time(date_time))

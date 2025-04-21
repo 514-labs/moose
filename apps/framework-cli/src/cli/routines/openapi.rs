@@ -448,7 +448,7 @@ fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Valu
                 serde_json::Number::from_f64(1.0).unwrap(),
             )),
         ),
-        ColumnType::DateTime => (
+        ColumnType::DateTime { .. } => (
             "string".to_string(),
             Some(serde_json::Value::String(Local::now().to_rfc3339())),
         ),
@@ -482,7 +482,7 @@ fn map_query_param_type(data_type: &ColumnType) -> (String, Option<serde_json::V
                 serde_json::Number::from_f64(1.0).unwrap(),
             )),
         ),
-        ColumnType::DateTime => (
+        ColumnType::DateTime { .. } => (
             "string".to_string(),
             Some(serde_json::Value::String(Local::now().to_rfc3339())),
         ),

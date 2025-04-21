@@ -148,6 +148,8 @@ enum SimpleColumnType {
   BIGINT = 3;
   FLOAT = 4 [deprecated = true];
   DECIMAL = 5 [deprecated = true];
+  // in clickhouse, this is the 32-bit date
+  // otherwise, see DateType where the precision can be specified
   DATETIME = 6;
   DATE = 7;
 
@@ -193,10 +195,15 @@ message ColumnType {
 
     ColumnType array_of_nullable = 5;
 
+    DateType date_time = 12;
     Decimal decimal = 13;
     FloatType float = 14;
     IntType int = 15;
   }
+}
+
+message DateType {
+  int32 precision = 1;
 }
 
 message DataEnum {

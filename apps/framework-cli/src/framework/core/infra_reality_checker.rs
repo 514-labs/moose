@@ -427,7 +427,7 @@ mod tests {
         // Add timestamp column to both tables
         let timestamp_col = Column {
             name: "timestamp".to_string(),
-            data_type: ColumnType::DateTime,
+            data_type: ColumnType::DateTime { precision: None },
             required: true,
             unique: false,
             primary_key: false,

@@ -15,11 +15,11 @@ Moose organizes your data pipeline into five distinct infrastructure modules:
 
 | **Module**        | **Moose Code**                                                        | **Infrastructure**                 | **Default** |
 |-------------------|-----------------------------------------------------------------------|------------------------------------|-------------|
-| **Ingestion**     | [Ingest APIs, Ingestion Pipeline](/moose/developing/ingestion)                                           | HTTP **POST** endpoints            | Rust        |
-| **Streaming**     | [Streams](/moose/developing/streams)| Streaming topics & consumers       | Redpanda    |
-| **Database**      | [Tables](/moose/developing/olap-table), [Views](/moose/developing/materialized-views)                        | OLAP tables & views                | ClickHouse  |
-| **Orchestration** | [Workflows](/moose/developing/workflows)                                               | Task queue & workers               | Temporal    |
-| **Consumption**   | [Analytics APIs](/moose/developing/consumption-apis)                                   | HTTP **GET** endpoints             | Rust        |
+| **Ingestion**     | [Ingest APIs, Ingestion Pipeline](/moose/building/ingestion)                                           | HTTP **POST** endpoints            | Rust        |
+| **Streaming**     | [Streams](/moose/building/streams)| Streaming topics & consumers       | Redpanda    |
+| **Database**      | [Tables](/moose/building/olap-table), [Views](/moose/building/materialized-views)                        | OLAP tables & views                | ClickHouse  |
+| **Orchestration** | [Workflows](/moose/building/workflows)                                               | Task queue & workers               | Temporal    |
+| **Consumption**   | [Analytics APIs](/moose/building/consumption-apis)                                   | HTTP **GET** endpoints             | Rust        |
 ## Customizing Your Infrastructure
 
 Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:

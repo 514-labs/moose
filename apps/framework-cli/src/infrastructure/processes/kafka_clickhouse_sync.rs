@@ -33,6 +33,7 @@ use crate::infrastructure::stream::kafka::client::create_subscriber;
 use crate::infrastructure::stream::kafka::client::{create_producer, send_with_back_pressure};
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::metrics::{MetricEvent, Metrics};
+use crate::utilities::validate_passthrough::DECIMAL_REGEX;
 use tokio::select;
 use uuid::Uuid;
 
@@ -620,7 +621,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Int => {
+        ColumnType::Int(_) => {
             if let Some(value_int) = value.as_i64() {
                 Ok(ClickHouseValue::new_int_64(value_int))
             } else {
@@ -630,7 +631,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Float => {
+        ColumnType::Float(_) => {
             if let Some(value_float) = value.as_f64() {
                 Ok(ClickHouseValue::new_float_64(value_float))
             } else {
@@ -640,10 +641,28 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Decimal => Err(MappingError::UnsupportedColumnType {
-            column_type: column_type.clone(),
-        }),
-        ColumnType::DateTime => {
+        ColumnType::Decimal { .. } => {
+            if let Some(number) = value.as_i64() {
+                Ok(ClickHouseValue::new_int_64(number))
+            } else if let Some(number) = value.as_f64() {
+                Ok(ClickHouseValue::new_float_64(number))
+            } else if let Some(s) = value.as_str() {
+                if DECIMAL_REGEX.is_match(s) {
+                    Ok(ClickHouseValue::new_string(s.to_string()))
+                } else {
+                    Err(MappingError::TypeMismatch {
+                        column_type: column_type.clone(),
+                        value: value.clone(),
+                    })
+                }
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: column_type.clone(),
+                    value: value.clone(),
+                })
+            }
+        }
+        ColumnType::DateTime { .. } => {
             if let Some(value_str) = value.as_str() {
                 if let Ok(date_time) = chrono::DateTime::parse_from_rfc3339(value_str) {
                     Ok(ClickHouseValue::new_date_time(date_time))
@@ -780,12 +799,25 @@ fn map_json_value_to_clickhouse_value(
             }),
             Some(uuid_str) => Ok(ClickHouseValue::new_string(uuid_str.to_string())),
         },
+        ColumnType::Date => {
+            if let Some(value_str) = value
+                .as_str()
+                .filter(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok())
+            {
+                Ok(ClickHouseValue::new_string(value_str.to_string()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: column_type.clone(),
+                    value: value.clone(),
+                })
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::Nested;
+    use crate::framework::core::infrastructure::table::{IntType, Nested};
 
     use super::*;
 
@@ -905,7 +937,7 @@ mod tests {
                 },
                 Column {
                     name: "D".to_string(),
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: false,
                     unique: false,
                     primary_key: false,

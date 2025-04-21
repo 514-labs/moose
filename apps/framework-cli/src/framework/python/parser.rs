@@ -33,7 +33,7 @@ use rustpython_parser::{
 };
 
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum as FrameworkEnum, Nested,
+    Column, ColumnType, DataEnum as FrameworkEnum, FloatType, IntType, Nested,
 };
 
 use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
@@ -269,10 +269,10 @@ fn name_node_to_base_column_type(
 ) -> Result<ColumnType, PythonParserError> {
     match name_node.id.to_string().as_str() {
         "str" => Ok(ColumnType::String),
-        "int" => Ok(ColumnType::Int),
-        "float" => Ok(ColumnType::Float),
+        "int" => Ok(ColumnType::Int(IntType::Int64)),
+        "float" => Ok(ColumnType::Float(FloatType::Float64)),
         "bool" => Ok(ColumnType::Boolean),
-        "datetime" => Ok(ColumnType::DateTime),
+        "datetime" => Ok(ColumnType::DateTime { precision: None }),
         _ => Err(PythonParserError::UnsupportedDataTypeError {
             field_name: field_name.to_string(),
             type_name: name_node.id.to_string(),

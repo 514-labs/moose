@@ -47,3 +47,9 @@ export {
 } from "./dmv2";
 
 export { createConsumptionApi } from "./consumption-apis/runner";
+
+export {
+  ClickHousePrecision,
+  ClickHouseDecimal,
+  ClickHouseInt,
+} from "./dataModels/types";

@@ -45,7 +45,7 @@ use std::time::Duration;
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, EnumMember, EnumValue, Table,
+    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Table,
 };
 use crate::framework::core::infrastructure::view::ViewType;
 use crate::framework::core::infrastructure_map::{
@@ -485,7 +485,7 @@ struct TableDetail {
 /// ```rust
 /// let changes = vec![ColumnChange::Added(Column {
 ///     name: "new_column".to_string(),
-///     data_type: ColumnType::Int,
+///     data_type: ColumnType::Int(IntType::Int64),
 ///     required: true,
 ///     ..Default::default()
 /// })];
@@ -881,7 +881,7 @@ impl OlapOperations for ConfiguredDBClient {
 /// # Example
 /// ```rust
 /// let (framework_type, is_nullable) = convert_clickhouse_type_to_column_type("Nullable(Int32)")?;
-/// assert_eq!(framework_type, ColumnType::Int);
+/// assert_eq!(framework_type, ColumnType::Int(IntType::Int64));
 /// assert!(is_nullable);
 /// ```
 fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, bool), String> {
@@ -901,10 +901,51 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
     }
 
     // Handle DateTime types with parameters
-    if ch_type.starts_with("DateTime") || ch_type == "Date32" {
+    if ch_type.starts_with("DateTime64(") {
+        let precision = ch_type
+            .strip_prefix("DateTime64(")
+            .unwrap()
+            .split(")")
+            .next()
+            .and_then(|s| s.split(",").next())
+            .and_then(|precision| precision.trim().parse::<u8>().ok())
+            .ok_or_else(|| format!("Invalid DateTime64 precision: {}", ch_type))?;
         // All DateTime variants map to ColumnType::DateTime
         // We could store precision and timezone as metadata if needed in the future
-        return Ok((ColumnType::DateTime, false));
+        return Ok((
+            ColumnType::DateTime {
+                precision: Some(precision),
+            },
+            false,
+        ));
+    }
+
+    // Handle DateTime types with parameters
+    if ch_type.starts_with("DateTime") {
+        // All DateTime variants map to ColumnType::DateTime
+        // We could store precision and timezone as metadata if needed in the future
+        return Ok((ColumnType::DateTime { precision: None }, false));
+    }
+
+    // Handle DateTime types with parameters
+    if ch_type == "Date32" {
+        // All DateTime variants map to ColumnType::DateTime
+        // We could store precision and timezone as metadata if needed in the future
+        return Ok((ColumnType::Date, false));
+    }
+    // TODO: this function should call ClickHouseColumnType::from_type_str and not have duplicate logic
+    if ch_type.starts_with("Decimal(") {
+        let precision_and_scale = ch_type
+            .trim_start_matches("Decimal(")
+            .trim_end_matches(')')
+            .split(',')
+            .map(|s| s.trim().parse::<u8>().map_err(|e| e.to_string()))
+            .collect::<Result<Vec<u8>, String>>()?;
+
+        let precision = precision_and_scale.first().copied().unwrap_or(10);
+        let scale = precision_and_scale.get(1).copied().unwrap_or(0);
+
+        return Ok((ColumnType::Decimal { precision, scale }, false));
     }
 
     // Handle Enum types first since they contain parentheses which would interfere with the base type extraction
@@ -953,10 +994,20 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
 
     let column_type = match base_type {
         "String" => Ok(ColumnType::String),
-        "UInt8" | "UInt16" | "UInt32" | "Int8" | "Int16" | "Int32" => Ok(ColumnType::Int),
-        "UInt64" | "Int64" => Ok(ColumnType::BigInt),
-        "Float32" | "Float64" => Ok(ColumnType::Float),
-        "Decimal" | "Decimal32" | "Decimal64" | "Decimal128" => Ok(ColumnType::Decimal),
+        "Int8" => Ok(ColumnType::Int(IntType::Int8)),
+        "Int16" => Ok(ColumnType::Int(IntType::Int16)),
+        "Int32" => Ok(ColumnType::Int(IntType::Int32)),
+        "Int64" => Ok(ColumnType::Int(IntType::Int64)),
+        "Int128" => Ok(ColumnType::Int(IntType::Int128)),
+        "Int256" => Ok(ColumnType::Int(IntType::Int256)),
+        "UInt8" => Ok(ColumnType::Int(IntType::UInt8)),
+        "UInt16" => Ok(ColumnType::Int(IntType::UInt16)),
+        "UInt32" => Ok(ColumnType::Int(IntType::UInt32)),
+        "UInt64" => Ok(ColumnType::Int(IntType::UInt64)),
+        "UInt128" => Ok(ColumnType::Int(IntType::UInt128)),
+        "UInt256" => Ok(ColumnType::Int(IntType::UInt256)),
+        "Float32" => Ok(ColumnType::Float(FloatType::Float32)),
+        "Float64" => Ok(ColumnType::Float(FloatType::Float64)),
         "Bool" | "Boolean" => Ok(ColumnType::Boolean),
         "Array" => {
             // Extract the inner type from Array(...) format
@@ -1050,7 +1101,7 @@ mod tests {
         let diff = vec![ColumnChange::Added(Column {
             name: "prices".to_string(),
             data_type: ColumnType::Array {
-                element_type: Box::new(ColumnType::Float),
+                element_type: Box::new(ColumnType::Float(FloatType::Float64)),
                 element_nullable: false,
             },
             required: false,
@@ -1074,7 +1125,7 @@ mod tests {
         let diff = vec![
             ColumnChange::Added(Column {
                 name: "age".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -1093,7 +1144,7 @@ mod tests {
             ColumnChange::Updated {
                 before: Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::Int,
+                    data_type: ColumnType::Int(IntType::Int64),
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -1102,7 +1153,7 @@ mod tests {
                 },
                 after: Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::Float,
+                    data_type: ColumnType::Float(FloatType::Float64),
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -1176,25 +1227,25 @@ mod tests {
         // Test basic DateTime
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: None }, false))
         );
 
         // Test DateTime64 with precision
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime64(3)"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: Some(3) }, false))
         );
 
         // Test DateTime with timezone
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime('UTC')"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: None }, false))
         );
 
         // Test DateTime64 with precision and timezone
         assert_eq!(
             convert_clickhouse_type_to_column_type("DateTime64(6, 'America/New_York')"),
-            Ok((ColumnType::DateTime, false))
+            Ok((ColumnType::DateTime { precision: Some(6) }, false))
         );
     }
 
@@ -1254,7 +1305,7 @@ mod tests {
         // Test basic nullable types
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(Int32)"),
-            Ok((ColumnType::Int, true))
+            Ok((ColumnType::Int(IntType::Int32), true))
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(String)"),
@@ -1262,17 +1313,17 @@ mod tests {
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(Float64)"),
-            Ok((ColumnType::Float, true))
+            Ok((ColumnType::Float(FloatType::Float64), true))
         );
 
         // Test nullable datetime
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(DateTime)"),
-            Ok((ColumnType::DateTime, true))
+            Ok((ColumnType::DateTime { precision: None }, true))
         );
         assert_eq!(
             convert_clickhouse_type_to_column_type("Nullable(DateTime64(3))"),
-            Ok((ColumnType::DateTime, true))
+            Ok((ColumnType::DateTime { precision: Some(3) }, true))
         );
 
         // Test nullable array
@@ -1284,7 +1335,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(!element_nullable);
             }
             _ => panic!("Expected Array type"),
@@ -1313,7 +1364,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // But its elements are nullable
             }
             _ => panic!("Expected Array type"),
@@ -1528,7 +1579,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),
@@ -1543,7 +1594,7 @@ mod tests {
                 element_type,
                 element_nullable,
             } => {
-                assert_eq!(*element_type, ColumnType::Int);
+                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
                 assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),

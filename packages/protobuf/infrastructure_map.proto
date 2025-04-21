@@ -144,17 +144,48 @@ message Column {
 enum SimpleColumnType {
   STRING = 0;
   BOOLEAN = 1;
-  INT = 2;
+  INT = 2  [deprecated = true];
   BIGINT = 3;
-  FLOAT = 4;
-  DECIMAL = 5;
+  FLOAT = 4 [deprecated = true];
+  DECIMAL = 5 [deprecated = true];
+  // in clickhouse, this is the 32-bit date
+  // otherwise, see DateType where the precision can be specified
   DATETIME = 6;
+  DATE = 7;
 
   UUID_TYPE = 13;
   JSON_COLUMN = 14;
   BYTES = 15;
 }
 
+enum IntType {
+  INT64 = 0; // this is what we defaulted to
+
+  INT8 = 1;
+  INT16 = 2;
+  INT32 = 3;
+  INT128 = 4;
+  INT256 = 5;
+  UINT8 = 6;
+  UINT16 = 7;
+  UINT32 = 8;
+  UINT64 = 9;
+  UINT128 = 10;
+  UINT256 = 11;
+}
+
+enum FloatType {
+  FLOAT64 = 0;
+  FLOAT32 = 1;
+}
+
+message Decimal {
+    int32 precision = 1;
+    int32 scale = 2;
+}
+
+// TODO: nullable not being a type, relying on `bool required`
+// is causing some mess e.g. the special case array_of_nullable
 message ColumnType {
   oneof t {
     SimpleColumnType simple = 1;
@@ -163,7 +194,16 @@ message ColumnType {
     Nested nested = 4;
 
     ColumnType array_of_nullable = 5;
+
+    DateType date_time = 12;
+    Decimal decimal = 13;
+    FloatType float = 14;
+    IntType int = 15;
   }
+}
+
+message DateType {
+  int32 precision = 1;
 }
 
 message DataEnum {

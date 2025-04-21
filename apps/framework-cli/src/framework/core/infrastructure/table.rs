@@ -1,9 +1,14 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
-use crate::proto::infrastructure_map::column_type;
+use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
+use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
+use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
+use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
+use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
+use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
 use protobuf::{EnumOrUnknown, MessageField};
 use serde::de::{Error, MapAccess, Visitor};
@@ -11,6 +16,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::fmt;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
@@ -109,14 +115,42 @@ pub enum ColumnDefaults {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum IntType {
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Int128,
+    Int256,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+    UInt128,
+    UInt256,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum FloatType {
+    Float32,
+    Float64,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ColumnType {
     String,
     Boolean,
-    Int,
+    Int(IntType),
     BigInt,
-    Float,
-    Decimal,
-    DateTime,
+    Float(FloatType),
+    Decimal {
+        precision: u8,
+        scale: u8,
+    },
+    DateTime {
+        precision: Option<u8>,
+    },
+    Date,
     Enum(DataEnum),
     Array {
         element_type: Box<ColumnType>,
@@ -133,11 +167,16 @@ impl fmt::Display for ColumnType {
         match self {
             ColumnType::String => write!(f, "String"),
             ColumnType::Boolean => write!(f, "Boolean"),
-            ColumnType::Int => write!(f, "Int"),
+            ColumnType::Int(int_type) => int_type.fmt(f),
             ColumnType::BigInt => write!(f, "BigInt"),
-            ColumnType::Float => write!(f, "Float"),
-            ColumnType::Decimal => write!(f, "Decimal"),
-            ColumnType::DateTime => write!(f, "DateTime"),
+            ColumnType::Float(float_type) => float_type.fmt(f),
+            ColumnType::Decimal { precision, scale } => {
+                write!(f, "Decimal({}, {})", precision, scale)
+            }
+            ColumnType::DateTime { precision: None } => write!(f, "DateTime"),
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => write!(f, "DateTime({})", precision),
             ColumnType::Enum(e) => write!(f, "Enum<{}>", e.name),
             ColumnType::Array {
                 element_type: inner,
@@ -147,6 +186,7 @@ impl fmt::Display for ColumnType {
             ColumnType::Json => write!(f, "Json"),
             ColumnType::Bytes => write!(f, "Bytes"),
             ColumnType::Uuid => write!(f, "UUID"),
+            ColumnType::Date => write!(f, "Date"),
         }
     }
 }
@@ -156,11 +196,16 @@ impl Serialize for ColumnType {
         match self {
             ColumnType::String => serializer.serialize_str("String"),
             ColumnType::Boolean => serializer.serialize_str("Boolean"),
-            ColumnType::Int => serializer.serialize_str("Int"),
+            ColumnType::Int(int_type) => serializer.serialize_str(&format!("{:?}", int_type)),
             ColumnType::BigInt => serializer.serialize_str("BigInt"),
-            ColumnType::Float => serializer.serialize_str("Float"),
-            ColumnType::Decimal => serializer.serialize_str("Decimal"),
-            ColumnType::DateTime => serializer.serialize_str("DateTime"),
+            ColumnType::Float(float_type) => serializer.serialize_str(&format!("{:?}", float_type)),
+            ColumnType::Decimal { precision, scale } => {
+                serializer.serialize_str(&format!("Decimal({}, {})", precision, scale))
+            }
+            ColumnType::DateTime { precision: None } => serializer.serialize_str("DateTime"),
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => serializer.serialize_str(&format!("DateTime({})", precision)),
             ColumnType::Enum(data_enum) => {
                 let mut state = serializer.serialize_struct("Enum", 2)?;
                 state.serialize_field("name", &data_enum.name)?;
@@ -186,6 +231,7 @@ impl Serialize for ColumnType {
             ColumnType::Json => serializer.serialize_str("Json"),
             ColumnType::Bytes => serializer.serialize_str("Bytes"),
             ColumnType::Uuid => serializer.serialize_str("UUID"),
+            ColumnType::Date => serializer.serialize_str("Date"),
         }
     }
 }
@@ -236,15 +282,74 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         } else if v == "Boolean" {
             ColumnType::Boolean
         } else if v == "Int" {
-            ColumnType::Int
+            ColumnType::Int(IntType::Int64)
+        } else if v == "Int8" {
+            ColumnType::Int(IntType::Int8)
+        } else if v == "Int16" {
+            ColumnType::Int(IntType::Int16)
+        } else if v == "Int32" {
+            ColumnType::Int(IntType::Int32)
+        } else if v == "Int64" {
+            ColumnType::Int(IntType::Int64)
+        } else if v == "Int128" {
+            ColumnType::Int(IntType::Int128)
+        } else if v == "Int256" {
+            ColumnType::Int(IntType::Int256)
+        } else if v == "UInt8" {
+            ColumnType::Int(IntType::UInt8)
+        } else if v == "UInt16" {
+            ColumnType::Int(IntType::UInt16)
+        } else if v == "UInt32" {
+            ColumnType::Int(IntType::UInt32)
+        } else if v == "UInt64" {
+            ColumnType::Int(IntType::UInt64)
+        } else if v == "UInt128" {
+            ColumnType::Int(IntType::UInt128)
+        } else if v == "UInt256" {
+            ColumnType::Int(IntType::UInt256)
         } else if v == "BigInt" {
             ColumnType::BigInt
         } else if v == "Float" {
-            ColumnType::Float
-        } else if v == "Decimal" {
-            ColumnType::Decimal
+            // usually "float" means single precision, but backwards compatibility
+            ColumnType::Float(FloatType::Float64)
+        } else if v == "Float32" {
+            ColumnType::Float(FloatType::Float32)
+        } else if v == "Float64" {
+            ColumnType::Float(FloatType::Float64)
+        } else if v.starts_with("Decimal") {
+            let mut precision = 10;
+            let mut scale = 0;
+
+            if v.starts_with("Decimal(") {
+                let params = v
+                    .trim_start_matches("Decimal(")
+                    .trim_end_matches(')')
+                    .split(',')
+                    .map(|s| s.trim().parse::<u8>())
+                    .collect::<Vec<_>>();
+
+                if let Some(Ok(p)) = params.first() {
+                    precision = *p;
+                }
+                if let Some(Ok(s)) = params.get(1) {
+                    scale = *s;
+                }
+            }
+            ColumnType::Decimal { precision, scale }
         } else if v == "DateTime" {
-            ColumnType::DateTime
+            ColumnType::DateTime { precision: None }
+        } else if v.starts_with("DateTime(") {
+            let precision = v
+                .strip_prefix("DateTime(")
+                .unwrap()
+                .strip_suffix(")")
+                .and_then(|p| p.trim().parse::<u8>().ok())
+                .ok_or_else(|| E::custom(format!("Invalid DateTime precision: {}", v)))?;
+            ColumnType::DateTime {
+                precision: Some(precision),
+            }
+        } else if v == "Date" {
+            ColumnType::Date
         } else if v == "Json" {
             ColumnType::Json
         } else if v == "Bytes" {
@@ -375,11 +480,45 @@ impl ColumnType {
         let t = match self {
             ColumnType::String => column_type::T::Simple(SimpleColumnType::STRING.into()),
             ColumnType::Boolean => column_type::T::Simple(SimpleColumnType::BOOLEAN.into()),
-            ColumnType::Int => column_type::T::Simple(SimpleColumnType::INT.into()),
+            ColumnType::Int(int_type) => column_type::T::Int(
+                (match int_type {
+                    IntType::Int8 => ProtoIntType::INT8,
+                    IntType::Int16 => ProtoIntType::INT16,
+                    IntType::Int32 => ProtoIntType::INT32,
+                    IntType::Int64 => ProtoIntType::INT64,
+                    IntType::Int128 => ProtoIntType::INT128,
+                    IntType::Int256 => ProtoIntType::INT256,
+                    IntType::UInt8 => ProtoIntType::UINT8,
+                    IntType::UInt16 => ProtoIntType::UINT16,
+                    IntType::UInt32 => ProtoIntType::UINT32,
+                    IntType::UInt64 => ProtoIntType::UINT64,
+                    IntType::UInt128 => ProtoIntType::UINT128,
+                    IntType::UInt256 => ProtoIntType::UINT256,
+                })
+                .into(),
+            ),
             ColumnType::BigInt => column_type::T::Simple(SimpleColumnType::BIGINT.into()),
-            ColumnType::Float => column_type::T::Simple(SimpleColumnType::FLOAT.into()),
-            ColumnType::Decimal => column_type::T::Simple(SimpleColumnType::DECIMAL.into()),
-            ColumnType::DateTime => column_type::T::Simple(SimpleColumnType::DATETIME.into()),
+            ColumnType::Float(float_type) => column_type::T::Float(
+                (match float_type {
+                    FloatType::Float32 => ProtoFloatType::FLOAT32,
+                    FloatType::Float64 => ProtoFloatType::FLOAT64,
+                })
+                .into(),
+            ),
+            ColumnType::Decimal { precision, scale } => column_type::T::Decimal(ProtoDecimal {
+                precision: *precision as i32,
+                scale: *scale as i32,
+                special_fields: Default::default(),
+            }),
+            ColumnType::DateTime { precision: None } => {
+                column_type::T::Simple(SimpleColumnType::DATETIME.into())
+            }
+            ColumnType::DateTime {
+                precision: Some(precision),
+            } => column_type::T::DateTime(DateType {
+                precision: (*precision).into(),
+                special_fields: Default::default(),
+            }),
             ColumnType::Enum(data_enum) => column_type::T::Enum(data_enum.to_proto()),
             ColumnType::Array {
                 element_type,
@@ -393,6 +532,7 @@ impl ColumnType {
             ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
             ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID_TYPE.into()),
+            ColumnType::Date => T::Simple(SimpleColumnType::DATE.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -406,14 +546,18 @@ impl ColumnType {
                 match simple.enum_value().expect("Invalid simple type") {
                     SimpleColumnType::STRING => ColumnType::String,
                     SimpleColumnType::BOOLEAN => ColumnType::Boolean,
-                    SimpleColumnType::INT => ColumnType::Int,
+                    SimpleColumnType::INT => ColumnType::Int(IntType::Int64),
                     SimpleColumnType::BIGINT => ColumnType::BigInt,
-                    SimpleColumnType::FLOAT => ColumnType::Float,
-                    SimpleColumnType::DECIMAL => ColumnType::Decimal,
-                    SimpleColumnType::DATETIME => ColumnType::DateTime,
+                    SimpleColumnType::FLOAT => ColumnType::Float(FloatType::Float64),
+                    SimpleColumnType::DECIMAL => ColumnType::Decimal {
+                        precision: 10,
+                        scale: 0,
+                    },
+                    SimpleColumnType::DATETIME => ColumnType::DateTime { precision: None },
                     SimpleColumnType::JSON_COLUMN => ColumnType::Json,
                     SimpleColumnType::BYTES => ColumnType::Bytes,
                     SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
+                    SimpleColumnType::DATE => ColumnType::Date,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),
@@ -426,6 +570,31 @@ impl ColumnType {
                 element_nullable: true,
             },
             column_type::T::Nested(nested) => ColumnType::Nested(Nested::from_proto(nested)),
+            T::Decimal(d) => ColumnType::Decimal {
+                scale: d.scale.to_u8().unwrap(),
+                precision: d.precision.to_u8().unwrap(),
+            },
+            T::Float(f) => ColumnType::Float(match f.enum_value_or(ProtoFloatType::FLOAT64) {
+                ProtoFloatType::FLOAT64 => FloatType::Float64,
+                ProtoFloatType::FLOAT32 => FloatType::Float32,
+            }),
+            T::Int(i) => ColumnType::Int(match i.enum_value_or(ProtoIntType::INT64) {
+                ProtoIntType::INT64 => IntType::Int64,
+                ProtoIntType::INT8 => IntType::Int8,
+                ProtoIntType::INT16 => IntType::Int16,
+                ProtoIntType::INT32 => IntType::Int32,
+                ProtoIntType::INT128 => IntType::Int128,
+                ProtoIntType::INT256 => IntType::Int256,
+                ProtoIntType::UINT8 => IntType::UInt8,
+                ProtoIntType::UINT16 => IntType::UInt16,
+                ProtoIntType::UINT32 => IntType::UInt32,
+                ProtoIntType::UINT64 => IntType::UInt64,
+                ProtoIntType::UINT128 => IntType::UInt128,
+                ProtoIntType::UINT256 => IntType::UInt256,
+            }),
+            T::DateTime(DateType { precision, .. }) => ColumnType::DateTime {
+                precision: Some(precision.to_u8().unwrap()),
+            },
         }
     }
 }

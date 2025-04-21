@@ -438,17 +438,17 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
 fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Value>) {
     match column_type {
         ColumnType::Boolean => ("boolean".to_string(), Some(serde_json::Value::Bool(true))),
-        ColumnType::Int | ColumnType::BigInt => (
+        ColumnType::Int(_) | ColumnType::BigInt => (
             "integer".to_string(),
             Some(serde_json::Value::Number(1.into())),
         ),
-        ColumnType::Float | ColumnType::Decimal => (
+        ColumnType::Float(_) | ColumnType::Decimal { .. } => (
             "number".to_string(),
             Some(serde_json::Value::Number(
                 serde_json::Number::from_f64(1.0).unwrap(),
             )),
         ),
-        ColumnType::DateTime => (
+        ColumnType::DateTime { .. } => (
             "string".to_string(),
             Some(serde_json::Value::String(Local::now().to_rfc3339())),
         ),
@@ -472,17 +472,17 @@ fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Valu
 fn map_query_param_type(data_type: &ColumnType) -> (String, Option<serde_json::Value>) {
     match data_type {
         ColumnType::Boolean => ("boolean".to_string(), Some(serde_json::Value::Bool(true))),
-        ColumnType::Int | ColumnType::BigInt => (
+        ColumnType::Int(_) | ColumnType::BigInt => (
             "integer".to_string(),
             Some(serde_json::Value::Number(1.into())),
         ),
-        ColumnType::Float | ColumnType::Decimal => (
+        ColumnType::Float(_) | ColumnType::Decimal { .. } => (
             "number".to_string(),
             Some(serde_json::Value::Number(
                 serde_json::Number::from_f64(1.0).unwrap(),
             )),
         ),
-        ColumnType::DateTime => (
+        ColumnType::DateTime { .. } => (
             "string".to_string(),
             Some(serde_json::Value::String(Local::now().to_rfc3339())),
         ),

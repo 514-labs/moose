@@ -1948,7 +1948,7 @@ async fn admin_plan_route(
 mod tests {
     use super::*;
 
-    use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
     use crate::framework::core::infrastructure_map::{
         OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
     };
@@ -1959,7 +1959,7 @@ mod tests {
             name: name.to_string(),
             columns: vec![Column {
                 name: "id".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: true,
                 primary_key: true,

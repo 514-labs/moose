@@ -48,19 +48,22 @@ pub async fn import_csv_file(
                 if let Some(value) = record.get(i) {
                     if let Some(t) = types.get(key) {
                         match t {
-                            ColumnType::String | ColumnType::DateTime | ColumnType::Enum(_) => {
+                            ColumnType::Date
+                            | ColumnType::String
+                            | ColumnType::DateTime { .. }
+                            | ColumnType::Enum(_) => {
                                 json_map.insert(key, json!(value));
                             }
                             ColumnType::Boolean => {
                                 json_map.insert(key, json!(value.parse::<bool>()?));
                             }
-                            ColumnType::Int | ColumnType::BigInt => {
+                            ColumnType::Int(_) | ColumnType::BigInt => {
                                 json_map.insert(key, json!(value.parse::<i64>()?));
                             }
-                            ColumnType::Float => {
+                            ColumnType::Float(_) => {
                                 json_map.insert(key, json!(value.parse::<f64>()?));
                             }
-                            ColumnType::Decimal => {
+                            ColumnType::Decimal { .. } => {
                                 json_map.insert(key, json!(value.parse::<f64>()?));
                             }
                             ColumnType::Array { .. }

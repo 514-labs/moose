@@ -142,13 +142,13 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
     match (column_type, lang) {
         (ColumnType::String, _) => "\"\"".to_string(),
         (ColumnType::Boolean, _) => "false".to_string(),
-        (ColumnType::Int, _) => "0".to_string(),
+        (ColumnType::Int(_), _) => "0".to_string(),
         (ColumnType::BigInt, _) => "0".to_string(),
-        (ColumnType::Float, SupportedLanguages::Typescript) => "0".to_string(),
-        (ColumnType::Float, SupportedLanguages::Python) => "0.0".to_string(),
-        (ColumnType::Decimal, _) => "0".to_string(),
-        (ColumnType::DateTime, SupportedLanguages::Typescript) => "new Date()".to_string(),
-        (ColumnType::DateTime, SupportedLanguages::Python) => "datetime.now()".to_string(),
+        (ColumnType::Float(_), SupportedLanguages::Typescript) => "0".to_string(),
+        (ColumnType::Float(_), SupportedLanguages::Python) => "0.0".to_string(),
+        (ColumnType::Decimal { .. }, _) => "0".to_string(),
+        (ColumnType::DateTime { .. }, SupportedLanguages::Typescript) => "new Date()".to_string(),
+        (ColumnType::DateTime { .. }, SupportedLanguages::Python) => "datetime.now()".to_string(),
         (ColumnType::Enum(_), _) => "any".to_string(),
         (ColumnType::Array { .. }, _) => "[]".to_string(),
         (ColumnType::Nested(_), SupportedLanguages::Typescript) => "{}".to_string(),
@@ -159,6 +159,7 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
             "'4f487363-a767-491c-84ea-00b7724383d2'".to_string()
         }
         (ColumnType::Uuid, SupportedLanguages::Python) => "uuid.uuid4()".to_string(),
+        (ColumnType::Date, _) => "1970-01-01".to_string(),
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {
@@ -290,7 +291,7 @@ export default function run(source: Foo): Bar | null {
             Either::Left(&DataModel {
                 columns: to_columns(vec![
                     ("eventId", ColumnType::String, true),
-                    ("timestamp", ColumnType::DateTime, false),
+                    ("timestamp", ColumnType::DateTime { precision: None }, false),
                     ("userId", ColumnType::String, false),
                     ("activity", ColumnType::String, false),
                 ]),

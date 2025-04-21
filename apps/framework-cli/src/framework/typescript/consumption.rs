@@ -1,5 +1,5 @@
 use crate::framework::consumption::model::ConsumptionQueryParam;
-use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::core::infrastructure::table::{ColumnType, FloatType, IntType};
 use crate::framework::typescript::export_collectors::ExportCollectorError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
@@ -127,8 +127,8 @@ fn schema_to_params_list(
                 .and_then(|v| v.as_str())
             {
                 Some("string") => ColumnType::String,
-                Some("number") => ColumnType::Float,
-                Some("integer") => ColumnType::Int,
+                Some("number") => ColumnType::Float(FloatType::Float64),
+                Some("integer") => ColumnType::Int(IntType::Int64),
                 Some("boolean") => ColumnType::Boolean,
                 // no recursion here, query param does not support nested arrays
                 Some("array") => {
@@ -139,8 +139,8 @@ fn schema_to_params_list(
                         .and_then(|m| m.get("type"))
                         .and_then(|v| v.as_str())
                     {
-                        Some("number") => ColumnType::Float,
-                        Some("integer") => ColumnType::Int,
+                        Some("number") => ColumnType::Float(FloatType::Float64),
+                        Some("integer") => ColumnType::Int(IntType::Int64),
                         Some("boolean") => ColumnType::Boolean,
                         _ => ColumnType::String,
                     };

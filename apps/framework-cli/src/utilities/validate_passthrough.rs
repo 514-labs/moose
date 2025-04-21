@@ -1,4 +1,6 @@
+use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
 use itertools::Either;
+use regex::Regex;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
@@ -8,8 +10,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
 use std::marker::PhantomData;
-
-use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
+use std::sync::LazyLock;
 
 struct State {
     seen: bool,
@@ -139,17 +140,19 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
         match self.t {
             ColumnType::Boolean => formatter.write_str("a boolean value"),
-            ColumnType::Int => formatter.write_str("an integer value"),
-            ColumnType::Float => formatter.write_str("a floating-point value"),
+            ColumnType::Int(_) => formatter.write_str("an integer value"),
+            ColumnType::Float(_) => formatter.write_str("a floating-point value"),
             ColumnType::String => formatter.write_str("a string value"),
-            ColumnType::DateTime => formatter.write_str("a datetime value"),
+            ColumnType::DateTime { .. } => formatter.write_str("a datetime value"),
             ColumnType::Enum(_) => formatter.write_str("an enum value"),
             ColumnType::Array { .. } => formatter.write_str("an array value"),
             ColumnType::Nested(_) => formatter.write_str("a nested object"),
 
-            ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
-                formatter.write_str("a value matching the column type")
-            }
+            ColumnType::BigInt
+            | ColumnType::Date
+            | ColumnType::Decimal { .. }
+            | ColumnType::Json
+            | ColumnType::Bytes => formatter.write_str("a value matching the column type"),
             ColumnType::Uuid => formatter.write_str("a UUID"),
         }?;
         write!(formatter, " at {}", self.get_path())
@@ -169,8 +172,9 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
@@ -181,8 +185,9 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),
@@ -196,7 +201,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::DateTime => {
+            ColumnType::DateTime { .. } => {
                 let seconds = v.trunc() as i64;
                 let nanos = ((v.fract() * 1_000_000_000.0).round() as u32).min(999_999_999);
                 let date = chrono::DateTime::from_timestamp(seconds, nanos)
@@ -205,7 +210,8 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     .serialize_value(&date.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true))
                     .map_err(Error::custom)
             }
-            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Float(v), &self)),
         }
     }
@@ -216,12 +222,33 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     {
         match self.t {
             ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
-            ColumnType::DateTime => {
+            ColumnType::DateTime { .. } => {
                 chrono::DateTime::parse_from_rfc3339(v).map_err(|_| {
                     E::custom(format!("Invalid date format at {}", self.get_path()))
                 })?;
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
+            }
+            ColumnType::Decimal { .. } => {
+                if DECIMAL_REGEX.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!(
+                        "Invalid decimal format at {}",
+                        self.get_path()
+                    )))
+                }
+            }
+            ColumnType::Date => {
+                if DATE_REGEX.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    // println!("date regex {DATE_REGEX} v {v}");
+                    Err(E::custom(format!(
+                        "Invalid date format at {}",
+                        self.get_path()
+                    )))
+                }
             }
             ColumnType::Enum(ref enum_def) => {
                 if enum_def.values.iter().any(|ev| match &ev.value {
@@ -389,6 +416,11 @@ impl<'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'_, 'de, A> {
     }
 }
 
+static DATE_REGEX: LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(r"^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$").unwrap()
+});
+pub static DECIMAL_REGEX: LazyLock<Regex> =
+    std::sync::LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").unwrap());
 static PHANTOM_DATA: PhantomData<()> = PhantomData {};
 // RefCell for interior mutability
 // generally serialization for T should not change the T
@@ -595,7 +627,9 @@ fn is_nested_with_jwt(column_type: &ColumnType) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
+    use crate::framework::core::infrastructure::table::{
+        DataEnum, EnumMember, FloatType, IntType, Nested,
+    };
 
     use super::*;
 
@@ -613,7 +647,7 @@ mod tests {
             },
             Column {
                 name: "int_col".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -622,7 +656,7 @@ mod tests {
             },
             Column {
                 name: "float_col".to_string(),
-                data_type: ColumnType::Float,
+                data_type: ColumnType::Float(FloatType::Float64),
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -640,7 +674,7 @@ mod tests {
             },
             Column {
                 name: "date_col".to_string(),
-                data_type: ColumnType::DateTime,
+                data_type: ColumnType::DateTime { precision: None },
                 required: true,
                 unique: false,
                 primary_key: false,
@@ -672,7 +706,7 @@ mod tests {
     fn test_bad_date_format() {
         let columns = vec![Column {
             name: "date_col".to_string(),
-            data_type: ColumnType::DateTime,
+            data_type: ColumnType::DateTime { precision: None },
             required: true,
             unique: false,
             primary_key: false,
@@ -702,7 +736,7 @@ mod tests {
         let columns = vec![Column {
             name: "array_col".to_string(),
             data_type: ColumnType::Array {
-                element_type: Box::new(ColumnType::Int),
+                element_type: Box::new(ColumnType::Int(IntType::Int64)),
                 element_nullable: false,
             },
             required: true,
@@ -799,7 +833,7 @@ mod tests {
             },
             Column {
                 name: "nested_int".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -889,7 +923,7 @@ mod tests {
             },
             Column {
                 name: "optional_field".to_string(),
-                data_type: ColumnType::Int,
+                data_type: ColumnType::Int(IntType::Int64),
                 required: false,
                 unique: false,
                 primary_key: false,
@@ -936,7 +970,7 @@ mod tests {
             },
             Column {
                 name: "exp".to_string(),
-                data_type: ColumnType::Float,
+                data_type: ColumnType::Float(FloatType::Float64),
                 required: true,
                 unique: false,
                 primary_key: false,

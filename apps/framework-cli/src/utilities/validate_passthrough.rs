@@ -1,4 +1,6 @@
+use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
 use itertools::Either;
+use regex::Regex;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
@@ -8,8 +10,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
 use std::marker::PhantomData;
-
-use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
+use std::sync::LazyLock;
 
 struct State {
     seen: bool,
@@ -225,6 +226,27 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
+            ColumnType::Decimal { .. } => {
+                if DECIMAL_REGEX.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!(
+                        "Invalid decimal format at {}",
+                        self.get_path()
+                    )))
+                }
+            }
+            ColumnType::Date => {
+                if DATE_REGEX.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    // println!("date regex {DATE_REGEX} v {v}");
+                    Err(E::custom(format!(
+                        "Invalid date format at {}",
+                        self.get_path()
+                    )))
+                }
+            }
             ColumnType::Enum(ref enum_def) => {
                 if enum_def.values.iter().any(|ev| match &ev.value {
                     EnumValue::Int(_) => ev.name == v,
@@ -391,6 +413,11 @@ impl<'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'_, 'de, A> {
     }
 }
 
+static DATE_REGEX: LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(r"^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$").unwrap()
+});
+pub static DECIMAL_REGEX: LazyLock<Regex> =
+    std::sync::LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").unwrap());
 static PHANTOM_DATA: PhantomData<()> = PhantomData {};
 // RefCell for interior mutability
 // generally serialization for T should not change the T

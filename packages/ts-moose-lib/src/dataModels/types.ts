@@ -4,7 +4,7 @@ export type ClickHousePrecision<P extends number> = {
   _clickhouse_precision?: P;
 };
 
-export const DecimalRegex: "^-?\\d*\\.\\d+$" = "^-?\\d*\\.\\d+$";
+export const DecimalRegex: "^-?\\d+(\\.\\d+)?$" = "^-?\\d+(\\.\\d+)?$";
 
 export type ClickHouseDecimal<P extends number, S extends number> = {
   _clickhouse_precision?: P;

@@ -18,7 +18,7 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 
 - `<name>`: name of your application
 - `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
-- `-mcp` <host>: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`]
+- `-mcp` <host>: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
 - `-location <location>`: Location of your app or service. The default is the name of the project.
 - `-no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
 
@@ -31,7 +31,7 @@ aurora setup [path] <--mcp <host>>
 ```
 
 - Path to the Moose project (defaults to current directory)
-- `-mcp` <host>: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`]
+- `-mcp` <host>: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
 
 ### Config
 

@@ -1,220 +1,156 @@
-import { Tabs } from "nextra/components";
 
 # Moose CLI Reference
 
 ## Installation
 
-Moose comes with a handy CLI for managing your application. Navigate to your project's directory to run commands. There are a few ways to run the CLI:
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
 
-<Tabs items={['No Install', 'Project-level Install', 'Global Install']}>
-  <Tabs.Tab>
-    The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
-    ```bash filename="Terminal" copy
-    npx @514labs/moose-cli <command>
-    ```
-  </Tabs.Tab>
-  <Tabs.Tab>
-    Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
-    ```bash filename="Terminal" copy
-    npm install
-    npm run moose <command> 
-    // or 
-    npx moose-cli <command>
-    ```
-  </Tabs.Tab>
-  <Tabs.Tab>
-    Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
-    ```txt filename="Terminal" copy
-    npm install -g @514labs/moose-cli
-    moose <command>
-    ```
-  </Tabs.Tab>
-</Tabs>
-
-# Commands
+## Core Commands
 
 ### Init
-
-Instead of using `create-moose-app`, you can initialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new Moose project for you, with all the necessary directories including temporary ones for data storage.
-
-```bash filename="Terminal" copy
-moose init <name> --language <language> <--location <location>> <--no-fail-already-exists>
+Initializes a new Moose project.
+```bash
+moose init <name> --template <template> [--location <location>] [--no-fail-already-exists]
 ```
+- `<name>`: Name of your app or service
+- `<template>`: Template to use for the project
+- `--location`: Optional location for your app or service
+- `--no-fail-already-exists`: Skip the directory existence check
 
-- `<name>`: Name of your app or service.
-- `<language>`: Language of your app or service. We currently support `ts` (Typescript) and `python`.
-- `--location <location>`: Location of your app or service. The default is the name of the project.
-- `--no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
-- `--empty`: Creates a Moose project without example files for each primitive
+#### List Templates
+Lists available templates for project initialization.
+```bash
+moose template list
+```
 
 ### Build
-
-Builds your moose project. Syncs model changes, performs cleanup and prepares your project for use and deployment.
-
-When the `--docker` flag is used, the Moose build command also packages your project into local Docker containers.
-You can also use optional flags to specify which architecture to build for.
-
-```bash filename="Terminal" copy
-moose build <--docker> <--amd64 | --arm64>
+Builds your Moose project.
+```bash
+moose build [--docker] [--amd64] [--arm64]
 ```
+- `--docker`: Build for Docker
+- `--amd64`: Build for AMD64 architecture
+- `--arm64`: Build for ARM64 architecture
 
 ### Dev
-
-Starts a development environment running the full stack of your MooseJS application locally. As you develop your MooseJS application locally, changes you make to your codebase will be automatically reflected here in real-time (when you save changes).
-
-```bash filename="Terminal" copy
+Starts a local development environment.
+```bash
 moose dev
 ```
 
 ### Prod
-
-Starts Moose in production mode. This command is automatically invoked from a packaged Moose Docker container.
-
-```bash filename="Terminal" copy
+Starts Moose in production mode for cloud deployments.
+```bash
 moose prod
 ```
 
 ### Check
-
 Checks the project for non-runtime errors.
-
-```bash filename="Terminal" copy
-moose check
+```bash
+moose check [--write-infra-map]
 ```
-
-### Data Model
-
-#### Data Model Init
-
-Initializes a new Data Model for your project. By specifying a sample data file, the CLI will be able to auto-generate the schema for you based on the data itself. Learn more about Data Models [here](/data-models).
-
-```bash filename="Terminal" copy
-moose data-model init <NAME> --sample <SAMPLE>
-```
-
-- `<NAME>`: Name of your data model.
-- `<SAMPLE>`: Path to a sample `.csv` or `.json` data file to introspect the schema from.
-
-### Import
-
-```bash filename="Terminal" copy
-moose import --file <FILE> <DATA_MODEL_NAME>
-```
-
-- `<FILE>`: Path to a `.csv` or `.json` file to import into the Data Model.
-- `<DATA_MODEL_NAME>`: Name of the Data Model to import the file into.
-
-### Function
-
-#### Function Init
-
-Generates a new Streaming Function for you, including creating and structuring the necessary files
-based on your specified Data Models. Learn more in the [Streaming Function docs](/stream-processing).
-
-```bash filename="Terminal" copy
-moose function init --source <SOURCE> --destination <DESTINATION>
-```
-
-- `<SOURCE>`: Name of the source Data Model.
-- `<DESTINATION>`: Name of the destination Data Model.
-
-### Block
-
-#### Block Init
-
-Generates a new Block for your project. Learn more in the [Blocks docs](/db-processing).
-
-```bash filename="Terminal" copy
-moose block init <NAME>
-```
-
-- `<NAME>`: Name of your block.
-
-### Consumption
-
-#### Consumption Init
-
-Generates a new Consumption API for your project. Learn more in the [Consumption docs](/consumption-apis).
-
-```bash filename="Terminal" copy
-moose consumption init <NAME>
-```
-
-- `<NAME>`: Name of your consumption API route.
-
-### Generate
-
-#### Generate SDK
-
-Generates an ingest sdk for the specified project.
-
-```bash filename="Terminal" copy
-moose generate sdk -l <Language> -d <Directory> -p <ProjectLocation>
-```
-
-- `-l, --language`: Language of the SDK. We currently only support `Typescript`.
-- `-d, --destination`: Directory to generate the SDK in.
-- `-p, --project`: Location of the project to generate the SDK for.
-- `-f, --full-package`: Whether or not to generate a full fledged package or just the source files in the language of choice.
-
-#### Generate Migrations
-
-Generates migration scripts for models that are different from the previous version. Learn more in the [Data Change Management docs](/data-models/dcm).
-
-```bash filename="Terminal" copy
-moose generate migrations
-```
-
-### Bump Version
-
-Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `moose.config.toml`. Learn more in the [Data Change Management docs](../data-models/dcm).
-
-```bash filename="Terminal" copy
-moose bump-version <new_version>
-```
-
-- `<new_version>`: optional parameter, if omitted, moose will default to bumping the minor version.
 
 ### Clean
-
-Clears all temporary data and stops development infrastructure.
-
-```bash filename="Terminal" copy
+Clears temporary data and stops development infrastructure.
+```bash
 moose clean
 ```
 
+## Monitoring Commands
+
 ### Logs
-
-View logs to help debug how data moves through Moose.
-
-```bash filename="Terminal" copy
-moose logs <--tail> <--filter <search_string>>
+View Moose logs.
+```bash
+moose logs [--tail] [--filter <search_string>]
 ```
+- `--tail`: Follow logs in real-time
+- `--filter`: Filter logs by specific string
 
-### Processes
-
-View processes created by Moose, such as its underlying streaming platform & database with local access credentials.
-
-```bash filename="Terminal" copy
+### Ps
+View Moose processes.
+```bash
 moose ps
 ```
 
-### List
-
+### Ls
 View Moose primitives & infrastructure.
-
-```bash filename="Terminal" copy
-moose ls -v <version> -l <limit> -s
+```bash
+moose ls [--limit <n>] [--version <version>] [--streaming] [--type <type>] [--name <name>] [--json]
 ```
-
-- `-v, --version`: View a specific version of data models & database infrastructure. Defaults to latest version.
-- `-l, --limit`: Limit output to a specific number of data models. Defaults to 10.
-- `-s, --streaming`: View streaming topics per data model.
+- `--limit`: Limit output (default: 10)
+- `--version`: View specific version
+- `--streaming`: View streaming topics
+- `--type`: Filter by infrastructure type (tables, streams, ingestion, sql_resource, consumption)
+- `--name`: Filter by name
+- `--json`: Output in JSON format
 
 ### Metrics
-
-View live metrics from your Moose application
-
-```bash filename="Terminal" copy
+View live metrics from your Moose application.
+```bash
 moose metrics
 ```
+
+### Peek
+View data from a data model.
+```bash
+moose peek <data_model_name> [--limit <n>] [--file <path>] [--topic]
+```
+- `--limit`: Number of rows to view (default: 5)
+- `--file`: Output to a file
+- `--topic`: Peek from topic instead of table
+
+## Generation Commands
+
+### Generate SDK
+Generate an SDK for your data models.
+```bash
+moose generate sdk [--language <language>] [--destination <path>] [--project-location <path>] [--full-package] [--overwrite]
+```
+- `--language`: SDK language (default: typescript)
+- `--destination`: Output directory (default: ./sdk)
+- `--project-location`: Project location (default: .)
+- `--full-package`: Generate full package
+- `--overwrite`: Force overwrite existing files
+
+## Data Management
+
+### Import
+Import data into a data model.
+```bash
+moose import <data_model_name> --file <path> [--format <format>] [--destination <url>] [--version <version>]
+```
+- `--file`: Path to import file
+- `--format`: Import format
+- `--destination`: Destination URL (default: http://localhost:4000/ingest)
+- `--version`: Version
+
+## Workflow Management
+
+### Workflow
+```bash
+moose workflow <command> [options]
+```
+
+Available workflow commands:
+- `init <name> [--tasks <task-list>] [--task <task>...]`: Initialize a new workflow
+- `run <name> [--input <json>]`: Run a workflow
+- `resume <name> --from <task>`: Resume a workflow from a specific task
+- `list [--status <status>] [--limit <n>]`: List workflows
+- `terminate <name>`: Terminate a workflow
+- `pause <name>`: Pause a workflow
+- `unpause <name>`: Unpause a workflow
+- `status <name> [--id <run-id>] [--verbose] [--json]`: Get workflow status
+
+## Planning and Deployment
+
+### Plan
+Display infrastructure changes for the next production deployment.
+```bash
+moose plan [--url <url>] [--token <token>]
+```
+- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--token`: API token for authentication
+
+This reference reflects the current state of the Moose CLI based on the source code in the framework-cli directory. The commands are organized by their primary functions and include all available options and flags.

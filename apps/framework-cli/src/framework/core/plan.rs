@@ -17,7 +17,7 @@ use super::{
 };
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::project::Project;
-use log::error;
+use log::{debug, error};
 use rdkafka::error::KafkaError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -90,6 +90,11 @@ pub async fn plan_changes(
     };
 
     let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
+
+    debug!(
+        "Current infrastructure map: {:?}",
+        serde_json::to_string(&current_infra_map)
+    );
 
     plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
 }

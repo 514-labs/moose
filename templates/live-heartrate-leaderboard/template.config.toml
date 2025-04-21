@@ -1,0 +1,19 @@
+language = "python" # Must be typescript or python
+description = "live heart rate leaderboard. Inspired by F45"
+post_install_print = """
+📂 Go to your project directory:
+    $ cd {project_dir}
+
+🥄 Create a virtual environment (optional, recommended):
+    $ python3 -m venv .venv
+    $ source .venv/bin/activate
+
+📦 Install Dependencies:
+    $ pip install -r ./requirements.txt
+
+🛠️ Start Moose Server:
+    $ moose dev
+
+
+🚀 Run streamlit:
+	$ streamlit run app/streamlit_app.py

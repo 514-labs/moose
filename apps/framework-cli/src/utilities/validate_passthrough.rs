@@ -174,6 +174,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         match self.t {
             ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
@@ -186,6 +187,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         match self.t {
             ColumnType::Int(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),
@@ -208,6 +210,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     .serialize_value(&date.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true))
                     .map_err(Error::custom)
             }
+            ColumnType::Decimal { .. } => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Float(_) => self.write_to.serialize_value(&v).map_err(Error::custom),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Float(v), &self)),
         }

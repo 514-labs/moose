@@ -56,6 +56,7 @@ use crate::proto::infrastructure_map::{
 use anyhow::{Context, Result};
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -2445,5 +2446,1158 @@ mod diff_tests {
 
         let diff = compute_table_columns_diff(&before, &after);
         assert_eq!(diff.len(), 2, "Expected changes for edge case columns");
+    }
+}
+
+#[cfg(test)]
+mod diff_sql_resources_tests {
+    use super::*;
+    use crate::framework::core::infrastructure_map::Change;
+
+    // Helper function to create a test SQL resource
+    fn create_sql_resource(name: &str, setup: Vec<&str>, teardown: Vec<&str>) -> SqlResource {
+        SqlResource {
+            name: name.to_string(),
+            setup: setup.iter().map(|s| s.to_string()).collect(),
+            teardown: teardown.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn test_no_changes_empty() {
+        let self_resources = HashMap::new();
+        let target_resources = HashMap::new();
+        let mut olap_changes = Vec::new();
+
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+        assert!(olap_changes.is_empty());
+    }
+
+    #[test]
+    fn test_no_changes_identical() {
+        let resource1 = create_sql_resource("res1", vec!["setup1"], vec!["teardown1"]);
+        let mut self_resources = HashMap::new();
+        self_resources.insert(resource1.name.clone(), resource1.clone());
+
+        let mut target_resources = HashMap::new();
+        target_resources.insert(resource1.name.clone(), resource1);
+
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+        assert!(olap_changes.is_empty());
+    }
+
+    #[test]
+    fn test_add_resource() {
+        let self_resources = HashMap::new();
+        let resource1 = create_sql_resource("res1", vec!["setup1"], vec!["teardown1"]);
+        let mut target_resources = HashMap::new();
+        target_resources.insert(resource1.name.clone(), resource1.clone());
+
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+
+        assert_eq!(olap_changes.len(), 1);
+        match &olap_changes[0] {
+            OlapChange::SqlResource(Change::Added(res)) => {
+                assert_eq!(res.name, "res1");
+            }
+            _ => panic!("Expected Added change"),
+        }
+    }
+
+    #[test]
+    fn test_remove_resource() {
+        let resource1 = create_sql_resource("res1", vec!["setup1"], vec!["teardown1"]);
+        let mut self_resources = HashMap::new();
+        self_resources.insert(resource1.name.clone(), resource1.clone());
+
+        let target_resources = HashMap::new();
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+
+        assert_eq!(olap_changes.len(), 1);
+        match &olap_changes[0] {
+            OlapChange::SqlResource(Change::Removed(res)) => {
+                assert_eq!(res.name, "res1");
+            }
+            _ => panic!("Expected Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_update_resource_setup() {
+        let before_resource = create_sql_resource("res1", vec!["old_setup"], vec!["teardown1"]);
+        let after_resource = create_sql_resource("res1", vec!["new_setup"], vec!["teardown1"]);
+
+        let mut self_resources = HashMap::new();
+        self_resources.insert(before_resource.name.clone(), before_resource.clone());
+
+        let mut target_resources = HashMap::new();
+        target_resources.insert(after_resource.name.clone(), after_resource.clone());
+
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+
+        assert_eq!(olap_changes.len(), 1);
+        match &olap_changes[0] {
+            OlapChange::SqlResource(Change::Updated { before, after }) => {
+                assert_eq!(before.name, "res1");
+                assert_eq!(after.name, "res1");
+                assert_eq!(before.setup, vec!["old_setup"]);
+                assert_eq!(after.setup, vec!["new_setup"]);
+                assert_eq!(before.teardown, vec!["teardown1"]);
+                assert_eq!(after.teardown, vec!["teardown1"]);
+            }
+            _ => panic!("Expected Updated change"),
+        }
+    }
+
+    #[test]
+    fn test_update_resource_teardown() {
+        let before_resource = create_sql_resource("res1", vec!["setup1"], vec!["old_teardown"]);
+        let after_resource = create_sql_resource("res1", vec!["setup1"], vec!["new_teardown"]);
+
+        let mut self_resources = HashMap::new();
+        self_resources.insert(before_resource.name.clone(), before_resource.clone());
+
+        let mut target_resources = HashMap::new();
+        target_resources.insert(after_resource.name.clone(), after_resource.clone());
+
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+
+        assert_eq!(olap_changes.len(), 1);
+        match &olap_changes[0] {
+            OlapChange::SqlResource(Change::Updated { before, after }) => {
+                assert_eq!(before.name, "res1");
+                assert_eq!(after.name, "res1");
+                assert_eq!(before.setup, vec!["setup1"]);
+                assert_eq!(after.setup, vec!["setup1"]);
+                assert_eq!(before.teardown, vec!["old_teardown"]);
+                assert_eq!(after.teardown, vec!["new_teardown"]);
+            }
+            _ => panic!("Expected Updated change"),
+        }
+    }
+
+    #[test]
+    fn test_multiple_changes() {
+        let res1_before = create_sql_resource("res1", vec!["setup1"], vec!["teardown1"]); // Unchanged
+        let res2_before = create_sql_resource("res2", vec!["old_setup2"], vec!["teardown2"]); // Updated
+        let res3_before = create_sql_resource("res3", vec!["setup3"], vec!["teardown3"]); // Removed
+
+        let mut self_resources = HashMap::new();
+        self_resources.insert(res1_before.name.clone(), res1_before.clone());
+        self_resources.insert(res2_before.name.clone(), res2_before.clone());
+        self_resources.insert(res3_before.name.clone(), res3_before.clone());
+
+        let res1_after = create_sql_resource("res1", vec!["setup1"], vec!["teardown1"]); // Unchanged
+        let res2_after = create_sql_resource("res2", vec!["new_setup2"], vec!["teardown2"]); // Updated
+        let res4_after = create_sql_resource("res4", vec!["setup4"], vec!["teardown4"]); // Added
+
+        let mut target_resources = HashMap::new();
+        target_resources.insert(res1_after.name.clone(), res1_after.clone());
+        target_resources.insert(res2_after.name.clone(), res2_after.clone());
+        target_resources.insert(res4_after.name.clone(), res4_after.clone());
+
+        let mut olap_changes = Vec::new();
+        InfrastructureMap::diff_sql_resources(
+            &self_resources,
+            &target_resources,
+            &mut olap_changes,
+        );
+
+        assert_eq!(olap_changes.len(), 3); // 1 Update, 1 Remove, 1 Add
+
+        let mut update_found = false;
+        let mut remove_found = false;
+        let mut add_found = false;
+
+        for change in &olap_changes {
+            match change {
+                OlapChange::SqlResource(Change::Updated { before, after }) => {
+                    assert_eq!(before.name, "res2");
+                    assert_eq!(after.name, "res2");
+                    assert_eq!(before.setup, vec!["old_setup2"]);
+                    assert_eq!(after.setup, vec!["new_setup2"]);
+                    update_found = true;
+                }
+                OlapChange::SqlResource(Change::Removed(res)) => {
+                    assert_eq!(res.name, "res3");
+                    remove_found = true;
+                }
+                OlapChange::SqlResource(Change::Added(res)) => {
+                    assert_eq!(res.name, "res4");
+                    add_found = true;
+                }
+                _ => panic!("Unexpected OlapChange variant"),
+            }
+        }
+
+        assert!(update_found, "Update change not found");
+        assert!(remove_found, "Remove change not found");
+        assert!(add_found, "Add change not found");
+    }
+}
+
+#[cfg(test)]
+mod diff_topic_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType};
+    use crate::framework::core::infrastructure::topic::Topic;
+    use crate::framework::versions::Version;
+    use std::time::Duration;
+
+    // Helper function to create a test topic
+    fn create_test_topic(name: &str, version_str: &str) -> Topic {
+        let version = Version::from_string(version_str.to_string());
+        Topic {
+            name: name.to_string(),
+            source_primitive: PrimitiveSignature {
+                name: format!("dm_{}", name),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            retention_period: Duration::from_secs(86400), // Default duration
+            partition_count: 1,                           // Default count
+            version: Some(version.clone()),
+            max_message_bytes: 1024 * 1024, // Default size
+            columns: vec![Column {
+                // Example column
+                name: "value".to_string(),
+                data_type: ColumnType::Int(IntType::Int64),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: Vec::new(),
+            }],
+        }
+    }
+
+    #[test]
+    fn test_diff_topic_no_changes() {
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let topic = create_test_topic("topic1", "1.0");
+        map1.add_topic(topic.clone());
+        map2.add_topic(topic);
+
+        let changes = map1.diff(&map2);
+        assert!(
+            changes.streaming_engine_changes.is_empty(),
+            "Expected no streaming changes"
+        );
+        // Check other change types are also empty to be sure
+        assert!(changes.olap_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+        // Processes always update currently, so we don't check for empty
+    }
+
+    #[test]
+    fn test_diff_topic_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let topic = create_test_topic("topic1", "1.0");
+        map2.add_topic(topic.clone());
+
+        let changes = map1.diff(&map2);
+        assert_eq!(
+            changes.streaming_engine_changes.len(),
+            1,
+            "Expected one streaming change"
+        );
+        match &changes.streaming_engine_changes[0] {
+            StreamingChange::Topic(Change::Added(t)) => {
+                assert_eq!(**t, topic, "Added topic does not match")
+            }
+            _ => panic!("Expected Topic Added change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.olap_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_topic_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let topic = create_test_topic("topic1", "1.0");
+        map1.add_topic(topic.clone());
+
+        let changes = map1.diff(&map2);
+        assert_eq!(
+            changes.streaming_engine_changes.len(),
+            1,
+            "Expected one streaming change"
+        );
+        match &changes.streaming_engine_changes[0] {
+            StreamingChange::Topic(Change::Removed(t)) => {
+                assert_eq!(**t, topic, "Removed topic does not match")
+            }
+            _ => panic!("Expected Topic Removed change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.olap_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_topic_update() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let mut map2 = InfrastructureMap::default(); // After state
+        let topic_before = create_test_topic("topic1", "1.0");
+        // Create a topic with the same ID-generating fields initially
+        let mut topic_after = create_test_topic("topic1", "1.0"); // Keep name and version same
+
+        // Change properties *not* involved in id() generation for DataModel topics
+        // topic_after.name = "topic1_new_name".to_string(); // <-- DO NOT change name
+        topic_after.partition_count = 5; // Change partition count - This IS okay
+        topic_after.retention_period = Duration::from_secs(172800); // Change retention - This IS okay
+
+        // Ensure IDs are the same before insertion
+        assert_eq!(
+            topic_before.id(),
+            topic_after.id(),
+            "Test setup error: IDs should be the same for update test"
+        );
+
+        // Use the id() method for insertion key
+        map1.topics.insert(topic_before.id(), topic_before.clone());
+        map2.topics.insert(topic_after.id(), topic_after.clone()); // Now uses the stable ID
+
+        let changes = map1.diff(&map2);
+        assert_eq!(
+            changes.streaming_engine_changes.len(),
+            1,
+            "Expected one streaming change"
+        );
+        match &changes.streaming_engine_changes[0] {
+            StreamingChange::Topic(Change::Updated { before, after }) => {
+                assert_eq!(**before, topic_before, "Before topic does not match");
+                assert_eq!(**after, topic_after, "After topic does not match");
+                assert_eq!(before.name, after.name, "Name should NOT have changed"); // Name is part of ID here
+                assert_eq!(
+                    before.version, after.version,
+                    "Version should NOT have changed"
+                ); // Version is part of ID here
+                assert_ne!(
+                    before.partition_count, after.partition_count,
+                    "Partition count should have changed"
+                );
+                assert_ne!(
+                    before.retention_period, after.retention_period,
+                    "Retention period should have changed"
+                );
+            }
+            _ => panic!("Expected Topic Updated change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.olap_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod diff_view_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::view::{View, ViewType};
+    use crate::framework::versions::Version;
+
+    // Helper function to create a test view
+    fn create_test_view(name: &str, version_str: &str, source_table: &str) -> View {
+        let version = Version::from_string(version_str.to_string());
+        View {
+            name: name.to_string(),
+            version: version.clone(),
+            view_type: ViewType::TableAlias {
+                // Defaulting to TableAlias for simplicity
+                source_table_name: source_table.to_string(),
+            },
+            // Assuming View struct does not store source_primitive directly based on previous reads
+        }
+    }
+
+    #[test]
+    fn test_diff_view_no_changes() {
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let view = create_test_view("view1", "1.0", "table1");
+        map1.views.insert(view.id(), view.clone());
+        map2.views.insert(view.id(), view);
+
+        let changes = map1.diff(&map2);
+        assert!(changes.olap_changes.is_empty(), "Expected no OLAP changes");
+        // Check other change types are also empty to be sure (except processes)
+        assert!(changes.streaming_engine_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_view_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let view = create_test_view("view1", "1.0", "table1");
+        map2.views.insert(view.id(), view.clone());
+
+        let changes = map1.diff(&map2);
+        assert_eq!(changes.olap_changes.len(), 1, "Expected one OLAP change");
+        match &changes.olap_changes[0] {
+            OlapChange::View(Change::Added(v)) => {
+                assert_eq!(**v, view, "Added view does not match")
+            }
+            _ => panic!("Expected View Added change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.streaming_engine_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_view_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let view = create_test_view("view1", "1.0", "table1");
+        map1.views.insert(view.id(), view.clone());
+
+        let changes = map1.diff(&map2);
+        assert_eq!(changes.olap_changes.len(), 1, "Expected one OLAP change");
+        match &changes.olap_changes[0] {
+            OlapChange::View(Change::Removed(v)) => {
+                assert_eq!(**v, view, "Removed view does not match")
+            }
+            _ => panic!("Expected View Removed change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.streaming_engine_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_view_update() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let mut map2 = InfrastructureMap::default(); // After state
+        let view_before = create_test_view("view1", "1.0", "table1");
+        // Create a view with the same ID (name + version) but different properties
+        let mut view_after = create_test_view("view1", "1.0", "table1");
+        view_after.view_type = ViewType::TableAlias {
+            // Change view_type detail
+            source_table_name: "table2".to_string(),
+        };
+
+        // Ensure IDs are the same before insertion
+        assert_eq!(
+            view_before.id(),
+            view_after.id(),
+            "Test setup error: IDs should be the same for update test"
+        );
+
+        map1.views.insert(view_before.id(), view_before.clone());
+        map2.views.insert(view_after.id(), view_after.clone());
+
+        let changes = map1.diff(&map2);
+        assert_eq!(changes.olap_changes.len(), 1, "Expected one OLAP change");
+        match &changes.olap_changes[0] {
+            OlapChange::View(Change::Updated { before, after }) => {
+                assert_eq!(**before, view_before, "Before view does not match");
+                assert_eq!(**after, view_after, "After view does not match");
+                assert_eq!(before.name, after.name, "Name should NOT have changed");
+                assert_eq!(
+                    before.version, after.version,
+                    "Version should NOT have changed"
+                );
+                assert_ne!(
+                    before.view_type, after.view_type,
+                    "ViewType should have changed"
+                );
+            }
+            _ => panic!("Expected View Updated change"),
+        }
+        // Ensure other change types are not affected (except processes)
+        assert!(changes.streaming_engine_changes.is_empty());
+        assert!(changes.api_changes.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod diff_topic_to_table_sync_process_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType};
+    use crate::framework::core::infrastructure::topic_sync_process::TopicToTableSyncProcess;
+    use crate::framework::versions::Version;
+
+    // Helper function to create a test TopicToTableSyncProcess
+    fn create_test_t2t_sync_process(
+        source_topic_id: &str,
+        target_table_id: &str,
+        version_str: &str,
+        primitive_name: &str,
+    ) -> TopicToTableSyncProcess {
+        let version = Version::from_string(version_str.to_string());
+        TopicToTableSyncProcess {
+            source_topic_id: source_topic_id.to_string(),
+            target_table_id: target_table_id.to_string(),
+            columns: vec![Column {
+                // Basic column setup
+                name: "data".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: Vec::new(),
+            }],
+            version: Some(version.clone()),
+            source_primitive: PrimitiveSignature {
+                // Source primitive info
+                name: primitive_name.to_string(),
+                primitive_type: PrimitiveTypes::DataModel, // Assuming source is DataModel
+            },
+        }
+    }
+
+    #[test]
+    fn test_diff_t2t_sync_no_changes() {
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let process = create_test_t2t_sync_process("topic1_1.0", "table1_1.0", "1.0", "topic1");
+        map1.topic_to_table_sync_processes
+            .insert(process.id(), process.clone());
+        map2.topic_to_table_sync_processes
+            .insert(process.id(), process);
+
+        let changes = map1.diff(&map2);
+        // Check only process changes, as others should be empty
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .any(|c| matches!(c, ProcessChange::TopicToTableSyncProcess(_)));
+        assert!(
+            !process_change_found,
+            "Expected no TopicToTableSyncProcess changes, found: {:?}",
+            changes.processes_changes
+        );
+    }
+
+    #[test]
+    fn test_diff_t2t_sync_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let process = create_test_t2t_sync_process("topic1_1.0", "table1_1.0", "1.0", "topic1");
+        map2.topic_to_table_sync_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTableSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTableSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTableSyncProcess(Change::Added(p)) => {
+                assert_eq!(**p, process, "Added process does not match")
+            }
+            _ => panic!("Expected TopicToTableSyncProcess Added change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_t2t_sync_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let process = create_test_t2t_sync_process("topic1_1.0", "table1_1.0", "1.0", "topic1");
+        map1.topic_to_table_sync_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTableSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTableSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTableSyncProcess(Change::Removed(p)) => {
+                assert_eq!(**p, process, "Removed process does not match")
+            }
+            _ => panic!("Expected TopicToTableSyncProcess Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_t2t_sync_update() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let mut map2 = InfrastructureMap::default(); // After state
+
+        // ID depends on source_topic_id, target_table_id, version
+        let source_topic_id = "topic1_1.0";
+        let target_table_id = "table1_1.0";
+        let version_str = "1.0";
+        let primitive_name = "topic1";
+
+        let process_before = create_test_t2t_sync_process(
+            source_topic_id,
+            target_table_id,
+            version_str,
+            primitive_name,
+        );
+        let mut process_after = create_test_t2t_sync_process(
+            source_topic_id,
+            target_table_id,
+            version_str,
+            primitive_name,
+        );
+
+        // Change a field *not* part of the ID, e.g., columns
+        process_after.columns = vec![Column {
+            name: "new_data".to_string(),
+            data_type: ColumnType::BigInt,
+            required: false,
+            unique: true,
+            primary_key: true,
+            default: None,
+            annotations: vec![("note".to_string(), Value::String("changed".to_string()))],
+        }];
+
+        assert_eq!(
+            process_before.id(),
+            process_after.id(),
+            "Test setup error: IDs should be the same for update test"
+        );
+
+        map1.topic_to_table_sync_processes
+            .insert(process_before.id(), process_before.clone());
+        map2.topic_to_table_sync_processes
+            .insert(process_after.id(), process_after.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTableSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTableSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after }) => {
+                assert_eq!(**before, process_before, "Before process does not match");
+                assert_eq!(**after, process_after, "After process does not match");
+                assert_eq!(
+                    before.source_topic_id, after.source_topic_id,
+                    "Source topic ID should NOT change"
+                );
+                assert_eq!(
+                    before.target_table_id, after.target_table_id,
+                    "Target table ID should NOT change"
+                );
+                assert_eq!(before.version, after.version, "Version should NOT change");
+                assert_ne!(before.columns, after.columns, "Columns should have changed");
+            }
+            _ => panic!("Expected TopicToTableSyncProcess Updated change"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod diff_topic_to_topic_sync_process_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::topic_sync_process::TopicToTopicSyncProcess;
+
+    // Helper function to create a test TopicToTopicSyncProcess
+    fn create_test_topic_topic_sync_process(
+        source_topic_id: &str,
+        target_topic_id: &str,
+        primitive_name: &str,
+    ) -> TopicToTopicSyncProcess {
+        TopicToTopicSyncProcess {
+            source_topic_id: source_topic_id.to_string(),
+            target_topic_id: target_topic_id.to_string(), // This is the ID used for the map key
+            source_primitive: PrimitiveSignature {
+                name: primitive_name.to_string(),
+                primitive_type: PrimitiveTypes::Function, // Assuming source is Function based on definition
+            },
+        }
+    }
+
+    #[test]
+    fn test_diff_topic_topic_sync_no_changes() {
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let process = create_test_topic_topic_sync_process("source_t1", "target_t1", "func1");
+        map1.topic_to_topic_sync_processes
+            .insert(process.id(), process.clone());
+        map2.topic_to_topic_sync_processes
+            .insert(process.id(), process);
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .any(|c| matches!(c, ProcessChange::TopicToTopicSyncProcess(_)));
+        assert!(
+            !process_change_found,
+            "Expected no TopicToTopicSyncProcess changes, found: {:?}",
+            changes.processes_changes
+        );
+    }
+
+    #[test]
+    fn test_diff_topic_topic_sync_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let process = create_test_topic_topic_sync_process("source_t1", "target_t1", "func1");
+        map2.topic_to_topic_sync_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTopicSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTopicSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTopicSyncProcess(Change::Added(p)) => {
+                assert_eq!(**p, process, "Added process does not match")
+            }
+            _ => panic!("Expected TopicToTopicSyncProcess Added change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_topic_topic_sync_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let process = create_test_topic_topic_sync_process("source_t1", "target_t1", "func1");
+        map1.topic_to_topic_sync_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTopicSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTopicSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTopicSyncProcess(Change::Removed(p)) => {
+                assert_eq!(**p, process, "Removed process does not match")
+            }
+            _ => panic!("Expected TopicToTopicSyncProcess Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_topic_topic_sync_update() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let mut map2 = InfrastructureMap::default(); // After state
+
+        // ID is target_topic_id
+        let target_topic_id = "target_t1";
+        let primitive_name = "func1";
+
+        let process_before =
+            create_test_topic_topic_sync_process("source_t1", target_topic_id, primitive_name);
+        let mut process_after =
+            create_test_topic_topic_sync_process("source_t1", target_topic_id, primitive_name);
+
+        // Change a field *not* part of the ID, e.g., source_topic_id or source_primitive
+        process_after.source_topic_id = "source_t2".to_string();
+        process_after.source_primitive.name = "func1_new".to_string();
+
+        assert_eq!(
+            process_before.id(),
+            process_after.id(),
+            "Test setup error: IDs should be the same for update test"
+        );
+
+        map1.topic_to_topic_sync_processes
+            .insert(process_before.id(), process_before.clone());
+        map2.topic_to_topic_sync_processes
+            .insert(process_after.id(), process_after.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::TopicToTopicSyncProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one TopicToTopicSyncProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::TopicToTopicSyncProcess(Change::Updated { before, after }) => {
+                assert_eq!(**before, process_before, "Before process does not match");
+                assert_eq!(**after, process_after, "After process does not match");
+                assert_eq!(
+                    before.target_topic_id, after.target_topic_id,
+                    "Target topic ID (key) should NOT change"
+                );
+                assert_ne!(
+                    before.source_topic_id, after.source_topic_id,
+                    "Source topic ID should have changed"
+                );
+                assert_ne!(
+                    before.source_primitive, after.source_primitive,
+                    "Source primitive should have changed"
+                );
+            }
+            _ => panic!("Expected TopicToTopicSyncProcess Updated change"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod diff_function_process_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::function_process::FunctionProcess;
+    use crate::framework::languages::SupportedLanguages;
+    use crate::framework::versions::Version;
+    use std::path::PathBuf;
+
+    // Helper function to create a test FunctionProcess
+    fn create_test_function_process(
+        name: &str,
+        source_topic_id: &str,
+        target_topic_id: Option<&str>,
+        version_str: &str,
+    ) -> FunctionProcess {
+        let version = Version::from_string(version_str.to_string());
+        FunctionProcess {
+            name: name.to_string(),
+            source_topic_id: source_topic_id.to_string(),
+            target_topic_id: target_topic_id.map(|s| s.to_string()),
+            executable: PathBuf::from(format!("path/to/{}.py", name)),
+            parallel_process_count: 1,
+            version: Some(version.to_string()), // Use Option<String>
+            language: SupportedLanguages::Python, // Default language
+            source_primitive: PrimitiveSignature {
+                name: name.to_string(),
+                primitive_type: PrimitiveTypes::Function,
+            },
+        }
+    }
+
+    #[test]
+    fn test_diff_function_process_no_changes_triggers_update() {
+        // NOTE: Current diff logic *always* treats existing function processes as UPDATED.
+        // This test verifies that behavior.
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let process = create_test_function_process("func1", "t1_1.0", Some("t2_1.0"), "1.0");
+        map1.function_processes
+            .insert(process.id(), process.clone());
+        map2.function_processes
+            .insert(process.id(), process.clone()); // Identical process
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::FunctionProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one FunctionProcess change (even if identical)"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::FunctionProcess(Change::Updated { before, after }) => {
+                assert_eq!(**before, process, "Before process does not match");
+                assert_eq!(**after, process, "After process does not match");
+            }
+            _ => panic!("Expected FunctionProcess Updated change due to current logic"),
+        }
+    }
+
+    #[test]
+    fn test_diff_function_process_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let process = create_test_function_process("func1", "t1_1.0", Some("t2_1.0"), "1.0");
+        map2.function_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::FunctionProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one FunctionProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::FunctionProcess(Change::Added(p)) => {
+                assert_eq!(**p, process, "Added process does not match")
+            }
+            _ => panic!("Expected FunctionProcess Added change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_function_process_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let process = create_test_function_process("func1", "t1_1.0", Some("t2_1.0"), "1.0");
+        map1.function_processes
+            .insert(process.id(), process.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::FunctionProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one FunctionProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::FunctionProcess(Change::Removed(p)) => {
+                assert_eq!(**p, process, "Removed process does not match")
+            }
+            _ => panic!("Expected FunctionProcess Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_function_process_update() {
+        // Verifies that an actual change is still registered as Updated
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let mut map2 = InfrastructureMap::default(); // After state
+
+        let name = "func1";
+        let source_topic_id = "t1_1.0";
+        let target_topic_id = Some("t2_1.0");
+        let version_str = "1.0";
+
+        let process_before =
+            create_test_function_process(name, source_topic_id, target_topic_id, version_str);
+        let mut process_after =
+            create_test_function_process(name, source_topic_id, target_topic_id, version_str);
+
+        // Change a field
+        process_after.parallel_process_count = 5;
+        process_after.executable = PathBuf::from("path/to/new_func1.py");
+
+        assert_eq!(
+            process_before.id(),
+            process_after.id(),
+            "Test setup error: IDs should be the same for update test"
+        );
+
+        map1.function_processes
+            .insert(process_before.id(), process_before.clone());
+        map2.function_processes
+            .insert(process_after.id(), process_after.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::FunctionProcess(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one FunctionProcess change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::FunctionProcess(Change::Updated { before, after }) => {
+                assert_eq!(**before, process_before, "Before process does not match");
+                assert_eq!(**after, process_after, "After process does not match");
+                assert_ne!(
+                    before.parallel_process_count, after.parallel_process_count,
+                    "Parallel count should have changed"
+                );
+                assert_ne!(
+                    before.executable, after.executable,
+                    "Executable path should have changed"
+                );
+            }
+            _ => panic!("Expected FunctionProcess Updated change"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod diff_orchestration_worker_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::orchestration_worker::OrchestrationWorker;
+    use crate::framework::languages::SupportedLanguages;
+
+    // Helper function to create a test OrchestrationWorker
+    // Note: The ID is determined by the language
+    fn create_test_orchestration_worker(lang: SupportedLanguages) -> OrchestrationWorker {
+        OrchestrationWorker {
+            supported_language: lang,
+        }
+    }
+
+    #[test]
+    fn test_diff_orchestration_worker_no_changes_triggers_update() {
+        // NOTE: Current diff logic *always* treats existing workers as UPDATED.
+        // This test verifies that behavior.
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let worker = create_test_orchestration_worker(SupportedLanguages::Python);
+        let id = worker.id();
+        map1.orchestration_workers
+            .insert(id.clone(), worker.clone());
+        map2.orchestration_workers
+            .insert(id.clone(), worker.clone()); // Identical worker
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::OrchestrationWorker(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one OrchestrationWorker change (even if identical)"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::OrchestrationWorker(Change::Updated { before, after }) => {
+                assert_eq!(before.id(), id, "Before worker ID does not match");
+                assert_eq!(after.id(), id, "After worker ID does not match");
+                // Can compare the workers directly if PartialEq is derived/implemented
+                assert_eq!(**before, worker, "Before worker does not match expected");
+                assert_eq!(**after, worker, "After worker does not match expected");
+            }
+            _ => panic!("Expected OrchestrationWorker Updated change due to current logic"),
+        }
+    }
+
+    #[test]
+    fn test_diff_orchestration_worker_add() {
+        let map1 = InfrastructureMap::default(); // Before state (empty)
+        let mut map2 = InfrastructureMap::default(); // After state
+        let worker = create_test_orchestration_worker(SupportedLanguages::Python);
+        let id = worker.id();
+        map2.orchestration_workers
+            .insert(id.clone(), worker.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::OrchestrationWorker(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one OrchestrationWorker change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::OrchestrationWorker(Change::Added(w)) => {
+                assert_eq!(w.id(), id, "Added worker ID does not match");
+                assert_eq!(**w, worker, "Added worker does not match expected");
+            }
+            _ => panic!("Expected OrchestrationWorker Added change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_orchestration_worker_remove() {
+        let mut map1 = InfrastructureMap::default(); // Before state
+        let map2 = InfrastructureMap::default(); // After state (empty)
+        let worker = create_test_orchestration_worker(SupportedLanguages::Python);
+        let id = worker.id();
+        map1.orchestration_workers
+            .insert(id.clone(), worker.clone());
+
+        let changes = map1.diff(&map2);
+        let process_change_found = changes
+            .processes_changes
+            .iter()
+            .find(|c| matches!(c, ProcessChange::OrchestrationWorker(_)));
+
+        assert!(
+            process_change_found.is_some(),
+            "Expected one OrchestrationWorker change"
+        );
+        match process_change_found.unwrap() {
+            ProcessChange::OrchestrationWorker(Change::Removed(w)) => {
+                assert_eq!(w.id(), id, "Removed worker ID does not match");
+                assert_eq!(**w, worker, "Removed worker does not match expected");
+            }
+            _ => panic!("Expected OrchestrationWorker Removed change"),
+        }
+    }
+
+    #[test]
+    fn test_diff_orchestration_worker_update_language() {
+        // Current logic always updates, but this shows it handles different languages
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+        let worker_py = create_test_orchestration_worker(SupportedLanguages::Python);
+        let worker_ts = create_test_orchestration_worker(SupportedLanguages::Typescript);
+
+        // Scenario: Python worker removed, TS worker added
+        map1.orchestration_workers
+            .insert(worker_py.id(), worker_py.clone());
+        map2.orchestration_workers
+            .insert(worker_ts.id(), worker_ts.clone());
+
+        let changes = map1.diff(&map2);
+
+        let mut removed_found = false;
+        let mut added_found = false;
+
+        for change in changes.processes_changes {
+            if let ProcessChange::OrchestrationWorker(Change::Removed(w)) = &change {
+                if w.supported_language == SupportedLanguages::Python {
+                    removed_found = true;
+                }
+            }
+            if let ProcessChange::OrchestrationWorker(Change::Added(w)) = &change {
+                if w.supported_language == SupportedLanguages::Typescript {
+                    added_found = true;
+                }
+            }
+        }
+
+        assert!(removed_found, "Python worker removal not detected");
+        assert!(added_found, "Typescript worker addition not detected");
     }
 }

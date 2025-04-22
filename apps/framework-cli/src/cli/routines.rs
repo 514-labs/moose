@@ -366,7 +366,6 @@ pub async fn start_development_mode(
         .await;
 
     let plan = plan_changes(&redis_client, &project).await?;
-    info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&project, &plan)?;
 
@@ -470,7 +469,6 @@ pub async fn start_production_mode(
         Box::leak(Box::new(RwLock::new(route_table)));
 
     let plan = plan_changes(&redis_client, &project).await?;
-    info!("Plan Changes: {:?}", plan.changes);
 
     plan_validator::validate(&project, &plan)?;
 

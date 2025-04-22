@@ -24,7 +24,7 @@ message InfrastructureMap {
 }
 
 message Topic {
-  string version = 1;
+  optional string version = 1;
   string name = 2;
   google.protobuf.Duration retention_period = 3;
   repeated Column columns = 4;

@@ -123,11 +123,7 @@ impl Topic {
 
     pub fn to_proto(&self) -> ProtoTopic {
         ProtoTopic {
-            version: self
-                .version
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_default(),
+            version: self.version.as_ref().map(|v| v.to_string()),
             name: self.name.clone(),
             retention_period: MessageField::some(
                 protobuf::well_known_types::duration::Duration::from(self.retention_period),
@@ -146,7 +142,7 @@ impl Topic {
 
     pub fn from_proto(proto: ProtoTopic) -> Self {
         Topic {
-            version: Some(Version::from_string(proto.version)),
+            version: proto.version.map(|v| Version::from_string(v)),
             name: proto.name,
             retention_period: proto.retention_period.unwrap().into(),
             partition_count: proto.partition_count.unwrap_or(1) as usize,

@@ -92,11 +92,18 @@ pub async fn plan_changes(
     let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
 
     debug!(
-        "Current infrastructure map: {:?}",
-        serde_json::to_string(&current_infra_map)
+        "Current infrastructure map: {}",
+        serde_json::to_string(&current_infra_map).unwrap()
     );
 
-    plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await
+    let plan = plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await?;
+
+    debug!(
+        "Plan Changes: {}",
+        serde_json::to_string(&plan.changes).unwrap()
+    );
+
+    Ok(plan)
 }
 
 /// Plans infrastructure changes using provided infrastructure maps.

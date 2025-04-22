@@ -93,14 +93,16 @@ pub async fn plan_changes(
 
     debug!(
         "Current infrastructure map: {}",
-        serde_json::to_string(&current_infra_map).unwrap()
+        serde_json::to_string(&current_infra_map)
+            .unwrap_or("Could not serialize current infrastructure map".to_string())
     );
 
     let plan = plan_changes_from_infra_map(project, &current_infra_map, &target_infra_map).await?;
 
     debug!(
         "Plan Changes: {}",
-        serde_json::to_string(&plan.changes).unwrap()
+        serde_json::to_string(&plan.changes)
+            .unwrap_or("Could not serialize plan changes".to_string())
     );
 
     Ok(plan)

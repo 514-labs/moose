@@ -2944,6 +2944,8 @@ mod diff_view_tests {
 
 #[cfg(test)]
 mod diff_topic_to_table_sync_process_tests {
+    use serde_json::Value;
+
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType};
     use crate::framework::core::infrastructure::topic_sync_process::TopicToTableSyncProcess;

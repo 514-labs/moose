@@ -65,11 +65,7 @@ impl Table {
             name: self.name.clone(),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
             order_by: self.order_by.clone(),
-            version: self
-                .version
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_default(),
+            version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
 
             deduplicate: self.deduplicate,
@@ -86,7 +82,7 @@ impl Table {
             name: proto.name,
             columns: proto.columns.into_iter().map(Column::from_proto).collect(),
             order_by: proto.order_by,
-            version: Some(Version::from_string(proto.version)),
+            version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
             deduplicate: proto.deduplicate,
             engine: proto.engine.into_option().map(|wrapper| wrapper.value),

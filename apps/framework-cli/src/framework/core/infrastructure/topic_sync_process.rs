@@ -77,11 +77,7 @@ impl TopicToTableSyncProcess {
             source_topic_id: self.source_topic_id.clone(),
             target_table_id: self.target_table_id.clone(),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
-            version: self
-                .version
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_default(),
+            version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -92,7 +88,7 @@ impl TopicToTableSyncProcess {
             source_topic_id: proto.source_topic_id,
             target_table_id: proto.target_table_id,
             columns: proto.columns.into_iter().map(Column::from_proto).collect(),
-            version: Some(Version::from_string(proto.version)),
+            version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }

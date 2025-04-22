@@ -231,3 +231,15 @@ Query to create read only credentials:
 CREATE USER username IDENTIFIED BY 'password' SETTINGS PROFILE 'readonly'
 GRANT SHOW TABLES, SELECT ON db+name.* TO username
 ```
+=======
+```
+
+This will look to the directory Windsurf stores its MCP configuration (`~/.codeium/windsurf/mcp_config.json`):
+
+- If there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there is an existing file there, and there is no configuration, it will add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there is an existing file there with other MCPs, it will add the `"aurora"` JSON object to configure the aurora MCP
+
+It will also list the project directory in the `~/.aurora/config.toml` file such that any changes to your MCP preferences (`aurora config`) will be propagated to this project.
+
+You will have to enable the MCP server in the Cascade MCP settings (`Windsurf > Settings > Windsurf Settings > Cascade`). You may then need to refresh the MCP server for it to work.

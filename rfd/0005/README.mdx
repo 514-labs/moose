@@ -1,0 +1,421 @@
+---
+authors: Nicolas Joseph <nicolas@fiveonefour.com>
+title: Moose CLI Version Management
+state: prediscussion
+---
+
+## Objective
+
+We propose a new version management system for the Moose CLI that ensures compatibility between the CLI and its associated
+language-specific libraries (moose-libs). The goal is to create a transparent version management experience where the correct 
+CLI version is automatically used based on project requirements, eliminating version mismatch issues between the CLI and libraries.
+
+## Scope
+
+This RFD focuses specifically on the Moose CLI version management system. The following are explicitly out of scope:
+
+- Language-specific libraries (moose-libs):
+  - These are managed through their respective language package managers (npm, pip, etc.)
+  - Installation and versioning handled by the project's dependency management system
+  - Libraries are project-local and not directly called by users
+  - Version compatibility is enforced through dependency specifications in package.json/requirements.txt
+
+## Version Selection Rules
+
+The system follows these rules for selecting which version of the CLI to use:
+
+1. Inside a Moose Project:
+   - Use the version that's the same as the current version of moose-lib in the project.
+   - This ensures compatibility between CLI and project libraries
+
+2. Outside a Moose Project:
+   - Always use the latest installed version
+   - This applies to commands like `moose init` for creating new projects
+   - New projects will be initialized with this latest installed version
+
+## User Benefit
+
+Users will benefit from:
+- Automatic version management that eliminates CLI-library version mismatches
+- Seamless installation of required CLI versions based on project needs
+- No manual intervention needed to switch between different versions of Moose for different projects
+- Consistent behavior across projects with different version requirements
+- Reduced debugging time by eliminating version-related issues
+- Standardized installation process across multiple programming languages
+- Simplified upgrade path through package manifest updates
+- Latest version always available for new project creation
+
+## Design Proposal
+
+### Overview
+
+The proposed system consists of three main components:
+
+1. A version-aware wrapper script (installed as `moose`)
+2. A local version cache manager
+3. A remote version installer
+
+Key design principles:
+- Unlike NVM, versions are automatically selected based on project configuration
+- Moose CLI only operates within Moose projects
+- Latest installed version is used outside of project contexts (e.g., for `moose init`)
+- Single installation method (curl-based) works across all supported languages
+- Standardized installation location for simplified support
+- Maintains existing behavior for Aurora CLI installation
+- Libraries managed separately through language-specific package managers
+
+### Installation Script Behavior
+
+The installation script will handle two distinct installation patterns:
+
+#### Aurora CLI Installation
+- Maintains current direct installation behavior
+- Single version installation
+- No explicit version management wrapper
+- Preserves existing update mechanisms
+
+#### Moose CLI Installation
+- Installs version management wrapper
+- Supports multiple versions
+- Automatic version selection based on project
+- Local version caching
+- Does not manage language-specific libraries
+- Always installs latest version initially for new project creation
+
+The script will detect which CLI is being installed and apply the appropriate installation pattern:
+
+```bash
+# Aurora - direct installation (unchanged behavior)
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora
+
+# Moose - new version management behavior
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
+
+# Installing both at the same time
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora,moose
+
+# Installing a specific version
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose@1.0.0,aurora@1.0.0
+
+# Specifying a channel
+RELEASE_CHANNEL=dev bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
+```
+
+### Implementation Details
+
+#### Version Detection
+
+The wrapper script will:
+1. Check if current directory is within a Moose project by looking for `moose.config.toml`:
+   - If yes, look for version information in:
+     - For Node.js projects: Check `package.json` for `@514labs/moose-lib` version
+     - For Python projects: Check installed packages via `pip list` for `moose_lib` version
+   - If no project is detected (reached root directory), use latest installed version
+2. For project contexts:
+   - Extract the required Moose version from context
+   - Install that version if not already cached
+3. For non-project contexts (e.g., `moose init`):
+   - Use latest installed version
+   - If no version installed, fetch and install latest available version
+
+#### Version Installation
+
+When a required version is not found locally:
+1. The wrapper downloads the appropriate version from the remote repository
+2. Verifies the binary signature
+3. Stores it in a local version cache (`~/.moose/versions/<channel>/<version>`)
+4. Updates symlinks and path references
+
+#### Version Cache Management
+
+Versions will be stored in:
+```
+~/.moose/
+  versions/
+    stable/
+      1.0.0/
+        moose      # CLI binary only
+        .last_used # Timestamp of last usage
+    dev/
+      1.1.0/
+        moose      # CLI binary only
+        .last_used # Timestamp of last usage
+    ...
+  current -> versions/1.1.0  # Symlink to latest version
+  dev-current -> versions/dev/1.1.0  # Symlink to latest version
+  wrapper    # The version-aware wrapper script
+  config.toml    # Global configuration
+  bin/      # Directory added to PATH
+    moose   # Main entry point wrapper script
+```
+
+```config.toml
+[channels]
+default = "stable"
+default_cache_limit = 20
+default_retention_days = 7
+
+[channels.stable]
+latest_version = ""
+auto_update = true
+cache_limit = 100
+retention_days = 90
+
+[channels.dev]
+latest_version = ""
+auto_update = false
+cache_limit = 20
+retention_days = 7
+```
+
+##### Cache Limits and Cleanup
+
+To prevent unlimited growth of cached versions:
+
+1. Maximum Cache Size:
+   - Hard limit of 100 versions stored locally
+   - Configurable through `config.toml` (default: 100)
+
+2. Usage Tracking:
+   - Each version directory contains a `.last_used` file
+   - Updated with timestamp on every use of that version
+   - Used to determine least recently used versions
+
+3. Cleanup Strategy:
+   - Triggered when:
+     - Installing a new version would exceed the limit
+   - Process:
+     1. Read all `.last_used` timestamps
+     2. Sort versions by last use
+     3. Remove least recently used versions until under limit
+     4. Always preserve:
+        - Latest version
+        - Currently used versions in local projects
+        - Versions used in the last 30 days
+
+#### Installation Script Changes
+
+The installation script will be modified to:
+1. Detect which CLI is being installed (Aurora or Moose)
+2. For Aurora:
+   - Maintain current direct installation behavior
+   - Install single version globally
+3. For Moose:
+   - Install version management wrapper
+   - Support version-specific installation via flags
+   - Handle PATH setup for both interactive and MCP usage
+
+```bash
+# Install Aurora (unchanged behavior)
+curl -sSL https://www.fiveonefour.com/install.sh | sh -s aurora
+
+# Install Moose wrapper
+curl -sSL https://www.fiveonefour.com/install.sh | sh -s moose
+```
+
+### Alternatives Considered
+
+1. **Project-local Installation (Current TypeScript Approach)**
+   - Install via package managers (npm, pip)
+   - Pros: Familiar to developers, language-native tooling
+   - Cons: Multiple installation locations, version conflicts, complex multi-language support
+
+2. **Global Version Manager (NVM-style)**
+   - Manual version switching
+   - Pros: Familiar pattern for developers
+   - Cons: Requires manual intervention, doesn't fit Moose's project-centric nature
+
+3. **Single Version with Compatibility Layers**
+   - Maintain backward compatibility in single version
+   - Pros: Simpler installation
+   - Cons: Technical debt, potential compatibility issues
+
+4. **Virtual Environment Integration**
+   - Install within Python/Node virtual environments
+   - Pros: Language-specific isolation
+   - Cons: Complicates multi-language support, duplicate installations
+
+5. **Unified Version Management for Both CLIs**
+   - Apply same version management to both Aurora and Moose
+   - Pros: Consistent behavior across tools
+   - Cons: Unnecessary complexity for Aurora, breaks existing workflows
+
+### Performance Implications
+
+- Small initial delay when new versions need to be installed
+- Negligible overhead for version checking
+- Disk space usage proportional to number of cached versions
+- Network usage only when new versions are required
+- No performance impact on MCP operations
+- No impact on Aurora performance (maintains direct installation)
+
+### Dependencies
+
+- Bash for wrapper script
+- Curl for downloads
+- GPG for signature verification
+- Language package managers for library installation (out of scope)
+- No additional runtime dependencies
+
+### Engineering Impact
+
+- Binary size: No change
+- Build time: No significant impact
+- Test coverage: New tests needed for version management
+- Maintenance: Additional version management code
+- MCP integration: Path handling modifications
+- Installation script: Dual-mode support for Aurora and Moose
+
+### Platforms and Environments
+
+- Supports all platforms where Moose currently runs
+- Requires bash-compatible shell
+- Cloud environments: No special considerations needed
+- CI/CD: May need configuration for version caching
+- MCP: Special handling for PATH limitations
+
+### Best Practices
+
+- Version requirements should be specified in project configuration files
+- Semantic versioning for all releases
+- Clear upgrade path documentation
+- Version cleanup recommendations
+- Avoid using "latest" in production environments
+- Regular cleanup of unused versions
+- Clear distinction between Aurora and Moose installation patterns
+- Use language-specific package managers for library dependencies
+
+### Tutorials and Examples
+
+Example workflow:
+```bash
+# Install Aurora (unchanged)
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) aurora
+
+# Install Moose wrapper
+bash -i <(curl -sSL https://www.fiveonefour.com/install.sh) moose
+
+# Create new project (automatically installs required version)
+moose init my-project
+
+# Libraries are installed via language package managers
+npm install  # For TypeScript projects
+pip install -r requirements.txt  # For Python projects
+
+# Switch to project with different version (automatic)
+cd other-project
+moose build  # Uses version from project config
+```
+
+### User Impact
+
+- Existing projects: No immediate impact
+- New projects: Automatic version management
+- Migration: Optional, can continue using fixed versions
+- Rollout: Gradual, with opt-in for version management
+- Unified installation experience across languages
+- No impact on Aurora users (maintains existing behavior)
+- Libraries continue to be managed by language package managers
+
+## Implementation Plan
+
+### Phase 0: Minimal Version Management (v0)
+Goal: Basic version management with complete channel support and backward compatibility
+
+1. Basic Wrapper Script:
+   - Install wrapper script via existing install.sh
+   - Support `moose` vs `aurora` installation modes
+   - Basic version detection from project files
+   - Use latest version outside projects
+   - Simple version caching in ~/.moose/versions
+
+2. Channel Support:
+   - Full stable/dev channel implementation from day one
+   - Support for git branch versions in dev channel
+   - Automatic version detection from both channels
+   - Channel selection in project configuration
+
+3. Backward Compatibility:
+   - Support existing project structures
+   - Handle legacy version specifications
+   - Maintain existing CLI behaviors during transition
+
+5. Minimal Project Integration:
+   - Read versions from package.json/requirements.txt
+   - Basic version switching based on project
+   - Use latest for moose init
+   - Channel specification in cli config file
+
+### Phase 1: Enhanced Version Management
+Goal: Improve version management reliability and user experience
+
+1. Version Cache Management:
+   - Implement version limit (100)
+   - Basic LRU tracking (.last_used files)
+   - Simple cleanup of old versions
+   - Preserve active versions
+   - Per-channel cache management
+
+2. Improved Error Handling:
+   - Handle network failures
+   - Version verification
+   - Corrupted installation recovery
+   - Channel fallback strategies
+
+### Phase 2: Advanced Features
+Goal: Add power user features and improved management
+
+1. Enhanced Cache Management:
+   - Configurable cache limits
+   - Sophisticated cleanup strategies
+   - Usage analytics
+   - Manual cache control
+   - Channel-specific cache policies
+
+### Cutover Strategy
+
+1. Preparation (During Phase 0):
+   - Release wrapper with full backward compatibility
+   - Ensure all existing projects work without modification
+   - Test with both stable and dev channels
+   - Verify all existing workflows
+
+2. Cutover (Immediately after Phase 0):
+   - Update install.sh to always install new wrapper
+   - Automatically migrate existing installations
+   - No opt-out option - all users move to new system
+   - Keep backward compatibility for existing projects
+
+3. Post-Cutover:
+   - Monitor for any issues
+   - Provide immediate support for problems
+   - Collect metrics on installation success
+   - Fast-track fixes for any blockers
+
+4. Project Updates:
+   - Automatically update projects on next build
+   - Clear messaging about channel selection
+   - Tools to verify project compatibility
+   - Fast support response for any issues
+
+### Success Metrics
+
+1. Installation Metrics:
+   - Successful cutover percentage
+   - Installation success rate
+   - Channel selection statistics
+   - Migration success rate
+
+2. Performance Metrics:
+   - Installation time
+   - Version switching time
+   - Cache hit rate
+   - Channel switch performance
+
+3. User Experience:
+   - Support tickets related to cutover
+   - Build success rates
+   - Channel usage patterns
+   - Project compatibility rates
+
+

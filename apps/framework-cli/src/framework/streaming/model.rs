@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    framework::data_model::model::DataModel,
+    framework::{data_model::model::DataModel, versions::Version},
     utilities::{
         constants::{PYTHON_FILE_EXTENSION, SQL_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
         system::KillProcessError,
@@ -37,7 +37,7 @@ pub struct StreamingFunction {
 
     pub executable: PathBuf,
 
-    pub version: String,
+    pub version: Version,
 }
 
 impl StreamingFunction {

@@ -123,11 +123,7 @@ impl ApiEndpoint {
             api_type: Some(self.api_type.to_proto()),
             path: self.path.to_string_lossy().to_string(),
             method: EnumOrUnknown::new(self.method.to_proto()),
-            version: self
-                .version
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_default(),
+            version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -144,7 +140,7 @@ impl ApiEndpoint {
                     .enum_value()
                     .expect("Invalid method enum value"),
             ),
-            version: Some(Version::from_string(proto.version)),
+            version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }

@@ -649,7 +649,10 @@ impl PartialInfrastructureMap {
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: target_topic.partition_count,
-                    version: transformation_target.version.clone(),
+                    version: transformation_target
+                        .version
+                        .clone()
+                        .map(Version::from_string),
                     source_primitive: PrimitiveSignature {
                         name: process_name.clone(),
                         primitive_type: PrimitiveTypes::Function,
@@ -668,7 +671,7 @@ impl PartialInfrastructureMap {
                     executable: main_file.to_path_buf(),
                     language,
                     parallel_process_count: source_partial_topic.partition_count,
-                    version: consumer.version.clone(),
+                    version: consumer.version.clone().map(Version::from_string),
                     source_primitive: PrimitiveSignature {
                         name: topic_name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,

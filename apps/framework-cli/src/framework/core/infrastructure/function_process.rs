@@ -2,6 +2,7 @@ use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     languages::SupportedLanguages,
     streaming::model::StreamingFunction,
+    versions::Version,
 };
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
@@ -31,7 +32,7 @@ pub struct FunctionProcess {
     #[serde(default = "FunctionProcess::default_parallel_process_count")]
     pub parallel_process_count: usize,
 
-    pub version: Option<String>,
+    pub version: Option<Version>,
 
     pub language: SupportedLanguages,
 
@@ -125,7 +126,7 @@ impl FunctionProcess {
             target_columns: vec![],
             executable: self.executable.to_str().unwrap_or_default().to_string(),
             parallel_process_count: Some(self.parallel_process_count as i32),
-            version: self.version.clone().unwrap_or_default(),
+            version: self.version.clone().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -140,7 +141,7 @@ impl FunctionProcess {
             executable: executable.clone(),
             language: SupportedLanguages::from_file_path(&executable),
             parallel_process_count: proto.parallel_process_count.unwrap_or(1) as usize,
-            version: Some(proto.version),
+            version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }

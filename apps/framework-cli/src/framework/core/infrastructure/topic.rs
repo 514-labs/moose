@@ -142,7 +142,7 @@ impl Topic {
 
     pub fn from_proto(proto: ProtoTopic) -> Self {
         Topic {
-            version: proto.version.map(|v| Version::from_string(v)),
+            version: proto.version.map(Version::from_string),
             name: proto.name,
             retention_period: proto.retention_period.unwrap().into(),
             partition_count: proto.partition_count.unwrap_or(1) as usize,

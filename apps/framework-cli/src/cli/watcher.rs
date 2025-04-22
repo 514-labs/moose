@@ -172,7 +172,6 @@ async fn watch(
 
                             match plan_result {
                                 Ok(plan_result) => {
-                                    info!("Plan Changes: {:?}", plan_result.changes);
 
                                     framework::core::plan_validator::validate(&project, &plan_result)?;
 

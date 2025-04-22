@@ -337,7 +337,7 @@ export class View extends SqlResource {
     super(
       name,
       [
-        `CREATE MATERIALIZED VIEW IF NOT EXISTS ${name} 
+        `CREATE VIEW IF NOT EXISTS ${name} 
         AS ${selectStatement}`.trim(),
       ],
       [dropView(name)],

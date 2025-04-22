@@ -3310,7 +3310,7 @@ mod diff_function_process_tests {
             target_topic_id: target_topic_id.map(|s| s.to_string()),
             executable: PathBuf::from(format!("path/to/{}.py", name)),
             parallel_process_count: 1,
-            version: Some(version.to_string()), // Use Option<String>
+            version: Some(version),               // Use Option<String>
             language: SupportedLanguages::Python, // Default language
             source_primitive: PrimitiveSignature {
                 name: name.to_string(),

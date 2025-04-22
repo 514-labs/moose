@@ -41,7 +41,7 @@ message ApiEndpoint {
   }
   string path = 4;
   Method method = 5;
-  string version = 6;
+  optional string version = 6;
   PrimitiveSignature source_primitive = 7;
 }
 
@@ -78,7 +78,7 @@ message Table {
   string name = 1;
   repeated Column columns = 2;
   repeated string order_by = 3;
-  string version = 4;
+  optional string version = 4;
   PrimitiveSignature source_primitive = 5;
 
   bool deduplicate = 6;
@@ -101,7 +101,7 @@ message TopicToTableSyncProcess {
   string source_topic_id = 1;
   string target_table_id = 2;
   repeated Column columns = 3;
-  string version = 4;
+  optional string version = 4;
   PrimitiveSignature source_primitive = 5;
 }
 
@@ -119,7 +119,7 @@ message FunctionProcess {
   map<string, string> target_topic_config = 5;
   repeated Column target_columns = 6;
   string executable = 7;
-  string version = 8;
+  optional string version = 8;
   PrimitiveSignature source_primitive = 9;
   optional int32 parallel_process_count = 10;
 }

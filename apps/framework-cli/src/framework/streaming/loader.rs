@@ -1,4 +1,5 @@
 use super::model::{FunctionError, StreamingFunction};
+use crate::framework::versions::Version;
 use crate::utilities::constants::PYTHON_INIT_FILE;
 use crate::utilities::PathExt;
 use crate::{
@@ -113,7 +114,7 @@ async fn get_all_streaming_functions(
                                 source_data_model: source_data_model.clone(),
                                 target_data_model: target_data_model.clone(),
                                 executable: source.path(),
-                                version: current_version.to_string(),
+                                version: Version::from_string(current_version.to_string()),
                             };
                             functions.push(function);
                         } else {
@@ -182,7 +183,7 @@ async fn get_all_streaming_functions(
                         source_data_model: source_data_model.clone(),
                         target_data_model: Some(target_data_model.clone()),
                         executable: function_file.path().to_path_buf(),
-                        version: current_version.to_string(),
+                        version: Version::from_string(current_version.to_string()),
                     };
                     functions.push(func);
 
@@ -221,6 +222,6 @@ fn build_migration_function(
         source_data_model: source_data_model.clone(),
         target_data_model: Some(target_data_model.clone()),
         executable: executable.to_path_buf(),
-        version: current_version.to_string(),
+        version: Version::from_string(current_version.to_string()),
     }
 }

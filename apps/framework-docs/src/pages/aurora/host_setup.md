@@ -5,6 +5,7 @@
 | Claude Desktop | ✅ - Dynamic config management through aurora CLI | Exploring your data and generating visualizations |
 | Cursor: Global | ✅ - Dynamic config management through aurora CLI | Almost always better to use project-based configuration |
 | Cursor: Project Based | ✅ - Dynamic config management through aurora CLI | Creating code in your data engineering project or around it |
+| Windsurf: Global | ✅ - Dynamic config management through aurora CLI | Almost always better to use project-based configuration |
 | Others | ⚠️ - Try at your own risk, JSON config below | Living on the edge. Tell us what you are using at aurora@fiveonefour.com |
 
 Our opinion on what each host is best for is based on our experience as of March 27th 2025 (this stuff changes quickly)!
@@ -96,7 +97,7 @@ To configure the MCP for an existing project (for details, see CLI Reference)
 aurora setup
 ```
 
-(You don't need to use the `--mcp` flag since `cursor-project` is our default option.
+You don't need to use the `--mcp` flag since `cursor-project` is our default option.
 
 This will look within the project for where Cursor stores its MCP configuration (`<path/to/project-root>/.cursor/mcp.json`):
 
@@ -118,48 +119,31 @@ Common issues—if the MCP isn't giving you access to data
 
 - Ensure the local development server is running (`moose dev`)
 
-### Cursor FAQ:
+#### Cursor FAQ:
 
 - I have the MCPs running, I can see them enabled and I can see the little green dot, but Cursor isn't using any of my tools?
     - Cursor will use the tools if the chat bar is set to agent mode (see the bottom left of the chat bar). Ensure you are in agent mode.
 
-### Experimental: BYO Host
+### Windsurf Global MCP
+
+To create a new project (for details, see CLI Reference)
 
 ```
-{
-    "mcpServers": {
-        "aurora": {
-            "command": "npx",
-            "args": [
-                "@514labs/aurora-mcp",
-                "/path/to/your/moose/project"
-            ],
-            "env": {
-                "ANTHROPIC_API_KEY": "<API-Key>"
-            }
-        }
-    }
-}
+aurora init <TEMPLATE-NAME> --mcp windsurf-global
 ```
 
-This may give you access to the Aurora MCP in the tools of your choice, but it is unsupported by our config management CLI, so changes to preferences from `aurora config`will not be applied.
-
-If you want to use experimental tools, use the following:
+To configure the MCP for an existing project (for details, see CLI Reference)
 
 ```
-{
-    "mcpServers": {
-        "aurora": {
-            "command": "npx",
-            "args": [
-                "@514labs/aurora-mcp",
-                "--experimental",
-                "/path/to/your/moose/project"
-            ],
-            "env": {
-                "ANTHROPIC_API_KEY": "<API-Key>"
-            }
-        }
-    }
-}
+aurora setup --mcp windsurf-global
 ```
+
+This will look to the directory Windsurf stores its MCP configuration (`~/.codeium/windsurf/mcp_config.json`):
+
+- If there isn't a file there, it will create a config file and add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there is an existing file there, and there is no configuration, it will add the appropriate configuration JSON that allows it to use Aurora MCP
+- If there is an existing file there with other MCPs, it will add the `"aurora"` JSON object to configure the aurora MCP
+
+It will also list the project directory in the `~/.aurora/config.toml` file such that any changes to your MCP preferences (`aurora config`) will be propagated to this project.
+
+You will have to enable the MCP server in the Cascade MCP settings (`Windsurf > Settings > Windsurf Settings > Cascade`). You may then need to refresh the MCP server for it to work.

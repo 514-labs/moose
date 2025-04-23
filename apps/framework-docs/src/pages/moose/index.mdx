@@ -35,22 +35,9 @@ import { paths } from "@/lib/paths";
 
 # Moose
 
-## What is Moose?
-
-Moose is an open source framework for building analytical backends to power user-facing or operational analytics using 
-native TypeScript/Python.
-
-You use Moose's TS/Py primitives to define the logical components of your analytical backend: including data models, 
-transformations, and API endpoints. These primitives become reusable and type-safe across your entire full stack application.
-
-Under the hood, Moose implements your components by abstracting, configuring, and orchestrating your OLAP and streaming infrastructure. 
-This allows you to focus on the unique and interesting parts of your analytical app, instead of spending time on integration 
-and boilerplate. 
-
-At the infrastructure level, Moose currently supports a best-in-class open source analytical stack, including 
-[ClickHouse](https://github.com/ClickHouse/ClickHouse) (realtime OLAP database), 
-[Redpanda](https://github.com/redpanda-data/redpanda) (streaming), and 
-[Temporal](https://github.com/temporalio/temporal) (orchestration).
+```bash filename=Terminal copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
   <Link href={paths.quickstart}>
@@ -62,6 +49,52 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
     </Button>
   </Link>
 </div>
+
+## What is Moose?
+
+Moose lets you develop analytical backends in pure TypeScript or Python code like this:
+
+<Tabs items={["TypeScript", "Python"]}>
+<Tabs.Tab>
+```typescript filename=index.ts
+import { Key, IngestPipeline } from "@514labs/moose-lib";
+
+interface ExampleModel {
+  primaryKey: Key<string>;
+  name: string;
+}
+
+export const examplePipeline = new IngestPipeline<ExampleModel>("example", {
+  ingest: true, // Creates HTTP POST endpoint with validation
+  stream: true, // Creates Redpanda streaming topic
+  table: true, // Creates ClickHouse analytical database table
+});
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```python filename=main.py
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig
+
+class ExampleModel:
+    primary_key: Key[str]
+    name: str
+
+example_pipeline = IngestPipeline("example", IngestPipelineConfig(
+    ingest=True, ## Creates HTTP POST endpoint with validation
+    stream=True, ## Creates Redpanda streaming topic
+    table=True, ## Creates ClickHouse analytical database table
+))
+```
+</Tabs.Tab>
+</Tabs>
+No more writing boilerplate or managing multiple moving parts. Just define your data models and transformations, and Moose will automatically generate the infrastructure to support them, as well as all the glue code to wire it all together.
+
+
+By default, Moose comes pre-configured with the following open source technologies:
+- [ClickHouse](https://github.com/ClickHouse/ClickHouse) (realtime analytical database)
+- [Redpanda](https://github.com/redpanda-data/redpanda) (streaming) 
+- [Temporal](https://github.com/temporalio/temporal) (orchestration)
+
 
 ## Core Capabilities
 
@@ -76,7 +109,7 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
   <FeatureCard
     href={paths.ingestion}
     Icon={Icons.ingestion}
-    title="High-Performance Data Ingestion"
+    title="Streaming & Batch Ingestion"
     description="Auto-validated APIs to capture data into OLAP databases with full type safety"
   />
   
@@ -112,8 +145,10 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
 ---
 
 ## Why Moose Exists
+<ZoomImg light="backend-light.png" dark="backend-dark.png" alt="Why Moose Exists" />
+
 <BulletPointsCard
-  title="Building Software With Today's Data Stack is Slow"
+  title="Building Analytical Backends With Today's Tooling is Slow"
   bullets={[
     {
       title: "Tool fragmentation",
@@ -134,7 +169,7 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
   ]}
 />
 
-### The DIY Data Stack Approach
+### The DIY Approach
 
 <BulletPointsCard
   bulletStyle="number"

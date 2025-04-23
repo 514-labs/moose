@@ -74,8 +74,9 @@ export const examplePipeline = new IngestPipeline<ExampleModel>("example", {
 <Tabs.Tab>
 ```python filename=main.py
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig
+from pydantic import BaseModel
 
-class ExampleModel:
+class ExampleModel(BaseModel):
     primary_key: Key[str]
     name: str
 

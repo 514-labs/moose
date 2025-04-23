@@ -424,6 +424,43 @@ batch_record_pipeline = IngestPipeline[Record](
 ```
 </Python>
 
+### Creating Ingestion Workflows
+If you do not need to push data into your ingestion pipeline from an external source, you can create an ingestion workflow to push data into your pipeline.
+
+<TypeScript>
+In your TypeScript workflow, you can use the `fetch` function to hit the ingestion API:
+
+```typescript filename="IngestionWorkflow.ts" copy
+
+await fetch("http://localhost:4000/ingest/example", {
+  method: "POST",
+  body: JSON.stringify({
+    id: "pv_123",
+    name: "John Doe",
+    value: 100,
+    timestamp: "2024-03-24T10:30:00Z" 
+  })
+});
+```
+</TypeScript>
+
+<Python>
+In your Python task function, you can use the `requests` library to hit the ingestion API:
+
+```python filename="IngestionWorkflow.py" copy
+
+requests.post("http://localhost:4000/ingest/example", json={
+    "id": "pv_123",
+    "name": "John Doe",
+    "value": 100,
+    "timestamp": "2024-03-24T10:30:00Z"
+})
+```
+</Python>
+
+View the [Workflows](/moose/building/workflows) page for more information.
+
+
 ## Using `IngestPipeline` vs. `IngestApi`
 
 <BulletPointsCard

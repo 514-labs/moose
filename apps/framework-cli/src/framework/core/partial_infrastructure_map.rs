@@ -574,18 +574,7 @@ impl PartialInfrastructureMap {
 
                 let target_table = tables
                     .values()
-                    .find(|table| {
-                        // This uses starts_with because the target_table_name from dmv2 serializer
-                        // uses names without version and it's being compared to the infra map table name
-                        // that has version suffix (for dmv1 parity). So it's a partial match on name
-                        // then it does version match right after.
-                        let name_matches = table.name.starts_with(target_table_name);
-                        let version_matches = match &target_table_version {
-                            Some(target_v) => table.version.as_ref() == Some(target_v),
-                            None => true,
-                        };
-                        name_matches && version_matches
-                    })
+                    .find(|table| table.matches(target_table_name, target_table_version.as_ref()))
                     .expect(table_not_found);
 
                 let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);

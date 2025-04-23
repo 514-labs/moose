@@ -574,13 +574,13 @@ impl PartialInfrastructureMap {
 
                 let target_table = tables
                     .values()
-                    .find(|table| {
-                        let name_matches = *table.name == *target_table_name;
-                        let version_matches = match &target_table_version {
-                            Some(target_v) => table.version.as_ref() == Some(target_v),
-                            None => true,
-                        };
-                        name_matches && version_matches
+                    .find(|table| match &target_table_version {
+                        Some(target_v) => {
+                            table.version.as_ref().is_some_and(|v| v == target_v)
+                                && format!("{}_{}", target_table_name, target_v.as_suffix())
+                                    == table.name
+                        }
+                        None => *table.name == *target_table_name,
                     })
                     .expect(table_not_found);
 

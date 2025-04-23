@@ -9,9 +9,9 @@
 //! batching, back pressure, and error handling mechanisms.
 
 use futures::TryFutureExt;
-use log::debug;
 use log::error;
 use log::info;
+use log::{debug, warn};
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::producer::DeliveryFuture;
 use rdkafka::Message;
@@ -50,8 +50,10 @@ const MAX_BATCH_SIZE: usize = 100000;
 struct TableSyncingProcess {
     /// Async task handle for the sync process
     process: JoinHandle<anyhow::Result<()>>,
+    #[allow(dead_code)]
     /// Source Kafka topic name
     topic: String,
+    #[allow(dead_code)]
     /// Target ClickHouse table name
     table: String,
 }
@@ -97,30 +99,13 @@ impl SyncingProcessesRegistry {
         }
     }
 
-    /// Generates a unique key for a TableSyncingProcess
-    ///
-    /// # Arguments
-    /// * `syncing_process` - The synchronization process
-    fn format_key(syncing_process: &TableSyncingProcess) -> String {
-        Self::format_key_str(&syncing_process.topic, &syncing_process.table)
-    }
-
-    /// Generates a unique key from topic and table names
-    ///
-    /// # Arguments
-    /// * `topic` - Kafka topic name
-    /// * `table` - ClickHouse table name
-    fn format_key_str(topic: &str, table: &str) -> String {
-        format!("{}-{}", topic, table)
-    }
-
     /// Registers a topic-to-table synchronization process
     ///
     /// # Arguments
     /// * `syncing_process` - The synchronization process to register
-    fn insert_table_sync(&mut self, syncing_process: TableSyncingProcess) {
-        let key = Self::format_key(&syncing_process);
-        self.to_table_registry.insert(key, syncing_process.process);
+    fn insert_table_sync(&mut self, sync_id: String, syncing_process: TableSyncingProcess) {
+        self.to_table_registry
+            .insert(sync_id, syncing_process.process);
     }
 
     /// Registers a topic-to-topic synchronization process
@@ -142,6 +127,7 @@ impl SyncingProcessesRegistry {
     /// * `metrics` - Metrics collection service
     pub fn start_topic_to_table(
         &mut self,
+        sync_id: String,
         source_topic_name: String,
         source_topic_columns: Vec<Column>,
         target_table_name: String,
@@ -152,10 +138,8 @@ impl SyncingProcessesRegistry {
             "Starting syncing process for topic: {} and table: {}",
             source_topic_name, target_table_name
         );
-        let key = Self::format_key_str(&source_topic_name, &target_table_name);
-
         // the schema of the currently running process is outdated
-        if let Some(process) = self.to_table_registry.remove(&key) {
+        if let Some(process) = self.to_table_registry.remove(&sync_id) {
             process.abort();
         }
 
@@ -169,7 +153,7 @@ impl SyncingProcessesRegistry {
             metrics,
         );
 
-        self.insert_table_sync(syncing_process);
+        self.insert_table_sync(sync_id, syncing_process);
     }
 
     /// Stops a topic-to-table synchronization process
@@ -177,10 +161,11 @@ impl SyncingProcessesRegistry {
     /// # Arguments
     /// * `topic_name` - Source Kafka topic name
     /// * `table_name` - Target ClickHouse table name
-    pub fn stop_topic_to_table(&mut self, topic_name: &str, table_name: &str) {
-        let key = Self::format_key_str(topic_name, table_name);
-        if let Some(process) = self.to_table_registry.remove(&key) {
+    pub fn stop_topic_to_table(&mut self, sync_id: &str) {
+        if let Some(process) = self.to_table_registry.remove(sync_id) {
             process.abort();
+        } else {
+            warn!("Sync ID {} not found in to_table_registry", sync_id);
         }
     }
 

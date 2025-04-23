@@ -574,14 +574,7 @@ impl PartialInfrastructureMap {
 
                 let target_table = tables
                     .values()
-                    .find(|table| match &target_table_version {
-                        Some(target_v) => {
-                            table.version.as_ref().is_some_and(|v| v == target_v)
-                                && format!("{}_{}", target_table_name, target_v.as_suffix())
-                                    == table.name
-                        }
-                        None => *table.name == *target_table_name,
-                    })
+                    .find(|table| table.matches(target_table_name, target_table_version.as_ref()))
                     .expect(table_not_found);
 
                 let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);

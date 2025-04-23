@@ -41,6 +41,16 @@ impl Table {
         })
     }
 
+    pub fn matches(&self, target_table_name: &str, target_table_version: Option<&Version>) -> bool {
+        match target_table_version {
+            None => self.name == target_table_name,
+            Some(target_v) => {
+                let expected_name = format!("{}_{}", target_table_name, target_v.as_suffix());
+                self.name == expected_name
+            }
+        }
+    }
+
     pub fn expanded_display(&self) -> String {
         format!(
             "Table: {} Version {:?} - {} - {} - deduplicate: {}",

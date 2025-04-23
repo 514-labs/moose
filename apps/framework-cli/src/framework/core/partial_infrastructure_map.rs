@@ -575,10 +575,6 @@ impl PartialInfrastructureMap {
                 let target_table = tables
                     .values()
                     .find(|table| {
-                        println!(
-                            "checking table.name {} vs {}",
-                            table.name, target_table_name
-                        );
                         // This uses starts_with because the target_table_name from dmv2 serializer
                         // uses names without version and it's being compared to the infra map table name
                         // that has version suffix (for dmv1 parity). So it's a partial match on name

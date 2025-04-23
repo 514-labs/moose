@@ -3,7 +3,7 @@ import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-re
 
 # Moose Architecture
 
-<ZoomImg light="/overview-arch-light.png" dark="/overview-arch-dark.png" alt="Moose Development Environment" />
+<ZoomImg light="/architecture-light.svg" dark="/architecture-dark.svg" alt="Moose Architecture" />
 
 ## Infrastructure
 
@@ -20,8 +20,6 @@ Moose supports all the core infrastructure needed to power an analytical backend
 |                              |                                 | Parameterized SQL queries in TS/Py functions   | Egress APIs                      |
 
 ## Dev vs Production
-
-<ZoomImg light="/dev-prod-light.png" dark="/dev-prod-dark.png" alt="Moose Development Environment" />
 
 When you run `moose dev`, Moose creates a local copy of your production analytical backend, and hot swaps in changes as you code.
 This dev environment automatically includes containerized versions of each piece of core infrastructure.

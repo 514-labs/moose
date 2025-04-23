@@ -5,21 +5,24 @@ import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-re
 
 <ZoomImg light="/overview-arch-light.png" dark="/overview-arch-dark.png" alt="Moose Development Environment" />
 
-## Moose Primitives & Infrastructure Side Effects
+## Infrastructure
 
-Moose organizes your data pipeline into five distinct infrastructure primitives:
-| Component | What You Write | What Moose Generates |
-|-----------|---------------|---------------------|
-| [OlapTables](/moose/building/olap-table) | TS interfaces or Pydantic models | ClickHouse table |
-| [Ingest APIs](/moose/building/ingestion) | TS interfaces or Pydantic models | HTTP `POST` endpoints |
-| [Streams](/moose/building/streams) | Stream processors in TS/Python | Redpanda streaming topic |
-| [Views](/moose/building/materialized-views) | SQL blocks or TS/Python functions | ClickHouse materialized view |
-| [Consumption APIs](/moose/building/consumption-apis) | Type-safe query definitions | HTTP `GET` endpoints |
-| [Workflows](/moose/building/workflows) | Workflow definitions in TS/Python | Scheduled or triggered jobs |
+Moose supports all the core infrastructure needed to power an analytical backend. Moose translates your native Typescript/Python/SQL into components in this underlying infrastructure.
+
+| Infrastructure<br />Category | Supported<br />Software         | What You<br />Write                            | What Moose<br />Generates        |
+|:-----------------------------|:--------------------------------|:-----------------------------------------------|:---------------------------------|
+| Realtime analytical database | Clickhouse                      | Data models as TS interfaces / Pydantic models | Tables                           |
+|                              |                                 | SQL statements in TS/Py functions              | Views                            |
+| Streaming engine             | Redpanda                        | Data models as TS interfaces / Pydantic models | Topics                           |
+| Processing engine            | TS/Py (built into Moose binary) | TS/Py functions                                | Orchestrated streaming functions |
+| Orchestration engine         | Temporal                        | TS/Py scripts                                  | Orchestrated workflows           |
+| Webservers                   | Rust (built into Moose binary)  | Data models as TS interfaces / Pydantic models | Ingest APIs                      |
+|                              |                                 | Parameterized SQL queries in TS/Py functions   | Egress APIs                      |
+
 
 ## Customizing Your Infrastructure
 
-Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:
+Moose is designed to be highly customizable. You can control which infrastructure is included in your deployment using `moose.config.toml`:
 
 ### Default Configuration
 ```toml filename="moose.config.toml"

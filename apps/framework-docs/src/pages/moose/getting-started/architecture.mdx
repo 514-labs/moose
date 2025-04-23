@@ -19,6 +19,15 @@ Moose supports all the core infrastructure needed to power an analytical backend
 | Webservers                   | Rust (built into Moose binary)  | Data models as TS interfaces / Pydantic models | Ingest APIs                      |
 |                              |                                 | Parameterized SQL queries in TS/Py functions   | Egress APIs                      |
 
+## Dev vs Production
+
+<ZoomImg light="/dev-prod-light.png" dark="/dev-prod-dark.png" alt="Moose Development Environment" />
+
+When you run `moose dev`, Moose creates a local copy of your production analytical backend, and hot swaps in changes as you code.
+This dev environment automatically includes containerized versions of each piece of core infrastructure.
+
+When you want to deploy your Moose application into production, you'll need to provide and manage the underlying infrastructure, and point your Moose application at that production infra.
+Alternatively, you can deploy your Moose application on managed infrastructure with one-click (including Bring Your Own Cloud/Infra) with Fiveonefour's [Boreal](https://www.fiveonefour.com/boreal) hosting service.
 
 ## Customizing Your Infrastructure
 

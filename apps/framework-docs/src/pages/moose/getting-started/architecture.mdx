@@ -7,19 +7,20 @@ import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-re
 
 When you run `moose-cli dev`, Moose creates a complete development environment that combines your code with pre-configured infrastructure:
 
-<ZoomImg light="/architecture-light.png" dark="/architecture-dark.png" alt="Moose Development Environment" />
+<ZoomImg light="/overview-arch-light.png" dark="/overview-arch-dark.png" alt="Moose Development Environment" />
 
-## Infrastructure Modules
+## Moose Primitives & Infrastructure Side Effects
 
-Moose organizes your data pipeline into five distinct infrastructure modules:
+Moose organizes your data pipeline into five distinct infrastructure primitives:
+| Component | What You Write | What Moose Generates |
+|-----------|---------------|---------------------|
+| [OlapTables](/moose/building/olap-table) | TS interfaces or Pydantic models | ClickHouse table |
+| [Ingest APIs](/moose/building/ingestion) | TS interfaces or Pydantic models | HTTP `POST` endpoints |
+| [Streams](/moose/building/streams) | Stream processors in TS/Python | Redpanda streaming topic |
+| [Views](/moose/building/materialized-views) | SQL blocks or TS/Python functions | ClickHouse materialized view |
+| [Consumption APIs](/moose/building/consumption-apis) | Type-safe query definitions | HTTP `GET` endpoints |
+| [Workflows](/moose/building/workflows) | Workflow definitions in TS/Python | Scheduled or triggered jobs |
 
-| **Module**        | **Moose Code**                                                        | **Infrastructure**                 | **Default** |
-|-------------------|-----------------------------------------------------------------------|------------------------------------|-------------|
-| **Ingestion**     | [Ingest APIs, Ingestion Pipeline](/moose/building/ingestion)                                           | HTTP **POST** endpoints            | Rust        |
-| **Streaming**     | [Streams](/moose/building/streams)| Streaming topics & consumers       | Redpanda    |
-| **Database**      | [Tables](/moose/building/olap-table), [Views](/moose/building/materialized-views)                        | OLAP tables & views                | ClickHouse  |
-| **Orchestration** | [Workflows](/moose/building/workflows)                                               | Task queue & workers               | Temporal    |
-| **Consumption**   | [Analytics APIs](/moose/building/consumption-apis)                                   | HTTP **GET** endpoints             | Rust        |
 ## Customizing Your Infrastructure
 
 Moose is designed to be highly customizable. You can control which modules are included in your deployment using `moose.config.toml`:

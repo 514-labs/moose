@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
         id="language-select"
         value={language}
         onChange={handleChange}
-        className="border rounded p-2 text-moose-purple"
+        className="border rounded p-2 text-moose-white"
       >
         <option value="typescript">TypeScript</option>
         <option value="python">Python</option>

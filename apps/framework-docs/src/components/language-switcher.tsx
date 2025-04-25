@@ -1,11 +1,20 @@
 import React from "react";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useLanguage } from "./LanguageContext";
 
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(event.target.value as "typescript" | "python");
+  const handleChange = (value) => {
+    setLanguage(value);
   };
 
   return (
@@ -13,15 +22,18 @@ export function LanguageSwitcher() {
       <label htmlFor="language-select" className="font-semibold leading-10">
         Viewing
       </label>
-      <select
-        id="language-select"
-        value={language}
-        onChange={handleChange}
-        className="border rounded p-2 text-moose-white"
-      >
-        <option value="typescript">TypeScript</option>
-        <option value="python">Python</option>
-      </select>
+      <Select onValueChange={handleChange} value={language}>
+        <SelectTrigger
+          id="language-select"
+          className="border rounded p-2 text-moose-white w-auto"
+        >
+          <SelectValue placeholder="TypeScript" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="typescript">TypeScript</SelectItem>
+          <SelectItem value="python">Python</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

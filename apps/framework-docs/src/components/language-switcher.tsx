@@ -9,7 +9,7 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div className="sticky top-20 bg-white dark:bg-black z-10 py-5 my-5 flex flex-row w-full border-t border-b justify-between">
+    <div className="sticky top-10 bg-white dark:bg-black z-10 py-10 pb-5 flex flex-row w-full border-b justify-between">
       <label htmlFor="language-select" className="font-semibold leading-10">
         Viewing
       </label>

@@ -145,8 +145,8 @@ export const Nav = ({
                             <Text
                               className={cn(
                                 isActive
-                                  ? "hover:text-action-primary border-b-2 border-primary"
-                                  : "hover:text-primary border-b-2 border-transparent",
+                                  ? "hover:text-action-primary"
+                                  : "hover:text-primary",
                                 "py-2 px-5",
                               )}
                             >

@@ -65,7 +65,7 @@ export function BulletPointsCard({
           <div
             className={cn(
               baseIconClasses,
-              "p-1 bg-destructive/10 rounded-full",
+              "p-1 bg-destructive/10 rounded-full border border-red-300 dark:border-red-950",
             )}
           >
             <X className="w-4 h-4 text-destructive" />

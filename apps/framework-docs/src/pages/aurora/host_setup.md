@@ -54,7 +54,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp cursor-global
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp cursor-global
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)
@@ -88,7 +88,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp cursor-project
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp cursor-project
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)
@@ -129,7 +129,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp windsurf-global
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp windsurf-global
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)

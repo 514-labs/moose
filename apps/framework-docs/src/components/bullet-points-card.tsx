@@ -54,7 +54,7 @@ export function BulletPointsCard({
           <div
             className={cn(
               baseIconClasses,
-              "p-1 bg-boreal-green/10 rounded-full",
+              "p-1 bg-boreal-green/10 rounded-full border border-green-300 dark:border-green-950",
             )}
           >
             <Check className="w-4 h-4 text-boreal-green" />

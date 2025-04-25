@@ -8,7 +8,6 @@ import json
 import traceback
 import importlib.util
 import concurrent.futures
-import signal
 
 from .logging import log
 from .types import WorkflowStepResult
@@ -76,11 +75,7 @@ def create_activity_for_script(script_name: str) -> Callable:
                 else:
                     future = loop.run_in_executor(executor, task_func)
 
-                try:
-                    result = await asyncio.wait_for(future, timeout=None)
-                except (asyncio.CancelledError, KeyboardInterrupt):
-                    os.kill(os.getpid(), signal.SIGTERM)
-                    raise
+                result = await asyncio.wait_for(future, timeout=None)
             
             # Validate and encode result
             if not isinstance(result, dict):

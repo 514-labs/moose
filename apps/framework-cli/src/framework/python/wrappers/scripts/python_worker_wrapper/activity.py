@@ -68,7 +68,8 @@ def create_activity_for_script(script_name: str) -> Callable:
                     result = await task_func()
             else:
                 # User could run blocking sync function (i.e. time.sleep)
-                # so we run it in a thread that can be killed
+                # so we run it in in a thread to not block the event loop
+                # and let the worker's shutdown tasks clean up
                 loop = asyncio.get_running_loop()
                 if input_data:
                     future = loop.run_in_executor(executor, lambda: task_func(input=input_data))

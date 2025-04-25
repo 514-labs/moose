@@ -15,7 +15,7 @@ export function LanguageSwitcher() {
   const otherLanguage = language === "python" ? "typescript" : "python";
 
   return (
-    <div className="my-5 flex flex-row w-full border-t border-b justify-between">
+    <div className="my-5 flex flex-row w-full border-t border-b justify-between bg-black sticky top-20 z-99999">
       <Heading level={HeadingLevel.l5} className="text-captialize">
         Viewing {language}
       </Heading>

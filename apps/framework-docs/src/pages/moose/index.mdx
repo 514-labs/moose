@@ -35,22 +35,9 @@ import { paths } from "@/lib/paths";
 
 # Moose
 
-## What is Moose?
-
-Moose is an open source framework for building analytical backends to power user-facing or operational analytics using 
-native TypeScript/Python.
-
-You use Moose's TS/Py primitives to define the logical components of your analytical backend: including data models, 
-transformations, and API endpoints. These primitives become reusable and type-safe across your entire full stack application.
-
-Under the hood, Moose implements your components by abstracting, configuring, and orchestrating your OLAP and streaming infrastructure. 
-This allows you to focus on the unique and interesting parts of your analytical app, instead of spending time on integration 
-and boilerplate. 
-
-At the infrastructure level, Moose currently supports a best-in-class open source analytical stack, including 
-[ClickHouse](https://github.com/ClickHouse/ClickHouse) (realtime OLAP database), 
-[Redpanda](https://github.com/redpanda-data/redpanda) (streaming), and 
-[Temporal](https://github.com/temporalio/temporal) (orchestration).
+```bash filename=Terminal copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
   <Link href={paths.quickstart}>
@@ -62,6 +49,81 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
     </Button>
   </Link>
 </div>
+
+## What is Moose?
+
+Moose lets you develop analytical backends in pure TypeScript or Python code like this:
+
+<Tabs items={["TypeScript", "Python"]}>
+<Tabs.Tab>
+```ts filename="index.ts" copy
+import { Key, OlapTable, Stream, IngestApi, ConsumptionApi } from "@514labs/moose-lib";
+
+interface DataModel {
+  primaryKey: Key<string>;
+  name: string;
+}
+// Create a ClickHouse table
+export const clickhouseTable = new OlapTable<DataModel>("TableName");
+
+// Create a Redpanda streaming topic
+export const redpandaTopic = new Stream<DataModel>("TopicName", {
+  destination: clickhouseTable,
+});
+
+// Create an ingest API endpoint
+export const ingestApi = new IngestApi<DataModel>("post-api-route", {
+  destination: redpandaTopic,
+});
+
+// Create consumption API endpoint
+interface QueryParams {
+  limit?: number;
+}
+export const consumptionApi = new ConsumptionApi<QueryParams, DataModel>("get-api-route", {
+  async handler({limit = 10}: QueryParams, {client, sql}): {
+    const result = await client.query.execute(sql`SELECT * FROM ${clickhouseTable} LIMIT ${limit}`);
+    return await result.json();
+  }
+});
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```python filename="main.py" copy
+from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi
+from pydantic import BaseModel
+
+class DataModel(BaseModel):
+    primary_key: Key[str]
+    name: str
+
+# Create a ClickHouse table
+clickhouse_table = OlapTable[DataModel]("TableName")
+
+# Create a Redpanda streaming topic
+redpanda_topic = Stream[DataModel]("TopicName", StreamConfig(
+    destination=clickhouse_table,
+))
+
+# Create an ingest API endpoint
+ingest_api = IngestApi[DataModel]("post-api-route", IngestApiConfig(
+    destination=redpanda_topic,
+))
+
+# Create a consumption API endpoint
+class QueryParams(BaseModel):
+    limit: int = 10
+
+def handler(client, params: QueryParams):
+    return client.query.execute("SELECT * FROM {table: Identifier} LIMIT {limit: Int32}", {
+        "table": clickhouse_table.name,
+        "limit": params.limit,
+    })
+
+consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", query_function=handler)
+```
+</Tabs.Tab>
+</Tabs>
 
 ## Core Capabilities
 
@@ -76,7 +138,7 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
   <FeatureCard
     href={paths.ingestion}
     Icon={Icons.ingestion}
-    title="High-Performance Data Ingestion"
+    title="Streaming & Batch Ingestion"
     description="Auto-validated APIs to capture data into OLAP databases with full type safety"
   />
   
@@ -112,8 +174,10 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
 ---
 
 ## Why Moose Exists
+<ZoomImg light="backend-light.svg" dark="backend-dark.svg" alt="Why Moose Exists" />
+
 <BulletPointsCard
-  title="Building Software With Today's Data Stack is Slow"
+  title="Building Analytical Backends With Today's Tooling is Slow"
   bullets={[
     {
       title: "Tool fragmentation",
@@ -134,7 +198,7 @@ At the infrastructure level, Moose currently supports a best-in-class open sourc
   ]}
 />
 
-### The DIY Data Stack Approach
+### The DIY Approach
 
 <BulletPointsCard
   bulletStyle="number"

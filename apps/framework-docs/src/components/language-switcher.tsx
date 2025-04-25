@@ -13,7 +13,7 @@ import { useLanguage } from "./LanguageContext";
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
-  const handleChange = (value) => {
+  const handleChange = (value: "typescript" | "python") => {
     setLanguage(value);
   };
 

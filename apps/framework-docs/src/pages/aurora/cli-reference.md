@@ -15,7 +15,7 @@ Creates a data engineering project with Moose, with Aurora MCP preconfigured.
 ```
 aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> 
 ```
-
+#
 - `<name>`: name of your application
 - `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
 - `-mcp` <host>: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
@@ -52,6 +52,7 @@ Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use
 ```
 aurora config keys <KEY>
 ```
+#
 
 - `<KEY>`: Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup
 
@@ -66,7 +67,7 @@ Toggles availability of experimental MCP tools. See Tools documentation for whic
 ```
 aurora config tools [EXPERIMENTAL_PREFERENCE]
 ```
-
+# 
 - `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools. 
 
 Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.

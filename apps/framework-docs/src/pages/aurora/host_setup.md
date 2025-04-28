@@ -54,7 +54,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp cursor-global
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp cursor-global
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)
@@ -88,7 +88,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp cursor-project
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp cursor-project
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)
@@ -129,7 +129,7 @@ Common issues—if the MCP isn't giving you access to data
 To create a new project (for details, see CLI Reference)
 
 ```
-aurora init <TEMPLATE-NAME> --mcp windsurf-global
+aurora init <PROJECT-NAME> <TEMPLATE-NAME> --mcp windsurf-global
 ```
 
 To configure the MCP for an existing project (for details, see CLI Reference)
@@ -147,3 +147,87 @@ This will look to the directory Windsurf stores its MCP configuration (`~/.codei
 It will also list the project directory in the `~/.aurora/config.toml` file such that any changes to your MCP preferences (`aurora config`) will be propagated to this project.
 
 You will have to enable the MCP server in the Cascade MCP settings (`Windsurf > Settings > Windsurf Settings > Cascade`). You may then need to refresh the MCP server for it to work.
+
+### MCP.json 
+
+Note, this will create an MCP outside of the management of the Aurora CLI (changes to `focus`, `tools`, etc. will not be propagated to this MCP).
+
+Standard tooling, local only (note, you only need node or python, not both):
+
+```JSON
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "/path/to/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<key>",
+        "MOOSE_PATH": "/path/to/.moose/bin/moose",
+        "NODE_PATH": "/path/to/.nvm/versions/node/v22.14.0/bin/node",
+        "PYTHON_PATH": "/path/to/.pyenv/shims/python"
+      }
+    }
+  }
+}
+```
+Experimental tooling, local only (note, you only need node or python, not both):
+
+```JSON
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--experimental",
+        "/path/to/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<key>",
+        "MOOSE_PATH": "/path/to/.moose/bin/moose",
+        "NODE_PATH": "/path/to/.nvm/versions/node/v22.14.0/bin/node",
+        "PYTHON_PATH": "/path/to/.pyenv/shims/python"
+      }
+    }
+  }
+}
+```
+
+Experimental tooling, local development and remote Boreal—requires creation of read only credentials for Boreal managed Clickhouse:
+
+```JSON
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--experimental",
+        "--boreal-experimental",
+        "/path/to/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<key>",
+        "BOREAL_CLICKHOUSE_DATABASE": "",
+        "BOREAL_CLICKHOUSE_HOST": "",
+        "BOREAL_CLICKHOUSE_PASSWORD": "",
+        "BOREAL_CLICKHOUSE_PORT": "",
+        "BOREAL_CLICKHOUSE_USER": "",
+        "MOOSE_PATH": "/path/to/.moose/bin/moose",
+        "NODE_PATH": "/path/to/.nvm/versions/node/v22.14.0/bin/node",
+        "PYTHON_PATH": "/path/to/.pyenv/shims/python"
+      }
+    }
+  }
+}
+```
+
+Query to create read only credentials:
+
+```SQL
+CREATE USER username IDENTIFIED BY 'password' SETTINGS PROFILE 'readonly'
+GRANT SHOW TABLES, SELECT ON db+name.* TO username
+```

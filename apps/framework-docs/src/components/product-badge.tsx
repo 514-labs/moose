@@ -16,7 +16,7 @@ export function ProductBadge({
       "bg-moose-purple hover:bg-moose-purple-dark text-moose-purple-foreground",
     boreal:
       "bg-boreal-green hover:bg-boreal-green-dark text-boreal-green-foreground",
-    aurora: "bg-aurora-teal",
+    aurora: "bg-aurora-teal text-black",
     default: "",
   };
 

@@ -55,7 +55,7 @@ impl KafkaStreamConfig {
     /// * A new RedpandaStreamConfig instance
     pub fn from_topic(kafka_config: &KafkaConfig, topic: &Topic) -> Self {
         Self {
-            name: topic_name(&kafka_config.namespace, topic),
+            name: topic_name(&kafka_config.namespace, topic.id()),
             partitions: topic.partition_count,
             retention_ms: topic.retention_period.as_millis(),
             max_message_bytes: topic.max_message_bytes,
@@ -287,19 +287,11 @@ pub fn extract_version_from_topic_name(topic_name: &str) -> Option<Version> {
 ///
 /// # Returns
 /// * A String containing the full topic name with version
-fn topic_name(namespace: &Option<String>, topic: &Topic) -> String {
-    let version_suffix = topic
-        .version
-        .as_ref()
-        .map_or_else(|| "".to_string(), |v| format!("_{}", v.as_suffix()));
-
+pub fn topic_name(namespace: &Option<String>, topic_id: String) -> String {
     if let Some(ns) = namespace {
-        format!(
-            "{}{}{}{}",
-            ns, NAMESPACE_SEPARATOR, topic.name, version_suffix
-        )
+        format!("{}{}{}", ns, NAMESPACE_SEPARATOR, topic_id)
     } else {
-        format!("{}{}", topic.name, version_suffix)
+        topic_id
     }
 }
 

@@ -6,6 +6,9 @@ use crate::proto::infrastructure_map::view::View_type as ProtoViewType;
 use crate::proto::infrastructure_map::TableAlias as ProtoTableAlias;
 use crate::proto::infrastructure_map::View as ProtoView;
 
+use super::DataLineage;
+use super::InfrastructureSignature;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ViewType {
     TableAlias { source_table_name: String },
@@ -58,6 +61,20 @@ impl View {
             version: Version::from_string(proto.version),
             view_type: ViewType::from_proto(proto.view_type.unwrap()),
         }
+    }
+}
+
+impl DataLineage for View {
+    fn pulls_data_from(&self) -> Vec<InfrastructureSignature> {
+        match &self.view_type {
+            ViewType::TableAlias { source_table_name } => vec![InfrastructureSignature::Table {
+                id: source_table_name.clone(),
+            }],
+        }
+    }
+
+    fn pushes_data_to(&self) -> Vec<InfrastructureSignature> {
+        vec![]
     }
 }
 

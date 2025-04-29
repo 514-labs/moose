@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     table::{Column, Table},
     topic::Topic,
+    DataLineage, InfrastructureSignature,
 };
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::streaming::model::StreamingFunction;
@@ -21,14 +22,6 @@ pub struct TopicToTableSyncProcess {
     pub columns: Vec<Column>,
 
     pub version: Option<Version>,
-    pub source_primitive: PrimitiveSignature,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TopicToTopicSyncProcess {
-    pub source_topic_id: String,
-    pub target_topic_id: String,
-
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -94,6 +87,28 @@ impl TopicToTableSyncProcess {
     }
 }
 
+impl DataLineage for TopicToTableSyncProcess {
+    fn pulls_data_from(&self) -> Vec<InfrastructureSignature> {
+        vec![InfrastructureSignature::Topic {
+            id: self.source_topic_id.clone(),
+        }]
+    }
+
+    fn pushes_data_to(&self) -> Vec<InfrastructureSignature> {
+        vec![InfrastructureSignature::Table {
+            id: self.target_table_id.clone(),
+        }]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TopicToTopicSyncProcess {
+    pub source_topic_id: String,
+    pub target_topic_id: String,
+
+    pub source_primitive: PrimitiveSignature,
+}
+
 impl TopicToTopicSyncProcess {
     pub fn from_migration_function(function: &StreamingFunction) -> Self {
         let source_topic = Topic::from_data_model(&function.source_data_model);
@@ -141,5 +156,19 @@ impl TopicToTopicSyncProcess {
             target_topic_id: proto.target_topic_id,
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
+    }
+}
+
+impl DataLineage for TopicToTopicSyncProcess {
+    fn pulls_data_from(&self) -> Vec<super::InfrastructureSignature> {
+        vec![InfrastructureSignature::Topic {
+            id: self.source_topic_id.clone(),
+        }]
+    }
+
+    fn pushes_data_to(&self) -> Vec<super::InfrastructureSignature> {
+        vec![InfrastructureSignature::Topic {
+            id: self.target_topic_id.clone(),
+        }]
     }
 }

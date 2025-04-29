@@ -257,8 +257,8 @@ message SqlResource {
   string name = 1;
   repeated string setup = 2;
   repeated string teardown = 3;
-  repeated InfrastructureSignature pulls_data_from = 4;
-  repeated InfrastructureSignature pushes_data_to = 5;
+  repeated InfrastructureSignature pulls_data_from = 5;
+  repeated InfrastructureSignature pushes_data_to = 6;
 }
 
 message InfrastructureSignature {

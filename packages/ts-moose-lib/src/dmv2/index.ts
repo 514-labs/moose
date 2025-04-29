@@ -304,36 +304,42 @@ export type Aggregated<
   _aggregationFunction?: AggregationFunction;
   _argTypes?: ArgTypes;
 };
-interface MaterializedViewOptions<T> {
-  selectStatement: string | Sql;
 
-  tableName: string;
-  materializedViewName: string;
-
-  engine?: ClickHouseEngines;
-  orderByFields?: (keyof T & string)[];
-}
+type SqlObject = OlapTable<any> | View;
 
 export class SqlResource {
   setup: readonly string[];
   teardown: readonly string[];
   name: string;
 
+  pullsDataFrom: SqlObject[];
+  pushesDataTo: SqlObject[];
+
   constructor(
     name: string,
     setup: readonly string[],
     teardown: readonly string[],
+    options?: {
+      pullsDataFrom?: SqlObject[];
+      pushesDataTo?: SqlObject[];
+    },
   ) {
     getMooseInternal().sqlResources.set(name, this);
 
     this.name = name;
     this.setup = setup;
     this.teardown = teardown;
+    this.pullsDataFrom = options?.pullsDataFrom ?? [];
+    this.pushesDataTo = options?.pushesDataTo ?? [];
   }
 }
 
 export class View extends SqlResource {
-  constructor(name: string, selectStatement: string) {
+  constructor(
+    name: string,
+    selectStatement: string,
+    baseTables: (OlapTable<any> | View)[],
+  ) {
     super(
       name,
       [
@@ -341,8 +347,22 @@ export class View extends SqlResource {
         AS ${selectStatement}`.trim(),
       ],
       [dropView(name)],
+      {
+        pullsDataFrom: baseTables,
+      },
     );
   }
+}
+
+interface MaterializedViewOptions<T> {
+  selectStatement: string | Sql;
+  selectTables: (OlapTable<any> | View)[];
+
+  tableName: string;
+  materializedViewName: string;
+
+  engine?: ClickHouseEngines;
+  orderByFields?: (keyof T & string)[];
 }
 
 export class MaterializedView<TargetTable> extends SqlResource {
@@ -372,6 +392,20 @@ export class MaterializedView<TargetTable> extends SqlResource {
       selectStatement = query;
     }
 
+    if (targetSchema === undefined || targetColumns === undefined) {
+      throw new Error(
+        "Supply the type param T so that the schema is inserted by the compiler plugin.",
+      );
+    }
+
+    const targetTable = new OlapTable(
+      options.tableName,
+      {
+        orderByFields: options.orderByFields,
+      },
+      targetSchema,
+      targetColumns,
+    );
     super(
       options.materializedViewName,
       [
@@ -386,20 +420,12 @@ export class MaterializedView<TargetTable> extends SqlResource {
         }),
       ],
       [dropView(options.materializedViewName)],
+      {
+        pullsDataFrom: options.selectTables,
+        pushesDataTo: [targetTable],
+      },
     );
 
-    if (targetSchema === undefined || targetColumns === undefined) {
-      throw new Error(
-        "Supply the type param T so that the schema is inserted by the compiler plugin.",
-      );
-    }
-    this.targetTable = new OlapTable(
-      options.tableName,
-      {
-        orderByFields: options.orderByFields,
-      },
-      targetSchema,
-      targetColumns,
-    );
+    this.targetTable = targetTable;
   }
 }

@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import TypeVar, Callable, Any, Awaitable
+from typing import TypeVar, Callable, Any
 from .commons import Logger
 import asyncio
 

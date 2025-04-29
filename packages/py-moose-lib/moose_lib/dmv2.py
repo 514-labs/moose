@@ -1,8 +1,6 @@
 import dataclasses
-from datetime import datetime
-from enum import Enum
 from .main import IngestionFormat
-from typing import Any, Generic, Optional, TypeVar, Callable, Union, Tuple, Annotated
+from typing import Any, Generic, Optional, TypeVar, Callable, Union
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
@@ -18,6 +16,7 @@ _sql_resources: dict[str, "SqlResource"] = {}
 T = TypeVar('T', bound=BaseModel)
 U = TypeVar('U', bound=BaseModel)
 type ZeroOrMany[T] = Union[T, list[T], None]
+SqlObject = Union["OlapTable", "View", "MaterializedView"]
 
 
 class Columns(Generic[T]):
@@ -362,28 +361,40 @@ class SqlResource:
     setup: list[str]
     teardown: list[str]
     name: str
+    pulls_data_from: list[SqlObject]
+    pushes_data_to: list[SqlObject]
 
-    def __init__(self, name: str, setup: list[str], teardown: list[str]):
+    def __init__(
+        self, 
+        name: str, 
+        setup: list[str], 
+        teardown: list[str], 
+        pulls_data_from: Optional[list[SqlObject]] = None,
+        pushes_data_to: Optional[list[SqlObject]] = None
+    ):
         self.name = name
         self.setup = setup
         self.teardown = teardown
+        self.pulls_data_from = pulls_data_from or []
+        self.pushes_data_to = pushes_data_to or []
         _sql_resources[name] = self
 
 
 class View(SqlResource):
-    """A materialized view in the database."""
+    """A standard database view."""
 
-    def __init__(self, name: str, select_statement: str):
+    def __init__(self, name: str, select_statement: str, base_tables: list[SqlObject]):
         setup = [
-            f"CREATE MATERIALIZED VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
+            f"CREATE VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
         ]
         teardown = [f"DROP VIEW IF EXISTS {name}"]
-        super().__init__(name, setup, teardown)
+        super().__init__(name, setup, teardown, pulls_data_from=base_tables)
 
 
 class MaterializedViewOptions(BaseModel):
     """Configuration options for materialized views."""
     select_statement: str
+    select_tables: list[SqlObject]
     table_name: str
     materialized_view_name: str
     engine: Optional[ClickHouseEngines] = None
@@ -408,9 +419,7 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
         ]
         teardown = [f"DROP VIEW IF EXISTS {options.materialized_view_name}"]
 
-        super().__init__(options.materialized_view_name, setup, teardown)
-
-        self.target_table = OlapTable(
+        target_table = OlapTable(
             name=options.table_name,
             config=OlapConfig(
                 order_by_fields=options.order_by_fields or [],
@@ -418,3 +427,14 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
             ),
             t=self._t
         )
+
+        super().__init__(
+            options.materialized_view_name, 
+            setup, 
+            teardown,
+            pulls_data_from=options.select_tables,
+            pushes_data_to=[target_table]
+        )
+        
+        self.target_table = target_table
+        self.config = options

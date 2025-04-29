@@ -1,9 +1,8 @@
 from clickhouse_connect.driver.client import Client as ClickhouseClient
 from temporalio.client import Client as TemporalClient
-from dataclasses import dataclass, asdict, fields
+from dataclasses import dataclass, asdict
 from enum import Enum
-from string import Formatter
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Optional, TypeVar, overload
 import sys
 import os
 import json

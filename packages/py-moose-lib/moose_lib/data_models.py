@@ -3,9 +3,8 @@ import re
 from uuid import UUID
 from datetime import datetime, date
 
-from typing import Literal, Tuple, Union, Any, Optional, get_origin, get_args, TypeAliasType, Annotated, Type
+from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasType, Annotated, Type
 from pydantic import BaseModel, Field
-from pydantic.fields import FieldInfo
 
 type Key[T: (str, int)] = T
 type JWT[T] = T

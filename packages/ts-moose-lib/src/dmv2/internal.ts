@@ -64,10 +64,24 @@ interface EgressApiJson {
   version?: string;
 }
 
+interface InfrastructureSignatureJson {
+  id: string;
+  kind:
+    | "Table"
+    | "Topic"
+    | "ApiEndpoint"
+    | "TopicToTableSyncProcess"
+    | "View"
+    | "SqlResource";
+}
+
 interface SqlResourceJson {
   name: string;
   setup: readonly string[];
   teardown: readonly string[];
+
+  pullsDataFrom: InfrastructureSignatureJson[];
+  pushesDataTo: InfrastructureSignatureJson[];
 }
 
 const toInfraMap = (registry: typeof moose_internal) => {
@@ -149,6 +163,43 @@ const toInfraMap = (registry: typeof moose_internal) => {
       name: sqlResource.name,
       setup: sqlResource.setup,
       teardown: sqlResource.teardown,
+
+      pullsDataFrom: sqlResource.pullsDataFrom.map((r) => {
+        if (r instanceof OlapTable) {
+          const id = r.config.version
+            ? `${r.name}_${r.config.version}`
+            : r.name;
+          return {
+            id,
+            kind: "Table",
+          };
+        } else if (r instanceof SqlResource) {
+          return {
+            id: r.name,
+            kind: "SqlResource",
+          };
+        } else {
+          throw new Error(`Unknown sql resource: ${r}`);
+        }
+      }),
+      pushesDataTo: sqlResource.pushesDataTo.map((r) => {
+        if (r instanceof OlapTable) {
+          const id = r.config.version
+            ? `${r.name}_${r.config.version}`
+            : r.name;
+          return {
+            id,
+            kind: "Table",
+          };
+        } else if (r instanceof SqlResource) {
+          return {
+            id: r.name,
+            kind: "SqlResource",
+          };
+        } else {
+          throw new Error(`Unknown sql resource: ${r}`);
+        }
+      }),
     };
   });
 

@@ -3,7 +3,7 @@ import ts, {
   StringLiteralType,
   UnionType,
 } from "typescript";
-import { DataEnum, DataType, UnsupportedEnum } from "./dataModelTypes";
+import { DataEnum, UnsupportedEnum } from "./dataModelTypes";
 
 export const isEnum = (t: ts.Type): boolean =>
   !!(t.getFlags() & ts.TypeFlags.EnumLiteral);

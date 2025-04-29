@@ -13,6 +13,7 @@ use super::InfrastructureSignature;
 pub struct SqlResource {
     /// The unique name identifier for the SQL resource.
     pub name: String,
+
     /// A list of SQL commands or script paths executed during the setup phase.
     pub setup: Vec<String>,
     /// A list of SQL commands or script paths executed during the teardown phase.

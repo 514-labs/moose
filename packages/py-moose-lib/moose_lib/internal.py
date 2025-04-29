@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, AliasGenerator
 import json
 from .data_models import Column, _to_columns
 from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources
+from moose_lib.dmv2 import OlapTable, View, MaterializedView
 from pydantic.alias_generators import to_camel
 from pydantic.json_schema import JsonSchemaValue
 
@@ -61,12 +62,19 @@ class EgressApiConfig(BaseModel):
     response_schema: JsonSchemaValue
     version: Optional[str] = None
 
+class InfrastructureSignatureJson(BaseModel):
+    """Represents the signature of an infrastructure component."""
+    id: str
+    kind: Literal["Table", "Topic", "ApiEndpoint", "TopicToTableSyncProcess", "View", "SqlResource"]
+
 class SqlResourceConfig(BaseModel):
     model_config = model_config
 
     name: str
     setup: list[str]
     teardown: list[str]
+    pulls_data_from: list[InfrastructureSignatureJson]
+    pushes_data_to: list[InfrastructureSignatureJson]
 
 
 class InfrastructureMap(BaseModel):
@@ -77,6 +85,17 @@ class InfrastructureMap(BaseModel):
     ingest_apis: dict[str, IngestApiConfig]
     egress_apis: dict[str, EgressApiConfig]
     sql_resources: dict[str, SqlResourceConfig]
+
+    def _map_sql_resource_ref(r: Any) -> InfrastructureSignatureJson:
+        """Helper function to map SQL resource references to signatures."""
+        if isinstance(r, OlapTable):
+            res_id = f"{r.name}_{r.config.version}" if r.config.version else r.name
+            return InfrastructureSignatureJson(id=res_id, kind="Table")
+        elif isinstance(r, (View, MaterializedView, SqlResource)):
+            # Using the base class name for now, might need refinement
+            return InfrastructureSignatureJson(id=r.name, kind="SqlResource") 
+        else:
+            raise TypeError(f"Unknown SQL resource type for dependency mapping: {type(r)}")
 
 
 def to_infra_map() -> dict:
@@ -152,7 +171,9 @@ def to_infra_map() -> dict:
         sql_resources[name] = SqlResourceConfig(
             name=resource.name,
             setup=resource.setup,
-            teardown=resource.teardown
+            teardown=resource.teardown,
+            pulls_data_from=[_map_sql_resource_ref(dep) for dep in resource.pulls_data_from],
+            pushes_data_to=[_map_sql_resource_ref(dep) for dep in resource.pushes_data_to]
         )
 
     infra_map = InfrastructureMap(

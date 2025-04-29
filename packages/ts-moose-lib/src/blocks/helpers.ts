@@ -1,5 +1,3 @@
-import { Sql } from "../consumption-apis/helpers";
-
 interface AggregationCreateOptions {
   tableCreateOptions: TableCreateOptions;
   materializedViewName: string;

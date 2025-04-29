@@ -31,6 +31,7 @@ pub mod topic_sync_process;
 pub mod view;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq)]
+#[serde(tag = "kind")]
 /// Represents the unique signature of an infrastructure component.
 ///
 /// Infrastructure signatures are used to identify and reference various infrastructure

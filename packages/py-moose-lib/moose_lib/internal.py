@@ -1,3 +1,11 @@
+"""
+Internal utilities for Moose Python library.
+
+This module contains Pydantic models representing the configuration signature
+of various Moose resources (tables, streams/topics, APIs) and functions
+to convert the user-defined resources (from `dmv2.py`) into a serializable
+JSON format expected by the Moose infrastructure management system.
+"""
 from importlib import import_module
 from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
@@ -14,14 +22,36 @@ model_config = ConfigDict(alias_generator=AliasGenerator(
 
 
 class Target(BaseModel):
+    """Represents a target destination for data flow, typically a stream.
+
+    Attributes:
+        kind: The type of the target (currently only "stream").
+        name: The name of the target stream.
+        version: Optional version of the target stream configuration.
+    """
     kind: Literal["stream"]
     name: str
     version: Optional[str] = None
 
 class Consumer(BaseModel):
+    """Represents a consumer attached to a stream.
+
+    Attributes:
+        version: Optional version of the consumer configuration.
+    """
     version: Optional[str] = None
 
 class TableConfig(BaseModel):
+    """Internal representation of an OLAP table configuration for serialization.
+
+    Attributes:
+        name: Name of the table.
+        columns: List of columns with their types and attributes.
+        order_by: List of columns used for the ORDER BY clause.
+        deduplicate: Whether the table uses a deduplicating engine (e.g., ReplacingMergeTree).
+        engine: The name of the ClickHouse engine used.
+        version: Optional version string of the table configuration.
+    """
     model_config = model_config
 
     name: str
@@ -32,6 +62,20 @@ class TableConfig(BaseModel):
     version: Optional[str] = None
 
 class TopicConfig(BaseModel):
+    """Internal representation of a stream/topic configuration for serialization.
+
+    Attributes:
+        name: Name of the topic.
+        columns: List of columns (fields) in the topic messages.
+        target_table: Optional name of the OLAP table this topic automatically syncs to.
+        target_table_version: Optional version of the target table configuration.
+        version: Optional version string of the topic configuration.
+        retention_period: Data retention period in seconds.
+        partition_count: Number of partitions.
+        transformation_targets: List of streams this topic transforms data into.
+        has_multi_transform: Flag indicating if a multi-transform function is defined.
+        consumers: List of consumers attached to this topic.
+    """
     model_config = model_config
 
     name: str
@@ -46,6 +90,15 @@ class TopicConfig(BaseModel):
     consumers: List[Consumer]
 
 class IngestApiConfig(BaseModel):
+    """Internal representation of an Ingest API configuration for serialization.
+
+    Attributes:
+        name: Name of the Ingest API.
+        columns: List of columns expected in the input data.
+        format: The expected input data format (e.g., "JSON").
+        write_to: The target stream where the ingested data is written.
+        version: Optional version string of the API configuration.
+    """
     model_config = model_config
 
     name: str
@@ -55,6 +108,14 @@ class IngestApiConfig(BaseModel):
     version: Optional[str] = None
 
 class EgressApiConfig(BaseModel):
+    """Internal representation of a Consumption (Egress) API configuration for serialization.
+
+    Attributes:
+        name: Name of the Egress API.
+        query_params: List of columns representing the expected query parameters.
+        response_schema: JSON schema definition of the API's response body.
+        version: Optional version string of the API configuration.
+    """
     model_config = model_config
 
     name: str
@@ -63,11 +124,27 @@ class EgressApiConfig(BaseModel):
     version: Optional[str] = None
 
 class InfrastructureSignatureJson(BaseModel):
-    """Represents the signature of an infrastructure component."""
+    """Represents the unique signature of an infrastructure component (Table, Topic, etc.).
+
+    Used primarily for defining dependencies between SQL resources.
+
+    Attributes:
+        id: A unique identifier for the resource instance (often name + version).
+        kind: The type of the infrastructure component.
+    """
     id: str
     kind: Literal["Table", "Topic", "ApiEndpoint", "TopicToTableSyncProcess", "View", "SqlResource"]
 
 class SqlResourceConfig(BaseModel):
+    """Internal representation of a generic SQL resource (like View, MaterializedView) for serialization.
+
+    Attributes:
+        name: Name of the SQL resource.
+        setup: List of SQL commands required to create the resource.
+        teardown: List of SQL commands required to drop the resource.
+        pulls_data_from: List of infrastructure components this resource reads from.
+        pushes_data_to: List of infrastructure components this resource writes to.
+    """
     model_config = model_config
 
     name: str
@@ -78,6 +155,17 @@ class SqlResourceConfig(BaseModel):
 
 
 class InfrastructureMap(BaseModel):
+    """Top-level model holding the configuration for all defined Moose resources.
+
+    This structure is serialized to JSON and passed to the Moose infrastructure system.
+
+    Attributes:
+        tables: Dictionary mapping table names to their configurations.
+        topics: Dictionary mapping topic/stream names to their configurations.
+        ingest_apis: Dictionary mapping ingest API names to their configurations.
+        egress_apis: Dictionary mapping egress API names to their configurations.
+        sql_resources: Dictionary mapping SQL resource names to their configurations.
+    """
     model_config = model_config
 
     tables: dict[str, TableConfig]
@@ -87,7 +175,20 @@ class InfrastructureMap(BaseModel):
     sql_resources: dict[str, SqlResourceConfig]
 
     def _map_sql_resource_ref(r: Any) -> InfrastructureSignatureJson:
-        """Helper function to map SQL resource references to signatures."""
+        """Maps a `dmv2` SQL resource object to its `InfrastructureSignatureJson`.
+
+        Determines the correct `kind` and generates the `id` based on the resource
+        type and its configuration (e.g., including version if present).
+
+        Args:
+            r: An instance of OlapTable, View, MaterializedView, or SqlResource.
+
+        Returns:
+            An InfrastructureSignatureJson representing the resource.
+
+        Raises:
+            TypeError: If the input object is not a recognized SQL resource type.
+        """
         if isinstance(r, OlapTable):
             res_id = f"{r.name}_{r.config.version}" if r.config.version else r.name
             return InfrastructureSignatureJson(id=res_id, kind="Table")
@@ -99,11 +200,15 @@ class InfrastructureMap(BaseModel):
 
 
 def to_infra_map() -> dict:
-    """
-    Converts the internal registries to a structured infrastructure map format.
-    
+    """Converts the registered `dmv2` resources into the serializable `InfrastructureMap` format.
+
+    Iterates through the internal registries (`_tables`, `_streams`, etc.) populated
+    by the user's definitions in `app/main.py` (or elsewhere) and transforms them
+    into the corresponding `*Config` Pydantic models.
+
     Returns:
-        A dictionary with tables, topics (streams), and ingest APIs.
+        A dictionary representing the `InfrastructureMap`, ready for JSON serialization
+        using Pydantic's `model_dump` with camelCase aliases.
     """
     tables = {}
     topics = {}
@@ -188,8 +293,17 @@ def to_infra_map() -> dict:
 
 
 def load_models():
-    """
-    Loads the data models from a app/main.py and prints the infrastructure configuration.
+    """Imports the user's main application module and prints the infrastructure map.
+
+    This function is typically the entry point for the Moose infrastructure system
+    when processing Python-defined resources.
+
+    1. Imports `app.main`, which should trigger the registration of all Moose
+       resources defined therein (OlapTable[...](...), Stream[...](...), etc.).
+    2. Calls `to_infra_map()` to generate the infrastructure configuration dictionary.
+    3. Prints the dictionary as a JSON string, wrapped in specific delimiters
+       (`___MOOSE_STUFF___start` and `end___MOOSE_STUFF___`), which the
+       calling system uses to extract the configuration.
     """
     import_module("app.main")
 

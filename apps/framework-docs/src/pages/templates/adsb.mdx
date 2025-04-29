@@ -7,53 +7,24 @@ import { Steps } from "nextra/components";
 
 This template demonstrates how to build a modern full-stack application that ingests and analyzes aircraft transponder data (ADS-B) from military aircraft. It showcases a complete architecture combining a Next.js frontend with a Moose backend for real-time data processing and storage.
 
+Aircraft have transponders, and there are a group of folk around the world that open-source record the transponder data and push it to [ADSB.lol](https://adsb.lol/). Lets grab that data and create something interesting.
+
 <Link href="https://github.com/514-labs/moose/tree/main/templates/ads-b-frontend">
   <Button variant="outline">View Source Code →</Button>
 </Link>
 
-## Architecture Overview
-
-The template implements a modern full-stack architecture with the following components:
-
-1. **Frontend Layer (Next.js)**
-   - Modern React-based web application
-   - Real-time aircraft visualization
-   - Interactive data querying interface
-   - Built with TypeScript for type safety
-
-2. **Backend Layer (Moose)**
-   - Data ingestion from adsb.lol API
-   - Real-time data processing pipeline
-   - Event streaming with Redpanda
-   - Data storage in ClickHouse
-   - HTTP API endpoints for frontend consumption
-
-3. **Infrastructure Layer**
-   - Redpanda for event streaming
-   - ClickHouse for analytics storage
-   - Temporal for workflow orchestration
-   - Redis for caching
-   - HTTP server for API endpoints
-
-```mermaid
-graph TD
-    A[Next.js Frontend] --> B[Moose HTTP API]
-    B --> C[Moose Processing Pipeline]
-    C --> D[Redpanda Events]
-    D --> E[ClickHouse Storage]
-    F[ADS-B Data Source] --> C
-```
-
 ## Getting Started
-
 
 ### Prerequisites
 
 Before getting started, make sure you have the following installed:
 
 ```bash filename="Requirements" copy
-- NodeJS 20+
-- Docker Desktop 24+
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)  
+* [NodeJS 20+](https://nodejs.org/en/download)  
+* [Anthropic API Key](https://docs.anthropic.com/en/api/getting-started)  
+* [Claude Desktop 24+](https://claude.ai/download)  
+* [Cursor](https://www.cursor.com/)
 ```
 
 <Steps>
@@ -66,21 +37,40 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
 <Callout type="info" title="Anthropic API Key">
-This installation will ask for your Anthropic API key if you want to use the AI features. If you don't have one, you can follow the setup guide at Anthropic's website.
+This installation will ask for your Anthropic API key if you want to use the AI features. If you don't have one, you can follow the [setup guide at Anthropic's website](https://docs.anthropic.com/en/api/getting-started).
 </Callout>
 
 ### Create a new project using the ADS-B template
 
 ```bash filename="terminal" copy
-aurora init aircraft ads-b --mcp claude-desktop
+moose init aircraft ads-b-frontend
 ```
+
+This template creates a project “aircraft” with two subdirectories:
+
+```
+project/
+├── frontend/             # Next.js frontend application
+│   ├── src/
+│   └── package.json
+│
+├── moose/                # Moose backend
+│   ├── app/
+│   │   ├── datamodels/   # Data models for aircraft tracking
+│   │   ├── functions/    # Processing functions
+│   │   └── scripts/      # Workflow scripts
+│   ├── moose.config.toml # Moose configuration
+│   └── package.json
+```
+
+The frontend—a template NextJS application to be used by the LLM for generating a frontend. Moose—the backend ingesting the data, processing and storing it. 
 
 ### Set up the project
 
-Navigate to the project directory and install dependencies:
+Navigate to the moose subdirectory and install dependencies:
 
 ```bash filename="terminal" copy
-cd aircraft
+cd aircraft/moose
 npm install
 ```
 
@@ -94,15 +84,35 @@ moose dev
 
 This will start all necessary local infrastructure including ClickHouse, Redpanda, Temporal, and the Rust ingest servers.
 
-### Run the data ingestion workflow
+Thiw will also start the ingestion workflow, retrieve data from the adsb.lol military aircraft tracking API, process it according to the data model, and ingest it into ClickHouse.
 
-Open a new terminal window and navigate to your project directory, then run:
+You should see a large amount of data being ingested in the Moose CLI.
 
-```bash filename="terminal" copy
-moose workflow run military_aircraft_tracking
+```
+        [POST] Data received at ingest API sink for AircraftTrackingData
+      Received AircraftTrackingData -> AircraftTrackingProcessed - 1 1 message(s)
+          POST ingest/AircraftTrackingData
+        [POST] Data received at ingest API sink for AircraftTrackingData
+          POST ingest/AircraftTrackingData
+      Received AircraftTrackingData -> AircraftTrackingProcessed - 1 1 message(s)
+        [POST] Data received at ingest API sink for AircraftTrackingData
+      Received AircraftTrackingData -> AircraftTrackingProcessed - 1 1 message(s)
+          POST ingest/AircraftTrackingData
+          [DB] 136 row(s) successfully written to DB table (AircraftTrackingProcessed)
+        [POST] Data received at ingest API sink for AircraftTrackingData
 ```
 
-This workflow will retrieve data from the adsb.lol military aircraft tracking API, process it according to the data model, and ingest it into ClickHouse.
+### Test Moose deployment and data ingestion
+
+To see what infrastructure has been set up, run `moose ls` or `moose ls --json`.
+
+If you connect to the locally deployed ClickHouse table, query it! Here's a query that will return unique types of aircraft in the dataset.
+
+```SQL
+SELECT DISTINCT aircraft_type
+FROM aircraft_tracking_data;
+```
+
 
 </Steps>
 
@@ -149,28 +159,7 @@ Try asking Cursor to help you productionize your analysis:
 "Could you create an egress API that, for a given aircraft type input, returns the altitude, and longitude of each instance of that aircraft?"
 </Callout>
 
-## Project Structure
 
-The template is organized into two main components:
-
-```
-project/
-├── frontend/              # Next.js frontend application
-│   ├── src/
-│   │   ├── app/          # Next.js app router
-│   │   ├── components/   # React components
-│   │   ├── hooks/        # Custom React hooks
-│   │   └── lib/          # Utility functions
-│   └── package.json
-│
-├── moose/                # Moose backend
-│   ├── app/
-│   │   ├── datamodels/   # Data models for aircraft tracking
-│   │   ├── functions/    # Processing functions
-│   │   └── scripts/      # Workflow scripts
-│   ├── moose.config.toml # Moose configuration
-│   └── package.json
-```
 
 ## Integration Points
 

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use posthog514client_rs::{Event, PostHogClient as BasePostHogClient, PostHogError};
 use serde_json::json;
 
 use crate::cli::settings::Settings;
@@ -7,69 +8,48 @@ use crate::cli::settings::Settings;
 const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
 const POSTHOG_HOST: &str = "https://us.i.posthog.com";
 
-#[derive(Debug, thiserror::Error)]
-pub enum PostHogError {
-    #[error("Failed to send event to PostHog: {0}")]
-    RequestError(#[from] reqwest::Error),
-    #[error("PostHog API key not configured")]
-    ApiKeyMissing,
-}
-
-#[derive(Debug, Clone)]
-pub struct PostHogEvent {
-    pub event: String,
-    pub distinct_id: String,
-    pub timestamp: DateTime<Utc>,
-    pub properties: serde_json::Value,
-}
-
 #[derive(Clone)]
 pub struct PostHogClient {
-    api_key: Option<String>,
-    host: String,
+    inner: Option<BasePostHogClient>,
     machine_id: String,
     is_moose_developer: bool,
-    http_client: reqwest::Client,
 }
 
 impl PostHogClient {
     pub fn new(settings: &Settings, machine_id: String) -> Self {
+        let inner =
+            POSTHOG_API_KEY.and_then(|api_key| BasePostHogClient::new(api_key, POSTHOG_HOST).ok());
+
         Self {
-            api_key: POSTHOG_API_KEY.map(String::from),
-            host: POSTHOG_HOST.to_string(),
+            inner,
             machine_id,
             is_moose_developer: settings.telemetry.is_moose_developer,
-            http_client: reqwest::Client::new(),
         }
     }
 
     pub async fn capture(&self, event: PostHogEvent) -> Result<(), PostHogError> {
-        // Skip telemetry if API key is not configured
-        let api_key = match &self.api_key {
-            Some(key) => key,
+        // Skip telemetry if client is not configured
+        let client = match &self.inner {
+            Some(client) => client,
             None => return Ok(()),
         };
 
-        let payload = json!({
-            "api_key": api_key,
-            "event": event.event,
-            "distinct_id": event.distinct_id,
-            "timestamp": event.timestamp,
-            "properties": event.properties,
-        });
+        let mut posthog_event = Event::new(event.event)
+            .set_distinct_id(event.distinct_id)
+            .set_timestamp(event.timestamp.to_rfc3339());
 
-        self.http_client
-            .post(format!("{}/capture/", self.host))
-            .json(&payload)
-            .send()
-            .await
-            .map_err(PostHogError::RequestError)?;
+        // Add properties
+        if let Some(props) = event.properties.as_object() {
+            for (key, value) in props {
+                posthog_event = posthog_event.add_property(key, value)?;
+            }
+        }
 
-        Ok(())
+        client.capture(posthog_event).await
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.api_key.is_some()
+        self.inner.is_some()
     }
 
     pub async fn capture_cli_usage(
@@ -99,4 +79,13 @@ impl PostHogClient {
         })
         .await
     }
+}
+
+// Keep the PostHogEvent struct for backward compatibility
+#[derive(Debug, Clone)]
+pub struct PostHogEvent {
+    pub event: String,
+    pub distinct_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub properties: serde_json::Value,
 }

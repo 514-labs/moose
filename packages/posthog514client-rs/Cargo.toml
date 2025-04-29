@@ -1,0 +1,26 @@
+[package]
+name = "posthog514client-rs"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust client for PostHog analytics"
+license = "MIT"
+repository = "https://github.com/514-labs/moose"
+documentation = "https://docs.rs/posthog514client-rs"
+readme = "README.md"
+keywords = ["analytics", "posthog", "client"]
+categories = ["api-bindings"]
+
+[dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+thiserror = "1.0"
+async-trait = "0.1"
+tracing = "0.1"
+url = "2.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockito = "1.0"
+test-case = "3.1" 

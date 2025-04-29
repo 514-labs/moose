@@ -1,3 +1,3 @@
 mod posthog;
 
-pub use posthog::{PostHogClient, PostHogError, PostHogEvent};
+pub use posthog::{PostHogClient, PostHogEvent};

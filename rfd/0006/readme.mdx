@@ -1,0 +1,293 @@
+---
+authors: Nicolas Joseph <nicolas@fiveonefour.com>
+title: Moose SQL Dependency Management for ClickHouse
+state: prediscussion
+---
+
+## Abstract
+
+This RFD proposes a solution to reliably manage Data Definition Language (DDL) changes for dependent SQL objects within Moose,
+specifically focusing on ClickHouse Materialized Views (MVs), Views, and Tables during development (`moose dev`). The current approach
+executes changes independently, leading to potential DDL errors when dependent objects are modified concurrently. The proposed solution mandates
+explicit dependency tracking in resource definitions and introduces an intermediate step between infrastructure planning (diffing) and execution.
+This step will analyze dependencies using a graph, decompose changes into atomic operations, and generate an ordered, phased execution plan (Teardown,
+Setup/Modify) based on topological sorting, similar to migration tool principles.
+
+## Motivation / Problem Description
+
+Moose provides a declarative way for users to define infrastructure, including ClickHouse tables, materialized views, and other SQL resources.
+During development (`moose dev`), the framework compares the user's desired state with the current state, generates a plan of changes
+(Adds, Removes, Updates), and executes these changes against the ClickHouse database.
+
+Currently, each infrastructure component change (`TableChange`, `SqlResource` change, etc.) is calculated and executed independently.
+This poses a significant problem when dealing with SQL objects that have inherent dependencies, most notably:
+
+1.  **Materialized Views (MVs):** An MV reads from one or more source tables/views (potentially via JOINs) and writes to a target table.
+    Its creation/update depends on all sources and the target existing and being correct.
+2.  **Chained MVs/Views:** MV2/View2 might read from the target table of MV1 or another View1.
+3.  **Views on Tables/Views:** A standard View depends on the objects in its `SELECT` statement.
+
+If a user modifies both a dependent object (e.g., an MV's `SELECT` query) and any of its dependencies (e.g., a source table schema, the target
+table schema) in the same development iteration, the current system generates separate, unordered change operations. The execution order of
+these independent changes is not guaranteed to respect the database constraints.
+
+This can lead to errors during `moose dev` runs, such as:
+*   `CREATE MATERIALIZED VIEW` failing because a source or target table schema doesn't match or hasn't been altered yet.
+*   `CREATE VIEW` failing because a source table it selects from hasn't been created/altered yet.
+*   `ALTER TABLE` failing because a dependent View/MV still exists and locks the table schema.
+
+These failures result in an inconsistent infrastructure state, break the development feedback loop, and force users to manually intervene or rely
+on subsequent `moose dev` runs to potentially fix the state.
+
+Furthermore, the current update mechanism for MVs/Views (represented as `SqlResource`) involves dropping and recreating them, which can be
+inefficient. While this RFD doesn't prioritize optimizing the update itself (e.g., using `ALTER VIEW`), the proposed solution provides a
+better foundation for future improvements by correctly ordering even drop/recreate steps.
+
+## Goals
+
+*   Ensure the correct order of DDL execution for dependent ClickHouse objects managed by Moose.
+*   Improve the reliability and predictability of infrastructure updates during `moose dev`.
+*   Prevent common DDL errors caused by incorrect change application order.
+*   Maintain the declarative nature of Moose infrastructure definitions for the user.
+*   Establish a robust pattern for handling SQL dependencies.
+
+## Non-Goals
+
+*   Implementing full DDL transactionality for ClickHouse changes (a ClickHouse limitation).
+*   Optimizing the update mechanism for MVs/Views beyond drop-and-recreate within *this* RFD.
+*   Managing dependencies for resources *not* managed by Moose within the ClickHouse database.
+*   Parsing SQL `SELECT` statements to automatically infer dependencies (we rely on explicit declaration).
+
+## Proposed Solution: Explicit Dependencies & Phased Ordering
+
+We propose a two-part solution: mandating explicit dependency tracking in the APIs and introducing an intermediate step for dependency analysis
+and phased, ordered execution planning.
+
+### Part 1: Explicit Dependency Tracking via APIs (Mandatory)
+
+Robust dependency management requires explicit declaration by the user. The SDK layer will provide an ergonomic way to declare these dependencies.
+
+1.  **API/SDK Changes (e.g., `ts-moose-lib`):**
+    *   When defining resources like `MaterializedView`, `View`, etc., users **must** specify *all* direct Moose resource instances they depend
+        on using a new `depends_on` property. Users will pass the *actual instances* of the Moose classes (e.g., `OlapTable`, `View` instances)
+        into this array.
+    *   **SDK Responsibility:** The Moose SDK layer (during the code execution phase that generates the JSON for the Rust CLI) will introspect
+        these provided instances. It will extract the resource type (e.g., "Table", "View", "SqlResource") and the unique ID from each instance
+        passed into the `depends_on` array.
+    *   **JSON Output:** The SDK transforms this list of instances into the structured dependency JSON format
+        `[{ resource_type: "TypeString", id: "UniqueIDString" }, ...]` which is then sent to the Rust CLI.
+    *   Example (Conceptual TS - User Code):
+        ```typescript
+        import { sourceTable1, sourceTable2, intermediateView } from './resources';
+        // Assume sourceTable1 etc. are instances of OlapTable, View...
+
+        new MaterializedView<TargetTableType>('my_mv', {
+            materializedViewName: 'my_mv_name',
+            selectStatement: `SELECT ... FROM ${sourceTable1.name} JOIN ${sourceTable2.name} ...`,
+            // REQUIRED: Pass resource instances directly
+            depends_on: [sourceTable1, sourceTable2]
+        });
+
+        new View('my_view', {
+            selectStatement: `SELECT c1, c2 FROM ${sourceTable1.name}`,
+            // Pass resource instance directly
+            depends_on: [sourceTable1]
+        });
+        ```
+
+        Eventually we could remove the need to pass the resource instances directly by parsing the `SELECT` statement and inferring the dependencies.
+
+    *   *(Internal SDK transformation would generate the JSON like `depends_on: [{ resource_type: "Table", id: "sourceTable1_id" }, { resource_type: "Table", id: "sourceTable2_id" }, { resource_type: "Table", id: "targetTable_id" }]`)*
+2.  **Rust Infrastructure Representation (`partial_infrastructure_map.rs`, `infrastructure_map.rs`):**
+    *   **Extend `InfrastructureSignature`:** Ensure the existing `InfrastructureSignature` enum includes variants for all resource types that can be dependencies
+        (Table, View, SqlResource, etc.), with each variant containing the unique `id` string.
+        ```rust
+        // In infrastructure_map.rs (or shared types)
+        #[derive(Serialize, /* Deserialize needs custom logic or specific SDK format */, Debug, Clone, PartialEq, Eq, Hash)]
+        pub enum InfrastructureSignature {
+            Table { id: String },
+            Topic { id: String }, // Keep existing if needed
+            ApiEndpoint { id: String }, // Keep existing if needed
+            TopicToTableSyncProcess { id: String }, // Keep existing if needed
+            View { id: String }, // Add if not present
+            SqlResource { id: String }, // Representing MVs, Functions, etc. Add if not present
+            // Add other manageable resource types here
+        }
+        ```
+    *   **Update `depends_on` field:** Use `Vec<InfrastructureSignature>` directly in the `depends_on` field of relevant structs (`SqlResource`, `Table`, `View`).
+        Make it non-optional where dependencies are expected.
+        ```rust
+        // In infrastructure_map.rs (and corresponding Partial*)
+        pub struct SqlResource { // Represents MVs, Functions, Procedures, etc.
+            pub name: String,
+            pub setup: Vec<String>,
+            pub teardown: Vec<String>,
+            // Explicit list of dependent resources (type + ID)
+            pub depends_on: Vec<InfrastructureSignature>, // Non-optional Vec; empty if no deps.
+        }
+
+        pub struct View {
+            // ...
+            pub depends_on: Vec<InfrastructureSignature>, // Non-optional
+        }
+
+        pub struct Table {
+             // ...
+             pub depends_on: Vec<InfrastructureSignature>, // Non-optional Vec; empty if no deps (e.g. FKs).
+        }
+        ```
+    *   **Deserialization:** Populate `depends_on` during loading and conversion. This requires careful handling:
+        *   **Option A (Preferred):** The SDK generating the JSON must format it in a way `serde` can understand for the `InfrastructureSignature` enum
+            (e.g., `{ "Table": { "id": "..." } }` or using `serde` attributes like `tag/content`).
+        *   **Option B (Fallback):** Implement custom `Deserialize` logic for `InfrastructureSignature` in Rust to correctly parse the
+            `{ "resource_type": "...", "id": "..." }` JSON format sent by the SDK.
+        *   *(Decision: We should aim for Option A, modifying the SDK JSON output, for cleaner Rust code, but acknowledge Option B is possible).*
+3.  **Benefit:** The dependency graph becomes explicitly defined using the canonical `InfrastructureSignature` type. The analysis step can directly
+    pattern match on the enum variants to understand dependencies.
+
+### Part 2: Intermediate Dependency Analysis & Phased Ordering Step
+
+This step generates an ordered execution plan based on the explicit dependencies.
+
+1.  **Position:** `diff -> [Dependency Analysis & Phased Ordering] -> execute_changes`
+2.  **Input:**
+    *   The "flat" list of `OlapChange`s generated by `diff`.
+    *   The target `InfrastructureMap` (containing resources with populated `depends_on` fields).
+3.  **Process:**
+    *   **Build Dependency Graph:** Construct a Directed Acyclic Graph (DAG) of all relevant resources (Tables, SqlResources representing MVs, Views)
+        using the `depends_on` relationships. Nodes are resource IDs, edges represent dependencies.
+    *   **Deconstruct Changes:** Break down each `OlapChange` (e.g., `Table(Added(t))`, `SqlResource(Updated{before, after})`) into its atomic DDL
+        operation(s) (e.g., `CREATE TABLE...`, `DROP VIEW...`, `ALTER TABLE...`, `CREATE VIEW...`). Tag each atomic operation as either "Teardown" or
+        "Setup/Modify" and associate it with the resource ID it affects.
+    *   **Phase 1: Generate Teardown Sequence:**
+        *   Collect all atomic "Teardown" operations.
+        *   Perform a **reverse topological sort** on the dependency graph for the involved resource IDs.
+        *   Output: An ordered list (`teardown_plan`) of atomic DDL operations (dependents are torn down before dependencies).
+    *   **Phase 2: Generate Setup/Modification Sequence:**
+        *   Collect all atomic "Setup/Modify" operations.
+        *   Perform a **forward topological sort** on the dependency graph for the involved resource IDs.
+        *   Output: An ordered list (`setup_modify_plan`) of atomic DDL operations (dependencies are created/altered before dependents).
+    *   _Justification for Phased Plans:_ Separating teardown from setup/modification ensures that dependent objects are removed before their
+        dependencies are altered or dropped, and that dependencies exist before dependents are created or updated. This avoids DDL conflicts
+        and simplifies the ordering logic compared to interleaving all operations.
+4.  **Output:** Two ordered lists of atomic DDL operations: `teardown_plan` and `setup_modify_plan`.
+
+### Part 3: Simplified Execution Phase (`clickhouse.rs`)
+
+The `execute_changes` function becomes a straightforward executor.
+
+1.  **Input:** The ordered `teardown_plan` and `setup_modify_plan` lists.
+2.  **Process:**
+    *   Execute all operations in `teardown_plan` sequentially. Stop and report on first error.
+    *   If teardown succeeded, execute all operations in `setup_modify_plan` sequentially. Stop and report on first error.
+3.  **Benefit:** Execution logic is simple. All complexity related to dependencies and ordering resides in the intermediate step.
+
+### Part 4: State Reconciliation and Edge Cases
+
+A critical aspect of this design is handling situations where the actual state of the ClickHouse database diverges from the last known successfully
+applied state (represented by the saved `InfrastructureMap`, e.g., in `.moose/state.json`). This divergence can happen due to failed previous
+`moose dev` runs or external manual changes.
+
+The proposed solution relies on **determining the actual state of managed resources in the database *before* performing the `diff` operation** on
+each `moose dev` run (as discussed in Open Questions - State Reconciliation Strategy). This ensures the generated plan correctly bridges the gap
+from *reality* to the *target* state.
+
+Let's examine how this handles specific edge cases:
+
+**Scenario 1: Resource Updated Externally (e.g., Manual `ALTER TABLE`)**
+
+*   **Situation:**
+    *   Saved State (`state.json`): Defines `Table T1 { Column A }`.
+    *   Actual DB State: Someone manually ran `ALTER TABLE T1 ADD COLUMN B`. DB has `Table T1 { Column A, Column B }`.
+    *   Target State (User Code): Still defines `Table T1 { Column A }`.
+*   **Handling (`moose dev` run):**
+    1.  **Load Saved State:** Framework notes last success was `Table T1 { Column A }`.
+    2.  **Determine Actual State:** Framework queries ClickHouse (`system.tables`, `system.columns`) and finds `Table T1 { Column A, Column B }`.
+    3.  **Determine Target State:** Framework runs user code and gets target `Table T1 { Column A }`.
+    4.  **`diff(actual, target)`:** Compares state from Step 2 and Step 3. Detects that `Column B` exists in `actual` but not in `target`.
+    5.  **Plan Generation:** The intermediate step generates plans:
+        *   `teardown_plan`: May include steps to drop dependents of `T1` if the column removal requires it (based on policy).
+        *   `setup_modify_plan`: Will include the atomic DDL `ALTER TABLE T1 DROP COLUMN B`.
+    6.  **Execution:** The plans are executed, bringing the database back in line with the declarative code definition.
+    7.  **Save State:** On success, the framework saves the target state (`Table T1 { Column A }`).
+
+**Scenario 2: Resource Partially Updated by Failed Run**
+
+*   **Situation:**
+    *   Saved State: Defines `Table T1 { Column A }`.
+    *   Previous Target State: Defined `Table T1 { Column A, Column B }`.
+    *   Previous Run Failure: Teardown succeeded. Setup/Modify ran `ALTER TABLE T1 ADD COLUMN B` successfully, but then failed on a *subsequent*
+        step. State was *not* saved.
+    *   Actual DB State: `Table T1 { Column A, Column B }`.
+    *   Current Target State (User Code): User hasn't changed code, still targets `Table T1 { Column A, Column B }`.
+*   **Handling (`moose dev` run):**
+    1.  **Load Saved State:** Framework notes last success was `Table T1 { Column A }`.
+    2.  **Determine Actual State:** Framework queries ClickHouse and finds `Table T1 { Column A, Column B }`.
+    3.  **Determine Target State:** Framework runs user code and gets target `Table T1 { Column A, Column B }`.
+    4.  **`diff(actual, target)`:** Compares state from Step 2 and Step 3. Finds no difference for `Table T1` itself. Differences might exist for
+        *other* resources that failed to update in the previous run.
+    5.  **Plan Generation:** The plan will focus only on the remaining differences (e.g., creating/altering other objects from the previous failed
+        plan). It will *not* contain operations for `Table T1`.
+    6.  **Execution:** The corrective plan is executed.
+    7.  **Save State:** On success, the framework saves the target state (`Table T1 { Column A, Column B }`).
+
+**Scenario 3: Resource Removed Externally (e.g., Manual `DROP TABLE`)**
+
+*   **Situation:**
+    *   Saved State: Defines `Table T1`.
+    *   Actual DB State: Someone manually ran `DROP TABLE T1`. `T1` does not exist.
+    *   Target State (User Code): Still defines `Table T1`.
+*   **Handling (`moose dev` run):**
+    1.  **Load Saved State:** Framework notes last success included `Table T1`.
+    2.  **Determine Actual State:** Framework queries ClickHouse and finds `Table T1` is missing.
+    3.  **Determine Target State:** Framework runs user code and gets target defining `Table T1`.
+    4.  **`diff(actual, target)`:** Compares state from Step 2 and Step 3. Detects `Table T1` as `Added` (present in target, absent in actual).
+    5.  **Plan Generation:**
+        *   `teardown_plan`: Empty regarding `T1`.
+        *   `setup_modify_plan`: Will include the atomic DDL `CREATE TABLE T1 ...`.
+    6.  **Execution:** The plans are executed, recreating `T1`.
+    7.  **Save State:** On success, the framework saves the target state including `Table T1`.
+
+**Scenario 4: Resource Removed by Failed Run (Successful Teardown)**
+
+*   **Situation:**
+    *   Saved State: Defines `Table T1`.
+    *   Previous Target State: Did *not* define `Table T1`.
+    *   Previous Run Failure: Teardown phase successfully ran `DROP TABLE T1`. Setup/Modify phase failed later. State was *not* saved.
+    *   Actual DB State: `Table T1` does not exist.
+    *   Current Target State (User Code): User hasn't changed code, still does *not* define `Table T1`.
+*   **Handling (`moose dev` run):**
+    1.  **Load Saved State:** Framework notes last success included `Table T1`.
+    2.  **Determine Actual State:** Framework queries ClickHouse and finds `Table T1` is missing.
+    3.  **Determine Target State:** Framework runs user code and gets target *without* `Table T1`.
+    4.  **`diff(actual, target)`:** Compares state from Step 2 and Step 3. Finds no difference regarding `Table T1` (it's absent in both).
+    5.  **Plan Generation:** The plan will *not* contain any operations for `Table T1`. It will focus only on other differences caused by the previous failure.
+    6.  **Execution:** The corrective plan is executed.
+    7.  **Save State:** On success, the framework saves the target state *without* `Table T1`.
+
+**Conclusion for Part 4:**
+
+By incorporating the step of determining the actual database state before diffing, the proposed phased execution model becomes resilient to inconsistencies
+caused by prior failures or external changes. It ensures that the generated plan always aims to transition the database from its *current reality*
+to the user's *intended target state*, rather than relying solely on the potentially stale saved state.
+
+## Alternative Solutions Considered
+
+1.  **Bundling Approach:** (Previously discussed) Create composite change types. Deemed insufficient for multi-source dependencies.
+2.  **Modify Diff Algorithm:** Integrate dependency analysis and ordering directly into `diff`. Makes `diff` significantly more complex.
+3.  **Manual Ordering / Migrations:** Require users to write ordered migration scripts. Sacrifices the declarative approach.
+
+## Competitor Analysis / Prior Art
+
+*   **dbt (Data Build Tool):** Uses `ref()` for automatic DAG building and topological execution. Strongest parallel.
+*   **Terraform/Pulumi:** Declarative IaC, handles resource dependencies but less SQL-aware.
+*   **Flyway/Liquibase:** Versioned migrations, relies on manual ordering. The proposed Moose solution aims for dbt-like automatic ordering derived
+    from declarative, explicitly dependent definitions.
+
+## Open Questions / Future Considerations
+
+*   Confirm the exact policy for recreating downstream objects when an upstream dependency changes but the downstream object's definition does not.
+    (Default: Recreate for safety).
+*   Explore future SQL parsing (`sqlparser-rs`) to *validate* user-provided `depends_on` lists against the `SELECT` statement, or potentially
+    infer them if explicit declaration becomes burdensome.
+*   Performance of graph building and topological sort for large schemas.

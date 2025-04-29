@@ -50,12 +50,6 @@ const MAX_BATCH_SIZE: usize = 100000;
 struct TableSyncingProcess {
     /// Async task handle for the sync process
     process: JoinHandle<anyhow::Result<()>>,
-    #[allow(dead_code)]
-    /// Source Kafka topic name
-    topic: String,
-    #[allow(dead_code)]
-    /// Target ClickHouse table name
-    table: String,
 }
 
 /// Represents a Kafka to Kafka synchronization process

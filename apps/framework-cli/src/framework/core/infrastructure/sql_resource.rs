@@ -20,8 +20,10 @@ pub struct SqlResource {
     pub teardown: Vec<String>,
 
     /// Signatures of infrastructure components from which this SQL resource pulls data.
+    #[serde(alias = "pullsDataFrom")]
     pub pulls_data_from: Vec<InfrastructureSignature>,
     /// Signatures of infrastructure components to which this SQL resource pushes data.
+    #[serde(alias = "pushesDataTo")]
     pub pushes_data_to: Vec<InfrastructureSignature>,
 }
 

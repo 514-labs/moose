@@ -6,7 +6,8 @@
  */
 import { Column } from "../dataModels/dataModelTypes";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
-import { getMooseInternal, TypedBase } from "./internal";
+import { getMooseInternal } from "./internal";
+import { TypedBase } from "./typedBase";
 import {
   ClickHouseEngines,
   ConsumptionUtil,
@@ -111,6 +112,9 @@ export type IngestPipelineConfig<T> = {
  * @template T The data type of the records stored in the table. The structure of T defines the table schema.
  */
 export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
+  /** @internal */
+  public readonly kind = "OlapTable";
+
   /**
    * Creates a new OlapTable instance.
    * @param name The name of the table. This name is used for the underlying ClickHouse table.
@@ -509,13 +513,16 @@ export type Aggregated<
   _argTypes?: ArgTypes;
 };
 
-type SqlObject = OlapTable<any> | View;
+type SqlObject = OlapTable<any> | SqlResource;
 
 /**
  * Represents a generic SQL resource that requires setup and teardown commands.
  * Base class for constructs like Views and Materialized Views. Tracks dependencies.
  */
 export class SqlResource {
+  /** @internal */
+  public readonly kind = "SqlResource";
+
   /** Array of SQL statements to execute for setting up the resource. */
   setup: readonly string[];
   /** Array of SQL statements to execute for tearing down the resource. */

@@ -1,78 +1,96 @@
 //! Types for PostHog events and properties
 
 use crate::error::{PostHogError, SerializationErrorKind};
-use serde::{Deserialize, Serialize};
+use chrono::Utc;
+use serde::Serialize;
 use std::collections::HashMap;
 
-/// Represents a PostHog event with its properties
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Event {
-    /// The name of the event
-    pub event: String,
-
-    /// Unique identifier for the user/entity this event is associated with
-    #[serde(rename = "distinct_id")]
-    pub distinct_id: String,
-
-    /// Custom properties associated with the event
-    pub properties: HashMap<String, serde_json::Value>,
-
-    /// Timestamp when the event occurred (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<String>,
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EventType {
+    MooseCliCommand,
+    MooseCliError,
 }
 
-impl Event {
-    /// Creates a new event with the given name
-    pub fn new(event: impl Into<String>) -> Self {
+#[derive(Debug, Clone, Serialize)]
+pub struct Event514 {
+    pub event: EventType,
+    pub distinct_id: String,
+    #[serde(flatten)]
+    pub properties: Properties514,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Properties514 {
+    // Common properties across all 514 apps
+    pub app_version: String,
+    pub is_developer: bool,
+    pub environment: String,
+    pub project: Option<String>,
+    // Event-specific properties
+    #[serde(flatten)]
+    pub custom: HashMap<String, serde_json::Value>,
+}
+
+impl Event514 {
+    pub fn new(event_type: EventType) -> Self {
         Self {
-            event: event.into(),
+            event: event_type,
             distinct_id: String::new(),
-            properties: HashMap::new(),
-            timestamp: None,
+            properties: Properties514::default(),
+            timestamp: Utc::now().to_rfc3339(),
         }
     }
 
-    /// Sets the distinct_id for this event
-    pub fn set_distinct_id(mut self, distinct_id: impl Into<String>) -> Self {
-        self.distinct_id = distinct_id.into();
+    pub fn with_distinct_id(mut self, id: impl Into<String>) -> Self {
+        self.distinct_id = id.into();
         self
     }
 
-    /// Adds a property to the event
-    pub fn add_property<K, V>(mut self, key: K, value: V) -> Result<Self, PostHogError>
-    where
-        K: Into<String>,
-        V: Serialize,
-    {
-        let value = serde_json::to_value(value).map_err(|e| {
-            PostHogError::serialization(
-                "Failed to serialize property value",
-                Some(SerializationErrorKind::Json(e.to_string())),
-            )
-        })?;
-
-        self.properties.insert(key.into(), value);
-        Ok(self)
-    }
-
-    /// Sets the timestamp for this event
-    pub fn set_timestamp(mut self, timestamp: impl Into<String>) -> Self {
-        self.timestamp = Some(timestamp.into());
+    pub fn with_project(mut self, project: Option<String>) -> Self {
+        self.properties.project = project;
         self
     }
 
+    pub fn with_properties(mut self, properties: HashMap<String, serde_json::Value>) -> Self {
+        self.properties.custom = properties;
+        self
+    }
+
+    pub fn with_error(mut self, error: impl std::error::Error) -> Self {
+        self.properties.custom.insert(
+            "error".to_string(),
+            serde_json::Value::String(error.to_string()),
+        );
+        self.properties.custom.insert(
+            "error_type".to_string(),
+            serde_json::Value::String(std::any::type_name_of_val(&error).to_string()),
+        );
+        self
+    }
+
+    pub fn with_context(mut self, context: HashMap<String, serde_json::Value>) -> Self {
+        self.properties.custom.extend(context);
+        self
+    }
+
+    pub fn set_app_version(&mut self, version: impl Into<String>) {
+        self.properties.app_version = version.into();
+    }
+
+    pub fn set_is_developer(&mut self, is_developer: bool) {
+        self.properties.is_developer = is_developer;
+    }
+
+    pub fn set_environment(&mut self, env: impl Into<String>) {
+        self.properties.environment = env.into();
+    }
+}
+
+impl Event514 {
     /// Validates that the event has all required fields
     pub(crate) fn validate(&self) -> Result<(), PostHogError> {
-        if self.event.is_empty() {
-            return Err(PostHogError::serialization(
-                "Event name cannot be empty",
-                Some(SerializationErrorKind::InvalidPropertyValue(
-                    "empty event name".into(),
-                )),
-            ));
-        }
-
         if self.distinct_id.is_empty() {
             return Err(PostHogError::serialization(
                 "distinct_id cannot be empty",
@@ -89,32 +107,36 @@ impl Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
-    fn test_event_creation_and_properties() {
-        let event = Event::new("test_event")
-            .set_distinct_id("user123")
-            .add_property("key1", "value1")
-            .unwrap()
-            .add_property("key2", 42)
-            .unwrap();
+    fn test_event_creation() {
+        let event = Event514::new(EventType::MooseCliCommand)
+            .with_distinct_id("test-id")
+            .with_project(Some("test-project".to_string()));
 
-        assert_eq!(event.event, "test_event");
-        assert_eq!(event.distinct_id, "user123");
-        assert_eq!(event.properties.get("key1").unwrap(), &json!("value1"));
-        assert_eq!(event.properties.get("key2").unwrap(), &json!(42));
+        assert!(matches!(event.event, EventType::MooseCliCommand));
+        assert_eq!(event.distinct_id, "test-id");
+        assert_eq!(event.properties.project, Some("test-project".to_string()));
+    }
+
+    #[test]
+    fn test_error_event() {
+        let error = std::io::Error::new(std::io::ErrorKind::NotFound, "test error");
+        let event = Event514::new(EventType::MooseCliError)
+            .with_distinct_id("test-id")
+            .with_error(error);
+
+        assert!(matches!(event.event, EventType::MooseCliError));
+        assert!(event.properties.custom.contains_key("error"));
+        assert!(event.properties.custom.contains_key("error_type"));
     }
 
     #[test]
     fn test_event_validation() {
-        let event = Event::new("");
+        let event = Event514::new(EventType::MooseCliCommand);
         assert!(event.validate().is_err());
 
-        let event = Event::new("test_event");
-        assert!(event.validate().is_err());
-
-        let event = Event::new("test_event").set_distinct_id("user123");
+        let event = Event514::new(EventType::MooseCliCommand).with_distinct_id("user123");
         assert!(event.validate().is_ok());
     }
 }

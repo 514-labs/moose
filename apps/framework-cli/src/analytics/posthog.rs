@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
-use posthog514client_rs::{Event, PostHogClient as BasePostHogClient, PostHogError};
+use posthog514client_rs::{Event514, EventType, PostHogClient as BasePostHogClient, PostHogError};
 use serde_json::json;
+use std::collections::HashMap;
 
 use crate::cli::settings::Settings;
 
@@ -34,15 +35,21 @@ impl PostHogClient {
             None => return Ok(()),
         };
 
-        let mut posthog_event = Event::new(event.event)
-            .set_distinct_id(event.distinct_id)
-            .set_timestamp(event.timestamp.to_rfc3339());
+        let event_type = match event.event.as_str() {
+            "cli.command" => EventType::MooseCliCommand,
+            _ => EventType::MooseCliCommand, // Default to command for now
+        };
+
+        let mut posthog_event = Event514::new(event_type).with_distinct_id(event.distinct_id);
+
+        // Add timestamp
+        posthog_event.timestamp = event.timestamp.to_rfc3339();
 
         // Add properties
         if let Some(props) = event.properties.as_object() {
-            for (key, value) in props {
-                posthog_event = posthog_event.add_property(key, value)?;
-            }
+            let properties: HashMap<String, serde_json::Value> =
+                props.clone().into_iter().collect();
+            posthog_event = posthog_event.with_properties(properties);
         }
 
         client.capture(posthog_event).await

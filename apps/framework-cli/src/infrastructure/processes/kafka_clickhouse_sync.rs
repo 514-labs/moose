@@ -248,8 +248,6 @@ fn spawn_sync_process_core(
 
     TableSyncingProcess {
         process: syncing_process,
-        topic: source_topic_name,
-        table: target_table_name,
     }
 }
 

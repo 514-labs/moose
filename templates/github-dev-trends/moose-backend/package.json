@@ -1,5 +1,5 @@
 {
-  "name": "ts",
+  "name": "github-dev-trends-moose-backend",
   "version": "0.0",
   "scripts": {
     "moose": "moose-cli",

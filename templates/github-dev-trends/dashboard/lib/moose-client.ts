@@ -1,6 +1,6 @@
 import { DefaultApi, Configuration } from "api-client";
 
-const mooseUrl = process.env.MOOSE_URL || "http://localhost:4000";
+const mooseUrl = process.env.NEXT_PUBLIC_MOOSE_URL || "http://localhost:4000";
 
 const apiConfig = new Configuration({
   basePath: mooseUrl,

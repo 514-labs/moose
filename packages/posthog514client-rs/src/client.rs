@@ -3,6 +3,7 @@
 use reqwest::{Client as ReqwestClient, Url};
 use serde_json::json;
 use std::collections::HashMap;
+use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, instrument};
@@ -12,6 +13,9 @@ use crate::event::{Event514, EventType};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 const POSTHOG_HOST: &str = "https://app.posthog.com";
+
+// Build-time environment variable for PostHog API key
+const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
 
 /// Configuration for the PostHog client
 #[derive(Debug, Clone)]
@@ -175,10 +179,15 @@ pub struct PostHog514Client {
     api_key: String,
     client: Arc<ReqwestClient>,
     host: String,
+    machine_id: String,
 }
 
 impl PostHog514Client {
-    pub fn new(api_key: impl Into<String>) -> Result<Self, PostHogError> {
+    /// Creates a new PostHog514Client with the given API key and machine ID
+    pub fn new(
+        api_key: impl Into<String>,
+        machine_id: impl Into<String>,
+    ) -> Result<Self, PostHogError> {
         let client = ReqwestClient::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -193,41 +202,54 @@ impl PostHog514Client {
             api_key: api_key.into(),
             client: Arc::new(client),
             host: POSTHOG_HOST.to_string(),
+            machine_id: machine_id.into(),
         })
+    }
+
+    /// Creates a new PostHog514Client using the API key from the environment.
+    /// This will:
+    /// 1. First check for a build-time API key (baked into the binary)
+    /// 2. Then check for a runtime POSTHOG_API_KEY environment variable
+    /// 3. Return None if neither is available
+    pub fn from_env(machine_id: impl Into<String>) -> Option<Self> {
+        // First try build-time API key
+        if let Some(api_key) = POSTHOG_API_KEY {
+            return Self::new(api_key, machine_id).ok();
+        }
+
+        // Then try runtime environment variable
+        if let Ok(api_key) = env::var("POSTHOG_API_KEY") {
+            return Self::new(api_key, machine_id).ok();
+        }
+
+        None
     }
 
     pub async fn capture_cli_command(
         &self,
-        distinct_id: impl Into<String>,
         command: impl Into<String>,
         project: Option<String>,
         context: Option<HashMap<String, serde_json::Value>>,
     ) -> Result<(), PostHogError> {
         let mut event = Event514::new(EventType::MooseCliCommand)
-            .with_distinct_id(distinct_id)
+            .with_distinct_id(self.machine_id.clone())
             .with_project(project);
 
         if let Some(ctx) = context {
             event = event.with_context(ctx);
         }
 
-        event.properties.custom.insert(
-            "command".to_string(),
-            serde_json::Value::String(command.into()),
-        );
-
         self.capture(event).await
     }
 
     pub async fn capture_cli_error(
         &self,
-        distinct_id: impl Into<String>,
         error: impl std::error::Error,
         project: Option<String>,
         context: Option<HashMap<String, serde_json::Value>>,
     ) -> Result<(), PostHogError> {
         let mut event = Event514::new(EventType::MooseCliError)
-            .with_distinct_id(distinct_id)
+            .with_distinct_id(self.machine_id.clone())
             .with_project(project)
             .with_error(error);
 
@@ -322,14 +344,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_capture_cli_command() {
-        let client = PostHog514Client::new("test_key").unwrap();
+        let client = PostHog514Client::new("test_key", "machine123").unwrap();
         let result = client
-            .capture_cli_command(
-                "test-user",
-                "moose init",
-                Some("test-project".to_string()),
-                None,
-            )
+            .capture_cli_command("moose init", Some("test-project".to_string()), None)
             .await;
 
         // This will fail since we're using a fake API key
@@ -344,10 +361,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_capture_cli_error() {
-        let client = PostHog514Client::new("test_key").unwrap();
+        let client = PostHog514Client::new("test_key", "machine123").unwrap();
         let error = io::Error::new(io::ErrorKind::NotFound, "File not found");
         let result = client
-            .capture_cli_error("test-user", error, Some("test-project".to_string()), None)
+            .capture_cli_error(error, Some("test-project".to_string()), None)
             .await;
 
         // This will fail since we're using a fake API key

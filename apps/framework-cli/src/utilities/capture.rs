@@ -2,11 +2,12 @@
 //!
 //! This module leverages moose to instrument moose. It includes a macro to easily capture data anywhere in the codebase.
 //!
-use crate::analytics::PostHogClient;
 use crate::cli::settings::Settings;
-use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
+use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
+use posthog514client_rs::PostHog514Client;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize)]
@@ -85,32 +86,38 @@ pub fn capture_usage(
     settings: &Settings,
     machine_id: String,
 ) -> Option<tokio::task::JoinHandle<()>> {
-    // Ignore our deployments & internal testing
-    if settings.telemetry.enabled {
-        let posthog = PostHogClient::new(settings, machine_id);
-        let sequence_id = CONTEXT.get(CTX_SESSION_ID).unwrap().clone();
-        let event_id = Uuid::new_v4();
-        let project = project_name.unwrap_or("N/A".to_string());
-
-        // Create properties for the event
-        let properties = json!({
-            "event_id": event_id.to_string(),
-            "command": activity_type,
-            "sequence_id": sequence_id,
-            "project": project,
-        });
-
-        Some(tokio::task::spawn(async move {
-            if let Err(e) = posthog
-                .capture_cli_usage("moose_cli_command", Some(project), properties)
-                .await
-            {
-                log::warn!("Failed to send telemetry to PostHog: {:?}", e);
-            }
-        }))
-    } else {
-        None
+    // Skip if telemetry is disabled
+    if !settings.telemetry.enabled {
+        return None;
     }
+
+    let sequence_id = CONTEXT.get(CTX_SESSION_ID).unwrap().clone();
+    let event_id = Uuid::new_v4();
+    let project = project_name.clone().unwrap_or_else(|| "N/A".to_string());
+
+    // Create context for the event
+    let mut context: HashMap<String, serde_json::Value> = HashMap::new();
+    context.insert("event_id".into(), event_id.to_string().into());
+    context.insert("command".into(), json!(activity_type));
+    context.insert("sequence_id".into(), sequence_id.into());
+
+    // Create PostHog client
+    let client = match PostHog514Client::from_env(machine_id) {
+        Some(client) => client,
+        None => {
+            log::warn!("PostHog client not configured - missing POSTHOG_API_KEY");
+            return None;
+        }
+    };
+
+    Some(tokio::task::spawn(async move {
+        if let Err(e) = client
+            .capture_cli_command("moose_cli_command", project_name, Some(context))
+            .await
+        {
+            log::warn!("Failed to send telemetry to PostHog: {:?}", e);
+        }
+    }))
 }
 
 pub async fn wait_for_usage_capture(handle: Option<tokio::task::JoinHandle<()>>) {

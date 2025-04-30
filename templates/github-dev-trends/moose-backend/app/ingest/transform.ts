@@ -26,25 +26,25 @@ export async function transformGhEvent(
     const repoData = repo.data;
     return {
       ...event,
-      repoDescription: repoData.description ?? undefined,
-      repoTopics: repoData.topics ?? undefined,
-      repoLanguage: repoData.language ?? undefined,
+      repoDescription: repoData.description ?? "",
+      repoTopics: repoData.topics ?? [],
+      repoLanguage: repoData.language ?? "",
       repoStars: repoData.stargazers_count,
       repoForks: repoData.forks_count,
       repoWatchers: repoData.watchers_count,
       repoOpenIssues: repoData.open_issues_count,
       repoCreatedAt: repoData.created_at
         ? new Date(repoData.created_at)
-        : undefined,
+        : new Date(),
       repoOwnerLogin: repoData.owner.login,
       repoOwnerId: repoData.owner.id,
       repoOwnerUrl: repoData.owner.url,
       repoOwnerAvatarUrl: repoData.owner.avatar_url,
       repoOwnerType: repoData.owner.type,
-      repoOrgId: repoData.organization?.id,
-      repoOrgUrl: repoData.organization?.url,
-      repoOrgLogin: repoData.organization?.login,
-      repoHomepage: repoData.homepage ?? undefined,
+      repoOrgId: repoData.organization?.id ?? 0,
+      repoOrgUrl: repoData.organization?.url ?? "",
+      repoOrgLogin: repoData.organization?.login ?? "",
+      repoHomepage: repoData.homepage ?? "",
     };
   }
 }

@@ -11,6 +11,7 @@ homepage = "https://www.fiveonefour.com/moose"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+posthog514client-rs = { path = "../../packages/posthog514client-rs" }
 itertools = "0.13.0"
 openssl = { version = "0.10", features = ["vendored"] }
 clap = { version = "4.3.17", features = ["derive"] }

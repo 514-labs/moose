@@ -106,26 +106,11 @@ const handleNumberType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("int64"),
-          )
-        ) {
+        if (isStringLiteral(valueTypeLiteral, checker, "int64")) {
           return "Int64";
-        } else if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("int32"),
-          )
-        ) {
+        } else if (isStringLiteral(valueTypeLiteral, checker, "int32")) {
           return "Int32";
-        } else if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("int8"),
-          )
-        ) {
+        } else if (isStringLiteral(valueTypeLiteral, checker, "int8")) {
           return "Int8";
         } else {
           const typeString = valueTypeLiteral.isStringLiteral()
@@ -147,6 +132,12 @@ export interface AggregationFunction {
   functionName: string;
   argumentTypes: DataType[];
 }
+
+const isStringLiteral = (
+  t: ts.Type,
+  checker: TypeChecker,
+  lit: string,
+): boolean => checker.isTypeAssignableTo(t, checker.getStringLiteralType(lit));
 
 const handleStringType = (
   t: ts.Type,
@@ -170,19 +161,9 @@ const handleStringType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("uuid"),
-          )
-        ) {
+        if (isStringLiteral(valueTypeLiteral, checker, "uuid")) {
           return "UUID";
-        } else if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("date-time"),
-          )
-        ) {
+        } else if (isStringLiteral(valueTypeLiteral, checker, "date-time")) {
           let precision = 9;
 
           const precisionSymbol = t.getProperty("_clickhouse_precision");
@@ -195,19 +176,9 @@ const handleStringType = (
             }
           }
           return `DateTime(${precision})`;
-        } else if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType("date"),
-          )
-        ) {
+        } else if (isStringLiteral(valueTypeLiteral, checker, "date")) {
           return "Date";
-        } else if (
-          checker.isTypeAssignableTo(
-            valueTypeLiteral,
-            checker.getStringLiteralType(DecimalRegex),
-          )
-        ) {
+        } else if (isStringLiteral(valueTypeLiteral, checker, DecimalRegex)) {
           let precision = 10;
           let scale = 0;
 

@@ -243,7 +243,6 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                 if DATE_REGEX.is_match(v) {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {
-                    // println!("date regex {DATE_REGEX} v {v}");
                     Err(E::custom(format!(
                         "Invalid date format at {}",
                         self.get_path()

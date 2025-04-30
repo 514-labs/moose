@@ -12,7 +12,7 @@ use crate::error::{ConfigErrorKind, PostHogError, SendEventErrorKind};
 use crate::event::{Event514, EventType};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
-const POSTHOG_HOST: &str = "https://app.posthog.com";
+const POSTHOG_HOST: &str = "https://us.i.posthog.com";
 
 // Build-time environment variable for PostHog API key
 const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
@@ -229,15 +229,28 @@ impl PostHog514Client {
         &self,
         command: impl Into<String>,
         project: Option<String>,
-        context: Option<HashMap<String, serde_json::Value>>,
+        mut context: Option<HashMap<String, serde_json::Value>>,
+        app_version: impl Into<String>,
+        is_developer: bool,
     ) -> Result<(), PostHogError> {
         let mut event = Event514::new(EventType::MooseCliCommand)
             .with_distinct_id(self.machine_id.clone())
             .with_project(project);
 
-        if let Some(ctx) = context {
-            event = event.with_context(ctx);
+        // Set 514-specific properties
+        event.set_app_version(app_version);
+        event.set_is_developer(is_developer);
+        event.set_environment("production".to_string()); // TODO: Make configurable
+
+        // Ensure we have a context to work with
+        let context = context.get_or_insert_with(HashMap::new);
+
+        // Add command to context if not already present
+        if !context.contains_key("command") {
+            context.insert("command".to_string(), json!(command.into()));
         }
+
+        event = event.with_context(context.clone());
 
         self.capture(event).await
     }
@@ -311,9 +324,9 @@ mod tests {
     use std::io;
     use test_case::test_case;
 
-    #[test_case("", "https://app.posthog.com" => Err(()) ; "empty api key")]
+    #[test_case("", POSTHOG_HOST => Err(()) ; "empty api key")]
     #[test_case("test_key", "invalid-url" => Err(()) ; "invalid url")]
-    #[test_case("test_key", "https://app.posthog.com" => Ok(()) ; "valid config")]
+    #[test_case("test_key", POSTHOG_HOST => Ok(()) ; "valid config")]
     fn test_config_creation(api_key: &str, base_url: &str) -> Result<(), ()> {
         match Config::new(api_key, base_url) {
             Ok(_) => Ok(()),
@@ -346,7 +359,13 @@ mod tests {
     async fn test_capture_cli_command() {
         let client = PostHog514Client::new("test_key", "machine123").unwrap();
         let result = client
-            .capture_cli_command("moose init", Some("test-project".to_string()), None)
+            .capture_cli_command(
+                "moose init",
+                Some("test-project".to_string()),
+                None,
+                "1.0.0",
+                false,
+            )
             .await;
 
         // This will fail since we're using a fake API key

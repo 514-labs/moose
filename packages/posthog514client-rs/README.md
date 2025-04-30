@@ -10,6 +10,7 @@ A specialized Rust client for PostHog analytics, designed specifically for CLI a
 - Async/await support using tokio
 - Robust error handling and type safety
 - Build-time API key integration for CLI applications
+- Standard 514 properties (app version, developer status, environment)
 
 ## Installation
 
@@ -17,7 +18,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-posthog514client-rs = "0.2.1"
+posthog514client-rs = "0.3.0"
 ```
 
 ## API Key Management
@@ -41,33 +42,37 @@ fn main() {
 ```rust
 use posthog514client_rs::{PostHog514Client, PostHogError};
 
-// Define the API key as a build-time constant
-const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
-
 pub struct CliAnalytics {
     client: Option<PostHog514Client>,
-    user_id: String,
+    machine_id: String,
 }
 
 impl CliAnalytics {
-    pub fn new(user_id: String) -> Self {
-        let client = POSTHOG_API_KEY
-            .and_then(|key| PostHog514Client::new(key).ok());
+    pub fn new(machine_id: String) -> Self {
+        // Will first check for build-time API key, then runtime environment variable
+        let client = PostHog514Client::from_env(machine_id.clone());
 
-        Self { client, user_id }
+        Self { client, machine_id }
     }
 
-    pub async fn track_command(&self, command: &str, project: Option<String>) -> Result<(), PostHogError> {
+    pub async fn track_command(
+        &self,
+        command: &str,
+        project: Option<String>,
+        app_version: String,
+        is_developer: bool,
+    ) -> Result<(), PostHogError> {
         // Skip if analytics is disabled (no API key)
         let Some(client) = &self.client else {
             return Ok(());
         };
 
         client.capture_cli_command(
-            &self.user_id,
             command,
             project,
             None,
+            app_version,
+            is_developer,
         ).await
     }
 }
@@ -86,15 +91,16 @@ POSTHOG_API_KEY=your_key cargo build --release
 use posthog514client_rs::{PostHog514Client, PostHogError};
 
 async fn example() -> Result<(), PostHogError> {
-    // Initialize the client
-    let client = PostHog514Client::new("your-api-key")?;
+    // Initialize the client with machine ID
+    let client = PostHog514Client::new("your-api-key", "machine-id")?;
     
     // Track CLI command usage
     client.capture_cli_command(
-        "user-id",
         "moose init",
         Some("project-name".to_string()),
         None,
+        "1.0.0",
+        false,
     ).await?;
 
     Ok(())
@@ -108,14 +114,13 @@ use std::io;
 use posthog514client_rs::PostHog514Client;
 
 async fn example_error_tracking() -> Result<(), PostHogError> {
-    let client = PostHog514Client::new("your-api-key")?;
+    let client = PostHog514Client::new("your-api-key", "machine-id")?;
     
     // Simulate an error
     let error = io::Error::new(io::ErrorKind::NotFound, "Config file not found");
     
     // Track the error with context
     client.capture_cli_error(
-        "user-id",
         error,
         Some("project-name".to_string()),
         None,
@@ -129,25 +134,43 @@ async fn example_error_tracking() -> Result<(), PostHogError> {
 
 ### PostHog514Client
 
-- `new(api_key: impl Into<String>) -> Result<Self, PostHogError>`
+- `new(api_key: impl Into<String>, machine_id: impl Into<String>) -> Result<Self, PostHogError>`
   - Creates a new PostHog client instance
   - Returns an error if the API key is invalid or client creation fails
+
+- `from_env(machine_id: impl Into<String>) -> Option<Self>`
+  - Creates a client using the API key from environment
+  - First checks for build-time API key, then runtime environment variable
+  - Returns None if no API key is available
 
 - `capture_cli_command(...)` 
   - Captures CLI command execution events
   - Parameters:
-    - `distinct_id`: User identifier
     - `command`: The CLI command being executed
     - `project`: Optional project context
     - `context`: Optional additional context as key-value pairs
+    - `app_version`: Version of the application
+    - `is_developer`: Whether the user is a developer
 
 - `capture_cli_error(...)`
   - Captures CLI error events with full context
   - Parameters:
-    - `distinct_id`: User identifier
     - `error`: Any error implementing `std::error::Error`
     - `project`: Optional project context
     - `context`: Optional additional context as key-value pairs
+
+## Properties
+
+The client sends the following properties with each event:
+
+### Core Properties
+- `app_version`: Version of the CLI application
+- `is_developer`: Whether the user is a developer
+- `environment`: The environment (e.g., "production")
+- `project`: The project context if available
+
+### Custom Properties
+Additional properties can be added via the context parameter.
 
 ## Error Handling
 

@@ -93,6 +93,7 @@ pub fn capture_usage(
 
     let sequence_id = CONTEXT.get(CTX_SESSION_ID).unwrap().clone();
     let event_id = Uuid::new_v4();
+    let is_moose_developer = settings.telemetry.is_moose_developer;
     let project = project_name.clone().unwrap_or_else(|| "N/A".to_string());
 
     // Create context for the event
@@ -100,6 +101,7 @@ pub fn capture_usage(
     context.insert("event_id".into(), event_id.to_string().into());
     context.insert("command".into(), json!(activity_type));
     context.insert("sequence_id".into(), sequence_id.into());
+    context.insert("project".into(), project.into());
 
     // Create PostHog client
     let client = match PostHog514Client::from_env(machine_id) {
@@ -112,7 +114,13 @@ pub fn capture_usage(
 
     Some(tokio::task::spawn(async move {
         if let Err(e) = client
-            .capture_cli_command("moose_cli_command", project_name, Some(context))
+            .capture_cli_command(
+                "moose_cli_command",
+                project_name,
+                Some(context),
+                CLI_VERSION.to_string(),
+                is_moose_developer,
+            )
             .await
         {
             log::warn!("Failed to send telemetry to PostHog: {:?}", e);

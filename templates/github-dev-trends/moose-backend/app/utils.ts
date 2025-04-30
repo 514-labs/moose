@@ -96,3 +96,7 @@ export const createOctokit = () => {
     auth: process.env.GITHUB_TOKEN,
   });
 };
+
+export const getMooseUrl = () => {
+  return process.env.MOOSE_URL || "http://localhost:4000";
+};

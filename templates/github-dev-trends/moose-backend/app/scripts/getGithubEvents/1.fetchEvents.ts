@@ -1,8 +1,9 @@
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
-import { createOctokit } from "../../utils";
+import { createOctokit, getMooseUrl } from "../../utils";
 import { IGhEvent } from "../../ingest/models";
 
 const octokit = createOctokit();
+const mooseUrl = getMooseUrl();
 
 // The initial input data and data passed between tasks can be
 // defined in the task function parameter
@@ -31,7 +32,7 @@ const load: TaskFunction = async (input?: any) => {
         createdAt: event.created_at ? new Date(event.created_at) : new Date(),
       } as IGhEvent;
 
-      await fetch("http://localhost:4000/ingest/GhEvent", {
+      await fetch(`${mooseUrl}/ingest/GhEvent`, {
         method: "POST",
         body: JSON.stringify(ghEvent),
       });

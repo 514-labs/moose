@@ -1,12 +1,33 @@
-from datetime import datetime
+from decimal import Decimal
+import re
+from uuid import UUID
+from datetime import datetime, date
 
-from typing import Literal, Tuple, Union, Any, Optional, get_origin, get_args, TypeAliasType, Annotated
-from pydantic import BaseModel
+from typing import Literal, Tuple, Union, Any, Optional, get_origin, get_args, TypeAliasType, Annotated, Type
+from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
 
 type Key[T: (str, int)] = T
 type JWT[T] = T
 
 type Aggregated[T, agg_func] = Annotated[T, agg_func]
+
+
+class ClickhousePrecision(BaseModel):
+    precision: int
+
+
+def clickhouse_decimal(precision: int, scale: int) -> Type[Decimal]:
+    return Annotated[Decimal, Field(max_digits=precision, decimal_places=scale)]
+
+
+def clickhouse_datetime64(precision: int) -> Type[datetime]:
+    """
+    Instructs Moose to create field as DateTime64(precision)
+    However in Python the value still have microsecond precision at most,
+    even if you write `timestamp: clickhouse_datetime64(9)
+    """
+    return Annotated[datetime, ClickhousePrecision(precision=precision)]
 
 
 class AggregateFunction(BaseModel):
@@ -17,7 +38,7 @@ class AggregateFunction(BaseModel):
         return {
             "functionName": self.agg_func,
             "argumentTypes": [
-                py_type_to_column_type(t)[2] for t in self.param_types
+                py_type_to_column_type(t, [])[2] for t in self.param_types
             ]
         }
 
@@ -67,8 +88,10 @@ def handle_key(field_type: type) -> Tuple[bool, type]:
 
 
 def handle_annotation(t: type, md: list[Any]) -> Tuple[type, list[Any]]:
+    if isinstance(t, TypeAliasType):
+        return handle_annotation(t.__value__, md)
     if get_origin(t) is Annotated:
-        return handle_annotation(t.__origin__, md + t.__metadata__) # type: ignore
+        return handle_annotation(t.__origin__, md + list(t.__metadata__))  # type: ignore
     if get_origin(t) is Aggregated:
         args = get_args(t)
         agg_func = args[1]
@@ -87,25 +110,44 @@ class Column(BaseModel):
     annotations: list[Tuple[str, Any]] = []
 
 
-def py_type_to_column_type(t: type) -> Tuple[bool, list[Any], DataType]:
-    t, md = handle_annotation(t, [])
+def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], DataType]:
+    # handle Annotated[Optional[Annotated[...], ...]
+    t, mds = handle_annotation(t, mds)
     optional, t = handle_optional(t)
+    t, mds = handle_annotation(t, mds)
 
     data_type: DataType
 
     if t is str:
         data_type = "String"
     elif t is int:
-        data_type = "Int"
+        # Check for int size annotations
+        int_size = next((md for md in mds if isinstance(md, str) and re.match(r'^int\d+$', md)), None)
+        if int_size:
+            data_type = int_size.capitalize()
+        else:
+            data_type = "Int"
     elif t is float:
         data_type = "Float"
+    elif t is Decimal:
+        precision = next((md.max_digits for md in mds if hasattr(md, "max_digits")), 10)
+        scale = next((md.decimal_places for md in mds if hasattr(md, "decimal_places")), 0)
+        data_type = f"Decimal({precision}, {scale})"
     elif t is bool:
         data_type = "Boolean"
     elif t is datetime:
-        data_type = "DateTime"
+        precision = next((md for md in mds if isinstance(md, ClickhousePrecision)), None)
+        if precision is None:
+            data_type = "DateTime"
+        else:
+            data_type = f"DateTime({precision.precision})"
+    elif t is date:
+        data_type = "Date"
     elif get_origin(t) is list:
-        inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0])
+        inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0], [])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)
+    elif t is UUID:
+        data_type = "UUID"
     elif t is Any:
         data_type = "Json"
     elif issubclass(t, BaseModel):
@@ -115,7 +157,7 @@ def py_type_to_column_type(t: type) -> Tuple[bool, list[Any], DataType]:
         )
     else:
         raise ValueError(f"Unknown type {t}")
-    return optional, md, data_type
+    return optional, mds, data_type
 
 
 def _to_columns(model: type[BaseModel]) -> list[Column]:
@@ -129,7 +171,7 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
         primary_key, field_type = handle_key(field_type)
         is_jwt, field_type = handle_jwt(field_type)
 
-        optional, md, data_type = py_type_to_column_type(field_type)
+        optional, md, data_type = py_type_to_column_type(field_type, field_info.metadata)
 
         annotations = []
         agg_fn = next((m for m in md if isinstance(m, AggregateFunction)), None)

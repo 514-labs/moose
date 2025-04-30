@@ -1,17 +1,9 @@
-import {
-  DefaultApi,
-  Configuration,
-  ConfigurationParameters,
-  ConsumptionTopicTimeseriesGetRequest,
-  ConsumptionTopicTimeseriesGet200ResponseInner,
-} from "api-client";
+import { DefaultApi, Configuration } from "api-client";
 
-export type TopicTimeseriesRequest = ConsumptionTopicTimeseriesGetRequest;
-export type TopicTimeseriesResponse =
-  ConsumptionTopicTimeseriesGet200ResponseInner;
+const mooseUrl = process.env.MOOSE_URL || "http://localhost:4000";
 
 const apiConfig = new Configuration({
-  basePath: "http://localhost:4000",
+  basePath: mooseUrl,
 });
 const mooseClient = new DefaultApi(apiConfig);
 

@@ -600,6 +600,13 @@ impl<'de> Visitor<'de> for &mut DataModelArrayVisitor<'_> {
         }
         Ok(result)
     }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        Ok(vec![self.inner.visit_map(map)?])
+    }
 }
 
 fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> String {

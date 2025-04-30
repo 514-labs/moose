@@ -654,7 +654,7 @@ async fn handle_json_array_body(
         "starting to parse json array with length {} for {}",
         number_of_bytes, topic_name
     );
-    let parsed = JsonDeserializer::from_reader(body).deserialize_seq(&mut DataModelArrayVisitor {
+    let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelArrayVisitor {
         inner: DataModelVisitor::new(&data_model.columns, jwt_claims.as_ref()),
     });
 

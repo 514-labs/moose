@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-posthog514client-rs = "0.1.0"
+posthog514client-rs = "0.2.1"
 ```
 
 ## API Key Management

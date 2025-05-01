@@ -274,7 +274,3 @@ def sigterm_handler():
     print("SIGTERM received")
     sys.exit(0)
 
-
-def stub():
-    """Placeholder function, prints a simple message."""
-    print("Hello from moose-lib!")

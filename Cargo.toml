@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "apps/framework-cli",
+    "packages/posthog514client-rs",
 ]
 
 [profile.dev]

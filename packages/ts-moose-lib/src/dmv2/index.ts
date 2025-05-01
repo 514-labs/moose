@@ -80,7 +80,7 @@ export type IngestPipelineConfig<T> = {
    * Configuration for the OLAP table component of the pipeline.
    * If `true`, a table with default settings is created.
    * If an `OlapConfig` object is provided, it specifies the table's configuration.
-   * If `false` or omitted, no OLAP table is created.
+   * If `false` no OLAP table is created.
    */
   table: boolean | OlapConfig<T>;
   /**
@@ -88,7 +88,7 @@ export type IngestPipelineConfig<T> = {
    * If `true`, a stream with default settings is created.
    * If a partial `StreamConfig` object (excluding `destination`) is provided, it specifies the stream's configuration.
    * The stream's destination will automatically be set to the pipeline's table if one exists.
-   * If `false` or omitted, no stream is created.
+   * If `false`, no stream is created.
    */
   stream: boolean | Omit<StreamConfig<T>, "destination">;
   /**
@@ -96,7 +96,7 @@ export type IngestPipelineConfig<T> = {
    * If `true`, an ingest API with default settings is created.
    * If a partial `IngestConfig` object (excluding `destination`) is provided, it specifies the API's configuration.
    * The API's destination will automatically be set to the pipeline's stream if one exists. Requires a stream to be configured.
-   * If `false` or omitted, no ingest API is created.
+   * If `false`, no ingest API is created.
    */
   ingest: boolean | Omit<IngestConfig<T>, "destination">;
   /**

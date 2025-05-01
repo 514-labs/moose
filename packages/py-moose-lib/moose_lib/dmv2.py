@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 Moose Data Model v2 (dmv2) - Python Implementation
 
 This module provides the Python classes for defining Moose v2 data model resources,
@@ -9,7 +11,7 @@ of data infrastructure using Python and Pydantic models.
 import dataclasses
 from .main import IngestionFormat
 from typing import Any, Generic, Optional, TypeVar, Callable, Union
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 
@@ -24,7 +26,6 @@ _sql_resources: dict[str, "SqlResource"] = {}
 T = TypeVar('T', bound=BaseModel)
 U = TypeVar('U', bound=BaseModel)
 type ZeroOrMany[T] = Union[T, list[T], None]
-SqlObject = Union["OlapTable", "View", "MaterializedView"]
 
 
 class Columns(Generic[T]):
@@ -141,8 +142,10 @@ class OlapTable(TypedMooseResource, Generic[T]):
         columns (Columns[T]): Helper for accessing column names safely.
         name (str): The name of the table.
         model_type (type[T]): The Pydantic model associated with this table.
+        kind: The kind of the table (e.g., "OlapTable").
     """
     config: OlapConfig
+    kind: str = "OlapTable"
 
     def __init__(self, name: str, config: OlapConfig = OlapConfig(), **kwargs):
         super().__init__()
@@ -581,7 +584,7 @@ def _get_consumption_api(name: str) -> Optional[ConsumptionApi]:
     return _egress_apis.get(name)
 
 
-class SqlResource:
+class SqlResource(BaseModel):
     """Base class for SQL resources like Views and Materialized Views.
 
     Handles the definition of setup (CREATE) and teardown (DROP) SQL commands
@@ -593,20 +596,22 @@ class SqlResource:
         teardown (list[str]): SQL commands to drop the resource.
         pulls_data_from (list[SqlObject]): List of tables/views this resource reads from.
         pushes_data_to (list[SqlObject]): List of tables/views this resource writes to.
+        kind: The kind of the SQL resource (e.g., "SqlResource").
     """
     setup: list[str]
     teardown: list[str]
     name: str
-    pulls_data_from: list[SqlObject]
-    pushes_data_to: list[SqlObject]
+    kind: str = "SqlResource"
+    pulls_data_from: list[Union[OlapTable, "SqlResource"]]
+    pushes_data_to: list[Union[OlapTable, "SqlResource"]]
 
     def __init__(
         self, 
         name: str, 
         setup: list[str], 
         teardown: list[str], 
-        pulls_data_from: Optional[list[SqlObject]] = None,
-        pushes_data_to: Optional[list[SqlObject]] = None
+        pulls_data_from: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
+        pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None
     ):
         self.name = name
         self.setup = setup
@@ -626,7 +631,7 @@ class View(SqlResource):
                      that this view depends on.
     """
 
-    def __init__(self, name: str, select_statement: str, base_tables: list[SqlObject]):
+    def __init__(self, name: str, select_statement: str, base_tables: list[Union[OlapTable, SqlResource]]):
         setup = [
             f"CREATE VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
         ]
@@ -645,13 +650,15 @@ class MaterializedViewOptions(BaseModel):
         engine: Optional ClickHouse engine for the target table.
         order_by_fields: Optional ordering key for the target table (required for
                          engines like ReplacingMergeTree).
+        model_config: ConfigDict for Pydantic validation
     """
     select_statement: str
-    select_tables: list[SqlObject]
+    select_tables: list[Union[OlapTable, SqlResource]]
     table_name: str
     materialized_view_name: str
     engine: Optional[ClickHouseEngines] = None
     order_by_fields: Optional[list[str]] = None
+    # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):

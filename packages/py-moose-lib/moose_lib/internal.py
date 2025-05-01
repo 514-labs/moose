@@ -189,14 +189,21 @@ class InfrastructureMap(BaseModel):
         Raises:
             TypeError: If the input object is not a recognized SQL resource type.
         """
-        if isinstance(r, OlapTable):
-            res_id = f"{r.name}_{r.config.version}" if r.config.version else r.name
-            return InfrastructureSignatureJson(id=res_id, kind="Table")
-        elif isinstance(r, (View, MaterializedView, SqlResource)):
-            # Using the base class name for now, might need refinement
-            return InfrastructureSignatureJson(id=r.name, kind="SqlResource") 
+        if hasattr(r, 'kind'):
+            if r.kind == "OlapTable":
+                # Explicitly cast for type hint checking if needed, though Python is dynamic
+                table = r # type: OlapTable
+                res_id = f"{table.name}_{table.config.version}" if table.config.version else table.name
+                return InfrastructureSignatureJson(id=res_id, kind="Table")
+            elif r.kind == "SqlResource":
+                # Explicitly cast for type hint checking if needed
+                resource = r # type: SqlResource
+                return InfrastructureSignatureJson(id=resource.name, kind="SqlResource")
+            else:
+                raise TypeError(f"Unknown SQL resource kind: {r.kind} for object: {r}")
         else:
-            raise TypeError(f"Unknown SQL resource type for dependency mapping: {type(r)}")
+            # Fallback or error if 'kind' attribute is missing
+            raise TypeError(f"Object {r} lacks a 'kind' attribute for dependency mapping.")
 
 
 def to_infra_map() -> dict:

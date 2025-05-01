@@ -584,7 +584,8 @@ def _get_consumption_api(name: str) -> Optional[ConsumptionApi]:
     return _egress_apis.get(name)
 
 
-class SqlResource(BaseModel):
+# Removed BaseModel inheritance
+class SqlResource:
     """Base class for SQL resources like Views and Materialized Views.
 
     Handles the definition of setup (CREATE) and teardown (DROP) SQL commands
@@ -658,7 +659,8 @@ class MaterializedViewOptions(BaseModel):
     materialized_view_name: str
     engine: Optional[ClickHouseEngines] = None
     order_by_fields: Optional[list[str]] = None
-    # model_config = ConfigDict(arbitrary_types_allowed=True)
+    # Ensure arbitrary types are allowed for Pydantic validation
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):

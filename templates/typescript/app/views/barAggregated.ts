@@ -26,4 +26,5 @@ export const BarAggregatedMV = new MaterializedView<BarAggregated>({
   FROM ${barTable}
   GROUP BY toDayOfMonth(utcTimestamp)
   `,
+  selectTables: [barTable],
 });

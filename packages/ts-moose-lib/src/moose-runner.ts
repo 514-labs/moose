@@ -44,13 +44,13 @@ if (
   });
 }
 
+import { loadIndex } from "./dmv2/internal";
 import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
 import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
 import { runScripts } from "./scripts/runner";
-import { loadIndex } from "./dmv2/internal";
 import process from "process";
 
 import { Command } from "commander";

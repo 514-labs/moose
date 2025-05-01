@@ -8,7 +8,7 @@ use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
-use super::topic::Topic;
+use super::{topic::Topic, DataLineage, InfrastructureSignature};
 
 use crate::proto::infrastructure_map::FunctionProcess as ProtoFunctionProcess;
 
@@ -159,4 +159,21 @@ fn get_latest_topic_id(topics: &HashMap<String, Topic>, data_model: &str) -> Opt
         .filter(|t| t.source_primitive.name == data_model)
         .max_by_key(|t| &t.version)
         .map(|t| t.id())
+}
+
+impl DataLineage for FunctionProcess {
+    fn pulls_data_from(&self) -> Vec<InfrastructureSignature> {
+        vec![InfrastructureSignature::Topic {
+            id: self.source_topic_id.clone(),
+        }]
+    }
+
+    fn pushes_data_to(&self) -> Vec<InfrastructureSignature> {
+        match &self.target_topic_id {
+            Some(target_topic_id) => vec![InfrastructureSignature::Topic {
+                id: target_topic_id.clone(),
+            }],
+            None => vec![],
+        }
+    }
 }

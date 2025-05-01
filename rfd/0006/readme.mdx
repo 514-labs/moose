@@ -65,85 +65,47 @@ and phased, ordered execution planning.
 
 ### Part 1: Explicit Dependency Tracking via APIs (Mandatory)
 
-Robust dependency management requires explicit declaration by the user. The SDK layer will provide an ergonomic way to declare these dependencies.
+Robust dependency management requires clear dependency information, which is derived by the Moose framework.
 
-1.  **API/SDK Changes (e.g., `ts-moose-lib`):**
-    *   When defining resources like `MaterializedView`, `View`, etc., users **must** specify *all* direct Moose resource instances they depend
-        on using a new `depends_on` property. Users will pass the *actual instances* of the Moose classes (e.g., `OlapTable`, `View` instances)
-        into this array.
-    *   **SDK Responsibility:** The Moose SDK layer (during the code execution phase that generates the JSON for the Rust CLI) will introspect
-        these provided instances. It will extract the resource type (e.g., "Table", "View", "SqlResource") and the unique ID from each instance
-        passed into the `depends_on` array.
-    *   **JSON Output:** The SDK transforms this list of instances into the structured dependency JSON format
-        `[{ resource_type: "TypeString", id: "UniqueIDString" }, ...]` which is then sent to the Rust CLI.
-    *   Example (Conceptual TS - User Code):
+1.  **API/SDK Definition & Responsibility:**
+    *   Users define resources like `MaterializedView`, `View`, etc., using the Moose SDKs (e.g., `ts-moose-lib`, `py-moose-lib`).
+    *   Dependencies are often **implicitly derived** by the SDKs from resource-specific configurations (e.g., the source/target tables
+        referenced in a `MaterializedView` definition) rather than requiring a universal, explicit `depends_on` array provided by the user
+        in all cases.
+    *   **SDK Responsibility:** The Moose SDK layer (during the code execution phase that generates the configuration for the Rust CLI)
+        analyzes the resource definitions and determines the data lineage (which resources are read from or written to). It translates this
+        lineage information into a structured Protobuf-based format.
+    *   Example (Conceptual TS - Materialized View):
         ```typescript
-        import { sourceTable1, sourceTable2, intermediateView } from './resources';
-        // Assume sourceTable1 etc. are instances of OlapTable, View...
+        import { sourceTable1, targetTable } from './resources';
+        // Assume sourceTable1, targetTable are instances of OlapTable...
 
-        new MaterializedView<TargetTableType>('my_mv', {
-            materializedViewName: 'my_mv_name',
-            selectStatement: `SELECT ... FROM ${sourceTable1.name} JOIN ${sourceTable2.name} ...`,
-            // REQUIRED: Pass resource instances directly
-            depends_on: [sourceTable1, sourceTable2]
-        });
-
-        new View('my_view', {
-            selectStatement: `SELECT c1, c2 FROM ${sourceTable1.name}`,
-            // Pass resource instance directly
-            depends_on: [sourceTable1]
-        });
+        new MaterializedView<typeof targetTable.schema>(
+          'my_mv',
+          {
+              selectStatement: sql`SELECT col1 FROM ${sourceTable1.tableName}`,
+              selectTables: [
+                  sourceTable1,
+              ],
+          }
+        );
         ```
-
-        Eventually we could remove the need to pass the resource instances directly by parsing the `SELECT` statement and inferring the dependencies.
-
-    *   *(Internal SDK transformation would generate the JSON like `depends_on: [{ resource_type: "Table", id: "sourceTable1_id" }, { resource_type: "Table", id: "sourceTable2_id" }, { resource_type: "Table", id: "targetTable_id" }]`)*
-2.  **Rust Infrastructure Representation (`partial_infrastructure_map.rs`, `infrastructure_map.rs`):**
-    *   **Extend `InfrastructureSignature`:** Ensure the existing `InfrastructureSignature` enum includes variants for all resource types that can be dependencies
-        (Table, View, SqlResource, etc.), with each variant containing the unique `id` string.
-        ```rust
-        // In infrastructure_map.rs (or shared types)
-        #[derive(Serialize, /* Deserialize needs custom logic or specific SDK format */, Debug, Clone, PartialEq, Eq, Hash)]
-        pub enum InfrastructureSignature {
-            Table { id: String },
-            Topic { id: String }, // Keep existing if needed
-            ApiEndpoint { id: String }, // Keep existing if needed
-            TopicToTableSyncProcess { id: String }, // Keep existing if needed
-            View { id: String }, // Add if not present
-            SqlResource { id: String }, // Representing MVs, Functions, etc. Add if not present
-            // Add other manageable resource types here
-        }
-        ```
-    *   **Update `depends_on` field:** Use `Vec<InfrastructureSignature>` directly in the `depends_on` field of relevant structs (`SqlResource`, `Table`, `View`).
-        Make it non-optional where dependencies are expected.
-        ```rust
-        // In infrastructure_map.rs (and corresponding Partial*)
-        pub struct SqlResource { // Represents MVs, Functions, Procedures, etc.
-            pub name: String,
-            pub setup: Vec<String>,
-            pub teardown: Vec<String>,
-            // Explicit list of dependent resources (type + ID)
-            pub depends_on: Vec<InfrastructureSignature>, // Non-optional Vec; empty if no deps.
-        }
-
-        pub struct View {
-            // ...
-            pub depends_on: Vec<InfrastructureSignature>, // Non-optional
-        }
-
-        pub struct Table {
-             // ...
-             pub depends_on: Vec<InfrastructureSignature>, // Non-optional Vec; empty if no deps (e.g. FKs).
-        }
-        ```
-    *   **Deserialization:** Populate `depends_on` during loading and conversion. This requires careful handling:
-        *   **Option A (Preferred):** The SDK generating the JSON must format it in a way `serde` can understand for the `InfrastructureSignature` enum
-            (e.g., `{ "Table": { "id": "..." } }` or using `serde` attributes like `tag/content`).
-        *   **Option B (Fallback):** Implement custom `Deserialize` logic for `InfrastructureSignature` in Rust to correctly parse the
-            `{ "resource_type": "...", "id": "..." }` JSON format sent by the SDK.
-        *   *(Decision: We should aim for Option A, modifying the SDK JSON output, for cleaner Rust code, but acknowledge Option B is possible).*
-3.  **Benefit:** The dependency graph becomes explicitly defined using the canonical `InfrastructureSignature` type. The analysis step can directly
-    pattern match on the enum variants to understand dependencies.
+        *(Internal SDK transformation generates Protobuf messages representing these dependencies.)*
+2.  **Protobuf Representation (`infrastructure_map.proto`):**
+    *   A dedicated `InfrastructureSignature` Protobuf message is defined to uniquely identify any Moose-managed resource (Table, Topic,
+        View, SqlResource, etc.) using its type and ID.
+    *   This `InfrastructureSignature` is used within other Protobuf messages to represent dependencies, often via fields like
+        `pulls_data_from` and `pushes_data_to` rather than a single generic `depends_on`.
+3.  **Rust Infrastructure Representation (`infrastructure_map.rs`, DataLineage trait):**
+    *   Rust structs representing resources (e.g., `SqlResource`, `View`, `Table`, various processes) implement a `DataLineage` trait.
+    *   This trait provides methods like `pulls_data_from(&self) -> Vec<ProtoInfrastructureSignature>` and
+        `pushes_data_to(&self) -> Vec<ProtoInfrastructureSignature>`.
+    *   These methods return vectors of the Protobuf-derived `ProtoInfrastructureSignature` struct, indicating the direct upstream sources
+        and downstream targets for that resource.
+    *   The `diff` and planning logic uses this `DataLineage` trait to query the dependency graph dynamically.
+4.  **Benefit:** The dependency graph is implicitly defined through resource configurations and explicitly accessible in Rust via the
+    standardized `DataLineage` trait using the canonical `ProtoInfrastructureSignature` type. The analysis step can reliably query this
+    information.
 
 ### Part 2: Intermediate Dependency Analysis & Phased Ordering Step
 

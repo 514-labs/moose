@@ -172,10 +172,6 @@ impl From<EndpointFile> for ApiEndpoint {
 }
 
 impl DataLineage for ApiEndpoint {
-    fn receives_data_from(&self) -> Vec<InfrastructureSignature> {
-        vec![]
-    }
-
     fn pulls_data_from(&self) -> Vec<InfrastructureSignature> {
         vec![]
     }

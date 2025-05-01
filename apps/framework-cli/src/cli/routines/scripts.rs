@@ -204,6 +204,7 @@ pub async fn list_workflows(
 
     // Show table with workflow information
     show_table(
+        "Workflows".to_string(),
         vec![
             "Workflow Name".to_string(),
             "Run ID".to_string(),

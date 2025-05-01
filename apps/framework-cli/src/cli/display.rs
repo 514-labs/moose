@@ -197,8 +197,9 @@ macro_rules! show_message {
         use console::{pad_str, style};
 
         let padder = 14;
-        let action = $message.action.clone();
-        let details = $message.details.clone();
+        let evaluated_message = $message;
+        let action = evaluated_message.action.clone();
+        let details = evaluated_message.details.clone();
 
         {
             let mut command_terminal = TERM.write().unwrap();
@@ -292,7 +293,7 @@ where
 ///
 /// * `headers` - The column headers for the table
 /// * `rows` - The data rows for the table
-pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
+pub fn show_table(title: String, headers: Vec<String>, rows: Vec<Vec<String>>) {
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -304,13 +305,7 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
         table.add_row(row);
     }
 
-    show_message!(
-        MessageType::Info,
-        Message {
-            action: "".to_string(),
-            details: format!("\n{}", table),
-        }
-    );
+    println!("{}\n{}", title, table);
 }
 
 /// Wrapper for the show_message macro to allow calling from non-macro contexts.

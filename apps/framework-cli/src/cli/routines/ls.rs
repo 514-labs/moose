@@ -99,6 +99,7 @@ pub async fn list_db(
     let output_table_array = sort_and_limit(output_table, limit);
 
     show_table(
+        String::default(),
         vec![
             "Data Model".to_string(),
             "Ingestion Point".to_string(),
@@ -138,6 +139,7 @@ pub async fn list_streaming(
     let flattened_topics = format_topics(&project, grouped_topics, limit);
 
     show_table(
+        String::default(),
         vec!["Data Model".to_string(), "Topic".to_string()],
         flattened_topics,
     );
@@ -366,6 +368,7 @@ pub struct TableInfo {
 impl ResourceInfo for Vec<TableInfo> {
     fn show(&self) {
         show_table(
+            "Tables".to_string(),
             vec!["name".to_string(), "schema_fields".to_string()],
             self.iter()
                 .map(|t| vec![t.name.clone(), t.schema_fields.iter().join(", ")])
@@ -413,6 +416,7 @@ impl StreamInfo {
 impl ResourceInfo for Vec<StreamInfo> {
     fn show(&self) {
         show_table(
+            "Streams".to_string(),
             vec![
                 "name".to_string(),
                 "schema_fields".to_string(),
@@ -469,6 +473,7 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
 impl ResourceInfo for Vec<IngestionApiInfo> {
     fn show(&self) {
         show_table(
+            "Ingestion APIs".to_string(),
             vec![
                 "name".to_string(),
                 "format".to_string(),
@@ -498,6 +503,7 @@ pub struct SqlResourceInfo {
 impl ResourceInfo for Vec<SqlResourceInfo> {
     fn show(&self) {
         show_table(
+            "SQL Resources".to_string(),
             vec!["name".to_string()],
             self.iter()
                 .map(|resource| vec![resource.name.clone()])
@@ -519,6 +525,7 @@ pub struct ConsumptionApiInfo {
 impl ResourceInfo for Vec<ConsumptionApiInfo> {
     fn show(&self) {
         show_table(
+            "Consumption APIs".to_string(),
             vec!["name".to_string(), "params".to_string(), "path".to_string()],
             self.iter()
                 .map(|api| {
@@ -545,6 +552,7 @@ pub struct StreamTransformationInfo {
 impl ResourceInfo for Vec<StreamTransformationInfo> {
     fn show(&self) {
         show_table(
+            "Streaming Functions".to_string(),
             vec!["source".to_string(), "destinations".to_string()],
             self.iter()
                 .map(|transform| {

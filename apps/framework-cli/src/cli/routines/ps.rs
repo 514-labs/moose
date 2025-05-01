@@ -45,6 +45,7 @@ pub fn show_processes(project: Arc<Project>) -> Result<RoutineSuccess, RoutineFa
         .collect();
 
     show_table(
+        String::default(),
         vec![
             "Name".to_string(),
             "Process ID".to_string(),

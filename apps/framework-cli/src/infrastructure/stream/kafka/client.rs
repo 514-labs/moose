@@ -786,6 +786,18 @@ pub async fn send_with_back_pressure(
     }
 }
 
+/// Simple health check for Kafka connectivity without using unsafe iterators across await points
+pub async fn health_check(config: &KafkaConfig) -> Result<bool, KafkaError> {
+    let client_config = build_rdkafka_client_config(config);
+    let client: BaseConsumer = client_config.create()?;
+
+    // Simple client.metadata() call without iterating over topics
+    match client.fetch_metadata(None, Duration::from_secs(2)) {
+        Ok(_) => Ok(true),
+        Err(e) => Err(e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

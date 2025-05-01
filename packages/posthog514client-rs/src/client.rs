@@ -9,7 +9,7 @@ use std::time::Duration;
 use tracing::{debug, error, instrument};
 
 use crate::error::{ConfigErrorKind, PostHogError, SendEventErrorKind};
-use crate::event::{Event514, EventType};
+use crate::event::{Event514, MooseEventType};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 const POSTHOG_HOST: &str = "https://us.i.posthog.com";
@@ -225,6 +225,22 @@ impl PostHog514Client {
         None
     }
 
+    /// Captures a custom event
+    pub async fn capture_event(
+        &self,
+        event_name: impl Into<String>,
+        properties: Option<HashMap<String, serde_json::Value>>,
+    ) -> Result<(), PostHogError> {
+        let event = Event514::new(event_name).with_distinct_id(self.machine_id.clone());
+
+        if let Some(properties) = properties {
+            let event = event.with_properties(properties);
+            self.capture(event).await
+        } else {
+            self.capture(event).await
+        }
+    }
+
     pub async fn capture_cli_command(
         &self,
         command: impl Into<String>,
@@ -233,7 +249,7 @@ impl PostHog514Client {
         app_version: impl Into<String>,
         is_developer: bool,
     ) -> Result<(), PostHogError> {
-        let mut event = Event514::new(EventType::MooseCliCommand)
+        let mut event = Event514::new_moose(MooseEventType::MooseCliCommand)
             .with_distinct_id(self.machine_id.clone())
             .with_project(project);
 
@@ -250,8 +266,8 @@ impl PostHog514Client {
             context.insert("command".to_string(), json!(command.into()));
         }
 
-        event = event.with_context(context.clone());
-
+        // Add context to event properties and capture
+        let event = event.with_properties(context.clone());
         self.capture(event).await
     }
 
@@ -261,16 +277,18 @@ impl PostHog514Client {
         project: Option<String>,
         context: Option<HashMap<String, serde_json::Value>>,
     ) -> Result<(), PostHogError> {
-        let mut event = Event514::new(EventType::MooseCliError)
+        let event = Event514::new_moose(MooseEventType::MooseCliError)
             .with_distinct_id(self.machine_id.clone())
-            .with_project(project)
-            .with_error(error);
+            .with_project(project);
 
-        if let Some(ctx) = context {
-            event = event.with_context(ctx);
+        if let Some(context) = context {
+            let event = event.with_properties(context);
+            let event = event.with_error(error);
+            self.capture(event).await
+        } else {
+            let event = event.with_error(error);
+            self.capture(event).await
         }
-
-        self.capture(event).await
     }
 
     async fn capture(&self, event: Event514) -> Result<(), PostHogError> {
@@ -349,7 +367,8 @@ mod tests {
             .create();
 
         let client = PostHogClient::new("test_key", server.url()).unwrap();
-        let event = Event514::new(EventType::MooseCliCommand).with_distinct_id("user123");
+        let event =
+            Event514::new_moose(MooseEventType::MooseCliCommand).with_distinct_id("user123");
 
         assert!(client.capture(event).await.is_ok());
         mock.assert();

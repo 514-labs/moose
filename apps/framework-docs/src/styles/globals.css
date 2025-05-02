@@ -404,3 +404,55 @@ footer {
     border-color: rgba(38, 38, 38, var(--tw-border-opacity)) !important;
   }
 }
+
+/* Make buttons full width on mobile */
+@media (max-width: 640px) {
+  button:not(pre button, .nextra-code-block button, code button),
+  .button:not(pre .button, .nextra-code-block .button, code .button),
+  a[role="button"]:not(
+      pre a[role="button"],
+      .nextra-code-block a[role="button"],
+      code a[role="button"]
+    ),
+  .nextra-sidebar-container button,
+  .nextra-content
+    button:not(
+      .nextra-content pre button,
+      .nextra-content .nextra-code-block button
+    ),
+  button[role="button"]:not(
+      pre button[role="button"],
+      .nextra-code-block button[role="button"],
+      code button[role="button"]
+    ),
+  button[type="button"]:not(
+      pre button[type="button"],
+      .nextra-code-block button[type="button"],
+      code button[type="button"]
+    ),
+  button[type="submit"]:not(
+      pre button[type="submit"],
+      .nextra-code-block button[type="submit"],
+      code button[type="submit"]
+    ),
+  .Button:not(pre .Button, .nextra-code-block .Button, code .Button),
+  [class*="Button"]:not(
+      pre [class*="Button"],
+      .nextra-code-block [class*="Button"],
+      code [class*="Button"]
+    ),
+  a.nextra-menu-link,
+  a:has(button:not(pre button, .nextra-code-block button, code button)) {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  /* Make anchor tags wrapping buttons full width too */
+  a:has(button:not(pre button, .nextra-code-block button, code button)) {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+}

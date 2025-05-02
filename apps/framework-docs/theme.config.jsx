@@ -78,9 +78,12 @@ export function LogoBreadcrumb() {
 }
 
 // Sign in button component used in multiple places
-export function SignInButton() {
+export function SignInButton({ className }) {
   return (
-    <Link href="https://www.boreal.cloud/sign-in">
+    <Link
+      href="https://www.boreal.cloud/sign-in"
+      className={cn("desktop-only", className)}
+    >
       <Button variant="default">Sign In</Button>
     </Link>
   );
@@ -107,7 +110,9 @@ export default {
   navbar: {
     extraContent: () => (
       <div className="hidden sm:block">
-        <SignInButton />
+        <Link href="https://www.boreal.cloud/sign-in">
+          <Button variant="default">Sign In</Button>
+        </Link>
       </div>
     ),
   },
@@ -206,7 +211,7 @@ export default {
   darkMode: true,
   sidebar: {
     defaultMenuCollapseLevel: 1,
-    // Add mobile sign in button at the top of the sidebar
+    // Control how custom items are rendered in sidebar
     titleComponent: ({ title, type }) => {
       if (type === "separator" && title === "More") {
         return (
@@ -218,14 +223,14 @@ export default {
           </>
         );
       }
+      // Hide the mobile-sign-in item on desktop
+      if (title === "Sign In") {
+        return <span className="mobile-sign-in-title">{title}</span>;
+      }
       return <>{title}</>;
     },
-    // Add components to the top of the sidebar
-    TopContent: () => (
-      <div className="sm:hidden w-full px-4 pb-4 mb-4 border-b border-gray-200 dark:border-neutral-800">
-        <SignInButton />
-      </div>
-    ),
+    // Don't use TopContent approach
+    TopContent: null,
   },
   footer: {
     content: () => {

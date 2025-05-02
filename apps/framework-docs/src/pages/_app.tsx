@@ -1,14 +1,50 @@
 import "@/styles/globals.css";
-import RootLayout from "@/components/layouts";
 import { useEffect } from "react";
+import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
+import RootLayout from "@/components/layouts";
 import Router from "next/router";
 import posthog from "posthog-js";
 import Script from "next/script";
-import type { AppProps } from "next/app";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+
+  // Handle mobile-sign-in button visibility
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      // Find the mobile-sign-in menu item
+      const mobileSignIn = document.querySelector(
+        '[data-item-name="mobile-sign-in"]',
+      );
+      if (!mobileSignIn) return;
+
+      // Show on mobile, hide on desktop
+      if (window.innerWidth <= 640) {
+        mobileSignIn.classList.remove("hidden");
+      } else {
+        mobileSignIn.classList.add("hidden");
+      }
+    };
+
+    // Run on load and on resize
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    // Also run after route changes
+    router.events.on("routeChangeComplete", () => {
+      setTimeout(handleResize, 100);
+    });
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      router.events.off("routeChangeComplete", () => {
+        setTimeout(handleResize, 100);
+      });
+    };
+  }, [router]);
 
   useEffect(() => {
     // Wait until Next.js router is ready to ensure query params are populated.

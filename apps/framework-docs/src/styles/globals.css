@@ -404,3 +404,251 @@ footer {
     border-color: rgba(38, 38, 38, var(--tw-border-opacity)) !important;
   }
 }
+
+/* Only show on mobile viewports */
+.only-mobile {
+  display: block;
+}
+
+@media (min-width: 760px) {
+  .only-mobile {
+    display: none !important;
+  }
+}
+
+/* Only show on desktop viewports */
+.only-desktop {
+  display: none;
+}
+
+@media (min-width: 760px) {
+  .only-desktop {
+    display: block;
+  }
+}
+
+/* Make buttons inside anchor tags within text-cards full width on mobile */
+@media (max-width: 760px) {
+  /* Target CTA cards and any text cards */
+  .CTACard a,
+  .text-card a,
+  [class*="card"] a,
+  [class*="Card"] a {
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* Make buttons inside these anchor tags full width */
+  .CTACard a button,
+  .text-card a button,
+  [class*="card"] a button,
+  [class*="Card"] a button {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* Specific targeting for Card components */
+  div[class*="Card"] div[class*="CardFooter"] a,
+  div[class*="Card"] div[class*="CardFooter"] a button {
+    width: 100% !important;
+    display: block !important;
+  }
+}
+
+/* Hide top sign-in button on screens smaller than 760px */
+@media (max-width: 760px) {
+  .nextra-nav-container-blur .hidden.sm\:block {
+    display: none !important;
+  }
+}
+
+/* Reduce line height in mobile menu buttons */
+@media (max-width: 760px) {
+  .nextra-sidebar-container li a p,
+  li[data-item-name="mobile-sign-in"] a p.text-sm {
+    margin: 1rem 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* Specific mobile-only display and hiding for the sign-in button */
+.mobile-only {
+  display: block;
+}
+
+@media (min-width: 760px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Make the mobile sign-in button visible on mobile only */
+li[data-item-name="mobile-sign-in"] {
+  display: none !important;
+}
+
+@media (min-width: 760px) {
+  li[data-item-name="mobile-sign-in"] {
+    display: none !important;
+  }
+}
+
+/* Style for the button in the sidebar */
+.mobile-sign-in-container {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-sign-in-container > div {
+    display: flex !important;
+  }
+}
+
+/* Very specific styling for the mobile sign-in button */
+.nextra-sidebar-container [data-item-name="mobile-sign-in"] {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .nextra-sidebar-container [data-item-name="mobile-sign-in"] {
+    display: block !important;
+  }
+}
+
+/* Hide the mobile-sign-in item on desktop viewports */
+@media (min-width: 641px) {
+  .mobile-sign-in-title,
+  .nextra-sidebar-container [data-item-name="mobile-sign-in"],
+  li[data-item-name="mobile-sign-in"],
+  a[href="https://www.boreal.cloud/sign-in"]:not(.nextra-nav-container *)
+  {
+    display: none !important;
+  }
+}
+
+/* Hide the desktop sign-in in the top nav on mobile */
+@media (max-width: 640px) {
+  .nextra-nav-container a[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: none !important;
+  }
+}
+
+/* Start with mobile-sign-in hidden by default, JavaScript will control visibility */
+[data-item-name="mobile-sign-in"] {
+  display: none !important;
+}
+
+/* Only JavaScript will remove the hidden class to show it on mobile */
+[data-item-name="mobile-sign-in"]:not(.hidden) {
+  display: block !important;
+}
+
+/* Show the Sign In button only in the mobile menu below 760px */
+@media (max-width: 760px) {
+  /* Display sign-in in mobile menu */
+  li[data-item-name="mobile-sign-in"] {
+    display: block !important;
+  }
+}
+
+/* EXPLICITLY hide the Sign In button in the top navigation above 760px */
+@media (min-width: 761px) {
+  /* Instead target only problematic ones */
+  .nextra-nav-container-blur .sm\:block a[href="https://www.boreal.cloud/sign-in"]:not(.ml-4)
+  {
+    display: none !important;
+  }
+}
+
+/* Only show desktop button when explicitly needed */
+a.only-desktop[href="https://www.boreal.cloud/sign-in"]
+{
+  display: none !important;
+}
+
+@media (min-width: 761px) {
+  a.only-desktop[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: inline-flex !important;
+  }
+}
+
+/* Only show on desktop viewports */
+.desktop-only {
+  display: none !important;
+}
+
+@media (min-width: 761px) {
+  .desktop-only {
+    display: inline-flex !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* Force desktop buttons to appear on desktop */
+@media (min-width: 761px) {
+  .nextra-nav-container-blur .flex.items-center a[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: inline-flex !important;
+  }
+}
+
+/* Force desktop buttons to be hidden on mobile */
+@media (max-width: 760px) {
+  .nextra-nav-container-blur .flex.items-center a[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: none !important;
+  }
+}
+
+/* Override any rules that might hide the button */
+@media (min-width: 761px) {
+  /* Target ONLY the 5th child sign-in button in nav */
+  .nextra-nav-container nav a:nth-child(5) {
+    display: none !important;
+  }
+
+  /* Hide ALL OTHER sign-in buttons in navbar */
+  .nextra-nav-container-blur a[href="https://www.boreal.cloud/sign-in"]:not(:nth-child(5)),
+  .nextra-nav-container-blur ul a[href="https://www.boreal.cloud/sign-in"],
+  .nextra-nav-container ul a[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: none !important;
+  }
+}
+
+/* Make sure mobile-sign-in doesn't appear in top nav */
+nav.nextra-nav-container li[data-item-name="mobile-sign-in"],
+nav.nextra-nav-container-blur li[data-item-name="mobile-sign-in"] {
+  display: none !important;
+}
+
+/* Ensure mobile-sign-in appears in the mobile sidebar menu */
+@media (max-width: 760px) {
+  .nextra-sidebar-container li[data-item-name="mobile-sign-in"] {
+    display: block !important;
+  }
+}
+
+/* Hide ALL sign-in buttons in navbar on mobile */
+@media (max-width: 760px) {
+  .nextra-nav-container a[href="https://www.boreal.cloud/sign-in"],
+  .nextra-nav-container-blur a[href="https://www.boreal.cloud/sign-in"]
+  {
+    display: none !important;
+  }
+}
+
+/* IMPORTANT: This will force desktop to only have one button (from theme.config.jsx) */
+.nextra-nav-container-blur ul a[href="https://www.boreal.cloud/sign-in"],
+.nextra-nav-container ul a[href="https://www.boreal.cloud/sign-in"]
+{
+  display: none !important;
+}

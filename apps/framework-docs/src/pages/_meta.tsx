@@ -30,6 +30,13 @@ export default render({
     title: "Templates",
     href: "/templates",
   },
+  "sign-in": {
+    type: "page",
+    title: "Sign In",
+    href: "https://www.boreal.cloud/sign-in",
+    newWindow: true,
+    display: "menu",
+  },
   "usage-data": {
     display: "hidden",
   },

@@ -77,6 +77,15 @@ export function LogoBreadcrumb() {
   );
 }
 
+// Sign in button component used in multiple places
+export function SignInButton() {
+  return (
+    <Link href="https://www.boreal.cloud/sign-in">
+      <Button variant="default">Sign In</Button>
+    </Link>
+  );
+}
+
 export default {
   logo: () => (
     <div className="flex items-center gap-2">
@@ -97,9 +106,9 @@ export default {
   ),
   navbar: {
     extraContent: () => (
-      <Link href="https://www.boreal.cloud/sign-in">
-        <Button variant="default">Sign In</Button>
-      </Link>
+      <div className="hidden sm:block">
+        <SignInButton />
+      </div>
     ),
   },
   // main: ({ children }) => (
@@ -197,22 +206,45 @@ export default {
   darkMode: true,
   sidebar: {
     defaultMenuCollapseLevel: 1,
+    // Add mobile sign in button at the top of the sidebar
+    titleComponent: ({ title, type }) => {
+      if (type === "separator" && title === "More") {
+        return (
+          <>
+            <div className="nx-my-4 nx-mx-2 nx-border-t nx-border-gray-200 dark:nx-border-neutral-800"></div>
+            <div className="nx-text-xs nx-font-medium nx-text-gray-500 dark:nx-text-gray-400 nx-px-2">
+              {title}
+            </div>
+          </>
+        );
+      }
+      return <>{title}</>;
+    },
+    // Add components to the top of the sidebar
+    TopContent: () => (
+      <div className="sm:hidden w-full px-4 pb-4 mb-4 border-b border-gray-200 dark:border-neutral-800">
+        <SignInButton />
+      </div>
+    ),
   },
   footer: {
     content: () => {
       const year = new Date().getFullYear();
       return (
-        <p className={baseTextStyles.small}>
-          MIT | {year} ©{" "}
-          <a
-            href="https://fiveonefour.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-moose-purple hover:text-moose-purple/90 transition-colors"
-          >
-            Fiveonefour Labs Inc
-          </a>
-        </p>
+        <>
+          {/* Regular footer content */}
+          <p className={baseTextStyles.small}>
+            MIT | {year} ©{" "}
+            <a
+              href="https://fiveonefour.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+            >
+              Fiveonefour Labs Inc
+            </a>
+          </p>
+        </>
       );
     },
   },

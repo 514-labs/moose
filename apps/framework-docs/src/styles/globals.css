@@ -174,8 +174,8 @@ main > p {
 }
 
 :is(
-    html[class~="dark"].dark\:_shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
-  ) {
+  html[class~="dark"].dark\:_shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
+) {
   box-shadow: none;
 }
 
@@ -385,5 +385,22 @@ footer {
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Safari-specific fixes for border colors on mobile */
+@supports (-webkit-touch-callout: none) {
+  /* iOS/iPadOS Safari only */
+  .dark .nextra-code-block pre,
+  .dark .nextra-nav-container,
+  .dark .nextra-sidebar-container,
+  .dark .nx-border,
+  .dark code {
+    border-color: rgba(38, 38, 38, 0.8) !important;
+  }
+
+  .dark .nextra-code-block pre {
+    --tw-border-opacity: 0.5;
+    border-color: rgba(38, 38, 38, var(--tw-border-opacity)) !important;
   }
 }

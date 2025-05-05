@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 
 // Try resolving relative to process.cwd() assuming it's the app root (apps/framework-docs)
-const filePath = path.join(process.cwd(), "docs", "llms.txt");
+const filePath = path.join(process.cwd(), "llm-docs", "llms.txt");
 
 export default async function handler(
   req: NextApiRequest,

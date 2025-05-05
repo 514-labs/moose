@@ -5,7 +5,7 @@ import mime from "mime-types"; // We'll need to install this dependency
 
 // Base directory where documentation files are stored
 // Assuming process.cwd() is the app root (apps/framework-docs)
-const docsDirectory = path.join(process.cwd(), "docs");
+const docsDirectory = path.join(process.cwd(), "llm-docs");
 
 export default async function handler(
   req: NextApiRequest,

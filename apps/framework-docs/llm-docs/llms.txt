@@ -18,3 +18,4 @@ The Moose framework documentation is organized into language-specific implementa
 ## Python Implementation
 
 - [Data Consumption](https://docs.fiveonefour.com/api/context/python/consumption.md): Guide to consuming data using Python implementations
+

@@ -222,7 +222,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.128(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
+        version: 0.4.138(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -241,7 +241,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.127
+        version: 0.4.138
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -505,7 +505,7 @@ importers:
         version: 1.11.7
       '@temporalio/worker':
         specifier: ^1.11.7
-        version: 1.11.7(@swc/helpers@0.5.15)
+        version: 1.11.7(@swc/helpers@0.5.15)(esbuild@0.25.2)
       '@temporalio/workflow':
         specifier: ^1.11.7
         version: 1.11.7
@@ -585,8 +585,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.127':
-    resolution: {integrity: sha512-Su8WhXS2yq/jdGUT+xPAqMI2BaxLSNXxU8Io/3gPT3zFXfsOwInAq7uA0AxYz8VuMcY8I0Q8X4gR9P3yKyEx0Q==}
+  '@514labs/moose-cli-darwin-arm64@0.4.138':
+    resolution: {integrity: sha512-tf+aUBC3KjC+YnAkONML68vJHQzSnFQDTi5ABq6C2Gwt1/b/6KX3BAg8sE+cLCfGpGnj6wH+ErkEge7s+vyQ+Q==}
     cpu: [arm64]
     os: [darwin]
 
@@ -595,8 +595,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.127':
-    resolution: {integrity: sha512-0pf9dkBNpJNVz4/dAJmeoBjV21Kv74Edh4/IclQPHejc/HBo/k2GRd9rVbXHVAHm024fgYlXzJEf+Pr5qWBayA==}
+  '@514labs/moose-cli-darwin-x64@0.4.138':
+    resolution: {integrity: sha512-HZbk9B30Ao5S9aI/Mi4x/xtq7+U2QZ1ZZdUbwFeQdmb/mz2+unaRZxQRFsEjEcTvDCaVXprgd6jqU0C2yGcOLw==}
     cpu: [x64]
     os: [darwin]
 
@@ -605,8 +605,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.127':
-    resolution: {integrity: sha512-P0gDNuu1qG50F5X4RXX5FDZBLrM61nKVzH91ooyppiDIg3fzl/dechwjQY6IeaWB/4W0JGl6Zj9G4zpDK05Aqg==}
+  '@514labs/moose-cli-linux-arm64@0.4.138':
+    resolution: {integrity: sha512-Bl5HgIPJ1cbD5k7xyUT/DuWJDDQxh73uCP6QWIB/5umYBiEjm1XBErsTxv70S78liLaKxMFuEimeNyiSjv4ltA==}
     cpu: [arm64]
     os: [linux]
 
@@ -615,8 +615,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.127':
-    resolution: {integrity: sha512-YNicDvNAWA9+LNCusByXUFWaj6jBA0LsIL8ulgBSRk0UbbZAbVrUE4/BViD2Hugjn4GB4TFP5qClpjs4u85iIQ==}
+  '@514labs/moose-cli-linux-x64@0.4.138':
+    resolution: {integrity: sha512-8DisDDDOPMgLEW+BnU1Cs95Oh3i5IczECwBMJzGJDSOCZMcEx9agJF/v0Hw9fhGOesD7NC6rDsHc6HCBQ4Yi2A==}
     cpu: [x64]
     os: [linux]
 
@@ -624,12 +624,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.127':
-    resolution: {integrity: sha512-pnraMM3IOINS3Vvwn/UHYQ9smugUMf423wM31pN0MSjgssF5awakP3WLLDegXI1cWfvWtbK7uWR2TbtCfvHcFg==}
+  '@514labs/moose-cli@0.4.138':
+    resolution: {integrity: sha512-FSMuF/w/2gPAhlrNFdJYw0Zhrlv92P7VR6Bn1MNimrgP/PkU/eFm8gqpTNocQvuxm4P/5EVPmIhvit9356/PpA==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.128':
-    resolution: {integrity: sha512-d0XvBoaNZ3lrjoDzbyhReK4J/PDVa8Ob0YXfMf9XDdxZLYUw7iccJaJV7oCmbiYbjpXzmjRuz35nWXdWBRd/zg==}
+  '@514labs/moose-lib@0.4.138':
+    resolution: {integrity: sha512-F9YE51LF0W0/hnKflsYP1pkwa0j6uJwFm2meKatasn7IM+/tln5nhiEMfePbNgPAJ1B1LM5Mq/XoQ1lAf506Cw==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -7223,25 +7223,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.127':
+  '@514labs/moose-cli-darwin-arm64@0.4.138':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.127':
+  '@514labs/moose-cli-darwin-x64@0.4.138':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.127':
+  '@514labs/moose-cli-linux-arm64@0.4.138':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.127':
+  '@514labs/moose-cli-linux-x64@0.4.138':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7251,14 +7251,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.127':
+  '@514labs/moose-cli@0.4.138':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.127
-      '@514labs/moose-cli-darwin-x64': 0.4.127
-      '@514labs/moose-cli-linux-arm64': 0.4.127
-      '@514labs/moose-cli-linux-x64': 0.4.127
+      '@514labs/moose-cli-darwin-arm64': 0.4.138
+      '@514labs/moose-cli-darwin-x64': 0.4.138
+      '@514labs/moose-cli-linux-arm64': 0.4.138
+      '@514labs/moose-cli-linux-x64': 0.4.138
 
-  '@514labs/moose-lib@0.4.128(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.138(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -9144,7 +9144,7 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@temporalio/worker@1.11.7(@swc/helpers@0.5.15)':
+  '@temporalio/worker@1.11.7(@swc/helpers@0.5.15)(esbuild@0.25.2)':
     dependencies:
       '@swc/core': 1.11.18(@swc/helpers@0.5.15)
       '@temporalio/activity': 1.11.7
@@ -9158,11 +9158,11 @@ snapshots:
       memfs: 4.17.0
       rxjs: 7.8.2
       source-map: 0.7.4
-      source-map-loader: 4.0.2(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      source-map-loader: 4.0.2(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2))
       supports-color: 8.1.1
-      swc-loader: 0.2.6(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      swc-loader: 0.2.6(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2))
       unionfs: 4.5.4
-      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)
     transitivePeerDependencies:
       - '@swc/helpers'
       - esbuild
@@ -10928,7 +10928,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -10977,7 +10977,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0)(eslint@8.57.1):
+  eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.0(supports-color@8.1.1)
@@ -10988,7 +10988,7 @@ snapshots:
       tinyglobby: 0.2.12
       unrs-resolver: 1.4.1
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -11014,7 +11014,7 @@ snapshots:
       '@typescript-eslint/parser': 5.62.0(eslint@8.57.1)(typescript@5.7.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.0(eslint-plugin-import@2.31.0)(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -11029,7 +11029,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -14525,11 +14525,11 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  source-map-loader@4.0.2(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))):
+  source-map-loader@4.0.2(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)):
     dependencies:
       iconv-lite: 0.6.3
       source-map-js: 1.2.1
-      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)
 
   source-map-loader@4.0.2(webpack@5.99.4(@swc/core@1.11.18)):
     dependencies:
@@ -14727,11 +14727,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  swc-loader@0.2.6(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))):
+  swc-loader@0.2.6(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)):
     dependencies:
       '@swc/core': 1.11.18(@swc/helpers@0.5.15)
       '@swc/counter': 0.1.3
-      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)
 
   swc-loader@0.2.6(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18)):
     dependencies:
@@ -14838,16 +14838,17 @@ snapshots:
 
   tapable@2.2.1: {}
 
-  terser-webpack-plugin@5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))):
+  terser-webpack-plugin@5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 4.3.0
       serialize-javascript: 6.0.2
       terser: 5.39.0
-      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)
     optionalDependencies:
       '@swc/core': 1.11.18(@swc/helpers@0.5.15)
+      esbuild: 0.25.2
 
   terser-webpack-plugin@5.3.14(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18)):
     dependencies:
@@ -15505,7 +15506,7 @@ snapshots:
       - uglify-js
     optional: true
 
-  webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)):
+  webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.7
@@ -15527,7 +15528,37 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      terser-webpack-plugin: 5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2)(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))(esbuild@0.25.2))
+      watchpack: 2.4.2
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.99.4(@swc/core@1.11.18):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.7
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      acorn: 8.14.1
+      browserslist: 4.24.4
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.18.1
+      es-module-lexer: 1.6.0
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 4.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.14(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:

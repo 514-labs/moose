@@ -106,12 +106,21 @@ const handleNumberType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        if (isStringLiteral(valueTypeLiteral, checker, "int64")) {
-          return "Int64";
-        } else if (isStringLiteral(valueTypeLiteral, checker, "int32")) {
-          return "Int32";
-        } else if (isStringLiteral(valueTypeLiteral, checker, "int8")) {
-          return "Int8";
+        const intMappings = {
+          int8: "Int8",
+          int16: "Int16",
+          int32: "Int32",
+          int64: "Int64",
+          uint8: "UInt8",
+          uint16: "UInt16",
+          uint32: "UInt32",
+          uint64: "UInt64",
+        };
+        const match = Object.entries(intMappings).find(([k, _]) =>
+          isStringLiteral(valueTypeLiteral, checker, k),
+        );
+        if (match) {
+          return match[1];
         } else {
           const typeString = valueTypeLiteral.isStringLiteral()
             ? valueTypeLiteral.value

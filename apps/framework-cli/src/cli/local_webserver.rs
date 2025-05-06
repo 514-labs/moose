@@ -343,12 +343,69 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
-async fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .body(Full::new(Bytes::from("Success")))
-        .unwrap();
-    Ok(response)
+async fn health_route(
+    project: &Project,
+    redis_client: &Arc<RedisClient>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // Check Redis connectivity
+    let redis_healthy = redis_client.is_connected();
+
+    // Check Redpanda/Kafka connectivity
+    let kafka_healthy = match kafka::client::health_check(&project.redpanda_config).await {
+        Ok(_) => true,
+        Err(e) => {
+            warn!("Health check: Redpanda unavailable: {}", e);
+            false
+        }
+    };
+
+    // Check ClickHouse connectivity
+    let olap_client =
+        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let clickhouse_healthy = match olap_client.client.query("SELECT 1").execute().await {
+        Ok(_) => true,
+        Err(e) => {
+            warn!("Health check: ClickHouse unavailable: {}", e);
+            false
+        }
+    };
+
+    // Prepare healthy and unhealthy lists
+    let mut healthy = Vec::new();
+    let mut unhealthy = Vec::new();
+
+    if redis_healthy {
+        healthy.push("Redis")
+    } else {
+        unhealthy.push("Redis")
+    }
+    if kafka_healthy {
+        healthy.push("Redpanda")
+    } else {
+        unhealthy.push("Redpanda")
+    }
+    if clickhouse_healthy {
+        healthy.push("ClickHouse")
+    } else {
+        unhealthy.push("ClickHouse")
+    }
+
+    // Create JSON response
+    let status = if unhealthy.is_empty() {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    let json_response = serde_json::to_string_pretty(&serde_json::json!({
+        "healthy": healthy,
+        "unhealthy": unhealthy
+    }))
+    .unwrap_or_else(|_| String::from("{\"error\":\"Failed to serialize response\"}"));
+
+    Response::builder()
+        .status(status)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(json_response)))
 }
 
 async fn admin_reality_check_route(
@@ -654,7 +711,7 @@ async fn handle_json_array_body(
         "starting to parse json array with length {} for {}",
         number_of_bytes, topic_name
     );
-    let parsed = JsonDeserializer::from_reader(body).deserialize_seq(&mut DataModelArrayVisitor {
+    let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelArrayVisitor {
         inner: DataModelVisitor::new(&data_model.columns, jwt_claims.as_ref()),
     });
 
@@ -961,7 +1018,7 @@ async fn router(
                 }
             }
         }
-        (_, &hyper::Method::GET, ["health"]) => health_route().await,
+        (_, &hyper::Method::GET, ["health"]) => health_route(&project, &redis_client).await,
         (_, &hyper::Method::GET, ["admin", "reality-check"]) => {
             admin_reality_check_route(
                 req,

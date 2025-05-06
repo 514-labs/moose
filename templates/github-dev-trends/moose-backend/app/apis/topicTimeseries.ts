@@ -1,56 +1,54 @@
-import { ConsumptionApi, ConsumptionUtil } from "@514labs/moose-lib";
+import { ConsumptionUtil } from "@514labs/moose-lib";
 import { tags } from "typia";
 import { RepoStarEvent } from "../index";
 
-interface QueryParams {
+export interface QueryParams {
   interval?: "minute" | "hour" | "day";
   limit?: number & tags.Minimum<1> & tags.Type<"int32">;
   exclude?: string & tags.Pattern<"^([^,]+)(,[^,]+)*$">; // comma separated list of tags to exclude
 }
 
-interface TopicStats {
+export interface TopicStats {
   topic: string;
   eventCount: number;
   uniqueRepos: number;
   uniqueUsers: number;
 }
 
-interface ResponseBody {
+export interface ResponseBody {
   time: string;
   topicStats: TopicStats[];
 }
 
-export default new ConsumptionApi<QueryParams, ResponseBody[]>(
-  "topicTimeseries",
-  async (
-    { interval = "minute", limit = 10, exclude = "" }: QueryParams,
-    { client, sql }: ConsumptionUtil,
-  ) => {
-    const RepoTable = RepoStarEvent.table!;
-    const cols = RepoTable.columns;
+export async function getTopicTimeseries(
+  { interval = "minute", limit = 10, exclude = "" }: QueryParams,
+  { client, sql }: ConsumptionUtil,
+): Promise<ResponseBody[]> {
+  const RepoTable = RepoStarEvent.table!;
+  const cols = RepoTable.columns;
 
-    const intervalMap = {
-      hour: {
-        select: sql`toStartOfHour(${cols.createdAt}) AS time`,
-        groupBy: sql`GROUP BY time, topic`,
-        orderBy: sql`ORDER BY time, totalEvents DESC`,
-        limit: sql`LIMIT ${limit} BY time`,
-      },
-      day: {
-        select: sql`toStartOfDay(${cols.createdAt}) AS time`,
-        groupBy: sql`GROUP BY time, topic`,
-        orderBy: sql`ORDER BY time, totalEvents DESC`,
-        limit: sql`LIMIT ${limit} BY time`,
-      },
-      minute: {
-        select: sql`toStartOfFifteenMinutes(${cols.createdAt}) AS time`,
-        groupBy: sql`GROUP BY time, topic`,
-        orderBy: sql`ORDER BY time, totalEvents DESC`,
-        limit: sql`LIMIT ${limit} BY time`,
-      },
-    };
+  const intervalMap = {
+    hour: {
+      select: sql`toStartOfHour(${cols.createdAt}) AS time`,
+      groupBy: sql`GROUP BY time, topic`,
+      orderBy: sql`ORDER BY time, totalEvents DESC`,
+      limit: sql`LIMIT ${limit} BY time`,
+    },
+    day: {
+      select: sql`toStartOfDay(${cols.createdAt}) AS time`,
+      groupBy: sql`GROUP BY time, topic`,
+      orderBy: sql`ORDER BY time, totalEvents DESC`,
+      limit: sql`LIMIT ${limit} BY time`,
+    },
+    minute: {
+      select: sql`toStartOfFifteenMinutes(${cols.createdAt}) AS time`,
+      groupBy: sql`GROUP BY time, topic`,
+      orderBy: sql`ORDER BY time, totalEvents DESC`,
+      limit: sql`LIMIT ${limit} BY time`,
+    },
+  };
 
-    const query = sql`
+  const query = sql`
             SELECT
                 time,
                 arrayMap(
@@ -83,7 +81,6 @@ export default new ConsumptionApi<QueryParams, ResponseBody[]>(
             ORDER BY time;
         `;
 
-    const resultSet = await client.query.execute<ResponseBody>(query);
-    return await resultSet.json();
-  },
-);
+  const resultSet = await client.query.execute<ResponseBody>(query);
+  return await resultSet.json();
+}

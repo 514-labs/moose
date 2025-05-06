@@ -57,12 +57,13 @@ use super::{
         function_process::FunctionProcess,
         olap_process::OlapProcess,
         orchestration_worker::OrchestrationWorker,
+        sql_resource::SqlResource,
         table::{Column, Table},
         topic::{Topic, DEFAULT_MAX_MESSAGE_BYTES},
         topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess},
         view::View,
     },
-    infrastructure_map::{InfrastructureMap, PrimitiveSignature, PrimitiveTypes, SqlResource},
+    infrastructure_map::{InfrastructureMap, PrimitiveSignature, PrimitiveTypes},
 };
 
 /// Represents a table definition from user code before it's converted into a complete [`Table`].

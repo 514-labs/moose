@@ -38,7 +38,7 @@ class LeaderboardResponse(BaseModel):
     entries: List[LeaderboardEntry]
 
 # Define the route handler function
-def run(client: MooseClient, params: QueryParams) -> LeaderboardResponse:
+def run(client: MooseClient, params: LeaderboardQueryParams) -> LeaderboardResponse:
     """
     Retrieves a leaderboard of users ranked by their heart rate metrics, power output, and calories burned.
     
@@ -109,7 +109,7 @@ def run(client: MooseClient, params: QueryParams) -> LeaderboardResponse:
     return LeaderboardResponse(entries=entries)
 
 # Create the API endpoint
-get_leaderboard_api = ConsumptionApi[QueryParams, LeaderboardResponse](
+get_leaderboard_api = ConsumptionApi[LeaderboardQueryParams, LeaderboardResponse](
     name="getLeaderboard",
     query_function=run
 )

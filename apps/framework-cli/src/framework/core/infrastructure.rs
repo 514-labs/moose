@@ -14,6 +14,9 @@
 //!
 //! If components need to reference each other, they should do so by reference and not by value.
 
+use crate::proto::infrastructure_map::{
+    infrastructure_signature, InfrastructureSignature as ProtoInfrastructureSignature,
+};
 use serde::{Deserialize, Serialize};
 
 pub mod api_endpoint;
@@ -21,13 +24,14 @@ pub mod consumption_webserver;
 pub mod function_process;
 pub mod olap_process;
 pub mod orchestration_worker;
+pub mod sql_resource;
 pub mod table;
 pub mod topic;
 pub mod topic_sync_process;
 pub mod view;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq)]
+#[serde(tag = "kind")]
 /// Represents the unique signature of an infrastructure component.
 ///
 /// Infrastructure signatures are used to identify and reference various infrastructure
@@ -44,6 +48,73 @@ pub enum InfrastructureSignature {
     ApiEndpoint { id: String },
     /// Process that synchronizes data from a topic to a table
     TopicToTableSyncProcess { id: String },
+    /// View infrastructure component
+    View { id: String },
+    /// SQL resource infrastructure component
+    SqlResource { id: String },
+}
+
+impl InfrastructureSignature {
+    pub fn to_proto(&self) -> ProtoInfrastructureSignature {
+        match self {
+            InfrastructureSignature::Table { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_table_id(id.clone());
+                proto
+            }
+            InfrastructureSignature::Topic { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_topic_id(id.clone());
+                proto
+            }
+            InfrastructureSignature::ApiEndpoint { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_api_endpoint_id(id.clone());
+                proto
+            }
+            InfrastructureSignature::TopicToTableSyncProcess { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_topic_to_table_sync_process_id(id.clone());
+                proto
+            }
+            InfrastructureSignature::View { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_view_id(id.clone());
+                proto
+            }
+            InfrastructureSignature::SqlResource { id } => {
+                let mut proto = ProtoInfrastructureSignature::new();
+                proto.set_sql_resource_id(id.clone());
+                proto
+            }
+        }
+    }
+
+    pub fn from_proto(proto: ProtoInfrastructureSignature) -> Self {
+        match proto.signature {
+            Some(infrastructure_signature::Signature::TableId(id)) => {
+                InfrastructureSignature::Table { id }
+            }
+            Some(infrastructure_signature::Signature::TopicId(id)) => {
+                InfrastructureSignature::Topic { id }
+            }
+            Some(infrastructure_signature::Signature::ApiEndpointId(id)) => {
+                InfrastructureSignature::ApiEndpoint { id }
+            }
+            Some(infrastructure_signature::Signature::TopicToTableSyncProcessId(id)) => {
+                InfrastructureSignature::TopicToTableSyncProcess { id }
+            }
+            Some(infrastructure_signature::Signature::ViewId(id)) => {
+                InfrastructureSignature::View { id }
+            }
+            Some(infrastructure_signature::Signature::SqlResourceId(id)) => {
+                InfrastructureSignature::SqlResource { id }
+            }
+            None => {
+                panic!("Invalid infrastructure signature");
+            }
+        }
+    }
 }
 
 /// Defines the data flow relationships between infrastructure components.
@@ -58,9 +129,6 @@ pub enum InfrastructureSignature {
 /// - Pulling: Active fetching of data from another component
 /// - Pushing: Active sending of data to another component
 pub trait DataLineage {
-    /// Returns infrastructure components that actively push data to this component.
-    fn receives_data_from(&self) -> Vec<InfrastructureSignature>;
-
     /// Returns infrastructure components that this component actively pulls data from.
     fn pulls_data_from(&self) -> Vec<InfrastructureSignature>;
 

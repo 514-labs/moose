@@ -5,17 +5,16 @@ use kafka_clickhouse_sync::SyncingProcessesRegistry;
 use orchestration_workers_registry::OrchestrationWorkersRegistryError;
 use process_registry::ProcessRegistries;
 
+use super::{
+    olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns},
+    stream::kafka::models::{KafkaConfig, KafkaStreamConfig},
+};
 use crate::{
     framework::{
         blocks::model::BlocksError,
         core::infrastructure_map::{Change, InfraMapError, InfrastructureMap, ProcessChange},
     },
     metrics::Metrics,
-};
-
-use super::{
-    olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns},
-    stream::kafka::models::{KafkaConfig, KafkaStreamConfig},
 };
 
 pub mod blocks_registry;
@@ -71,6 +70,7 @@ pub async fn execute_changes(
                 let target_table = infra_map.get_table(&sync.target_table_id)?;
 
                 syncing_registry.start_topic_to_table(
+                    sync.id(),
                     source_kafka_topic.name.clone(),
                     source_topic.columns.clone(),
                     target_table.name.clone(),
@@ -80,24 +80,10 @@ pub async fn execute_changes(
             }
             ProcessChange::TopicToTableSyncProcess(Change::Removed(sync)) => {
                 log::info!("Stopping sync process: {:?}", sync.id());
-
-                // Topic doesn't contain the namespace, so we need to build the full topic name
-                let source_topic = infra_map.get_topic(&sync.source_topic_id)?;
-                let source_kafka_topic = KafkaStreamConfig::from_topic(kafka_config, source_topic);
-
-                let target_table = infra_map.get_table(&sync.target_table_id)?;
-
-                syncing_registry.stop_topic_to_table(&source_kafka_topic.name, &target_table.name)
+                syncing_registry.stop_topic_to_table(&sync.id())
             }
             ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after }) => {
                 log::info!("Replacing Sync process: {:?} by {:?}", before, after);
-
-                // Topic doesn't contain the namespace, so we need to build the full topic name
-                let before_source_topic = infra_map.get_topic(&before.source_topic_id)?;
-                let before_kafka_source_topic =
-                    KafkaStreamConfig::from_topic(kafka_config, before_source_topic);
-
-                let before_target_table = infra_map.get_table(&before.target_table_id)?;
 
                 // Topic doesn't contain the namespace, so we need to build the full topic name
                 let after_source_topic = infra_map.get_topic(&after.source_topic_id)?;
@@ -108,11 +94,9 @@ pub async fn execute_changes(
 
                 // Order of operations is important here. We don't want to stop the process if the mapping fails.
                 let target_table_columns = std_columns_to_clickhouse_columns(&after.columns)?;
-                syncing_registry.stop_topic_to_table(
-                    &before_kafka_source_topic.name,
-                    &before_target_table.name,
-                );
+                syncing_registry.stop_topic_to_table(&before.id());
                 syncing_registry.start_topic_to_table(
+                    after.id(),
                     after_kafka_source_topic.name.clone(),
                     after_source_topic.columns.clone(),
                     after_target_table.name.clone(),

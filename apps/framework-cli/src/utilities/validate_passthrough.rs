@@ -243,7 +243,6 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                 if DATE_REGEX.is_match(v) {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {
-                    // println!("date regex {DATE_REGEX} v {v}");
                     Err(E::custom(format!(
                         "Invalid date format at {}",
                         self.get_path()
@@ -599,6 +598,13 @@ impl<'de> Visitor<'de> for &mut DataModelArrayVisitor<'_> {
             result.push(element)
         }
         Ok(result)
+    }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        Ok(vec![self.inner.visit_map(map)?])
     }
 }
 

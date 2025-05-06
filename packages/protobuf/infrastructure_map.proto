@@ -257,4 +257,17 @@ message SqlResource {
   string name = 1;
   repeated string setup = 2;
   repeated string teardown = 3;
+  repeated InfrastructureSignature pulls_data_from = 5;
+  repeated InfrastructureSignature pushes_data_to = 6;
+}
+
+message InfrastructureSignature {
+  oneof signature {
+    string topic_id = 1;
+    string table_id = 2;
+    string view_id = 3;
+    string sql_resource_id = 4;
+    string api_endpoint_id = 5;
+    string topic_to_table_sync_process_id = 6;
+  }
 }

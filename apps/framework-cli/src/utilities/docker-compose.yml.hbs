@@ -32,7 +32,7 @@ services:
       - redis-data:/data
   {{#if streaming_engine}}
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:latest
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.11
     ports:
       - "9092:9092"
       - "19092:19092"
@@ -59,7 +59,7 @@ services:
       start_period: 5s
   {{/if}}
   clickhousedb:
-    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
+    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-24.12}
     volumes:
       {{#if clickhouse_host_data_path}}
       - "{{clickhouse_host_data_path}}:/var/lib/clickhouse/"

@@ -38,6 +38,7 @@ use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::orchestration_worker::OrchestrationWorker;
+use super::infrastructure::sql_resource::SqlResource;
 use super::infrastructure::table::{Column, Table};
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
@@ -50,33 +51,13 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::datamodel_config::load_main_py;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::project::Project;
-use crate::proto::infrastructure_map::{
-    InfrastructureMap as ProtoInfrastructureMap, SqlResource as ProtoSqlResource,
-};
+use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::{Context, Result};
 use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct SqlResource {
-    pub name: String,
-    pub setup: Vec<String>,
-    pub teardown: Vec<String>,
-}
-
-impl SqlResource {
-    fn to_proto(&self) -> ProtoSqlResource {
-        ProtoSqlResource {
-            name: self.name.clone(),
-            setup: self.setup.clone(),
-            teardown: self.teardown.clone(),
-            special_fields: Default::default(),
-        }
-    }
-}
 
 /// Error types for InfrastructureMap protocol buffer operations
 ///
@@ -1523,16 +1504,7 @@ impl InfrastructureMap {
             sql_resources: proto
                 .sql_resources
                 .into_iter()
-                .map(|(k, v)| {
-                    (
-                        k,
-                        SqlResource {
-                            name: v.name,
-                            setup: v.setup,
-                            teardown: v.teardown,
-                        },
-                    )
-                })
+                .map(|(k, v)| (k, SqlResource::from_proto(v)))
                 .collect(),
         })
     }
@@ -2459,6 +2431,8 @@ mod diff_sql_resources_tests {
             name: name.to_string(),
             setup: setup.iter().map(|s| s.to_string()).collect(),
             teardown: teardown.iter().map(|s| s.to_string()).collect(),
+            pulls_data_from: vec![],
+            pushes_data_to: vec![],
         }
     }
 

@@ -3,7 +3,8 @@ use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
-    APP_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE, SETUP_PY, TSCONFIG_JSON,
+    APP_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE, REQUIREMENTS_TXT,
+    SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
 use crate::utilities::{constants, system};
@@ -43,11 +44,11 @@ RUN echo "deb http://deb.debian.org/debian/ unstable main" >> /etc/apt/sources.l
 
 # Generate locale files
 RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
-ENV TZ UTC
-ENV DOCKER_IMAGE true
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+ENV TZ=UTC
+ENV DOCKER_IMAGE=true
 
 # Install Moose
 ARG FRAMEWORK_VERSION="0.0.0"
@@ -87,7 +88,8 @@ COPY --chown=moose:moose ./versions .moose/versions
 INSTALL_COMMAND
 
 # Checks that the project is valid
-RUN moose check --write-infra-map
+RUN which moose
+RUN moose check --write-infra-map || (echo "Error running moose check" && exit 1)
 
 # Expose the ports on which the application will listen
 EXPOSE 4000
@@ -161,9 +163,10 @@ pub fn create_dockerfile(
             let install = DOCKER_FILE_COMMON
                 .replace(
                     "COPY_PACKAGE_FILE",
-                    "COPY --chown=moose:moose ./setup.py ./setup.py",
+                    r#"COPY --chown=moose:moose ./setup.py ./setup.py
+COPY --chown=moose:moose ./requirements.txt ./requirements.txt"#,
                 )
-                .replace("INSTALL_COMMAND", "RUN pip install .");
+                .replace("INSTALL_COMMAND", "RUN pip install -r requirements.txt");
 
             format!("{}{}", PY_BASE_DOCKER_FILE, install)
         }
@@ -225,6 +228,7 @@ pub fn build_dockerfile(
         APP_DIR,
         PACKAGE_JSON,
         SETUP_PY,
+        REQUIREMENTS_TXT,
         TSCONFIG_JSON,
         PROJECT_CONFIG_FILE,
         OLD_PROJECT_CONFIG_FILE,

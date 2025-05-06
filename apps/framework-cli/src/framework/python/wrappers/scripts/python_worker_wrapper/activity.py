@@ -7,6 +7,7 @@ import sys
 import json
 import traceback
 import importlib.util
+import concurrent.futures
 
 from .logging import log
 from .types import WorkflowStepResult
@@ -24,6 +25,7 @@ def create_activity_for_script(script_name: str) -> Callable:
     @activity.defn(name=script_name)
     async def dynamic_activity(execution_input: ScriptExecutionInput) -> WorkflowStepResult:
         """Load and execute a single Python script."""
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         try:
             log.info(f"Executing activity {script_name} with input {execution_input}")
             
@@ -65,10 +67,16 @@ def create_activity_for_script(script_name: str) -> Callable:
                 else:
                     result = await task_func()
             else:
+                # User could run blocking sync function (i.e. time.sleep)
+                # so we run it in in a thread to not block the event loop
+                # and let the worker's shutdown tasks clean up
+                loop = asyncio.get_running_loop()
                 if input_data:
-                    result = task_func(input=input_data)
+                    future = loop.run_in_executor(executor, lambda: task_func(input=input_data))
                 else:
-                    result = task_func()
+                    future = loop.run_in_executor(executor, task_func)
+
+                result = await asyncio.wait_for(future, timeout=None)
             
             # Validate and encode result
             if not isinstance(result, dict):
@@ -95,5 +103,7 @@ def create_activity_for_script(script_name: str) -> Callable:
             # Raise an ApplicationError for structured error
             from temporalio.exceptions import ApplicationError
             raise ApplicationError(json.dumps(error_data))
+        finally:
+            executor.shutdown(wait=False)
 
     return dynamic_activity

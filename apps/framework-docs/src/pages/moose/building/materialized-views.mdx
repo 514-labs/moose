@@ -146,12 +146,12 @@ Aggregated<AggregationFunction extends string, ArgTypes extends any[]>
 
 <Python>
 
-In Python, the `Aggregated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
+In Python, the `Annotated` type is used to define fields in your schema that involve aggregation functions. This type ensures that the data is correctly aggregated and mapped to the appropriate ClickHouse function.
 
 ```python filename="Aggregated.py" copy
-from moose_lib import Aggregated
+from moose_lib import Annotated, AggregateFunction
 
-Aggregated[U, AggregateFunction(...)]
+Annotated[U, AggregateFunction(...)]
 ```
 - `U`: Represents the type of the aggregated result. For example, float for sums and averages, int for counts.
 - `AggregateFunction(...)`: Specifies the aggregation operation to be performed. It includes:
@@ -203,13 +203,13 @@ const exampleMaterializedView = new MaterializedView<TargetTableSchema>({
 <Python>
 
 ```py filename="Aggregations.py" copy
-from moose_lib import MaterializedView, ClickHouseEngines, Aggregated, AggregateFunction, MaterializedViewOptions
+from moose_lib import MaterializedView, ClickHouseEngines, AggregateFunction, MaterializedViewOptions
 from app.source_table import source_table
 
 class TargetTableSchema(BaseModel):
     id: str
-    average_rating: float & Aggregated[float, AggregateFunction(agg_func="avg", param_types=[float])]
-    num_reviews: int & Aggregated[int, AggregateFunction(agg_func="sum", param_types=[int])]
+    average_rating: Annotated[float, AggregateFunction(agg_func="avg", param_types=[float])]
+    num_reviews: Annotated[int, AggregateFunction(agg_func="sum", param_types=[int])]
 
 query = f"""
   SELECT 

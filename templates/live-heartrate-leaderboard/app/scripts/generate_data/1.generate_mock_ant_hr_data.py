@@ -26,6 +26,8 @@ def generate_mock_ant_hr_data():
     This simulates a realistic ANT+ sensor with byte rollover
     For reference view the pdf in this repo under /docs/ANT-HRM-Packet-Format.pdf
     """
+    logger = Logger("generator")
+    logger.info("Starting mock ANT+ HR data generator")
     # Define the API endpoint URL
     url = "http://localhost:4000/ingest/raw_ant_hr_packet"
     headers = {'Content-Type': 'application/json'}

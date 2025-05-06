@@ -13,6 +13,7 @@ on:
       - "packages/**"
       - "templates/**"
       - "pnpm-lock.yaml"
+
   workflow_dispatch:
     inputs:
       dry-run:
@@ -394,6 +395,61 @@ jobs:
           destination: "downloads.fiveonefour.com/${{ github.ref_name == 'main' && 'stable' || 'dev' }}/${{ needs.version.outputs.version }}/${{ matrix.build.TARGET }}"
           headers: |-
             cache-control: ${{ github.ref_name != 'main' && 'no-store, no-cache, must-revalidate' || 'public, max-age=3600' }}
+
+  update-moose-version-index:
+    needs: [build-and-publish-binaries, version]
+    runs-on: ubuntu-latest
+    concurrency: update-moose-version-index
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          service_account: "mds-911@moose-hosting-node.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/724152421890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-repos"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          install_components: "gsutil"
+
+      - name: Determine channel
+        id: channel
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "channel=stable" >> $GITHUB_OUTPUT
+          else
+            echo "channel=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download current index file
+        run: |
+          if gsutil -q stat gs://downloads.fiveonefour.com/${{ steps.channel.outputs.channel }}/index.json; then
+            gsutil cp gs://downloads.fiveonefour.com/${{ steps.channel.outputs.channel }}/index.json index.json
+          else
+            echo '{"moose-cli":{"versions":[]}}' > index.json
+          fi
+
+      - name: Update index file
+        run: |
+          # This jq command:
+          # 1. Ensures the moose-cli structure exists
+          # 2. Adds the new version entry to the versions array
+          # 3. Sorts all versions by date (newest first)
+          # 4. Limits the list to 10000 entries to prevent unlimited growth
+          if [ ! -f index.json ] || [ ! -s index.json ]; then
+            echo '{"moose-cli":{"versions":[]}}' > index.json
+          fi
+
+          cat index.json | jq --arg version "${{ needs.version.outputs.version }}" \
+              --arg date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              'if .["moose-cli"] == null then . + {"moose-cli": {"versions": []}} else . end | .["moose-cli"].versions = (.["moose-cli"].versions | if . == null then [] else . end) | .["moose-cli"].versions = (.["moose-cli"].versions | map(select(.version != $version))) | .["moose-cli"].versions = ([{"version": $version, "date": $date}] + .["moose-cli"].versions) | .["moose-cli"].versions = (.["moose-cli"].versions | sort_by(.date) | reverse | .[0:10000])' > index.json.tmp
+
+      - name: Upload updated index file
+        run: |
+          gsutil cp index.json.tmp gs://downloads.fiveonefour.com/${{ steps.channel.outputs.channel }}/index.json
 
   release-python:
     name: Release Python Wheels

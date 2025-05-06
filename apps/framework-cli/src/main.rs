@@ -1,4 +1,3 @@
-pub mod analytics;
 #[macro_use]
 mod cli;
 pub mod framework;

@@ -20,8 +20,8 @@ export type ClickHouseInt<
     | "int64"
     // | "int128"
     // | "int256"
-    // | "uint8"
-    // | "uint16"
+    | "uint8"
+    | "uint16"
     | "uint32"
     | "uint64",
   // | "uint128"
@@ -34,7 +34,13 @@ export type ClickHouseInt<
       value: Value;
       validate: Value extends "int8"
         ? "-128 <= $input && $input <= 127"
-        : "-32768 <= $input && $input <= 32767";
+        : Value extends "int16"
+          ? "-32768 <= $input && $input <= 32767"
+          : Value extends "uint8"
+            ? "0 <= $input && $input <= 255"
+            : Value extends "uint16"
+              ? "0 <= $input && $input <= 65535"
+              : never;
       exclusive: true;
       schema: {
         type: "integer";

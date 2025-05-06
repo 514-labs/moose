@@ -123,8 +123,8 @@ async def start_worker(temporal_url: str, script_dir: str, client_cert: str, cli
 
     if worker is None:
         msg = f"No scripts found to register in {script_dir}"
-        log.error(msg)
-        raise ValueError(msg)
+        log.info(msg)
+        return
 
     shutdown_task = None
 

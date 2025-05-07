@@ -124,7 +124,7 @@ JWT authentication for consumption APIs uses the same `[jwt]` table in your `moo
 ingest endpoints. The signature of the JWT is verified using the **RS256 algorithm**. The
 `enforce_on_all_consumptions_apis` flag specifically controls JWT enforcement for consumption APIs.
 
-```toml
+```toml filename=moose.config.toml copy
 # moose.config.toml
 
 # ... other project configurations ...
@@ -197,7 +197,7 @@ Admin authentication relies on a token that can be supplied in the following ord
 3.  **Project Configuration File (`moose.config.toml`):**
     You can specify a hashed admin API key in your `moose.config.toml` under the `[authentication]` table.
     This key is expected to be a **PBKDF2 HMAC SHA256 hash**, obtainable from the `moose generate hash-token` command.
-    ```toml
+    ```toml filename=moose.config.toml copy
     # moose.config.toml
 
     [authentication]

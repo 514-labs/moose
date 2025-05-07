@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout } from '@/components/ui/callout'
 
 # Security & Authentication
 
@@ -22,7 +22,7 @@ or want to leverage standard token-based authentication.
 To enable JWT authentication for ingest endpoints, configure the `jwt` table in your `moose.config.toml`
 project file:
 
-```toml
+```toml filename=moose.config.toml copy
 # moose.config.toml
 
 # ... other project configurations ...

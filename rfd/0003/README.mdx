@@ -1,0 +1,46 @@
+---
+authors: Nicolas Joseph <nicolas@nicolasjoseph.com>
+title: Data Ingestion
+state: implemented
+---
+
+## Context
+
+Data ingestion in the Moose ecosystem is handled by a Rust binary, the `framework-cli`, which exposes an HTTP
+server typically listening on port 4000. Users define data models within their Moose project. These definitions
+implicitly create corresponding ingest endpoints.
+
+The standard path for these endpoints follows the pattern: `/ingest/<data_model_name>/<version>`.
+Data is sent to these endpoints via `POST` requests. The supported data formats for ingestion are `JSON`
+and `JsonArray`. The `moose ls` command can be used to list all available ingest routes in a project.
+
+## Authentication
+
+The ingest endpoints are secured and support multiple authentication mechanisms:
+
+1.  **Bearer Token Authentication**: Clients can authenticate by providing a Bearer token in the `Authorization`
+    header.
+
+2.  **JSON Web Tokens (JWT)**:
+    *   If JWT authentication is configured for the project, the Bearer token is treated as a JWT.
+    *   Validation is performed using a configured public key, issuer, and audience.
+    *   The `JwtConfig` in the project settings (typically `moose.yaml` or environment variables) stores these
+      details.
+
+3.  **API Key**:
+    *   Alternatively, a simpler API key mechanism can be used.
+    *   The `MOOSE_INGEST_API_KEY` environment variable (or a corresponding project configuration) holds the
+      secret key.
+    *   The provided Bearer token is then validated against this key using PBKDF2 HMAC SHA256.
+    *   The `moose generate hash-token` command can be used to generate compatible tokens and keys.
+
+The `framework-cli` checks the `Authorization` header for a `Bearer` token and validates it using the
+configured JWT settings or the `MOOSE_INGEST_API_KEY`.
+
+## Data Flow
+
+Upon successful authentication and request validation, the `framework-cli` ingests the data.
+The primary action is to publish the received data messages to a specific stream (topic) in RedPanda.
+Downstream processes, such as data transformation jobs or real-time analytics, can then consume the data
+from these RedPanda topics. The specifics of these downstream processes are outside the scope of this
+ingestion RFD.

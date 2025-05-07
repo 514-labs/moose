@@ -16,7 +16,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from importlib import import_module
 from string import Formatter
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Type
 from urllib.parse import urlparse, parse_qs
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
@@ -98,7 +98,7 @@ class QueryClient:
     def __call__(self, input, variables):
         return self.execute(input, variables)
 
-    def execute(self, input, variables):
+    def execute(self, input, variables, row_type: Type[BaseModel] = None):
         params = {}
         values = {}
 
@@ -124,7 +124,10 @@ class QueryClient:
 
         val = self.ch_client.query(clickhouse_query, values)
 
-        return list(val.named_results())
+        if row_type is None:
+            return list(val.named_results())
+        else:
+            return list(row_type(**row) for row in val.named_results())
 
 class WorkflowClient:
     def __init__(self, temporal_client: TemporalClient):
@@ -303,7 +306,7 @@ def handler_with_client(moose_client):
                         response = user_api.query_function(*args)
                         # Convert Pydantic model to dict before JSON serialization
                         if isinstance(response, BaseModel):
-                            response = response.model_dump()
+                            response = response.model_dump_json()
                     else:
                         self.send_response(404)
                         self.end_headers()
@@ -327,7 +330,9 @@ def handler_with_client(moose_client):
                     response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
                 else:
                     self.send_response(200)
-                    response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+                    response_message = bytes(
+                        response if isinstance(response, str) else json.dumps(response, cls=EnhancedJSONEncoder),
+                        'utf-8')
 
                 self.end_headers()
                 self.wfile.write(response_message)

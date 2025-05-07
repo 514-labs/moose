@@ -1,3 +1,4 @@
+import dataclasses
 from decimal import Decimal
 import re
 from uuid import UUID
@@ -12,7 +13,8 @@ type JWT[T] = T
 type Aggregated[T, agg_func] = Annotated[T, agg_func]
 
 
-class ClickhousePrecision(BaseModel):
+@dataclasses.dataclass # a base model in the annotations will confuse pydantic
+class ClickhousePrecision:
     precision: int
 
 

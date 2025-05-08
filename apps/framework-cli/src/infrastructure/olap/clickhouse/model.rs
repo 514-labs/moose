@@ -410,10 +410,7 @@ impl ClickHouseValue {
 
     pub fn clickhouse_to_string(&self) -> String {
         match &self {
-            ClickHouseValue::String(v) => format!(
-                "\'{}\'",
-                v.replace('\\', "\\\\").replace('\'', "\\\'").clone()
-            ),
+            ClickHouseValue::String(v) => format!("\'{}\'", escape_ch_string(v)),
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
@@ -434,10 +431,16 @@ impl ClickHouseValue {
                     .join(",")
             ),
             ClickHouseValue::Null => NULL.to_string(),
-            ClickHouseValue::Json(v) => format!("'{}'", serde_json::Value::Object(v.clone())),
+            ClickHouseValue::Json(v) => {
+                format!("'{}'", escape_ch_string(&serde_json::to_string(v).unwrap()))
+            }
             _ => String::from(""),
         }
     }
+}
+
+fn escape_ch_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\'', "\\\'")
 }
 
 #[derive(Debug, Clone)]

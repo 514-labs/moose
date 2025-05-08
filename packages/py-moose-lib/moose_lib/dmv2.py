@@ -9,7 +9,6 @@ It mirrors the functionality of the TypeScript `dmv2` module, enabling the defin
 of data infrastructure using Python and Pydantic models.
 """
 import dataclasses
-from .main import IngestionFormat
 from typing import Any, Generic, Optional, TypeVar, Callable, Union
 from pydantic import BaseModel, ConfigDict
 from pydantic.fields import FieldInfo
@@ -326,10 +325,8 @@ class IngestConfig(BaseModel):
     """Basic configuration for an ingestion point.
 
     Attributes:
-        format: The expected data format (e.g., JSON).
         version: Optional version string.
     """
-    format: IngestionFormat = IngestionFormat.JSON
     version: Optional[str] = None
 
 
@@ -339,11 +336,9 @@ class IngestConfigWithDestination[T: BaseModel]:
 
     Attributes:
         destination: The `Stream` where ingested data will be sent.
-        format: The expected data format (e.g., JSON).
         version: Optional version string.
     """
     destination: Stream[T]
-    format: IngestionFormat = IngestionFormat.JSON
     version: Optional[str] = None
 
 

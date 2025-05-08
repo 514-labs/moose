@@ -441,7 +441,6 @@ impl ResourceInfo for Vec<StreamInfo> {
 #[derive(Debug, Serialize)]
 pub struct IngestionApiInfo {
     pub name: String,
-    pub format: String,
     pub destination: String,
 }
 
@@ -450,10 +449,8 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
         APIType::INGRESS {
             target_topic_id,
             data_model: _,
-            format,
         } => Either::Left(IngestionApiInfo {
             name: endpoint.name.clone(),
-            format: format.to_string(),
             destination: target_topic_id.clone(),
         }),
         APIType::EGRESS {
@@ -474,19 +471,9 @@ impl ResourceInfo for Vec<IngestionApiInfo> {
     fn show(&self) {
         show_table(
             "Ingestion APIs".to_string(),
-            vec![
-                "name".to_string(),
-                "format".to_string(),
-                "destination".to_string(),
-            ],
+            vec!["name".to_string(), "destination".to_string()],
             self.iter()
-                .map(|api| {
-                    vec![
-                        api.name.clone(),
-                        api.format.clone(),
-                        api.destination.clone(),
-                    ]
-                })
+                .map(|api| vec![api.name.clone(), api.destination.clone()])
                 .collect(),
         )
     }

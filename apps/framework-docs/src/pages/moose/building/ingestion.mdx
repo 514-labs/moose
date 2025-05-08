@@ -39,7 +39,7 @@ The `IngestPipeline` class provides a convenient way to set up ingestion endpoin
 
 <TypeScript>
 ```typescript filename="AnalyticsPipeline.ts" copy
-import { IngestPipeline, IngestionFormat } from "@514labs/moose-lib";
+import { IngestPipeline } from "@514labs/moose-lib";
 
 interface ExampleSchema {
   id: string;
@@ -100,7 +100,6 @@ const exampleStream = new Stream<ExampleRecord>("example", {
 // Create the ingestion API
 const exampleApi = new IngestApi<ExampleRecord>("example", {
   destination: exampleStream,  // Connect API to stream
-  format: IngestionFormat.JSON  // Accept JSON data
 });
 ```
 <Callout type="warning">
@@ -126,9 +125,7 @@ interface BatchRecord {
 }
 
 const batchPipeline = new IngestPipeline<BatchRecord>("batch_records", {
-  ingest: {
-    format: IngestionFormat.JSON_ARRAY  // Accept arrays of records
-  },
+  ingest: true,
   stream: true,
   table: true,
 });
@@ -155,7 +152,6 @@ const batchRecordsStream = new Stream<BatchRecord>("batch_records", {
 // Create the ingestion API with batch support
 const batchRecordsApi = new IngestApi<BatchRecord>("batch_records", {
   destination: batchRecordsStream,
-  format: IngestionFormat.JSON_ARRAY  // Configure for batch ingestion
 });
 ```
 </Tabs.Tab>
@@ -190,7 +186,7 @@ The ingestion API endpoint is `POST localhost:4000/ingest/<name>`, where `<name>
 
 <TypeScript>
 ```typescript filename="Record.ts" copy
-import { IngestPipeline, IngestionFormat } from "@514labs/moose-lib";
+import { IngestPipeline } from "@514labs/moose-lib";
 
 interface Record {
   id: string;
@@ -207,9 +203,7 @@ const simplePipeline = new IngestPipeline<Record>("record", {
 
  // Creates a REST API endpoint at POST localhost:4000/ingest/batch_records
 const batchPipeline = new IngestPipeline<Record>("batch_records", {
-  ingest: {
-    format: IngestionFormat.JSON_ARRAY // Accept batch of records
-  },
+  ingest: true,
   stream: true,
   table: true
 });
@@ -218,7 +212,7 @@ const batchPipeline = new IngestPipeline<Record>("batch_records", {
 
 <Python>
 ```python filename="Record.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig, IngestionFormat
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
 from pydantic import BaseModel
 
 class Record(BaseModel):
@@ -233,17 +227,6 @@ simple_pipeline = IngestPipeline[Record](
         ingest=True,
         stream=True,
         table=True    
-    )
-)
-
-batch_pipeline = IngestPipeline[Record](
-    name="batch_records", # Ingestion API endpoint is POST localhost:4000/ingest/batch_records
-    config=IngestPipelineConfig(
-        ingest=IngestConfig(
-            format=IngestionFormat.JSON_ARRAY # Accept batch of records
-        ),
-        stream=True,
-        table=True
     )
 )
 ```
@@ -385,9 +368,7 @@ openapi-generator-cli generate \
 ### IngestPipeline Options
 ```typescript filename="PipelineConfig.ts" copy
 interface PipelineConfig<T> {
-  ingest?: boolean | {
-    format?: IngestionFormat;  // JSON (default) or JSON_ARRAY
-  };
+  ingest?: boolean;
   stream?: boolean | {
     parallelism?: number;      // Default: 1
     retentionPeriod?: number;  // In seconds, default: 24h
@@ -403,31 +384,20 @@ interface PipelineConfig<T> {
 
 <TypeScript>
 ```ts filename="FormatConfig.ts" copy
-import { IngestionFormat } from "@514labs/moose-lib";
 
 // Single record ingestion
 const singleRecordPipeline = new IngestPipeline<Record>("single_records", {
-  ingest: {
-    format: IngestionFormat.JSON  // Default
-  },
+  ingest: true,
   stream: true,
   table: true
 });
 
-// Batch record ingestion
-const batchPipeline = new IngestPipeline<Record>("batch_records", {
-  ingest: {
-    format: IngestionFormat.JSON_ARRAY
-  },
-  stream: true,
-  table: true
-});
 ```
 </TypeScript>
 
 <Python>
 ```python filename="FormatConfig.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig, IngestionFormat
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
 from pydantic import BaseModel
 
 class Record(BaseModel):
@@ -439,9 +409,7 @@ class Record(BaseModel):
 single_record_pipeline = IngestPipeline[Record](
     name="single_records",
     config=IngestPipelineConfig(
-        ingest=IngestConfig(
-            format=IngestionFormat.JSON
-        ),
+        ingest=True,
         stream=True,
         table=True
     )
@@ -450,9 +418,7 @@ single_record_pipeline = IngestPipeline[Record](
 batch_record_pipeline = IngestPipeline[Record](
     name="batch_records",
     config=IngestPipelineConfig(
-        ingest=IngestConfig(
-            format=IngestionFormat.JSON_ARRAY
-        ),
+        ingest=True,
         stream=True,
         table=True
     )

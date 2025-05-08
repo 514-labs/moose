@@ -280,7 +280,7 @@ async fn execute_drop_table_column(
         column_name
     );
     let drop_column_query = format!(
-        "ALTER TABLE `{}`.`{}` DROP COLUMN `{}`",
+        "ALTER TABLE `{}`.`{}` DROP COLUMN IF EXISTS `{}`",
         db_name, table.name, column_name
     );
     log::debug!("Dropping column: {}", drop_column_query);
@@ -320,7 +320,7 @@ async fn execute_modify_table_column(
     let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
     // TODO: Fix the string conversion issue here - expected String, found &str
     let modify_column_query = format!(
-        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {}",
+        "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
         db_name, table.name, clickhouse_column.name, column_type_string
     );
     log::debug!("Modifying column: {}", modify_column_query);

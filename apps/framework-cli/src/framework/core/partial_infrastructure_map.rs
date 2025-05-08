@@ -44,8 +44,7 @@ use tokio::process::Child;
 
 use crate::{
     framework::{
-        consumption::model::ConsumptionQueryParam, data_model::config::EndpointIngestionFormat,
-        languages::SupportedLanguages, versions::Version,
+        consumption::model::ConsumptionQueryParam, languages::SupportedLanguages, versions::Version,
     },
     utilities::constants,
 };
@@ -119,7 +118,6 @@ pub enum WriteToKind {
 struct PartialIngestApi {
     pub name: String,
     pub columns: Vec<Column>,
-    pub format: EndpointIngestionFormat,
     pub write_to: WriteTo,
     pub version: Option<String>,
 }
@@ -458,7 +456,7 @@ impl PartialInfrastructureMap {
                 version: Version::from_string("0.0".to_string()),
                 config: crate::framework::data_model::config::DataModelConfig {
                     ingestion: crate::framework::data_model::config::IngestionConfig {
-                        format: partial_api.format,
+                        // format field removed
                     },
                     // TODO pass through parallelism from the TS / PY api
                     storage: crate::framework::data_model::config::StorageConfig {
@@ -481,7 +479,6 @@ impl PartialInfrastructureMap {
                 api_type: APIType::INGRESS {
                     target_topic_id: target_topic.id(),
                     data_model: Some(data_model),
-                    format: partial_api.format,
                 },
                 path: PathBuf::from_iter(
                     [

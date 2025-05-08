@@ -6,7 +6,7 @@ The Ingest API provides a type-safe way to create HTTP endpoints that accept dat
 ## Basic Ingest Setup
 
 ```typescript
-import { IngestApi, Key, IngestionFormat } from '@514labs/moose-lib';
+import { IngestApi, Key } from '@514labs/moose-lib';
 
 // Define your schema
 interface ExampleSchema {
@@ -18,7 +18,6 @@ interface ExampleSchema {
 // Create an ingest endpoint
 export const DataIngest = new IngestApi<ExampleSchema>("DataIngest", {
   destination: DataStream,  // The stream to write to
-  format: IngestionFormat.JSON  // Use enum instead of string literal
 });
 ```
 
@@ -29,13 +28,8 @@ The `IngestApi` class accepts the following configuration options:
 ```typescript
 interface IngestConfig {
   destination: Stream;           // Required destination stream
-  format?: IngestionFormat;     // Optional ingestion format
 }
 
-enum IngestionFormat {
-  JSON = "JSON",
-  JSON_ARRAY = "JSON_ARRAY"
-}
 ```
 
 ## Ingest Examples
@@ -43,7 +37,7 @@ enum IngestionFormat {
 ### Basic Ingest Endpoint
 ```typescript
 
-import { IngestionFormat, OlapTable, Stream, IngestApi } from "@514labs/moose-lib"
+import { OlapTable, Stream, IngestApi } from "@514labs/moose-lib"
 // Define your schema
 interface UserEventSchema {
   id: Key<string>;
@@ -64,7 +58,6 @@ export const UserEventStream = new Stream<UserEventSchema>("user-event-stream", 
 // Create an ingest endpoint
 export const UserEvent = new IngestApi<UserEventSchema>("UserEvent", {
   destination: UserEventStream,
-  format: IngestionFormat.JSON
 });
 ```
 
@@ -73,7 +66,6 @@ export const UserEvent = new IngestApi<UserEventSchema>("UserEvent", {
 // Ingest endpoint for batch ingestion
 export const BatchIngest = new IngestApi<UserEventSchema>("BatchIngest", {
   destination: UserEventStream,
-  format: IngestionFormat.JSON_ARRAY
 });
 ```
 
@@ -162,22 +154,17 @@ The Ingest API returns standardized responses:
 
 ## Best Practices
 
-1. **Use appropriate ingestion formats**:
-   - `IngestionFormat.JSON` for single record ingestion
-   - `IngestionFormat.JSON_ARRAY` for batch ingestion
-   - Consider performance implications
-
-2. **Implement proper error handling**:
+1. **Implement proper error handling**:
    - Handle validation errors gracefully
    - Implement retry logic for transient failures
    - Log errors for debugging
 
-3. **Secure your endpoints**:
+2. **Secure your endpoints**:
    - Use authentication
    - Implement rate limiting
    - Validate input data thoroughly
 
-4. **Monitor ingest performance**:
+3. **Monitor ingest performance**:
    - Track request latency
    - Monitor error rates
    - Watch for validation failures

@@ -24,26 +24,6 @@ class StreamingFunction:
     run: Callable
 
 
-class IngestionFormat(Enum):
-    """Specifies the format of data being ingested.
-
-    Attributes:
-        JSON: Standard JSON format.
-        JSON_ARRAY: A JSON array where each element is a record.
-    """
-    JSON = "JSON"
-    JSON_ARRAY = "JSON_ARRAY"
-
-
-@dataclass
-class IngestionConfig:
-    """Configuration related to data ingestion.
-
-    Attributes:
-        format: The expected format of the ingested data (e.g., JSON).
-    """
-    format: Optional[IngestionFormat] = None
-
 
 @dataclass
 class StorageConfig:

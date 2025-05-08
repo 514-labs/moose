@@ -13,7 +13,6 @@ import {
   ConsumptionUtil,
   createMaterializedView,
   dropView,
-  IngestionFormat,
   populateTable,
   Sql,
   toQuery,
@@ -284,11 +283,6 @@ interface IngestConfig<T> {
    * The destination stream where the ingested data should be sent.
    */
   destination: Stream<T>;
-  /**
-   * Specifies the expected format of the incoming data (e.g., JSON, CSV).
-   * @deprecated May be removed in future versions. Format is often inferred.
-   */
-  format?: IngestionFormat; // TODO: we may not need this
   /**
    * An optional version string for this configuration.
    */

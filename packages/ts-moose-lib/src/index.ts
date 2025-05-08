@@ -13,15 +13,8 @@ export interface ConsumptionUtil {
   jwt: JWTPayload | undefined;
 }
 
-export enum IngestionFormat {
-  JSON = "JSON",
-  JSON_ARRAY = "JSON_ARRAY",
-}
-
 export type DataModelConfig<T> = Partial<{
-  ingestion: {
-    format?: IngestionFormat;
-  };
+  ingestion: true;
   storage: {
     enabled?: boolean;
     order_by_fields?: (keyof T)[];

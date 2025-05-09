@@ -47,7 +47,7 @@ message ApiEndpoint {
 
 message IngressDetails {
   string target_topic = 1;
-  EndpointIngestionFormat format = 2 [deprecated = true];
+  optional EndpointIngestionFormat format = 2 [deprecated = true];
 }
 
 message EgressDetails {

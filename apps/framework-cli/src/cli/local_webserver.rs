@@ -1078,6 +1078,36 @@ async fn router(
 
 const METRICS_LOGS_PATH: &str = "metrics-logs";
 
+pub trait InfraMapProvider {
+    fn serialize(&self) -> impl Future<Output = serde_json::error::Result<String>> + Send;
+    fn as_infra_map<'a>(
+        &'a self,
+    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>>;
+}
+
+impl InfraMapProvider for &RwLock<InfrastructureMap> {
+    async fn serialize(&self) -> serde_json::error::Result<String> {
+        serde_json::to_string(self.read().await.deref())
+    }
+    fn as_infra_map<'a>(
+        &'a self,
+    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
+        // This is a little hacky, but works for our use case
+        Some(Box::new(futures::executor::block_on(self.read())))
+    }
+}
+
+impl InfraMapProvider for &InfrastructureMap {
+    async fn serialize(&self) -> serde_json::error::Result<String> {
+        serde_json::to_string(self)
+    }
+    fn as_infra_map<'a>(
+        &'a self,
+    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
+        Some(Box::new(*self))
+    }
+}
+
 async fn management_router<I: InfraMapProvider>(
     path_prefix: Option<String>,
     is_prod: bool,
@@ -1099,7 +1129,6 @@ async fn management_router<I: InfraMapProvider>(
     );
 
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
-
     let route = route.to_str().unwrap();
     let res = match (req.method(), route) {
         (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
@@ -1109,10 +1138,27 @@ async fn management_router<I: InfraMapProvider>(
         (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
         (&hyper::Method::GET, "infra-map") => {
             let res = infra_map.serialize().await.unwrap();
-
             hyper::Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from(res)))
+        }
+        (&hyper::Method::GET, "infra-map-proto") => {
+            // New endpoint: return proto bytes
+            if let Some(map_ref) = infra_map.as_infra_map() {
+                let bytes = map_ref.to_proto_bytes();
+                Ok(hyper::Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "application/protobuf")
+                    .body(Full::new(Bytes::from(bytes)))
+                    .unwrap())
+            } else {
+                Ok(hyper::Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from(
+                        "Failed to access infrastructure map",
+                    )))
+                    .unwrap())
+            }
         }
         (&hyper::Method::GET, "openapi.yaml") => openapi_route(is_prod, openapi_path).await,
         _ => route_not_found_response(),
@@ -1393,20 +1439,6 @@ impl Webserver {
         }
 
         shutdown(settings, &project, graceful, process_registry).await;
-    }
-}
-
-pub trait InfraMapProvider {
-    fn serialize(&self) -> impl Future<Output = serde_json::error::Result<String>> + Send;
-}
-impl InfraMapProvider for &RwLock<InfrastructureMap> {
-    async fn serialize(&self) -> serde_json::error::Result<String> {
-        serde_json::to_string(self.read().await.deref())
-    }
-}
-impl InfraMapProvider for &InfrastructureMap {
-    async fn serialize(&self) -> serde_json::error::Result<String> {
-        serde_json::to_string(self)
     }
 }
 

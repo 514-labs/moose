@@ -1137,27 +1137,43 @@ async fn management_router<I: InfraMapProvider>(
         }
         (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
         (&hyper::Method::GET, "infra-map") => {
-            let res = infra_map.serialize().await.unwrap();
-            hyper::Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::new(Bytes::from(res)))
-        }
-        (&hyper::Method::GET, "infra-map-proto") => {
-            // New endpoint: return proto bytes
-            if let Some(map_ref) = infra_map.as_infra_map() {
-                let bytes = map_ref.to_proto_bytes();
-                Ok(hyper::Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "application/protobuf")
-                    .body(Full::new(Bytes::from(bytes)))
-                    .unwrap())
+            let accept_header = req
+                .headers()
+                .get(hyper::header::ACCEPT)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+
+            if accept_header.contains("application/protobuf") {
+                if let Some(map_ref) = infra_map.as_infra_map() {
+                    let bytes = map_ref.to_proto_bytes();
+                    Ok(hyper::Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", "application/protobuf")
+                        .body(Full::new(Bytes::from(bytes)))
+                        .unwrap())
+                } else {
+                    Ok(hyper::Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(
+                            "Failed to access infrastructure map",
+                        )))
+                        .unwrap())
+                }
             } else {
-                Ok(hyper::Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Full::new(Bytes::from(
-                        "Failed to access infrastructure map",
-                    )))
-                    .unwrap())
+                match infra_map.serialize().await {
+                    Ok(res) => Ok(hyper::Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", "application/json")
+                        .body(Full::new(Bytes::from(res)))
+                        .unwrap()),
+                    Err(_) => Ok(hyper::Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(
+                            "Failed to serialize infrastructure map",
+                        )))
+                        .unwrap()),
+                }
             }
         }
         (&hyper::Method::GET, "openapi.yaml") => openapi_route(is_prod, openapi_path).await,

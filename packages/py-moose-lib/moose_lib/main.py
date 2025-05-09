@@ -46,10 +46,8 @@ class DataModelConfig:
     Combines ingestion and storage settings.
 
     Attributes:
-        ingestion: Configuration for how data is ingested.
         storage: Configuration for how data is stored.
     """
-    ingestion: Optional[IngestionConfig] = None
     storage: Optional[StorageConfig] = None
 
 

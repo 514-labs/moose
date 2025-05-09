@@ -11,18 +11,8 @@ use std::ffi::OsStr;
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub struct IngestionConfig {
-    // Remove format from IngestionConfig
-}
-
-impl Default for IngestionConfig {
-    fn default() -> Self {
-        Self {
-            // Remove format from IngestionConfig
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash, Default)]
+pub struct IngestionConfig {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct StorageConfig {

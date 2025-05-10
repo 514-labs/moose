@@ -1,0 +1,144 @@
+---
+authors: George Leung <phisgr@gmail.com>
+title: Flows Input/Output Topics
+state: discussion
+---
+
+## Objective
+
+To unify the regular flows and migration flows.
+
+## Design Proposal
+
+A "flow" is an input topic, an output topic, and a function that transform the values.
+
+Note that the input topic is "owned" by the flow, not the ingestion topic (i.e. topic the ingestion point writes to).
+
+The naming scheme is as follows: `${sourceDataModel}_{sourceVersion}_${targetDataModel}_{targetVersion}_(input|output)`
+
+E.g. for a migration flows that moves data from `UserActivity` version 0.0 to version 0.1,
+the input topic will be `UserActivity_0_0_UserActivity_0_1_input`;
+for a flow that transform data from `UserActivity` to `ParsedActivity` in version 0.1,
+the output topic will be `UserActivity_0_1_ParsedActivity_0_1_output`.
+
+All records from the ingestion topic will be copied to the input topics of queues.
+
+For regular flows, records from the output topic will be copied to the ingestion topic of the output model.\
+For migration flows, the records from the output topic will be synced to the database table directly.
+This is to prevent a record from `UserActivity_0_0` being both
+transformed then migrated (via `ParsedActivity_0_0`) and
+migrated then transformed (via `UserActivity_0_1`); thus reaching `ParsedActivity_0_1` twice.
+
+### Alternatives Considered
+
+Multiple flow functions can read from the ingestion topic, as reading from a topic does not consume the record.
+This is in fact an often repeated benefit of Kafka logs over the traditional queues.
+
+We have decided against it because
+
+- Migration flows need the input topic to handle the initial load.
+  - or it requires a more complicated implementation that reads from both the database and the ingestion topic.
+- An input topic allows us to test only the flow without affecting other parts of the system.
+
+### Performance Implications
+
+This design has drawbacks on both latency and throughput.
+
+When a flow simply reads from the ingestion topic of `UserActivity` and writes to the ingestion topic of `ParsedActivity`,
+There is only one round trip from Moose to the Kafka cluster.
+
+With the new design the data has to be
+
+- read from the ingestion topic, copied to the input topic
+- read from the input topic, transformed and written to the output topic
+- read from the output topic, copied to the target topic
+
+These extra hops between Kafka and Moose will introduce extra latency and consume more network bandwidth.
+
+### Engineering Impact
+
+With this proposed change the design is more uniform.
+We can probably simplify the implementation
+(at the cost of worse performance, as noted above).
+
+### User Impact
+
+The mapping between moose objects and created infrastructure
+in this design should be easier to understand for users.
+
+## Detailed Design
+
+The following example expands upon the example flow from `UserActivity` to `ParsedActivity`.
+
+```mermaid
+graph TD;
+
+subgraph User Activity Data Model V1
+  direction LR
+  TopicUA1[User Activity Topic V1] --> TableUA1[(User Activity Table V1)]
+end
+
+subgraph Parsed Activity Data Model V1
+  direction LR
+  TopicPA1[Parsed Activity Topic V1] --> TablePA1[(Parsed Activity Table V1)]
+end
+
+TopicUA1 --> UA_PA_V1_input[Flow Input Topic V1]
+
+subgraph Transform Flow V1
+  direction LR
+  UA_PA_V1_input --> F1[\Transform/] --> UA_PA_V1_output[Flow Output Topic V1]
+end
+
+UA_PA_V1_output --> TopicPA1
+
+TopicUA2 --> UA_PA_V2_input[Flow Input Topic V2]
+
+subgraph Transform Flow V2
+  direction LR
+  UA_PA_V2_input --> F2[\Transform/] --> UA_PA_V2_output[Flow Output Topic V2]
+end
+
+UA_PA_V2_output --> TopicPA2
+
+subgraph User Activity Data Model V2
+  direction LR
+  TopicUA2[User Activity Topic V2] --> TableUA2[(User Activity Table V2)]
+end
+
+subgraph Parsed Activity Data Model V2
+  direction LR
+  TopicPA2[Parsed Activity Topic V2] --> TablePA2[(Parsed Activity Table V2)]
+end
+
+TableUA1 -. Initial Data Load .-> UA_V1_V2_input
+TopicUA1 --> UA_V1_V2_input[User Activity Migration Flow Input]
+
+subgraph User Activity Migration Flow
+  direction LR
+  UA_V1_V2_input --> UAM[\Migration/] --> UA_V1_V2_output[User Activity Migration Flow Output]
+  UA_V1_V2_output --> TableUA2
+end
+
+TablePA1 -. Initial Data Load .-> PA_V1_V2_input
+TopicPA1 --> PA_V1_V2_input[Parsed Activity Migration Flow Input]
+
+subgraph Parsed Activity Migration Flow
+  direction LR
+  PA_V1_V2_input --> PAM[\Migration/] --> PA_V1_V2_output[Parsed Activity Migration Flow Output]
+  PA_V1_V2_output --> TablePA2
+end
+```
+
+## Questions and Discussion Topics
+
+**Initial Data Load for Regular Flows**\
+If the user wants a new flow to consume old data,
+it is theoretically possible.
+E.g. in the example diagram above, if flow V1 did not exist and the flow is added in V2,
+we can still populate `ParsedActivity_2` from the `UserActivity_1` table
+via `UserActivity_2`. This is currently unsupported.
+Do we want that? How much effort will it take to support it?
+
+In the current implementation, we pause the syncing during the initial data load.
+Can we reduce the downtime?

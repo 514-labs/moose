@@ -38,24 +38,21 @@ use log::{debug, info};
 use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
 use queries::{
     basic_field_type_to_string, create_table_query, create_view_query, drop_table_query,
-    drop_view_query, update_view_query,
+    drop_view_query,
 };
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 use self::model::ClickHouseSystemTable;
+use crate::framework::core::infrastructure::sql_resource::SqlResource;
 use crate::framework::core::infrastructure::table::{
     Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Table,
 };
-use crate::framework::core::infrastructure::view::ViewType;
-use crate::framework::core::infrastructure_map::{
-    Change, ColumnChange, OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
-};
+use crate::framework::core::infrastructure::view::{View, ViewType};
+use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
 use crate::infrastructure::olap::{OlapChangesError, OlapOperations};
 use crate::project::Project;
-use crate::utilities::retry::retry;
 
 pub mod client;
 pub mod config;
@@ -66,6 +63,8 @@ pub mod model;
 pub mod queries;
 
 pub use config::ClickHouseConfig;
+
+use super::ddl_ordering::AtomicOlapOperation;
 
 /// Type alias for query strings to improve readability
 pub type QueryString = String;
@@ -91,7 +90,8 @@ pub enum ClickhouseChangesError {
 /// # Arguments
 ///
 /// * `project` - The Project configuration containing ClickHouse connection details
-/// * `changes` - A slice of OlapChange representing schema changes to apply
+/// * `teardown_plan` - A slice of AtomicOlapOperation representing the teardown plan
+/// * `setup_plan` - A slice of AtomicOlapOperation representing the setup plan
 ///
 /// # Returns
 ///
@@ -115,133 +115,383 @@ pub enum ClickhouseChangesError {
 /// ```
 pub async fn execute_changes(
     project: &Project,
-    changes: &[OlapChange],
+    teardown_plan: &[AtomicOlapOperation],
+    setup_plan: &[AtomicOlapOperation],
 ) -> Result<(), ClickhouseChangesError> {
-    // TODO refactor this to use the client we want to standardise on in the long term
-    // This is currently using the same functions we are using in the current implementation
-    let configured_client = create_client(project.clickhouse_config.clone());
-    check_ready(&configured_client).await?;
+    // Setup the client
+    let client = create_client(project.clickhouse_config.clone());
+    check_ready(&client).await?;
 
     let db_name = &project.clickhouse_config.db_name;
 
-    for change in changes.iter() {
-        match change {
-            OlapChange::Table(TableChange::Added(table)) => {
-                log::info!("Creating table: {:?}", table.id());
+    // Execute Teardown Plan
+    info!(
+        "Executing OLAP Teardown Plan with {} operations",
+        teardown_plan.len()
+    );
+    debug!("Ordered Teardown plan: {:?}", teardown_plan);
+    for op in teardown_plan {
+        debug!("Teardown operation: {:?}", op);
+        execute_atomic_operation(db_name, op, &client).await?;
+    }
 
-                let clickhouse_table = std_table_to_clickhouse_table(table)?;
-                let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
-                run_query(&create_data_table_query, &configured_client).await?;
-            }
-            OlapChange::Table(TableChange::Removed(table)) => {
-                log::info!("Removing table: {:?}", table.id());
+    // Execute Setup Plan
+    info!(
+        "Executing OLAP Setup Plan with {} operations",
+        setup_plan.len()
+    );
+    debug!("Ordered Setup plan: {:?}", setup_plan);
+    for op in setup_plan {
+        debug!("Setup operation: {:?}", op);
+        execute_atomic_operation(db_name, op, &client).await?;
+    }
 
-                let clickhouse_table = std_table_to_clickhouse_table(table)?;
-                let drop_query = drop_table_query(db_name, clickhouse_table)?;
-                run_query(&drop_query, &configured_client).await?;
-            }
-            OlapChange::Table(TableChange::Updated {
-                name,
-                column_changes,
-                order_by_change,
-                before,
-                after,
-            }) => {
-                if before.deduplicate != after.deduplicate {
-                    log::info!("Deduplicate parameter changed for table: {:?}", name);
-                    log::info!(
-                        "Deleting table: {:?} and recreating it with the proper Clickhouse engine",
-                        name
-                    );
+    info!("OLAP Change execution complete");
+    Ok(())
+}
 
-                    let dropped_table = std_table_to_clickhouse_table(before)?;
-                    let drop_query = drop_table_query(db_name, dropped_table)?;
-                    run_query(&drop_query, &configured_client).await?;
+/// Executes a single atomic OLAP operation.
+async fn execute_atomic_operation(
+    db_name: &str,
+    operation: &AtomicOlapOperation,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    match operation {
+        AtomicOlapOperation::CreateTable { table, .. } => {
+            execute_create_table(db_name, table, client).await?;
+        }
+        AtomicOlapOperation::DropTable { table, .. } => {
+            execute_drop_table(db_name, table, client).await?;
+        }
+        AtomicOlapOperation::AddTableColumn { table, column, .. } => {
+            execute_add_table_column(db_name, table, column, client).await?;
+        }
+        AtomicOlapOperation::DropTableColumn {
+            table, column_name, ..
+        } => {
+            execute_drop_table_column(db_name, table, column_name, client).await?;
+        }
+        AtomicOlapOperation::ModifyTableColumn {
+            table,
+            column_name,
+            before_data_type,
+            after_data_type,
+            before_required: _,
+            after_required: _,
+            dependency_info: _,
+        } => {
+            execute_modify_table_column(
+                db_name,
+                table,
+                column_name,
+                before_data_type,
+                after_data_type,
+                client,
+            )
+            .await?;
+        }
+        AtomicOlapOperation::CreateView {
+            view,
+            dependency_info: _,
+        } => {
+            execute_create_view(db_name, view, client).await?;
+        }
+        AtomicOlapOperation::DropView {
+            view,
+            dependency_info: _,
+        } => {
+            execute_drop_view(db_name, view, client).await?;
+        }
+        AtomicOlapOperation::RunSetupSql {
+            resource,
+            dependency_info: _,
+        } => {
+            execute_run_setup_sql(resource, client).await?;
+        }
+        AtomicOlapOperation::RunTeardownSql {
+            resource,
+            dependency_info: _,
+        } => {
+            execute_run_teardown_sql(resource, client).await?;
+        }
+    }
+    Ok(())
+}
 
-                    let clickhouse_table = std_table_to_clickhouse_table(after)?;
-                    let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
-                    run_query(&create_data_table_query, &configured_client).await?;
-                } else {
-                    log::info!("Updating table: {:?}", name);
-                    let mut alter_statements =
-                        generate_column_alter_statements(column_changes, db_name, name)?;
+async fn execute_create_table(
+    db_name: &str,
+    table: &Table,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing CreateTable: {:?}", table.id());
+    let clickhouse_table = std_table_to_clickhouse_table(table)?;
+    let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
+    run_query(&create_data_table_query, client).await?;
+    Ok(())
+}
 
-                    if order_by_change.before != order_by_change.after {
-                        let order_by_alter_statement = generate_order_by_alter_statement(
-                            &order_by_change.after,
-                            db_name,
-                            name,
-                        );
-                        alter_statements.push(order_by_alter_statement);
-                    }
+async fn execute_drop_table(
+    db_name: &str,
+    table: &Table,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing DropTable: {:?}", table.id());
+    let clickhouse_table = std_table_to_clickhouse_table(table)?;
+    let drop_query = drop_table_query(db_name, clickhouse_table)?;
+    run_query(&drop_query, client).await?;
+    Ok(())
+}
 
-                    for statement in alter_statements {
-                        retry(
-                            || run_query(&statement, &configured_client),
-                            |_, e| match e {
-                                clickhouse::error::Error::BadResponse(msg)
-                                    if (msg.starts_with("Code: 517.")
-                                        && msg.contains("You can retry this error")) =>
-                                {
-                                    info!("Retrying error {}", e);
-                                    true
-                                }
-                                _ => false,
-                            },
-                            Duration::from_secs(1),
-                        )
-                        .await?;
-                    }
-                }
-            }
-            OlapChange::View(Change::Added(view)) => match &view.view_type {
-                ViewType::TableAlias { source_table_name } => {
-                    let create_view_query = create_view_query(
-                        db_name,
-                        &view.id(),
-                        &format!("SELECT * FROM {}.{}", db_name, source_table_name),
-                    )?;
-                    run_query(&create_view_query, &configured_client).await?;
-                }
-            },
-            OlapChange::View(Change::Removed(view)) => match &view.view_type {
-                ViewType::TableAlias { .. } => {
-                    let delete_view_query = drop_view_query(db_name, &view.id())?;
-                    run_query(&delete_view_query, &configured_client).await?;
-                }
-            },
-            OlapChange::View(Change::Updated { before, after }) => match &after.view_type {
-                ViewType::TableAlias { source_table_name } => {
-                    let update_view_query = update_view_query(
-                        db_name,
-                        &before.id(),
-                        &format!("SELECT * FROM {}.{}", db_name, source_table_name),
-                    )?;
-                    run_query(&update_view_query, &configured_client).await?;
-                }
-            },
-            OlapChange::SqlResource(Change::Added(resource)) => {
-                for query in &resource.setup {
-                    run_query(query, &configured_client).await?;
-                }
-            }
-            OlapChange::SqlResource(Change::Removed(resource)) => {
-                for query in &resource.teardown {
-                    run_query(query, &configured_client).await?;
-                }
-            }
-            OlapChange::SqlResource(Change::Updated { before, after }) => {
-                for query in &before.teardown {
-                    run_query(query, &configured_client).await?;
-                }
-                for query in &after.setup {
-                    run_query(query, &configured_client).await?;
-                }
-            }
+async fn execute_add_table_column(
+    db_name: &str,
+    table: &Table,
+    column: &Column,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!(
+        "Executing AddTableColumn for table: {}, column: {}",
+        table.id(),
+        column.name
+    );
+    let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
+    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
+    let add_column_query = format!(
+        "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
+        db_name, table.name, clickhouse_column.name, column_type_string
+    );
+    log::debug!("Adding column: {}", add_column_query);
+    run_query(&add_column_query, client).await?;
+    Ok(())
+}
+
+async fn execute_drop_table_column(
+    db_name: &str,
+    table: &Table,
+    column_name: &str,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!(
+        "Executing DropTableColumn for table: {}, column: {}",
+        table.id(),
+        column_name
+    );
+    let drop_column_query = format!(
+        "ALTER TABLE `{}`.`{}` DROP COLUMN IF EXISTS `{}`",
+        db_name, table.name, column_name
+    );
+    log::debug!("Dropping column: {}", drop_column_query);
+    run_query(&drop_column_query, client).await?;
+    Ok(())
+}
+
+/// Execute a ModifyTableColumn operation
+async fn execute_modify_table_column(
+    db_name: &str,
+    table: &Table,
+    column_name: &str,
+    before_data_type: &ColumnType,
+    after_data_type: &ColumnType,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!(
+        "Executing ModifyTableColumn for table: {}, column: {} ({}→{})",
+        table.id(),
+        column_name,
+        before_data_type.to_string(),
+        after_data_type.to_string()
+    );
+
+    // Reconstruct the 'after' Column to convert it to ClickHouse type
+    let reconstructed_after_column = Column {
+        name: column_name.to_string(),
+        data_type: after_data_type.clone(),
+        required: false,
+        unique: false,
+        primary_key: false,
+        default: None,
+        annotations: vec![],
+    };
+
+    let clickhouse_column = std_column_to_clickhouse_column(reconstructed_after_column)?;
+    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
+    // TODO: Fix the string conversion issue here - expected String, found &str
+    let modify_column_query = format!(
+        "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
+        db_name, table.name, clickhouse_column.name, column_type_string
+    );
+    log::debug!("Modifying column: {}", modify_column_query);
+    run_query(&modify_column_query, client).await?;
+    Ok(())
+}
+
+async fn execute_create_view(
+    db_name: &str,
+    view: &View,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing CreateView: {:?}", view.id());
+    match &view.view_type {
+        ViewType::TableAlias { source_table_name } => {
+            let create_view_query = create_view_query(
+                db_name,
+                &view.id(),
+                &format!("SELECT * FROM `{}`.`{}`", db_name, source_table_name),
+            )?;
+            run_query(&create_view_query, client).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn execute_drop_view(
+    db_name: &str,
+    view: &View,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing DropView: {:?}", view.id());
+    match &view.view_type {
+        ViewType::TableAlias { .. } => {
+            let delete_view_query = drop_view_query(db_name, &view.id())?;
+            run_query(&delete_view_query, client).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn execute_run_setup_sql(
+    resource: &SqlResource,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing RunSetupSql for resource: {:?}", resource.name);
+    for query in &resource.setup {
+        run_query(query, client).await?;
+    }
+    Ok(())
+}
+
+async fn execute_run_teardown_sql(
+    resource: &SqlResource,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!("Executing RunTeardownSql for resource: {:?}", resource.name);
+    for query in &resource.teardown {
+        run_query(query, client).await?;
+    }
+    Ok(())
+}
+
+/// Extracts version information from a table name
+///
+/// # Arguments
+/// * `table_name` - The name of the table to parse
+/// * `default_version` - The version to use for tables that don't follow the versioning convention
+///
+/// # Returns
+/// * `(String, Version)` - A tuple containing the base name and version
+///
+/// # Format
+/// For tables following the naming convention: {name}_{version}
+/// where version is in the format x_y_z (e.g., 1_0_0)
+/// For tables not following the convention: returns the full name and default_version
+///
+/// # Example
+/// ```rust
+/// let (base_name, version) = extract_version_from_table_name("users_1_0_0", "0.0.0");
+/// assert_eq!(base_name, "users");
+/// assert_eq!(version.to_string(), "1.0.0");
+///
+/// let (base_name, version) = extract_version_from_table_name("my_table", "1.0.0");
+/// assert_eq!(base_name, "my_table");
+/// assert_eq!(version.to_string(), "1.0.0");
+/// ```
+fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (String, Version) {
+    debug!("Extracting version from table name: {}", table_name);
+    debug!("Using default version: {}", default_version);
+
+    // Special case for empty table name
+    if table_name.is_empty() {
+        debug!("Empty table name, using default version");
+        return (
+            table_name.to_string(),
+            Version::from_string(default_version.to_string()),
+        );
+    }
+
+    // Special case for tables ending in _MV (materialized views)
+    if table_name.ends_with("_MV") {
+        debug!("Materialized view detected, using default version");
+        return (
+            table_name.to_string(),
+            Version::from_string(default_version.to_string()),
+        );
+    }
+
+    let parts: Vec<&str> = table_name.split('_').collect();
+    debug!("Split table name into parts: {:?}", parts);
+
+    if parts.len() < 2 {
+        debug!("Table name has fewer than 2 parts, using default version");
+        // If table doesn't follow naming convention, return full name and default version
+        return (
+            table_name.to_string(),
+            Version::from_string(default_version.to_string()),
+        );
+    }
+
+    // Find the first numeric part - this marks the start of the version
+    let mut version_start_idx = None;
+    for (i, part) in parts.iter().enumerate() {
+        if part.chars().all(|c| c.is_ascii_digit()) {
+            version_start_idx = Some(i);
+            debug!("Found version start at index {}: {}", i, part);
+            break;
         }
     }
 
-    Ok(())
+    match version_start_idx {
+        Some(idx) => {
+            // Filter out empty parts when joining base name
+            let base_parts: Vec<&str> = parts[..idx]
+                .iter()
+                .filter(|p| !p.is_empty())
+                .copied()
+                .collect();
+            let base_name = base_parts.join("_");
+            debug!(
+                "Base parts: {:?}, joined base name: {}",
+                base_parts, base_name
+            );
+
+            // Filter out empty parts when joining version
+            let version_parts: Vec<&str> = parts[idx..]
+                .iter()
+                .filter(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
+                .copied()
+                .collect();
+            debug!("Version parts: {:?}", version_parts);
+
+            // If we have no valid version parts, return the original name and default version
+            if version_parts.is_empty() {
+                debug!("No valid version parts found, using default version");
+                return (
+                    table_name.to_string(),
+                    Version::from_string(default_version.to_string()),
+                );
+            }
+
+            let version_str = version_parts.join(".");
+            debug!("Created version string: {}", version_str);
+
+            (base_name, Version::from_string(version_str))
+        }
+        None => {
+            debug!("No version parts found, using default version");
+            (
+                table_name.to_string(),
+                Version::from_string(default_version.to_string()),
+            )
+        }
+    }
 }
 
 pub struct ConfiguredDBClient {
@@ -296,32 +546,27 @@ pub fn create_client(clickhouse_config: ClickHouseConfig) -> ConfiguredDBClient 
     }
 }
 
-/// Executes a query against the ClickHouse database
+/// Executes a SQL query against the ClickHouse database
 ///
 /// # Arguments
 /// * `query` - The SQL query to execute
-/// * `configured_client` - The configured client to use for execution
+/// * `configured_client` - The client to use for execution
 ///
 /// # Returns
-/// * `Result<(), clickhouse::error::Error>` - Success or error from query execution
-///
-/// # Details
-/// - Logs query for debugging purposes
-/// - Executes query using configured client
-/// - Handles query execution errors
+/// * `Result<(), clickhouse::error::Error>` - Success if query executes without error
 ///
 /// # Example
-/// ```rust
-/// let query = "SELECT 1".to_string();
-/// run_query(&query, &client).await?;
+/// ```
+/// let query = "SELECT 1";
+/// run_query(query, &client).await?;
 /// ```
 pub async fn run_query(
-    query: &String,
+    query: &str,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), clickhouse::error::Error> {
     debug!("Running query: {:?}", query);
     let client = &configured_client.client;
-    client.query(query.as_str()).execute().await
+    client.query(query).execute().await
 }
 
 /// Checks if the ClickHouse database is ready for operations
@@ -463,221 +708,6 @@ pub async fn check_table_size(
 struct TableDetail {
     pub engine: String,
     pub total_rows: Option<u64>,
-}
-
-/// Generates SQL statements for column alterations
-///
-/// # Arguments
-/// * `diff` - List of column changes to apply
-/// * `db_name` - Target database name
-/// * `table_name` - Target table name
-///
-/// # Returns
-/// * `Result<Vec<String>, ClickhouseError>` - List of ALTER TABLE statements
-///
-/// # Details
-/// Handles three types of column changes:
-/// - Added: Creates new columns
-/// - Removed: Drops existing columns
-/// - Updated: Modifies column type/properties
-///
-/// # Example
-/// ```rust
-/// let changes = vec![ColumnChange::Added(Column {
-///     name: "new_column".to_string(),
-///     data_type: ColumnType::Int(IntType::Int64),
-///     required: true,
-///     ..Default::default()
-/// })];
-/// let statements = generate_column_alter_statements(&changes, "mydb", "mytable")?;
-/// ```
-fn generate_column_alter_statements(
-    diff: &[ColumnChange],
-    db_name: &str,
-    table_name: &str,
-) -> Result<Vec<String>, ClickhouseError> {
-    let mut statements: Vec<String> = vec![];
-
-    for column_change in diff {
-        match column_change {
-            ColumnChange::Added(col) => {
-                let clickhouse_column = std_column_to_clickhouse_column(col.clone())?;
-                let column_type_string =
-                    basic_field_type_to_string(&clickhouse_column.column_type)?;
-
-                statements.push(format!(
-                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
-                    db_name, table_name, clickhouse_column.name, column_type_string
-                ));
-            }
-            ColumnChange::Removed(col) => {
-                statements.push(format!(
-                    "ALTER TABLE `{}`.`{}` DROP COLUMN `{}`",
-                    db_name, table_name, col.name
-                ));
-            }
-            ColumnChange::Updated { before, after } => {
-                let clickhouse_column = std_column_to_clickhouse_column(after.clone())?;
-                let column_type_string =
-                    basic_field_type_to_string(&clickhouse_column.column_type)?;
-
-                statements.push(format!(
-                    "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {}",
-                    db_name, table_name, before.name, column_type_string
-                ));
-            }
-        }
-    }
-
-    Ok(statements)
-}
-
-/// Generates an ORDER BY clause alteration statement
-///
-/// # Arguments
-/// * `order_by` - List of columns for ordering
-/// * `db_name` - Target database name
-/// * `table_name` - Target table name
-///
-/// # Returns
-/// * `String` - The complete ALTER TABLE statement
-///
-/// # Details
-/// - Generates proper SQL syntax for ORDER BY modifications
-/// - Handles empty order by clauses
-/// - Properly escapes identifiers
-///
-/// # Example
-/// ```rust
-/// let order_by = vec!["id".to_string(), "timestamp".to_string()];
-/// let statement = generate_order_by_alter_statement(&order_by, "mydb", "mytable");
-/// // Result: ALTER TABLE `mydb`.`mytable` MODIFY ORDER BY (`id`, `timestamp`)
-/// ```
-fn generate_order_by_alter_statement(
-    order_by: &[String],
-    db_name: &str,
-    table_name: &str,
-) -> String {
-    format!(
-        "ALTER TABLE `{}`.`{}` MODIFY ORDER BY ({})",
-        db_name,
-        table_name,
-        order_by.iter().map(|col| format!("`{}`", col)).join(", ")
-    )
-}
-
-/// Extracts version information from a table name
-///
-/// # Arguments
-/// * `table_name` - The name of the table to parse
-/// * `default_version` - The version to use for tables that don't follow the versioning convention
-///
-/// # Returns
-/// * `(String, Version)` - A tuple containing the base name and version
-///
-/// # Format
-/// For tables following the naming convention: {name}_{version}
-/// where version is in the format x_y_z (e.g., 1_0_0)
-/// For tables not following the convention: returns the full name and default_version
-///
-/// # Example
-/// ```rust
-/// let (base_name, version) = extract_version_from_table_name("users_1_0_0", "0.0.0");
-/// assert_eq!(base_name, "users");
-/// assert_eq!(version.to_string(), "1.0.0");
-///
-/// let (base_name, version) = extract_version_from_table_name("my_table", "1.0.0");
-/// assert_eq!(base_name, "my_table");
-/// assert_eq!(version.to_string(), "1.0.0");
-/// ```
-fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (String, Version) {
-    debug!("Extracting version from table name: {}", table_name);
-    debug!("Using default version: {}", default_version);
-
-    // Special case for empty table name
-    if table_name.is_empty() {
-        debug!("Empty table name, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
-    }
-
-    // Special case for tables ending in _MV (materialized views)
-    if table_name.ends_with("_MV") {
-        debug!("Materialized view detected, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
-    }
-
-    let parts: Vec<&str> = table_name.split('_').collect();
-    debug!("Split table name into parts: {:?}", parts);
-
-    if parts.len() < 2 {
-        debug!("Table name has fewer than 2 parts, using default version");
-        // If table doesn't follow naming convention, return full name and default version
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
-    }
-
-    // Find the first numeric part - this marks the start of the version
-    let mut version_start_idx = None;
-    for (i, part) in parts.iter().enumerate() {
-        if part.chars().all(|c| c.is_ascii_digit()) {
-            version_start_idx = Some(i);
-            debug!("Found version start at index {}: {}", i, part);
-            break;
-        }
-    }
-
-    match version_start_idx {
-        Some(idx) => {
-            // Filter out empty parts when joining base name
-            let base_parts: Vec<&str> = parts[..idx]
-                .iter()
-                .filter(|p| !p.is_empty())
-                .copied()
-                .collect();
-            let base_name = base_parts.join("_");
-            debug!(
-                "Base parts: {:?}, joined base name: {}",
-                base_parts, base_name
-            );
-
-            // Filter out empty parts when joining version
-            let version_parts: Vec<&str> = parts[idx..]
-                .iter()
-                .filter(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
-                .copied()
-                .collect();
-            debug!("Version parts: {:?}", version_parts);
-
-            // If we have no valid version parts, return the original name and default version
-            if version_parts.is_empty() {
-                debug!("No valid version parts found, using default version");
-                return (
-                    table_name.to_string(),
-                    Version::from_string(default_version.to_string()),
-                );
-            }
-
-            let version_str = version_parts.join(".");
-            debug!("Created version string: {}", version_str);
-
-            (base_name, Version::from_string(version_str))
-        }
-        None => {
-            debug!("No version parts found, using default version");
-            (
-                table_name.to_string(),
-                Version::from_string(default_version.to_string()),
-            )
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -1016,12 +1046,27 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
                 .and_then(|s| s.strip_suffix(")"))
                 .ok_or_else(|| format!("Invalid Array type format: {}", ch_type))?;
 
-            let (inner_column_type, inner_nullable) =
-                convert_clickhouse_type_to_column_type(inner_type)?;
-            Ok(ColumnType::Array {
-                element_type: Box::new(inner_column_type),
-                element_nullable: inner_nullable,
-            })
+            // Check if inner type is Nullable
+            if inner_type.starts_with("Nullable(") {
+                let nullable_inner = inner_type
+                    .strip_prefix("Nullable(")
+                    .and_then(|s| s.strip_suffix(")"))
+                    .ok_or_else(|| format!("Invalid Nullable type format: {}", inner_type))?;
+
+                let (inner_column_type, _) =
+                    convert_clickhouse_type_to_column_type(nullable_inner)?;
+                Ok(ColumnType::Array {
+                    element_type: Box::new(inner_column_type),
+                    element_nullable: true, // Mark elements as nullable
+                })
+            } else {
+                // Regular non-nullable array elements
+                let (inner_column_type, _) = convert_clickhouse_type_to_column_type(inner_type)?;
+                Ok(ColumnType::Array {
+                    element_type: Box::new(inner_column_type),
+                    element_nullable: false,
+                })
+            }
         }
         "JSON" => Ok(ColumnType::Json),
         "UUID" => Ok(ColumnType::Uuid),
@@ -1094,133 +1139,7 @@ fn extract_order_by_from_create_query(create_query: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
-
-    #[test]
-    fn test_generate_column_alter_statements_with_array_float() {
-        let diff = vec![ColumnChange::Added(Column {
-            name: "prices".to_string(),
-            data_type: ColumnType::Array {
-                element_type: Box::new(ColumnType::Float(FloatType::Float64)),
-                element_nullable: false,
-            },
-            required: false,
-            unique: false,
-            primary_key: false,
-            default: None,
-            annotations: vec![],
-        })];
-
-        let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
-
-        assert_eq!(statements.len(), 1);
-        assert_eq!(
-            statements[0],
-            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `prices` Array(Float64)"
-        );
-    }
-
-    #[test]
-    fn test_generate_column_alter_statements() {
-        let diff = vec![
-            ColumnChange::Added(Column {
-                name: "age".to_string(),
-                data_type: ColumnType::Int(IntType::Int64),
-                required: false,
-                unique: false,
-                primary_key: false,
-                default: None,
-                annotations: vec![],
-            }),
-            ColumnChange::Removed(Column {
-                name: "old_column".to_string(),
-                data_type: ColumnType::String,
-                required: false,
-                unique: false,
-                primary_key: false,
-                default: None,
-                annotations: vec![],
-            }),
-            ColumnChange::Updated {
-                before: Column {
-                    name: "id".to_string(),
-                    data_type: ColumnType::Int(IntType::Int64),
-                    required: true,
-                    unique: true,
-                    primary_key: true,
-                    default: None,
-                    annotations: vec![],
-                },
-                after: Column {
-                    name: "id".to_string(),
-                    data_type: ColumnType::Float(FloatType::Float64),
-                    required: true,
-                    unique: true,
-                    primary_key: true,
-                    default: None,
-                    annotations: vec![],
-                },
-            },
-        ];
-
-        let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
-
-        assert_eq!(statements.len(), 3);
-        assert_eq!(
-            statements[0],
-            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `age` Int64"
-        );
-        assert_eq!(
-            statements[1],
-            "ALTER TABLE `test_db`.`test_table` DROP COLUMN `old_column`"
-        );
-        assert_eq!(
-            statements[2],
-            "ALTER TABLE `test_db`.`test_table` MODIFY COLUMN `id` Float64"
-        );
-    }
-
-    #[test]
-    fn test_generate_order_by_alter_statement() {
-        let new_order_by = vec!["id".to_string(), "timestamp".to_string()];
-        let db_name = "test_db";
-        let table_name = "test_table";
-
-        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
-
-        assert_eq!(
-            statement,
-            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY (`id`, `timestamp`)"
-        );
-    }
-
-    #[test]
-    fn test_generate_order_by_alter_statement_single_column() {
-        let new_order_by = vec!["id".to_string()];
-        let db_name = "test_db";
-        let table_name = "test_table";
-
-        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
-
-        assert_eq!(
-            statement,
-            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY (`id`)"
-        );
-    }
-
-    #[test]
-    fn test_generate_order_by_alter_statement_empty_order_by() {
-        let new_order_by: Vec<String> = vec![];
-        let db_name = "test_db";
-        let table_name = "test_table";
-
-        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
-
-        assert_eq!(
-            statement,
-            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY ()"
-        );
-    }
+    use crate::framework::core::infrastructure::table::{ColumnType, EnumValue};
 
     #[test]
     fn test_datetime_type_conversion() {
@@ -1354,18 +1273,17 @@ mod tests {
             _ => panic!("Expected Enum type"),
         }
 
-        // Test array with nullable elements
-        let array_type = "Array(Nullable(Int32))";
-        let (column_type, is_nullable) =
-            convert_clickhouse_type_to_column_type(array_type).unwrap();
-        assert!(!is_nullable); // The array itself is not nullable
-        match column_type {
+        // Test Array of Nullable types
+        let (array_type, is_nullable) =
+            convert_clickhouse_type_to_column_type("Array(Nullable(Int32))").unwrap();
+        assert!(!is_nullable); // Array itself is not nullable
+        match array_type {
             ColumnType::Array {
                 element_type,
                 element_nullable,
             } => {
                 assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
-                assert!(element_nullable); // But its elements are nullable
+                assert!(element_nullable); // Elements are nullable
             }
             _ => panic!("Expected Array type"),
         }

@@ -18,6 +18,7 @@ use crate::proto::infrastructure_map::{
     infrastructure_signature, InfrastructureSignature as ProtoInfrastructureSignature,
 };
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 
 pub mod api_endpoint;
 pub mod consumption_webserver;
@@ -30,7 +31,7 @@ pub mod topic;
 pub mod topic_sync_process;
 pub mod view;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
 #[serde(tag = "kind")]
 /// Represents the unique signature of an infrastructure component.
 ///

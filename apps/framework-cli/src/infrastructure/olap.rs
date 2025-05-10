@@ -7,6 +7,7 @@ use crate::{
 
 pub mod clickhouse;
 pub mod clickhouse_alt_client;
+pub mod ddl_ordering;
 
 #[derive(Debug, thiserror::Error)]
 pub enum OlapChangesError {
@@ -14,6 +15,8 @@ pub enum OlapChangesError {
     ClickhouseChanges(#[from] ClickhouseChangesError),
     #[error("Database error: {0}")]
     DatabaseError(String),
+    #[error("Failed to order OLAP changes")]
+    OrderingError(#[from] ddl_ordering::PlanOrderingError),
 }
 
 /// Trait defining operations that can be performed on an OLAP database
@@ -50,6 +53,10 @@ pub async fn execute_changes(
     project: &Project,
     changes: &[OlapChange],
 ) -> Result<(), OlapChangesError> {
-    clickhouse::execute_changes(project, changes).await?;
+    // Order changes based on dependencies
+    let (teardown_plan, setup_plan) = ddl_ordering::order_olap_changes(changes)?;
+
+    // Execute the ordered changes
+    clickhouse::execute_changes(project, &teardown_plan, &setup_plan).await?;
     Ok(())
 }

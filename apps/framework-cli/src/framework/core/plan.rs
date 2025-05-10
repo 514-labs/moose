@@ -38,7 +38,6 @@ pub enum PlanningError {
     Kafka(#[from] KafkaError),
 
     /// Other unspecified errors
-    // TODO: refactor the called functions
     #[error("Unknown error")]
     Other(#[from] anyhow::Error),
 }
@@ -132,7 +131,6 @@ pub async fn plan_changes_from_infra_map(
     };
 
     Ok(InfraPlan {
-        // current_infra_map,
         target_infra_map: target_infra_map.clone(),
         changes,
     })

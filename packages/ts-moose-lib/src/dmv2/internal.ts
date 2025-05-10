@@ -21,7 +21,7 @@ import {
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ConsumptionUtil, IngestionFormat } from "../index";
+import { ConsumptionUtil } from "../index";
 
 /**
  * Internal registry holding all defined Moose dmv2 resources.
@@ -110,8 +110,7 @@ interface IngestApiJson {
   name: string;
   /** Array defining the expected input schema (columns/fields). */
   columns: Column[];
-  /** The expected input data format (e.g., JSON). */
-  format: IngestionFormat;
+
   /** The target stream where ingested data is written. */
   writeTo: Target;
   /** Optional version string for the API configuration. */
@@ -229,7 +228,6 @@ const toInfraMap = (registry: typeof moose_internal) => {
     ingestApis[api.name] = {
       name: api.name,
       columns: api.columnArray,
-      format: api.config.format ?? IngestionFormat.JSON,
       version: api.config.version,
       writeTo: {
         kind: "stream",

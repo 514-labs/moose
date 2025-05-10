@@ -3,13 +3,12 @@ use crate::framework::versions::Version;
 use crate::framework::{
     consumption::model::{ConsumptionQueryParam, EndpointFile},
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
-    data_model::{config::EndpointIngestionFormat, model::DataModel},
+    data_model::model::DataModel,
 };
 use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
 use crate::proto::infrastructure_map::{
-    ApiEndpoint as ProtoApiEndpoint, EgressDetails, EndpointIngestionFormat as ProtoIngressFormat,
-    IngressDetails,
+    ApiEndpoint as ProtoApiEndpoint, EgressDetails, IngressDetails,
 };
 use protobuf::{EnumOrUnknown, MessageField};
 use serde::de::Error;
@@ -27,7 +26,6 @@ pub enum APIType {
         // TODO data model is a reference to the primitive map, that should not leak into the infrastructure map
         // that's a different level of abstraction
         data_model: Option<DataModel>,
-        format: EndpointIngestionFormat,
     },
     EGRESS {
         query_params: Vec<ConsumptionQueryParam>,
@@ -63,7 +61,6 @@ impl ApiEndpoint {
             api_type: APIType::INGRESS {
                 target_topic_id: topic.id(),
                 data_model: Some(data_model.clone()),
-                format: data_model.config.ingestion.format,
             },
             // This implementation is actually removing the functionality of nestedness of paths in
             // data model to change the ingest path. However, we are changing how this works with an
@@ -97,20 +94,12 @@ impl ApiEndpoint {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "API Endpoint: {} - Version: {:?} - Path: {} - Method: {:?} - Format: {:?}",
+            "API Endpoint: {} - Version: {:?} - Path: {} - Method: {:?}",
             self.name,
             self.version,
             self.path.to_string_lossy(),
             self.method,
-            self.format(),
         )
-    }
-
-    fn format(&self) -> Option<EndpointIngestionFormat> {
-        match self.api_type {
-            APIType::INGRESS { format, .. } => Some(format),
-            APIType::EGRESS { .. } => None,
-        }
     }
 
     pub fn short_display(&self) -> String {
@@ -196,14 +185,10 @@ impl APIType {
             APIType::INGRESS {
                 target_topic_id,
                 data_model: _data_model,
-                format,
             } => ProtoApiType::Ingress(IngressDetails {
                 target_topic: target_topic_id.clone(),
-                format: EnumOrUnknown::new(match format {
-                    EndpointIngestionFormat::Json => ProtoIngressFormat::JSON,
-                    EndpointIngestionFormat::JsonArray => ProtoIngressFormat::JSON_ARRAY,
-                }),
                 special_fields: Default::default(),
+                ..Default::default()
             }),
             APIType::EGRESS {
                 query_params,
@@ -235,14 +220,6 @@ impl APIType {
             ProtoApiType::Ingress(details) => APIType::INGRESS {
                 target_topic_id: details.target_topic,
                 data_model: None,
-                format: match details
-                    .format
-                    .enum_value()
-                    .expect("Invalid format enum value")
-                {
-                    ProtoIngressFormat::JSON => EndpointIngestionFormat::Json,
-                    ProtoIngressFormat::JSON_ARRAY => EndpointIngestionFormat::JsonArray,
-                },
             },
             ProtoApiType::Egress(details) => APIType::EGRESS {
                 query_params: details

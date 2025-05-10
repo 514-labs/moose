@@ -8,43 +8,11 @@ use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
-use std::fmt::{Display, Formatter};
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum EndpointIngestionFormat {
-    #[serde(alias = "JSON", alias = "json")]
-    Json,
-    #[serde(alias = "JSON_ARRAY", alias = "jsonArray")]
-    JsonArray,
-}
-
-impl Display for EndpointIngestionFormat {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                EndpointIngestionFormat::Json => "JSON",
-                EndpointIngestionFormat::JsonArray => "JSON_ARRAY",
-            }
-        )
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub struct IngestionConfig {
-    pub format: EndpointIngestionFormat,
-}
-
-impl Default for IngestionConfig {
-    fn default() -> Self {
-        Self {
-            format: EndpointIngestionFormat::Json,
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash, Default)]
+pub struct IngestionConfig {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct StorageConfig {

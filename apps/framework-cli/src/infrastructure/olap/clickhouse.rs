@@ -214,10 +214,6 @@ async fn execute_atomic_operation(
         } => {
             execute_run_teardown_sql(resource, client).await?;
         }
-        AtomicOlapOperation::NoOp => {
-            log::debug!("Executing NoOp");
-            // Do nothing
-        }
     }
     Ok(())
 }

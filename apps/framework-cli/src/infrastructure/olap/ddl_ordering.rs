@@ -19,7 +19,7 @@ pub struct DependencyEdge {
 }
 
 /// Dependency information for an operation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct DependencyInfo {
     /// Resources this operation's resource pulls data from (dependencies)
     pub pulls_data_from: Vec<InfrastructureSignature>,
@@ -108,8 +108,6 @@ pub enum AtomicOlapOperation {
         /// Dependency information
         dependency_info: DependencyInfo,
     },
-    /// No operation (placeholder)
-    NoOp,
 }
 
 impl AtomicOlapOperation {
@@ -147,12 +145,6 @@ impl AtomicOlapOperation {
                     id: resource.name.clone(),
                 }
             }
-            AtomicOlapOperation::NoOp => {
-                // This should never be needed, but return a placeholder to make the API simpler
-                InfrastructureSignature::Table {
-                    id: "noop".to_string(),
-                }
-            }
         }
     }
 
@@ -186,7 +178,6 @@ impl AtomicOlapOperation {
             | AtomicOlapOperation::RunTeardownSql {
                 dependency_info, ..
             } => Some(dependency_info),
-            AtomicOlapOperation::NoOp => None,
         }
     }
 
@@ -195,10 +186,8 @@ impl AtomicOlapOperation {
     /// These edges indicate that the dependency must be created before the dependent.
     fn get_setup_edges(&self) -> Vec<DependencyEdge> {
         // No dependency info for NoOp
-        let dependency_info = match self.dependency_info() {
-            Some(info) => info,
-            None => return vec![],
-        };
+        let default_dependency_info = DependencyInfo::default();
+        let dependency_info = self.dependency_info().unwrap_or(&default_dependency_info);
 
         // Get this operation's resource signature
         let this_sig = self.resource_signature();
@@ -696,11 +685,6 @@ fn order_operations_by_dependencies(
 
     // First pass: Create nodes for all operations
     for (i, op) in operations.iter().enumerate() {
-        // Skip NoOp operations
-        if let AtomicOlapOperation::NoOp = op {
-            continue;
-        }
-
         let signature = op.resource_signature();
         let node_idx = graph.add_node(i);
         signature_to_node.insert(signature, node_idx);
@@ -768,15 +752,11 @@ fn order_operations_by_dependencies(
         return Err(PlanOrderingError::CyclicDependency);
     }
 
-    // If no edges were added, just return operations in original order (but filter out NoOps)
+    // If no edges were added, just return operations in original order
     // This handles cases where signatures were invalid or not found
     if edge_count == 0 && operations.len() > 1 {
         log::debug!("No edges were added to the graph");
-        return Ok(operations
-            .iter()
-            .filter(|op| !matches!(op, AtomicOlapOperation::NoOp))
-            .cloned()
-            .collect());
+        return Ok(operations.to_vec());
     }
 
     // Perform topological sort
@@ -1544,50 +1524,6 @@ mod tests {
         // Test empty operations list
         let ordered = order_operations_by_dependencies(&[], false).unwrap();
         assert!(ordered.is_empty());
-    }
-
-    #[test]
-    fn test_with_noop_operations() {
-        // Test with NoOp operations mixed in
-        let table = Table {
-            name: "test_table".to_string(),
-            columns: vec![],
-            order_by: vec![],
-            deduplicate: false,
-            engine: None,
-            version: None,
-            source_primitive: PrimitiveSignature {
-                name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
-            },
-        };
-
-        let op_create_table = AtomicOlapOperation::CreateTable {
-            table: table.clone(),
-            dependency_info: DependencyInfo {
-                pulls_data_from: vec![],
-                pushes_data_to: vec![],
-            },
-        };
-
-        // Mix in NoOp operations
-        let operations = vec![
-            AtomicOlapOperation::NoOp,
-            op_create_table,
-            AtomicOlapOperation::NoOp,
-        ];
-
-        // Order the operations
-        let ordered = order_operations_by_dependencies(&operations, false).unwrap();
-
-        // Verify NoOps are filtered out
-        assert_eq!(ordered.len(), 1);
-        match &ordered[0] {
-            AtomicOlapOperation::CreateTable { table, .. } => {
-                assert_eq!(table.name, "test_table");
-            }
-            _ => panic!("Expected CreateTable operation"),
-        }
     }
 
     #[test]

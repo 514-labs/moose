@@ -24,3 +24,4 @@ post_install_print = """
 🛠️ Start dev server:
     $ npm run dev
 """
+default_aurora_telemetry="comprehensive"

@@ -71,3 +71,7 @@ scratch*
 # ignore all virtual environments
 venv/
 .venv/
+
+# ignore content folders
+templates/*/content/
+content-generation.mdc

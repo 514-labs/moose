@@ -2,7 +2,7 @@ import { render } from "@/components";
 
 const meta = {
   "data-modeling": "Data Modeling",
-  ingestion: "Ingesting Data",
+  ingestion: "Ingesting Data via API",
   streams: "Stream Processing",
   "olap-table": "Managing DB Tables",
   "materialized-views": "In-Database Transforms",

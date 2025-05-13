@@ -23,6 +23,7 @@ use crate::{
     project::Project,
 };
 use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -53,7 +54,7 @@ pub enum RealityCheckError {
 /// This struct holds information about tables that exist in reality but not in the map,
 /// tables that are in the map but don't exist in reality, and tables that exist in both
 /// but have structural differences.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InfraDiscrepancies {
     /// Tables that exist in reality but are not in the map
     pub unmapped_tables: Vec<Table>,
@@ -134,8 +135,8 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
 
         // Create maps for easier comparison
         let actual_table_map: HashMap<_, _> = actual_tables
-            .iter()
-            .map(|t| (t.name.clone(), t.clone()))
+            .into_iter()
+            .map(|t| (t.name.clone(), t))
             .collect();
         debug!("Actual table names: {:?}", actual_table_map.keys());
 

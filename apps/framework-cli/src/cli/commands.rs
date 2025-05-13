@@ -143,6 +143,18 @@ pub enum Commands {
     Workflow(WorkflowArgs),
     /// Manage templates
     Template(TemplateCommands),
+    Refresh {
+        /// URL of the remote Moose instance (default: http://localhost:4000)
+        #[arg(long)]
+        url: Option<String>,
+
+        /// API token for authentication with the remote Moose instance
+        /// This token will be sent as a Bearer token in the Authorization header
+        #[arg(long)]
+        token: Option<String>,
+        // #[arg(default_value = "true", short, long)]
+        // interactive: bool,
+    },
 }
 
 #[derive(Debug, Args)]

@@ -117,9 +117,9 @@ export const Nav = ({
                     return (
                       <div
                         className={cn(
-                          isActive
-                            ? "flex items-center text-action-primary"
-                            : "flex items-center text-primary",
+                          isActive ?
+                            "flex items-center text-action-primary"
+                          : "flex items-center text-primary",
                         )}
                         key={item.name}
                       >
@@ -128,31 +128,30 @@ export const Nav = ({
                           subject={item.name}
                           href={item.href}
                         >
-                          {item.emphasized ? (
+                          {item.emphasized ?
                             <Button size={"lg"} className="py-8">
                               <Text
                                 className={cn(
-                                  isActive
-                                    ? "hover:text-action-primary-foreground "
-                                    : "hover:text-primary-foreground",
+                                  isActive ?
+                                    "hover:text-action-primary-foreground "
+                                  : "hover:text-primary-foreground",
                                   "text-primary-foreground",
                                 )}
                               >
                                 {item.name}
                               </Text>
                             </Button>
-                          ) : (
-                            <Text
+                          : <Text
                               className={cn(
-                                isActive
-                                  ? "hover:text-action-primary border-b-2 border-primary"
-                                  : "hover:text-primary border-b-2 border-transparent",
+                                isActive ?
+                                  "hover:text-action-primary border-b-2 border-primary"
+                                : "hover:text-primary border-b-2 border-transparent",
                                 "py-2 px-5",
                               )}
                             >
                               {item.name}
                             </Text>
-                          )}
+                          }
                         </TrackLink>
                       </div>
                     );
@@ -164,11 +163,9 @@ export const Nav = ({
                 <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-primary hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">
                   <span className="absolute -inset-0.5" />
                   <span className="sr-only">Open main menu</span>
-                  {open ? (
+                  {open ?
                     <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                  ) : (
-                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                  )}
+                  : <Bars3Icon className="block h-6 w-6" aria-hidden="true" />}
                 </Disclosure.Button>
               </div>
             </div>
@@ -185,9 +182,9 @@ export const Nav = ({
                     href={item.href}
                     key={item.name}
                     className={
-                      isActive
-                        ? "block py-2 pl-0 pr-4 text-5xl text-action-primary hover:text-primary"
-                        : "block py-2 pl-0 pr-4 text-5xl text-primary hover:text-action-primary"
+                      isActive ?
+                        "block py-2 pl-0 pr-4 text-5xl text-action-primary hover:text-primary"
+                      : "block py-2 pl-0 pr-4 text-5xl text-primary hover:text-action-primary"
                     }
                   >
                     {item.name}

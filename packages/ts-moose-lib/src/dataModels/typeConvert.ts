@@ -96,9 +96,8 @@ const handleNumberType = (
     const typiaProps = checker.getNonNullableType(
       checker.getTypeOfSymbol(tagSymbol),
     );
-    const props: ts.Type[] = typiaProps.isIntersection()
-      ? typiaProps.types
-      : [typiaProps];
+    const props: ts.Type[] =
+      typiaProps.isIntersection() ? typiaProps.types : [typiaProps];
 
     for (const prop of props) {
       const valueSymbol = prop.getProperty("value");
@@ -122,8 +121,9 @@ const handleNumberType = (
         if (match) {
           return match[1];
         } else {
-          const typeString = valueTypeLiteral.isStringLiteral()
-            ? valueTypeLiteral.value
+          const typeString =
+            valueTypeLiteral.isStringLiteral() ?
+              valueTypeLiteral.value
             : "unknown";
 
           console.log(
@@ -160,9 +160,8 @@ const handleStringType = (
     const typiaProps = checker.getNonNullableType(
       checker.getTypeOfSymbol(tagSymbol),
     );
-    const props: ts.Type[] = typiaProps.isIntersection()
-      ? typiaProps.types
-      : [typiaProps];
+    const props: ts.Type[] =
+      typiaProps.isIntersection() ? typiaProps.types : [typiaProps];
 
     for (const prop of props) {
       const valueSymbol = prop.getProperty("value");
@@ -213,8 +212,9 @@ const handleStringType = (
 
           return `Decimal(${precision}, ${scale})`;
         } else {
-          const typeString = valueTypeLiteral.isStringLiteral()
-            ? valueTypeLiteral.value
+          const typeString =
+            valueTypeLiteral.isStringLiteral() ?
+              valueTypeLiteral.value
             : "unknown";
 
           console.log(`Unknown format: ${typeString} in field ${fieldName}`);
@@ -239,36 +239,32 @@ const tsTypeToDataType = (
   const aggregationFunction = handleAggregated(t, checker, fieldName, typeName);
 
   // this looks nicer if we turn on experimentalTernaries in prettier
-  const dataType: DataType = isEnum(nonNull)
-    ? enumConvert(nonNull)
-    : checker.isTypeAssignableTo(nonNull, checker.getStringType())
-      ? handleStringType(nonNull, checker, fieldName)
-      : isNumberType(nonNull, checker)
-        ? handleNumberType(nonNull, checker, fieldName)
-        : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())
-          ? "Boolean"
-          : checker.isTypeAssignableTo(nonNull, dateType(checker))
-            ? "DateTime"
-            : checker.isArrayType(nonNull)
-              ? toArrayType(
-                  tsTypeToDataType(
-                    nonNull.getNumberIndexType()!,
-                    checker,
-                    fieldName,
-                    typeName,
-                    isJwt,
-                  ),
-                )
-              : nonNull.isClassOrInterface() ||
-                  (nonNull.flags & TypeFlags.Object) !== 0
-                ? {
-                    name: getNestedName(nonNull, fieldName),
-                    columns: toColumns(nonNull, checker),
-                    jwt: isJwt,
-                  }
-                : nonNull == checker.getNeverType()
-                  ? throwNullType(fieldName, typeName)
-                  : throwUnknownType(t, fieldName, typeName);
+  const dataType: DataType =
+    isEnum(nonNull) ? enumConvert(nonNull)
+    : checker.isTypeAssignableTo(nonNull, checker.getStringType()) ?
+      handleStringType(nonNull, checker, fieldName)
+    : isNumberType(nonNull, checker) ?
+      handleNumberType(nonNull, checker, fieldName)
+    : checker.isTypeAssignableTo(nonNull, checker.getBooleanType()) ? "Boolean"
+    : checker.isTypeAssignableTo(nonNull, dateType(checker)) ? "DateTime"
+    : checker.isArrayType(nonNull) ?
+      toArrayType(
+        tsTypeToDataType(
+          nonNull.getNumberIndexType()!,
+          checker,
+          fieldName,
+          typeName,
+          isJwt,
+        ),
+      )
+    : nonNull.isClassOrInterface() || (nonNull.flags & TypeFlags.Object) !== 0 ?
+      {
+        name: getNestedName(nonNull, fieldName),
+        columns: toColumns(nonNull, checker),
+        jwt: isJwt,
+      }
+    : nonNull == checker.getNeverType() ? throwNullType(fieldName, typeName)
+    : throwUnknownType(t, fieldName, typeName);
   const annotations: [string, any][] = [];
   if (aggregationFunction !== undefined) {
     annotations.push(["aggregationFunction", aggregationFunction]);

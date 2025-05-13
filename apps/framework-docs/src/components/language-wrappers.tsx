@@ -14,15 +14,13 @@ export const TypeScript: React.FC<LanguageProps> = ({
   inline = false,
 }) => {
   const { language } = useLanguage();
-  return inline ? (
-    <span className={cn(language === "typescript" ? "" : "hidden")}>
-      {children}
-    </span>
-  ) : (
-    <div className={cn(language === "typescript" ? "" : "hidden")}>
-      {children}
-    </div>
-  );
+  return inline ?
+      <span className={cn(language === "typescript" ? "" : "hidden")}>
+        {children}
+      </span>
+    : <div className={cn(language === "typescript" ? "" : "hidden")}>
+        {children}
+      </div>;
 };
 
 export const Python: React.FC<LanguageProps> = ({
@@ -30,11 +28,11 @@ export const Python: React.FC<LanguageProps> = ({
   inline = false,
 }) => {
   const { language } = useLanguage();
-  return inline ? (
-    <span className={cn(language === "python" ? "" : "hidden")}>
-      {children}
-    </span>
-  ) : (
-    <div className={cn(language === "python" ? "" : "hidden")}>{children}</div>
-  );
+  return inline ?
+      <span className={cn(language === "python" ? "" : "hidden")}>
+        {children}
+      </span>
+    : <div className={cn(language === "python" ? "" : "hidden")}>
+        {children}
+      </div>;
 };

@@ -100,11 +100,9 @@ export class Sql {
     const valuesLength = rawValues.reduce<number>(
       (len: number, value: RawValue | Column | OlapTable<any>) =>
         len +
-        (value instanceof Sql
-          ? value.values.length
-          : isColumn(value) || isTable(value)
-            ? 0
-            : 1),
+        (value instanceof Sql ? value.values.length
+        : isColumn(value) || isTable(value) ? 0
+        : 1),
       0,
     );
 
@@ -276,8 +274,9 @@ export class WorkflowClient {
       `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
     );
 
-    const workflowId = input_data
-      ? `${name}-${createHash("sha256")
+    const workflowId =
+      input_data ?
+        `${name}-${createHash("sha256")
           .update(JSON.stringify(input_data))
           .digest("hex")
           .slice(0, 16)}`

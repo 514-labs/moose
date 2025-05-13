@@ -66,9 +66,9 @@ export const transformNewMooseResource = (
 
   const updatedArgs = [
     ...node.arguments!,
-    ...(needsExtraArg
-      ? [factory.createObjectLiteralExpression([], false)]
-      : []),
+    ...(needsExtraArg ?
+      [factory.createObjectLiteralExpression([], false)]
+    : []),
     typiaJsonSchemas(typeNode),
     parseAsAny(JSON.stringify(columns)),
   ];

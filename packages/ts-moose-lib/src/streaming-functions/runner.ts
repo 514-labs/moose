@@ -105,8 +105,9 @@ const logError = (logger: Logger, e: Error): void => {
 /**
  * Maximum number of concurrent streaming operations, configurable via environment
  */
-const MAX_STREAMING_CONCURRENCY = process.env.MAX_STREAMING_CONCURRENCY
-  ? parseInt(process.env.MAX_STREAMING_CONCURRENCY)
+const MAX_STREAMING_CONCURRENCY =
+  process.env.MAX_STREAMING_CONCURRENCY ?
+    parseInt(process.env.MAX_STREAMING_CONCURRENCY)
   : DEFAULT_MAX_STREAMING_CONCURRENCY;
 
 /**
@@ -457,8 +458,9 @@ const startConsumer = async (
   );
 
   // We preload the function to not have to load it for each message
-  const streamingFunctions: StreamingFunction[] = args.isDmv2
-    ? await loadStreamingFunctionV2(args.sourceTopic, args.targetTopic)
+  const streamingFunctions: StreamingFunction[] =
+    args.isDmv2 ?
+      await loadStreamingFunctionV2(args.sourceTopic, args.targetTopic)
     : [loadStreamingFunction(args.functionFilePath)];
 
   await consumer.subscribe({

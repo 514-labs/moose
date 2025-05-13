@@ -47,11 +47,11 @@ export function CTACard({
     <Card className={cn("h-full flex flex-col", className)}>
       <CardHeader>
         <div className="flex gap-2 items-center">
-          {badge ? (
+          {badge ?
             <ProductBadge variant={badge.variant}>{badge.text}</ProductBadge>
-          ) : Icon ? (
+          : Icon ?
             <Icon className="h-[20px] w-[20px] text-moose-purple" />
-          ) : null}
+          : null}
           <SmallText className="text-primary text-moose-purple my-0">
             {cardName}
           </SmallText>

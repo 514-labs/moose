@@ -15,11 +15,13 @@ if (
   process.argv[2] == "streaming-functions"
 ) {
   const transformFile =
-    process.argv[2] !== "dmv2-serializer" &&
-    process.argv[2] !== "streaming-functions" &&
-    process.argv[2] !== "consumption-apis"
-      ? "consumption-apis/insertTypiaValidation.js"
-      : "dmv2/compilerPlugin.js";
+    (
+      process.argv[2] !== "dmv2-serializer" &&
+      process.argv[2] !== "streaming-functions" &&
+      process.argv[2] !== "consumption-apis"
+    ) ?
+      "consumption-apis/insertTypiaValidation.js"
+    : "dmv2/compilerPlugin.js";
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -191,9 +193,8 @@ program
     (sourceTopic, functionFilePath, broker, maxSubscriberCount, options) => {
       const config: StreamingFunctionArgs = {
         sourceTopic: JSON.parse(sourceTopic),
-        targetTopic: options.targetTopic
-          ? JSON.parse(options.targetTopic)
-          : undefined,
+        targetTopic:
+          options.targetTopic ? JSON.parse(options.targetTopic) : undefined,
         functionFilePath,
         broker,
         maxSubscriberCount: parseInt(maxSubscriberCount),

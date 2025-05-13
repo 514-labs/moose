@@ -89,7 +89,6 @@
 use crate::cli::local_webserver::{IntegrateChangesRequest, RouteMeta};
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
-use itertools::Itertools;
 use log::{debug, error, info};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -711,24 +710,30 @@ pub async fn remote_refresh(
         );
     }
 
-    for change in reality_check.discrepancies.unmapped_tables.iter().chain(
+    for table in reality_check.discrepancies.unmapped_tables.iter().chain(
         // reality_check.discrepancies.mismatched_tables is about remote infra-map and remote reality
         // not to be confused with mismatch between local and remote reality in `warn_about_mismatch`
-        reality_check.discrepancies.mismatched_tables.iter(),
+        reality_check
+            .discrepancies
+            .mismatched_tables
+            .iter()
+            .filter_map(|change| match change {
+                OlapChange::Table(TableChange::Added(table)) => Some(table),
+                OlapChange::Table(TableChange::Updated { after, .. }) => Some(after),
+                _ => None,
+            }),
     ) {
-        if let OlapChange::Table(TableChange::Added(table)) = change {
-            if let Some(local_table) = local_infra_map
-                .tables
-                .values()
-                .find(|t| t.name == table.name)
-            {
-                match InfrastructureMap::diff_table(table, local_table) {
-                    None => {
-                        debug!("Found matching table: {}", table.name);
-                        tables_to_integrate.push(table.name.clone());
-                    }
-                    Some(_) => warn_about_mismatch(&table.name),
+        if let Some(local_table) = local_infra_map
+            .tables
+            .values()
+            .find(|t| t.name == table.name)
+        {
+            match InfrastructureMap::diff_table(table, local_table) {
+                None => {
+                    debug!("Found matching table: {}", table.name);
+                    tables_to_integrate.push(table.name.clone());
                 }
+                Some(_) => warn_about_mismatch(&table.name),
             }
         }
     }

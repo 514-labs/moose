@@ -41,7 +41,7 @@ const throwNullType = (fieldName: string, typeName: string): never => {
 
 const toArrayType = ([elementNullable, _, elementType]: [
   boolean,
-  AggregationFunction | undefined,
+  [string, any][],
   DataType,
 ]): ArrayType => {
   return {
@@ -232,7 +232,7 @@ const tsTypeToDataType = (
   fieldName: string,
   typeName: string,
   isJwt: boolean,
-): [boolean, AggregationFunction | undefined, DataType] => {
+): [boolean, [string, any][], DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
 
@@ -269,8 +269,23 @@ const tsTypeToDataType = (
                 : nonNull == checker.getNeverType()
                   ? throwNullType(fieldName, typeName)
                   : throwUnknownType(t, fieldName, typeName);
+  const annotations: [string, any][] = [];
+  if (aggregationFunction !== undefined) {
+    annotations.push(["aggregationFunction", aggregationFunction]);
+  }
 
-  return [nullable, aggregationFunction, dataType];
+  const lowCardinalitySymbol = t.getProperty("_LowCardinality");
+  if (lowCardinalitySymbol !== undefined) {
+    const lowCardinalityType = checker.getNonNullableType(
+      checker.getTypeOfSymbol(lowCardinalitySymbol),
+    );
+
+    if (lowCardinalityType == checker.getTrueType()) {
+      annotations.push(["LowCardinality", true]);
+    }
+  }
+
+  return [nullable, annotations, dataType];
 };
 
 const getNestedName = (t: ts.Type, fieldName: string) => {
@@ -312,18 +327,13 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
 
     const isKey = hasKeyWrapping(node.type);
     const isJwt = hasJwtWrapping(node.type);
-    const [nullable, aggregationFunction, dataType] = tsTypeToDataType(
+    const [nullable, annotations, dataType] = tsTypeToDataType(
       type,
       checker,
       prop.name,
       t.symbol.name,
       isJwt,
     );
-
-    const annotations: [string, any][] = [];
-    if (aggregationFunction !== undefined) {
-      annotations.push(["aggregationFunction", aggregationFunction]);
-    }
 
     return {
       name: prop.name,

@@ -12,6 +12,10 @@ export type ClickHouseDecimal<P extends number, S extends number> = {
   _clickhouse_scale?: S;
 } & Pattern<typeof DecimalRegex>;
 
+export type LowCardinality = {
+  _LowCardinality?: true;
+};
+
 export type ClickHouseInt<
   Value extends
     | "int8"

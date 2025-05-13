@@ -52,4 +52,5 @@ export {
   ClickHousePrecision,
   ClickHouseDecimal,
   ClickHouseInt,
+  LowCardinality,
 } from "./dataModels/types";

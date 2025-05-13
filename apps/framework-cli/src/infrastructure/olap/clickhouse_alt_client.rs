@@ -249,6 +249,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
             ),
         }),
         ClickHouseColumnType::Nullable(inner) => column_type_to_enum_mapping(inner),
+        ClickHouseColumnType::LowCardinality(inner) => column_type_to_enum_mapping(inner),
     }
 }
 

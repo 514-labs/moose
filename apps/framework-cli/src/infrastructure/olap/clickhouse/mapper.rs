@@ -53,6 +53,16 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ));
     }
 
+    if annotations
+        .iter()
+        .any(|(k, v)| k == "LowCardinality" && v == &serde_json::json!(true))
+    {
+        let clickhouse_type = std_field_type_to_clickhouse_type_mapper(field_type, &[])?;
+        return Ok(ClickHouseColumnType::LowCardinality(Box::new(
+            clickhouse_type,
+        )));
+    }
+
     match field_type {
         ColumnType::String => Ok(ClickHouseColumnType::String),
         ColumnType::Boolean => Ok(ClickHouseColumnType::Boolean),

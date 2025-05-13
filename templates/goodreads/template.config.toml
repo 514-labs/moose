@@ -17,5 +17,6 @@ post_install_print = """
     $ pip install -r get_data/requirements.txt
     $ python get_data/ingest_goodreads_data.py
 """
+enable_telemetry="comprehensive"
 
 # we might need to add python dependencies install file

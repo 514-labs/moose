@@ -20,3 +20,4 @@ post_install_print = """
 🛠️ Start frontend dev server:
 	$ npm run dev
 """
+enable_telemetry="comprehensive"

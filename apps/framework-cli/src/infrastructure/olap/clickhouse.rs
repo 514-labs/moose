@@ -404,38 +404,28 @@ async fn execute_run_teardown_sql(
 /// assert_eq!(base_name, "my_table");
 /// assert_eq!(version.to_string(), "1.0.0");
 /// ```
-fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (String, Version) {
+fn extract_version_from_table_name(table_name: &str) -> (String, Option<Version>) {
     debug!("Extracting version from table name: {}", table_name);
-    debug!("Using default version: {}", default_version);
 
     // Special case for empty table name
     if table_name.is_empty() {
-        debug!("Empty table name, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        debug!("Empty table name, no version");
+        return (table_name.to_string(), None);
     }
 
     // Special case for tables ending in _MV (materialized views)
     if table_name.ends_with("_MV") {
-        debug!("Materialized view detected, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        debug!("Materialized view detected, skipping version parsing");
+        return (table_name.to_string(), None);
     }
 
     let parts: Vec<&str> = table_name.split('_').collect();
     debug!("Split table name into parts: {:?}", parts);
 
     if parts.len() < 2 {
-        debug!("Table name has fewer than 2 parts, using default version");
+        debug!("Table name has fewer than 2 parts, no version");
         // If table doesn't follow naming convention, return full name and default version
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        return (table_name.to_string(), None);
     }
 
     // Find the first numeric part - this marks the start of the version
@@ -472,24 +462,18 @@ fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (
 
             // If we have no valid version parts, return the original name and default version
             if version_parts.is_empty() {
-                debug!("No valid version parts found, using default version");
-                return (
-                    table_name.to_string(),
-                    Version::from_string(default_version.to_string()),
-                );
+                debug!("No valid version parts found.");
+                return (table_name.to_string(), None);
             }
 
             let version_str = version_parts.join(".");
             debug!("Created version string: {}", version_str);
 
-            (base_name, Version::from_string(version_str))
+            (base_name, Some(Version::from_string(version_str)))
         }
         None => {
-            debug!("No version parts found, using default version");
-            (
-                table_name.to_string(),
-                Version::from_string(default_version.to_string()),
-            )
+            debug!("No version parts found");
+            (table_name.to_string(), None)
         }
     }
 }
@@ -793,7 +777,7 @@ impl OlapOperations for ConfiguredDBClient {
                 FROM system.columns
                 WHERE database = '{}'
                 AND table = '{}'
-                ORDER BY name
+                ORDER BY position
                 "#,
                 db_name, table_name
             );
@@ -844,14 +828,10 @@ impl OlapOperations for ConfiguredDBClient {
                 columns.push(column);
             }
 
-            // Sort columns by name for consistent ordering
-            columns.sort_by(|a, b| a.name.cmp(&b.name));
-
             debug!("Found {} columns for table {}", columns.len(), table_name);
 
             // Extract base name and version for source primitive
-            let (base_name, version) =
-                extract_version_from_table_name(&table_name, project.cur_version().as_str());
+            let (base_name, version) = extract_version_from_table_name(&table_name);
 
             // Create source primitive signature using the base name
             let source_primitive = PrimitiveSignature {
@@ -866,7 +846,7 @@ impl OlapOperations for ConfiguredDBClient {
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
                 deduplicate: engine.contains("ReplacingMergeTree"),
                 engine: Some(engine),
-                version: Some(version), // Still store the version for reference
+                version,
                 source_primitive,
             };
             debug!("Created table object: {:?}", table);
@@ -1292,78 +1272,76 @@ mod tests {
     #[test]
     fn test_extract_version_from_table_name() {
         // Test two-part versions
-        let (base_name, version) = extract_version_from_table_name("Bar_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar_0_0");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Foo_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo_0_0");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
         // Test three-part versions
-        let (base_name, version) = extract_version_from_table_name("Bar_0_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar_0_0_0");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "0.0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Foo_1_2_3", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo_1_2_3");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "1.2.3");
+        assert_eq!(version.unwrap().to_string(), "1.2.3");
 
         // Test table names with underscores
-        let (base_name, version) = extract_version_from_table_name("My_Table_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("My_Table_0_0");
         assert_eq!(base_name, "My_Table");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) =
-            extract_version_from_table_name("Complex_Table_Name_1_0_0", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("Complex_Table_Name_1_0_0");
         assert_eq!(base_name, "Complex_Table_Name");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.unwrap().to_string(), "1.0.0");
 
         // Test invalid formats - should use default version
-        let (base_name, version) = extract_version_from_table_name("TableWithoutVersion", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("TableWithoutVersion");
         assert_eq!(base_name, "TableWithoutVersion");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) =
-            extract_version_from_table_name("Table_WithoutNumericVersion", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table_WithoutNumericVersion");
         assert_eq!(base_name, "Table_WithoutNumericVersion");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
         // Test edge cases
-        let (base_name, version) = extract_version_from_table_name("", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("");
         assert_eq!(base_name, "");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) = extract_version_from_table_name("_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("_0_0");
         assert_eq!(base_name, "");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Table_0_0_", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table_0_0_");
         assert_eq!(base_name, "Table");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
         // Test mixed numeric and non-numeric parts
-        let (base_name, version) = extract_version_from_table_name("Table2_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table2_0_0");
         assert_eq!(base_name, "Table2");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("V2_Table_1_0_0", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("V2_Table_1_0_0");
         assert_eq!(base_name, "V2_Table");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.unwrap().to_string(), "1.0.0");
 
         // Test materialized views
-        let (base_name, version) = extract_version_from_table_name("BarAggregated_MV", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("BarAggregated_MV");
         assert_eq!(base_name, "BarAggregated_MV");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
         // Test non-versioned tables
-        let (base_name, version) = extract_version_from_table_name("Foo", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) = extract_version_from_table_name("Bar", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
     }
 
     #[test]

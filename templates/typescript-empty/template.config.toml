@@ -10,4 +10,4 @@ post_install_print = """
 🛠️ Start dev server:
     $ moose dev
 """
-enable_telemetry="comprehensive"
+default_aurora_telemetry="standard"

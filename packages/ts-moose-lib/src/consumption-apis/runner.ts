@@ -143,8 +143,9 @@ const apiHandler =
       }
 
       const queryClient = new QueryClient(clickhouseClient, fileName);
-      let result = isDmv2
-        ? await userFuncModule(paramsObject, {
+      let result =
+        isDmv2 ?
+          await userFuncModule(paramsObject, {
             client: new MooseClient(queryClient, temporalClient),
             sql: sql,
             jwt: jwtPayload,

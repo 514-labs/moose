@@ -127,8 +127,9 @@ export const transformLegacyConsumptionApi = (
   const returnType = handlerType.getCallSignatures()[0]?.getReturnType();
   const awaitedType = checker.getAwaitedType(returnType) || returnType;
 
-  const queryResultType = awaitedType.isUnion()
-    ? factory.createUnionTypeNode(
+  const queryResultType =
+    awaitedType.isUnion() ?
+      factory.createUnionTypeNode(
         awaitedType.types.flatMap((t) => {
           const typeNode = checker.typeToTypeNode(
             typeToOutputSchema(t, checker),
@@ -469,9 +470,9 @@ const transformNewConsumptionApi = (
 
   // Create the config argument if it doesn't exist
   const configArg =
-    node.arguments.length > 2
-      ? node.arguments[2]
-      : factory.createObjectLiteralExpression([], false);
+    node.arguments.length > 2 ?
+      node.arguments[2]
+    : factory.createObjectLiteralExpression([], false);
 
   // Update the ConsumptionApi constructor call with all necessary arguments
   return factory.updateNewExpression(

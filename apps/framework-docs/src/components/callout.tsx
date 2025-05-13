@@ -71,13 +71,11 @@ export function Callout({ type, title, href, children }: CalloutProps) {
       <CardContent className="flex items-start space-x-2 p-0">
         <div className="flex-shrink-0 mt-1">{variantProps.icon}</div>
         <div className="flex-1">
-          {href ? (
+          {href ?
             <Link href={href}>
               <TitleContent />
             </Link>
-          ) : (
-            <TitleContent />
-          )}
+          : <TitleContent />}
           {children}
         </div>
       </CardContent>

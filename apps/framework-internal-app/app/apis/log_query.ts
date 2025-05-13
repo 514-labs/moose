@@ -95,13 +95,13 @@ export function createFilterLogSql({
   }
 
   const whereFilter =
-    values.length > 0
-      ? join_queries({
-          prefix: "WHERE ",
-          values: values,
-          separator: " AND ",
-        })
-      : sql``;
+    values.length > 0 ?
+      join_queries({
+        prefix: "WHERE ",
+        values: values,
+        separator: " AND ",
+      })
+    : sql``;
 
   const pattern = `(?i)${search}`;
 

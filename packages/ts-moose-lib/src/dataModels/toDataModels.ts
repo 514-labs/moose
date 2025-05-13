@@ -24,9 +24,9 @@ const convertSourceFile = (
 
   let fileSymbol = checker.getSymbolAtLocation(sourceFile);
   let exports =
-    fileSymbol === undefined
-      ? [] // empty file
-      : checker.getExportsOfModule(fileSymbol);
+    fileSymbol === undefined ?
+      [] // empty file
+    : checker.getExportsOfModule(fileSymbol);
   exports.forEach((exported) => {
     const declaration = exported.declarations![0];
     if (isInterfaceDeclaration(declaration)) {

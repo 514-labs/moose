@@ -15,9 +15,10 @@ export interface TrackingFields {
   targetUrl?: string;
 }
 
-type PropsWithoutRef<P> = P extends any
-  ? "ref" extends keyof P
-    ? Pick<P, Exclude<keyof P, "ref">>
+type PropsWithoutRef<P> =
+  P extends any ?
+    "ref" extends keyof P ?
+      Pick<P, Exclude<keyof P, "ref">>
     : P
   : P;
 

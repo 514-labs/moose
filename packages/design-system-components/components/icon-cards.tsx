@@ -66,9 +66,9 @@ export function BackgroundIcon({ Icon, variant = "default" }: IconPops) {
     <div
       className={cn(
         "w-fit rounded-[12px] p-[2px]",
-        variant === "gradient"
-          ? "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
-          : "",
+        variant === "gradient" ?
+          "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
+        : "",
       )}
     >
       <div

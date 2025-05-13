@@ -256,8 +256,9 @@ const toInfraMap = (registry: typeof moose_internal) => {
       pullsDataFrom: sqlResource.pullsDataFrom.map((r) => {
         if (r.kind === "OlapTable") {
           const table = r as OlapTable<any>;
-          const id = table.config.version
-            ? `${table.name}_${table.config.version}`
+          const id =
+            table.config.version ?
+              `${table.name}_${table.config.version}`
             : table.name;
           return {
             id,
@@ -276,8 +277,9 @@ const toInfraMap = (registry: typeof moose_internal) => {
       pushesDataTo: sqlResource.pushesDataTo.map((r) => {
         if (r.kind === "OlapTable") {
           const table = r as OlapTable<any>;
-          const id = table.config.version
-            ? `${table.name}_${table.config.version}`
+          const id =
+            table.config.version ?
+              `${table.name}_${table.config.version}`
             : table.name;
           return {
             id,

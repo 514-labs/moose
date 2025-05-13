@@ -296,9 +296,9 @@ describe("Moose Templates", () => {
         });
         npmInstall.on("close", (code) => {
           console.log(`npm install exited with code ${code}`);
-          code === 0
-            ? resolve()
-            : reject(new Error(`npm install failed with code ${code}`));
+          code === 0 ? resolve() : (
+            reject(new Error(`npm install failed with code ${code}`))
+          );
         });
       });
 
@@ -405,9 +405,9 @@ describe("Moose Templates", () => {
 
           // First install project dependencies from requirements.txt
           const pipReqCmd = spawn(
-            process.platform === "win32"
-              ? ".venv\\Scripts\\pip"
-              : ".venv/bin/pip",
+            process.platform === "win32" ?
+              ".venv\\Scripts\\pip"
+            : ".venv/bin/pip",
             ["install", "-r", "requirements.txt"],
             {
               stdio: "inherit",
@@ -427,9 +427,9 @@ describe("Moose Templates", () => {
 
             // Then install the local moose lib
             const pipMooseCmd = spawn(
-              process.platform === "win32"
-                ? ".venv\\Scripts\\pip"
-                : ".venv/bin/pip",
+              process.platform === "win32" ?
+                ".venv\\Scripts\\pip"
+              : ".venv/bin/pip",
               ["install", "-e", MOOSE_PY_LIB_PATH],
               {
                 stdio: "inherit",

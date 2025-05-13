@@ -175,11 +175,15 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
         optional, md, data_type = py_type_to_column_type(field_type, field_info.metadata)
 
         annotations = []
-        agg_fn = next((m for m in md if isinstance(m, AggregateFunction)), None)
-        if agg_fn is not None:
-            annotations.append(
-                ("aggregationFunction", agg_fn.to_dict())
-            )
+        for m in md:
+            if isinstance(m, AggregateFunction):
+                annotations.append(
+                    ("aggregationFunction", m.to_dict())
+                )
+            if m == "LowCardinality":
+                annotations.append(
+                    ("LowCardinality", True)
+                )
 
         columns.append(
             Column(

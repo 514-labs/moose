@@ -66,6 +66,7 @@ pub enum ClickHouseColumnType {
     DateTime64 {
         precision: u8,
     },
+    LowCardinality(Box<ClickHouseColumnType>),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -170,6 +171,7 @@ impl ClickHouseColumnType {
                 return return_type.to_std_column_type();
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
+            ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),
         };
         (column_type, required)
     }

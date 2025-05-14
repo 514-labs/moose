@@ -78,6 +78,8 @@ pub enum ActivityType {
     WorkflowStatusCommand,
     #[serde(rename = "templateListCommand")]
     TemplateListCommand,
+    #[serde(rename = "refreshListCommand")]
+    RefreshListCommand,
 }
 
 pub fn capture_usage(

@@ -43,7 +43,7 @@ use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::peek::peek;
 use crate::cli::routines::setup_redis_client;
 use crate::cli::routines::streaming::create_streaming_function_file;
-use crate::cli::routines::templates;
+use crate::cli::routines::{remote_refresh, templates};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::settings::user_directory;
 use crate::cli::{
@@ -1132,6 +1132,26 @@ pub async fn top_command_handler(
                     result
                 }
             }
+        }
+        Commands::Refresh { url, token } => {
+            info!("Running refresh command");
+
+            let project = load_project()?;
+
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::RefreshListCommand,
+                Some(project.name()),
+                &settings,
+                machine_id.clone(),
+            );
+
+            let output = remote_refresh(&project, url, token).await.map_err(|e| {
+                RoutineFailure::new(Message::new("failed".to_string(), "".to_string()), e)
+            });
+
+            wait_for_usage_capture(capture_handle).await;
+
+            output
         }
     }
 }

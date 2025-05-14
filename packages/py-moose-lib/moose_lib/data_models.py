@@ -213,7 +213,7 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
 class StringToEnumMixin:
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: GetCoreSchemaHandler) -> CoreSchema:
-        def validate(value: Any) -> Any:
+        def validate(value: Any, _: Any) -> Any:
             if isinstance(value, str):
                 try:
                     return cls[value]
@@ -221,4 +221,4 @@ class StringToEnumMixin:
                     raise ValueError(f"Invalid enum name: {value}")
             return cls(value)  # fallback to default enum validation
 
-        return core_schema.with_info_before_validator_function(validate, serialization=core_schema.plain_serializer(lambda x: x.name, return_schema=core_schema.str_schema()))
+        return core_schema.with_info_before_validator_function(validate, core_schema.enum_schema(cls, list(cls)))

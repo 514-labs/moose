@@ -1,0 +1,23 @@
+import { Callout, ToggleBlock, FeatureGrid, FeatureCard, CTACard } from "@/components";
+
+# Aurora Data Collection Policy
+
+Aurora is a research project. We are collecting data to improve the product. Accordingly, we collect data from users. 
+
+By default, we collect the most granular data on ready to build templates, and we collect less information from the other templates.
+
+You can change the data you share with us by changing the following:
+
+```ts filename="aurora.config.toml"
+enable_telemetry = standard
+```
+
+The available options are:
+
+- `standard` - collects tool usage and success or error status.
+- `comprehensive` - collects tool usage, success or error status, and parameters used by the tools.
+- `off` - disables telemetry.
+
+Our privacy policy is available [here](https://www.fiveonefour.com/legal/privacy.pdf).
+
+

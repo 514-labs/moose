@@ -4,17 +4,28 @@ from moose_lib import Key, IngestPipeline, IngestPipelineConfig
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
+from enum import IntEnum, auto
+
+
+class Baz(IntEnum):
+    QUX = auto()
+    QUUX = auto()
+
 
 class Foo(BaseModel):
     primary_key: Key[str]
     timestamp: float
+    baz: Baz
     optional_text: Optional[str]
+
 
 class Bar(BaseModel):
     primary_key: Key[str]
     utc_timestamp: datetime
+    baz: Baz
     has_text: bool
     text_length: int
+
 
 fooModel = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,

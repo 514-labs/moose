@@ -486,6 +486,7 @@ describe("Moose Templates", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           primary_key: eventId,
+          baz: "QUUX",
           timestamp: TEST_CONFIG.timestamp,
           optional_text: "Hello from Python",
         }),

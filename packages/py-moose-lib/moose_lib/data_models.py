@@ -165,9 +165,7 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
             columns=_to_columns(t),
         )
     elif issubclass(t, Enum):
-        values = []
-        for member in t:
-            values.append(EnumValue(name=member.name, value=member.value))
+        values = [EnumValue(name=member.name, value=member.value) for member in t]
         data_type = DataEnum(name=t.__name__, values=values)
     else:
         raise ValueError(f"Unknown type {t}")

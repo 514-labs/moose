@@ -1,6 +1,11 @@
 # Tool Reference
 
-## Standard tools
+Aurora CLI can allow you to use various Aurora MCP tool-sets, as well as install and configure certain external tools. 
+
+The command `aurora config tools` allows you to configure the tools you want to use. These tools are additive, select the tools you wish to use (if certain tools have dependencies, they will be enabled automatically).
+
+## Read tools
+Tools needed to read the Moose project and its associated infrastructure.
 
 - `read_moose_project`
     - Reads `moose.config.toml` to get configuration details about Moose project and infrastructure.
@@ -10,13 +15,17 @@
     - Read queries from ClickHouse.
 - `read_redpanda_topic`
     - Read from Redpanda.
+
+## Egress tools
+Tools needed to create and test egress APIs.
+
 - `create_egress_api`
     - Creates an egress API from Moose ClickHouse. Can utilize type safe parameters.
 - `test_egress_api`
     - Tests the specified APIs.
 
-## Experimental Tools
-
+## Experimental Moose tools
+Tools for creating and testing Moose data pipelines.
 > Note, these are experimental tools, if you want to use them, toggle the experimental features flag with `aurora config tools experimental`
 
 - `write_spec`
@@ -39,3 +48,6 @@
 - `read_production_clickhouse`
     - Read your Boreal ClickHouse database. In this iteration, requires manually inputting certain fields into `mcp.json`: `BOREAL_CLICKHOUSE_HOST`, `BOREAL_CLICKHOUSE_PORT`, `BOREAL_CLICKHOUSE_USER`, `BOREAL_CLICKHOUSE_PASSWORD`, `BOREAL_CLICKHOUSE_DATABASE`. Whilst the tool is read only, we suggest furnishing the MCP with read-only credentials in an abundance of caution.
 
+## External tools
+
+- `external-duck-db-mcp` allows you to use and configure the official DuckDB MCP. This requires the path to your DuckDB file.

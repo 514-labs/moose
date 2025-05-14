@@ -47,7 +47,7 @@ message ApiEndpoint {
 
 message IngressDetails {
   string target_topic = 1;
-  EndpointIngestionFormat format = 2;
+  optional EndpointIngestionFormat format = 2 [deprecated = true];
 }
 
 message EgressDetails {
@@ -63,6 +63,7 @@ message ConsumptionQueryParam {
 }
 
 enum EndpointIngestionFormat {
+  option deprecated = true;
   JSON = 0;
   JSON_ARRAY = 1;
 }

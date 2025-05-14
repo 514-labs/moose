@@ -95,7 +95,6 @@ class IngestApiConfig(BaseModel):
     Attributes:
         name: Name of the Ingest API.
         columns: List of columns expected in the input data.
-        format: The expected input data format (e.g., "JSON").
         write_to: The target stream where the ingested data is written.
         version: Optional version string of the API configuration.
     """
@@ -103,7 +102,6 @@ class IngestApiConfig(BaseModel):
 
     name: str
     columns: List[Column]
-    format: str
     write_to: Target
     version: Optional[str] = None
 
@@ -264,7 +262,6 @@ def to_infra_map() -> dict:
         ingest_apis[name] = IngestApiConfig(
             name=name,
             columns=_to_columns(api._t),
-            format=api.config.format.value,
             version=api.config.version,
             write_to=Target(
                 kind="stream",

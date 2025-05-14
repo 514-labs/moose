@@ -2,14 +2,25 @@
 
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Annotated, Any
+from pydantic import BaseModel, BeforeValidator
 from enum import IntEnum, auto
+
 
 
 class Baz(IntEnum):
     QUX = auto()
     QUUX = auto()
+
+
+def lookup_value[T](value, cls: type[T]) -> Any:
+    if isinstance(value, str):
+        return cls[value]
+    else:
+        return value
+
+
+Baz = Annotated[Baz, BeforeValidator(lambda v: lookup_value(v, Baz))]
 
 
 class Foo(BaseModel):

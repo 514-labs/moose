@@ -13,6 +13,7 @@ const meta = {
   "cli-reference": "CLI reference",
   "tool-reference": "Tool reference",
   "prompting-best-practices": "Prompting best practices",
+  "data-collection-policy": "Data collection policy",
 } as const;
 
 export default render(meta);

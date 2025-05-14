@@ -226,6 +226,19 @@ const handleStringType = (
   }
 };
 
+const isStringAnyRecord = (t: ts.Type, checker: ts.TypeChecker): boolean => {
+  const indexInfos = checker.getIndexInfosOfType(t);
+  if (indexInfos && indexInfos.length === 1) {
+    const indexInfo = indexInfos[0];
+    return (
+      indexInfo.keyType == checker.getStringType() &&
+      indexInfo.type == checker.getAnyType()
+    );
+  }
+
+  return false;
+};
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -238,9 +251,9 @@ const tsTypeToDataType = (
 
   const aggregationFunction = handleAggregated(t, checker, fieldName, typeName);
 
-  // this looks nicer if we turn on experimentalTernaries in prettier
   const dataType: DataType =
     isEnum(nonNull) ? enumConvert(nonNull)
+    : isStringAnyRecord(nonNull, checker) ? "JSON"
     : checker.isTypeAssignableTo(nonNull, checker.getStringType()) ?
       handleStringType(nonNull, checker, fieldName)
     : isNumberType(nonNull, checker) ?

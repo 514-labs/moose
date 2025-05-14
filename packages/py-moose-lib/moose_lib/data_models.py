@@ -6,7 +6,8 @@ from uuid import UUID
 from datetime import datetime, date
 
 from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasType, Annotated, Type
-from pydantic import BaseModel, Field, PlainSerializer
+from pydantic import BaseModel, Field, PlainSerializer, GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 
 type Key[T: (str, int)] = T
 type JWT[T] = T
@@ -207,3 +208,17 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
             )
         )
     return columns
+
+
+class StringToEnumMixin:
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: GetCoreSchemaHandler) -> CoreSchema:
+        def validate(value: Any, _: Any) -> Any:
+            if isinstance(value, str):
+                try:
+                    return cls[value]
+                except KeyError:
+                    raise ValueError(f"Invalid enum name: {value}")
+            return cls(value)  # fallback to default enum validation
+
+        return core_schema.with_info_before_validator_function(validate, core_schema.enum_schema(cls, list(cls)))

@@ -253,7 +253,7 @@ const tsTypeToDataType = (
 
   const dataType: DataType =
     isEnum(nonNull) ? enumConvert(nonNull)
-    : isStringAnyRecord(nonNull, checker) ? "JSON"
+    : isStringAnyRecord(nonNull, checker) ? "Json"
     : checker.isTypeAssignableTo(nonNull, checker.getStringType()) ?
       handleStringType(nonNull, checker, fieldName)
     : isNumberType(nonNull, checker) ?

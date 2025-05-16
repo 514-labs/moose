@@ -96,10 +96,7 @@ impl DockerClient {
             debug!("Could not list containers");
             debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
             debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to list Docker containers",
-            ));
+            return Err(std::io::Error::other("Failed to list Docker containers"));
         }
 
         let output_str = String::from_utf8_lossy(&output.stdout);
@@ -109,8 +106,8 @@ impl DockerClient {
         // Docker and Finch have different formats for the output
         if output_str.trim().starts_with('[') {
             // Finch format - array with Name property
-            let containers: Vec<serde_json::Value> = serde_json::from_str(&output_str)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            let containers: Vec<serde_json::Value> =
+                serde_json::from_str(&output_str).map_err(std::io::Error::other)?;
 
             Ok(containers
                 .into_iter()
@@ -175,8 +172,7 @@ impl DockerClient {
             debug!("Could not list containers");
             debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
             debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "Failed to list Docker container names",
             ));
         }
@@ -389,7 +385,7 @@ impl DockerClient {
 
         let rendered = handlebars
             .render_template(COMPOSE_FILE, &data)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         Ok(std::fs::write(compose_file, rendered)?)
     }
@@ -451,29 +447,22 @@ impl DockerClient {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else if output.stderr.is_empty() {
             if output.stdout.is_empty() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "No output from command",
-                ));
+                return Err(std::io::Error::other("No output from command"));
             }
 
             if String::from_utf8_lossy(&output.stdout).contains("TOPIC_ALREADY_EXISTS") {
                 return Ok(String::from_utf8_lossy(&output.stdout).to_string());
             }
 
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stdout),
-            ));
+            return Err(std::io::Error::other(String::from_utf8_lossy(
+                &output.stdout,
+            )));
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "stdout: {}, stderr: {}",
-                    String::from_utf8_lossy(&output.stdout),
-                    &String::from_utf8_lossy(&output.stderr)
-                ),
-            ))
+            Err(std::io::Error::other(format!(
+                "stdout: {}, stderr: {}",
+                String::from_utf8_lossy(&output.stdout),
+                &String::from_utf8_lossy(&output.stderr)
+            )))
         }
     }
 
@@ -496,14 +485,13 @@ impl DockerClient {
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stderr),
-            ));
+            return Err(std::io::Error::other(String::from_utf8_lossy(
+                &output.stderr,
+            )));
         }
 
-        let info: DockerInfo = serde_json::from_slice(&output.stdout)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let info: DockerInfo =
+            serde_json::from_slice(&output.stdout).map_err(std::io::Error::other)?;
 
         Ok(info.server_errors)
     }
@@ -540,10 +528,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stderr),
-            ));
+            return Err(std::io::Error::other(String::from_utf8_lossy(
+                &output.stderr,
+            )));
         }
 
         let output_str = String::from_utf8_lossy(&output.stdout);

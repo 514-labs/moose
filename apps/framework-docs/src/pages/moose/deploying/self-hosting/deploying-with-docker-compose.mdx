@@ -472,7 +472,7 @@ docker compose up -d clickhouse-0
 
 ```bash
 # Connect to Clickhouse with the admin user
-docker exec -it clickhouse-0 clickhouse-client --user admin --password adminpassword
+docker exec -it moose-stack-clickhouse-0-1 clickhouse-client --user admin --password adminpassword
 
 # Create moose application user
 CREATE USER moose IDENTIFIED BY 'your_moose_password';
@@ -483,14 +483,48 @@ CREATE USER power_bi IDENTIFIED BY 'your_powerbi_password' SETTINGS PROFILE 'rea
 GRANT SHOW TABLES, SELECT ON moose.* TO power_bi;
 ```
 
-3. Update your Moose environment variables to use the new moose user:
+3. To exit the Clickhouse client, type `\q` and press Enter.
+
+4. Update your Moose environment variables to use the new moose user:
+
+```bash
+vim docker-compose.yml
+```
 
 ```yaml
 MOOSE_CLICKHOUSE_CONFIG__USER: "moose"
 MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "your_moose_password"
 ```
 
-4. For additional security in production, consider using Docker secrets for passwords.
+5. Remove the following environement variables from the clickhouse service in the docker-compose.yml file:
+
+```yaml
+MOOSE_CLICKHOUSE_CONFIG__USER: "admin"
+MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "adminpassword"
+```
+
+6. For additional security in production, consider using Docker secrets for passwords.
+
+7. Restart the Clickhouse container to apply the changes:
+
+```bash
+docker compose restart clickhouse-0
+```
+
+8. Verify that the new configuration works by connecting with the newly created user:
+
+```bash
+# Connect with the new moose user
+docker exec -it moose-stack-clickhouse-0-1 clickhouse-client --user moose --password your_moose_password
+
+# Test access by listing tables
+SHOW TABLES FROM moose;
+
+# Exit the clickhouse client
+\q
+```
+
+If you can connect successfully and run commands with the new user, your Clickhouse configuration is working properly.
 
 ### Securing Redpanda (Optional)
 

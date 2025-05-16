@@ -9,8 +9,10 @@ It mirrors the functionality of the TypeScript `dmv2` module, enabling the defin
 of data infrastructure using Python and Pydantic models.
 """
 import dataclasses
-from typing import Any, Generic, Optional, TypeVar, Callable, Union
-from pydantic import BaseModel, ConfigDict
+import datetime
+from typing import Any, Generic, Optional, TypeVar, Callable, Union, Literal
+from pydantic import BaseModel, ConfigDict, AliasGenerator
+from pydantic.alias_generators import to_camel
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 
@@ -176,6 +178,8 @@ class TransformConfig(BaseModel):
                  Allows multiple transformations to the same destination if versions differ.
     """
     version: Optional[str] = None
+    dead_letter_queue: "Optional[DeadLetterQueue]" = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ConsumerConfig(BaseModel):
@@ -186,6 +190,8 @@ class ConsumerConfig(BaseModel):
                  Allows multiple consumers if versions differ.
     """
     version: Optional[str] = None
+    dead_letter_queue: "Optional[DeadLetterQueue]" = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @dataclasses.dataclass
@@ -242,7 +248,8 @@ class Stream(TypedMooseResource, Generic[T]):
         self.transformations = {}
         _streams[name] = self
 
-    def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]], config: TransformConfig = TransformConfig()):
+    def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]],
+                      config: TransformConfig = None):
         """Adds a transformation step from this stream to a destination stream.
 
         The transformation function receives a record of type `T` and should return
@@ -253,16 +260,19 @@ class Stream(TypedMooseResource, Generic[T]):
             transformation: A callable that performs the transformation.
             config: Optional configuration, primarily for setting a version.
         """
+        config = config or TransformConfig()
         if destination.name in self.transformations:
             existing_transforms = self.transformations[destination.name]
             # Check if a transform with this version already exists
             has_version = any(t.config.version == config.version for t in existing_transforms)
             if not has_version:
-                existing_transforms.append(TransformEntry(destination=destination, transformation=transformation, config=config))
+                existing_transforms.append(
+                    TransformEntry(destination=destination, transformation=transformation, config=config))
         else:
-            self.transformations[destination.name] = [TransformEntry(destination=destination, transformation=transformation, config=config)]
+            self.transformations[destination.name] = [
+                TransformEntry(destination=destination, transformation=transformation, config=config)]
 
-    def add_consumer(self, consumer: Callable[[T], None], config: ConsumerConfig = ConsumerConfig()):
+    def add_consumer(self, consumer: Callable[[T], None], config: ConsumerConfig = None):
         """Adds a consumer function to be executed for each record in the stream.
 
         Consumers are typically used for side effects like logging or triggering external actions.
@@ -271,6 +281,7 @@ class Stream(TypedMooseResource, Generic[T]):
             consumer: A callable that accepts a record of type `T`.
             config: Optional configuration, primarily for setting a version.
         """
+        config = config or ConsumerConfig()
         has_version = any(c.config.version == config.version for c in self.consumers)
         if not has_version:
             self.consumers.append(ConsumerEntry(consumer=consumer, config=config))
@@ -319,6 +330,68 @@ class Stream(TypedMooseResource, Generic[T]):
             transformation: The multi-routing transformation function.
         """
         self._multipleTransformations = transformation
+
+
+class DeadLetterModel(BaseModel, Generic[T]):
+    model_config = ConfigDict(alias_generator=AliasGenerator(
+        serialization_alias=to_camel,
+    ))
+    original_record: Any
+    error_message: str
+    error_type: str
+    failed_at: datetime.datetime
+    source: Literal["api", "transform", "table"]
+
+    def as_t(self) -> T:
+        return self._t.model_validate(self.original_record)
+
+
+class DeadLetterQueue(Stream, Generic[T]):
+    """A specialized Stream for handling failed records.
+    
+    Dead letter queues store records that failed during processing, along with
+    error information to help diagnose and potentially recover from failures.
+    
+    Attributes:
+        All attributes inherited from Stream.
+    """
+
+    _model_type: type[T]
+
+    def __init__(self, name: str, config: StreamConfig = StreamConfig(), **kwargs):
+        """Initialize a new DeadLetterQueue.
+        
+        Args:
+            name: The name of the dead letter queue stream.
+            config: Configuration for the stream.
+        """
+        self._model_type = self._get_type(kwargs)
+        kwargs["t"] = DeadLetterModel[self._model_type]
+        super().__init__(name, config, **kwargs)
+
+    def add_transform(self, destination: Stream[U], transformation: Callable[[DeadLetterModel[T]], ZeroOrMany[U]],
+                      config: TransformConfig = None):
+        def wrapped_transform(record: DeadLetterModel[T]):
+            record._t = self._model_type
+            return transformation(record)
+
+        config = config or TransformConfig()
+        super().add_transform(destination, wrapped_transform, config)
+
+    def add_consumer(self, consumer: Callable[[DeadLetterModel[T]], None], config: ConsumerConfig = None):
+        def wrapped_consumer(record: DeadLetterModel[T]):
+            record._t = self._model_type
+            return consumer(record)
+
+        config = config or ConsumerConfig()
+        super().add_consumer(wrapped_consumer, config)
+
+    def set_multi_transform(self, transformation: Callable[[DeadLetterModel[T]], list[_RoutedMessage]]):
+        def wrapped_transform(record: DeadLetterModel[T]):
+            record._t = self._model_type
+            return transformation(record)
+
+        super().set_multi_transform(wrapped_transform)
 
 
 class IngestConfig(BaseModel):
@@ -602,10 +675,10 @@ class SqlResource:
     pushes_data_to: list[Union[OlapTable, "SqlResource"]]
 
     def __init__(
-        self, 
-        name: str, 
-        setup: list[str], 
-        teardown: list[str], 
+        self,
+        name: str,
+        setup: list[str],
+        teardown: list[str],
         pulls_data_from: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
         pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None
     ):
@@ -705,12 +778,12 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
         )
 
         super().__init__(
-            options.materialized_view_name, 
-            setup, 
+            options.materialized_view_name,
+            setup,
             teardown,
             pulls_data_from=options.select_tables,
             pushes_data_to=[target_table]
         )
-        
+
         self.target_table = target_table
         self.config = options

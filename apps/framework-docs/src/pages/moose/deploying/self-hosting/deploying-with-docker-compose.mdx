@@ -150,9 +150,14 @@ cd test-py
 pip install -r requirements.txt
 ```
 
-### Build the application
+### Build the application on AMD64
 ```bash
-moose build --docker
+moose build --docker --amd64
+```
+
+### Build the application on ARM64
+```bash
+moose build --docker --arm64
 ```
 
 ### Confirm the image was built

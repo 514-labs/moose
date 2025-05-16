@@ -8,6 +8,16 @@ Deploying a Moose application with all its dependencies can be challenging and t
 This guide shows you how to set up a production-ready Moose environment on a single server using Docker Compose, with proper security, 
 monitoring, and maintenance practices.
 
+<Callout type="warning">
+  This guide describes a single-server deployment. For high availability (HA) deployments, you'll need to:
+  - Deploy services across multiple servers
+  - Configure service replication and redundancy
+  - Set up load balancing
+  - Implement proper failover mechanisms
+</Callout>
+
+We are also offering an HA managed deployment option for Moose called [Boreal](https://fiveonefour.com/boreal).
+
 ## Prerequisites
 
 Before you begin, you'll need:

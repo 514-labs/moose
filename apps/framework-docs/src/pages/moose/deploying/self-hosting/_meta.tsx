@@ -8,6 +8,7 @@ const meta = {
   "deploying-on-kubernetes": "Kubernetes Deployment",
   "deploying-on-ecs": "AWS ECS Deployment",
   "deploying-on-an-offline-server": "Offline Deployment",
+  "deploying-with-docker-compose": "Docker Compose Deployment",
   monitoring: "Monitoring Your App",
 } as const;
 

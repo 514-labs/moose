@@ -6,8 +6,9 @@ from inspect import isclass
 from uuid import UUID
 from datetime import datetime, date
 
-from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasType, Annotated, Type
-from pydantic import BaseModel, Field, PlainSerializer, GetCoreSchemaHandler
+from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasType, Annotated, Type, _BaseGenericAlias, \
+    GenericAlias
+from pydantic import BaseModel, Field, PlainSerializer, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import CoreSchema, core_schema
 
 type Key[T: (str, int)] = T
@@ -35,8 +36,9 @@ def clickhouse_datetime64(precision: int) -> Type[datetime]:
 
 
 class AggregateFunction(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     agg_func: str
-    param_types: list[type]
+    param_types: list[type | GenericAlias | _BaseGenericAlias]
 
     def to_dict(self):
         return {

@@ -2,6 +2,7 @@ import dataclasses
 from decimal import Decimal
 import re
 from enum import Enum
+from inspect import isclass
 from uuid import UUID
 from datetime import datetime, date
 
@@ -160,6 +161,11 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
         data_type = "UUID"
     elif t is Any:
         data_type = "Json"
+    elif get_origin(t) is Literal and all(isinstance(arg, str) for arg in get_args(t)):
+        data_type = "String"
+        mds.append("LowCardinality")
+    elif not isclass(t):
+        raise ValueError(f"Unknown type {t}")
     elif issubclass(t, BaseModel):
         data_type = Nested(
             name=t.__name__,
@@ -184,15 +190,15 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
         primary_key, field_type = handle_key(field_type)
         is_jwt, field_type = handle_jwt(field_type)
 
-        optional, md, data_type = py_type_to_column_type(field_type, field_info.metadata)
+        optional, mds, data_type = py_type_to_column_type(field_type, field_info.metadata)
 
         annotations = []
-        for m in md:
-            if isinstance(m, AggregateFunction):
+        for md in mds:
+            if isinstance(md, AggregateFunction):
                 annotations.append(
-                    ("aggregationFunction", m.to_dict())
+                    ("aggregationFunction", md.to_dict())
                 )
-            if m == "LowCardinality":
+            if md == "LowCardinality":
                 annotations.append(
                     ("LowCardinality", True)
                 )

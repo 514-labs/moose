@@ -15,6 +15,7 @@ The runner handles:
 
 import argparse
 import dataclasses
+import traceback
 from datetime import datetime, timezone
 from importlib import import_module
 import io
@@ -27,8 +28,8 @@ import threading
 import time
 from typing import Optional, Callable, Tuple, Any
 
-from moose_lib.dmv2 import _streams
-from moose_lib import cli_log, CliLogData
+from moose_lib.dmv2 import _streams, DeadLetterModel
+from moose_lib import cli_log, CliLogData, DeadLetterQueue
 
 # Force stdout to be unbuffered
 sys.stdout = io.TextIOWrapper(
@@ -36,6 +37,7 @@ sys.stdout = io.TextIOWrapper(
     write_through=True,
     line_buffering=True
 )
+
 
 @dataclasses.dataclass
 class KafkaTopicConfig:
@@ -76,8 +78,9 @@ class KafkaTopicConfig:
                 name = name.removeprefix(prefix)
             else:
                 raise Exception(f"Namespace prefix {prefix} not found in topic name {name}")
-        
+
         return name
+
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     """
@@ -86,6 +89,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
     - dataclass instances (converts to dict)
     - Pydantic models (converts to dict)
     """
+
     def default(self, o):
         if isinstance(o, datetime):
             if o.tzinfo is None:
@@ -104,6 +108,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
+
 
 def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str) -> Tuple[type, Callable]:
     """
@@ -136,7 +141,9 @@ def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str
 
     # Make sure that there is only one flow in the file
     if len(streaming_functions) != 1:
-        cli_log(CliLogData(action="Function", message=f"Expected one streaming function in the file, but got {len(streaming_functions)}", message_type="Error"))
+        cli_log(CliLogData(action="Function",
+                           message=f"Expected one streaming function in the file, but got {len(streaming_functions)}",
+                           message_type="Error"))
         sys.exit(1)
 
     # get the flow definition
@@ -150,7 +157,9 @@ def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str
 
     return run_input_type, streaming_function_run
 
-def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[type, list[Callable]]:
+
+def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str) -> tuple[
+    type, list[tuple[Callable, Optional[DeadLetterQueue]]]]:
     """
     Load a DMV2 streaming function by finding the stream transformation that matches
     the source and target topics.
@@ -162,7 +171,7 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
     Returns:
         Tuple of (input_type, transformation_functions) where:
             - input_type is the Pydantic model type of the source stream
-            - transformation_functions is a list of functions that transform source to target data
+            - transformation_functions is a list of functions that transform source to target data and their dead letter queues
             
     Raises:
         SystemExit: If module import fails or if no matching transformation is found
@@ -182,7 +191,7 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
             continue
 
         if stream.has_consumers() and target_topic is None:
-            consumers = [entry.consumer for entry in stream.consumers]
+            consumers = [(entry.consumer, entry.config.dead_letter_queue) for entry in stream.consumers]
             if not consumers:
                 continue
             return stream.model_type, consumers
@@ -193,15 +202,16 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
             # The destination topic name should match the destination stream name
             if source_py_stream_name == source_topic.topic_name_to_stream_name() and dest_stream_py_name == target_topic.topic_name_to_stream_name():
                 # Found the matching transformation
-                transformations = [entry.transformation for entry in transform_entries]
+                transformations = [(entry.transformation, entry.config.dead_letter_queue) for entry in
+                                   transform_entries]
                 if not transformations:
                     continue
                 return stream.model_type, transformations
 
     # If we get here, no matching transformation was found
     cli_log(CliLogData(
-        action="Function", 
-        message=f"No transformation found from {source_topic.name} to {target_topic.name}", 
+        action="Function",
+        message=f"No transformation found from {source_topic.name} to {target_topic.name}",
         message_type="Error"
     ))
     sys.exit(1)
@@ -215,14 +225,16 @@ parser.add_argument('source_topic_json', type=str, help='The source topic for th
 # In DMV1 the dir is the dir of the streaming function file
 # and the function_file_name is the file name of the streaming function without the .py extension
 parser.add_argument('function_file_dir', type=str, help='The dir of the streaming function file')
-parser.add_argument('function_file_name', type=str, help='The file name of the streaming function without the .py extension')
+parser.add_argument('function_file_name', type=str,
+                    help='The file name of the streaming function without the .py extension')
 parser.add_argument('broker', type=str, help='The broker to use for the streaming function')
 parser.add_argument('--target_topic_json', type=str, help='The target topic for the streaming function')
 parser.add_argument('--sasl_username', type=str, help='The SASL username to use for the streaming function')
 parser.add_argument('--sasl_password', type=str, help='The SASL password to use for the streaming function')
 parser.add_argument('--sasl_mechanism', type=str, help='The SASL mechanism to use for the streaming function')
 parser.add_argument('--security_protocol', type=str, help='The security protocol to use for the streaming function')
-parser.add_argument('--dmv2', action=argparse.BooleanOptionalAction, type=bool, help='Whether to use the DMV2 format for the streaming function')
+parser.add_argument('--dmv2', action=argparse.BooleanOptionalAction, type=bool,
+                    help='Whether to use the DMV2 format for the streaming function')
 
 args = parser.parse_args()
 
@@ -255,9 +267,11 @@ sasl_config = {
 streaming_function_id = f'flow-{source_topic.name}-{target_topic.name}' if target_topic else f'flow-{source_topic.name}'
 log_prefix = f"{source_topic.name} -> {target_topic.name}" if target_topic else f"{source_topic.name} -> None"
 
+
 def log(msg: str) -> None:
     """Log a message with the source->target topic prefix."""
     print(f"{log_prefix}: {msg}")
+
 
 def error(msg: str) -> None:
     """Raise an exception with the source->target topic prefix."""
@@ -278,6 +292,7 @@ def parse_input(run_input_type: type, json_input: dict) -> Any:
     Returns:
         An instance of run_input_type populated with the JSON data
     """
+
     def deserialize(data, cls):
         if hasattr(cls, "model_validate"):  # Check if it's a Pydantic model
             return cls.model_validate(data)
@@ -292,7 +307,7 @@ def parse_input(run_input_type: type, json_input: dict) -> Any:
     return deserialize(json_input, run_input_type)
 
 
-def create_consumer():
+def create_consumer() -> KafkaConsumer:
     """
     Create a Kafka consumer configured for the source topic.
     
@@ -304,7 +319,7 @@ def create_consumer():
     if sasl_config['mechanism'] is not None:
         return KafkaConsumer(
             source_topic.name,
-            client_id= "python_streaming_function_consumer",
+            client_id="python_streaming_function_consumer",
             group_id=streaming_function_id,
             bootstrap_servers=broker,
             sasl_plain_username=sasl_config['username'],
@@ -318,12 +333,13 @@ def create_consumer():
         log("No sasl mechanism specified. Using default consumer.")
         return KafkaConsumer(
             source_topic.name,
-            client_id= "python_streaming_function_consumer",
+            client_id="python_streaming_function_consumer",
             group_id=streaming_function_id,
             bootstrap_servers=broker,
             # consumer_timeout_ms=10000,
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
         )
+
 
 def create_producer() -> Optional[KafkaProducer]:
     """
@@ -334,7 +350,7 @@ def create_producer() -> Optional[KafkaProducer]:
     Returns:
         Configured KafkaProducer instance
     """
-    if sasl_config['mechanism'] is not None and target_topic is not None:
+    if sasl_config['mechanism'] is not None:
         return KafkaProducer(
             bootstrap_servers=broker,
             sasl_plain_username=sasl_config['username'],
@@ -343,16 +359,12 @@ def create_producer() -> Optional[KafkaProducer]:
             security_protocol=args.security_protocol,
             max_request_size=target_topic.max_message_bytes
         )
-    elif target_topic is not None:
-        log("No sasl mechanism specified. Using default producer.")
-        return KafkaProducer(
-            bootstrap_servers=broker,
-            max_in_flight_requests_per_connection=1,
-            max_request_size=target_topic.max_message_bytes
-        )
-    else:
-        log("No target topic specified. Not creating producer.")
-        return None
+    log("No sasl mechanism specified. Using default producer.")
+    return KafkaProducer(
+        bootstrap_servers=broker,
+        max_in_flight_requests_per_connection=1,
+        max_request_size=target_topic.max_message_bytes
+    )
 
 
 def main():
@@ -387,7 +399,7 @@ def main():
             time.sleep(1)
             with metrics_lock:
                 requests.post(
-                    "http://localhost:5001/metrics-logs", 
+                    "http://localhost:5001/metrics-logs",
                     json={
                         'timestamp': datetime.now(timezone.utc).isoformat(),
                         'count_in': metrics['count_in'],
@@ -405,30 +417,35 @@ def main():
             streaming_function_input_type = None
             streaming_function_callables = None
             if args.dmv2:
-                streaming_function_input_type, streaming_function_callables = load_streaming_function_dmv2(function_file_dir, function_file_name)
+                streaming_function_input_type, streaming_function_callables = load_streaming_function_dmv2(
+                    function_file_dir, function_file_name)
             else:
-                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv1(function_file_dir, function_file_name)
+                streaming_function_input_type, streaming_function_callable = load_streaming_function_dmv1(
+                    function_file_dir, function_file_name)
 
-                streaming_function_callables = [streaming_function_callable]
+                streaming_function_callables = [(streaming_function_callable, None)]
+
+            needs_producer = target_topic is not None or any(
+                pair[1] is not None for pair in streaming_function_callables)
 
             # Initialize Kafka connections in the processing thread
             consumer = create_consumer()
-            producer = create_producer()
-            
+            producer = create_producer() if needs_producer else None
+
             # Store references for cleanup
             kafka_refs['consumer'] = consumer
             kafka_refs['producer'] = producer
 
             # Subscribe to topic
             consumer.subscribe([source_topic.name])
-            
+
             log("Kafka consumer and producer initialized in processing thread")
 
             while running.is_set():
                 try:
                     # Poll with timeout to allow checking running state
                     messages = consumer.poll(timeout_ms=1000)
-                    
+
                     if not messages:
                         continue
 
@@ -443,8 +460,36 @@ def main():
 
                             # Run the flow
                             all_outputs = []
-                            for streaming_function_callable in streaming_function_callables:
-                                output_data = streaming_function_callable(input_data)
+                            for (streaming_function_callable, dlq) in streaming_function_callables:
+                                try:
+                                    output_data = streaming_function_callable(input_data)
+                                except Exception as e:
+                                    traceback.print_exc()
+                                    if dlq is not None:
+                                        dead_letter = DeadLetterModel(
+                                            original_record=message.value,
+                                            error_message=str(e),
+                                            error_type=e.__class__.__name__,
+                                            failed_at=datetime.now(timezone.utc),
+                                            source="transform"
+                                        )
+                                        record = dead_letter.model_dump_json().encode('utf-8')
+                                        producer.send(dlq.name, record).get()
+                                        cli_log(CliLogData(
+                                            action="DeadLetter",
+                                            message=f"Sent message to DLQ {dlq.name}: {str(e)}",
+                                            message_type=CliLogData.ERROR
+                                        ))
+                                    else:
+                                        cli_log(CliLogData(
+                                            action="Function",
+                                            message=f"Error processing message (no DLQ configured): {str(e)}",
+                                            message_type=CliLogData.ERROR
+                                        ))
+                                    # Skip to the next transformation or message
+                                    continue
+
+                                # For consumers, output_data will be None
                                 if output_data is None:
                                     continue
 
@@ -455,16 +500,17 @@ def main():
                                 with metrics_lock:
                                     metrics['count_in'] += len(output_data_list)
 
-                                cli_log(CliLogData(action="Received", message=f'{log_prefix} {len(output_data_list)} message(s)'))
+                                cli_log(CliLogData(action="Received",
+                                                   message=f'{log_prefix} {len(output_data_list)} message(s)'))
 
                             if producer is not None:
                                 for item in all_outputs:
                                     # Ignore flow function returning null
                                     if item is not None:
                                         record = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
-                                        
+
                                         producer.send(target_topic.name, record)
-                                        
+
                                         with metrics_lock:
                                             metrics['bytes_count'] += len(record)
                                             metrics['count_out'] += 1
@@ -518,32 +564,33 @@ def main():
         # Ensure cleanup happens even if main thread gets interrupted
         running.clear()
         log("Shutting down threads...")
-        
+
         # Give threads a chance to exit gracefully with timeout
         metrics_thread.join(timeout=5)
         processing_thread.join(timeout=5)
-        
+
         if metrics_thread.is_alive():
             log("Metrics thread did not exit cleanly")
         if processing_thread.is_alive():
             log("Processing thread did not exit cleanly")
-        
+
         # Clean up Kafka resources regardless of thread state
         if kafka_refs['consumer']:
             try:
                 kafka_refs['consumer'].close()
             except Exception as e:
                 log(f"Error closing consumer: {e}")
-                
+
         if kafka_refs['producer'] and kafka_refs['producer'] is not None:
             try:
                 kafka_refs['producer'].flush()
                 kafka_refs['producer'].close()
             except Exception as e:
                 log(f"Error closing producer: {e}")
-        
+
         log("Shutdown complete")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

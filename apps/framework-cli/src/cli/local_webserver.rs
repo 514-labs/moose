@@ -468,7 +468,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
             };
             show_message!(cli_message.message_type, message);
         }
-        Err(e) => println!("Received unkn message: {:?}", e),
+        Err(e) => println!("Received unknown message: {:?}", e),
     }
 
     Response::builder()

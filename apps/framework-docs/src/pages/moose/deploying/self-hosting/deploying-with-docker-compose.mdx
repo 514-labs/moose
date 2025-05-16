@@ -171,6 +171,13 @@ docker images
 
 First, create a file called `.env` in your project directory to specify component versions:
 
+```bash
+# Create and open the .env file
+vim .env
+```
+
+Add the following content to the `.env` file:
+
 ```
 # Version configuration for components
 POSTGRESQL_VERSION=14.0
@@ -184,6 +191,13 @@ REDPANDA_CONSOLE_VERSION=v3.1.0
 
 Additionally, create a `.env.prod` file for your Moose application-specific secrets and configuration:
 
+```bash
+# Create and open the .env.prod file
+vim .env.prod
+```
+
+Add your application-specific environment variables:
+
 ```
 # Application-specific environment variables
 APP_SECRET=your_app_secret
@@ -192,7 +206,14 @@ APP_SECRET=your_app_secret
 
 ## Deploying with Docker Compose
 
-Here is a docker compose file that will deploy the entire Moose stack:
+Create a file called `docker-compose.yml` in the same directory:
+
+```bash
+# Create and open the docker-compose.yml file
+vim docker-compose.yml
+```
+
+Add the following content to the file:
 
 ```yaml file=./docker-compose.yml
 name: moose-stack
@@ -420,6 +441,8 @@ networks:
   moose-network:
     driver: bridge
 ```
+
+At this point, don't start the services yet. First, we need to configure the individual services for production use as described in the following sections.
 
 ## Configuring Services for Production
 

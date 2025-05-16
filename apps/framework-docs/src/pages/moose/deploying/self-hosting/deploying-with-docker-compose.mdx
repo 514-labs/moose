@@ -262,6 +262,12 @@ services:
     # ports:
     #   - 8123:8123
     #   - 9000:9000
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     ulimits:
       nofile:
         soft: 262144
@@ -318,6 +324,12 @@ services:
       - redpanda-0:/var/lib/redpanda/data
     networks:
       - moose-network
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'OK'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Optional Redpanda Console for visualizing the cluster
   redanda-console:
@@ -384,6 +396,12 @@ services:
     restart: always
     networks:
       - moose-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7233/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Temporal Web UI (optional)
   temporal-ui:
@@ -397,6 +415,12 @@ services:
     restart: always
     networks:
       - moose-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
   # --- END TEMPORAL SERVICES ---
 
   # Your Moose application
@@ -448,6 +472,12 @@ services:
         required: true
     networks:
       - moose-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
 # Define the network for all services
 networks:

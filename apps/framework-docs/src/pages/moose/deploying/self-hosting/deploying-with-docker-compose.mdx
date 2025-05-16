@@ -123,6 +123,36 @@ sudo ./svc.sh install
 sudo ./svc.sh start
 ```
 
+## Setting up a Foo Bar Moose Application (Optional)
+If you already have a Moose application, you can skip this section.
+You should copy the moose project to your server and then build the application with the `--docker` flag and get the built image 
+on the server.
+
+### Install Moose CLI 
+```bash
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+### Create a new Moose Application
+```bash
+moose init test-ts typescript
+```
+
+or 
+```bash
+moose init test-py python
+```
+
+### Build the application
+```bash
+moose build --docker
+```
+
+### Confirm the image was built
+```bash
+docker images
+```
+
 ## Preparing for Deployment
 
 ### Create Environment Configuration

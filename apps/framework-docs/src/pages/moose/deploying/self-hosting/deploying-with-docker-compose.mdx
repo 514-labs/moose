@@ -552,15 +552,68 @@ For a production environment, consider the following adjustments to the Temporal
 3. **Scale**: For high availability, consider deploying Temporal services with multiple replicas
 4. **Monitoring**: Add monitoring for Temporal services
 
-After starting the services, you can create a namespace for your Moose application:
+#### Starting Temporal Services
+
+1. Start the PostgreSQL database first (Temporal depends on it):
+
+```bash
+docker compose up -d postgresql
+```
+
+2. Wait for PostgreSQL to be healthy (this may take a moment):
+
+```bash
+# Check if PostgreSQL is ready
+docker compose ps postgresql
+```
+
+Look for "healthy" status in the output.
+
+3. Start the Temporal server:
+
+```bash
+docker compose up -d temporal
+```
+
+4. Start the Temporal UI (optional):
+
+```bash
+docker compose up -d temporal-ui
+```
+
+#### Creating a Namespace for Moose
+
+After the Temporal services are running, create a namespace for your Moose application:
 
 ```bash
 # Create an alias for the tctl command
-alias tctl="docker exec temporal tctl"
+alias tctl="docker exec moose-stack-temporal-1 tctl"
 
 # Create a namespace
 tctl --ns moose-workflows namespace register
 ```
+
+#### Verifying Temporal Setup
+
+1. Check that all Temporal services are running:
+
+```bash
+docker compose ps
+```
+
+2. Access the Temporal Web UI (if you started the temporal-ui service):
+   - Open a browser and navigate to http://your-server-ip:8081
+   - You should see the Temporal UI dashboard
+   - Verify that the "moose-workflows" namespace appears in the namespace dropdown
+
+3. Test the connection from your server:
+
+```bash
+# Check if Temporal server is responding
+curl -I http://localhost:7233/health
+```
+
+You should see a "200 OK" response if Temporal is running correctly.
 
 ## Starting and Managing the Service
 

@@ -461,7 +461,14 @@ At this point, don't start the services yet. First, we need to configure the ind
 For production Clickhouse deployment, we'll use environment variables to configure users and access control 
 (as recommended in the [official Docker image documentation](https://hub.docker.com/r/clickhouse/clickhouse-server)):
 
-1. After starting Clickhouse with the initial admin user, connect to create additional users:
+1. First, start the Clickhouse container:
+
+```bash
+# Start just the Clickhouse container
+docker compose up -d clickhouse-0
+```
+
+2. After Clickhouse has started, connect to create additional users:
 
 ```bash
 # Connect to Clickhouse with the admin user
@@ -476,14 +483,14 @@ CREATE USER power_bi IDENTIFIED BY 'your_powerbi_password' SETTINGS PROFILE 'rea
 GRANT SHOW TABLES, SELECT ON moose.* TO power_bi;
 ```
 
-2. Update your Moose environment variables to use the new moose user:
+3. Update your Moose environment variables to use the new moose user:
 
 ```yaml
 MOOSE_CLICKHOUSE_CONFIG__USER: "moose"
 MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "your_moose_password"
 ```
 
-3. For additional security in production, consider using Docker secrets for passwords.
+4. For additional security in production, consider using Docker secrets for passwords.
 
 ### Securing Redpanda (Optional)
 

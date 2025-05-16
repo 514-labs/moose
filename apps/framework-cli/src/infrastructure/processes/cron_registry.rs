@@ -184,10 +184,7 @@ impl CronRegistry {
                                     .await
                             }
                             "py" => Command::new("python3").arg(path).output().await,
-                            _ => Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                "Unsupported file type",
-                            )),
+                            _ => Err(std::io::Error::other("Unsupported file type")),
                         };
 
                         match output {

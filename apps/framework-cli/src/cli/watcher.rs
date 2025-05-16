@@ -24,10 +24,7 @@ use notify::{Event, EventHandler, EventKind, RecommendedWatcher, RecursiveMode, 
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{
-    io::{Error, ErrorKind},
-    path::PathBuf,
-};
+use std::{io::Error, path::PathBuf};
 use tokio::sync::RwLock;
 
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
@@ -135,16 +132,11 @@ async fn watch(
     let receiver_ack = tx.clone();
 
     let mut watcher = RecommendedWatcher::new(EventListener { tx }, notify::Config::default())
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to create file watcher: {}", e),
-            )
-        })?;
+        .map_err(|e| Error::other(format!("Failed to create file watcher: {}", e)))?;
 
     watcher
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
-        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
+        .map_err(|e| Error::other(format!("Failed to watch file: {}", e)))?;
 
     log::debug!("Watcher setup complete, entering main loop");
 

@@ -553,12 +553,12 @@ enum MappingError {
     /// Error when JSON value doesn't match the expected ClickHouse column type
     #[error("Failed to map the JSON value {value:?} to ClickHouse column typed {column_type:?}")]
     TypeMismatch {
-        column_type: ColumnType,
+        column_type: Box<ColumnType>,
         value: Value,
     },
     /// Error when trying to map to an unsupported ClickHouse column type
     #[error("The Column Type {column_type:?} is not supported")]
-    UnsupportedColumnType { column_type: ColumnType },
+    UnsupportedColumnType { column_type: Box<ColumnType> },
     /// Error propagated from the ClickHouse client
     #[error("Mapping missing in the `std_field_type_to_clickhouse_type_mapper` method")]
     ClickHouseModule(#[from] ClickhouseError),
@@ -583,7 +583,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_string(value_str.to_string()))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -593,7 +593,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_boolean(value_bool))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -603,7 +603,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_int_64(value_int))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -613,7 +613,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_float_64(value_float))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -628,13 +628,13 @@ fn map_json_value_to_clickhouse_value(
                     Ok(ClickHouseValue::new_string(s.to_string()))
                 } else {
                     Err(MappingError::TypeMismatch {
-                        column_type: column_type.clone(),
+                        column_type: Box::new(column_type.clone()),
                         value: value.clone(),
                     })
                 }
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -645,13 +645,13 @@ fn map_json_value_to_clickhouse_value(
                     Ok(ClickHouseValue::new_date_time(date_time))
                 } else {
                     Err(MappingError::TypeMismatch {
-                        column_type: column_type.clone(),
+                        column_type: Box::new(column_type.clone()),
                         value: value.clone(),
                     })
                 }
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -669,7 +669,7 @@ fn map_json_value_to_clickhouse_value(
                 ))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -697,7 +697,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_array(array_values))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -748,7 +748,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_tuple(values))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }
@@ -758,20 +758,20 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_json(obj.clone()))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: ColumnType::Json,
+                    column_type: Box::new(ColumnType::Json),
                     value: value.clone(),
                 })
             }
         }
         ColumnType::Bytes => Err(MappingError::UnsupportedColumnType {
-            column_type: column_type.clone(),
+            column_type: Box::new(column_type.clone()),
         }),
         ColumnType::BigInt => Err(MappingError::UnsupportedColumnType {
-            column_type: column_type.clone(),
+            column_type: Box::new(column_type.clone()),
         }),
         ColumnType::Uuid => match value.as_str().filter(|s| Uuid::try_parse(s).is_ok()) {
             None => Err(MappingError::TypeMismatch {
-                column_type: ColumnType::Uuid,
+                column_type: Box::new(ColumnType::Uuid),
                 value: value.clone(),
             }),
             Some(uuid_str) => Ok(ClickHouseValue::new_string(uuid_str.to_string())),
@@ -784,7 +784,7 @@ fn map_json_value_to_clickhouse_value(
                 Ok(ClickHouseValue::new_string(value_str.to_string()))
             } else {
                 Err(MappingError::TypeMismatch {
-                    column_type: column_type.clone(),
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }

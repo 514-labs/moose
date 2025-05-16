@@ -4,15 +4,16 @@ As always, to get the latest:
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
-# Friday, 16th May 2025
+## Friday, 16th May 2025
 
-* Moose and Aurora users can now embed metadata into their Moose primitives, for use be the users, their agents, and their metadata tools.
-* Aurora users can now leverage DuckDB for local data wrangling.
-* Aurora users can read and write from Databricks (more coming here soon).
+Highlights:
+* *Moose and Aurora users* can now embed metadata into their Moose primitives, for use be the users, their agents, and their metadata tools.
+* *Aurora users* can read and write from **Databricks** (more coming here soon).
+* *Aurora users* can now leverage **DuckDB** for local data wrangling.
 
-## Moose + Aurora
+### Moose + Aurora
 
-### Descriptions in your Moose primitives
+#### Descriptions in your Moose primitives
 
 **Store context about why you are building what you are building, for you and your agents.**
 
@@ -38,12 +39,12 @@ const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
     * To be on a field level as well as a primitive level
     * To include any arbitrary key value pair, not just a description (use this for managing labels like PII!)
 
-### Quality of life and bug fixes:
+#### Quality of life and bug fixes:
 * **Flexible JSON ingest**. Our agents were confused by needing to specify whether ingested data was a JSON object or an array of JSON objects. Now by default both work.
 
-## Aurora MCP
+### Aurora MCP
 
-### [Experimental] Wrangler Agent—Databricks tools.
+#### [Experimental] Wrangler Agent—Databricks tools.
 
 We’ve had a bunch of our users (especially in the enterprise) request deeper integration with Databricks. We’ve created MCP tooling to allow you to read from Databricks, and create new derivative Databricks managed tables.
 
@@ -63,7 +64,7 @@ Turn it on with `aurora config tools`, and adding `experimental-databricks-tools
 * **Workflows V2**: We're working on bringing schemas into our workflow creation tools, our Databricks integration will be able to leverage these in interacting with Databricks.
 * **DatabricksTable**: We're working on a new primitive that will allow you to create a Databricks table from a Moose primitive.
 
-### [External] DuckDB MCP
+#### [External] DuckDB MCP
 
 You can now bring DuckDB’s MCP tool into a Moose Project and manage that MCP through the Aurora CLI\! Try aurora config tools and enable `external-duck-db-mcp`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). You'll need to configure the MCP with your duckdb path—either after selectign the tool-set through `aurora config tools`, or by editing the MCP.json file directly.
 
@@ -72,12 +73,12 @@ String DuckDB tool calls with Aurora tool calls to manipulate local files for in
 **Future of the feature:**
 * **Remote Data**: We're working on bringing remote data into Moose management with this MCP toolset
 
-### Data Collection
+#### Data Collection
 Aurora is in research preview, to help us improve our product, we’ve added data collection to our MCP tools. Ready-to-go templates default to `comprehensive` data collection (we figure that these templates are least likely to have sensitive information), and standard templates default to `standard` data collection. You can change your data collection preferences whenever you want (just by editing your project’s `aurora.config.toml` file. [Docs](https://docs.fiveonefour.com/aurora/data-collection-policy).
 
-## Aurora CLI
+### Aurora CLI
 
-### Quality of life and bug fixes:
+#### Quality of life and bug fixes:
 * **LLM Docs**. Want docs for your LLMs that work with Moose projects? [Here](https://docs.fiveonefour.com/api/llms.txt).
 * **Read only tools**. We’ve had requests for a read-only toolset, especially for people using chat based MCP clients. We’ve split standard tools into: read-only and egress-tools. [Docs](https://docs.fiveonefour.com/aurora/tool-reference).
 * **Sorting Projects**. Projects in the CLI are now sorted (hopefully y’all have enough Aurora projects that this is useful)! Affects aurora config tools and structure of ~/.aurora/config.toml. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). Deleted projects will now be cleaned from ~/.aurora/config.toml and from whenever the CLI prints lists of projects.
@@ -88,7 +89,7 @@ CREATE USER username IDENTIFIED BY 'password' SETTINGS PROFILE 'readonly'
 GRANT SHOW TABLES, SELECT ON db+name.* TO username
 ```
 
-## In Progress
+### In Progress
 Let us know if these features are interesting to you, we are always looking for beta users, design partners, and general feedback\!
 
 * **Google Docs MCP integration**. Get data from Google Docs / Sheets for use as context, or as a source\!  

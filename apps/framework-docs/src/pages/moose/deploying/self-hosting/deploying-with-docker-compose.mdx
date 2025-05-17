@@ -357,7 +357,7 @@ services:
         kafka:
           brokers: ["redpanda-0:9092"]
         # Schema registry config moved outside of kafka section
-        schema_registry:
+        schemaRegistry:
           enabled: true
           urls: ["http://redpanda-0:8081"]
         redpanda:
@@ -506,8 +506,8 @@ services:
       # Required services configuration
       # Clickhouse configuration
       MOOSE_CLICKHOUSE_CONFIG__DB_NAME: "moose"
-      MOOSE_CLICKHOUSE_CONFIG__USER: "admin"
-      MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "adminpassword"
+      MOOSE_CLICKHOUSE_CONFIG__USER: "moose"
+      MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "your_moose_password"
       MOOSE_CLICKHOUSE_CONFIG__HOST: "clickhouse-0"
       MOOSE_CLICKHOUSE_CONFIG__HOST_PORT: "8123"
       

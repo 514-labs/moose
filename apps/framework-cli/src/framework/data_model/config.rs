@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use crate::framework::core::infrastructure::table::Metadata;
 use crate::framework::python::datamodel_config::execute_python_model_file_for_config;
 use crate::framework::typescript::export_collectors::get_data_model_configs;
 use crate::utilities::_true;
@@ -45,6 +46,8 @@ pub struct DataModelConfig {
     pub storage: StorageConfig,
     #[serde(default = "default_parallelism")]
     pub parallelism: usize,
+    #[serde(default)]
+    pub metadata: Option<Metadata>,
 }
 
 impl Default for DataModelConfig {
@@ -53,6 +56,7 @@ impl Default for DataModelConfig {
             ingestion: IngestionConfig::default(),
             storage: StorageConfig::default(),
             parallelism: default_parallelism(),
+            metadata: None,
         }
     }
 }

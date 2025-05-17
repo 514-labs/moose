@@ -56,6 +56,8 @@ interface TableJson {
   engine?: string;
   /** Optional version string for the table configuration. */
   version?: string;
+  /** Optional metadata for the table (e.g., description). */
+  metadata?: { description?: string };
 }
 /**
  * Represents a target destination for data flow, typically a stream.
@@ -67,6 +69,8 @@ interface Target {
   kind: "stream"; // may add `| "table"` in the future
   /** Optional version string of the target resource's configuration. */
   version?: string;
+  /** Optional metadata for the target (e.g., description for function processes). */
+  metadata?: { description?: string };
 }
 
 /**
@@ -101,6 +105,8 @@ interface StreamJson {
   hasMultiTransform: boolean;
   /** List of consumers attached to this stream. */
   consumers: Consumer[];
+  /** Optional description for the stream. */
+  metadata?: { description?: string };
 }
 /**
  * JSON representation of an Ingest API configuration.
@@ -115,6 +121,8 @@ interface IngestApiJson {
   writeTo: Target;
   /** Optional version string for the API configuration. */
   version?: string;
+  /** Optional description for the API. */
+  metadata?: { description?: string };
 }
 
 /**
@@ -129,6 +137,8 @@ interface EgressApiJson {
   responseSchema: IJsonSchemaCollection.IV3_1;
   /** Optional version string for the API configuration. */
   version?: string;
+  /** Optional description for the API. */
+  metadata?: { description?: string };
 }
 
 /**
@@ -180,6 +190,11 @@ const toInfraMap = (registry: typeof moose_internal) => {
   const sqlResources: { [key: string]: SqlResourceJson } = {};
 
   registry.tables.forEach((table) => {
+    // If the table is part of an IngestPipeline, inherit metadata if not set
+    let metadata = (table as any).metadata;
+    if (!metadata && table.config && (table as any).pipelineParent) {
+      metadata = (table as any).pipelineParent.metadata;
+    }
     tables[table.name] = {
       name: table.name,
       columns: table.columnArray,
@@ -187,10 +202,16 @@ const toInfraMap = (registry: typeof moose_internal) => {
       deduplicate: table.config.deduplicate ?? false,
       engine: table.config.engine,
       version: table.config.version,
+      metadata,
     };
   });
 
   registry.streams.forEach((stream) => {
+    // If the stream is part of an IngestPipeline, inherit metadata if not set
+    let metadata = stream.metadata;
+    if (!metadata && stream.config && (stream as any).pipelineParent) {
+      metadata = (stream as any).pipelineParent.metadata;
+    }
     const transformationTargets: Target[] = [];
     const consumers: Consumer[] = [];
 
@@ -200,6 +221,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
           kind: "stream",
           name: destinationName,
           version: config.version,
+          metadata: config.metadata,
         });
       });
     });
@@ -221,10 +243,16 @@ const toInfraMap = (registry: typeof moose_internal) => {
       transformationTargets,
       hasMultiTransform: stream._multipleTransformations === undefined,
       consumers,
+      metadata,
     };
   });
 
   registry.ingestApis.forEach((api) => {
+    // If the ingestApi is part of an IngestPipeline, inherit metadata if not set
+    let metadata = api.metadata;
+    if (!metadata && api.config && (api as any).pipelineParent) {
+      metadata = (api as any).pipelineParent.metadata;
+    }
     ingestApis[api.name] = {
       name: api.name,
       columns: api.columnArray,
@@ -233,6 +261,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
         kind: "stream",
         name: api.config.destination.name,
       },
+      metadata,
     };
   });
 
@@ -242,6 +271,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
       version: api.config.version,
+      metadata: api.metadata,
     };
   });
 

@@ -1,3 +1,4 @@
+use super::table::Metadata;
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 use crate::framework::versions::Version;
 use crate::framework::{
@@ -5,6 +6,7 @@ use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
 };
+use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
 use crate::proto::infrastructure_map::{
@@ -52,6 +54,7 @@ pub struct ApiEndpoint {
 
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
+    pub metadata: Option<Metadata>,
 }
 
 impl ApiEndpoint {
@@ -74,6 +77,7 @@ impl ApiEndpoint {
                 name: data_model.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 
@@ -114,6 +118,12 @@ impl ApiEndpoint {
             method: EnumOrUnknown::new(self.method.to_proto()),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            metadata: MessageField::from_option(self.metadata.as_ref().map(|m| {
+                infrastructure_map::Metadata {
+                    description: m.description.clone().unwrap_or_default(),
+                    special_fields: Default::default(),
+                }
+            })),
             special_fields: Default::default(),
         }
     }
@@ -131,6 +141,13 @@ impl ApiEndpoint {
             ),
             version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+            metadata: proto.metadata.into_option().map(|m| Metadata {
+                description: if m.description.is_empty() {
+                    None
+                } else {
+                    Some(m.description)
+                },
+            }),
         }
     }
 }
@@ -156,6 +173,7 @@ impl From<EndpointFile> for ApiEndpoint {
                 name: value.path.to_string_lossy().to_string(),
                 primitive_type: PrimitiveTypes::ConsumptionAPI,
             },
+            metadata: None,
         }
     }
 }

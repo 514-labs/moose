@@ -57,7 +57,7 @@ use super::{
         olap_process::OlapProcess,
         orchestration_worker::OrchestrationWorker,
         sql_resource::SqlResource,
-        table::{Column, Table},
+        table::{Column, Metadata, Table},
         topic::{Topic, DEFAULT_MAX_MESSAGE_BYTES},
         topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess},
         view::View,
@@ -78,6 +78,7 @@ struct PartialTable {
     pub deduplicate: bool,
     pub engine: Option<String>,
     pub version: Option<String>,
+    pub metadata: Option<Metadata>,
 }
 
 /// Represents a topic definition from user code before it's converted into a complete [`Topic`].
@@ -96,6 +97,7 @@ struct PartialTopic {
     pub target_table_version: Option<String>,
     pub version: Option<String>,
     pub consumers: Vec<Consumer>,
+    pub metadata: Option<Metadata>,
 }
 
 /// Specifies the type of destination for write operations.
@@ -120,6 +122,7 @@ struct PartialIngestApi {
     pub columns: Vec<Column>,
     pub write_to: WriteTo,
     pub version: Option<String>,
+    pub metadata: Option<Metadata>,
 }
 
 /// Represents an egress API endpoint definition before conversion to a complete [`ApiEndpoint`].
@@ -132,6 +135,7 @@ struct PartialEgressApi {
     pub query_params: Vec<Column>,
     pub response_schema: serde_json::Value,
     pub version: Option<String>,
+    pub metadata: Option<Metadata>,
 }
 
 /// Specifies a write destination for data ingestion.
@@ -151,6 +155,7 @@ pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
     pub version: Option<String>,
+    pub metadata: Option<Metadata>,
 }
 
 /// Configuration for a topic consumer.
@@ -370,9 +375,6 @@ impl PartialInfrastructureMap {
                     .map(|v_str| Version::from_string(v_str.clone()));
 
                 let table = Table {
-                    // In dmv1, DataModel.to_table uses version in the name
-                    // I wonder if we should change that, in the Topics, the namespace and the version are separate so that it can be
-                    // more flexible depending on the target stream.
                     name: version
                         .as_ref()
                         .map_or(partial_table.name.clone(), |version| {
@@ -387,6 +389,7 @@ impl PartialInfrastructureMap {
                         name: partial_table.name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,
                     },
+                    metadata: partial_table.metadata.clone(),
                 };
                 (table.id(), table)
             })
@@ -417,6 +420,7 @@ impl PartialInfrastructureMap {
                         name: partial_topic.name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,
                     },
+                    metadata: partial_topic.metadata.clone(),
                 };
                 (topic.id(), topic)
             })
@@ -467,6 +471,7 @@ impl PartialInfrastructureMap {
                     },
                     // TODO pass through parallelism from the TS / PY api
                     parallelism: 1,
+                    metadata: None,
                 },
                 columns: partial_api.columns.clone(),
                 // If this is the app directory, we should use the project reference so that
@@ -498,6 +503,7 @@ impl PartialInfrastructureMap {
                     name: partial_api.name.clone(),
                     primitive_type: PrimitiveTypes::DataModel,
                 },
+                metadata: partial_api.metadata.clone(),
             };
 
             api_endpoints.insert(api_endpoint.id(), api_endpoint);
@@ -528,6 +534,7 @@ impl PartialInfrastructureMap {
                     name: partial_api.name.clone(),
                     primitive_type: PrimitiveTypes::ConsumptionAPI,
                 },
+                metadata: partial_api.metadata.clone(),
             };
 
             api_endpoints.insert(api_endpoint.id(), api_endpoint);
@@ -648,6 +655,7 @@ impl PartialInfrastructureMap {
                         name: process_name.clone(),
                         primitive_type: PrimitiveTypes::Function,
                     },
+                    metadata: transformation_target.metadata.clone(),
                 };
 
                 function_processes.insert(function_process.id(), function_process);
@@ -667,6 +675,7 @@ impl PartialInfrastructureMap {
                         name: topic_name.clone(),
                         primitive_type: PrimitiveTypes::DataModel,
                     },
+                    metadata: None,
                 };
 
                 function_processes.insert(function_process.id(), function_process);

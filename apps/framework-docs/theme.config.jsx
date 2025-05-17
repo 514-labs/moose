@@ -18,6 +18,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/router";
+import { useConfig } from "nextra-theme-docs";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -90,11 +92,59 @@ export default {
   },
   docsRepositoryBase:
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
-  head: () => (
-    <>
-      <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
-    </>
-  ),
+  head: () => {
+    const { asPath, defaultLocale, locale } = useRouter();
+    const { frontMatter } = useConfig();
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://docs.fiveonefour.com";
+    const url = `${baseUrl}${asPath !== "/" ? asPath : ""}`;
+
+    return (
+      <>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta property="og:url" content={url} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@514hq" />
+        <meta
+          property="og:title"
+          content={frontMatter.title || "514 Labs Documentation"}
+        />
+        <meta
+          property="og:description"
+          content={
+            frontMatter.description ||
+            "Documentation for Moose and Aurora by 514 Labs"
+          }
+        />
+        <meta
+          name="description"
+          content={
+            frontMatter.description ||
+            "Documentation for Moose and Aurora by 514 Labs"
+          }
+        />
+        {frontMatter.image && (
+          <>
+            <meta
+              property="og:image"
+              content={`${baseUrl}${frontMatter.image}`}
+            />
+            <meta
+              name="twitter:image"
+              content={`${baseUrl}${frontMatter.image}`}
+            />
+          </>
+        )}
+        <link
+          rel="icon"
+          href="/favicon.ico"
+          type="image/x-icon"
+          sizes="16x16"
+        />
+        <link rel="canonical" href={url} />
+      </>
+    );
+  },
   navbar: {
     extraContent: () => (
       <Link href="https://www.boreal.cloud/sign-in">

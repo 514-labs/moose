@@ -848,6 +848,7 @@ impl OlapOperations for ConfiguredDBClient {
                 engine: Some(engine),
                 version,
                 source_primitive,
+                metadata: None,
             };
             debug!("Created table object: {:?}", table);
 

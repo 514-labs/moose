@@ -42,6 +42,7 @@ impl DataModel {
                 name: self.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 

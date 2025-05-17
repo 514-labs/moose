@@ -1,10 +1,11 @@
-use super::table::Column;
+use super::table::{Column, Metadata};
 use crate::framework::versions::Version;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
     streaming::model::StreamingFunction,
 };
+use crate::proto;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -27,6 +28,8 @@ pub struct Topic {
     pub columns: Vec<Column>,
 
     pub source_primitive: PrimitiveSignature,
+
+    pub metadata: Option<Metadata>,
 }
 
 impl Topic {
@@ -43,6 +46,7 @@ impl Topic {
                 name: data_model.name.clone(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 
@@ -68,6 +72,7 @@ impl Topic {
                 name: function.id(),
                 primitive_type: PrimitiveTypes::Function,
             },
+            metadata: None,
         };
 
         let target_topic = function
@@ -84,6 +89,7 @@ impl Topic {
                     name: function.id(),
                     primitive_type: PrimitiveTypes::Function,
                 },
+                metadata: None,
             });
 
         (source_topic, target_topic)
@@ -132,6 +138,12 @@ impl Topic {
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             max_message_bytes: Some(self.max_message_bytes as i32),
+            metadata: MessageField::from_option(self.metadata.as_ref().map(|m| {
+                proto::infrastructure_map::Metadata {
+                    description: m.description.clone().unwrap_or_default(),
+                    special_fields: Default::default(),
+                }
+            })),
             special_fields: Default::default(),
         }
     }
@@ -152,6 +164,13 @@ impl Topic {
                 .unwrap_or(DEFAULT_MAX_MESSAGE_BYTES.try_into().unwrap())
                 as usize,
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+            metadata: proto.metadata.into_option().map(|m| Metadata {
+                description: if m.description.is_empty() {
+                    None
+                } else {
+                    Some(m.description)
+                },
+            }),
         }
     }
 }

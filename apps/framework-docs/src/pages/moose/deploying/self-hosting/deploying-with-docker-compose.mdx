@@ -238,11 +238,24 @@ volumes:
   # Optional volumes
   redpanda-0: null
   postgresql-data: null
+
+configs:
+  temporal-config:
+    # Using the "content" property to inline the config
+    content: |
+      limit.maxIDLength:
+        - value: 255
+          constraints: {}
+      system.forceSearchAttributesCacheRefreshOnRead:
+        - value: true # Dev setup only. Please don't turn this on in production.
+          constraints: {}
+
 services:
   # REQUIRED SERVICES
 
   # Clickhouse - Required analytics database
   clickhouse-0:
+    container_name: clickhouse-0
     restart: always
     image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION}
     volumes:
@@ -325,14 +338,14 @@ services:
     networks:
       - moose-network
     healthcheck:
-      test: ["CMD-SHELL", "rpk cluster health | grep -q 'OK'"]
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
 
   # Optional Redpanda Console for visualizing the cluster
-  redanda-console:
+  redpanda-console:
     restart: always
     container_name: redpanda-console
     image: docker.redpanda.com/redpandadata/console:${REDPANDA_CONSOLE_VERSION}
@@ -343,9 +356,10 @@ services:
       CONSOLE_CONFIG_FILE: |
         kafka:
           brokers: ["redpanda-0:9092"]
-          schemaRegistry:
-            enabled: true
-            urls: ["http://redpanda-0:8081"]
+        # Schema registry config moved outside of kafka section
+        schema_registry:
+          enabled: true
+          urls: ["http://redpanda-0:8081"]
         redpanda:
           adminApi:
             enabled: true
@@ -354,6 +368,12 @@ services:
       - 8080:8080
     depends_on:
       - redpanda-0
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/admin/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - moose-network
   # --- END REDPANDA SERVICES ---
@@ -375,35 +395,76 @@ services:
       test: ["CMD-SHELL", "pg_isready -U temporal"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
     networks:
       - moose-network
 
   # Temporal server
+  # For initial setup, use temporalio/auto-setup image
+  # For production, switch to temporalio/server after first run
   temporal:
     container_name: temporal
     depends_on:
       postgresql:
         condition: service_healthy
     environment:
-      - DB=postgres
+      # Database configuration
+      - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-    image: temporalio/server:${TEMPORAL_VERSION}
+      # Namespace configuration
+      - DEFAULT_NAMESPACE=moose-workflows
+      - DEFAULT_NAMESPACE_RETENTION=72h
+      # Auto-setup options - set to false after initial setup
+      - AUTO_SETUP=true
+      - SKIP_SCHEMA_SETUP=false
+      # Service configuration - all services by default
+      # For high-scale deployments, run these as separate containers
+      # - SERVICES=history,matching,frontend,worker
+      # Logging and metrics
+      - LOG_LEVEL=info
+      # Addresses
+      - TEMPORAL_ADDRESS=temporal:7233
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development-sql.yaml
+    # For initial deployment, use the auto-setup image
+    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+    # For production, after initial setup, switch to server image:
+    # image: temporalio/server:${TEMPORAL_VERSION}
     restart: always
+    ports:
+      - 7233:7233
+    # Volume for dynamic configuration - essential for production
+    configs:
+      - source: temporal-config
+        target: /etc/temporal/config/dynamicconfig/development-sql.yaml
+        mode: 0444
     networks:
       - moose-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7233/health"]
+      test: ["CMD", "tctl", "--ad", "temporal:7233", "cluster", "health", "|", "grep", "-q", "SERVING"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
 
-  # Temporal Web UI (optional)
+  # Temporal Admin Tools - useful for maintenance and debugging
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:${TEMPORAL_VERSION}
+    restart: "no"
+    networks:
+      - moose-network
+    stdin_open: true
+    tty: true
+
+  # Temporal Web UI
   temporal-ui:
     container_name: temporal-ui
     depends_on:
@@ -413,6 +474,8 @@ services:
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
     image: temporalio/ui:${TEMPORAL_UI_VERSION}
     restart: always
+    ports:
+      - 8081:8080
     networks:
       - moose-network
     healthcheck:
@@ -473,10 +536,10 @@ services:
     networks:
       - moose-network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:4000/health"]
+      test: ["CMD-SHELL", "curl -s http://localhost:4000/health | grep -q '\"unhealthy\": \\[\\]' && echo 'Healthy'"]
       interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 60s
 
 # Define the network for all services
@@ -505,7 +568,7 @@ docker compose up -d clickhouse-0
 
 ```bash
 # Connect to Clickhouse with the admin user
-docker exec -it moose-stack-clickhouse-0-1 clickhouse-client --user admin --password adminpassword
+docker exec -it clickhouse-0 clickhouse-client --user admin --password adminpassword
 
 # Create moose application user
 CREATE USER moose IDENTIFIED BY 'your_moose_password';
@@ -573,80 +636,115 @@ For production, it's recommended to restrict external access to Redpanda:
 ### Configuring Temporal (Optional)
 
 If your Moose application uses Temporal for workflow orchestration, the configuration above includes all necessary services based on the
- [official Temporal Docker Compose examples](https://github.com/temporalio/docker-compose). 
+[official Temporal Docker Compose examples](https://github.com/temporalio/docker-compose).
 
 If you're not using Temporal, simply remove the Temporal-related services (postgresql, temporal, temporal-ui) 
 and environment variables from the docker-compose.yml file.
 
-For a production environment, consider the following adjustments to the Temporal configuration:
+#### Temporal Deployment Process: From Setup to Production
 
-1. **Secure credentials**: Use Docker secrets or environment variables stored in a secure vault
-2. **Data persistence**: Ensure PostgreSQL data is properly backed up
-3. **Scale**: For high availability, consider deploying Temporal services with multiple replicas
-4. **Monitoring**: Add monitoring for Temporal services
+Deploying Temporal involves a two-phase process: initial setup followed by production operation. Here are step-by-step instructions for each phase:
 
-#### Starting Temporal Services
+##### Phase 1: Initial Setup
 
-1. Start the PostgreSQL database first (Temporal depends on it):
+1. **Start the PostgreSQL database**:
 
 ```bash
 docker compose up -d postgresql
 ```
 
-2. Wait for PostgreSQL to be healthy (this may take a moment):
+2. **Wait for PostgreSQL to be healthy** (check the status):
 
 ```bash
-# Check if PostgreSQL is ready
 docker compose ps postgresql
 ```
 
-Look for "healthy" status in the output.
+Look for `healthy` in the output before proceeding.
 
-3. Start the Temporal server:
+3. **Start Temporal with auto-setup**:
 
 ```bash
 docker compose up -d temporal
 ```
 
-4. Start the Temporal UI (optional):
+During this phase, Temporal's auto-setup will:
+- Create the necessary PostgreSQL databases
+- Initialize the schema tables
+- Register the default namespace (moose-workflows)
+
+4. **Verify Temporal server is running**:
 
 ```bash
-docker compose up -d temporal-ui
+docker compose ps temporal
 ```
 
-#### Creating a Namespace for Moose
-
-After the Temporal services are running, create a namespace for your Moose application:
+5. **Start the Admin Tools and UI**:
 
 ```bash
-# Create an alias for the tctl command
-alias tctl="docker exec moose-stack-temporal-1 tctl"
-
-# Create a namespace
-tctl --ns moose-workflows namespace register
+docker compose up -d temporal-admin-tools temporal-ui
 ```
 
-#### Verifying Temporal Setup
+6. **Create the namespace manually**:
 
-1. Check that all Temporal services are running:
+```bash
+# Register the moose-workflows namespace with a 3-day retention period
+docker compose exec temporal-admin-tools tctl namespace register --retention 72h moose-workflows
+```
+
+Verify that the namespace was created:
+
+```bash
+# List all namespaces
+docker compose exec temporal-admin-tools tctl namespace list
+
+# Describe your namespace
+docker compose exec temporal-admin-tools tctl namespace describe moose-workflows
+```
+
+You should see details about the namespace including its retention policy.
+
+##### Phase 2: Transition to Production
+
+After successful initialization, modify your configuration for production use:
+
+1. **Stop Temporal services**:
+
+```bash
+docker compose stop temporal temporal-ui temporal-admin-tools
+```
+
+2. **Edit your docker-compose.yml file** to:
+   - Change image from `temporalio/auto-setup` to `temporalio/server`
+   - Set `SKIP_SCHEMA_SETUP=true`
+
+Example change:
+```yaml
+# From:
+image: temporalio/auto-setup:${TEMPORAL_VERSION}
+
+# To:
+image: temporalio/server:${TEMPORAL_VERSION}
+
+# And change:
+- AUTO_SETUP=true
+- SKIP_SCHEMA_SETUP=false
+
+# To:
+- AUTO_SETUP=false
+- SKIP_SCHEMA_SETUP=true
+```
+
+3. **Restart services with production settings**:
+
+```bash
+docker compose up -d temporal temporal-ui temporal-admin-tools
+```
+
+4. **Verify services are running with new configuration**:
 
 ```bash
 docker compose ps
 ```
-
-2. Access the Temporal Web UI (if you started the temporal-ui service):
-   - Open a browser and navigate to http://your-server-ip:8081
-   - You should see the Temporal UI dashboard
-   - Verify that the "moose-workflows" namespace appears in the namespace dropdown
-
-3. Test the connection from your server:
-
-```bash
-# Check if Temporal server is responding
-curl -I http://localhost:7233/health
-```
-
-You should see a "200 OK" response if Temporal is running correctly.
 
 ## Starting and Managing the Service
 

@@ -7,7 +7,7 @@ const config = {
     "./components/**/*.{ts,tsx,md,mdx}",
     "./mdx-components.tsx",
     "./theme.config.jsx",
-    "../../packages/**/*.{ts,tsx,md,mdx}",
+    "../../packages/**/!(*node_modules)/**/*.{ts,tsx,md,mdx}",
   ],
   safelist: [
     "active",

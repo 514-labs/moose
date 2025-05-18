@@ -46,9 +46,9 @@ const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
 
 #### [Experimental] Wrangler Agent—Databricks tools.
 
-We’ve had a bunch of our users (especially in the enterprise) request deeper integration with Databricks. We’ve created MCP tooling to allow you to read from Databricks, and create new derivative Databricks managed tables.
+We've had a bunch of our users (especially in the enterprise) request deeper integration with Databricks. We've created MCP tooling to allow you to read from Databricks, and create new derivative Databricks managed tables.
 
-Turn it on with `aurora config tools`, and adding `experimental-databricks-tools`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). To connect with your Databricks instance, you’ll need to modify the relevant `MCP.json` file to add:
+Turn it on with `aurora config tools`, and adding `experimental-databricks-tools`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). To connect with your Databricks instance, you'll need to modify the relevant `MCP.json` file to add:
 ```JSON
 "DATABRICKS_HOST": "[-].databricks.com",
 "DATABRICKS_PATH": "/sql/1.0/warehouses/[-]",
@@ -66,7 +66,7 @@ Turn it on with `aurora config tools`, and adding `experimental-databricks-tools
 
 #### [External] DuckDB MCP
 
-You can now bring DuckDB’s MCP tool into a Moose Project and manage that MCP through the Aurora CLI\! Try aurora config tools and enable `external-duck-db-mcp`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). You'll need to configure the MCP with your duckdb path—either after selectign the tool-set through `aurora config tools`, or by editing the MCP.json file directly.
+You can now bring DuckDB's MCP tool into a Moose Project and manage that MCP through the Aurora CLI\! Try aurora config tools and enable `external-duck-db-mcp`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). You'll need to configure the MCP with your duckdb path—either after selectign the tool-set through `aurora config tools`, or by editing the MCP.json file directly.
 
 String DuckDB tool calls with Aurora tool calls to manipulate local files for ingestion. Try our Aurora tools for creating a DuckDB database from your local flat files.
 
@@ -74,14 +74,14 @@ String DuckDB tool calls with Aurora tool calls to manipulate local files for in
 * **Remote Data**: We're working on bringing remote data into Moose management with this MCP toolset
 
 #### Data Collection
-Aurora is in research preview, to help us improve our product, we’ve added data collection to our MCP tools. Ready-to-go templates default to `comprehensive` data collection (we figure that these templates are least likely to have sensitive information), and standard templates default to `standard` data collection. You can change your data collection preferences whenever you want (just by editing your project’s `aurora.config.toml` file. [Docs](https://docs.fiveonefour.com/aurora/data-collection-policy).
+Aurora is in research preview, to help us improve our product, we've added data collection to our MCP tools. Ready-to-go templates default to `comprehensive` data collection (we figure that these templates are least likely to have sensitive information), and standard templates default to `standard` data collection. You can change your data collection preferences whenever you want (just by editing your project's `aurora.config.toml` file. [Docs](https://docs.fiveonefour.com/aurora/data-collection-policy).
 
 ### Aurora CLI
 
 #### Quality of life and bug fixes:
 * **LLM Docs**. Want docs for your LLMs that work with Moose projects? [Here](https://docs.fiveonefour.com/api/llms.txt).
-* **Read only tools**. We’ve had requests for a read-only toolset, especially for people using chat based MCP clients. We’ve split standard tools into: read-only and egress-tools. [Docs](https://docs.fiveonefour.com/aurora/tool-reference).
-* **Sorting Projects**. Projects in the CLI are now sorted (hopefully y’all have enough Aurora projects that this is useful)! Affects aurora config tools and structure of ~/.aurora/config.toml. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). Deleted projects will now be cleaned from ~/.aurora/config.toml and from whenever the CLI prints lists of projects.
+* **Read only tools**. We've had requests for a read-only toolset, especially for people using chat based MCP clients. We've split standard tools into: read-only and egress-tools. [Docs](https://docs.fiveonefour.com/aurora/tool-reference).
+* **Sorting Projects**. Projects in the CLI are now sorted (hopefully y'all have enough Aurora projects that this is useful)! Affects aurora config tools and structure of ~/.aurora/config.toml. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). Deleted projects will now be cleaned from ~/.aurora/config.toml and from whenever the CLI prints lists of projects.
 * **🐛Read tools now only read**. clickhouse read tool was doing a little more than read, especially when used by Claude. Tool has been tightened up, and if you want extra certainty, create a read-only user (see snippet below).
 
 ```SQL
@@ -102,19 +102,19 @@ A user can start a chat anywhere in Boreal—in a project, on a  table view, whe
 1. the context that is available to the chat
 2. the actions that the chat window suggests that the user takes.
 
-![Starting a new chat](apps/framework-docs/public/new-chat.png)
+![Starting a new chat](/new-chat.png)
 
 Here's an example of autocomplete—the chat suggests relevant tables and files to use as context. You can accept the suggestion, select specific context to add with "tab". You can add other context with "@".
 
-![Autocomplete](apps/framework-docs/public/autocomplete.png)
+![Autocomplete](/autocomplete.png)
 
 Here's an example of chat with tool-calls.
 
-![Chat](apps/framework-docs/public/chat.png)
+![Chat](/chat.png)
 
 The user can create persistent artifacts in chat (not static, they receive data from APIs created by the MCP tools called in the chat)
 
-![Artifacts](apps/framework-docs/public/artifact.png)
+![Artifacts](/artifact.png)
 
 The user can then deploy and share those artifacts.
 

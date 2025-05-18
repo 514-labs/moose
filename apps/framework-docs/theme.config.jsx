@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
 import { LanguageSwitcher } from "./src/components/language-switcher";
+import { ImageZoom } from "nextra/components";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -185,6 +186,10 @@ export default {
       <Heading {...props} level={HeadingLevel.l4}>
         {children}
       </Heading>
+    ),
+    // Image component with zoom
+    img: ({ src, alt, ...props }) => (
+      <ImageZoom src={src} alt={alt || ""} {...props} />
     ),
     // Text components with direct styling
     p: ({ children, className, ...props }) => (

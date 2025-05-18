@@ -30,6 +30,11 @@ export default render({
     title: "Templates",
     href: "/templates",
   },
+  changelog: {
+    type: "page",
+    title: "Changelog",
+    href: "/changelog",
+  },
   "usage-data": {
     display: "hidden",
   },

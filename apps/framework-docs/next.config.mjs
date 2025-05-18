@@ -5,6 +5,7 @@ const withNextra = nextra({
   theme: "nextra-theme-docs",
   themeConfig: "./theme.config.jsx",
   defaultShowCopyCode: true,
+  staticImage: true,
   mdxOptions: {
     remarkPlugins: [
       [
@@ -21,6 +22,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     unoptimized: true,
+    domains: ["docs.fiveonefour.com"],
   },
   // Optional build-time configuration options
   async rewrites() {

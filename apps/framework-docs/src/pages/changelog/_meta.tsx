@@ -18,6 +18,7 @@ const rawMeta = {
       breadcrumb: false,
     },
   },
+  upcoming: { display: "hidden" }, // This hides it from sidebar/navigation
 };
 
 // Process the raw meta object to generate the final meta object with proper rendering

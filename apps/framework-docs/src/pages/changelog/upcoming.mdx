@@ -1,10 +1,28 @@
----
-display: false
-hidden: true
----
-
 ### Highlights
 * **Moose and Aurora users** can now embed metadata into their Moose primitives, for use by users, their agents, and their metadata tools.
+* **Aurora users** can read and write from **Databricks** (more coming here soon).
+
+### Aurora MCP
+
+#### [Experimental] Wrangler Agent—Databricks tools.
+
+We've had a bunch of our users (especially in the enterprise) request deeper integration with Databricks. We've created MCP tooling to allow you to read from Databricks, and create new derivative Databricks managed tables.
+
+Turn it on with `aurora config tools`, and adding `experimental-databricks-tools`. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). To connect with your Databricks instance, you'll need to modify the relevant `MCP.json` file to add:
+```JSON
+"DATABRICKS_HOST": "[-].databricks.com",
+"DATABRICKS_PATH": "/sql/1.0/warehouses/[-]",
+"DATABRICKS_TOKEN": "[-]",
+```
+
+**This allows you to:**
+* Read from Databricks tables
+* Create queries and run them against Databricks tables
+* Create new Databricks managed tables
+
+**Future of the feature:**
+* **Workflows V2**: We're working on bringing schemas into our workflow creation tools, our Databricks integration will be able to leverage these in interacting with Databricks.
+* **DatabricksTable**: We're working on a new primitive that will allow you to create a Databricks table from a Moose primitive.
 
 ### Moose + Aurora
 

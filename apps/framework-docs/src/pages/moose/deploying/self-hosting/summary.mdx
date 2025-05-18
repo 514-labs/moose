@@ -32,17 +32,45 @@ There are three main aspects to deploying a Moose application:
 
 Moose supports several deployment scenarios:
 
-1. **Standard Server Deployment**: Deploy your application to a server with internet access
-2. **Offline Server Deployment**: Deploy to an environment without internet access
-3. **Containerized Deployment**: Package your application in Docker containers for cloud or on-premises deployment
+1. **Kubernetes Deployment**: Deploy your application to Kubernetes clusters (GKE, EKS, AKS, or on-premises)
+2. **Standard Server Deployment**: Deploy your application to a server with internet access
+3. **Containerized Cloud Deployment**: Deploy to cloud services like AWS ECS or Google Cloud Run
+4. **Offline Server Deployment**: Deploy to an environment without internet access
 
-## Environment Configuration
+## Production-Ready Configuration
+
+Based on our production experience, we recommend the following best practices for deploying Moose applications:
+
+### Health Monitoring
+
+Configure comprehensive health checks to ensure your application remains available:
+- Startup probes to handle initialization
+- Readiness probes for traffic management
+- Liveness probes to detect and recover from deadlocks
+
+### Zero-Downtime Deployments
+
+Implement graceful termination and rolling updates:
+- Pre-stop hooks to handle in-flight requests
+- Appropriate termination grace periods
+- Rolling update strategies that maintain service availability
+
+### Resource Allocation
+
+Properly size your deployments based on workload:
+- CPU and memory requests tailored to your application
+- Replicas scaled according to traffic patterns
+- Horizontal scaling for high availability
+
+### Environment Configuration
 
 For any deployment type, you'll need to configure:
 
-1. Runtime environment variables
-2. Database and storage cluster access
+1. Runtime environment variables for logging, telemetry, and application settings
+2. External service connections (Clickhouse, Redpanda, Redis)
 3. Network settings and security configurations
 4. Application-specific configurations
 
-The following pages provide detailed guides for each deployment scenario, including step-by-step instructions for both Python and TypeScript applications.
+## Detailed Guides
+
+The following pages provide detailed guides for each deployment scenario, including step-by-step instructions for both Python and TypeScript applications and production-ready configuration templates.

@@ -1,19 +1,35 @@
 ---
-title: Monitoring your App
-description: Monitoring your App
+title: Monitoring your Moose App
+description: Monitoring your Moose App
 ---
 
-# Monitoring your App
+# Monitoring Moose Applications
 
-When you run MooseJS app localy you can visit `localhost:4000/metrics` to see the metrics that your moose app is collecting. This endpoint is also available on your production docker container
-These metrics are collected using [Prometheus](https://prometheus.io/) instrumentation and metrics format.
+When running Moose applications in production, comprehensive monitoring is essential for ensuring performance, reliability, 
+and quick troubleshooting. Moose provides several built-in monitoring capabilities that you can leverage in your deployment.
 
-### Prometheus Metrics
+## Health Monitoring
 
-The metrics endpoint will show you latency data for every single http endpoint that a http request has been made to.
-If no data is shown for a http endpoint then no http requests have been made to this http endpoint.
+Moose applications expose a health check endpoint at `/health` that returns a 200 OK response when the application is operational. 
+This endpoint is used by container orchestration systems like Kubernetes to determine the health of your application.
 
-Here is an example of some metrics that are sent to this http endpoint
+In production environments, we recommend configuring three types of probes:
+
+1. **Startup Probe**: Gives Moose time to initialize before receiving traffic
+2. **Readiness Probe**: Determines when the application is ready to receive traffic
+3. **Liveness Probe**: Detects when the application is in a deadlocked state and needs to be restarted
+
+See our [Kubernetes deployment guide](deploying-on-kubernetes.mdx) for specific configuration details.
+
+## Prometheus Metrics
+
+Moose applications expose metrics in Prometheus format at the `/metrics` endpoint. These metrics include:
+
+- HTTP request latency histograms for each endpoint
+- Request counts and error rates
+- System metrics for the Moose process
+
+Example metrics output:
 
 ```
 # HELP latency Latency of HTTP requests.
@@ -35,9 +51,57 @@ latency_bucket{le="60.0",method="POST",path="ingest/UserActivity"} 1
 latency_bucket{le="120.0",method="POST",path="ingest/UserActivity"} 1
 latency_bucket{le="240.0",method="POST",path="ingest/UserActivity"} 1
 latency_bucket{le="+Inf",method="POST",path="ingest/UserActivity"} 1
-# EOF
 ```
 
-These metrics are outputted as a Prometheus family of [histograms](https://prometheus.io/docs/concepts/metric_types/#histogram)
+You can scrape these metrics using a Prometheus server or similar monitoring system compatible with the Prometheus format.
 
-Please let us know [here](https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CMetrics%20Http%20Endpoint%E2%80%9D&labels=feedback) if you have any ideas or feedback about MooseJS monitoring.
+## OpenTelemetry Integration
+
+In production deployments, Moose can be configured to export telemetry data using OpenTelemetry. This is enabled through environment variables:
+
+```
+MOOSE_TELEMETRY__ENABLED=true
+MOOSE_TELEMETRY__EXPORT_METRICS=true
+```
+
+When running in Kubernetes with an OpenTelemetry operator, you can configure automatic sidecar injection by adding annotations to your deployment:
+
+```yaml
+metadata:
+  annotations:
+    "sidecar.opentelemetry.io/inject": "true"
+```
+
+## Logging
+
+Moose provides structured logging that can be configured for production environments:
+
+```
+MOOSE_LOGGER__LEVEL=Info
+MOOSE_LOGGER__STDOUT=true
+MOOSE_LOGGER__FORMAT=Json
+```
+
+The JSON log format is particularly useful for log aggregation systems like ELK Stack, Graylog, or cloud logging solutions.
+
+## Production Monitoring Stack
+
+For comprehensive monitoring of Moose applications in production, we recommend:
+
+1. **Metrics Collection**: Prometheus or cloud-native monitoring services
+2. **Log Aggregation**: ELK Stack, Loki, or cloud logging solutions
+3. **Distributed Tracing**: Jaeger or other OpenTelemetry-compatible tracing backends
+4. **Alerting**: Alertmanager or cloud provider alerting
+
+## Error Tracking
+
+Moose can be integrated with error tracking systems like Sentry through environment variables:
+
+```
+SENTRY_DSN=https://your-sentry-dsn
+RUST_BACKTRACE=1
+```
+
+This will capture and report detailed error information to help with debugging production issues.
+
+Please share your feedback about Moose monitoring capabilities through [our GitHub repository](https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CMonitoring%E2%80%9D&labels=feedback).

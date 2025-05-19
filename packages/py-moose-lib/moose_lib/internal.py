@@ -28,10 +28,12 @@ class Target(BaseModel):
         kind: The type of the target (currently only "stream").
         name: The name of the target stream.
         version: Optional version of the target stream configuration.
+        metadata: Optional metadata for the target stream.
     """
     kind: Literal["stream"]
     name: str
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 class Consumer(BaseModel):
     """Represents a consumer attached to a stream.
@@ -51,6 +53,7 @@ class TableConfig(BaseModel):
         deduplicate: Whether the table uses a deduplicating engine (e.g., ReplacingMergeTree).
         engine: The name of the ClickHouse engine used.
         version: Optional version string of the table configuration.
+        metadata: Optional metadata for the table.
     """
     model_config = model_config
 
@@ -60,6 +63,7 @@ class TableConfig(BaseModel):
     deduplicate: bool
     engine: Optional[str]
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 class TopicConfig(BaseModel):
     """Internal representation of a stream/topic configuration for serialization.
@@ -75,6 +79,7 @@ class TopicConfig(BaseModel):
         transformation_targets: List of streams this topic transforms data into.
         has_multi_transform: Flag indicating if a multi-transform function is defined.
         consumers: List of consumers attached to this topic.
+        metadata: Optional metadata for the topic.
     """
     model_config = model_config
 
@@ -88,6 +93,7 @@ class TopicConfig(BaseModel):
     transformation_targets: List[Target]
     has_multi_transform: bool
     consumers: List[Consumer]
+    metadata: Optional[dict] = None
 
 class IngestApiConfig(BaseModel):
     """Internal representation of an Ingest API configuration for serialization.
@@ -97,6 +103,7 @@ class IngestApiConfig(BaseModel):
         columns: List of columns expected in the input data.
         write_to: The target stream where the ingested data is written.
         version: Optional version string of the API configuration.
+        metadata: Optional metadata for the API.
     """
     model_config = model_config
 
@@ -104,6 +111,7 @@ class IngestApiConfig(BaseModel):
     columns: List[Column]
     write_to: Target
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 class EgressApiConfig(BaseModel):
     """Internal representation of a Consumption (Egress) API configuration for serialization.
@@ -113,6 +121,7 @@ class EgressApiConfig(BaseModel):
         query_params: List of columns representing the expected query parameters.
         response_schema: JSON schema definition of the API's response body.
         version: Optional version string of the API configuration.
+        metadata: Optional metadata for the API.
     """
     model_config = model_config
 
@@ -120,6 +129,7 @@ class EgressApiConfig(BaseModel):
     query_params: List[Column]
     response_schema: JsonSchemaValue
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 class InfrastructureSignatureJson(BaseModel):
     """Represents the unique signature of an infrastructure component (Table, Topic, etc.).
@@ -142,6 +152,7 @@ class SqlResourceConfig(BaseModel):
         teardown: List of SQL commands required to drop the resource.
         pulls_data_from: List of infrastructure components this resource reads from.
         pushes_data_to: List of infrastructure components this resource writes to.
+        metadata: Optional metadata for the resource.
     """
     model_config = model_config
 
@@ -150,6 +161,7 @@ class SqlResourceConfig(BaseModel):
     teardown: list[str]
     pulls_data_from: list[InfrastructureSignatureJson]
     pushes_data_to: list[InfrastructureSignatureJson]
+    metadata: Optional[dict] = None
 
 
 class InfrastructureMap(BaseModel):
@@ -230,12 +242,18 @@ def to_infra_map() -> dict:
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
             engine=None if engine is None else engine.value,
-            version=table.config.version
+            version=table.config.version,
+            metadata=getattr(table, "metadata", None),
         )
 
     for name, stream in _streams.items():
         transformation_targets = [
-            Target(kind="stream", name=dest_name, version=transform.config.version)
+            Target(
+                kind="stream",
+                name=dest_name,
+                version=transform.config.version,
+                metadata=getattr(transform.config, "metadata", None),
+            )
             for dest_name, transforms in stream.transformations.items()
             for transform in transforms
         ]
@@ -255,7 +273,8 @@ def to_infra_map() -> dict:
             version=stream.config.version,
             transformation_targets=transformation_targets,
             has_multi_transform=stream._multipleTransformations is not None,
-            consumers=consumers
+            consumers=consumers,
+            metadata=getattr(stream, "metadata", None),
         )
 
     for name, api in _ingest_apis.items():
@@ -266,7 +285,8 @@ def to_infra_map() -> dict:
             write_to=Target(
                 kind="stream",
                 name=api.config.destination.name
-            )
+            ),
+            metadata=getattr(api, "metadata", None),
         )
 
     for name, api in _egress_apis.items():
@@ -274,7 +294,8 @@ def to_infra_map() -> dict:
             name=name,
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),
-            version=api.config.version
+            version=api.config.version,
+            metadata=getattr(api, "metadata", None),
         )
 
     for name, resource in _sql_resources.items():
@@ -283,7 +304,8 @@ def to_infra_map() -> dict:
             setup=resource.setup,
             teardown=resource.teardown,
             pulls_data_from=[_map_sql_resource_ref(dep) for dep in resource.pulls_data_from],
-            pushes_data_to=[_map_sql_resource_ref(dep) for dep in resource.pushes_data_to]
+            pushes_data_to=[_map_sql_resource_ref(dep) for dep in resource.pushes_data_to],
+            metadata=getattr(resource, "metadata", None),
         )
 
     infra_map = InfrastructureMap(

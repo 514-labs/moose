@@ -8,6 +8,7 @@ use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
+use super::table::Metadata;
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 
 use crate::proto::infrastructure_map::FunctionProcess as ProtoFunctionProcess;
@@ -37,6 +38,8 @@ pub struct FunctionProcess {
     pub language: SupportedLanguages,
 
     pub source_primitive: PrimitiveSignature,
+
+    pub metadata: Option<Metadata>,
 }
 
 impl FunctionProcess {
@@ -67,6 +70,7 @@ impl FunctionProcess {
                 name: function.name.clone(),
                 primitive_type: PrimitiveTypes::Function,
             },
+            metadata: None,
         }
     }
 
@@ -128,6 +132,12 @@ impl FunctionProcess {
             parallel_process_count: Some(self.parallel_process_count as i32),
             version: self.version.clone().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            metadata: MessageField::from_option(self.metadata.as_ref().map(|m| {
+                crate::proto::infrastructure_map::Metadata {
+                    description: m.description.clone().unwrap_or_default(),
+                    special_fields: Default::default(),
+                }
+            })),
             special_fields: Default::default(),
         }
     }
@@ -143,6 +153,13 @@ impl FunctionProcess {
             parallel_process_count: proto.parallel_process_count.unwrap_or(1) as usize,
             version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+            metadata: proto.metadata.into_option().map(|m| Metadata {
+                description: if m.description.is_empty() {
+                    None
+                } else {
+                    Some(m.description)
+                },
+            }),
         }
     }
 }

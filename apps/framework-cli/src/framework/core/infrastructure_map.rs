@@ -1795,6 +1795,7 @@ mod tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         };
 
         let after = Table {
@@ -1836,6 +1837,7 @@ mod tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         };
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -1871,6 +1873,7 @@ mod diff_tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 
@@ -2697,6 +2700,7 @@ mod diff_topic_tests {
                 default: None,
                 annotations: Vec::new(),
             }],
+            metadata: None,
         }
     }
 
@@ -3318,6 +3322,7 @@ mod diff_function_process_tests {
                 name: name.to_string(),
                 primitive_type: PrimitiveTypes::Function,
             },
+            metadata: None,
         }
     }
 

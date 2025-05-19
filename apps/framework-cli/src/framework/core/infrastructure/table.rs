@@ -1,5 +1,6 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
+use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
@@ -18,6 +19,11 @@ use serde_json::Value;
 use std::fmt;
 use std::fmt::Debug;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
+pub struct Metadata {
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
@@ -27,9 +33,9 @@ pub struct Table {
     pub deduplicate: bool,
     #[serde(default)]
     pub engine: Option<String>,
-
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
+    pub metadata: Option<Metadata>,
 }
 
 impl Table {
@@ -77,11 +83,16 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
-
             deduplicate: self.deduplicate,
             engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
                 value: engine.to_string(),
                 special_fields: Default::default(),
+            })),
+            metadata: MessageField::from_option(self.metadata.as_ref().map(|m| {
+                infrastructure_map::Metadata {
+                    description: m.description.clone().unwrap_or_default(),
+                    special_fields: Default::default(),
+                }
             })),
             special_fields: Default::default(),
         }
@@ -96,6 +107,13 @@ impl Table {
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
             deduplicate: proto.deduplicate,
             engine: proto.engine.into_option().map(|wrapper| wrapper.value),
+            metadata: proto.metadata.into_option().map(|m| Metadata {
+                description: if m.description.is_empty() {
+                    None
+                } else {
+                    Some(m.description)
+                },
+            }),
         }
     }
 }

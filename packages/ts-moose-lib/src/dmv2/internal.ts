@@ -338,6 +338,15 @@ export const loadIndex = async () => {
   );
 };
 
+export const loadPath = async (path: string) => {
+  await require(`${process.cwd()}/${path}`);
+  console.log(
+    "___MOOSE_STUFF___start",
+    JSON.stringify(toInfraMap(getMooseInternal())),
+    "end___MOOSE_STUFF___",
+  );
+};
+
 /**
  * Loads the user's application entry point and extracts all registered stream
  * transformation and consumer functions.

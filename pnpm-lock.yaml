@@ -225,7 +225,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.161(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
+        version: 0.4.162(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -244,7 +244,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.161
+        version: 0.4.162
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -588,8 +588,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.161':
-    resolution: {integrity: sha512-mA2PFzvwlpqlqIZpFxz1nZ+D4RNGgn7YkBJWk/+W+BH/uhjTRwu89JRqjIRZcz1tNevA/CbPxK4mlD0jJwWEwQ==}
+  '@514labs/moose-cli-darwin-arm64@0.4.162':
+    resolution: {integrity: sha512-URRdYgxLX0HH1YOFp3uq66mnd8JNMCfxbVn2uMjNmRxgrFdaxQ2bSG5GdAH44MsO23pu6YtkhhEZpc2CFcb0oA==}
     cpu: [arm64]
     os: [darwin]
 
@@ -598,8 +598,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.161':
-    resolution: {integrity: sha512-jYM6OshOVrwptdh2LbFxFRflhyndGNQTwi+lSo6areMXEj+iENJpjMlh+UdlOot+HgZrJ4TvdCmV0mOlUFqz2w==}
+  '@514labs/moose-cli-darwin-x64@0.4.162':
+    resolution: {integrity: sha512-/mRoqMBWCTw2bOH4c6hzr5jKaO1VnyR9jLo8bR1z9JpebsnuCKqvOpWEUYeaKY65rIseQs870ykCBPVkRxb9xw==}
     cpu: [x64]
     os: [darwin]
 
@@ -608,8 +608,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.161':
-    resolution: {integrity: sha512-lcTetqyhzYZe48NX1GoSyQ2UNuxiYFDZve97IpRcMWh9+e38qpZh+sb7xt9xFbtbWYP1GGIXKrmFWvFWtXimGw==}
+  '@514labs/moose-cli-linux-arm64@0.4.162':
+    resolution: {integrity: sha512-KHkA+DvNFrJQ+cWeIsiR1klrE3Pw1DbH6qibwxobEFKBOmC0pWkJErDbZQH7MIjRD0LL/tx64Py17/1EyVhJxw==}
     cpu: [arm64]
     os: [linux]
 
@@ -618,8 +618,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.161':
-    resolution: {integrity: sha512-3fAg6NkpesR4IHM2AATX+7NM3uvlCT5tHrUpW346O8htkCwqwmgURxNg9leOUfo1vXLy6BGoHv4UdnihDlG68g==}
+  '@514labs/moose-cli-linux-x64@0.4.162':
+    resolution: {integrity: sha512-ZqwtBtUnnAKrbPjQ5e+h0P+N2KPlTOfVxJWY3Js15x0p/hJV5ueCmsowZpkIHSQ2YJ+ZzILHeON0hOu8Hqd74A==}
     cpu: [x64]
     os: [linux]
 
@@ -627,12 +627,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.161':
-    resolution: {integrity: sha512-12CzlXDH/0ieKwjA6FNUxW3XFMhTY2BFtynkBzIwdIxtjnCD+pRNdl/MboQ8hZApfRU+QOglFl+nE0uQA2LJoA==}
+  '@514labs/moose-cli@0.4.162':
+    resolution: {integrity: sha512-FGJ/YL3E31cp9jNJt5W/2bDpGeIsNL1N77RDmc41AHc4brYKbgkEiY6MD9zYpBvvFPTZt3ZruBH0Y8dwIde4aQ==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.161':
-    resolution: {integrity: sha512-lE528BE1Lc9S212uIrbOoaT7xwuNm5ao5F3XOtmijhhhXnPWd7uY9KrgLEPhQcUqaec5CoB5s3sq+FkD7RGf2w==}
+  '@514labs/moose-lib@0.4.162':
+    resolution: {integrity: sha512-Y7/7sp83ZFnlFxbzyjlmy86zMG03sYfRIXFmz/gHrq06PCYV5h7DwPobeNtSKnIZsQQ2RD8yfs2SdlcE3JPrPQ==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -7239,25 +7239,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.161':
+  '@514labs/moose-cli-darwin-arm64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.161':
+  '@514labs/moose-cli-darwin-x64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.161':
+  '@514labs/moose-cli-linux-arm64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.161':
+  '@514labs/moose-cli-linux-x64@0.4.162':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7267,14 +7267,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.161':
+  '@514labs/moose-cli@0.4.162':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.161
-      '@514labs/moose-cli-darwin-x64': 0.4.161
-      '@514labs/moose-cli-linux-arm64': 0.4.161
-      '@514labs/moose-cli-linux-x64': 0.4.161
+      '@514labs/moose-cli-darwin-arm64': 0.4.162
+      '@514labs/moose-cli-darwin-x64': 0.4.162
+      '@514labs/moose-cli-linux-arm64': 0.4.162
+      '@514labs/moose-cli-linux-x64': 0.4.162
 
-  '@514labs/moose-lib@0.4.161(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.162(@swc/core@1.11.18)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -9158,6 +9158,31 @@ snapshots:
       swc-loader: 0.2.6(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18))
       unionfs: 4.5.4
       webpack: 5.99.4(@swc/core@1.11.18)
+    transitivePeerDependencies:
+      - '@swc/helpers'
+      - esbuild
+      - uglify-js
+      - webpack-cli
+
+  '@temporalio/worker@1.11.7(@swc/helpers@0.5.15)':
+    dependencies:
+      '@swc/core': 1.11.18(@swc/helpers@0.5.15)
+      '@temporalio/activity': 1.11.7
+      '@temporalio/client': 1.11.7
+      '@temporalio/common': 1.11.7
+      '@temporalio/core-bridge': 1.11.7
+      '@temporalio/proto': 1.11.7
+      '@temporalio/workflow': 1.11.7
+      abort-controller: 3.0.0
+      heap-js: 2.6.0
+      memfs: 4.17.0
+      rxjs: 7.8.2
+      source-map: 0.7.4
+      source-map-loader: 4.0.2(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      supports-color: 8.1.1
+      swc-loader: 0.2.6(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      unionfs: 4.5.4
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
     transitivePeerDependencies:
       - '@swc/helpers'
       - esbuild
@@ -14532,6 +14557,12 @@ snapshots:
     dependencies:
       iconv-lite: 0.6.3
       source-map-js: 1.2.1
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+
+  source-map-loader@4.0.2(webpack@5.99.4(@swc/core@1.11.18)):
+    dependencies:
+      iconv-lite: 0.6.3
+      source-map-js: 1.2.1
       webpack: 5.99.4(@swc/core@1.11.18)
 
   source-map-support@0.5.13:
@@ -14728,6 +14759,12 @@ snapshots:
     dependencies:
       '@swc/core': 1.11.18(@swc/helpers@0.5.15)
       '@swc/counter': 0.1.3
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+
+  swc-loader@0.2.6(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18)):
+    dependencies:
+      '@swc/core': 1.11.18(@swc/helpers@0.5.15)
+      '@swc/counter': 0.1.3
       webpack: 5.99.4(@swc/core@1.11.18)
 
   symbol-tree@3.2.4: {}
@@ -14830,6 +14867,17 @@ snapshots:
   tapable@2.2.1: {}
 
   terser-webpack-plugin@5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 4.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.39.0
+      webpack: 5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15))
+    optionalDependencies:
+      '@swc/core': 1.11.18(@swc/helpers@0.5.15)
+
+  terser-webpack-plugin@5.3.14(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
@@ -15484,6 +15532,66 @@ snapshots:
       - esbuild
       - uglify-js
     optional: true
+
+  webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.7
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      acorn: 8.14.1
+      browserslist: 4.24.4
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.18.1
+      es-module-lexer: 1.6.0
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 4.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.14(@swc/core@1.11.18(@swc/helpers@0.5.15))(webpack@5.99.4(@swc/core@1.11.18(@swc/helpers@0.5.15)))
+      watchpack: 2.4.2
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.99.4(@swc/core@1.11.18):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.7
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      acorn: 8.14.1
+      browserslist: 4.24.4
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.18.1
+      es-module-lexer: 1.6.0
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 4.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.14(@swc/core@1.11.18)(webpack@5.99.4(@swc/core@1.11.18))
+      watchpack: 2.4.2
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
 
   whatwg-encoding@2.0.0:
     dependencies:

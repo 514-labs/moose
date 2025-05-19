@@ -9,6 +9,9 @@ export interface BrainwaveData {
   delta: number;
   theta: number;
   gamma: number;
+  ppmchannel1?: number;
+  ppmchannel2?: number;
+  ppmchannel3?: number;
 }
 
 interface AccelerometerData {

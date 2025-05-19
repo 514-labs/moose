@@ -33,6 +33,9 @@ export class UDPServer {
       delta: 0,
       theta: 0,
       gamma: 0,
+      ppmchannel1: 0,
+      ppmchannel2: 0,
+      ppmchannel3: 0,
     };
   }
 
@@ -81,19 +84,51 @@ export class UDPServer {
       this.lastRequestLog = now;
     }
 
-    const message = oscmin.fromBuffer(buffer);
-    if (
-      !message.elements ||
-      !Array.isArray(message.elements) ||
-      !message.elements[0]
+    let oscPacket;
+    try {
+      oscPacket = oscmin.fromBuffer(buffer);
+    } catch (e: any) {
+      Logger.error(`Error parsing OSC buffer: ${e.message}`);
+      Logger.error(`Problematic buffer (hex): ${buffer.toString("hex")}`);
+      return; // Stop processing this malformed message
+    }
+
+    let address: string | undefined;
+    let msgArgs: any[] | undefined; // Renamed from 'args' to avoid conflict with function parameter name
+
+    if (oscPacket.address) {
+      // It's a single OSC message
+      address = oscPacket.address;
+      msgArgs = oscPacket.args;
+    } else if (
+      oscPacket.elements &&
+      Array.isArray(oscPacket.elements) &&
+      oscPacket.elements[0]
     ) {
-      Logger.warn("Received malformed or empty OSC message");
+      // It's a bundle
+      // Assuming the first element of the bundle is the message we want to process.
+      const firstElement = oscPacket.elements[0];
+      if (firstElement.address && firstElement.args) {
+        // Check if the first element is a valid message
+        address = firstElement.address;
+        msgArgs = firstElement.args;
+      }
+    }
+
+    if (!address || !msgArgs) {
+      Logger.warn("Received malformed, empty, or unprocessable OSC packet.");
+      Logger.warn(`Original buffer (hex): ${buffer.toString("hex")}`);
+      try {
+        Logger.warn(`Parsed packet: ${JSON.stringify(oscPacket)}`);
+      } catch (jsonError: any) {
+        Logger.warn(`Could not stringify parsed packet: ${jsonError.message}`);
+      }
       return;
     }
-    const type = message.elements[0].address;
-    const args = message.elements[0].args;
 
-    const bpm = this.updateMessageData(type, args);
+    const type = address; // Use the extracted 'address' for 'type'
+
+    const bpm = this.updateMessageData(type, msgArgs); // Pass extracted msgArgs
     this.msg.timestamp = new Date();
     this.onDataUpdate(this.msg, bpm);
   }
@@ -130,7 +165,22 @@ export class UDPServer {
     if (type.includes("theta")) this.msg.theta = pcap(args[0].value);
     if (type.includes("gamma")) this.msg.gamma = pcap(args[0].value);
     if (type.includes("ppg")) {
-      // Use channel 0 for heart rate estimation
+      // Ensure there are three channels of data for PPG
+      if (args && args.length >= 3 && args[0] && args[1] && args[2]) {
+        this.msg.ppmchannel1 = args[0].value;
+        this.msg.ppmchannel2 = args[1].value;
+        this.msg.ppmchannel3 = args[2].value;
+      } else {
+        // If data is malformed, perhaps set to undefined or keep previous, or log error
+        // For now, let's clear them or set to a default if not available, to avoid stale data
+        this.msg.ppmchannel1 = undefined;
+        this.msg.ppmchannel2 = undefined;
+        this.msg.ppmchannel3 = undefined;
+        Logger.warn(
+          `[PPG Data] Received malformed PPG data, clearing PPM channels: ${JSON.stringify(args)}`,
+        );
+      }
+
       const now = Date.now() / 1000; // seconds
       // Ensure there are three channels of data
       if (args && args.length >= 3 && args[0] && args[1] && args[2]) {

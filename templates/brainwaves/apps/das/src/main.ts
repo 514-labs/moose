@@ -93,7 +93,7 @@ function writeFile(fileName: string, document: BrainwaveData): void {
   displayManager.updateTable(document);
 
   s.write(
-    `${document.bandOn}\t${document.acc.x}\t${document.acc.y}\t${document.acc.z}\t${document.gyro.x}\t${document.gyro.y}\t${document.gyro.z}\t${document.alpha}\t${document.beta}\t${document.delta}\t${document.gamma}\t${document.theta}\r\n`,
+    `${document.bandOn}\t${document.acc.x}\t${document.acc.y}\t${document.acc.z}\t${document.gyro.x}\t${document.gyro.y}\t${document.gyro.z}\t${document.alpha}\t${document.beta}\t${document.delta}\t${document.gamma}\t${document.theta}\t${document.ppmchannel1 ?? ""}\t${document.ppmchannel2 ?? ""}\t${document.ppmchannel3 ?? ""}\r\n`,
   );
   screen.render();
 }

@@ -88,9 +88,6 @@ export default {
     </div>
   ),
   logoLink: false,
-  project: {
-    link: "https://github.com/514-labs/moose",
-  },
   docsRepositoryBase:
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
   head: () => {
@@ -142,15 +139,31 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
+        <script async defer src="https://buttons.github.io/buttons.js"></script>
         <link rel="canonical" href={url} />
       </>
     );
   },
   navbar: {
     extraContent: () => (
-      <Link href="https://www.boreal.cloud/sign-in">
-        <Button variant="default">Sign In</Button>
-      </Link>
+      <div className="flex items-center gap-2 h-full">
+        <div className="max-h-7">
+          <a
+            className="github-button"
+            href="https://github.com/514-labs/moose"
+            data-color-scheme="no-preference: dark; light: light; dark: dark;"
+            data-icon="octicon-star"
+            data-size="large"
+            data-show-count="true"
+            aria-label="Star buttons/github-buttons on GitHub"
+          >
+            Star
+          </a>
+        </div>
+        <Link href="https://www.boreal.cloud/sign-in">
+          <Button variant="default">Sign In</Button>
+        </Link>
+      </div>
     ),
   },
   // main: ({ children }) => (

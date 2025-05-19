@@ -21,7 +21,7 @@ Ingestion APIs are the entry point for data flowing into your Moose application.
     },
     {
       title: "Set up ingestion endpoints",
-      description: "Configure how data enters your pipeline with HTTP REST APIs-- single record or batch"
+      description: "Configure HTTP REST APIs based on your data models"
     },
     {
       title: "Connect to destination streams",
@@ -113,55 +113,9 @@ The types of the destination `Stream` and `Table` must match the type of the `In
 </Tabs.Tab>
 </Tabs>
 
-<Callout type="info" title="Single Record Ingestion">
-By default, ingestion APIs accept a single `JSON` record at a time.
+<Callout type="info" title="Single Record vs Batch Ingestion">
+Ingestion APIs automatically support ingesting a single `JSON` record at a time OR a batched array of JSON objects.
 </Callout>
-
-### Batch Ingestion Pipeline
-Use the `format` option to configure the ingestion API to accept arrays of records: 
-<Tabs items={["IngestPipeline (Recommended)", "Standalone IngestAPI"]}>
-<Tabs.Tab>
-```typescript filename="BatchPipeline.ts" copy
-interface BatchRecord {
-  id: string;
-  name: string;
-  value: number;
-  timestamp: Date;
-}
-
-const batchPipeline = new IngestPipeline<BatchRecord>("batch_records", {
-  ingest: true,
-  stream: true,
-  table: true,
-});
-```
-</Tabs.Tab>
-
-<Tabs.Tab>
-```typescript filename="BatchPipelineManual.ts" copy
-interface BatchRecord {
-  id: string;
-  name: string;
-  value: number;
-  timestamp: Date;
-}
-
-// Create the ClickHouse table
-const batchRecordsTable = new OlapTable<BatchRecord>("batch_records");
-
-// Create the stream
-const batchRecordsStream = new Stream<BatchRecord>("batch_records", {
-  destination: batchRecordsTable
-});
-
-// Create the ingestion API with batch support
-const batchRecordsApi = new IngestApi<BatchRecord>("batch_records", {
-  destination: batchRecordsStream,
-});
-```
-</Tabs.Tab>
-</Tabs>
-
 
 <BulletPointsCard
   divider={false}
@@ -186,7 +140,7 @@ const batchRecordsApi = new IngestApi<BatchRecord>("batch_records", {
 Moose operates a webserver on port 4000 by default. All ingestion endpoints are available at `POST localhost:4000/ingest/<name>`:
 
 <Callout type="info" title="Ingestion API Endpoint">
-The ingestion API endpoint is `POST localhost:4000/ingest/<name>`, where `<name>` is the string value you provided as the first argument to the `IngestPipeline` or `IngestApi` constructor.
+The ingestion API endpoint is `POST localhost:4000/ingest/<name>`, where `<name>` is the string value you provided as the first argument ("name") to the `IngestPipeline` or `IngestApi` constructor.
 </Callout>
 
 <TypeScript>
@@ -200,15 +154,8 @@ interface Record {
   timestamp: Date;
 }
 
-const simplePipeline = new IngestPipeline<Record>("record", {
-  ingest: true, // Creates a REST API endpoint at POST localhost:4000/ingest/record
-  stream: true,
-  table: true
-});
-
- // Creates a REST API endpoint at POST localhost:4000/ingest/batch_records
-const batchPipeline = new IngestPipeline<Record>("batch_records", {
-  ingest: true,
+const simplePipeline = new IngestPipeline<Record>("example", {
+  ingest: true, // Creates a REST API endpoint at POST localhost:4000/ingest/example
   stream: true,
   table: true
 });
@@ -227,7 +174,7 @@ class Record(BaseModel):
     timestamp: datetime
 
 simple_pipeline = IngestPipeline[Record](
-    name="record", # Ingestion API endpoint is POST localhost:4000/ingest/record
+    name="example", # Ingestion API endpoint is POST localhost:4000/ingest/example
     config=IngestPipelineConfig(
         ingest=True,
         stream=True,
@@ -249,7 +196,7 @@ curl -X POST http://localhost:4000/ingest/example \
   }'
 
 # Batch ingestion
-curl -X POST http://localhost:4000/ingest/batch_records \
+curl -X POST http://localhost:4000/ingest/example \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -384,54 +331,6 @@ interface PipelineConfig<T> {
   };
 }
 ```
-
-### Data Formats
-
-<TypeScript>
-```ts filename="FormatConfig.ts" copy
-
-// Single record ingestion
-const singleRecordPipeline = new IngestPipeline<Record>("single_records", {
-  ingest: true,
-  stream: true,
-  table: true
-});
-
-```
-</TypeScript>
-
-<Python>
-```python filename="FormatConfig.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
-from pydantic import BaseModel
-
-class Record(BaseModel):
-    id: Key[str]
-    name: str
-    value: int
-    timestamp: datetime
-
-single_record_pipeline = IngestPipeline[Record](
-    name="single_records",
-    config=IngestPipelineConfig(
-        ingest=True,
-        stream=True,
-        table=True
-    )
-)
-
-batch_record_pipeline = IngestPipeline[Record](
-    name="batch_records",
-    config=IngestPipelineConfig(
-        ingest=True,
-        stream=True,
-        table=True
-    )
-)
-```
-</Python>
-
-
 
 ## Using `IngestPipeline` vs. `IngestApi`
 

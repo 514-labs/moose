@@ -42,6 +42,10 @@ let isFirstReading = true;
 let server: UDPServer;
 const displayManager = new DisplayManager(screen, line, table, bpmBox);
 
+let lastBPMDisplayTime = 0;
+const BPM_DISPLAY_INTERVAL = 5000; // 5 seconds
+let latestCalculatedBPM: number | null = null;
+
 /**
  * @description dump object to file
  */
@@ -109,7 +113,20 @@ async function main(): Promise<void> {
     writeFile("./brain_data.csv", data);
     displayManager.updateChart(data);
     displayManager.updateTable(data);
-    displayManager.updateBPM(bpm ?? null);
+    latestCalculatedBPM = bpm ?? null; // Always store the latest calculated BPM
+
+    const now = Date.now();
+    if (now - lastBPMDisplayTime > BPM_DISPLAY_INTERVAL) {
+      if (latestCalculatedBPM === null) {
+        displayManager.updateBPM(null); // No data or an explicit clear signal
+      } else if (latestCalculatedBPM >= 65) {
+        displayManager.updateBPM(latestCalculatedBPM); // Good data, update display
+      }
+      // If latestCalculatedBPM is < 65 (and not null), we do nothing here,
+      // so the display manager keeps showing the previous valid BPM.
+      lastBPMDisplayTime = now;
+    }
+
     checkExcessiveMovement(data);
   });
 

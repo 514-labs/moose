@@ -1,4 +1,5 @@
-.env.local
-.vscode/
-*.log
+*.csv
 .DS_Store
+.env.local
+*.log
+.vscode/

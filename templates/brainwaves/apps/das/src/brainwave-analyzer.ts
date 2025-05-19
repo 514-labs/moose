@@ -116,12 +116,18 @@ function fft(input: number[]): { re: number[]; im: number[] } {
   return { re, im };
 }
 
+// Define the structure for multi-channel PPG data input
+interface PpgSample {
+  timestamp: number;
+  values: [number, number, number]; // For 3 channels
+}
+
 function estimateHeartRateFromPPG_FFT(
-  ppgData: { timestamp: number; value: number }[],
+  ppgChannelData: { timestamp: number; value: number }[], // Processes a single channel
   sampleRate: number,
 ): number | null {
   // Bandpass filter as before
-  const values = ppgData.map((d) => d.value);
+  const values = ppgChannelData.map((d) => d.value);
   function movingAverage(arr: number[], window: number): number[] {
     const result: number[] = [];
     for (let i = 0; i < arr.length; i++) {
@@ -179,16 +185,16 @@ function estimateHeartRateFromPPG_FFT(
   Logger.info(
     `[HR-FFT] Dominant freq=${freq.toFixed(3)}Hz, BPM=${bpm.toFixed(1)}, power=${maxMag.toFixed(1)}`,
   );
-  if (bpm < 48 || bpm > 78) return null;
+  if (bpm < 40 || bpm > 180) return null;
   return bpm;
 }
 
 // Simple peak detection estimator for heart rate
 function estimateHeartRateFromPPG_Peaks(
-  ppgData: { timestamp: number; value: number }[],
+  ppgChannelData: { timestamp: number; value: number }[], // Processes a single channel
   sampleRate: number,
 ): number | null {
-  const values = ppgData.map((d) => d.value);
+  const values = ppgChannelData.map((d) => d.value);
   function movingAverage(arr: number[], window: number): number[] {
     const result: number[] = [];
     for (let i = 0; i < arr.length; i++) {
@@ -214,9 +220,9 @@ function estimateHeartRateFromPPG_Peaks(
       bandpassed[i] > bandpassed[i + 1]
     ) {
       if (lastPeak !== null) {
-        intervals.push(ppgData[i].timestamp - lastPeak);
+        intervals.push(ppgChannelData[i].timestamp - lastPeak);
       }
-      lastPeak = ppgData[i].timestamp;
+      lastPeak = ppgChannelData[i].timestamp;
     }
   }
   Logger.info(`[HR-Peaks] Detected peaks: ${intervals.length + 1}`);
@@ -231,72 +237,160 @@ function estimateHeartRateFromPPG_Peaks(
 }
 
 export function estimateHeartRateFromPPG(
-  ppgData: { timestamp: number; value: number }[],
+  ppgMultiChannelData: PpgSample[],
   minSeconds = 6,
 ): number | null {
-  // Static buffer for last N BPMs and previous stable BPM
+  // Static buffer for last N BPMs and previous stable BPM (now per channel)
   const N = 7;
-  if (!(estimateHeartRateFromPPG as any).bpmBuffer)
-    (estimateHeartRateFromPPG as any).bpmBuffer = [];
-  if (!("prevBPM" in (estimateHeartRateFromPPG as any)))
-    (estimateHeartRateFromPPG as any).prevBPM = null;
-  const bpmBuffer: number[] = (estimateHeartRateFromPPG as any).bpmBuffer;
-  let prevBPM: number | null = (estimateHeartRateFromPPG as any).prevBPM;
+  if (!(estimateHeartRateFromPPG as any).bpmBuffers) {
+    (estimateHeartRateFromPPG as any).bpmBuffers = [[], [], []]; // One buffer for each of the 3 channels
+  }
+  if (!("prevBPMs" in (estimateHeartRateFromPPG as any))) {
+    (estimateHeartRateFromPPG as any).prevBPMs = [null, null, null]; // prevBPM for each channel
+  }
+  const bpmBuffers: number[][] = (estimateHeartRateFromPPG as any).bpmBuffers;
+  let prevBPMs: (number | null)[] = (estimateHeartRateFromPPG as any).prevBPMs;
 
-  if (ppgData.length < 32) {
-    Logger.info(`[HR-FFT] Not enough samples: ${ppgData.length}`);
-    return prevBPM;
+  if (ppgMultiChannelData.length < 32) {
+    Logger.info(`[HR-Multi] Not enough samples: ${ppgMultiChannelData.length}`);
+    // Return an aggregate or the most stable of prevBPMs if available, for now, just the first one
+    return prevBPMs[0]; // Simplified for now, consider a more robust way to return previous BPM
   }
-  const duration = ppgData[ppgData.length - 1].timestamp - ppgData[0].timestamp;
+  const duration =
+    ppgMultiChannelData[ppgMultiChannelData.length - 1].timestamp -
+    ppgMultiChannelData[0].timestamp;
   if (duration < minSeconds) {
-    Logger.info(`[HR-FFT] Window too short: ${duration.toFixed(2)}s`);
-    return prevBPM;
+    Logger.info(`[HR-Multi] Window too short: ${duration.toFixed(2)}s`);
+    return prevBPMs[0]; // Simplified for now
   }
-  // Estimate sample rate
-  const sampleRate = (ppgData.length - 1) / duration;
-  const bpm_fft = estimateHeartRateFromPPG_FFT(ppgData, sampleRate);
-  const bpm_peaks = estimateHeartRateFromPPG_Peaks(ppgData, sampleRate);
-  Logger.info(
-    `[HR] FFT BPM: ${bpm_fft?.toFixed(1) ?? "null"}, Peaks BPM: ${bpm_peaks?.toFixed(1) ?? "null"}`,
-  );
-  const bpm = bpm_fft;
-  if (bpm == null && bpm_peaks == null) {
-    Logger.info(`[HR] No plausible heart rate (FFT and Peaks null)`);
-    return prevBPM;
-  }
-  if (bpm == null) {
-    Logger.info(`[HR] Using Peaks BPM: ${bpm_peaks!.toFixed(1)}`);
-    // Use peaks as fallback
-    bpmBuffer.push(bpm_peaks!);
-    if (bpmBuffer.length > N) bpmBuffer.shift();
-    const sorted = [...bpmBuffer].sort((a, b) => a - b);
-    const medianBPM = sorted[Math.floor(sorted.length / 2)];
-    (estimateHeartRateFromPPG as any).prevBPM = medianBPM;
-    Logger.info(`[HR] Accepted (Peaks): ${medianBPM.toFixed(1)} BPM`);
-    return medianBPM;
-  }
-  bpmBuffer.push(bpm);
-  if (bpmBuffer.length > N) bpmBuffer.shift();
-  // Median filter
-  const sorted = [...bpmBuffer].sort((a, b) => a - b);
-  const medianBPM = sorted[Math.floor(sorted.length / 2)];
-  Logger.info(
-    `[HR-FFT] BPM candidates: [${bpmBuffer.map((x) => x.toFixed(1)).join(", ")}], median=${medianBPM.toFixed(1)}`,
-  );
-  if (prevBPM !== null) {
-    // Accept if the median is within 2 BPM of the current FFT value
-    if (Math.abs(medianBPM - bpm) > 2) {
+  const sampleRate = (ppgMultiChannelData.length - 1) / duration;
+
+  const channelBPMs_fft: (number | null)[] = [];
+  const channelBPMs_peaks: (number | null)[] = [];
+  const finalChannelBPMs: (number | null)[] = [];
+
+  for (let i = 0; i < 3; i++) {
+    // Assuming 3 channels
+    const singleChannelData = ppgMultiChannelData.map((d) => ({
+      timestamp: d.timestamp,
+      value: d.values[i],
+    }));
+
+    const bpm_fft_channel = estimateHeartRateFromPPG_FFT(
+      singleChannelData,
+      sampleRate,
+    );
+    const bpm_peaks_channel = estimateHeartRateFromPPG_Peaks(
+      singleChannelData,
+      sampleRate,
+    );
+    Logger.info(
+      `[HR Ch-${i}] FFT BPM: ${bpm_fft_channel?.toFixed(1) ?? "null"}, Peaks BPM: ${bpm_peaks_channel?.toFixed(1) ?? "null"}`,
+    );
+
+    let currentChannelBPM = bpm_fft_channel;
+    const currentBpmBuffer = bpmBuffers[i];
+    let currentPrevBPM = prevBPMs[i];
+
+    if (currentChannelBPM == null && bpm_peaks_channel != null) {
       Logger.info(
-        `[HR-FFT] Waiting for stable BPM (median ${medianBPM.toFixed(1)} vs current ${bpm.toFixed(1)})`,
+        `[HR Ch-${i}] Using Peaks BPM: ${bpm_peaks_channel!.toFixed(1)}`,
       );
-      return prevBPM;
+      currentChannelBPM = bpm_peaks_channel;
+    }
+
+    if (currentChannelBPM != null) {
+      currentBpmBuffer.push(currentChannelBPM);
+      if (currentBpmBuffer.length > N) currentBpmBuffer.shift();
+      const sortedChannel = [...currentBpmBuffer].sort((a, b) => a - b);
+      const medianChannelBPM =
+        sortedChannel[Math.floor(sortedChannel.length / 2)];
+
+      if (currentPrevBPM !== null) {
+        if (Math.abs(medianChannelBPM - currentChannelBPM) > 2) {
+          Logger.info(
+            `[HR Ch-${i}] Waiting for stable BPM (median ${medianChannelBPM.toFixed(1)} vs current ${currentChannelBPM.toFixed(1)})`,
+          );
+          finalChannelBPMs.push(currentPrevBPM); // Use previous if not stable
+        } else {
+          prevBPMs[i] = medianChannelBPM;
+          finalChannelBPMs.push(medianChannelBPM);
+          Logger.info(
+            `[HR Ch-${i}] Accepted: ${medianChannelBPM.toFixed(1)} BPM`,
+          );
+        }
+      } else {
+        prevBPMs[i] = medianChannelBPM;
+        finalChannelBPMs.push(medianChannelBPM);
+        Logger.info(
+          `[HR Ch-${i}] Accepted (initial): ${medianChannelBPM.toFixed(1)} BPM`,
+        );
+      }
+    } else {
+      finalChannelBPMs.push(currentPrevBPM); // No new BPM, use previous
+      Logger.info(`[HR Ch-${i}] No plausible heart rate for this channel.`);
     }
   }
-  (estimateHeartRateFromPPG as any).prevBPM = medianBPM;
-  Logger.info(`[HR-FFT] Accepted: ${medianBPM.toFixed(1)} BPM`);
-  return medianBPM;
+
+  // Combine results from channels
+  // const validBPMs = finalChannelBPMs.filter(bpm => bpm !== null && bpm >= 48 && bpm <= 130) as number[]; // Wider range for general use
+
+  // New strategy: Prioritize higher, consistent BPMs
+  const plausibleChannelBPMs = finalChannelBPMs.filter(
+    (bpm) => bpm !== null && bpm >= 55 && bpm <= 130,
+  ) as number[];
+
+  if (plausibleChannelBPMs.length === 0) {
+    Logger.info(
+      `[HR-Multi] No plausible heart rate (55-130 BPM) from any channel.`,
+    );
+    const overallPrevBPMs = prevBPMs.filter((bpm) => bpm !== null) as number[];
+    if (overallPrevBPMs.length > 0) {
+      const sortedOverallPrev = [...overallPrevBPMs].sort((a, b) => a - b);
+      return sortedOverallPrev[Math.floor(sortedOverallPrev.length / 2)];
+    }
+    return null;
+  }
+
+  plausibleChannelBPMs.sort((a, b) => b - a); // Sort descending
+
+  let combinedBPM: number;
+
+  if (plausibleChannelBPMs.length === 1) {
+    combinedBPM = plausibleChannelBPMs[0];
+    Logger.info(
+      `[HR-Multi] Using single plausible channel BPM: ${combinedBPM.toFixed(1)}`,
+    );
+  } else if (plausibleChannelBPMs.length >= 2) {
+    const highestBPM = plausibleChannelBPMs[0];
+    const secondHighestBPM = plausibleChannelBPMs[1];
+    // Check if second highest is close to highest (e.g., within 10 BPM)
+    if (Math.abs(highestBPM - secondHighestBPM) <= 10) {
+      combinedBPM = (highestBPM + secondHighestBPM) / 2;
+      Logger.info(
+        `[HR-Multi] Averaging two highest consistent BPMs: [${highestBPM.toFixed(1)}, ${secondHighestBPM.toFixed(1)}] -> ${combinedBPM.toFixed(1)}`,
+      );
+    } else {
+      combinedBPM = highestBPM; // Use only the highest if others are not close
+      Logger.info(
+        `[HR-Multi] Using highest BPM as others are not close: ${combinedBPM.toFixed(1)}`,
+      );
+    }
+  } else {
+    // Should not happen due to plausibleChannelBPMs.length === 0 check, but as a fallback:
+    Logger.warn("[HR-Multi] Unexpected state in BPM combination logic.");
+    return prevBPMs[0]; // Fallback to a previous BPM
+  }
+
+  Logger.info(`[HR-Multi] Final combined BPM: ${combinedBPM.toFixed(1)}`);
+
+  // It might be beneficial to update one of the prevBPMs (e.g., prevBPMs[0]) with this combinedBPM
+  // for better stability if all channels fail in the next cycle.
+  // For now, per-channel prevBPMs are updated individually based on their own stability.
+
+  return combinedBPM;
 }
 
 // Initialize static properties
-(estimateHeartRateFromPPG as any).bpmBuffer = [];
-(estimateHeartRateFromPPG as any).prevBPM = null;
+(estimateHeartRateFromPPG as any).bpmBuffers = [[], [], []];
+(estimateHeartRateFromPPG as any).prevBPMs = [null, null, null];

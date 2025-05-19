@@ -13,7 +13,8 @@ export class UDPServer {
   private readonly SAMPLE_LOG_INTERVAL = 5000; // 5 seconds
 
   // Buffer for PPG data (channel 0)
-  private ppgBuffer: { timestamp: number; value: number }[] = [];
+  private ppgBuffer: { timestamp: number; values: [number, number, number] }[] =
+    [];
   private readonly PPG_BUFFER_SECONDS = 15;
 
   private lastBPM: number | null = null;
@@ -131,7 +132,25 @@ export class UDPServer {
     if (type.includes("ppg")) {
       // Use channel 0 for heart rate estimation
       const now = Date.now() / 1000; // seconds
-      this.ppgBuffer.push({ timestamp: now, value: args[0].value });
+      // Ensure there are three channels of data
+      if (args && args.length >= 3 && args[0] && args[1] && args[2]) {
+        this.ppgBuffer.push({
+          timestamp: now,
+          values: [args[0].value, args[1].value, args[2].value],
+        });
+      } else {
+        Logger.warn(
+          `[PPG Data] Received malformed PPG data: ${JSON.stringify(args)}`,
+        );
+        // Push zeros or handle as an error, for now, skipping if malformed
+        // Or push a default structure if you prefer to always have an entry:
+        // this.ppgBuffer.push({ timestamp: now, values: [0, 0, 0] });
+        // For now, just log and skip if data is not as expected.
+        return this.lastBPM; // Or handle error appropriately
+      }
+
+      // Log the entire args array for PPG messages to inspect its structure
+      Logger.info(`[PPG Data] Received args: ${JSON.stringify(args)}`);
 
       // Remove old samples
       while (

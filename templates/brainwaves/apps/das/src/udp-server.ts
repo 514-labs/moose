@@ -33,9 +33,7 @@ export class UDPServer {
       delta: 0,
       theta: 0,
       gamma: 0,
-      ppmchannel1: 0,
-      ppmchannel2: 0,
-      ppmchannel3: 0,
+      ppm: { channel1: 0, channel2: 0, channel3: 0 },
     };
   }
 
@@ -165,17 +163,19 @@ export class UDPServer {
     if (type.includes("theta")) this.msg.theta = pcap(args[0].value);
     if (type.includes("gamma")) this.msg.gamma = pcap(args[0].value);
     if (type.includes("ppg")) {
+      // Ensure ppm object exists
+      if (!this.msg.ppm) {
+        this.msg.ppm = { channel1: 0, channel2: 0, channel3: 0 };
+      }
       // Ensure there are three channels of data for PPG
       if (args && args.length >= 3 && args[0] && args[1] && args[2]) {
-        this.msg.ppmchannel1 = args[0].value;
-        this.msg.ppmchannel2 = args[1].value;
-        this.msg.ppmchannel3 = args[2].value;
+        this.msg.ppm.channel1 = args[0].value;
+        this.msg.ppm.channel2 = args[1].value;
+        this.msg.ppm.channel3 = args[2].value;
       } else {
-        // If data is malformed, perhaps set to undefined or keep previous, or log error
-        // For now, let's clear them or set to a default if not available, to avoid stale data
-        this.msg.ppmchannel1 = undefined;
-        this.msg.ppmchannel2 = undefined;
-        this.msg.ppmchannel3 = undefined;
+        this.msg.ppm.channel1 = 0;
+        this.msg.ppm.channel2 = 0;
+        this.msg.ppm.channel3 = 0;
         Logger.warn(
           `[PPG Data] Received malformed PPG data, clearing PPM channels: ${JSON.stringify(args)}`,
         );

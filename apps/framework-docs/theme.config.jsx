@@ -96,6 +96,14 @@ export default {
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || "https://docs.fiveonefour.com";
     const url = `${baseUrl}${asPath !== "/" ? asPath : ""}`;
+    
+    // Determine which default OG image to use based on the path
+    let defaultImage = "/og-image-fiveonefour.png"; // Default for root/main page
+    if (asPath.startsWith("/moose")) {
+      defaultImage = "/og-image-moose.png";
+    } else if (asPath.startsWith("/aurora")) {
+      defaultImage = "/og-image-aurora.png";
+    }
 
     return (
       <>
@@ -121,18 +129,15 @@ export default {
             "Documentation for Moose and Aurora by 514 Labs"
           }
         />
-        {frontMatter.image && (
-          <>
-            <meta
-              property="og:image"
-              content={`${baseUrl}${frontMatter.image}`}
-            />
-            <meta
-              name="twitter:image"
-              content={`${baseUrl}${frontMatter.image}`}
-            />
-          </>
-        )}
+        {/* Use frontMatter.image if specified, otherwise use the default image based on path */}
+        <meta
+          property="og:image"
+          content={`${baseUrl}${frontMatter.image || defaultImage}`}
+        />
+        <meta
+          name="twitter:image"
+          content={`${baseUrl}${frontMatter.image || defaultImage}`}
+        />
         <link
           rel="icon"
           href="/favicon.ico"

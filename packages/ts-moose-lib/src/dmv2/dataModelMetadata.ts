@@ -64,106 +64,11 @@ export const transformNewMooseResource = (
   )!;
   const needsExtraArg = node.arguments!.length === argLength - 1; // provide empty config if undefined
 
-  // --- Inject file location into config.metadata ---
-  // Find the config argument (usually the second argument)
-  let configArgIdx = argLength === 2 ? 1 : -1;
-  let configArg =
-    configArgIdx !== -1 ? node.arguments![configArgIdx] : undefined;
-  const fileUrl = node.getSourceFile().fileName;
-
-  let newConfigArg: ts.Expression;
-  if (!configArg || !ts.isObjectLiteralExpression(configArg)) {
-    // No config or not an object, create a new one
-    newConfigArg = factory.createObjectLiteralExpression(
-      [
-        factory.createPropertyAssignment(
-          "metadata",
-          factory.createObjectLiteralExpression(
-            [
-              factory.createPropertyAssignment(
-                "fileUrl",
-                factory.createStringLiteral(fileUrl),
-              ),
-            ],
-            false,
-          ),
-        ),
-      ],
-      false,
-    );
-  } else {
-    // Config exists, update or add metadata.fileUrl
-    let hasMetadata = false;
-    const newProperties = configArg.properties.map((prop) => {
-      if (
-        ts.isPropertyAssignment(prop) &&
-        ts.isIdentifier(prop.name) &&
-        prop.name.text === "metadata" &&
-        ts.isObjectLiteralExpression(prop.initializer)
-      ) {
-        hasMetadata = true;
-        // Update or add fileUrl inside metadata
-        let hasFileUrl = false;
-        const newMetaProps = prop.initializer.properties.map((metaProp) => {
-          if (
-            ts.isPropertyAssignment(metaProp) &&
-            ts.isIdentifier(metaProp.name) &&
-            metaProp.name.text === "fileUrl"
-          ) {
-            hasFileUrl = true;
-            return factory.createPropertyAssignment(
-              "fileUrl",
-              factory.createStringLiteral(fileUrl),
-            );
-          }
-          return metaProp;
-        });
-        const metaPropsWithFileUrl =
-          hasFileUrl ? newMetaProps : (
-            [
-              ...newMetaProps,
-              factory.createPropertyAssignment(
-                "fileUrl",
-                factory.createStringLiteral(fileUrl),
-              ),
-            ]
-          );
-        return factory.createPropertyAssignment(
-          "metadata",
-          factory.createObjectLiteralExpression(metaPropsWithFileUrl, false),
-        );
-      }
-      return prop;
-    });
-    // If no metadata property, add it
-    const finalProperties =
-      hasMetadata ? newProperties : (
-        [
-          ...newProperties,
-          factory.createPropertyAssignment(
-            "metadata",
-            factory.createObjectLiteralExpression(
-              [
-                factory.createPropertyAssignment(
-                  "fileUrl",
-                  factory.createStringLiteral(fileUrl),
-                ),
-              ],
-              false,
-            ),
-          ),
-        ]
-      );
-    newConfigArg = factory.createObjectLiteralExpression(
-      finalProperties,
-      false,
-    );
-  }
-
-  // Build the updated argument list
   const updatedArgs = [
-    node.arguments![0],
-    ...(argLength === 2 ? [newConfigArg] : []),
+    ...node.arguments!,
+    ...(needsExtraArg ?
+      [factory.createObjectLiteralExpression([], false)]
+    : []),
     typiaJsonSchemas(typeNode),
     parseAsAny(JSON.stringify(columns)),
   ];

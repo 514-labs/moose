@@ -468,94 +468,11 @@ const transformNewConsumptionApi = (
     checker,
   );
 
-  // --- Inject file location into config.metadata ---
-  // Config is the third argument (index 2) if present, otherwise create one
-  const fileUrl = node.getSourceFile().fileName;
-  let configArg = node.arguments.length > 2 ? node.arguments[2] : undefined;
-  let newConfigArg: ts.Expression;
-  if (!configArg || !ts.isObjectLiteralExpression(configArg)) {
-    newConfigArg = factory.createObjectLiteralExpression(
-      [
-        factory.createPropertyAssignment(
-          "metadata",
-          factory.createObjectLiteralExpression(
-            [
-              factory.createPropertyAssignment(
-                "fileUrl",
-                factory.createStringLiteral(fileUrl),
-              ),
-            ],
-            false,
-          ),
-        ),
-      ],
-      false,
-    );
-  } else {
-    let hasMetadata = false;
-    const newProperties = configArg.properties.map((prop) => {
-      if (
-        ts.isPropertyAssignment(prop) &&
-        ts.isIdentifier(prop.name) &&
-        prop.name.text === "metadata" &&
-        ts.isObjectLiteralExpression(prop.initializer)
-      ) {
-        hasMetadata = true;
-        let hasFileUrl = false;
-        const newMetaProps = prop.initializer.properties.map((metaProp) => {
-          if (
-            ts.isPropertyAssignment(metaProp) &&
-            ts.isIdentifier(metaProp.name) &&
-            metaProp.name.text === "fileUrl"
-          ) {
-            hasFileUrl = true;
-            return factory.createPropertyAssignment(
-              "fileUrl",
-              factory.createStringLiteral(fileUrl),
-            );
-          }
-          return metaProp;
-        });
-        const metaPropsWithFileUrl =
-          hasFileUrl ? newMetaProps : (
-            [
-              ...newMetaProps,
-              factory.createPropertyAssignment(
-                "fileUrl",
-                factory.createStringLiteral(fileUrl),
-              ),
-            ]
-          );
-        return factory.createPropertyAssignment(
-          "metadata",
-          factory.createObjectLiteralExpression(metaPropsWithFileUrl, false),
-        );
-      }
-      return prop;
-    });
-    const finalProperties =
-      hasMetadata ? newProperties : (
-        [
-          ...newProperties,
-          factory.createPropertyAssignment(
-            "metadata",
-            factory.createObjectLiteralExpression(
-              [
-                factory.createPropertyAssignment(
-                  "fileUrl",
-                  factory.createStringLiteral(fileUrl),
-                ),
-              ],
-              false,
-            ),
-          ),
-        ]
-      );
-    newConfigArg = factory.createObjectLiteralExpression(
-      finalProperties,
-      false,
-    );
-  }
+  // Create the config argument if it doesn't exist
+  const configArg =
+    node.arguments.length > 2 ?
+      node.arguments[2]
+    : factory.createObjectLiteralExpression([], false);
 
   // Update the ConsumptionApi constructor call with all necessary arguments
   return factory.updateNewExpression(
@@ -565,7 +482,7 @@ const transformNewConsumptionApi = (
     [
       node.arguments[0], // name
       wrappedHandler, // wrapped handler
-      newConfigArg, // config object (with fileUrl in metadata)
+      configArg, // config object
       inputSchemaArg, // input schema
       parseAsAny(JSON.stringify(inputColumnsArg)), // input columns
       responseSchemaArg, // response schema

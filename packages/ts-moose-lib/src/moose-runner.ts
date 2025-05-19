@@ -46,7 +46,7 @@ if (
   });
 }
 
-import { loadIndex, loadPath } from "./dmv2/internal";
+import { loadIndex } from "./dmv2/internal";
 import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
@@ -72,14 +72,6 @@ program
   .description("Load DMv2 index")
   .action(() => {
     loadIndex();
-  });
-
-program
-  .command("dmv2-serializer-path")
-  .description("Load DMv2 index from path")
-  .argument("<path>", "Path to the DMv2 index")
-  .action((path) => {
-    loadPath(path);
   });
 
 program

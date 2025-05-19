@@ -812,6 +812,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create some atomic operations
@@ -875,6 +876,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create table B - depends on table A
@@ -889,6 +891,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create view C - depends on table B
@@ -974,6 +977,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create table B - target for materialized view
@@ -988,6 +992,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create view C - depends on table B
@@ -1093,6 +1098,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let view = View {
@@ -1238,6 +1244,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_b = Table {
@@ -1251,6 +1258,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_c = Table {
@@ -1264,6 +1272,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Test operations
@@ -1348,6 +1357,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_b = Table {
@@ -1361,6 +1371,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_c = Table {
@@ -1374,6 +1385,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_d = Table {
@@ -1387,6 +1399,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_e = Table {
@@ -1400,6 +1413,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let op_create_a = AtomicOlapOperation::CreateTable {
@@ -1544,6 +1558,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create table B - target for materialized view
@@ -1558,6 +1573,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create SQL resource for a materialized view
@@ -1670,6 +1686,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create table B - target for materialized view
@@ -1684,6 +1701,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create SQL resource for a materialized view
@@ -1816,6 +1834,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let table_b = Table {
@@ -1829,6 +1848,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create SQL resource for materialized view
@@ -2025,6 +2045,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create a column
@@ -2119,6 +2140,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Create operations with signatures that work with the current implementation
@@ -2223,6 +2245,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         let after_table = Table {
@@ -2255,6 +2278,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DBBlock,
             },
+            metadata: None,
         };
 
         // Generate the operation plan

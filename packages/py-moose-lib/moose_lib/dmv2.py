@@ -122,12 +122,14 @@ class OlapConfig(BaseModel):
                      setting `engine=ClickHouseEngines.ReplacingMergeTree`.
         engine: The ClickHouse table engine to use (e.g., MergeTree, ReplacingMergeTree).
         version: Optional version string for tracking configuration changes.
+        metadata: Optional metadata for the table.
     """
     order_by_fields: list[str] = []
     # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
     deduplicate: bool = False
     engine: Optional[ClickHouseEngines] = None
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class OlapTable(TypedMooseResource, Generic[T]):
@@ -152,6 +154,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
+        self.metadata = config.metadata
         _tables[name] = self
 
 
@@ -163,11 +166,13 @@ class StreamConfig(BaseModel):
         retention_period: Data retention period in seconds (default: 7 days).
         destination: Optional `OlapTable` where stream messages should be automatically ingested.
         version: Optional version string for tracking configuration changes.
+        metadata: Optional metadata for the stream.
     """
     parallelism: int = 1
     retention_period: int = 60 * 60 * 24 * 7  # 7 days
     destination: Optional[OlapTable[Any]] = None
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class TransformConfig(BaseModel):
@@ -180,6 +185,7 @@ class TransformConfig(BaseModel):
     version: Optional[str] = None
     dead_letter_queue: "Optional[DeadLetterQueue]" = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    metadata: Optional[dict] = None
 
 
 class ConsumerConfig(BaseModel):
@@ -244,6 +250,7 @@ class Stream(TypedMooseResource, Generic[T]):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
+        self.metadata = config.metadata
         self.consumers = []
         self.transformations = {}
         _streams[name] = self
@@ -399,8 +406,10 @@ class IngestConfig(BaseModel):
 
     Attributes:
         version: Optional version string.
+        metadata: Optional metadata for the ingestion point.
     """
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 @dataclasses.dataclass
@@ -410,9 +419,11 @@ class IngestConfigWithDestination[T: BaseModel]:
     Attributes:
         destination: The `Stream` where ingested data will be sent.
         version: Optional version string.
+        metadata: Optional metadata for the ingestion configuration.
     """
     destination: Stream[T]
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class IngestPipelineConfig(BaseModel):
@@ -427,11 +438,13 @@ class IngestPipelineConfig(BaseModel):
         stream: Configuration for the stream component.
         ingest: Configuration for the ingest API component.
         version: Optional version string applied to all created components.
+        metadata: Optional metadata for the ingestion pipeline.
     """
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
     ingest: bool | IngestConfig = True
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class IngestApi(TypedMooseResource, Generic[T]):
@@ -458,6 +471,7 @@ class IngestApi(TypedMooseResource, Generic[T]):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
+        self.metadata = getattr(config, 'metadata', None)
         _ingest_apis[name] = self
 
 
@@ -527,10 +541,15 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
     def __init__(self, name: str, config: IngestPipelineConfig, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
+        self.metadata = config.metadata
+        table_metadata = config.metadata
+        stream_metadata = config.metadata
+        ingest_metadata = config.metadata
         if config.table:
             table_config = OlapConfig() if config.table is True else config.table
             if config.version:
                 table_config.version = config.version
+            table_config.metadata = table_metadata
             self.table = OlapTable(name, table_config, t=self._t)
         if config.stream:
             stream_config = StreamConfig() if config.stream is True else config.stream
@@ -539,6 +558,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             stream_config.destination = self.table
             if config.version:
                 stream_config.version = config.version
+            stream_config.metadata = stream_metadata
             self.stream = Stream(name, stream_config, t=self._t)
         if config.ingest:
             if self.stream is None:
@@ -549,6 +569,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             ingest_config_dict["destination"] = self.stream
             if config.version:
                 ingest_config_dict["version"] = config.version
+            ingest_config_dict["metadata"] = ingest_metadata
             ingest_config = IngestConfigWithDestination(**ingest_config_dict)
             self.ingest_api = IngestApi(name, ingest_config, t=self._t)
 
@@ -558,8 +579,10 @@ class EgressConfig(BaseModel):
 
     Attributes:
         version: Optional version string.
+        metadata: Optional metadata for the consumption API.
     """
     version: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class ConsumptionApi(BaseTypedResource, Generic[T, U]):
@@ -599,17 +622,12 @@ class ConsumptionApi(BaseTypedResource, Generic[T, U]):
 
         return curried_constructor
 
-    def __init__(
-            self,
-            name: str,
-            query_function: Callable[..., U],
-            config: EgressConfig = EgressConfig(),
-            **kwargs
-    ):
+    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = EgressConfig(), **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         self.query_function = query_function
+        self.metadata = config.metadata
         _egress_apis[name] = self
 
     @classmethod
@@ -680,13 +698,15 @@ class SqlResource:
         setup: list[str],
         teardown: list[str],
         pulls_data_from: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
-        pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None
+        pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
+        metadata: dict = None
     ):
         self.name = name
         self.setup = setup
         self.teardown = teardown
         self.pulls_data_from = pulls_data_from or []
         self.pushes_data_to = pushes_data_to or []
+        self.metadata = metadata
         _sql_resources[name] = self
 
 
@@ -700,12 +720,12 @@ class View(SqlResource):
                      that this view depends on.
     """
 
-    def __init__(self, name: str, select_statement: str, base_tables: list[Union[OlapTable, SqlResource]]):
+    def __init__(self, name: str, select_statement: str, base_tables: list[Union[OlapTable, SqlResource]], metadata: dict = None):
         setup = [
             f"CREATE VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
         ]
         teardown = [f"DROP VIEW IF EXISTS {name}"]
-        super().__init__(name, setup, teardown, pulls_data_from=base_tables)
+        super().__init__(name, setup, teardown, pulls_data_from=base_tables, metadata=metadata)
 
 
 class MaterializedViewOptions(BaseModel):
@@ -758,6 +778,7 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
     def __init__(
             self,
             options: MaterializedViewOptions,
+            metadata: dict = None,
             **kwargs
     ):
         self._set_type(options.materialized_view_name, self._get_type(kwargs))
@@ -782,7 +803,8 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
             setup,
             teardown,
             pulls_data_from=options.select_tables,
-            pushes_data_to=[target_table]
+            pushes_data_to=[target_table],
+            metadata=metadata
         )
 
         self.target_table = target_table

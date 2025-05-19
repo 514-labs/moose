@@ -1984,6 +1984,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 

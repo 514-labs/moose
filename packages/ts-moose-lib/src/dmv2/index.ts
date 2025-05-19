@@ -68,6 +68,7 @@ export interface StreamConfig<T> {
    * An optional version string for this configuration. Can be used for tracking changes or managing deployments.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -102,6 +103,7 @@ export type IngestPipelineConfig<T> = {
    * An optional version string applying to all components (table, stream, ingest) created by this pipeline configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 };
 
 /**
@@ -149,6 +151,7 @@ type Consumer<T> = (record: T) => Promise<void> | void;
 
 export interface TransformConfig {
   version?: string;
+  metadata?: { description?: string };
 }
 
 export interface ConsumerConfig {
@@ -162,6 +165,7 @@ export interface ConsumerConfig {
  * @template T The data type of the messages flowing through the stream. The structure of T defines the message schema.
  */
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
+  metadata?: { description?: string };
   /**
    * Creates a new Stream instance.
    * @param name The name of the stream. This name is used for the underlying Redpanda topic.
@@ -184,7 +188,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config ?? {}, schema, columns);
-
+    this.metadata = config?.metadata;
     getMooseInternal().streams.set(name, this);
   }
 
@@ -287,6 +291,7 @@ interface IngestConfig<T> {
    * An optional version string for this configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -296,6 +301,7 @@ interface IngestConfig<T> {
  * @template T The data type of the records that this API endpoint accepts. The structure of T defines the expected request body schema.
  */
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
+  metadata?: { description?: string };
   /**
    * Creates a new IngestApi instance.
    * @param name The name of the ingest API endpoint.
@@ -318,7 +324,7 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
-
+    this.metadata = config?.metadata;
     getMooseInternal().ingestApis.set(name, this);
   }
 }
@@ -344,6 +350,7 @@ interface EgressConfig<T> {
    * An optional version string for this configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -354,6 +361,7 @@ interface EgressConfig<T> {
  * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
  */
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
+  metadata?: { description?: string };
   /** @internal The handler function that processes requests and generates responses. */
   _handler: ConsumptionHandler<T, R>;
   /** @internal The JSON schema definition for the response type R. */
@@ -386,6 +394,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
     responseSchema?: IJsonSchemaCollection.IV3_1,
   ) {
     super(name, config ?? {}, schema, columns);
+    this.metadata = config?.metadata;
     this._handler = handler;
     this.responseSchema = responseSchema ?? {
       version: "3.1",
@@ -412,6 +421,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
  *             Ingest API input, the Stream messages, and the Olap Table rows.
  */
 export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
+  metadata?: { description?: string };
   /** The OLAP table component of the pipeline, if configured. */
   table?: OlapTable<T>;
   /** The stream component of the pipeline, if configured. */
@@ -443,6 +453,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
+    this.metadata = config?.metadata;
 
     if (config.table) {
       const tableConfig = {
@@ -469,6 +480,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         this.schema,
         this.columnArray,
       );
+      (this.stream as any).pipelineParent = this;
     }
 
     if (config.ingest) {
@@ -487,6 +499,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         this.schema,
         this.columnArray,
       );
+      (this.ingestApi as any).pipelineParent = this;
     }
   }
 }

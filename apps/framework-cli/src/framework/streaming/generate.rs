@@ -159,7 +159,7 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
             "'4f487363-a767-491c-84ea-00b7724383d2'".to_string()
         }
         (ColumnType::Uuid, SupportedLanguages::Python) => "uuid.uuid4()".to_string(),
-        (ColumnType::Date, _) => "1970-01-01".to_string(),
+        (ColumnType::Date | ColumnType::Date16, _) => "1970-01-01".to_string(),
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {

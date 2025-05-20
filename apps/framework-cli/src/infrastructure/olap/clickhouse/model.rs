@@ -62,6 +62,7 @@ pub enum ClickHouseColumnType {
         Box<ClickHouseColumnType>,
     ),
     Uuid,
+    Date,
     Date32,
     DateTime64 {
         precision: u8,
@@ -129,6 +130,7 @@ impl ClickHouseColumnType {
                 precision: *precision,
                 scale: *scale,
             },
+            ClickHouseColumnType::Date => ColumnType::Date16,
             ClickHouseColumnType::Date32 => ColumnType::Date,
             ClickHouseColumnType::DateTime => ColumnType::DateTime { precision: None },
             ClickHouseColumnType::DateTime64 { precision } => ColumnType::DateTime {
@@ -230,7 +232,8 @@ impl ClickHouseColumnType {
                 Self::DateTime64 { precision }
             }
             "Date32" => Self::Date32,
-            "DateTime" | "DateTime('UTC')" | "Date" => Self::DateTime,
+            "Date" => Self::Date,
+            "DateTime" | "DateTime('UTC')" => Self::DateTime,
             "JSON" => Self::Json,
 
             // recursively parsing Nullable and Array

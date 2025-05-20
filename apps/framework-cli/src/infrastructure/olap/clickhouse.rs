@@ -938,11 +938,11 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
         return Ok((ColumnType::DateTime { precision: None }, false));
     }
 
-    // Handle DateTime types with parameters
     if ch_type == "Date32" {
-        // All DateTime variants map to ColumnType::DateTime
-        // We could store precision and timezone as metadata if needed in the future
         return Ok((ColumnType::Date, false));
+    }
+    if ch_type == "Date" {
+        return Ok((ColumnType::Date16, false));
     }
     // TODO: this function should call ClickHouseColumnType::from_type_str and not have duplicate logic
     if ch_type.starts_with("Decimal(") {

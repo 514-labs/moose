@@ -1,5 +1,5 @@
 from app.ingest.models import fooModel, barModel, Bar
-from datetime import datetime
+from datetime import datetime, date
 
 # Transform Foo events to Bar events
 fooModel.get_stream().add_transform(
@@ -9,7 +9,8 @@ fooModel.get_stream().add_transform(
         baz=foo.baz,
         utc_timestamp=datetime.fromtimestamp(foo.timestamp),
         has_text=foo.optional_text is not None,
-        text_length=len(foo.optional_text) if foo.optional_text else 0
+        text_length=len(foo.optional_text) if foo.optional_text else 0,
+        process_date=date.fromisoformat(foo.date_only) if foo.date_only else date.today()
     )
 )
 
@@ -20,6 +21,7 @@ def print_foo_event(foo):
     print(f"  Primary Key: {foo.primary_key}")
     print(f"  Timestamp: {datetime.fromtimestamp(foo.timestamp)}")
     print(f"  Optional Text: {foo.optional_text or 'None'}")
+    print(f"  Date Only: {foo.date_only or 'None'}")
     print("---")
 
 

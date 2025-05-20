@@ -32,6 +32,7 @@ export const mapToClickHouseType = (value: Value) => {
   if (value instanceof Date) return "DateTime";
   if (Array.isArray(value)) {
     const [type, _] = value;
+    if (type === "Date") return "Date";
     return type;
   }
   return "String";
@@ -40,7 +41,7 @@ export const mapToClickHouseType = (value: Value) => {
 export const getValueFromParameter = (value: any) => {
   if (Array.isArray(value)) {
     const [type, val] = value;
-    if (type === "Identifier") return val;
+    if (type === "Identifier" || type === "Date") return val;
   }
   return value;
 };
@@ -58,7 +59,13 @@ export function createClickhouseParameter(
 /**
  * Values supported by SQL engine.
  */
-export type Value = string | number | boolean | Date | [string, string];
+export type Value =
+  | string
+  | number
+  | boolean
+  | Date
+  | [string, string]
+  | ["Date", Date];
 
 /**
  * Supported value or SQL instance.

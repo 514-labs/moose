@@ -54,6 +54,36 @@ const isNumberType = (t: ts.Type, checker: TypeChecker): boolean => {
   return checker.isTypeAssignableTo(t, checker.getNumberType());
 };
 
+const isDateType = (t: ts.Type, checker: TypeChecker): boolean => {
+  // Check if it's a Date type that has a 'typia.tag' property with a value of 'date'
+  if (!checker.isTypeAssignableTo(t, dateType(checker))) {
+    return false;
+  }
+
+  const tagSymbol = t.getProperty("typia.tag");
+  if (tagSymbol === undefined) {
+    return false;
+  }
+
+  const typiaProps = checker.getNonNullableType(
+    checker.getTypeOfSymbol(tagSymbol),
+  );
+  const props: ts.Type[] =
+    typiaProps.isIntersection() ? typiaProps.types : [typiaProps];
+
+  for (const prop of props) {
+    const valueSymbol = prop.getProperty("value");
+    if (valueSymbol !== undefined) {
+      const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
+      if (isStringLiteral(valueTypeLiteral, checker, "date")) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const handleAggregated = (
   t: ts.Type,
   checker: TypeChecker,
@@ -259,6 +289,7 @@ const tsTypeToDataType = (
     : isNumberType(nonNull, checker) ?
       handleNumberType(nonNull, checker, fieldName)
     : checker.isTypeAssignableTo(nonNull, checker.getBooleanType()) ? "Boolean"
+    : isDateType(nonNull, checker) ? "Date"
     : checker.isTypeAssignableTo(nonNull, dateType(checker)) ? "DateTime"
     : checker.isArrayType(nonNull) ?
       toArrayType(

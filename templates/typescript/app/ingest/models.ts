@@ -1,4 +1,5 @@
 import { IngestPipeline, Key } from "@514labs/moose-lib";
+import { Type } from "@514labs/moose-lib/dist/dataModels/types";
 
 /**
  * Data Pipeline: Raw Record (Foo) → Processed Record (Bar)
@@ -12,6 +13,7 @@ export interface Foo {
   primaryKey: Key<string>; // Unique ID
   timestamp: number; // Unix timestamp
   optionalText?: string; // Text to analyze
+  dateOnly?: string; // Date in YYYY-MM-DD format
 }
 
 /** Analyzed text metrics derived from Foo */
@@ -20,6 +22,7 @@ export interface Bar {
   utcTimestamp: Date; // From Foo.timestamp
   hasText: boolean; // From Foo.optionalText?
   textLength: number; // From Foo.optionalText.length
+  processDate: Date & Type<"date">; // Date without time component (stored as Date in ClickHouse)
 }
 
 /** =======Pipeline Configuration========= */

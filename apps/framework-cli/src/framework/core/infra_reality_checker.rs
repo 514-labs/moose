@@ -52,7 +52,7 @@ pub struct InfraDiscrepancies {
     /// Tables that are in the map but don't exist in reality
     pub missing_tables: Vec<String>,
     /// Tables that exist in both but have structural differences
-    pub mismatched_tables: Vec<OlapChange>,
+    pub mismatched_tables: Vec<crate::framework::core::infrastructure_map::OlapChange>,
 }
 
 impl InfraDiscrepancies {

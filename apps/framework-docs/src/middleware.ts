@@ -20,6 +20,22 @@ export const config = {
     },
   ],
 };
+
+/**
+ * Validates if the host is allowed
+ * Allowed hosts are:
+ * - docs.fiveonefour.com
+ * - *.vercel.app
+ * - localhost:<port>
+ */
+function isValidHost(host: string): boolean {
+  return (
+    host === "docs.fiveonefour.com" ||
+    host.endsWith(".vercel.app") ||
+    /^localhost:[0-9]+$/.test(host)
+  );
+}
+
 export async function middleware(request: NextRequest) {
   // Check if the host is docs.getmoose.dev and redirect
   if (request.nextUrl.host === "docs.getmoose.dev") {
@@ -29,7 +45,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
-  const host = request.nextUrl.host;
+  const originalHost = request.nextUrl.host;
   const referrer = headers().get("referer") ?? request.referrer;
   const pathname = request.nextUrl.pathname;
 
@@ -42,9 +58,10 @@ export async function middleware(request: NextRequest) {
         request.nextUrl.protocol
       : "https:";
 
-    // Validate host - ensure it's the original request host
-    // This helps prevent host manipulation in SSRF attacks
-    const host = request.nextUrl.host;
+    // Validate host against allowed domains
+    // Use a safe default if host is invalid
+    const host =
+      isValidHost(originalHost) ? originalHost : "docs.fiveonefour.com";
 
     // Using validated protocol and host for same-origin request
     const response = await fetch(`${protocol}//${host}/api/event`, {

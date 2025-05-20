@@ -1,6 +1,9 @@
 import nextra from "nextra";
 import remarkMdxDisableExplicitJsx from "remark-mdx-disable-explicit-jsx";
 
+// Disable Next.js telemetry
+process.env.NEXT_TELEMETRY_DISABLED = "1";
+
 const withNextra = nextra({
   theme: "nextra-theme-docs",
   themeConfig: "./theme.config.jsx",
@@ -42,6 +45,7 @@ const nextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
+  telemetry: false,
 };
 
 // Make sure adding Sentry options is the last code to run before exporting

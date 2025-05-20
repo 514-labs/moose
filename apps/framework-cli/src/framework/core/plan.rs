@@ -54,6 +54,10 @@ pub enum PlanningError {
 /// external changes made to the database are properly reflected in the infrastructure map
 /// before planning and applying new changes.
 ///
+/// We only want to look at differences for tables that are already in the infrastructure map.
+/// This is because if new external tables appear, they might not be in the code, yet. As such
+/// we don't want those to be deleted as a consequence of the diff
+///
 /// # Arguments
 /// * `project` - The project configuration
 /// * `infra_map` - The infrastructure map to update
@@ -80,8 +84,7 @@ async fn reconcile_with_reality(
     }
 
     debug!(
-        "Reconciling {} unmapped tables, {} missing tables, and {} mismatched tables",
-        discrepancies.unmapped_tables.len(),
+        "Reconciling {} missing tables, and {} mismatched tables",
         discrepancies.missing_tables.len(),
         discrepancies.mismatched_tables.len()
     );
@@ -89,13 +92,8 @@ async fn reconcile_with_reality(
     // Clone the map so we can modify it
     let mut reconciled_map = infra_map.clone();
 
-    // Add unmapped tables to the map
-    for table in &discrepancies.unmapped_tables {
-        debug!("Adding unmapped table {} to infrastructure map", table.name);
-        reconciled_map.tables.insert(table.id(), table.clone());
-    }
-
-    // Remove missing tables from the map
+    // Remove missing tables from the map so that they can be re-created
+    // if they are added to the codebase
     for table_name in &discrepancies.missing_tables {
         debug!(
             "Removing missing table {} from infrastructure map",

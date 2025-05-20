@@ -776,7 +776,7 @@ fn map_json_value_to_clickhouse_value(
             }),
             Some(uuid_str) => Ok(ClickHouseValue::new_string(uuid_str.to_string())),
         },
-        ColumnType::Date => {
+        ColumnType::Date | ColumnType::Date16 => {
             if let Some(value_str) = value
                 .as_str()
                 .filter(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok())

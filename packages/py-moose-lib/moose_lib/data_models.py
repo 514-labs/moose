@@ -17,9 +17,14 @@ type JWT[T] = T
 type Aggregated[T, agg_func] = Annotated[T, agg_func]
 
 
-@dataclasses.dataclass  # a base model in the annotations will confuse pydantic
+@dataclasses.dataclass  # a BaseModel in the annotations will confuse pydantic
 class ClickhousePrecision:
     precision: int
+
+
+@dataclasses.dataclass
+class ClickhouseSize:
+    size: int
 
 
 def clickhouse_decimal(precision: int, scale: int) -> Type[Decimal]:
@@ -155,7 +160,13 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
         else:
             data_type = f"DateTime({precision.precision})"
     elif t is date:
-        data_type = "Date"
+        size = next((md for md in mds if isinstance(md, ClickhouseSize)), None)
+        if size is None or size.size == 4:
+            data_type = "Date"
+        elif size.size == 2:
+            data_type = "Date16"
+        else:
+            raise ValueError(f"Unsupported date size {size.size}")
     elif get_origin(t) is list:
         inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0], [])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)

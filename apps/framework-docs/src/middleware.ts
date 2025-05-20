@@ -34,9 +34,17 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
+
   try {
+    // Validate protocol - only allow http: or https:
+    const protocol =
+      ["http:", "https:"].includes(request.nextUrl.protocol) ?
+        request.nextUrl.protocol
+      : "https:";
+
+    // Using same host for same-origin request
     const response = await fetch(
-      `${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`,
+      `${protocol}//${request.nextUrl.host}/api/event`,
       {
         method: "POST",
         headers: {

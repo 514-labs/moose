@@ -8,6 +8,10 @@ jobs:
   copilot-setup-steps:
     runs-on: ubuntu-22-8-core
 
+    # Add firewall configuration to allow index.crates.io
+    env:
+      COPILOT_AGENT_FIREWALL_ALLOW_LIST_ADDITIONS: "index.crates.io"
+
     # Set the permissions to the lowest permissions possible needed for your steps.
     # Copilot will be given its own token for its operations.
     permissions:

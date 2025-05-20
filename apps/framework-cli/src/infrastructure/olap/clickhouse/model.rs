@@ -232,7 +232,8 @@ impl ClickHouseColumnType {
                 Self::DateTime64 { precision }
             }
             "Date32" => Self::Date32,
-            "DateTime" | "DateTime('UTC')" | "Date" => Self::DateTime,
+            "Date" => Self::Date,
+            "DateTime" | "DateTime('UTC')" => Self::DateTime,
             "JSON" => Self::Json,
 
             // recursively parsing Nullable and Array

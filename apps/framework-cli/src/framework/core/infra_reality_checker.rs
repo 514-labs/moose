@@ -14,11 +14,10 @@
 /// - Identifying tables that exist but are not documented
 /// - Identifying tables that are documented but don't exist
 /// - Identifying structural differences in tables
-#[allow(unused_imports)]
 use crate::{
     framework::core::{
         infrastructure::table::Table,
-        infrastructure_map::{InfrastructureMap, OlapChange, TableChange},
+        infrastructure_map::{InfrastructureMap, OlapChange},
     },
     infrastructure::olap::{OlapChangesError, OlapOperations},
     project::Project,

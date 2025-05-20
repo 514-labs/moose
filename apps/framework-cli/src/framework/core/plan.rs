@@ -17,6 +17,7 @@ use crate::framework::core::infrastructure_map::{
     InfraChanges, InfrastructureMap, OlapChange, TableChange,
 };
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::infrastructure::olap::OlapOperations;
 use crate::infrastructure::{olap::clickhouse, redis::redis_client::RedisClient};
 use crate::project::Project;
 use log::{debug, error, info};
@@ -61,17 +62,18 @@ pub enum PlanningError {
 /// # Arguments
 /// * `project` - The project configuration
 /// * `infra_map` - The infrastructure map to update
+/// * `olap_client` - The OLAP client to use for checking reality
 ///
 /// # Returns
 /// * `Result<InfrastructureMap, PlanningError>` - The reconciled infrastructure map or an error
-async fn reconcile_with_reality(
+async fn reconcile_with_reality<T: OlapOperations>(
     project: &Project,
     infra_map: &InfrastructureMap,
+    olap_client: T,
 ) -> Result<InfrastructureMap, PlanningError> {
     info!("Reconciling infrastructure map with actual database state");
 
-    // Create the OLAP client and reality checker
-    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+    // Create the reality checker with the provided client
     let reality_checker = InfraRealityChecker::new(olap_client);
 
     // Get the discrepancies between the infra map and the actual database
@@ -84,9 +86,9 @@ async fn reconcile_with_reality(
     }
 
     debug!(
-        "Reconciling {} missing tables, and {} mismatched tables",
+        "Reconciling {} missing tables and {} mismatched tables",
         discrepancies.missing_tables.len(),
-        discrepancies.mismatched_tables.len()
+        discrepancies.mismatched_tables.len(),
     );
 
     // Clone the map so we can modify it
@@ -196,8 +198,11 @@ pub async fn plan_changes(
     // Plan changes, reconciling with reality if we have a current infrastructure map
     let plan = match &current_infra_map {
         Some(current_map) => {
+            // Create the OLAP client for reality checks
+            let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+
             // Reconcile the current map with reality before diffing
-            let reconciled_map = reconcile_with_reality(project, current_map).await?;
+            let reconciled_map = reconcile_with_reality(project, current_map, olap_client).await?;
 
             debug!(
                 "Reconciled infrastructure map: {}",
@@ -340,15 +345,18 @@ mod tests {
         assert_eq!(discrepancies.unmapped_tables.len(), 1);
         assert_eq!(discrepancies.unmapped_tables[0].name, "unmapped_table");
 
-        // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+        // Create another mock client for the reconciliation
+        let reconcile_mock_client = MockOlapClient {
+            tables: vec![table.clone()],
+        };
 
-        // The reconciled map should now contain the table
-        assert_eq!(reconciled.tables.len(), 1);
-        assert!(reconciled
-            .tables
-            .values()
-            .any(|t| t.name == "unmapped_table"));
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
+            .await
+            .unwrap();
+
+        // The reconciled map should not contain the unmapped table (ignoring unmapped tables)
+        assert_eq!(reconciled.tables.len(), 0);
     }
 
     #[tokio::test]
@@ -379,8 +387,13 @@ mod tests {
         assert_eq!(discrepancies.missing_tables.len(), 1);
         assert_eq!(discrepancies.missing_tables[0], "missing_table");
 
+        // Create another mock client for the reconciliation
+        let reconcile_mock_client = MockOlapClient { tables: vec![] };
+
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
+            .await
+            .unwrap();
 
         // The reconciled map should have no tables
         assert_eq!(reconciled.tables.len(), 0);
@@ -429,8 +442,15 @@ mod tests {
         // There should be one mismatched table
         assert_eq!(discrepancies.mismatched_tables.len(), 1);
 
+        // Create another mock client for reconciliation
+        let reconcile_mock_client = MockOlapClient {
+            tables: vec![actual_table.clone()],
+        };
+
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
+            .await
+            .unwrap();
 
         // The reconciled map should have one table with the extra column
         assert_eq!(reconciled.tables.len(), 1);
@@ -471,8 +491,15 @@ mod tests {
         // There should be no discrepancies
         assert!(discrepancies.is_empty());
 
+        // Create another mock client for reconciliation
+        let reconcile_mock_client = MockOlapClient {
+            tables: vec![table.clone()],
+        };
+
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
+            .await
+            .unwrap();
 
         // The reconciled map should be unchanged
         assert_eq!(reconciled.tables.len(), 1);

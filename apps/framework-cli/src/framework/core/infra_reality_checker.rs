@@ -229,7 +229,9 @@ mod tests {
     use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
     use crate::framework::core::infrastructure::olap_process::OlapProcess;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
-    use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::infrastructure_map::{
+        PrimitiveSignature, PrimitiveTypes, TableChange,
+    };
     use crate::framework::versions::Version;
     use async_trait::async_trait;
 

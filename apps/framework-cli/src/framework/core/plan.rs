@@ -263,3 +263,263 @@ pub async fn plan_changes_from_infra_map(
         changes,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
+    use crate::framework::core::infrastructure_map::{
+        OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
+    };
+    use crate::framework::versions::Version;
+    use crate::infrastructure::olap::OlapChangesError;
+    use crate::infrastructure::olap::OlapOperations;
+    use async_trait::async_trait;
+    use std::collections::HashMap;
+
+    // Mock OLAP client for testing
+    struct MockOlapClient {
+        tables: Vec<Table>,
+    }
+
+    #[async_trait]
+    impl OlapOperations for MockOlapClient {
+        async fn list_tables(
+            &self,
+            _db_name: &str,
+            _project: &Project,
+        ) -> Result<Vec<Table>, OlapChangesError> {
+            Ok(self.tables.clone())
+        }
+    }
+
+    // Helper function to create a test table
+    fn create_test_table(name: &str) -> Table {
+        Table {
+            name: name.to_string(),
+            columns: vec![Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int(IntType::Int64),
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            }],
+            order_by: vec!["id".to_string()],
+            engine: None,
+            deduplicate: false,
+            version: Some(Version::from_string("1.0.0".to_string())),
+            source_primitive: PrimitiveSignature {
+                name: "test".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            metadata: None,
+        }
+    }
+
+    // Helper function to create a test project
+    fn create_test_project() -> Project {
+        Project {
+            language: crate::framework::languages::SupportedLanguages::Typescript,
+            redpanda_config: crate::infrastructure::stream::kafka::models::KafkaConfig::default(),
+            clickhouse_config: crate::infrastructure::olap::clickhouse::ClickHouseConfig {
+                db_name: "test".to_string(),
+                user: "test".to_string(),
+                password: "test".to_string(),
+                use_ssl: false,
+                host: "localhost".to_string(),
+                host_port: 18123,
+                native_port: 9000,
+                host_data_path: None,
+            },
+            http_server_config: crate::cli::local_webserver::LocalWebserverConfig::default(),
+            redis_config: crate::infrastructure::redis::redis_client::RedisConfig::default(),
+            git_config: crate::utilities::git::GitConfig::default(),
+            temporal_config:
+                crate::infrastructure::orchestration::temporal::TemporalConfig::default(),
+            language_project_config: crate::project::LanguageProjectConfig::default(),
+            project_location: std::path::PathBuf::new(),
+            is_production: false,
+            supported_old_versions: std::collections::HashMap::new(),
+            jwt: None,
+            authentication: crate::project::AuthenticationConfig::default(),
+            cron_jobs: Vec::new(),
+            features: crate::project::ProjectFeatures::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_reality_unmapped_table() {
+        // Create a test table that exists in the database but not in the infra map
+        let table = create_test_table("unmapped_table");
+
+        // Create mock OLAP client with one table
+        let mock_client = MockOlapClient {
+            tables: vec![table.clone()],
+        };
+
+        // Create empty infrastructure map (no tables)
+        let mut infra_map = InfrastructureMap::default();
+
+        // Replace the normal check_reality function with our mock
+        let reality_checker = InfraRealityChecker::new(mock_client);
+
+        // Create test project
+        let project = create_test_project();
+
+        // Get the discrepancies
+        let discrepancies = reality_checker
+            .check_reality(&project, &infra_map)
+            .await
+            .unwrap();
+
+        // There should be one unmapped table
+        assert_eq!(discrepancies.unmapped_tables.len(), 1);
+        assert_eq!(discrepancies.unmapped_tables[0].name, "unmapped_table");
+
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+
+        // The reconciled map should now contain the table
+        assert_eq!(reconciled.tables.len(), 1);
+        assert!(reconciled
+            .tables
+            .values()
+            .any(|t| t.name == "unmapped_table"));
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_reality_missing_table() {
+        // Create a test table that exists in the infra map but not in the database
+        let table = create_test_table("missing_table");
+
+        // Create mock OLAP client with no tables
+        let mock_client = MockOlapClient { tables: vec![] };
+
+        // Create infrastructure map with one table
+        let mut infra_map = InfrastructureMap::default();
+        infra_map.tables.insert(table.id(), table.clone());
+
+        // Replace the normal check_reality function with our mock
+        let reality_checker = InfraRealityChecker::new(mock_client);
+
+        // Create test project
+        let project = create_test_project();
+
+        // Get the discrepancies
+        let discrepancies = reality_checker
+            .check_reality(&project, &infra_map)
+            .await
+            .unwrap();
+
+        // There should be one missing table
+        assert_eq!(discrepancies.missing_tables.len(), 1);
+        assert_eq!(discrepancies.missing_tables[0], "missing_table");
+
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+
+        // The reconciled map should have no tables
+        assert_eq!(reconciled.tables.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_reality_mismatched_table() {
+        // Create two versions of the same table with different columns
+        let mut infra_table = create_test_table("mismatched_table");
+        let mut actual_table = create_test_table("mismatched_table");
+
+        // Add an extra column to the actual table that's not in infra map
+        actual_table.columns.push(Column {
+            name: "extra_column".to_string(),
+            data_type: ColumnType::String,
+            required: false,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        });
+
+        // Create mock OLAP client with the actual table
+        let mock_client = MockOlapClient {
+            tables: vec![actual_table.clone()],
+        };
+
+        // Create infrastructure map with the infra table (no extra column)
+        let mut infra_map = InfrastructureMap::default();
+        infra_map
+            .tables
+            .insert(infra_table.id(), infra_table.clone());
+
+        // Replace the normal check_reality function with our mock
+        let reality_checker = InfraRealityChecker::new(mock_client);
+
+        // Create test project
+        let project = create_test_project();
+
+        // Get the discrepancies
+        let discrepancies = reality_checker
+            .check_reality(&project, &infra_map)
+            .await
+            .unwrap();
+
+        // There should be one mismatched table
+        assert_eq!(discrepancies.mismatched_tables.len(), 1);
+
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+
+        // The reconciled map should have one table with the extra column
+        assert_eq!(reconciled.tables.len(), 1);
+        let reconciled_table = reconciled.tables.values().next().unwrap();
+        assert_eq!(reconciled_table.columns.len(), 2); // id + extra_column
+        assert!(reconciled_table
+            .columns
+            .iter()
+            .any(|c| c.name == "extra_column"));
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_reality_no_changes() {
+        // Create a test table that exists in both the infra map and the database
+        let table = create_test_table("unchanged_table");
+
+        // Create mock OLAP client with the table
+        let mock_client = MockOlapClient {
+            tables: vec![table.clone()],
+        };
+
+        // Create infrastructure map with the same table
+        let mut infra_map = InfrastructureMap::default();
+        infra_map.tables.insert(table.id(), table.clone());
+
+        // Replace the normal check_reality function with our mock
+        let reality_checker = InfraRealityChecker::new(mock_client);
+
+        // Create test project
+        let project = create_test_project();
+
+        // Get the discrepancies
+        let discrepancies = reality_checker
+            .check_reality(&project, &infra_map)
+            .await
+            .unwrap();
+
+        // There should be no discrepancies
+        assert!(discrepancies.is_empty());
+
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(&project, &infra_map).await.unwrap();
+
+        // The reconciled map should be unchanged
+        assert_eq!(reconciled.tables.len(), 1);
+        assert!(reconciled
+            .tables
+            .values()
+            .any(|t| t.name == "unchanged_table"));
+        // Compare the tables to ensure they are identical
+        assert_eq!(reconciled.tables.values().next().unwrap(), &table);
+    }
+}

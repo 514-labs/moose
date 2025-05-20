@@ -12,11 +12,11 @@
 /// 5. Creating a plan that describes the changes to be applied
 ///
 /// The resulting plan is then used by the execution module to apply the changes.
-use super::{
-    infra_reality_checker::{InfraDiscrepancies, InfraRealityChecker, RealityCheckError},
-    infrastructure_map::{InfraChanges, InfrastructureMap},
-    primitive_map::PrimitiveMap,
+use crate::framework::core::infra_reality_checker::{
+    InfraDiscrepancies, InfraRealityChecker, RealityCheckError,
 };
+use crate::framework::core::infrastructure_map::{InfraChanges, InfrastructureMap};
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::{olap::clickhouse, redis::redis_client::RedisClient};
 use crate::project::Project;
 use log::{debug, error, info};

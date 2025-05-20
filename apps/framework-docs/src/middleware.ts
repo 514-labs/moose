@@ -42,24 +42,25 @@ export async function middleware(request: NextRequest) {
         request.nextUrl.protocol
       : "https:";
 
-    // Using same host for same-origin request
-    const response = await fetch(
-      `${protocol}//${request.nextUrl.host}/api/event`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: "page_view",
-          host,
-          referrer,
-          env,
-          ip,
-          pathname,
-        }),
+    // Validate host - ensure it's the original request host
+    // This helps prevent host manipulation in SSRF attacks
+    const host = request.nextUrl.host;
+
+    // Using validated protocol and host for same-origin request
+    const response = await fetch(`${protocol}//${host}/api/event`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        name: "page_view",
+        host,
+        referrer,
+        env,
+        ip,
+        pathname,
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to send event");

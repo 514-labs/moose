@@ -229,39 +229,6 @@ pub async fn plan_changes(
     Ok(plan)
 }
 
-/// Plans infrastructure changes using provided infrastructure maps.
-///
-/// This function compares the current infrastructure map with the target infrastructure map,
-/// reconciling the current map with reality if provided, and generates a plan that describes
-/// the changes needed to transition from the current state to the target state.
-///
-/// # Arguments
-/// * `project` - Project configuration
-/// * `current_infra_map` - The current infrastructure map (if any)
-/// * `target_infra_map` - The target infrastructure map
-///
-/// # Returns
-/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
-pub async fn plan_changes_from_infra_map(
-    project: &Project,
-    current_infra_map: &Option<InfrastructureMap>,
-    target_infra_map: &InfrastructureMap,
-) -> Result<InfraPlan, PlanningError> {
-    let changes = match current_infra_map {
-        Some(current_infra_map) => {
-            // Reconcile with reality before diffing
-            let reconciled_map = reconcile_with_reality(project, current_infra_map).await?;
-            reconciled_map.diff(target_infra_map)
-        }
-        None => target_infra_map.init(project),
-    };
-
-    Ok(InfraPlan {
-        target_infra_map: target_infra_map.clone(),
-        changes,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

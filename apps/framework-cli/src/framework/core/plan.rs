@@ -12,10 +12,10 @@
 /// 5. Creating a plan that describes the changes to be applied
 ///
 /// The resulting plan is then used by the execution module to apply the changes.
-use crate::framework::core::infra_reality_checker::{
-    InfraDiscrepancies, InfraRealityChecker, RealityCheckError,
+use crate::framework::core::infra_reality_checker::{InfraRealityChecker, RealityCheckError};
+use crate::framework::core::infrastructure_map::{
+    InfraChanges, InfrastructureMap, OlapChange, TableChange,
 };
-use crate::framework::core::infrastructure_map::{InfraChanges, InfrastructureMap};
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::{olap::clickhouse, redis::redis_client::RedisClient};
 use crate::project::Project;
@@ -115,12 +115,9 @@ async fn reconcile_with_reality(
     // Update mismatched tables
     for change in &discrepancies.mismatched_tables {
         match change {
-            crate::framework::core::infrastructure_map::OlapChange::Table(table_change) => {
+            OlapChange::Table(table_change) => {
                 match table_change {
-                    crate::framework::core::infrastructure_map::TableChange::Updated {
-                        before,
-                        ..
-                    } => {
+                    TableChange::Updated { before, .. } => {
                         debug!(
                             "Updating table {} in infrastructure map to match reality",
                             before.name
@@ -270,16 +267,12 @@ pub async fn plan_changes_from_infra_map(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
-    use crate::framework::core::infrastructure_map::{
-        OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
-    };
+    use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
     use crate::framework::versions::Version;
     use crate::infrastructure::olap::OlapChangesError;
     use crate::infrastructure::olap::OlapOperations;
     use async_trait::async_trait;
-    use std::collections::HashMap;
 
     // Mock OLAP client for testing
     struct MockOlapClient {
@@ -364,7 +357,7 @@ mod tests {
         };
 
         // Create empty infrastructure map (no tables)
-        let mut infra_map = InfrastructureMap::default();
+        let infra_map = InfrastructureMap::default();
 
         // Replace the normal check_reality function with our mock
         let reality_checker = InfraRealityChecker::new(mock_client);
@@ -431,7 +424,7 @@ mod tests {
     #[tokio::test]
     async fn test_reconcile_with_reality_mismatched_table() {
         // Create two versions of the same table with different columns
-        let mut infra_table = create_test_table("mismatched_table");
+        let infra_table = create_test_table("mismatched_table");
         let mut actual_table = create_test_table("mismatched_table");
 
         // Add an extra column to the actual table that's not in infra map

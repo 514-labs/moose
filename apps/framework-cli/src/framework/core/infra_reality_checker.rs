@@ -14,8 +14,12 @@
 /// - Identifying tables that exist but are not documented
 /// - Identifying tables that are documented but don't exist
 /// - Identifying structural differences in tables
+#[allow(unused_imports)]
 use crate::{
-    framework::core::{infrastructure::table::Table, infrastructure_map::InfrastructureMap},
+    framework::core::{
+        infrastructure::table::Table,
+        infrastructure_map::{InfrastructureMap, OlapChange, TableChange},
+    },
     infrastructure::olap::{OlapChangesError, OlapOperations},
     project::Project,
 };
@@ -52,7 +56,7 @@ pub struct InfraDiscrepancies {
     /// Tables that are in the map but don't exist in reality
     pub missing_tables: Vec<String>,
     /// Tables that exist in both but have structural differences
-    pub mismatched_tables: Vec<crate::framework::core::infrastructure_map::OlapChange>,
+    pub mismatched_tables: Vec<OlapChange>,
 }
 
 impl InfraDiscrepancies {
@@ -399,12 +403,7 @@ mod tests {
 
         // Verify the change is from reality's perspective - we need to remove the extra column to match infra map
         match &discrepancies.mismatched_tables[0] {
-            crate::framework::core::infrastructure_map::OlapChange::Table(
-                crate::framework::core::infrastructure_map::TableChange::Updated {
-                    column_changes,
-                    ..
-                },
-            ) => {
+            OlapChange::Table(TableChange::Updated { column_changes, .. }) => {
                 assert_eq!(column_changes.len(), 1);
                 assert!(matches!(
                     &column_changes[0],
@@ -470,12 +469,9 @@ mod tests {
 
         // Verify the change is from reality's perspective - we need to change order_by to match infra map
         match &discrepancies.mismatched_tables[0] {
-            crate::framework::core::infrastructure_map::OlapChange::Table(
-                crate::framework::core::infrastructure_map::TableChange::Updated {
-                    order_by_change,
-                    ..
-                },
-            ) => {
+            OlapChange::Table(TableChange::Updated {
+                order_by_change, ..
+            }) => {
                 assert_eq!(
                     order_by_change.before,
                     vec!["id".to_string(), "timestamp".to_string()]
@@ -528,13 +524,7 @@ mod tests {
 
         // Verify the change is from reality's perspective - we need to change deduplicate to match infra map
         match &discrepancies.mismatched_tables[0] {
-            crate::framework::core::infrastructure_map::OlapChange::Table(
-                crate::framework::core::infrastructure_map::TableChange::Updated {
-                    before,
-                    after,
-                    ..
-                },
-            ) => {
+            OlapChange::Table(TableChange::Updated { before, after, .. }) => {
                 assert!(before.deduplicate);
                 assert!(!after.deduplicate);
             }

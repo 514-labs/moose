@@ -79,6 +79,9 @@ jobs:
     needs:
       - version
       - cleanup-pypi
+    # Add explicit permissions
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -401,8 +404,8 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: update-moose-version-index
     permissions:
-      contents: "read"
-      id-token: "write"
+      contents: read
+      id-token: write
     steps:
       - name: Auth
         uses: "google-github-actions/auth@v2"
@@ -456,6 +459,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-publish-binaries, cleanup-pypi]
     if: ${{ !inputs.dry-run }}
+    # Add explicit permissions
+    permissions:
+      contents: read
     steps:
       - uses: actions/download-artifact@v4
 
@@ -483,6 +489,9 @@ jobs:
       - package-and-publish-independant-ts-package
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}
+    # Add explicit permissions
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -561,6 +570,9 @@ jobs:
     needs:
       - version
       - build-and-publish-binaries
+    # Add explicit permissions
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -606,6 +618,9 @@ jobs:
         build-and-publish-fullstack-image,
       ]
     runs-on: ubuntu-latest
+    # Add explicit permissions
+    permissions:
+      contents: read
     if: failure() && github.ref == 'refs/heads/main'
     steps:
       - name: Notify Slack on failure
@@ -618,6 +633,9 @@ jobs:
     name: Cleanup PyPI
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}
+    # Add explicit permissions
+    permissions:
+      contents: read
     steps:
       - uses: actions/setup-python@v4
         with:

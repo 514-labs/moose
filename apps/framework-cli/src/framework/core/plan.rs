@@ -115,9 +115,12 @@ async fn reconcile_with_reality(
     // Update mismatched tables
     for change in &discrepancies.mismatched_tables {
         match change {
-            super::infrastructure_map::OlapChange::Table(table_change) => {
+            crate::framework::core::infrastructure_map::OlapChange::Table(table_change) => {
                 match table_change {
-                    super::infrastructure_map::TableChange::Updated { before, .. } => {
+                    crate::framework::core::infrastructure_map::TableChange::Updated {
+                        before,
+                        ..
+                    } => {
                         debug!(
                             "Updating table {} in infrastructure map to match reality",
                             before.name

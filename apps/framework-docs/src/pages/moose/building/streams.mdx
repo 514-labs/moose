@@ -441,6 +441,7 @@ intermediate_stream.add_transform(destination=final_data.get_stream(), transform
   transformedValue=record.transformedValue * 2,
   anotherTransformedValue=record.transformedValue * 3,
   transformedAt=datetime.now()
+))
 ```
 </Python>
 
@@ -894,7 +895,12 @@ nested_stream.add_transform(flattened_stream, unnest_transform)
 ```
 </Python>
 
-See [API Reference](./api-reference#stream) for all available transform options.
+<Callout type="warning" title="Multiple transformation routes limitation">
+You cannot have multiple transforms between the same source and destination stream. If you need multiple transformation routes, you must either:
+
+- Use conditional logic inside a single streaming function to handle different cases, or
+- Implement a fan-out/fan-in pattern, where you route records to different intermediate streams and then merge them back into the destination stream.
+</Callout>
 
 ## Stream Configurations
 

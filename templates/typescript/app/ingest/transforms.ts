@@ -1,4 +1,5 @@
 import { FooPipeline, BarPipeline, Foo, Bar } from "./models";
+import { Type } from "@514labs/moose-lib/dist/dataModels/types";
 
 // Transform Foo events to Bar events
 FooPipeline.stream?.addTransform(BarPipeline.stream!, (foo: Foo): Bar => {
@@ -13,7 +14,7 @@ FooPipeline.stream?.addTransform(BarPipeline.stream!, (foo: Foo): Bar => {
     utcTimestamp: new Date(foo.timestamp * 1000), // Convert timestamp to Date
     hasText: foo.optionalText !== undefined,
     textLength: foo.optionalText?.length ?? 0,
-    processDate: processDate as Date & { typia: { tag: { value: "date" } } },
+    processDate: processDate as Date & Type<"date">,
   };
 });
 

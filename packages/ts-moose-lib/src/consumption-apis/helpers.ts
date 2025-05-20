@@ -30,9 +30,9 @@ export const mapToClickHouseType = (value: Value) => {
   // But the column type of query result only return Bool, so we only support Bool type for safety.
   if (typeof value === "boolean") return "Bool";
   if (value instanceof Date) return "DateTime";
+  if (Array.isArray(value) && value[0] === "Date") return "Date";
   if (Array.isArray(value)) {
     const [type, _] = value;
-    if (type === "Date") return "Date";
     return type;
   }
   return "String";

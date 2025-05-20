@@ -161,6 +161,7 @@ enum SimpleColumnType {
   // otherwise, see DateType where the precision can be specified
   DATETIME = 6;
   DATE = 7;
+  DATE16 = 8;
 
   UUID_TYPE = 13;
   JSON_COLUMN = 14;

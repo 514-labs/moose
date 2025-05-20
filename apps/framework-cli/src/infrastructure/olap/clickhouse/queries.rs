@@ -280,6 +280,7 @@ pub fn basic_field_type_to_string(
         }
         ClickHouseColumnType::Uuid => Ok("UUID".to_string()),
         ClickHouseColumnType::Date32 => Ok("Date32".to_string()),
+        ClickHouseColumnType::Date => Ok("Date".to_string()),
         ClickHouseColumnType::DateTime64 { precision } => Ok(format!("DateTime64({})", precision)),
         ClickHouseColumnType::LowCardinality(inner_type) => Ok(format!(
             "LowCardinality({})",

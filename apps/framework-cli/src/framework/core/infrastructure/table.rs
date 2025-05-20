@@ -174,7 +174,11 @@ pub enum ColumnType {
     DateTime {
         precision: Option<u8>,
     },
+    // most databases use 4 bytes or more for a date
+    // in clickhouse that's `Date32`
     Date,
+    // `Date` in clickhouse is 2 bytes
+    Date16,
     Enum(DataEnum),
     Array {
         element_type: Box<ColumnType>,
@@ -211,6 +215,7 @@ impl fmt::Display for ColumnType {
             ColumnType::Bytes => write!(f, "Bytes"),
             ColumnType::Uuid => write!(f, "UUID"),
             ColumnType::Date => write!(f, "Date"),
+            ColumnType::Date16 => write!(f, "Date16"),
         }
     }
 }
@@ -256,6 +261,7 @@ impl Serialize for ColumnType {
             ColumnType::Bytes => serializer.serialize_str("Bytes"),
             ColumnType::Uuid => serializer.serialize_str("UUID"),
             ColumnType::Date => serializer.serialize_str("Date"),
+            ColumnType::Date16 => serializer.serialize_str("Date16"),
         }
     }
 }
@@ -374,6 +380,8 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             }
         } else if v == "Date" {
             ColumnType::Date
+        } else if v == "Date16" {
+            ColumnType::Date16
         } else if v == "Json" {
             ColumnType::Json
         } else if v == "Bytes" {
@@ -557,6 +565,7 @@ impl ColumnType {
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
             ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID_TYPE.into()),
             ColumnType::Date => T::Simple(SimpleColumnType::DATE.into()),
+            ColumnType::Date16 => T::Simple(SimpleColumnType::DATE16.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -582,6 +591,7 @@ impl ColumnType {
                     SimpleColumnType::BYTES => ColumnType::Bytes,
                     SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
                     SimpleColumnType::DATE => ColumnType::Date,
+                    SimpleColumnType::DATE16 => ColumnType::Date16,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),

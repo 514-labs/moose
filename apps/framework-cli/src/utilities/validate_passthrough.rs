@@ -150,6 +150,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
 
             ColumnType::BigInt
             | ColumnType::Date
+            | ColumnType::Date16
             | ColumnType::Decimal { .. }
             | ColumnType::Json
             | ColumnType::Bytes => formatter.write_str("a value matching the column type"),

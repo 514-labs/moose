@@ -185,7 +185,24 @@ const handleStringType = (
           }
           return `DateTime(${precision})`;
         } else if (isStringLiteral(valueTypeLiteral, checker, "date")) {
-          return "Date";
+          let size = 4;
+          const sizeSymbol = t.getProperty("_clickhouse_byte_size");
+          if (sizeSymbol !== undefined) {
+            const sizeType = checker.getNonNullableType(
+              checker.getTypeOfSymbol(sizeSymbol),
+            );
+            if (sizeType.isNumberLiteral()) {
+              size = sizeType.value;
+            }
+          }
+
+          if (size === 4) {
+            return "Date";
+          } else if (size === 2) {
+            return "Date16";
+          } else {
+            throw new UnsupportedFeature(`Date with size ${size}`);
+          }
         } else if (isStringLiteral(valueTypeLiteral, checker, DecimalRegex)) {
           let precision = 10;
           let scale = 0;

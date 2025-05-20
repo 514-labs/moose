@@ -73,9 +73,9 @@ class MyFirstDataModel(BaseModel):
 
 # 2. YOU control which infrastructure to create (HOW to handle your data)
 my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", IngestPipelineConfig(
-    ingest=True,  // Create API endpoint
-    stream=True,  // Create stream topic
-    table=True    // Create database table
+    ingest=True,  # Create API endpoint
+    stream=True,  # Create stream topic
+    table=True    # Create database table
 ))
 ```
 </Python>
@@ -103,7 +103,7 @@ my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", Ingest
 ```ts filename="app/datamodels/BasicDataModel.ts" copy
 import { Key } from "@514labs/moose-lib";
 import { tags } from "typia";
-import { ClickHouseDecimal, ClickHousePrecision } from "@514labs/moose-lib";
+import { ClickHouseDecimal, ClickHousePrecision, LowCardinality } from "@514labs/moose-lib";
 
 export interface BasicDataModel {
   // Required: Primary key for your data model
@@ -117,7 +117,7 @@ export interface BasicDataModel {
   someBoolean: boolean;       // Boolean
   someDate: Date;             // Timestamps (DateTime)
   someArray: string[];        // Arrays
-  someJsonObject: any;        // JSON object 
+  someJsonObject: Record<string, any>;        // JSON object 
 
   // Explicit integer types
   intField: number & tags.Type<"int64">;   // Int64

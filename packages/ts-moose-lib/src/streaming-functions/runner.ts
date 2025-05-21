@@ -6,6 +6,7 @@ import http from "http";
 import { cliLog } from "../commons";
 import { Cluster } from "../cluster-utils";
 import { getStreamingFunctions } from "../dmv2/internal";
+import { ConsumerConfig, TransformConfig } from "../dmv2";
 
 const HOSTNAME = process.env.HOSTNAME;
 const AUTO_COMMIT_INTERVAL_MS = 5000;
@@ -214,8 +215,9 @@ const stopConsumer = async (
  * Processes a single Kafka message through a streaming function and returns transformed message(s)
  *
  * @param logger - Logger instance for outputting message processing status and errors
- * @param streamingFunction - Function that transforms input message data
+ * @param streamingFunctionWithConfigList - functions (with their configs) that transforms input message data
  * @param message - Kafka message to be processed
+ * @param producer - Kafka producer for sending dead letter
  * @returns Promise resolving to array of transformed messages or undefined if processing fails
  *
  * The function will:
@@ -228,8 +230,9 @@ const stopConsumer = async (
  */
 const handleMessage = async (
   logger: Logger,
-  streamingFunctions: StreamingFunction[],
+  streamingFunctionWithConfigList: [StreamingFunction, TransformConfig<any>][],
   message: KafkaMessage,
+  producer: Producer,
 ): Promise<SlimKafkaMessage[] | undefined> => {
   if (message.value === undefined || message.value === null) {
     logger.log(`Received message with no value, skipping...`);
@@ -238,8 +241,53 @@ const handleMessage = async (
 
   try {
     const parsedData = JSON.parse(message.value.toString(), jsonDateReviver);
-    const transformedData = await Promise.all(
-      streamingFunctions.map((fn) => fn(parsedData)),
+    let transformedData;
+
+    transformedData = await Promise.all(
+      streamingFunctionWithConfigList.map(async ([fn, config]) => {
+        try {
+          return await fn(parsedData);
+        } catch (e) {
+          // Check if there's a deadLetterQueue configured
+          const deadLetterQueue = config.deadLetterQueue;
+
+          if (deadLetterQueue) {
+            // Create a dead letter record
+            const deadLetterRecord = {
+              originalRecord: parsedData,
+              errorMessage: e instanceof Error ? e.message : String(e),
+              errorType: e instanceof Error ? e.constructor.name : "Unknown",
+              failedAt: new Date(),
+              source: "transform",
+            };
+
+            cliLog({
+              action: "DeadLetter",
+              message: `Sending message to DLQ ${deadLetterQueue.name}: ${e instanceof Error ? e.message : String(e)}`,
+              message_type: "Error",
+            } as any);
+            // Send to the DLQ
+            try {
+              await producer.send({
+                topic: deadLetterQueue.name,
+                messages: [{ value: JSON.stringify(deadLetterRecord) }],
+              });
+            } catch (dlqError) {
+              logger.error(`Failed to send to dead letter queue: ${dlqError}`);
+            }
+          } else {
+            // No DLQ configured, just log the error
+            cliLog({
+              action: "Function",
+              message: `Error processing message (no DLQ configured): ${e instanceof Error ? e.message : String(e)}`,
+              message_type: "Error",
+            } as any);
+          }
+
+          // rethrow for the outside error handling
+          throw e;
+        }
+      }),
     );
 
     if (transformedData) {
@@ -458,10 +506,13 @@ const startConsumer = async (
   );
 
   // We preload the function to not have to load it for each message
-  const streamingFunctions: StreamingFunction[] =
+  const streamingFunctions: [
+    StreamingFunction,
+    TransformConfig<any> | ConsumerConfig<any>,
+  ][] =
     args.isDmv2 ?
       await loadStreamingFunctionV2(args.sourceTopic, args.targetTopic)
-    : [loadStreamingFunction(args.functionFilePath)];
+    : [[loadStreamingFunction(args.functionFilePath), {}]];
 
   await consumer.subscribe({
     topics: [args.sourceTopic.name], // Use full topic name for Kafka operations
@@ -499,7 +550,12 @@ const startConsumer = async (
               ) {
                 await heartbeat();
               }
-              return handleMessage(logger, streamingFunctions, message);
+              return handleMessage(
+                logger,
+                streamingFunctions,
+                message,
+                producer,
+              );
             },
             {
               concurrency: MAX_STREAMING_CONCURRENCY,

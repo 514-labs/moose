@@ -4,7 +4,7 @@
 import { ParsedActivity, UserActivity } from "datamodels/models";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
-// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
+// For more details on how Moose streaming functions work, see: docs.fiveonefour.com/moose
 export default function run(source: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {

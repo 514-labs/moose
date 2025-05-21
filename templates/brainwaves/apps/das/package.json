@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc; node ./dist/main.js --no-watch",
-    "sim": "node ./dist/send-csv-to-udp.js"
+    "dev": "tsc; node ./dist/main.js --no-watch"
   },
   "keywords": [],
   "author": "",

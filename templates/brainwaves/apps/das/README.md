@@ -16,18 +16,17 @@ Most users will not have access to a physical Muse device. You can still experie
 
 1. Ensure you have Node.js installed.
 2. In one terminal, start DAS as usual:
-   ```sh
-   npm run dev -- --sessionId=SIM
-   ```
-3. In another terminal, run the simulator:
-   ```sh
-   node send-csv-to-udp.js --file=brain_data_1737563122.csv --host=127.0.0.1 --port=43134
-   ```
-   - `--file` (required): Path to your CSV file
-   - `--host`: UDP host (default: 127.0.0.1)
-   - `--port`: UDP port (default: 43134)
-   - `--interval`: Delay between rows in ms (default: 20)
-
+```sh
+   npm run dev
+```
+3. Download sample brainwave datasets:
+```sh
+   ./download.sh
+```
+4. In another terminal, run the simulator:
+```sh
+   ./sim.sh brain_data_coding.csv
+```
 The DAS dashboard will display the streamed data as if it were coming from a real device.
 
 ---

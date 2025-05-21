@@ -1,10 +1,8 @@
-# BrainMoose
+# Brainwaves
 
 A Moose Application for Brainwave Data Capture & Analysis
 
-![BrainMoose](./docs/brainmoose.jpg)
-
----
+![Brainwaves](./docs/brainmoose.jpg)
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -17,13 +15,20 @@ A Moose Application for Brainwave Data Capture & Analysis
 8. [Audio Podcasts](#audio-podcasts)
 9. [References](#references)
 
----
-
 ## Overview
 
-**BrainMoose** is a demo application for brain mapping and movement analytics using the [Moose](https://getmoose.com) platform and the [Muse Headband](https://choosemuse.com) EEG device. It demonstrates real-time data ingestion, storage, and analysis of brainwave and movement data, with optional integration for OpenAI-powered insights.
+**Brainwaves** is a demo application for brain mapping and movement analytics using the [Moose](https://getmoose.com) platform and the [Muse Headband](https://choosemuse.com) EEG device. It demonstrates real-time data ingestion, storage, and analysis of brainwave and movement data, with optional integration for OpenAI-powered insights.
 
----
+## Quick starts
+### Watch the video
+> Video link here
+
+### Listen to ~15 minute podcasts
+> Generated using NotebookLM
+- **Muse Headband Podcast**  
+  [MuseHeadband.mp3](https://downloads.fiveonefour.com/moose/template-data/brainwaves/podcasts/MuseHeadband.mp3)
+- **Research Using Consumer EEG Devices Podcast**  
+  [ResearchUsingConsumerEEGDevices.mp3](https://downloads.fiveonefour.com/moose/template-data/brainwaves/podcasts/ResearchUsingConsumerEEGDevices.mp3)
 
 ## Features
 - **Real-time brainwave and movement data capture** from Muse Headband
@@ -32,8 +37,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 - **Consumption API** for querying session insights
 - **Optional OpenAI GPT-4o integration** for advanced data analysis
 - **Sample analysis and podcasts** for educational purposes
-
----
+- **Freely available brainwave datasets** for simulation and testing (no device required)
 
 ## How It Works
 
@@ -43,14 +47,29 @@ A Moose Application for Brainwave Data Capture & Analysis
 4. **Analysis**: Movement scores are calculated using the Euclidean norm of accelerometer and gyroscope vectors.
 5. **API & Insights**: The Consumption API exposes session movement scores for further analysis or visualization.
 
----
-
 ## Getting Started
 
 ### Prerequisites
 - Node.js (for running Moose and DAS)
-- Muse Headband device
+- Muse Headband device (optional)
 - (Optional) OpenAI API key for GPT-4o analysis
+
+### Try Without a Muse Device
+
+You do **not** need a Muse device to try this project!
+Sample brainwave datasets are freely available from Fiveonefour Labs.
+
+- Use the provided script to download sample data:
+  ```sh
+  cd apps/das
+  ./download.sh
+  ```
+- You can then simulate device data using:
+  ```sh
+  ./sim.sh brain_data_coding.csv
+  ```
+
+This allows you to explore the full data pipeline and analysis features without any hardware.
 
 ### Setup Steps
 1. **Clone the repository and navigate to the project:**
@@ -72,8 +91,6 @@ A Moose Application for Brainwave Data Capture & Analysis
    moose dev
    ```
 
----
-
 ## Data Analysis & API
 
 ### Movement Scoring
@@ -86,8 +103,6 @@ GET http://localhost:4000/consumption/sessionInsights?sessions=1735784964|Medita
 ```
 - `sessions` parameter: Comma-separated list of `sessionId|sessionLabel` pairs.
 - See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a sample response and analysis.
-
----
 
 ## Database Schema
 
@@ -102,6 +117,7 @@ GET http://localhost:4000/consumption/sessionInsights?sessions=1735784964|Medita
 | delta      | Float64                     | Brainwave band: Delta             |
 | theta      | Float64                     | Brainwave band: Theta             |
 | gamma      | Float64                     | Brainwave band: Gamma             |
+| ppm        | Nested(channel1, channel2, channel3) Float64 | Photoplethysmography (PPG/PPM) data |
 | sessionId  | String                      | Session identifier                |
 
 #### Example Query (Clickhouse SQL)
@@ -117,8 +133,6 @@ WHERE sessionId = '1735785243'
 GROUP BY sessionId;
 ```
 
----
-
 ## Sample Analysis
 
 Example movement scores for two sessions:
@@ -129,17 +143,6 @@ Example movement scores for two sessions:
 | 1735785243   | 91,714.62         | 801,765.32         | 893,479.94          |
 
 See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a detailed breakdown and interpretation of multiple session types (Meditation, Coding, Exercise).
-
----
-
-## Audio Podcasts
-
-- **Muse Headband Podcast**  
-  [MuseHeadband.mp3](docs/MuseHeadband.mp3)
-- **Research Using Consumer EEG Devices Podcast**  
-  [ResearchUsingConsumerEEGDevices.mp3](docs/ResearchUsingConsumerEEGDevices.mp3)
-
----
 
 ## References
 - [Moose Documentation](https://getmoose.com)

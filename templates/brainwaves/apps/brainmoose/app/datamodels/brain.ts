@@ -29,5 +29,5 @@ export interface Brain {
   delta: number;
   theta: number;
   gamma: number;
-  ppm?: PpmData;
+  ppm: PpmData;
 }

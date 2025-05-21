@@ -1000,6 +1000,50 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
         ));
     }
 
+    // Handle Nested types
+    if ch_type.starts_with("Nested(") {
+        // Extract the inner columns from Nested(...) format
+        let inner = ch_type
+            .strip_prefix("Nested(")
+            .and_then(|s| s.strip_suffix(")"))
+            .ok_or_else(|| format!("Invalid Nested type format: {}", ch_type))?;
+        let mut columns = Vec::new();
+        for col_def in inner.split(',') {
+            let col_def = col_def.trim();
+            if col_def.is_empty() {
+                continue;
+            }
+            // Split by first space to get name and type
+            let mut parts = col_def.splitn(2, ' ');
+            let col_name = parts
+                .next()
+                .ok_or_else(|| format!("Invalid Nested column definition: {}", col_def))?
+                .trim();
+            let col_type = parts
+                .next()
+                .ok_or_else(|| format!("Invalid Nested column definition: {}", col_def))?
+                .trim();
+            let (data_type, is_nullable) = convert_clickhouse_type_to_column_type(col_type)?;
+            columns.push(Column {
+                name: col_name.to_string(),
+                data_type,
+                required: !is_nullable,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: Default::default(),
+            });
+        }
+        return Ok((
+            ColumnType::Nested(crate::framework::core::infrastructure::table::Nested {
+                name: "nested".to_string(),
+                columns,
+                jwt: false,
+            }),
+            false,
+        ));
+    }
+
     // Remove any parameters from type string for other types
     let base_type = ch_type.split('(').next().unwrap_or(ch_type);
 
@@ -1538,6 +1582,23 @@ mod tests {
                 assert!(!element_nullable);
             }
             _ => panic!("Expected Array type"),
+        }
+    }
+
+    #[test]
+    fn test_nested_type_conversion() {
+        let ch_type = "Nested(col1 String, col2 Int32)";
+        let (column_type, is_nullable) = convert_clickhouse_type_to_column_type(ch_type).unwrap();
+        assert!(!is_nullable);
+        match column_type {
+            ColumnType::Nested(nested) => {
+                assert_eq!(nested.columns.len(), 2);
+                assert_eq!(nested.columns[0].name, "col1");
+                assert_eq!(nested.columns[1].name, "col2");
+                assert_eq!(nested.columns[0].data_type, ColumnType::String);
+                assert_eq!(nested.columns[1].data_type, ColumnType::Int(IntType::Int32));
+            }
+            _ => panic!("Expected Nested type"),
         }
     }
 }

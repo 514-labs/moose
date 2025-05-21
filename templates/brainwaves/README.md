@@ -145,8 +145,8 @@ Example movement scores for two sessions:
 See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a detailed breakdown and interpretation of multiple session types (Meditation, Coding, Exercise).
 
 ## References
-- [Moose Documentation](https://getmoose.com)
+- [Moose Documentation](https://docs.fiveonefour.com/moose)
 - [Muse Headband](https://choosemuse.com)
-- [osc-min Library](https://github.com/colinbdclark/osc-min)
+- [osc-min Library](https://github.com/russellmcc/node-osc-min)
 - [Redpanda](https://redpanda.com)
 - [ClickHouse](https://clickhouse.com)

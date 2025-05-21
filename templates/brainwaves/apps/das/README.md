@@ -103,7 +103,7 @@ DAS_PORT=43134
 ## Dependencies
 - [node-fetch](https://www.npmjs.com/package/node-fetch)
 - [dotenv](https://www.npmjs.com/package/dotenv)
-- [osc-min](https://www.npmjs.com/package/osc-min)
+- [osc-min](https://github.com/russellmcc/node-osc-min)
 - [blessed](https://www.npmjs.com/package/blessed) & [blessed-contrib](https://www.npmjs.com/package/blessed-contrib)
 - [yargs](https://www.npmjs.com/package/yargs)
 

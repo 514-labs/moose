@@ -4,42 +4,35 @@
     {
       "source": "/(.*)",
       "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://apollo.io https://assets.apollo.io https://posthog.com https://us-assets.i.posthog.com https://vercel.live https://buttons.github.io https://aplo-evnt.com https://api.github.com"
+          "value": "https://buttons.github.io https://apollo.io https://assets.apollo.io https://posthog.com https://us-assets.i.posthog.com https://us.i.posthog.com https://vercel.live https://api.github.com https://aplo-evnt.com"
         },
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, OPTIONS"
+          "value": "GET, POST"
         },
         {
           "key": "Access-Control-Allow-Headers",
           "value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         },
-        {
-          "key": "Set-Cookie",
-          "value": "__vercel_live_token=SameSite=None; Secure; Domain=vercel.live"
-        },
-        {
-          "key": "Set-Cookie",
-          "value": "dmn_chk=SameSite=None; Secure; Domain=apollo.io"
-        },
+
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com vercel.live buttons.github.io; font-src 'self' data:; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com vercel.live api.github.com aplo-evnt.com; frame-src 'self' vercel.live; frame-ancestors 'self' vercel.live vercel.app"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; font-src 'self' data:; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live api.github.com aplo-evnt.com; frame-src 'self' vercel.live; frame-ancestors 'self' vercel.live"
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+          "value": "camera=(), microphone=(), geolocation=(), interest-cohort=(), document-domain=(self)"
         },
         {
           "key": "Strict-Transport-Security",

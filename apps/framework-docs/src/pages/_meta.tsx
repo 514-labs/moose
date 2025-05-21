@@ -32,8 +32,8 @@ export default render({
   },
   changelog: {
     type: "page",
-    title: "Changelog",
-    href: "/changelog",
+    title: "Release Notes",
+    href: "/release-notes",
   },
   "usage-data": {
     display: "hidden",

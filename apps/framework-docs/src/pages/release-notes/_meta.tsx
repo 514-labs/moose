@@ -2,7 +2,7 @@ import { render } from "@/components";
 // Raw meta object - more concise without repetitive rendering logic
 const rawMeta = {
   index: {
-    title: "Changelog",
+    title: "Release Notes",
     theme: {
       breadcrumb: false,
     },

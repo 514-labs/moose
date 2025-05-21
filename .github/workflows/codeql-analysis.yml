@@ -6,21 +6,23 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * *"
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
+      # required for all workflows
+      security-events: write
+      packages: read
       actions: read
       contents: read
-      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        language: ["javascript", "typescript", "python"]
+        language: ["javascript", "typescript", "python", "actions"]
 
     steps:
       - name: Checkout repository
@@ -37,3 +39,5 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"

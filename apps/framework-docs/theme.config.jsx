@@ -96,7 +96,7 @@ export default {
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || "https://docs.fiveonefour.com";
     const url = `${baseUrl}${asPath !== "/" ? asPath : ""}`;
-    
+
     // Determine which default OG image to use based on the path
     let defaultImage = "/og-image-fiveonefour.png"; // Default for root/main page
     if (asPath.startsWith("/moose")) {
@@ -107,8 +107,10 @@ export default {
 
     return (
       <>
+        <title>{frontMatter.title || "514 Labs Documentation"}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta property="og:url" content={url} />
+        <meta property="og:site_name" content="514 Labs Documentation" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@514hq" />
         <meta
@@ -116,17 +118,28 @@ export default {
           content={frontMatter.title || "514 Labs Documentation"}
         />
         <meta
+          property="twitter:title"
+          content={frontMatter.title || "514 Labs Documentation"}
+        />
+        <meta
           property="og:description"
           content={
             frontMatter.description ||
-            "Documentation for Moose and Aurora by 514 Labs"
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+          }
+        />
+        <meta
+          property="twitter:description"
+          content={
+            frontMatter.description ||
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
           }
         />
         <meta
           name="description"
           content={
             frontMatter.description ||
-            "Documentation for Moose and Aurora by 514 Labs"
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
           }
         />
         {/* Use frontMatter.image if specified, otherwise use the default image based on path */}

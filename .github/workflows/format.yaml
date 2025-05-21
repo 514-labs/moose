@@ -4,6 +4,11 @@ on:
     branches:
       - "**"
       - "!main"
+
+# Add explicit permissions with read-only access
+permissions:
+  contents: read
+
 jobs:
   format:
     runs-on: ubuntu-latest
@@ -22,6 +27,9 @@ jobs:
   notify-slack-on-failure:
     needs: [format]
     runs-on: ubuntu-latest
+    # Add permissions required for this job
+    permissions:
+      contents: read
     if: failure() && github.ref == 'refs/heads/main'
     steps:
       - name: Notify Slack on failure

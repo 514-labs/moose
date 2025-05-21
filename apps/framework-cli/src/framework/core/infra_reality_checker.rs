@@ -27,8 +27,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use super::plan::PlanningError;
-
 /// Represents errors that can occur during infrastructure reality checking.
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -44,10 +42,6 @@ pub enum RealityCheckError {
     /// Error occurred while loading the infrastructure map
     #[error("Failed to load infrastructure map: {0}")]
     InfraMapLoad(#[from] anyhow::Error),
-
-    /// Error occurred while planning changes
-    #[error("Failed to plan changes: {0}")]
-    PlanningError(#[from] PlanningError),
 }
 
 /// Represents discrepancies found between actual infrastructure and documented map.

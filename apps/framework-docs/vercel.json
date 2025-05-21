@@ -13,6 +13,7 @@
           "value": "https://buttons.github.io https://apollo.io https://assets.apollo.io https://posthog.com https://us-assets.i.posthog.com https://us.i.posthog.com https://vercel.live https://api.github.com https://aplo-evnt.com"
         },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" },
+        { "key": "Access-Control-Allow-Private-Network", "value": "true" },
         {
           "key": "Access-Control-Allow-Methods",
           "value": "GET, POST"
@@ -28,7 +29,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; font-src 'self' data:; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live api.github.com aplo-evnt.com; frame-src 'self' vercel.live; frame-ancestors 'self' vercel.live"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; style-src 'self' 'unsafe-inline' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live 'unsafe-eval'; img-src 'self' data: buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live; font-src 'self' data:; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live api.github.com aplo-evnt.com; frame-src 'self' vercel.live; frame-ancestors 'self' vercel.live"
         },
         {
           "key": "Permissions-Policy",

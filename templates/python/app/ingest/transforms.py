@@ -41,7 +41,7 @@ fooModel.get_stream().add_consumer(print_foo_event)
 
 def print_messages(dead_letter: DeadLetterModel[Foo]):
     print("dead letter:", dead_letter)
-    print("foo in dead letter:", dead_letter.as_t())
+    print("foo in dead letter:", dead_letter.as_typed())
 
 
 dlq.add_consumer(print_messages)

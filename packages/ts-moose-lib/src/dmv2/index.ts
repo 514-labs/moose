@@ -158,14 +158,14 @@ export interface DeadLetterModel {
 }
 
 export interface DeadLetter<T> extends DeadLetterModel {
-  asT: () => T;
+  asTyped: () => T;
 }
 
 function attachTypeGuard<T>(
   dl: DeadLetterModel,
   typeGuard: (input: any) => T,
 ): asserts dl is DeadLetter<T> {
-  (dl as any).asT = () => typeGuard(dl.originalRecord);
+  (dl as any).asTyped = () => typeGuard(dl.originalRecord);
 }
 
 export interface TransformConfig<T> {

@@ -38,6 +38,6 @@ FooPipeline.stream?.addConsumer(printFooEvent);
 FooPipeline.stream?.addConsumer(printFooEvent);
 fooDead.addConsumer((deadLetter) => {
   console.log(deadLetter);
-  const foo: Foo = deadLetter.asT();
+  const foo: Foo = deadLetter.asTyped();
   console.log(foo);
 });

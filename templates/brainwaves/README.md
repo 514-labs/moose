@@ -17,7 +17,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 
 ## Overview
 
-**Brainwaves** is a demo application for brain mapping and movement analytics using the [Moose](https://getmoose.com) platform and the [Muse Headband](https://choosemuse.com) EEG device. It demonstrates real-time data ingestion, storage, and analysis of brainwave and movement data, with optional integration for OpenAI-powered insights.
+**Brainwaves** is a demo application for brain mapping and movement analytics using the [Moose](https://docs.fiveonefour.com/moose) platform and the [Muse Headband](https://choosemuse.com) EEG device. It demonstrates real-time data ingestion, storage, and analysis of brainwave and movement data, with optional integration for OpenAI-powered insights.
 
 ## Quick starts
 ### Watch the video

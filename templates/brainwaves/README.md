@@ -32,7 +32,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 
 ## Features
 - **Real-time brainwave and movement data capture** from Muse Headband
-- **Data ingestion pipeline** using Moose, RedPanda, and Clickhouse
+- **Data ingestion pipeline** using Moose, Redpanda, and ClickHouse
 - **Movement scoring** using accelerometer and gyroscope data
 - **Consumption API** for querying session insights
 - **Optional OpenAI GPT-4o integration** for advanced data analysis
@@ -43,7 +43,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 
 1. **Data Acquisition**: The Muse Headband streams brainwave and movement data via UDP.
 2. **DAS (Data Acquisition Service)**: A Node.js server (`apps/das`) receives UDP packets, parses them with [osc-min](https://github.com/colinbdclark/osc-min), and forwards them to Moose via HTTP.
-3. **Data Storage**: Moose ingests the data and stores it in RedPanda (streaming) and Clickhouse (analytical DB).
+3. **Data Storage**: Moose ingests the data and stores it in Redpanda (streaming) and ClickHouse (analytical DB).
 4. **Analysis**: Movement scores are calculated using the Euclidean norm of accelerometer and gyroscope vectors.
 5. **API & Insights**: The Consumption API exposes session movement scores for further analysis or visualization.
 
@@ -120,7 +120,7 @@ GET http://localhost:4000/consumption/sessionInsights?sessions=1735784964|Medita
 | ppm        | Nested(channel1, channel2, channel3) Float64 | Photoplethysmography (PPG/PPM) data |
 | sessionId  | String                      | Session identifier                |
 
-#### Example Query (Clickhouse SQL)
+#### Example Query (ClickHouse SQL)
 ```sql
 SELECT
     sessionId,
@@ -148,5 +148,5 @@ See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a detailed 
 - [Moose Documentation](https://getmoose.com)
 - [Muse Headband](https://choosemuse.com)
 - [osc-min Library](https://github.com/colinbdclark/osc-min)
-- [RedPanda](https://redpanda.com)
-- [Clickhouse](https://clickhouse.com)
+- [Redpanda](https://redpanda.com)
+- [ClickHouse](https://clickhouse.com)

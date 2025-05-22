@@ -705,10 +705,11 @@ pub async fn top_command_handler(
             res
         }
         Commands::Peek {
-            data_model_name,
+            name,
             limit,
             file,
-            topic,
+            table: _,
+            stream,
         } => {
             info!("Running peek command");
 
@@ -722,7 +723,15 @@ pub async fn top_command_handler(
                 machine_id.clone(),
             );
 
-            let result = peek(project_arc, data_model_name, *limit, file.clone(), *topic).await;
+            // Default to table if neither table nor stream is specified
+            let is_stream = if *stream {
+                true
+            } else {
+                // Default to table (false) when neither flag is specified or table is explicitly specified
+                false
+            };
+
+            let result = peek(project_arc, name, *limit, file.clone(), is_stream).await;
 
             wait_for_usage_capture(capture_handle).await;
 

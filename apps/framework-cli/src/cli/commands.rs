@@ -54,9 +54,10 @@ pub enum Commands {
         token: Option<String>,
     },
 
-    /// View some data from a data model
+    /// View some data from a table or stream
     Peek {
-        data_model_name: String,
+        /// Name of the table or stream to peek
+        name: String,
         /// Limit the number of rows to view
         #[arg(short, long, default_value = "5")]
         limit: u8,
@@ -64,9 +65,13 @@ pub enum Commands {
         #[arg(short, long)]
         file: Option<PathBuf>,
 
-        /// peek from the topic instead of the table
-        #[arg(long)]
-        topic: bool,
+        /// View data from a table
+        #[arg(short = 't', long = "table", group = "resource_type")]
+        table: bool,
+
+        /// View data from a stream/topic
+        #[arg(short = 's', long = "stream", group = "resource_type")]
+        stream: bool,
     },
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},

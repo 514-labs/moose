@@ -34,20 +34,20 @@ use tokio_stream::StreamExt;
 /// # Arguments
 ///
 /// * `project` - The project configuration to use
-/// * `data_model_name` - Name of the data model to peek
+/// * `name` - Name of the table or stream to peek
 /// * `limit` - Maximum number of records to retrieve
 /// * `file` - Optional file path to save the output instead of displaying to console
-/// * `topic` - Whether to peek at a topic (true) or a table (false)
+/// * `is_stream` - Whether to peek at a stream/topic (true) or a table (false)
 ///
 /// # Returns
 ///
 /// * `Result<RoutineSuccess, RoutineFailure>` - Success or failure of the operation
 pub async fn peek(
     project: Arc<Project>,
-    data_model_name: &str,
+    name: &str,
     limit: u8,
     file: Option<PathBuf>,
-    topic: bool,
+    is_stream: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let pool = get_pool(&project.clickhouse_config);
     let mut client = pool.get_handle().await.map_err(|_| {
@@ -84,14 +84,14 @@ pub async fn peek(
     let consumer_ref: StreamConsumer;
     let table_ref: ClickHouseTable;
 
-    let mut stream: BoxStream<anyhow::Result<Value>> = if topic {
+    let mut stream: BoxStream<anyhow::Result<Value>> = if is_stream {
         let group_id = project.redpanda_config.prefix_with_namespace("peek");
 
         consumer_ref = create_consumer(&project.redpanda_config, &[("group.id", &group_id)]);
         let consumer = &consumer_ref;
         // in dmv2 we still have version as the suffix for topics
         // but not so for tables. we might want to change that
-        let topic_versioned = format!("{}_{}", data_model_name, version_suffix);
+        let topic_versioned = format!("{}_{}", name, version_suffix);
 
         let topic = infra
             .topics
@@ -145,10 +145,10 @@ pub async fn peek(
         )
     } else {
         let expected_key = if project.features.data_model_v2 {
-            data_model_name.to_string()
+            name.to_string()
         } else {
             // ¯\_(ツ)_/¯
-            format!("{}_{}_{}", data_model_name, version_suffix, version_suffix)
+            format!("{}_{}_{}", name, version_suffix, version_suffix)
         };
 
         let table = infra

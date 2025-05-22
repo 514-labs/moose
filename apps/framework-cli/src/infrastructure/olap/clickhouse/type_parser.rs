@@ -163,6 +163,36 @@ pub enum ClickHouseTypeNode {
     /// FixedString with length
     FixedString(u64),
 
+    /// Nothing (special type representing absence of a value)
+    Nothing,
+
+    /// BFloat16 (brain floating point format)
+    BFloat16,
+
+    /// IPv4 type
+    IPv4,
+
+    /// IPv6 type
+    IPv6,
+
+    /// JSON type
+    JSON,
+
+    /// Dynamic type (for dynamic objects)
+    Dynamic,
+
+    /// Object type with optional parameters
+    Object(Option<String>),
+
+    /// Variant(T1, T2, ...) type for union types
+    Variant(Vec<ClickHouseTypeNode>),
+
+    /// Interval types
+    Interval(String),
+
+    /// Geo types
+    Geo(String),
+
     /// Enum8 or Enum16 with members
     Enum {
         bits: u8, // 8 or 16
@@ -231,6 +261,28 @@ impl fmt::Display for ClickHouseTypeNode {
                 None => write!(f, "DateTime64({})", precision),
             },
             ClickHouseTypeNode::FixedString(length) => write!(f, "FixedString({})", length),
+            ClickHouseTypeNode::Nothing => write!(f, "Nothing"),
+            ClickHouseTypeNode::BFloat16 => write!(f, "BFloat16"),
+            ClickHouseTypeNode::IPv4 => write!(f, "IPv4"),
+            ClickHouseTypeNode::IPv6 => write!(f, "IPv6"),
+            ClickHouseTypeNode::JSON => write!(f, "JSON"),
+            ClickHouseTypeNode::Dynamic => write!(f, "Dynamic"),
+            ClickHouseTypeNode::Object(params) => match params {
+                Some(p) => write!(f, "Object({})", p),
+                None => write!(f, "Object"),
+            },
+            ClickHouseTypeNode::Variant(types) => {
+                write!(f, "Variant(")?;
+                for (i, t) in types.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", t)?;
+                }
+                write!(f, ")")
+            }
+            ClickHouseTypeNode::Interval(interval_type) => write!(f, "Interval{}", interval_type),
+            ClickHouseTypeNode::Geo(geo_type) => write!(f, "{}", geo_type),
             ClickHouseTypeNode::Enum { bits, members } => {
                 write!(f, "Enum{}(", bits)?;
                 for (i, (name, value)) in members.iter().enumerate() {
@@ -566,8 +618,38 @@ impl Parser {
                     "Map" => self.parse_map(),
                     "AggregateFunction" => self.parse_aggregate_function(),
                     "SimpleAggregateFunction" => self.parse_simple_aggregate_function(),
+                    "Variant" => self.parse_variant(),
+                    "Object" => self.parse_object(),
+                    // Simple types with no parameters
+                    "Nothing" => Ok(ClickHouseTypeNode::Nothing),
+                    "BFloat16" => Ok(ClickHouseTypeNode::BFloat16),
+                    "IPv4" => Ok(ClickHouseTypeNode::IPv4),
+                    "IPv6" => Ok(ClickHouseTypeNode::IPv6),
+                    "JSON" => Ok(ClickHouseTypeNode::JSON),
+                    "Dynamic" => Ok(ClickHouseTypeNode::Dynamic),
+                    // Check for Interval types
+                    name if name.starts_with("Interval") => {
+                        let interval_type = name.strip_prefix("Interval").unwrap_or("");
+                        Ok(ClickHouseTypeNode::Interval(interval_type.to_string()))
+                    }
+                    // Check for Geo types
+                    name if matches!(
+                        name,
+                        "Point"
+                            | "Ring"
+                            | "Polygon"
+                            | "MultiPolygon"
+                            | "LineString"
+                            | "MultiLineString"
+                    ) =>
+                    {
+                        Ok(ClickHouseTypeNode::Geo(name.to_string()))
+                    }
+                    // Check for specialized Decimal types
                     name if name.starts_with("Decimal") => self.parse_decimal_sized(&name_clone),
+                    // Check for Enum types
                     name if name.starts_with("Enum") => self.parse_enum(&name_clone),
+                    // Default to simple type
                     name => Ok(ClickHouseTypeNode::Simple(name.to_string())),
                 }
             }
@@ -1052,6 +1134,84 @@ impl Parser {
             argument_type: Box::new(argument_type),
         })
     }
+
+    /// Parse a Variant(T1, T2, ...) type
+    fn parse_variant(&mut self) -> Result<ClickHouseTypeNode, ParseError> {
+        self.consume(&Token::LeftParen)?;
+
+        let mut types = Vec::new();
+
+        // Handle empty variant case
+        if matches!(self.current_token(), Token::RightParen) {
+            self.advance();
+            return Ok(ClickHouseTypeNode::Variant(types));
+        }
+
+        loop {
+            // Parse type
+            let type_node = self.parse_type()?;
+            types.push(type_node);
+
+            // Check for comma or end of list
+            match self.current_token() {
+                Token::Comma => {
+                    self.advance();
+                    continue;
+                }
+                Token::RightParen => break,
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "comma or ')'".to_string(),
+                        found: format!("{:?}", self.current_token()),
+                    })
+                }
+            }
+        }
+
+        self.consume(&Token::RightParen)?;
+        Ok(ClickHouseTypeNode::Variant(types))
+    }
+
+    /// Parse an Object type with optional parameters
+    fn parse_object(&mut self) -> Result<ClickHouseTypeNode, ParseError> {
+        // Check if there are parameters
+        if matches!(self.current_token(), Token::LeftParen) {
+            self.consume(&Token::LeftParen)?;
+
+            // Parse parameter string (could be a schema definition or other parameter)
+            let params = match self.current_token() {
+                Token::StringLiteral(s) => {
+                    let s_clone = s.clone();
+                    self.advance();
+                    Some(s_clone)
+                }
+                Token::Identifier(s) => {
+                    let s_clone = s.clone();
+                    self.advance();
+                    Some(s_clone)
+                }
+                Token::RightParen => {
+                    self.advance();
+                    None
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "string literal, identifier, or ')'".to_string(),
+                        found: format!("{:?}", self.current_token()),
+                    })
+                }
+            };
+
+            if params.is_some() {
+                self.consume(&Token::RightParen)?;
+            }
+
+            Ok(ClickHouseTypeNode::Object(params))
+        } else {
+            // No parameters, just Object
+            Ok(ClickHouseTypeNode::Object(None))
+        }
+    }
 }
 
 /// Parse a ClickHouse type string into an AST
@@ -1190,6 +1350,44 @@ pub fn convert_ast_to_column_type(
             // FixedString is mapped to regular String in our type system
             Ok((ColumnType::String, false))
         }
+
+        ClickHouseTypeNode::Nothing => Err(ConversionError::UnsupportedType {
+            type_name: "Nothing".to_string(),
+        }),
+
+        ClickHouseTypeNode::BFloat16 => Err(ConversionError::UnsupportedType {
+            type_name: "BFloat16".to_string(),
+        }),
+
+        ClickHouseTypeNode::IPv4 => Err(ConversionError::UnsupportedType {
+            type_name: "IPv4".to_string(),
+        }),
+
+        ClickHouseTypeNode::IPv6 => Err(ConversionError::UnsupportedType {
+            type_name: "IPv6".to_string(),
+        }),
+
+        ClickHouseTypeNode::JSON => Ok((ColumnType::Json, false)),
+
+        ClickHouseTypeNode::Dynamic => Err(ConversionError::UnsupportedType {
+            type_name: "Dynamic".to_string(),
+        }),
+
+        ClickHouseTypeNode::Object(_) => Err(ConversionError::UnsupportedType {
+            type_name: "Object".to_string(),
+        }),
+
+        ClickHouseTypeNode::Variant(_) => Err(ConversionError::UnsupportedType {
+            type_name: "Variant".to_string(),
+        }),
+
+        ClickHouseTypeNode::Interval(interval_type) => Err(ConversionError::UnsupportedType {
+            type_name: format!("Interval{}", interval_type),
+        }),
+
+        ClickHouseTypeNode::Geo(geo_type) => Err(ConversionError::UnsupportedType {
+            type_name: geo_type.clone(),
+        }),
 
         ClickHouseTypeNode::Enum { bits, members } => {
             let enum_members = members
@@ -1671,10 +1869,15 @@ mod tests {
             let serialized = parsed.to_string();
 
             // Parse the serialized string
-            let reparsed = parse_clickhouse_type(&serialized).unwrap();
+            let reparsed = parse_clickhouse_type(&serialized);
 
             // Compare the ASTs
-            assert_eq!(parsed, reparsed, "Type not idempotent: {}", type_str);
+            assert_eq!(
+                parsed,
+                reparsed.unwrap(),
+                "Type not idempotent: {}",
+                type_str
+            );
         }
 
         // Test types for conversion to framework types (only those we support)
@@ -1967,5 +2170,159 @@ mod tests {
                 timezone: Some("UTC".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn test_parse_special_types() {
+        // Test simple types with no parameters
+        let simple_special_types = vec!["Nothing", "BFloat16", "IPv4", "IPv6", "JSON", "Dynamic"];
+
+        for type_str in simple_special_types {
+            let result = parse_clickhouse_type(type_str);
+            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+
+            match type_str {
+                "Nothing" => assert_eq!(result.unwrap(), ClickHouseTypeNode::Nothing),
+                "BFloat16" => assert_eq!(result.unwrap(), ClickHouseTypeNode::BFloat16),
+                "IPv4" => assert_eq!(result.unwrap(), ClickHouseTypeNode::IPv4),
+                "IPv6" => assert_eq!(result.unwrap(), ClickHouseTypeNode::IPv6),
+                "JSON" => assert_eq!(result.unwrap(), ClickHouseTypeNode::JSON),
+                "Dynamic" => assert_eq!(result.unwrap(), ClickHouseTypeNode::Dynamic),
+                _ => panic!("Unexpected type: {}", type_str),
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_object_type() {
+        // Test Object without parameters
+        let result = parse_clickhouse_type("Object").unwrap();
+        assert_eq!(result, ClickHouseTypeNode::Object(None));
+
+        // Test Object with parameters
+        let result = parse_clickhouse_type("Object('schema')").unwrap();
+        assert_eq!(
+            result,
+            ClickHouseTypeNode::Object(Some("schema".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_parse_variant_type() {
+        // Test empty Variant
+        let result = parse_clickhouse_type("Variant()").unwrap();
+        assert_eq!(result, ClickHouseTypeNode::Variant(vec![]));
+
+        // Test Variant with types
+        let result = parse_clickhouse_type("Variant(String, Int32)").unwrap();
+        match result {
+            ClickHouseTypeNode::Variant(types) => {
+                assert_eq!(types.len(), 2);
+                assert_eq!(types[0], ClickHouseTypeNode::Simple("String".to_string()));
+                assert_eq!(types[1], ClickHouseTypeNode::Simple("Int32".to_string()));
+            }
+            _ => panic!("Expected Variant type"),
+        }
+    }
+
+    #[test]
+    fn test_parse_interval_types() {
+        let interval_types = vec![
+            "IntervalYear",
+            "IntervalQuarter",
+            "IntervalMonth",
+            "IntervalWeek",
+            "IntervalDay",
+            "IntervalHour",
+            "IntervalMinute",
+            "IntervalSecond",
+            "IntervalMillisecond",
+            "IntervalMicrosecond",
+            "IntervalNanosecond",
+        ];
+
+        for type_str in interval_types {
+            let result = parse_clickhouse_type(type_str);
+            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+
+            let interval_suffix = type_str.strip_prefix("Interval").unwrap_or("");
+            assert_eq!(
+                result.unwrap(),
+                ClickHouseTypeNode::Interval(interval_suffix.to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_geo_types() {
+        let geo_types = vec![
+            "Point",
+            "Ring",
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString",
+        ];
+
+        for type_str in geo_types {
+            let result = parse_clickhouse_type(type_str);
+            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+
+            assert_eq!(
+                result.unwrap(),
+                ClickHouseTypeNode::Geo(type_str.to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn test_conversion_not_supported_special_types() {
+        // These special types are parsed but not supported in conversion
+        let special_types = vec![
+            "Nothing",
+            "BFloat16",
+            "IPv4",
+            "IPv6",
+            "Dynamic",
+            "Object",
+            "Object('schema')",
+            "Variant(String, Int32)",
+            "IntervalYear",
+            "Point",
+            "Polygon",
+        ];
+
+        for type_str in special_types {
+            // Parse should succeed
+            let parsed = parse_clickhouse_type(type_str).unwrap();
+
+            // But conversion to framework type should fail with UnsupportedType
+            let conversion = convert_ast_to_column_type(&parsed);
+            assert!(
+                conversion.is_err(),
+                "Type {} should not be convertible",
+                type_str
+            );
+
+            match &conversion {
+                Err(ConversionError::UnsupportedType { type_name }) => {
+                    println!(
+                        "Correctly got UnsupportedType for {}: {}",
+                        type_str, type_name
+                    );
+                }
+                Err(e) => panic!(
+                    "Expected UnsupportedType error for {} but got: {:?}",
+                    type_str, e
+                ),
+                Ok(_) => panic!("Expected error for {}, but conversion succeeded", type_str),
+            }
+        }
+
+        // JSON should be supported
+        let json_parsed = parse_clickhouse_type("JSON").unwrap();
+        let json_conversion = convert_ast_to_column_type(&json_parsed);
+        assert!(json_conversion.is_ok(), "JSON should be convertible");
+        assert_eq!(json_conversion.unwrap().0, ColumnType::Json);
     }
 }

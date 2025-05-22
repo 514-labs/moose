@@ -3,7 +3,6 @@
 
 use std::path::PathBuf;
 
-use crate::framework::languages::SupportedLanguages;
 use clap::{Args, Subcommand};
 
 #[derive(Subcommand)]
@@ -54,6 +53,21 @@ pub enum Commands {
         #[arg(long)]
         token: Option<String>,
     },
+
+    /// View some data from a data model
+    Peek {
+        data_model_name: String,
+        /// Limit the number of rows to view
+        #[arg(short, long, default_value = "5")]
+        limit: u8,
+        /// Output to a file
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+
+        /// peek from the topic instead of the table
+        #[arg(long)]
+        topic: bool,
+    },
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments
@@ -62,15 +76,6 @@ pub enum Commands {
     Generate(GenerateArgs),
     /// Clears all temporary data and stops development infrastructure
     Clean {},
-    /// Transforms upstream data into materialized datasets for analysis
-    #[command(hide = true)]
-    Function(FunctionArgs),
-    /// Shapes & manipulates batches of data using SQL
-    #[command(hide = true)]
-    Block(BlockArgs),
-    /// Defines consumption APIs
-    #[command(hide = true)]
-    Consumption(ConsumptionArgs),
     /// View Moose logs
     Logs {
         /// Follow the logs in real-time
@@ -112,33 +117,6 @@ pub enum Commands {
 
     /// Opens metrics console for viewing live metrics from your moose app
     Metrics {},
-    Import {
-        data_model_name: String,
-        #[arg(short, long)]
-        file: PathBuf,
-        #[arg(long)]
-        format: Option<String>,
-        #[arg(long, default_value = "http://localhost:4000/ingest")]
-        destination: String,
-        #[arg(long)]
-        version: Option<String>,
-    },
-    #[command(hide = true)]
-    DataModel(DataModelArgs),
-    /// View some data from a data model
-    Peek {
-        data_model_name: String,
-        /// Limit the number of rows to view
-        #[arg(short, long, default_value = "5")]
-        limit: u8,
-        /// Output to a file
-        #[arg(short, long)]
-        file: Option<PathBuf>,
-
-        /// peek from the topic instead of the table
-        #[arg(long)]
-        topic: bool,
-    },
     /// Manage data processing workflows
     Workflow(WorkflowArgs),
     /// Manage templates
@@ -165,105 +143,7 @@ pub struct GenerateArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
-    Sdk {
-        /// Language of the SDK to be generated
-        #[arg(default_value_t = SupportedLanguages::Typescript, value_enum, short, long)]
-        language: SupportedLanguages,
-        /// Where the SDK files should be written to
-        #[arg(default_value = "./sdk", short, long)]
-        destination: PathBuf,
-        /// The location of the Moose project
-        #[arg(default_value = ".", short, long)]
-        project_location: PathBuf,
-        /// Whether or not to generate a full fledged package or just the source files in the language of choice
-        #[arg(default_value = "false", short = 'f', long)]
-        full_package: bool,
-        /// Force overwrite of files and folders in the directory
-        #[arg(default_value = "false", short = 'y', long)]
-        overwrite: bool,
-    },
     HashToken {},
-}
-
-#[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
-pub struct FunctionArgs {
-    #[command(subcommand)]
-    pub command: Option<FunctionCommands>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum FunctionCommands {
-    /// Structures the project's directory & files for a new streaming function
-    #[command(arg_required_else_help = true)]
-    Init(FuncInitArgs),
-}
-
-#[derive(Debug, Args)]
-pub struct FuncInitArgs {
-    /// Name of your source data model
-    #[arg(short, long, required = true)]
-    pub source: String,
-
-    /// Name of your destination data model
-    #[arg(short, long, required = true)]
-    pub destination: String,
-}
-
-#[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
-pub struct BlockArgs {
-    #[command(subcommand)]
-    pub command: Option<BlockCommands>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum BlockCommands {
-    /// Creates a starter block
-    #[command(arg_required_else_help = true)]
-    Init {
-        /// Name of your block
-        name: String,
-    },
-}
-
-#[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
-pub struct ConsumptionArgs {
-    #[command(subcommand)]
-    pub command: Option<ConsumptionCommands>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum ConsumptionCommands {
-    /// Creates a starter api
-    #[command(arg_required_else_help = true)]
-    Init {
-        /// Name of your api
-        name: String,
-    },
-}
-
-#[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
-pub struct DataModelArgs {
-    #[command(subcommand)]
-    pub command: Option<DataModelCommands>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum DataModelCommands {
-    #[command(arg_required_else_help = true)]
-    Init(DataModelInitArgs),
-}
-
-#[derive(Debug, Args)]
-pub struct DataModelInitArgs {
-    pub name: String,
-
-    /// Name of your sample file
-    #[arg(short, long)]
-    pub sample: String,
 }
 
 #[derive(Debug, Args)]

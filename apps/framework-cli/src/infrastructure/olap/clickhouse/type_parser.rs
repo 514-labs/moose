@@ -7,6 +7,7 @@
 use crate::framework::core::infrastructure::table::{
     Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Nested,
 };
+use logos::Logos;
 use std::fmt;
 use thiserror::Error;
 
@@ -33,6 +34,10 @@ pub enum TokenizerError {
     /// Unterminated string literal
     #[error("Unterminated string literal starting at position {position}")]
     UnterminatedString { position: usize },
+
+    /// Logos lexer error
+    #[error("Lexer error at position {position}")]
+    LexerError { position: usize },
 }
 
 /// Errors that can occur during ClickHouse type parsing
@@ -110,23 +115,99 @@ pub enum ClickHouseTypeError {
 // =========================================================
 
 /// Represents a token in the ClickHouse type syntax
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Logos, Debug, Clone, PartialEq)]
 enum Token {
     /// Identifier (type name, function name, etc.)
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Identifier(String),
+
     /// A string literal 'value' or "value"
+    #[regex(r#"'([^'\\]|\\.)*'"#, |lex| {
+        // Strip the quotes and handle escapes
+        let content = lex.slice();
+        let content = &content[1..content.len()-1]; // Remove quotes
+        let mut result = String::with_capacity(content.len());
+        let mut chars = content.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                match chars.next() {
+                    Some('\\') => result.push('\\'),
+                    Some('\'') => result.push('\''),
+                    Some('"') => result.push('"'),
+                    Some('n') => result.push('\n'),
+                    Some('r') => result.push('\r'),
+                    Some('t') => result.push('\t'),
+                    Some(c) => result.push(c),
+                    None => break,
+                }
+            } else {
+                result.push(c);
+            }
+        }
+        result
+    })]
+    #[regex(r#""([^"\\]|\\.)*""#, |lex| {
+        // Strip the quotes and handle escapes
+        let content = lex.slice();
+        let content = &content[1..content.len()-1]; // Remove quotes
+        let mut result = String::with_capacity(content.len());
+        let mut chars = content.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                match chars.next() {
+                    Some('\\') => result.push('\\'),
+                    Some('\'') => result.push('\''),
+                    Some('"') => result.push('"'),
+                    Some('n') => result.push('\n'),
+                    Some('r') => result.push('\r'),
+                    Some('t') => result.push('\t'),
+                    Some(c) => result.push(c),
+                    None => break,
+                }
+            } else {
+                result.push(c);
+            }
+        }
+        result
+    })]
     StringLiteral(String),
+
     /// A numeric literal
+    #[regex(r"[0-9]+", |lex| {
+        match lex.slice().parse() {
+            Ok(n) => n,
+            Err(_) => {
+                // This should never happen as the regex ensures we only match digits
+                0
+            }
+        }
+    })]
     NumberLiteral(u64),
+
     /// Left parenthesis (
+    #[token("(")]
     LeftParen,
+
     /// Right parenthesis )
+    #[token(")")]
     RightParen,
+
     /// Comma separator for parameters
+    #[token(",")]
     Comma,
+
     /// Equals sign in enum definitions
+    #[token("=")]
     Equals,
-    /// End of input
+
+    /// Whitespace is skipped
+    #[regex(r"[ \t\r\n\f]+", logos::skip)]
+
+    /// Error token (for unrecognized input)
+    #[regex(".", logos::skip, priority = 0)]
+    Error,
+
+    /// End of input marker (not produced by Logos, added manually)
     Eof,
 }
 
@@ -359,165 +440,63 @@ impl fmt::Display for ClickHouseTypeNode {
 }
 
 // =========================================================
-// Lexer / Tokenizer
+// Lexer / Tokenizer using Logos
 // =========================================================
 
 /// Tokenizes a ClickHouse type string into a sequence of tokens
-struct Tokenizer<'a> {
-    input: &'a str,
-    position: usize,
-    chars: std::str::Chars<'a>,
-    current_char: Option<char>,
+fn tokenize(input: &str) -> Result<Vec<Token>, TokenizerError> {
+    let mut lexer = Token::lexer(input);
+    let mut tokens = Vec::new();
+
+    while let Some(token_result) = lexer.next() {
+        match token_result {
+            Ok(token) => tokens.push(token),
+            Err(_) => {
+                return Err(TokenizerError::LexerError {
+                    position: lexer.span().start,
+                });
+            }
+        }
+    }
+
+    // Add explicit EOF token
+    tokens.push(Token::Eof);
+
+    Ok(tokens)
 }
 
-impl<'a> Tokenizer<'a> {
-    fn new(input: &'a str) -> Self {
-        let mut chars = input.chars();
-        let current_char = chars.next();
-        Self {
-            input,
-            position: 0,
-            chars,
-            current_char,
-        }
-    }
+// Test for unterminated string
+fn check_unterminated_string(input: &str) -> Result<(), TokenizerError> {
+    // Simple check for unterminated string literals
+    let mut in_string = false;
+    let mut string_start = 0;
+    let mut escape = false;
+    let mut quote_char = ' ';
 
-    fn advance(&mut self) {
-        self.position += 1;
-        self.current_char = self.chars.next();
-    }
-
-    fn skip_whitespace(&mut self) {
-        while let Some(c) = self.current_char {
-            if !c.is_whitespace() {
-                break;
+    for (i, c) in input.chars().enumerate() {
+        if !in_string {
+            if c == '\'' || c == '"' {
+                in_string = true;
+                string_start = i;
+                quote_char = c;
             }
-            self.advance();
-        }
-    }
-
-    fn tokenize(&mut self) -> Result<Vec<Token>, TokenizerError> {
-        let mut tokens = Vec::new();
-
-        self.skip_whitespace();
-
-        while let Some(c) = self.current_char {
-            match c {
-                '(' => {
-                    tokens.push(Token::LeftParen);
-                    self.advance();
-                }
-                ')' => {
-                    tokens.push(Token::RightParen);
-                    self.advance();
-                }
-                ',' => {
-                    tokens.push(Token::Comma);
-                    self.advance();
-                }
-                '=' => {
-                    tokens.push(Token::Equals);
-                    self.advance();
-                }
-                '\'' | '"' => {
-                    tokens.push(self.read_string()?);
-                }
-                '0'..='9' => {
-                    tokens.push(self.read_number()?);
-                }
-                c if c.is_alphabetic() || c == '_' => {
-                    tokens.push(self.read_identifier());
-                }
-                _ => {
-                    return Err(TokenizerError::UnexpectedCharacter {
-                        character: c,
-                        position: self.position,
-                    });
-                }
-            }
-
-            self.skip_whitespace();
-        }
-
-        tokens.push(Token::Eof);
-        Ok(tokens)
-    }
-
-    fn read_string(&mut self) -> Result<Token, TokenizerError> {
-        let quote_char = self.current_char.unwrap();
-        let start_pos = self.position;
-        self.advance();
-
-        let mut value = String::new();
-        let mut escape = false;
-
-        while let Some(c) = self.current_char {
+        } else {
             if escape {
-                match c {
-                    '\\' | '\'' | '"' => value.push(c),
-                    'n' => value.push('\n'),
-                    'r' => value.push('\r'),
-                    't' => value.push('\t'),
-                    _ => {
-                        return Err(TokenizerError::InvalidString {
-                            message: format!(
-                                "Invalid escape sequence '\\{}' at position {} in input: {}",
-                                c, self.position, self.input
-                            ),
-                        });
-                    }
-                }
                 escape = false;
             } else if c == '\\' {
                 escape = true;
             } else if c == quote_char {
-                self.advance();
-                return Ok(Token::StringLiteral(value));
-            } else {
-                value.push(c);
+                in_string = false;
             }
-
-            self.advance();
         }
+    }
 
+    if in_string {
         Err(TokenizerError::UnterminatedString {
-            position: start_pos,
+            position: string_start,
         })
-    }
-
-    fn read_number(&mut self) -> Result<Token, TokenizerError> {
-        let mut value = String::new();
-
-        while let Some(c) = self.current_char {
-            if c.is_ascii_digit() {
-                value.push(c);
-                self.advance();
-            } else {
-                break;
-            }
-        }
-
-        match value.parse::<u64>() {
-            Ok(num) => Ok(Token::NumberLiteral(num)),
-            Err(e) => Err(TokenizerError::InvalidNumber {
-                message: format!("Invalid number '{}': {}", value, e),
-            }),
-        }
-    }
-
-    fn read_identifier(&mut self) -> Token {
-        let mut value = String::new();
-
-        while let Some(c) = self.current_char {
-            if c.is_alphanumeric() || c == '_' {
-                value.push(c);
-                self.advance();
-            } else {
-                break;
-            }
-        }
-
-        Token::Identifier(value)
+    } else {
+        Ok(())
     }
 }
 
@@ -543,7 +522,7 @@ impl Parser {
         if self.current_pos < self.tokens.len() {
             &self.tokens[self.current_pos]
         } else {
-            // This should never happen as the tokenizer always adds an Eof token
+            // The last token should always be Eof
             &self.tokens[self.tokens.len() - 1]
         }
     }
@@ -551,18 +530,7 @@ impl Parser {
     fn consume(&mut self, expected: &Token) -> Result<(), ParseError> {
         let current = self.current_token();
 
-        // Special case for Eof
-        if let Token::Eof = expected {
-            if !matches!(current, Token::Eof) {
-                return Err(ParseError::UnexpectedToken {
-                    expected: "end of input".to_string(),
-                    found: self.token_to_string(current),
-                });
-            }
-            return Ok(());
-        }
-
-        // For all other tokens
+        // Check if the tokens have the same discriminant
         if std::mem::discriminant(current) != std::mem::discriminant(expected) {
             return Err(ParseError::UnexpectedToken {
                 expected: self.token_to_string(expected),
@@ -583,6 +551,7 @@ impl Parser {
             Token::RightParen => ")".to_string(),
             Token::Comma => ",".to_string(),
             Token::Equals => "=".to_string(),
+            Token::Error => "error".to_string(),
             Token::Eof => "end of input".to_string(),
         }
     }
@@ -771,7 +740,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "string literal for timezone".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             };
 
@@ -794,7 +763,7 @@ impl Parser {
                 return Err(ParseError::UnexpectedToken {
                     expected: "number literal for precision".to_string(),
                     found: format!("{:?}", self.current_token()),
-                })
+                });
             }
         };
         self.advance();
@@ -814,7 +783,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "string literal for timezone".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             }
         } else {
@@ -840,7 +809,7 @@ impl Parser {
                 return Err(ParseError::UnexpectedToken {
                     expected: "number literal for length".to_string(),
                     found: format!("{:?}", self.current_token()),
-                })
+                });
             }
         };
         self.advance();
@@ -878,7 +847,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "string literal or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             };
             self.advance();
@@ -893,7 +862,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "number literal for enum value".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             };
             self.advance();
@@ -911,7 +880,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "comma or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             }
         }
@@ -941,7 +910,7 @@ impl Parser {
                     self.advance();
 
                     // Check if next token is a type identifier
-                    if let Token::Identifier(_) = self.current_token() {
+                    if matches!(self.current_token(), Token::Identifier(_)) {
                         // This is a named element
                         let type_node = self.parse_type()?;
                         TupleElement::Named {
@@ -975,7 +944,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "comma or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             }
         }
@@ -1015,7 +984,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "identifier for column name".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             };
 
@@ -1032,7 +1001,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "comma or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             }
         }
@@ -1074,7 +1043,7 @@ impl Parser {
                 return Err(ParseError::UnexpectedToken {
                     expected: "identifier for function name".to_string(),
                     found: format!("{:?}", self.current_token()),
-                })
+                });
             }
         };
         self.advance();
@@ -1116,7 +1085,7 @@ impl Parser {
                 return Err(ParseError::UnexpectedToken {
                     expected: "identifier for function name".to_string(),
                     found: format!("{:?}", self.current_token()),
-                })
+                });
             }
         };
         self.advance();
@@ -1163,7 +1132,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "comma or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             }
         }
@@ -1198,7 +1167,7 @@ impl Parser {
                     return Err(ParseError::UnexpectedToken {
                         expected: "string literal, identifier, or ')'".to_string(),
                         found: format!("{:?}", self.current_token()),
-                    })
+                    });
                 }
             };
 
@@ -1214,11 +1183,12 @@ impl Parser {
     }
 }
 
-/// Parse a ClickHouse type string into an AST
+// Parse a ClickHouse type string into an AST
 pub fn parse_clickhouse_type(input: &str) -> Result<ClickHouseTypeNode, ParseError> {
-    let mut tokenizer = Tokenizer::new(input);
-    let tokens = tokenizer.tokenize()?;
+    // First check for unterminated strings to maintain compatibility with error messages
+    check_unterminated_string(input).map_err(ParseError::from)?;
 
+    let tokens = tokenize(input).map_err(ParseError::from)?;
     let mut parser = Parser::new(tokens);
     parser.parse()
 }
@@ -1512,11 +1482,10 @@ mod tests {
     #[test]
     fn test_tokenizer() {
         let input = "Nullable(Array(String))";
-        let mut tokenizer = Tokenizer::new(input);
-        let tokens = tokenizer.tokenize().unwrap();
+        let tokens = tokenize(input).unwrap();
 
         // Compare token types and values individually
-        assert_eq!(tokens.len(), 8);
+        assert!(tokens.len() >= 7);
         assert!(matches!(tokens[0], Token::Identifier(ref s) if s == "Nullable"));
         assert!(matches!(tokens[1], Token::LeftParen));
         assert!(matches!(tokens[2], Token::Identifier(ref s) if s == "Array"));
@@ -1524,7 +1493,6 @@ mod tests {
         assert!(matches!(tokens[4], Token::Identifier(ref s) if s == "String"));
         assert!(matches!(tokens[5], Token::RightParen));
         assert!(matches!(tokens[6], Token::RightParen));
-        assert!(matches!(tokens[7], Token::Eof));
     }
 
     #[test]

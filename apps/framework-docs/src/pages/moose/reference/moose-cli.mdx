@@ -97,13 +97,15 @@ moose metrics
 ```
 
 ### Peek
-View data from a data model.
+View data from a table or stream.
 ```bash
-moose peek <data_model_name> [--limit <n>] [--file <path>] [--topic]
+moose peek <name> [--limit <n>] [--file <path>] [-t|--table] [-s|--stream]
 ```
+- `<name>`: Name of the table or stream to peek
 - `--limit`: Number of rows to view (default: 5)
 - `--file`: Output to a file
-- `--topic`: Peek from topic instead of table
+- `-t, --table`: View data from a table (default if neither flag specified)
+- `-s, --stream`: View data from a stream/topic
 
 ## Generation Commands
 

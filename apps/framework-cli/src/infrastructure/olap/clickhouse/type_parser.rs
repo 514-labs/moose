@@ -151,6 +151,9 @@ pub enum ClickHouseTypeNode {
     /// Specialized Decimal with precision
     DecimalSized { bits: u16, precision: u8 },
 
+    /// DateTime with optional timezone
+    DateTime { timezone: Option<String> },
+
     /// DateTime64 with precision and optional timezone
     DateTime64 {
         precision: u8,
@@ -216,6 +219,10 @@ impl fmt::Display for ClickHouseTypeNode {
             ClickHouseTypeNode::DecimalSized { bits, precision } => {
                 write!(f, "Decimal{}({})", bits, precision)
             }
+            ClickHouseTypeNode::DateTime { timezone } => match timezone {
+                Some(tz) => write!(f, "DateTime('{}')", tz),
+                None => write!(f, "DateTime"),
+            },
             ClickHouseTypeNode::DateTime64 {
                 precision,
                 timezone,
@@ -551,6 +558,7 @@ impl Parser {
                     "Array" => self.parse_array(),
                     "LowCardinality" => self.parse_low_cardinality(),
                     "Decimal" => self.parse_decimal(),
+                    "DateTime" => self.parse_datetime(),
                     "DateTime64" => self.parse_datetime64(),
                     "FixedString" => self.parse_fixed_string(),
                     "Tuple" => self.parse_tuple(),
@@ -663,6 +671,35 @@ impl Parser {
             bits: bits as u16,
             precision,
         })
+    }
+
+    fn parse_datetime(&mut self) -> Result<ClickHouseTypeNode, ParseError> {
+        // Check if there are parameters (timezone)
+        if matches!(self.current_token(), Token::LeftParen) {
+            self.consume(&Token::LeftParen)?;
+
+            // Parse timezone string
+            let timezone = match self.current_token() {
+                Token::StringLiteral(tz) => {
+                    let tz_str = tz.clone();
+                    self.advance();
+                    Some(tz_str)
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "string literal for timezone".to_string(),
+                        found: format!("{:?}", self.current_token()),
+                    })
+                }
+            };
+
+            self.consume(&Token::RightParen)?;
+
+            Ok(ClickHouseTypeNode::DateTime { timezone })
+        } else {
+            // No parameters, just DateTime
+            Ok(ClickHouseTypeNode::DateTime { timezone: None })
+        }
     }
 
     fn parse_datetime64(&mut self) -> Result<ClickHouseTypeNode, ParseError> {
@@ -1131,6 +1168,11 @@ pub fn convert_ast_to_column_type(
             ))
         }
 
+        ClickHouseTypeNode::DateTime { timezone: _ } => {
+            // We don't currently track timezone in our framework type system
+            Ok((ColumnType::DateTime { precision: None }, false))
+        }
+
         ClickHouseTypeNode::DateTime64 {
             precision,
             timezone: _,
@@ -1290,7 +1332,7 @@ mod tests {
     #[test]
     fn test_parse_simple_types() {
         let types = vec![
-            "String", "Int32", "UInt64", "Float32", "Boolean", "UUID", "DateTime",
+            "String", "Int32", "UInt64", "Float32", "Boolean", "UUID", "Date32",
         ];
 
         for type_str in types {
@@ -1301,6 +1343,14 @@ mod tests {
                 ClickHouseTypeNode::Simple(type_str.to_string())
             );
         }
+
+        // Test DateTime specially since it's now a separate type
+        let result = parse_clickhouse_type("DateTime");
+        assert!(result.is_ok(), "Failed to parse DateTime: {:?}", result);
+        assert_eq!(
+            result.unwrap(),
+            ClickHouseTypeNode::DateTime { timezone: None }
+        );
     }
 
     #[test]
@@ -1359,23 +1409,16 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_datetime64() {
+    fn test_parse_datetime() {
         // Test without timezone
-        let result = parse_clickhouse_type("DateTime64(3)").unwrap();
-        assert_eq!(
-            result,
-            ClickHouseTypeNode::DateTime64 {
-                precision: 3,
-                timezone: None,
-            }
-        );
+        let result = parse_clickhouse_type("DateTime").unwrap();
+        assert_eq!(result, ClickHouseTypeNode::DateTime { timezone: None });
 
         // Test with timezone
-        let result = parse_clickhouse_type("DateTime64(3, 'UTC')").unwrap();
+        let result = parse_clickhouse_type("DateTime('UTC')").unwrap();
         assert_eq!(
             result,
-            ClickHouseTypeNode::DateTime64 {
-                precision: 3,
+            ClickHouseTypeNode::DateTime {
                 timezone: Some("UTC".to_string()),
             }
         );
@@ -1607,6 +1650,9 @@ mod tests {
             "Array(Int32)",
             "Array(Nullable(String))",
             "Decimal(10, 2)",
+            "DateTime",
+            "DateTime('UTC')",
+            "DateTime64(3)",
             "DateTime64(3, 'UTC')",
             "Enum8('red' = 1, 'green' = 2, 'blue' = 3)",
             "Tuple(String, Int32)",
@@ -1638,6 +1684,9 @@ mod tests {
             "Array(Int32)",
             "Array(Nullable(String))",
             "Decimal(10, 2)",
+            "DateTime",
+            "DateTime('UTC')",
+            "DateTime64(3)",
             "DateTime64(3, 'UTC')",
             "Enum8('red' = 1, 'green' = 2, 'blue' = 3)",
             "Nested(name String, id UInt32)",
@@ -1803,6 +1852,17 @@ mod tests {
             _ => panic!("Expected DateTime type"),
         }
 
+        // Test DateTime with timezone
+        let (column_type, is_nullable) =
+            convert_clickhouse_type_to_column_type("DateTime('UTC')").unwrap();
+        assert!(!is_nullable);
+        match column_type {
+            ColumnType::DateTime { precision } => {
+                assert_eq!(precision, None);
+            }
+            _ => panic!("Expected DateTime type"),
+        }
+
         // Test DateTime64 with precision
         let (column_type, is_nullable) =
             convert_clickhouse_type_to_column_type("DateTime64(3)").unwrap();
@@ -1884,5 +1944,28 @@ mod tests {
             }
             _ => panic!("Expected ClickHouseTypeError::Conversion with UnsupportedType source"),
         }
+    }
+
+    #[test]
+    fn test_parse_datetime64() {
+        // Test without timezone
+        let result = parse_clickhouse_type("DateTime64(3)").unwrap();
+        assert_eq!(
+            result,
+            ClickHouseTypeNode::DateTime64 {
+                precision: 3,
+                timezone: None,
+            }
+        );
+
+        // Test with timezone
+        let result = parse_clickhouse_type("DateTime64(3, 'UTC')").unwrap();
+        assert_eq!(
+            result,
+            ClickHouseTypeNode::DateTime64 {
+                precision: 3,
+                timezone: Some("UTC".to_string()),
+            }
+        );
     }
 }

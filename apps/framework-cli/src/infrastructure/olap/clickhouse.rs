@@ -45,7 +45,7 @@ use serde::{Deserialize, Serialize};
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Table,
+    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Nested, Table,
 };
 use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
@@ -911,6 +911,12 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
         return Ok((inner_column_type, true));
     }
 
+    // Handle Nested type structure
+    if ch_type.starts_with("Nested(") {
+        debug!("Parsing Nested type: {}", ch_type);
+        return parse_nested_type(ch_type);
+    }
+
     // Handle DateTime types with parameters
     if ch_type.starts_with("DateTime64(") {
         let precision = ch_type
@@ -1099,6 +1105,123 @@ fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, 
     }?;
 
     Ok((column_type, false))
+}
+
+/// Parses a ClickHouse Nested type string and converts it to the framework's ColumnType::Nested
+///
+/// # Arguments
+/// * `nested_type_str` - The ClickHouse Nested type string (e.g., "Nested(name String, id UInt32)")
+///
+/// # Returns
+/// * `Result<(ColumnType, bool), String>` - A tuple containing:
+///   - The converted Nested type
+///   - A boolean indicating if the type is nullable (always false for Nested)
+///
+/// # Example
+/// ```rust
+/// let (nested_type, _) = parse_nested_type("Nested(name String, id UInt32)")?;
+/// assert!(matches!(nested_type, ColumnType::Nested(_)));
+/// ```
+fn parse_nested_type(nested_type_str: &str) -> Result<(ColumnType, bool), String> {
+    // Extract the inner content between the parentheses
+    let inner_content = nested_type_str
+        .strip_prefix("Nested(")
+        .and_then(|s| s.strip_suffix(")"))
+        .ok_or_else(|| format!("Invalid Nested type format: {}", nested_type_str))?;
+
+    debug!("Parsing Nested inner content: {}", inner_content);
+
+    // If there's no content, return an empty Nested struct
+    if inner_content.trim().is_empty() {
+        return Ok((
+            ColumnType::Nested(Nested {
+                name: "nested".to_string(), // Default name
+                columns: Vec::new(),
+                jwt: false,
+            }),
+            false,
+        ));
+    }
+
+    // Parse the column definitions
+    // Format: name Type, name2 Type2, ...
+    let mut columns = Vec::new();
+
+    // Split by commas, but be careful about commas in complex types
+    // This is a simplistic approach; a proper parser would be more robust
+    let mut current_part = String::new();
+    let mut paren_depth = 0;
+
+    for ch in inner_content.chars() {
+        match ch {
+            '(' => {
+                paren_depth += 1;
+                current_part.push(ch);
+            }
+            ')' => {
+                paren_depth -= 1;
+                current_part.push(ch);
+            }
+            ',' if paren_depth == 0 => {
+                // Process the completed part
+                if !current_part.trim().is_empty() {
+                    if let Some(column) = parse_nested_column(&current_part)? {
+                        columns.push(column);
+                    }
+                    current_part.clear();
+                }
+            }
+            _ => current_part.push(ch),
+        }
+    }
+
+    // Process the last part
+    if !current_part.trim().is_empty() {
+        if let Some(column) = parse_nested_column(&current_part)? {
+            columns.push(column);
+        }
+    }
+
+    // Create the Nested type with parsed columns
+    Ok((
+        ColumnType::Nested(Nested {
+            name: format!("nested_{}", columns.len()), // Generate a name based on column count
+            columns,
+            jwt: false,
+        }),
+        false,
+    ))
+}
+
+/// Parses a single column definition within a ClickHouse Nested type
+///
+/// # Arguments
+/// * `column_def` - The column definition string (e.g., "name String")
+///
+/// # Returns
+/// * `Result<Option<Column>, String>` - The parsed Column, or None if parsing failed
+fn parse_nested_column(column_def: &str) -> Result<Option<Column>, String> {
+    let parts: Vec<&str> = column_def.trim().splitn(2, ' ').collect();
+    if parts.len() != 2 {
+        return Ok(None); // Not a valid column definition
+    }
+
+    let name = parts[0].trim();
+    let type_str = parts[1].trim();
+
+    // Convert the ClickHouse type to a Column type
+    let (data_type, is_nullable) = convert_clickhouse_type_to_column_type(type_str)?;
+
+    // Create and return the Column
+    Ok(Some(Column {
+        name: name.to_string(),
+        data_type,
+        required: !is_nullable,
+        unique: false,
+        primary_key: false,
+        default: None,
+        annotations: Vec::new(),
+    }))
 }
 
 /// Extracts ORDER BY columns from a CREATE TABLE query

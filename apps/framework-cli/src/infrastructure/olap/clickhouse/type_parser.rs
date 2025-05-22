@@ -173,15 +173,7 @@ enum Token {
     StringLiteral(String),
 
     /// A numeric literal
-    #[regex(r"[0-9]+", |lex| {
-        match lex.slice().parse() {
-            Ok(n) => n,
-            Err(_) => {
-                // This should never happen as the regex ensures we only match digits
-                0
-            }
-        }
-    })]
+    #[regex(r"[0-9]+", |lex| lex.slice().parse::<u64>().unwrap_or_default())]
     NumberLiteral(u64),
 
     /// Left parenthesis (
@@ -480,14 +472,12 @@ fn check_unterminated_string(input: &str) -> Result<(), TokenizerError> {
                 string_start = i;
                 quote_char = c;
             }
-        } else {
-            if escape {
-                escape = false;
-            } else if c == '\\' {
-                escape = true;
-            } else if c == quote_char {
-                in_string = false;
-            }
+        } else if escape {
+            escape = false;
+        } else if c == '\\' {
+            escape = true;
+        } else if c == quote_char {
+            in_string = false;
         }
     }
 

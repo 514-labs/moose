@@ -30,7 +30,7 @@ export default render({
     title: "Templates",
     href: "/templates",
   },
-  changelog: {
+  "release-notes": {
     type: "page",
     title: "Release Notes",
     href: "/release-notes",

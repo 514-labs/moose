@@ -107,28 +107,12 @@ moose peek <data_model_name> [--limit <n>] [--file <path>] [--topic]
 
 ## Generation Commands
 
-### Generate SDK
-Generate an SDK for your data models.
+### Generate Hash Token
+Generate authentication tokens for API access.
 ```bash
-moose generate sdk [--language <language>] [--destination <path>] [--project-location <path>] [--full-package] [--overwrite]
+moose generate hash-token
 ```
-- `--language`: SDK language (default: typescript)
-- `--destination`: Output directory (default: ./sdk)
-- `--project-location`: Project location (default: .)
-- `--full-package`: Generate full package
-- `--overwrite`: Force overwrite existing files
-
-## Data Management
-
-### Import
-Import data into a data model.
-```bash
-moose import <data_model_name> --file <path> [--format <format>] [--destination <url>] [--version <version>]
-```
-- `--file`: Path to import file
-- `--format`: Import format (`csv`)
-- `--destination`: Destination URL (default: http://localhost:4000/ingest)
-- `--version`: Version
+Generates both a plain-text Bearer token and its corresponding hashed version for authentication.
 
 ## Workflow Management
 
@@ -153,6 +137,14 @@ Available workflow commands:
 Display infrastructure changes for the next production deployment.
 ```bash
 moose plan [--url <url>] [--token <token>]
+```
+- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--token`: API token for authentication
+
+### Refresh
+Integrate matching tables from a remote instance into the local project.
+```bash
+moose refresh [--url <url>] [--token <token>]
 ```
 - `--url`: Remote Moose instance URL (default: http://localhost:4000)
 - `--token`: API token for authentication

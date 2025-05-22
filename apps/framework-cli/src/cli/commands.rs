@@ -121,6 +121,7 @@ pub enum Commands {
     Workflow(WorkflowArgs),
     /// Manage templates
     Template(TemplateCommands),
+    /// Integrate matching tables from a remote Moose instance into the local project
     Refresh {
         /// URL of the remote Moose instance (default: http://localhost:4000)
         #[arg(long)]

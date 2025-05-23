@@ -56,8 +56,8 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-22
 
 <ReleaseHighlights>
-  - Refactored CLI 'peek' command — Now supports peeking into both tables and streams with unified parameters.
-  - Simplified CLI experience — Removed unused commands and routines for a cleaner interface.
+  - **Refactored CLI 'peek' command** — Now supports peeking into both tables and streams with unified parameters.
+  - **Simplified CLI experience** — Removed unused commands and routines for a cleaner interface.
 </ReleaseHighlights>
 
 <Changed>
@@ -70,14 +70,17 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2360](https://github.com/514-labs/moose/pull/2360) by [callicles](https://github.com/callicles)*
 </Deprecated>
 
+<BreakingChanges>
+  None
+</BreakingChanges>
+
 ---
 
 ## 2025-05-21
 
 <ReleaseHighlights>
-  - Infrastructure state sync — Auto-syncs DB state before changes, handling manual modifications and failed DDL runs.
-  - Nested data support — Use objects and arrays in your Moose models.
-  - Enhanced documentation SEO — Improved Moose docs security and social sharing.
+  - **Infrastructure state sync** — Auto-syncs DB state before changes, handling manual modifications and failed DDL runs.
+  - **Fixed nested data type support** — Use objects and arrays in your Moose models.
 </ReleaseHighlights>
 
 <Added>
@@ -90,10 +93,6 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2357](https://github.com/514-labs/moose/pull/2357) by [georgevanderson](https://github.com/georgevanderson)*
 </Fixed>
 
-<Changed>
-  - SEO and social metadata to make Moose-powered sites easier to find and share.  
-    *[#2354](https://github.com/514-labs/moose/pull/2354) by [callicles](https://github.com/callicles)*
-</Changed>
 
 <BreakingChanges>
   None
@@ -104,7 +103,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-20
 
 <ReleaseHighlights>
-  - ClickHouse `Date` type support — Store and query native date values in your schemas.
+  - **ClickHouse `Date` type support** — Store and query native date values in your schemas.
 </ReleaseHighlights>
 
 <Added>
@@ -121,7 +120,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-19
 
 <ReleaseHighlights>
-  - Metadata map propagation — Metadata is now tracked and available in the infra map for both Python and TypeScript.
+  - **Metadata map propagation** — Metadata is now tracked and available in the infra map for both Python and TypeScript. Improves LLM accuracy and reliability when working with Moose objects.
 </ReleaseHighlights>
 
 <Added>
@@ -138,8 +137,8 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-16
 
 <ReleaseHighlights>
-  - Python `AggregateFunction` now supports `list[str]` — Enables more flexible aggregation logic in Materialized Views.
-  - Python Dead Letter Queues alpha release — Automatically route exceptions to a dead letter queue in streaming functions.
+  - **New `list[str]` support to Python `AggregateFunction`** — Enables more flexible aggregation logic in Materialized Views.
+  - **Python `DeadLetterQueue[T]` alpha release** — Automatically route exceptions to a dead letter queue in streaming functions.
 </ReleaseHighlights>
 
 <Changed>
@@ -161,7 +160,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-15
 
 <ReleaseHighlights>
-  - Fixed TypeScript JSON column casing — Prevents bugs when working with JSON fields in TypeScript.
+  - **Fixed TypeScript JSON column casing** — Prevents bugs when working with JSON fields in TypeScript.
 </ReleaseHighlights>
 
 <Fixed>
@@ -178,9 +177,9 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-14
 
 <ReleaseHighlights>
-  - TypeScript JSON columns are now type-safe — Prevents subtle bugs and improves code reliability.
-  - Ingestion config simplified — Less config needed for ingestion setup.
-  - Python enum support improved — More robust data models.
+  - **TypeScript JSON columns are now type-safe** — Prevents subtle bugs and improves code reliability.
+  - **Ingestion config simplified** — Less config needed for ingestion setup.
+  - **Python `enum` support improved** — More robust data models.
 </ReleaseHighlights>
 
 <Added>
@@ -210,8 +209,8 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-13
 
 <ReleaseHighlights>
-  - New `refresh` command — Quickly reload data and schema changes from changes applied directly to your database outside of Moose.
-  - Python: LowCardinality type support — Better performance for categorical data.
+  - **New `refresh` CLI command** — Quickly reload data and schema changes from changes applied directly to your database outside of Moose.
+  - **Python: `LowCardinality` type support** — Better performance for categorical data.
 </ReleaseHighlights>
 
 <Added>
@@ -230,7 +229,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-10
 
 <ReleaseHighlights>
-  - Materialized view changes are now ordered based on dependencies — Reduces migration errors and improves reliability.
+  - **Dependency-based execution order for Materialized Views** — Reduces migration errors and improves reliability.
 </ReleaseHighlights>
 
 <Changed>
@@ -238,12 +237,17 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2294](https://github.com/514-labs/moose/pull/2294) by [callicles](https://github.com/callicles)*
 </Changed>
 
+<BreakingChanges>
+  None
+</BreakingChanges>
+
 ---
 
 ## 2025-05-07
 
 <ReleaseHighlights>
-  - Improved reliability for Python data handling — datetime64 and row parsing fixes in QueryClient.
+  - **Python `datetime64` support** - Enables more precise datetime handling in Python data models.
+  - **Type mapping in Python `QueryClient`** - Automatically maps ClickHouse query result rows to the correct Pydantic model types.
 </ReleaseHighlights>
 
 <Added>
@@ -256,12 +260,16 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2299](https://github.com/514-labs/moose/pull/2299) by [phiSgr](https://github.com/phiSgr)*
 </Fixed>
 
+<BreakingChanges>
+  None
+</BreakingChanges>
+
 ---
 
 ## 2025-05-06
 
 <ReleaseHighlights>
-  - Unsigned integer (uint) type support in TypeScript — Improves type safety for numeric fields.
+  - **`uint` type support in TypeScript** — Enables type safety for unsigned integer fields in Typescript data models.
 </ReleaseHighlights>
 
 <Added>
@@ -269,12 +277,16 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2295](https://github.com/514-labs/moose/pull/2295) by [phiSgr](https://github.com/phiSgr)*
 </Added>
 
+<BreakingChanges>
+  None
+</BreakingChanges>
+
 ---
 
 ## 2025-05-01
 
 <ReleaseHighlights>
-  - Explicit dependency tracking for materialized views — Improves data lineage, migration reliability, and documentation.
+  - **Explicit dependency tracking for materialized views** — Improves data lineage, migration reliability, and documentation.
 </ReleaseHighlights>
 
 <Added>
@@ -282,13 +294,18 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2282](https://github.com/514-labs/moose/pull/2282) by [callicles](https://github.com/callicles)*
 </Added>
 
+<BreakingChanges>
+  - Required `selectTables` field in `MaterializedView` config that must specify an array of `OlapTable` objects for the source tables.  
+    *[#2282](https://github.com/514-labs/moose/pull/2282) by [callicles](https://github.com/callicles)*
+</BreakingChanges>
+
 ---
 
 ## 2025-04-30
 
 <ReleaseHighlights>
-  - JSON_ARRAY ingestion now accepts both arrays and single elements — More flexible ingestion for users.
-  - Python rich ClickHouse type support — Added support for advanced types in Python models:
+  - **More flexible `JSON_ARRAY` configuration for `IngestApi`** — Now accepts both arrays and single elements. Default config is now `JSON_ARRAY`.
+  - **Python rich ClickHouse type support** — Added support for advanced types in Python models:
     - `Decimal`: `clickhouse_decimal(precision, scale)`
     - `datetime` with precision: `clickhouse_datetime64(precision)`
     - `date`: `date`
@@ -297,7 +314,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 </ReleaseHighlights>
 
 <Changed>
-  - JSON_ARRAY to allow both array and single element ingestion for more flexible data handling.  
+  - `JSON_ARRAY` to allow both array and single element ingestion for more flexible data handling.  
     *[#2285](https://github.com/514-labs/moose/pull/2285) by [phiSgr](https://github.com/phiSgr)*
 </Changed>
 
@@ -311,6 +328,10 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
   for more expressive data modeling.  
   *[#2284](https://github.com/514-labs/moose/pull/2284) by [phiSgr](https://github.com/phiSgr)*
 </Added>
+
+<BreakingChanges>
+  None
+</BreakingChanges>
 
 
 

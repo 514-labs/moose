@@ -17,6 +17,9 @@ pub enum OlapChangesError {
     DatabaseError(String),
     #[error("Failed to order OLAP changes")]
     OrderingError(#[from] ddl_ordering::PlanOrderingError),
+
+    #[error("Failed to parse ClickHouse type: {0}")]
+    ClickhouseTypeParser(#[from] clickhouse::type_parser::ClickHouseTypeError),
 }
 
 /// Trait defining operations that can be performed on an OLAP database

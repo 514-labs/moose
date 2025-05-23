@@ -53,6 +53,30 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 
 ---
 
+## 2025-05-23
+
+<ReleaseHighlights>
+  - **TypeScript `DeadLetterQueue<T>` support** — Handle failed streaming function messages with type-safe dead letter queues in TypeScript.
+  - **Improved Python `DeadLetterModel` API** — Renamed `as_t` to `as_typed` for better clarity.
+</ReleaseHighlights>
+
+<Added>
+  - TypeScript `DeadLetterQueue<T>` class with type guards and transform methods for handling failed streaming function messages with full type safety.  
+    *[#2356](https://github.com/514-labs/moose/pull/2356) by [phiSgr](https://github.com/phiSgr)*
+</Added>
+
+<Changed>
+  - Renamed `DeadLetterModel.as_t()` to `DeadLetterModel.as_typed()` in Python for better API clarity and consistency.  
+    *[#2356](https://github.com/514-labs/moose/pull/2356) by [phiSgr](https://github.com/phiSgr)*
+</Changed>
+
+<BreakingChanges>
+  - `DeadLetterModel.as_t()` method renamed to `as_typed()` in Python. Update your code to use the new method name.  
+    *[#2356](https://github.com/514-labs/moose/pull/2356) by [phiSgr](https://github.com/phiSgr)*
+</BreakingChanges>
+
+---
+
 ## 2025-05-22
 
 <ReleaseHighlights>
@@ -160,7 +184,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-15
 
 <ReleaseHighlights>
-  - **Fixed TypeScript JSON column casing** — Prevents bugs when working with JSON fields in TypeScript.
+  - **Hotfix — casing fix for `JSON` columns in TypeScript.
 </ReleaseHighlights>
 
 <Fixed>
@@ -177,22 +201,19 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 ## 2025-05-14
 
 <ReleaseHighlights>
-  - **TypeScript JSON columns are now type-safe** — Prevents subtle bugs and improves code reliability.
+  - **Introduced TypeScript JSON columns** — Use `Record<string, any>` for type-safe JSON fields.
   - **Ingestion config simplified** — Less config needed for ingestion setup.
   - **Python `enum` support improved** — More robust data models.
 </ReleaseHighlights>
 
 <Added>
+  - TypeScript ClickHouse JSON columns to use `Record<string, any>` for type-safe JSON fields.
+    *[#2317](https://github.com/514-labs/moose/pull/2317) by [phiSgr](https://github.com/phiSgr)*
   - Pydantic mixin for parsing integer enums by name for more robust Python data models.  
     *[#2316](https://github.com/514-labs/moose/pull/2316) by [phiSgr](https://github.com/phiSgr)*
   - Better Python enum handling in data models for easier enum usage.  
     *[#2315](https://github.com/514-labs/moose/pull/2315) by [phiSgr](https://github.com/phiSgr)*
 </Added>
-
-<Changed>
-  - TypeScript ClickHouse JSON columns to use `Record<string, any>` instead of `any` for improved type safety and bug prevention.  
-    *[#2317](https://github.com/514-labs/moose/pull/2317) by [phiSgr](https://github.com/phiSgr)*
-</Changed>
 
 <Deprecated>
   - `IngestionFormat` from `IngestApi` config for simpler ingestion setup.  
@@ -200,8 +221,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 </Deprecated>
 
 <BreakingChanges>
-  - TypeScript: `any` is no longer allowed for ClickHouse JSON columns — Use `Record<string, any>`. Update your code if you used `any`.  
-    *[#2317](https://github.com/514-labs/moose/pull/2317) by [phiSgr](https://github.com/phiSgr)*
+  None
 </BreakingChanges>
 
 ---
@@ -256,7 +276,7 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
 </Added>
 
 <Fixed>
-  - datetime64 parsing and row parsing in QueryClient for more reliable data handling in Python.  
+  - `datetime64` parsing and row parsing in QueryClient for more reliable data handling in Python.  
     *[#2299](https://github.com/514-labs/moose/pull/2299) by [phiSgr](https://github.com/phiSgr)*
 </Fixed>
 

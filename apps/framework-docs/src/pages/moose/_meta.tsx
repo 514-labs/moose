@@ -8,6 +8,7 @@ import {
   BookOpen,
   Rocket,
   BookMarked,
+  History,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -34,6 +35,10 @@ const rawMeta = {
   reference: {
     title: "Reference",
     Icon: BookMarked,
+  },
+  changelog: {
+    title: "Changelog",
+    Icon: History,
   },
 };
 

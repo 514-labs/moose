@@ -18,6 +18,8 @@ import {
   Stream,
   ConsumptionApi,
   SqlResource,
+  ConsumerConfig,
+  TransformConfig,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
@@ -380,20 +382,26 @@ export const getStreamingFunctions = async () => {
   await require(`${process.cwd()}/app/index.ts`);
 
   const registry = getMooseInternal();
-  const transformFunctions = new Map<string, (data: unknown) => unknown>();
+  const transformFunctions = new Map<
+    string,
+    [(data: unknown) => unknown, TransformConfig<any> | ConsumerConfig<any>]
+  >();
 
   registry.streams.forEach((stream) => {
     stream._transformations.forEach((transforms, destinationName) => {
       transforms.forEach(([_, transform, config]) => {
         const transformFunctionKey = `${stream.name}_${destinationName}${config.version ? `_${config.version}` : ""}`;
         console.log(`getStreamingFunctions: ${transformFunctionKey}`);
-        transformFunctions.set(transformFunctionKey, transform);
+        transformFunctions.set(transformFunctionKey, [transform, config]);
       });
     });
 
     stream._consumers.forEach((consumer) => {
       const consumerFunctionKey = `${stream.name}_<no-target>${consumer.config.version ? `_${consumer.config.version}` : ""}`;
-      transformFunctions.set(consumerFunctionKey, consumer.consumer);
+      transformFunctions.set(consumerFunctionKey, [
+        consumer.consumer,
+        consumer.config,
+      ]);
     });
   });
 

@@ -31,6 +31,8 @@ export * from "./scripts/task";
 export {
   OlapTable,
   Stream,
+  DeadLetterModel,
+  DeadLetterQueue,
   IngestApi,
   ConsumptionApi,
   IngestPipeline,

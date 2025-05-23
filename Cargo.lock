@@ -2560,7 +2560,6 @@ dependencies = [
  "hyper 1.5.2",
  "hyper-tls 0.6.0",
  "hyper-util",
- "indexmap 2.7.0",
  "itertools 0.13.0",
  "jsonwebtoken",
  "lazy_static",

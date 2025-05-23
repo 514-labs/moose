@@ -1,4 +1,5 @@
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::project::{Project, ProjectFileError};
 
 use log::{debug, error, info, warn};
@@ -18,22 +19,42 @@ pub enum WorkerProcessError {
 
 const SCRIPTS_BIN: &str = "scripts";
 
-pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError> {
+pub async fn start_worker(
+    project: &Project,
+    clickhouse_config: &ClickHouseConfig,
+) -> Result<Child, WorkerProcessError> {
     let project_path = project.project_location.clone();
     let temporal_url = project.temporal_config.temporal_url();
     let scripts_dir = project.scripts_dir();
+    let host_port = clickhouse_config.host_port.to_string();
 
-    let args: Vec<&str> = vec![
-        scripts_dir.to_str().unwrap(),
-        "--temporal-url",
-        temporal_url.as_str(),
-        "--client-cert",
-        project.temporal_config.client_cert.as_str(),
-        "--client-key",
-        project.temporal_config.client_key.as_str(),
-        "--api-key",
-        project.temporal_config.api_key.as_str(),
+    log::debug!("clickhouse_config: {:?}", clickhouse_config);
+
+    let mut string_args = vec![
+        scripts_dir.to_str().unwrap().to_string(),
+        clickhouse_config.db_name.clone(),
+        clickhouse_config.host.clone(),
+        host_port,
+        clickhouse_config.user.clone(),
+        clickhouse_config.password.clone(),
     ];
+
+    if clickhouse_config.use_ssl {
+        string_args.push("--clickhouse-use-ssl".to_string());
+    }
+
+    string_args.extend([
+        "--temporal-url".to_string(),
+        temporal_url,
+        "--client-cert".to_string(),
+        project.temporal_config.client_cert.clone(),
+        "--client-key".to_string(),
+        project.temporal_config.client_key.clone(),
+        "--api-key".to_string(),
+        project.temporal_config.api_key.clone(),
+    ]);
+
+    let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();
 
     let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args)?;
 

@@ -76,6 +76,7 @@ impl FunctionProcessRegistry {
                 } else if function_process.is_ts_function_process() {
                     Ok(typescript::streaming::run(
                         &self.project.redpanda_config,
+                        &self.project.clickhouse_config,
                         &source_topic,
                         Some(&target_topic),
                         &function_process.executable,
@@ -118,6 +119,7 @@ impl FunctionProcessRegistry {
                 } else if function_process.is_ts_function_process() {
                     Ok(typescript::streaming::run(
                         &self.project.redpanda_config,
+                        &self.project.clickhouse_config,
                         &source_topic,
                         None,
                         &function_process.executable,

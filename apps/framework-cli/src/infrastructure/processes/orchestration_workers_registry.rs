@@ -95,7 +95,11 @@ impl OrchestrationWorkersRegistry {
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {
-            let child = typescript::scripts_worker::start_worker(&self.project).await?;
+            let child = typescript::scripts_worker::start_worker(
+                &self.project,
+                &self.project.clickhouse_config,
+            )
+            .await?;
             self.workers.insert(orchestration_worker.id(), child);
         }
         Ok(())

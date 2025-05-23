@@ -149,13 +149,34 @@ type SyncOrAsyncTransform<T, U> = (
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
 type Consumer<T> = (record: T) => Promise<void> | void;
 
-export interface TransformConfig {
-  version?: string;
-  metadata?: { description?: string };
+export interface DeadLetterModel {
+  originalRecord: Record<string, any>;
+  errorMessage: string;
+  errorType: string;
+  failedAt: Date;
+  source: "api" | "transform" | "table";
 }
 
-export interface ConsumerConfig {
+export interface DeadLetter<T> extends DeadLetterModel {
+  asTyped: () => T;
+}
+
+function attachTypeGuard<T>(
+  dl: DeadLetterModel,
+  typeGuard: (input: any) => T,
+): asserts dl is DeadLetter<T> {
+  (dl as any).asTyped = () => typeGuard(dl.originalRecord);
+}
+
+export interface TransformConfig<T> {
   version?: string;
+  metadata?: { description?: string };
+  deadLetterQueue?: DeadLetterQueue<T>;
+}
+
+export interface ConsumerConfig<T> {
+  version?: string;
+  deadLetterQueue?: DeadLetterQueue<T>;
 }
 
 /**
@@ -194,10 +215,13 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
 
   _transformations = new Map<
     string,
-    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig][]
+    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig<T>][]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
-  _consumers = new Array<{ consumer: Consumer<T>; config: ConsumerConfig }>();
+  _consumers = new Array<{
+    consumer: Consumer<T>;
+    config: ConsumerConfig<T>;
+  }>();
 
   /**
    * Adds a transformation step that processes messages from this stream and sends the results to a destination stream.
@@ -209,11 +233,11 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    *                       Return `null` or `undefined` or an empty array `[]` to filter out a message. Return an array to emit multiple messages.
    * @param config Optional configuration for this specific transformation step, like a version.
    */
-  addTransform = <U>(
+  addTransform<U>(
     destination: Stream<U>,
     transformation: SyncOrAsyncTransform<T, U>,
-    config?: TransformConfig,
-  ) => {
+    config?: TransformConfig<T>,
+  ) {
     const transformConfig = config ?? {};
 
     if (this._transformations.has(destination.name)) {
@@ -230,7 +254,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
         [destination, transformation, transformConfig],
       ]);
     }
-  };
+  }
 
   /**
    * Adds a consumer function that processes messages from this stream.
@@ -239,7 +263,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    * @param consumer A function that takes a message of type T and performs an action (e.g., side effect, logging). Should return void or Promise<void>.
    * @param config Optional configuration for this specific consumer, like a version.
    */
-  addConsumer = (consumer: Consumer<T>, config?: ConsumerConfig) => {
+  addConsumer(consumer: Consumer<T>, config?: ConsumerConfig<T>) {
     const consumerConfig = config ?? {};
     const hasVersion = this._consumers.some(
       (existing) => existing.config.version === consumerConfig.version,
@@ -248,7 +272,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     if (!hasVersion) {
       this._consumers.push({ consumer, config: consumerConfig });
     }
-  };
+  }
 
   /**
    * Helper method for `addMultiTransform` to specify the destination and values for a routed message.
@@ -265,9 +289,81 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    * @param transformation A function that takes a message of type T and returns an array of `RoutedMessage` objects,
    *                       each specifying a destination stream and the message(s) to send to it.
    */
-  addMultiTransform = (transformation: (record: T) => [RoutedMessage]) => {
+  addMultiTransform(transformation: (record: T) => [RoutedMessage]) {
     this._multipleTransformations = transformation;
-  };
+  }
+}
+
+export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
+  constructor(name: string, config?: StreamConfig<DeadLetterModel>);
+
+  /** @internal **/
+  constructor(
+    name: string,
+    config: StreamConfig<DeadLetterModel>,
+    schema: IJsonSchemaCollection.IV3_1,
+    columns: Column[],
+    validate: (originalRecord: any) => T,
+  );
+
+  constructor(
+    name: string,
+    config?: StreamConfig<DeadLetterModel>,
+    schema?: IJsonSchemaCollection.IV3_1,
+    columns?: Column[],
+    typeGuard?: (originalRecord: any) => T,
+  ) {
+    if (
+      schema === undefined ||
+      columns === undefined ||
+      typeGuard === undefined
+    ) {
+      throw new Error(
+        "Supply the type param T so that the schema is inserted by the compiler plugin.",
+      );
+    }
+
+    super(name, config ?? {}, schema, columns);
+    this.typeGuard = typeGuard;
+    getMooseInternal().streams.set(name, this);
+  }
+  private typeGuard: (originalRecord: any) => T;
+
+  addTransform<U>(
+    destination: Stream<U>,
+    transformation: SyncOrAsyncTransform<DeadLetter<T>, U>,
+    config?: TransformConfig<DeadLetterModel>,
+  ) {
+    const withValidate: SyncOrAsyncTransform<DeadLetterModel, U> = (
+      deadLetter,
+    ) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return transformation(deadLetter);
+    };
+    super.addTransform(destination, withValidate, config);
+  }
+  addConsumer(
+    consumer: Consumer<DeadLetter<T>>,
+    config?: ConsumerConfig<DeadLetterModel>,
+  ) {
+    const withValidate: Consumer<DeadLetterModel> = (deadLetter) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return consumer(deadLetter);
+    };
+    super.addConsumer(withValidate, config);
+  }
+
+  addMultiTransform(
+    transformation: (record: DeadLetter<T>) => [RoutedMessage],
+  ) {
+    const withValidate: (record: DeadLetterModel) => [RoutedMessage] = (
+      deadLetter,
+    ) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return transformation(deadLetter);
+    };
+    super.addMultiTransform(withValidate);
+  }
 }
 
 class RoutedMessage {

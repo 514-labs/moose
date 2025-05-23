@@ -18,6 +18,7 @@ import {
   toQuery,
   toStaticQuery,
 } from "../index";
+import { Readable } from "stream";
 
 /**
  * Configuration options for an OLAP (Online Analytical Processing) table.
@@ -47,6 +48,84 @@ export type OlapConfig<T> = {
    */
   version?: string;
 };
+
+/**
+ * Represents a failed record during insertion with error details
+ */
+export interface FailedRecord<T> {
+  /** The original record that failed to insert */
+  record: T;
+  /** The error message describing why the insertion failed */
+  error: string;
+  /** Optional: The index of this record in the original batch */
+  index?: number;
+}
+
+/**
+ * Result of an insert operation with detailed success/failure information
+ */
+export interface InsertResult<T> {
+  /** Number of records successfully inserted */
+  successful: number;
+  /** Number of records that failed to insert */
+  failed: number;
+  /** Total number of records processed */
+  total: number;
+  /** Detailed information about failed records (if record isolation was used) */
+  failedRecords?: FailedRecord<T>[];
+}
+
+/**
+ * Error handling strategy for insert operations
+ */
+export type ErrorStrategy =
+  | "fail-fast" // Fail immediately on any error (default)
+  | "discard" // Discard bad records and continue with good ones
+  | "isolate"; // Retry individual records to isolate failures
+
+/**
+ * Options for insert operations
+ */
+export interface InsertOptions {
+  /** Maximum number of bad records to tolerate before failing */
+  allowErrors?: number;
+  /** Maximum ratio of bad records to tolerate (0.0 to 1.0) before failing */
+  allowErrorsRatio?: number;
+  /** Error handling strategy */
+  strategy?: ErrorStrategy;
+  /** Whether to enable dead letter queue for failed records (future feature) */
+  deadLetterQueue?: boolean;
+  /** Whether to validate data against schema before insertion (default: true) */
+  validate?: boolean;
+  /** Whether to skip validation for individual records during 'isolate' strategy retries (default: false) */
+  skipValidationOnRetry?: boolean;
+}
+
+/**
+ * Validation result for a record with detailed error information
+ */
+export interface ValidationError {
+  /** The original record that failed validation */
+  record: any;
+  /** Detailed validation error message */
+  error: string;
+  /** Optional: The index of this record in the original batch */
+  index?: number;
+  /** The path to the field that failed validation */
+  path?: string;
+}
+
+/**
+ * Result of data validation with success/failure breakdown
+ */
+export interface ValidationResult<T> {
+  /** Records that passed validation */
+  valid: T[];
+  /** Records that failed validation with detailed error information */
+  invalid: ValidationError[];
+  /** Total number of records processed */
+  total: number;
+}
 
 /**
  * Configuration options for a data stream (e.g., a Redpanda topic).
@@ -117,6 +196,11 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   /** @internal */
   public readonly kind = "OlapTable";
 
+  /** @internal Memoized ClickHouse client for reusing connections across insert calls */
+  private _memoizedClient?: any;
+  /** @internal Hash of the configuration used to create the memoized client */
+  private _configHash?: string;
+
   /**
    * Creates a new OlapTable instance.
    * @param name The name of the table. This name is used for the underlying ClickHouse table.
@@ -141,6 +225,323 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     super(name, config ?? {}, schema, columns);
 
     getMooseInternal().tables.set(name, this);
+  }
+
+  /**
+   * Gets or creates a memoized ClickHouse client.
+   * The client is cached and reused across multiple insert calls for better performance.
+   * If the configuration changes, a new client will be created.
+   *
+   * @private
+   */
+  private async getMemoizedClient() {
+    const { readProjectConfig } = await import("../config");
+    const { getClickhouseClient } = await import("../commons");
+
+    // Read current configuration
+    const config = readProjectConfig();
+    const clickhouseConfig = config.clickhouse_config;
+
+    // Create a hash of the current configuration to detect changes
+    const currentConfigHash = JSON.stringify({
+      host: clickhouseConfig.host,
+      port: clickhouseConfig.host_port,
+      user: clickhouseConfig.user,
+      password: clickhouseConfig.password,
+      database: clickhouseConfig.db_name,
+      useSSL: clickhouseConfig.use_ssl,
+    });
+
+    // If we have a cached client and the config hasn't changed, reuse it
+    if (this._memoizedClient && this._configHash === currentConfigHash) {
+      return { client: this._memoizedClient, config: clickhouseConfig };
+    }
+
+    // Close existing client if config changed
+    if (this._memoizedClient && this._configHash !== currentConfigHash) {
+      try {
+        await this._memoizedClient.close();
+      } catch (error) {
+        // Ignore errors when closing old client
+      }
+    }
+
+    // Create new client
+    const client = getClickhouseClient({
+      username: clickhouseConfig.user,
+      password: clickhouseConfig.password,
+      database: clickhouseConfig.db_name,
+      useSSL: clickhouseConfig.use_ssl ? "true" : "false",
+      host: clickhouseConfig.host,
+      port: clickhouseConfig.host_port.toString(),
+    });
+
+    // Cache the new client and config hash
+    this._memoizedClient = client;
+    this._configHash = currentConfigHash;
+
+    return { client, config: clickhouseConfig };
+  }
+
+  /**
+   * Closes the memoized ClickHouse client if it exists.
+   * This is useful for cleaning up connections when the table instance is no longer needed.
+   * The client will be automatically recreated on the next insert call if needed.
+   */
+  async closeClient(): Promise<void> {
+    if (this._memoizedClient) {
+      try {
+        await this._memoizedClient.close();
+      } catch (error) {
+        // Ignore errors when closing
+      } finally {
+        this._memoizedClient = undefined;
+        this._configHash = undefined;
+      }
+    }
+  }
+
+  /**
+   * Retries individual records from a failed batch to isolate which ones are causing errors.
+   * This provides detailed error information for each failed record.
+   *
+   * @private
+   */
+  private async retryIndividualRecords(
+    client: any,
+    tableName: string,
+    records: T[],
+  ): Promise<{ successful: T[]; failed: FailedRecord<T>[] }> {
+    const successful: T[] = [];
+    const failed: FailedRecord<T>[] = [];
+
+    // Process records individually to isolate failures
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      try {
+        await client.insert({
+          table: tableName,
+          values: [record],
+          format: "JSONEachRow",
+        });
+        successful.push(record);
+      } catch (error) {
+        failed.push({
+          record,
+          error: error instanceof Error ? error.message : String(error),
+          index: i,
+        });
+      }
+    }
+
+    return { successful, failed };
+  }
+
+  /**
+   * Inserts data directly into the ClickHouse table with enhanced error handling.
+   * This method establishes a direct connection to ClickHouse using the project configuration
+   * and inserts the provided data into the versioned table.
+   *
+   * The ClickHouse client is memoized and reused across multiple insert calls for better performance.
+   * If the configuration changes, a new client will be automatically created.
+   *
+   * @param data Array of objects conforming to the table schema, or a Node.js Readable stream
+   * @param options Optional configuration for error handling and insertion behavior
+   * @returns Promise resolving to detailed insertion results
+   * @throws {ConfigError} When configuration cannot be read or parsed
+   * @throws {ClickHouseError} When insertion fails based on the error strategy
+   *
+   * @example
+   * ```typescript
+   * // Create an OlapTable instance
+   * const userTable = new OlapTable<User>('users');
+   *
+   * // Insert data with array input
+   * const result1 = await userTable.insert([
+   *   { id: 1, name: 'John', email: 'john@example.com' },
+   *   { id: 2, name: 'Jane', email: 'jane@example.com' }
+   * ]);
+   *
+   * // Insert data with stream input (useful for large datasets)
+   * const dataStream = new Readable({
+   *   objectMode: true,
+   *   read() {
+   *     // Stream implementation
+   *   }
+   * });
+   * const result2 = await userTable.insert(dataStream, { strategy: 'fail-fast' });
+   *
+   * // Insert with error handling strategies (arrays only for 'isolate' strategy)
+   * const result3 = await userTable.insert(mixedData, {
+   *   strategy: 'isolate',
+   *   allowErrorsRatio: 0.1
+   * });
+   *
+   * // Optional: Clean up connection when completely done
+   * await userTable.closeClient();
+   * ```
+   */
+  async insert(
+    data: T[] | Readable,
+    options?: InsertOptions,
+  ): Promise<InsertResult<T>> {
+    const isStream = data instanceof Readable;
+    const strategy = options?.strategy || "fail-fast";
+
+    // Validate strategy compatibility with streams
+    if (isStream && strategy === "isolate") {
+      throw new Error(
+        "The 'isolate' error strategy is not supported with stream input. Use 'fail-fast' or 'discard' instead.",
+      );
+    }
+
+    if (isStream && !data) {
+      return {
+        successful: 0,
+        failed: 0,
+        total: 0,
+      };
+    }
+
+    if (!isStream && (!data || data.length === 0)) {
+      return {
+        successful: 0,
+        failed: 0,
+        total: 0,
+      };
+    }
+
+    const { generateTableName } = await import("../config");
+
+    // Get memoized client and current config
+    const { client, config: clickhouseConfig } = await this.getMemoizedClient();
+
+    // Generate the versioned table name
+    const tableName = generateTableName(this.name);
+
+    try {
+      // Prepare insert options
+      const insertOptions: any = {
+        table: tableName,
+        format: "JSONEachRow",
+      };
+
+      // Handle stream vs array input
+      if (isStream) {
+        insertOptions.values = data; // ClickHouse client accepts streams in the values field
+      } else {
+        insertOptions.values = data;
+      }
+
+      // For discard strategy, add ClickHouse error tolerance settings
+      if (
+        strategy === "discard" &&
+        (options?.allowErrors !== undefined ||
+          options?.allowErrorsRatio !== undefined)
+      ) {
+        const querySettings: Record<string, any> = {};
+
+        if (options.allowErrors !== undefined) {
+          querySettings.input_format_allow_errors_num = options.allowErrors;
+        }
+
+        if (options.allowErrorsRatio !== undefined) {
+          querySettings.input_format_allow_errors_ratio =
+            options.allowErrorsRatio;
+        }
+
+        insertOptions.query_params = querySettings;
+      }
+
+      // Try insertion
+      await client.insert(insertOptions);
+
+      // For streams, we can't easily count records, so we return success with unknown count
+      if (isStream) {
+        return {
+          successful: -1, // -1 indicates stream mode where count is unknown
+          failed: 0,
+          total: -1,
+        };
+      } else {
+        return {
+          successful: data.length,
+          failed: 0,
+          total: data.length,
+        };
+      }
+    } catch (batchError) {
+      // Handle insertion failure based on strategy
+      switch (strategy) {
+        case "fail-fast":
+          throw new Error(
+            `Failed to insert data into table ${tableName}: ${batchError}`,
+          );
+
+        case "discard":
+          // With discard strategy and ClickHouse error tolerance, this shouldn't happen
+          // unless the error threshold was exceeded
+          throw new Error(
+            `Too many errors during insert into table ${tableName}. Error threshold exceeded: ${batchError}`,
+          );
+
+        case "isolate":
+          // Only supported for arrays, not streams
+          if (isStream) {
+            throw new Error(
+              `Isolate strategy is not supported with stream input: ${batchError}`,
+            );
+          }
+
+          // Retry individual records to isolate failures and provide detailed error information
+          try {
+            const { successful, failed } = await this.retryIndividualRecords(
+              client,
+              tableName,
+              data as T[],
+            );
+
+            // Check if we exceeded error thresholds
+            const failedCount = failed.length;
+            const failedRatio = failedCount / (data as T[]).length;
+
+            if (
+              options?.allowErrors !== undefined &&
+              failedCount > options.allowErrors
+            ) {
+              throw new Error(
+                `Too many failed records: ${failedCount} > ${options.allowErrors}. Failed records: ${failed.map((f) => f.error).join(", ")}`,
+              );
+            }
+
+            if (
+              options?.allowErrorsRatio !== undefined &&
+              failedRatio > options.allowErrorsRatio
+            ) {
+              throw new Error(
+                `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${failed.map((f) => f.error).join(", ")}`,
+              );
+            }
+
+            // Return detailed results
+            return {
+              successful: successful.length,
+              failed: failed.length,
+              total: (data as T[]).length,
+              failedRecords: failed,
+            };
+          } catch (isolationError) {
+            throw new Error(
+              `Failed to insert data into table ${tableName} during record isolation: ${isolationError}`,
+            );
+          }
+
+        default:
+          throw new Error(`Unknown error strategy: ${strategy}`);
+      }
+    }
+    // Note: We don't close the client here since it's memoized for reuse
+    // Use closeClient() method if you need to explicitly close the connection
   }
 }
 

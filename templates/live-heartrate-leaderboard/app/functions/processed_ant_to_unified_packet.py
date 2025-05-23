@@ -11,7 +11,7 @@ from moose_lib import Logger
 def load_device_dict():
     json_path = Path(__file__).parents[2] / 'mock-user-db.json'
     logger = Logger(action="SF")
-    logger.info(f'Starting streaming function and loading mock user db from {json_path}')
+    # logger.info(f'Starting streaming function and loading mock user db from {json_path}')
 
     with open(json_path) as f:
         device_dict = json.load(f)

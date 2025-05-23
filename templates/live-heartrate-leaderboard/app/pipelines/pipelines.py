@@ -5,8 +5,10 @@ from app.datamodels.UnifiedHRPacket import UnifiedHRPacket
 from app.datamodels.ProcessedAntHRPacket import ProcessedAntHRPacket
 from app.datamodels.RawAntHRPacket import RawAntHRPacket
 from app.datamodels.BluetoothHRPacket import BluetoothHRPacket
+from app.datamodels.AppleWatchHRPacket import AppleWatchHRPacket
 
 # Instantiate functions for kafka stream processing
+from app.functions.applewatch_to_unified_packet import apple_watch_to_unified
 from app.functions.raw_ant_to_processed_ant_packet import RawAntHRPacket__ProcessedAntHRPacket
 from app.functions.processed_ant_to_unified_packet import processedAntHRPacket__UNIFIED_HR_PACKET
 from app.functions.bluetooth_to_unified_packet import bluetoothHRPacket__UNIFIED_HRM_MODEL
@@ -37,6 +39,13 @@ bluetoothHRPipeline = IngestPipeline[BluetoothHRPacket]("bluetooth_hr_packet", I
     stream=True,
     table=True
 ))
+# Create a ingest pipeline for Appple Health
+
+appleWatchHRPipeline = IngestPipeline[AppleWatchHRPacket]("apple_health_watch_packet", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))
 
 # Transform RawAntHRPacket to ProcessedAntHRPacket in stream
 rawAntHRPipeline.get_stream().add_transform(
@@ -52,4 +61,10 @@ processedAntHRPipeline.get_stream().add_transform(
 bluetoothHRPipeline.get_stream().add_transform(
     destination=unifiedHRPipeline.get_stream(),
     transformation=bluetoothHRPacket__UNIFIED_HRM_MODEL
+)
+
+
+appleWatchHRPipeline.get_stream().add_transform(
+    destination=unifiedHRPipeline.get_stream(),
+    transformation=apple_watch_to_unified
 )

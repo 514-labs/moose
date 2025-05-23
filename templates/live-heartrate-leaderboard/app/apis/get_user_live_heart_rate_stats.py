@@ -61,10 +61,8 @@ def run(client: MooseClient, params: QueryParams) -> HeartRateStats:
                  (hr_timestamp_seconds - lagInFrame(hr_timestamp_seconds, 1, hr_timestamp_seconds - 1) OVER (PARTITION BY user_name ORDER BY hr_timestamp_seconds)))/60 as calories_burned
             FROM unified_hr_packet
             WHERE user_name = {user_name}
-            AND hr_timestamp_seconds >= (
-                SELECT MAX(hr_timestamp_seconds) - {window_seconds}
-                FROM unified_hr_packet
-                WHERE user_name = {user_name}
+            AND processed_timestamp >= (
+                toDateTime64(now(), 3) - toIntervalSecond(toInt32({window_seconds}))
             )
         )
     SELECT 

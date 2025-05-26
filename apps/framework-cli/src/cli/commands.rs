@@ -15,7 +15,11 @@ pub enum Commands {
         name: String,
 
         /// Template to use for the project
-        template: String,
+        #[arg(
+            conflicts_with = "from_remote",
+            required_unless_present = "from_remote"
+        )]
+        template: Option<String>,
 
         /// Location of your app or service
         #[arg(short, long)]
@@ -24,6 +28,14 @@ pub enum Commands {
         /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
         #[arg(long)]
         no_fail_already_exists: bool,
+
+        /// Initialize from a remote template repository
+        #[arg(long, required_unless_present = "template")]
+        from_remote: Option<String>,
+
+        /// Programming language to use for the project
+        #[arg(long, requires = "from_remote", required_unless_present = "template")]
+        language: Option<String>,
     },
     /// Builds your moose project
     Build {

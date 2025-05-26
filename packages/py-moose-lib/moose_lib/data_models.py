@@ -146,7 +146,13 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
         else:
             data_type = "Int"
     elif t is float:
-        data_type = "Float"
+        size = next((md for md in mds if isinstance(md, ClickhouseSize)), None)
+        if size is None or size.size == 8:
+            data_type = "Float64"
+        elif size.size == 4:
+            data_type = "Float32"
+        else:
+            raise ValueError(f"Unsupported float size {size.size}")
     elif t is Decimal:
         precision = next((md.max_digits for md in mds if hasattr(md, "max_digits")), 10)
         scale = next((md.decimal_places for md in mds if hasattr(md, "decimal_places")), 0)

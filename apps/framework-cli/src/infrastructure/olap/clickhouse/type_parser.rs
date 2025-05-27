@@ -1321,13 +1321,8 @@ pub fn convert_ast_to_column_type(
             type_name: "BFloat16".to_string(),
         }),
 
-        ClickHouseTypeNode::IPv4 => Err(ConversionError::UnsupportedType {
-            type_name: "IPv4".to_string(),
-        }),
-
-        ClickHouseTypeNode::IPv6 => Err(ConversionError::UnsupportedType {
-            type_name: "IPv6".to_string(),
-        }),
+        ClickHouseTypeNode::IPv4 => Ok((ColumnType::IpV4, false)),
+        ClickHouseTypeNode::IPv6 => Ok((ColumnType::IpV6, false)),
 
         ClickHouseTypeNode::JSON => Ok((ColumnType::Json, false)),
 

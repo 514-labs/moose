@@ -12,7 +12,6 @@ const meta = {
   host_setup: "Host setup guide",
   "cli-reference": "CLI reference",
   "tool-reference": "Tool reference",
-  "prompting-best-practices": "Prompting best practices",
   "data-collection-policy": "Data collection policy",
 } as const;
 

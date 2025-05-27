@@ -733,7 +733,8 @@ impl OlapOperations for ConfiguredDBClient {
                 create_table_query
             FROM system.tables 
             WHERE database = '{}' 
-            AND engine != 'View'
+            AND engine != 'View' 
+            AND engine != 'MaterializedView'
             AND NOT name LIKE '.%'
             ORDER BY name
             "#,

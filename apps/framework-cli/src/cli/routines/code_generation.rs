@@ -80,7 +80,7 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
                 .open("app/index.ts")
                 .map_err(|e| {
                     RoutineFailure::new(
-                        Message::new("Failure".to_string(), "opening main.py".to_string()),
+                        Message::new("Failure".to_string(), "opening index.ts".to_string()),
                         e,
                     )
                 })?;

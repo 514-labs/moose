@@ -5,6 +5,7 @@ use crate::framework::python::generate::tables_to_python;
 use crate::framework::typescript::generate::tables_to_typescript;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::olap::OlapOperations;
+use crate::utilities::constants::{APP_DIR, PYTHON_MAIN_FILE, TYPESCRIPT_MAIN_FILE};
 use reqwest::Url;
 use std::env;
 use std::io::Write;
@@ -77,10 +78,13 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
             let table_definitions = tables_to_typescript(&tables);
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open("app/index.ts")
+                .open(format!("{}/{}", APP_DIR, TYPESCRIPT_MAIN_FILE))
                 .map_err(|e| {
                     RoutineFailure::new(
-                        Message::new("Failure".to_string(), "opening index.ts".to_string()),
+                        Message::new(
+                            "Failure".to_string(),
+                            format!("opening {}", TYPESCRIPT_MAIN_FILE),
+                        ),
                         e,
                     )
                 })?;
@@ -91,10 +95,13 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
             let table_definitions = tables_to_python(&tables);
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open("app/main.py")
+                .open(format!("{}/{}", APP_DIR, PYTHON_MAIN_FILE))
                 .map_err(|e| {
                     RoutineFailure::new(
-                        Message::new("Failure".to_string(), "opening main.py".to_string()),
+                        Message::new(
+                            "Failure".to_string(),
+                            format!("opening {}", PYTHON_MAIN_FILE),
+                        ),
                         e,
                     )
                 })?;

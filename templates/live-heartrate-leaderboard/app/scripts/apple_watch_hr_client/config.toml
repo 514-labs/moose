@@ -1,0 +1,5 @@
+name = 'apple_watch_hr_client'
+schedule = ''
+retries = 3
+timeout = '1h'
+tasks = ['apple_watch_hr_client']

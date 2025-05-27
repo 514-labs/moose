@@ -28,9 +28,9 @@ stream_start_time = datetime.now(timezone.utc)
 # logger.info(f"Apple Watch streaming function start time: {stream_start_time.isoformat()}")
 
 def apple_watch_to_unified(source: AppleWatchHRPacket) -> UnifiedHRPacket:
-    device_id = source.device_id  # This is a Key[int]
-    device_id_str = str(device_id)
+    device_id_str = str(source.device_id)
     device_dict = all_bluetooth_device_dict[device_id_str]
+    logger.info(f"device_dict: {device_dict}")
     user_name = device_dict.get('user_name')
     user_id = device_dict.get('user_id')  # This should already be an integer
 
@@ -40,7 +40,7 @@ def apple_watch_to_unified(source: AppleWatchHRPacket) -> UnifiedHRPacket:
     return UnifiedHRPacket(
         user_id=user_id,  # UnifiedHRPacket will handle the Key[int] conversion
         user_name=user_name,
-        device_id=int(device_id_str),  # Convert to plain int
+        device_id=user_id,  # Convert to plain int
         hr_timestamp_seconds=elapsed_seconds,
         hr_value=source.heart_rate_data,
         rr_interval_ms=0, # not included in apple watch

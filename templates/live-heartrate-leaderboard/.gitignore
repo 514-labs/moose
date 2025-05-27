@@ -39,3 +39,4 @@ wheels
 .installed.cfg
 *.egg
 MANIFEST
+.cursor

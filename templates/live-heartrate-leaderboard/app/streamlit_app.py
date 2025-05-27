@@ -14,55 +14,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Modern animated banner
-# st.markdown("""
-#     <style>
-#         .modern-banner {
-#             background: linear-gradient(135deg, #7f00ff, #e100ff);
-#             color: white;
-#             padding: 2rem;
-#             text-align: center;
-#             font-size: 1.7rem;
-#             font-weight: 600;
-#             font-family: 'Segoe UI', sans-serif;
-#             border-radius: 15px;
-#             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-#             animation: slideFadeIn 0.8s ease-out, pulse 2.5s ease-in-out infinite;
-#             margin-bottom: 2rem;
-#         }
-
-#         @keyframes slideFadeIn {
-#             0% {
-#                 transform: translateY(-20px);
-#                 opacity: 0;
-#             }
-#             100% {
-#                 transform: translateY(0);
-#                 opacity: 1;
-#             }
-#         }
-
-#         @keyframes pulse {
-#             0% {
-#                 box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
-#             }
-#             50% {
-#                 box-shadow: 0 0 28px rgba(255, 255, 255, 0.45);
-#             }
-#             100% {
-#                 box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
-#             }
-#         }
-#     </style>
-
-#     <div class="modern-banner">
-#         Go from prototype to production<br>
-#         \n Made with ❤️ MOOSE X SINGLESTONE \n 
-#             Learn More: docs.fiveonefour.com/moose
-#         Download: bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose)
-#     </div>
-# """, unsafe_allow_html=True)
-
 # Initialize session state and constants
 if 'selected_user' not in st.session_state:
     st.session_state.selected_user = None

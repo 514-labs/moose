@@ -7,7 +7,7 @@
 import { Column } from "../dataModels/dataModelTypes";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { getMooseInternal } from "./internal";
-import { TypedBase } from "./typedBase";
+import { TypedBase, TypiaValidators } from "./typedBase";
 import {
   ClickHouseEngines,
   ConsumptionUtil,
@@ -214,6 +214,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     config: OlapConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
+    validators?: TypiaValidators<T>,
   );
 
   constructor(
@@ -221,10 +222,25 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     config?: OlapConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
+    validators?: TypiaValidators<T>,
   ) {
-    super(name, config ?? {}, schema, columns);
+    super(name, config ?? {}, schema, columns, validators);
 
     getMooseInternal().tables.set(name, this);
+  }
+
+  /**
+   * Generates the versioned table name following Moose's naming convention
+   * Format: {tableName}_{version_with_dots_replaced_by_underscores}
+   */
+  generateTableName(): string {
+    const tableVersion = this.config.version;
+    if (!tableVersion) {
+      return this.name;
+    } else {
+      const versionSuffix = tableVersion.replace(/\./g, "_");
+      return `${this.name}_${versionSuffix}`;
+    }
   }
 
   /**
@@ -302,6 +318,157 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   }
 
   /**
+   * Validates a single record using typia's comprehensive type checking.
+   * This provides the most accurate validation as it uses the exact TypeScript type information.
+   *
+   * @param record The record to validate
+   * @returns Validation result with detailed error information
+   */
+  validateRecord(record: unknown): {
+    success: boolean;
+    data?: T;
+    errors?: string[];
+  } {
+    // Use injected typia validator if available
+    if (this.validators?.validate) {
+      try {
+        const result = this.validators.validate(record);
+        return {
+          success: result.success,
+          data: result.data,
+          errors: result.errors?.map((err) =>
+            typeof err === "string" ? err : JSON.stringify(err),
+          ),
+        };
+      } catch (error) {
+        return {
+          success: false,
+          errors: [error instanceof Error ? error.message : String(error)],
+        };
+      }
+    }
+
+    // Fallback to basic validation if typia validators aren't available
+    return this.basicValidateRecord(record);
+  }
+
+  /**
+   * Basic validation fallback that doesn't require typia injection.
+   * Performs fundamental checks like null/undefined and required fields.
+   *
+   * @param record The record to validate
+   * @returns Basic validation result
+   */
+  private basicValidateRecord(record: unknown): {
+    success: boolean;
+    data?: T;
+    errors?: string[];
+  } {
+    if (record === null || record === undefined) {
+      return {
+        success: false,
+        errors: ["Record cannot be null or undefined"],
+      };
+    }
+
+    if (typeof record !== "object") {
+      return {
+        success: false,
+        errors: ["Record must be an object"],
+      };
+    }
+
+    // Check required fields based on column metadata
+    const errors: string[] = [];
+    const data = record as Record<string, any>;
+
+    for (const column of this.columnArray) {
+      if (
+        column.required &&
+        (data[column.name] === undefined || data[column.name] === null)
+      ) {
+        errors.push(`Required field '${column.name}' is missing`);
+      }
+    }
+
+    return errors.length > 0 ?
+        { success: false, errors }
+      : { success: true, data: record as T };
+  }
+
+  /**
+   * Type guard function using typia's is() function.
+   * Provides compile-time type narrowing for TypeScript.
+   *
+   * @param record The record to check
+   * @returns True if record matches type T, with type narrowing
+   */
+  isValidRecord(record: unknown): record is T {
+    if (this.validators?.is) {
+      return this.validators.is(record);
+    }
+
+    // Fallback: basic type check
+    const result = this.basicValidateRecord(record);
+    return result.success;
+  }
+
+  /**
+   * Assert that a record matches type T, throwing detailed errors if not.
+   * Uses typia's assert() function for the most detailed error reporting.
+   *
+   * @param record The record to assert
+   * @returns The validated and typed record
+   * @throws Detailed validation error if record doesn't match type T
+   */
+  assertValidRecord(record: unknown): T {
+    if (this.validators?.assert) {
+      return this.validators.assert(record);
+    }
+
+    // Fallback: basic assertion
+    const result = this.basicValidateRecord(record);
+    if (!result.success) {
+      throw new Error(`Validation failed: ${result.errors?.join(", ")}`);
+    }
+    return result.data!;
+  }
+
+  /**
+   * Validates an array of records with comprehensive error reporting.
+   * Uses the most appropriate validation method available (typia or basic).
+   *
+   * @param data Array of records to validate
+   * @returns Detailed validation results
+   */
+  async validateRecords(data: unknown[]): Promise<ValidationResult<T>> {
+    const valid: T[] = [];
+    const invalid: ValidationError[] = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const record = data[i];
+      const result = this.validateRecord(record);
+
+      if (result.success && result.data) {
+        valid.push(result.data);
+      } else {
+        invalid.push({
+          record,
+          error: result.errors?.join(", ") || "Validation failed",
+          index: i,
+          path: "root",
+        });
+      }
+    }
+
+    return {
+      valid,
+      invalid,
+      total: data.length,
+    };
+  }
+
+  /**
    * Retries individual records from a failed batch to isolate which ones are causing errors.
    * This provides detailed error information for each failed record.
    *
@@ -338,43 +505,49 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   }
 
   /**
-   * Inserts data directly into the ClickHouse table with enhanced error handling.
+   * Inserts data directly into the ClickHouse table with enhanced error handling and validation.
    * This method establishes a direct connection to ClickHouse using the project configuration
    * and inserts the provided data into the versioned table.
+   *
+   * Uses advanced typia validation when available for comprehensive type checking,
+   * with fallback to basic validation for compatibility.
    *
    * The ClickHouse client is memoized and reused across multiple insert calls for better performance.
    * If the configuration changes, a new client will be automatically created.
    *
    * @param data Array of objects conforming to the table schema, or a Node.js Readable stream
-   * @param options Optional configuration for error handling and insertion behavior
+   * @param options Optional configuration for error handling, validation, and insertion behavior
    * @returns Promise resolving to detailed insertion results
    * @throws {ConfigError} When configuration cannot be read or parsed
    * @throws {ClickHouseError} When insertion fails based on the error strategy
+   * @throws {ValidationError} When validation fails and strategy is 'fail-fast'
    *
    * @example
    * ```typescript
-   * // Create an OlapTable instance
+   * // Create an OlapTable instance (typia validators auto-injected)
    * const userTable = new OlapTable<User>('users');
    *
-   * // Insert data with array input
+   * // Insert with comprehensive typia validation
    * const result1 = await userTable.insert([
    *   { id: 1, name: 'John', email: 'john@example.com' },
    *   { id: 2, name: 'Jane', email: 'jane@example.com' }
    * ]);
    *
-   * // Insert data with stream input (useful for large datasets)
+   * // Insert data with stream input (validation not available for streams)
    * const dataStream = new Readable({
    *   objectMode: true,
-   *   read() {
-   *     // Stream implementation
-   *   }
+   *   read() { // Stream implementation }
    * });
    * const result2 = await userTable.insert(dataStream, { strategy: 'fail-fast' });
    *
-   * // Insert with error handling strategies (arrays only for 'isolate' strategy)
-   * const result3 = await userTable.insert(mixedData, {
+   * // Insert with validation disabled for performance
+   * const result3 = await userTable.insert(data, { validate: false });
+   *
+   * // Insert with error handling strategies
+   * const result4 = await userTable.insert(mixedData, {
    *   strategy: 'isolate',
-   *   allowErrorsRatio: 0.1
+   *   allowErrorsRatio: 0.1,
+   *   validate: true  // Use typia validation (default)
    * });
    *
    * // Optional: Clean up connection when completely done
@@ -387,11 +560,20 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   ): Promise<InsertResult<T>> {
     const isStream = data instanceof Readable;
     const strategy = options?.strategy || "fail-fast";
+    const shouldValidate = options?.validate !== false; // Default to true
+    const skipValidationOnRetry = options?.skipValidationOnRetry || false;
 
     // Validate strategy compatibility with streams
     if (isStream && strategy === "isolate") {
       throw new Error(
         "The 'isolate' error strategy is not supported with stream input. Use 'fail-fast' or 'discard' instead.",
+      );
+    }
+
+    // Validate that validation is not attempted on streams
+    if (isStream && shouldValidate) {
+      console.warn(
+        "Validation is not supported with stream input. Validation will be skipped.",
       );
     }
 
@@ -411,13 +593,77 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       };
     }
 
-    const { generateTableName } = await import("../config");
+    // Pre-insertion validation for arrays
+    let validatedData: T[] = [];
+    let validationErrors: ValidationError[] = [];
+
+    if (!isStream && shouldValidate) {
+      try {
+        const validationResult = await this.validateRecords(data as unknown[]);
+        validatedData = validationResult.valid;
+        validationErrors = validationResult.invalid;
+
+        // Handle validation errors based on strategy
+        if (validationErrors.length > 0) {
+          switch (strategy) {
+            case "fail-fast":
+              const firstError = validationErrors[0];
+              throw new Error(
+                `Validation failed for record at index ${firstError.index}: ${firstError.error}`,
+              );
+
+            case "discard":
+              // Check if validation errors exceed thresholds
+              const validationFailedCount = validationErrors.length;
+              const validationFailedRatio =
+                validationFailedCount / (data as T[]).length;
+
+              if (
+                options?.allowErrors !== undefined &&
+                validationFailedCount > options.allowErrors
+              ) {
+                throw new Error(
+                  `Too many validation failures: ${validationFailedCount} > ${options.allowErrors}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
+                );
+              }
+
+              if (
+                options?.allowErrorsRatio !== undefined &&
+                validationFailedRatio > options.allowErrorsRatio
+              ) {
+                throw new Error(
+                  `Validation failure ratio too high: ${validationFailedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
+                );
+              }
+
+              // Continue with only valid data
+              break;
+
+            case "isolate":
+              // For isolate strategy, we'll handle validation errors in the final result
+              // Continue with all data (valid + invalid) and let ClickHouse handle the invalid ones
+              validatedData = data as T[];
+              break;
+          }
+        }
+      } catch (validationError) {
+        if (strategy === "fail-fast") {
+          throw validationError;
+        }
+        // For other strategies, log the validation error but continue
+        console.warn("Validation error:", validationError);
+        validatedData = data as T[];
+      }
+    } else {
+      // No validation or stream input
+      validatedData = isStream ? [] : (data as T[]);
+    }
 
     // Get memoized client and current config
     const { client, config: clickhouseConfig } = await this.getMemoizedClient();
 
     // Generate the versioned table name
-    const tableName = generateTableName(this.name);
+    const tableName = this.generateTableName();
 
     try {
       // Prepare insert options
@@ -430,7 +676,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       if (isStream) {
         insertOptions.values = data; // ClickHouse client accepts streams in the values field
       } else {
-        insertOptions.values = data;
+        insertOptions.values = validatedData;
       }
 
       // For discard strategy, add ClickHouse error tolerance settings
@@ -464,11 +710,31 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
           total: -1,
         };
       } else {
-        return {
-          successful: data.length,
-          failed: 0,
-          total: data.length,
+        // Include validation results in the response
+        const insertedCount = validatedData.length;
+        const totalProcessed =
+          shouldValidate ? (data as T[]).length : insertedCount;
+
+        const result: InsertResult<T> = {
+          successful: insertedCount,
+          failed: shouldValidate ? validationErrors.length : 0,
+          total: totalProcessed,
         };
+
+        // Add failed records if there are validation errors and using discard strategy
+        if (
+          shouldValidate &&
+          validationErrors.length > 0 &&
+          strategy === "discard"
+        ) {
+          result.failedRecords = validationErrors.map((ve) => ({
+            record: ve.record as T,
+            error: `Validation error: ${ve.error}`,
+            index: ve.index,
+          }));
+        }
+
+        return result;
       }
     } catch (batchError) {
       // Handle insertion failure based on strategy
@@ -495,22 +761,39 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
 
           // Retry individual records to isolate failures and provide detailed error information
           try {
+            const retryData =
+              skipValidationOnRetry ? (data as T[]) : validatedData;
             const { successful, failed } = await this.retryIndividualRecords(
               client,
               tableName,
-              data as T[],
+              retryData,
             );
 
-            // Check if we exceeded error thresholds
-            const failedCount = failed.length;
-            const failedRatio = failedCount / (data as T[]).length;
+            // Combine validation errors with insertion errors
+            const allFailedRecords: FailedRecord<T>[] = [
+              // Validation errors (if any and not skipping validation on retry)
+              ...(shouldValidate && !skipValidationOnRetry ?
+                validationErrors.map((ve) => ({
+                  record: ve.record as T,
+                  error: `Validation error: ${ve.error}`,
+                  index: ve.index,
+                }))
+              : []),
+              // Insertion errors
+              ...failed,
+            ];
 
+            const totalFailed = allFailedRecords.length;
+            const totalProcessed = (data as T[]).length;
+            const failedRatio = totalFailed / totalProcessed;
+
+            // Check if we exceeded error thresholds
             if (
               options?.allowErrors !== undefined &&
-              failedCount > options.allowErrors
+              totalFailed > options.allowErrors
             ) {
               throw new Error(
-                `Too many failed records: ${failedCount} > ${options.allowErrors}. Failed records: ${failed.map((f) => f.error).join(", ")}`,
+                `Too many failed records: ${totalFailed} > ${options.allowErrors}. Failed records: ${allFailedRecords.map((f) => f.error).join(", ")}`,
               );
             }
 
@@ -519,16 +802,16 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
               failedRatio > options.allowErrorsRatio
             ) {
               throw new Error(
-                `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${failed.map((f) => f.error).join(", ")}`,
+                `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${allFailedRecords.map((f) => f.error).join(", ")}`,
               );
             }
 
             // Return detailed results
             return {
               successful: successful.length,
-              failed: failed.length,
-              total: (data as T[]).length,
-              failedRecords: failed,
+              failed: totalFailed,
+              total: totalProcessed,
+              failedRecords: allFailedRecords,
             };
           } catch (isolationError) {
             throw new Error(
@@ -942,6 +1225,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     config: IngestPipelineConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
+    validators?: TypiaValidators<T>,
   );
 
   constructor(
@@ -949,8 +1233,9 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     config: IngestPipelineConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
+    validators?: TypiaValidators<T>,
   ) {
-    super(name, config, schema, columns);
+    super(name, config, schema, columns, validators);
     this.metadata = config?.metadata;
 
     if (config.table) {
@@ -963,6 +1248,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         tableConfig,
         this.schema,
         this.columnArray,
+        this.validators,
       );
     }
 

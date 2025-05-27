@@ -159,7 +159,15 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
             "'4f487363-a767-491c-84ea-00b7724383d2'".to_string()
         }
         (ColumnType::Uuid, SupportedLanguages::Python) => "uuid.uuid4()".to_string(),
-        (ColumnType::Date | ColumnType::Date16, _) => "1970-01-01".to_string(),
+        (ColumnType::Date | ColumnType::Date16, _) => "'1970-01-01'".to_string(),
+        (ColumnType::IpV4, SupportedLanguages::Typescript) => "'127.0.0.1'".to_string(),
+        (ColumnType::IpV6, SupportedLanguages::Typescript) => "'::1'".to_string(),
+        (ColumnType::IpV4, SupportedLanguages::Python) => {
+            "ipaddress.IPv4Address('127.0.0.1')".to_string()
+        }
+        (ColumnType::IpV6, SupportedLanguages::Python) => {
+            "ipaddress.IPv6Address('::1')".to_string()
+        }
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {

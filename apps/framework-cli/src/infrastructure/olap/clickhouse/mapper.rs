@@ -148,6 +148,8 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Uuid => Ok(ClickHouseColumnType::Uuid),
         ColumnType::Date => Ok(ClickHouseColumnType::Date32),
         ColumnType::Date16 => Ok(ClickHouseColumnType::Date),
+        ColumnType::IpV4 => Ok(ClickHouseColumnType::IpV4),
+        ColumnType::IpV6 => Ok(ClickHouseColumnType::IpV6),
     }
 }
 

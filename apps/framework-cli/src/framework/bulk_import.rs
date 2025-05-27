@@ -50,6 +50,8 @@ pub async fn import_csv_file(
                         match t {
                             ColumnType::Date16
                             | ColumnType::Date
+                            | ColumnType::IpV4
+                            | ColumnType::IpV6
                             | ColumnType::String
                             | ColumnType::DateTime { .. }
                             | ColumnType::Enum(_) => {

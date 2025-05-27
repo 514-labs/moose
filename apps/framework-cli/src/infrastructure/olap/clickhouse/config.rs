@@ -2,7 +2,7 @@
 //! Module to handle the creation of the Clickhouse config files
 //!
 //! ## Suggested Improvements
-//! - we need to understand clickhouse configuration better before we can go deep on it's configuration
+//! - we need to understand clickhouse configuration better before we can go deep on its configuration
 //!
 
 use serde::{Deserialize, Serialize};

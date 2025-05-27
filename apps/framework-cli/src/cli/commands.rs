@@ -33,7 +33,12 @@ pub enum Commands {
         from_remote: Option<String>,
 
         /// Programming language to use for the project
-        #[arg(long, requires = "from_remote", required_unless_present = "template")]
+        #[arg(
+            long,
+            requires = "from_remote",
+            required_unless_present = "template",
+            conflicts_with = "template"
+        )]
         language: Option<String>,
     },
     /// Builds your moose project

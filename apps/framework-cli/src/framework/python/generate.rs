@@ -56,6 +56,8 @@ fn map_column_type_to_python(
         ColumnType::Json => "Any".to_string(),
         ColumnType::Bytes => "bytes".to_string(),
         ColumnType::Uuid => "UUID".to_string(),
+        ColumnType::IpV4 => "ipaddress.IPv4Address".to_string(),
+        ColumnType::IpV6 => "ipaddress.IPv6Address".to_string(),
     }
 }
 
@@ -124,6 +126,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     writeln!(output, "from pydantic import BaseModel").unwrap();
     writeln!(output, "from typing import Optional, Any, Annotated").unwrap();
     writeln!(output, "import datetime").unwrap();
+    writeln!(output, "import ipaddress").unwrap();
     writeln!(output, "from enum import IntEnum, Enum").unwrap();
     writeln!(
         output,
@@ -261,6 +264,7 @@ mod tests {
             r#"from pydantic import BaseModel
 from typing import Optional, Any, Annotated
 import datetime
+import ipaddress
 from enum import IntEnum, Enum
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin
 

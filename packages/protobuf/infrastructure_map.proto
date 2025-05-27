@@ -162,6 +162,8 @@ enum SimpleColumnType {
   DATETIME = 6;
   DATE = 7;
   DATE16 = 8;
+  IPV4 = 9;
+  IPV6 = 10;
 
   UUID_TYPE = 13;
   JSON_COLUMN = 14;

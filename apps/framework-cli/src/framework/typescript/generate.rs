@@ -51,6 +51,8 @@ fn map_column_type_to_typescript(
         ColumnType::Json => "Record<string, any>".to_string(),
         ColumnType::Bytes => "Uint8Array".to_string(),
         ColumnType::Uuid => "string & typia.tags.Format<\"uuid\">".to_string(),
+        ColumnType::IpV4 => "string & typia.tags.Format<\"ipv4\">".to_string(),
+        ColumnType::IpV6 => "string & typia.tags.Format<\"ipv6\">".to_string(),
     }
 }
 

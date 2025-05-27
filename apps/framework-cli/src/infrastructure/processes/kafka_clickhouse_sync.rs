@@ -17,7 +17,7 @@ use rdkafka::producer::DeliveryFuture;
 use rdkafka::Message;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::task::JoinHandle;
 
 use crate::framework::core::infrastructure::table::Column;
@@ -34,8 +34,19 @@ use crate::infrastructure::stream::kafka::client::{create_producer, send_with_ba
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::metrics::{MetricEvent, Metrics};
 use crate::utilities::validate_passthrough::DECIMAL_REGEX;
+use regex;
+use regex::Regex;
 use tokio::select;
 use uuid::Uuid;
+
+/// Regex pattern for validating IPv4 addresses
+const IPV4_REGEX: &str =
+    r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+/// Regex pattern for validating IPv6 addresses
+const IPV6_REGEX: &str = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,7}:|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$|^:((:[0-9a-fA-F]{1,4}){1,7}|:)$";
+
+pub static IPV4_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(IPV4_REGEX).unwrap());
+pub static IPV6_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(IPV6_REGEX).unwrap());
 
 /// Consumer group ID for table synchronization
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
@@ -785,6 +796,26 @@ fn map_json_value_to_clickhouse_value(
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: Box::new(column_type.clone()),
+                    value: value.clone(),
+                })
+            }
+        }
+        ColumnType::IpV4 => {
+            if let Some(value_str) = value.as_str().filter(|s| IPV4_PATTERN.is_match(s)) {
+                Ok(ClickHouseValue::new_string(value_str.to_string()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(ColumnType::IpV4),
+                    value: value.clone(),
+                })
+            }
+        }
+        ColumnType::IpV6 => {
+            if let Some(value_str) = value.as_str().filter(|s| IPV6_PATTERN.is_match(s)) {
+                Ok(ClickHouseValue::new_string(value_str.to_string()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(ColumnType::IpV6),
                     value: value.clone(),
                 })
             }

@@ -1214,6 +1214,8 @@ pub fn convert_ast_to_column_type(
                 "UUID" => Ok(ColumnType::Uuid),
                 "Date" => Ok(ColumnType::Date16),
                 "Date32" => Ok(ColumnType::Date),
+                "IPv4" => Ok(ColumnType::IpV4),
+                "IPv6" => Ok(ColumnType::IpV6),
                 "DateTime" => Ok(ColumnType::DateTime { precision: None }),
                 _ => Err(ConversionError::UnsupportedType {
                     type_name: name.clone(),

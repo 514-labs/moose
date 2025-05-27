@@ -204,6 +204,10 @@ const handleStringType = (
           } else {
             throw new UnsupportedFeature(`Date with size ${size}`);
           }
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv4")) {
+          return "IpV4";
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv6")) {
+          return "IpV6";
         } else if (isStringLiteral(valueTypeLiteral, checker, DecimalRegex)) {
           let precision = 10;
           let scale = 0;

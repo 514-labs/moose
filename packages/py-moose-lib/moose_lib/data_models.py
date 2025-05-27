@@ -10,6 +10,7 @@ from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasTy
     GenericAlias
 from pydantic import BaseModel, Field, PlainSerializer, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import CoreSchema, core_schema
+import ipaddress
 
 type Key[T: (str, int)] = T
 type JWT[T] = T
@@ -173,6 +174,10 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
             data_type = "Date16"
         else:
             raise ValueError(f"Unsupported date size {size.size}")
+    elif t is ipaddress.IPv4Address:
+        data_type = "IpV4"
+    elif t is ipaddress.IPv6Address:
+        data_type = "IpV6"
     elif get_origin(t) is list:
         inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0], [])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)

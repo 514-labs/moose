@@ -1,4 +1,5 @@
 use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
+use crate::infrastructure::processes::kafka_clickhouse_sync::{IPV4_PATTERN, IPV6_PATTERN};
 use itertools::Either;
 use regex::Regex;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
@@ -151,6 +152,8 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             ColumnType::BigInt
             | ColumnType::Date
             | ColumnType::Date16
+            | ColumnType::IpV4
+            | ColumnType::IpV6
             | ColumnType::Decimal { .. }
             | ColumnType::Json
             | ColumnType::Bytes => formatter.write_str("a value matching the column type"),
@@ -229,6 +232,26 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                 })?;
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
+            }
+            ColumnType::IpV4 => {
+                if IPV4_PATTERN.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!(
+                        "Invalid IPv4 format at {}",
+                        self.get_path()
+                    )))
+                }
+            }
+            ColumnType::IpV6 => {
+                if IPV6_PATTERN.is_match(v) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!(
+                        "Invalid IPv6 format at {}",
+                        self.get_path()
+                    )))
+                }
             }
             ColumnType::Decimal { .. } => {
                 if DECIMAL_REGEX.is_match(v) {

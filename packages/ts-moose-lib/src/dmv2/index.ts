@@ -490,6 +490,10 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
           table: tableName,
           values: [record],
           format: "JSONEachRow",
+          clickhouse_settings: {
+            // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
+            date_time_input_format: "best_effort",
+          },
         });
         successful.push(record);
       } catch (error) {
@@ -670,6 +674,10 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       const insertOptions: any = {
         table: tableName,
         format: "JSONEachRow",
+        clickhouse_settings: {
+          // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
+          date_time_input_format: "best_effort",
+        },
       };
 
       // Handle stream vs array input

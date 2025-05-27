@@ -3,7 +3,47 @@ title: Quickstart
 description: Quickstart guide for Aurora
 ---
 
-# Quickstart
+# Quickstart: Analytics on your clickhouse database
+
+This will walk you through using Aurora CLI to connect Aurora MCP tools to your Clickhouse database, allowing you to chat with your data in your client of choice. We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+
+<Callout type="info" title="Prerequisites">
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
+</Callout>
+
+<Steps>
+## Install Aurora CLI
+
+```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora```
+
+## Configure your Aurora MCP
+
+```
+aurora connect clickhouse --connection-string "clickhouse://explorer:@play.clickhouse.com:443/default" --mcp cursor-project
+```
+
+This will configure the [Clickhouse MCP tools](https://docs.fiveonefour.com/aurora/tool-reference#remote-clickhouse) to read data from Clickhouse's Playground, but you can point this at any Clickhouse database. It sets up the MCP in Claude Desktop, but you can change this with the `--mcp` flag.
+
+## Chat
+
+Open your Claude Desktop client. 
+
+You can check that the MCP is correctly configured by looking at `claude > settings > developer > aurora`. It should say "running".
+
+You can can also look at `search and tools` beneath the chat window, you should see `aurora` in the list of MCPs—if you click into it, you should see the tools that are enabled.
+
+We recommend starting the chat with a context setting question like "tell me about the data I have available to me in Clickhouse".
+
+</Steps>
+
+# Quickstart: New Moose project from your clickhouse database
+
+This will walk you through creating a new local Moose project reflecting the structure of your Clickhouse database. It will allow you to add data to your local dev environment from your remote Clickhouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+
+# Quickstart: New Moose project from template
 *ADS-B (aircraft transponder) data for getting started*
 
 This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.

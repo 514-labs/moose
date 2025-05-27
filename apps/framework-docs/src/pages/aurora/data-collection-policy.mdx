@@ -21,6 +21,44 @@ The available options are:
 - `comprehensive` - collects tool usage, success or error status, and parameters used by the tools.
 - `off` - disables telemetry.
 
+Example standard data collection:
+
+```JSON
+{
+  distinctId: distinctIdForEvent,
+  event: 'aurora_mcp_tool_usage',
+  properties: {
+    tool_name: toolName,
+    success: !error,
+    telemetry_level: 'standard',
+    source: 'aurora_mcp_execution',
+    timestamp: new Date().toISOString()
+  }
+}
+```
+
+Example comprehensive data collection:
+
+```JSON
+{distinctId: distinctIdForEvent,
+  event: 'aurora_mcp_tool_usage',
+  properties: {
+    tool_name: toolName,
+    success: !error,
+    telemetry_level: 'comprehensive',
+    source: 'aurora_mcp_execution',
+    timestamp: new Date().toISOString(),
+    parameters: args,  // Full tool parameters
+    error_message: error?.message,  // Detailed error information
+    error_stack: error?.stack,  // Error stack trace
+    machine_id: machineId,  // Machine identifier
+    os: process.platform,  // Operating system
+    arch: process.arch,  // Architecture
+    node_version: process.version  // Node.js version
+  }
+}
+```
+
 Our privacy policy is available [here](https://www.fiveonefour.com/legal/privacy.pdf).
 
 

@@ -63,7 +63,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
    * Generates the versioned table name following Moose's naming convention
    * Format: {tableName}_{version_with_dots_replaced_by_underscores}
    */
-  generateTableName(): string {
+  private generateTableName(): string {
     const tableVersion = this.config.version;
     if (!tableVersion) {
       return this.name;
@@ -339,6 +339,397 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   }
 
   /**
+   * Validates input parameters and strategy compatibility
+   * @private
+   */
+  private validateInsertParameters(
+    data: T[] | Readable,
+    options?: InsertOptions,
+  ): { isStream: boolean; strategy: string; shouldValidate: boolean } {
+    const isStream = data instanceof Readable;
+    const strategy = options?.strategy || "fail-fast";
+    const shouldValidate = options?.validate !== false;
+
+    // Validate strategy compatibility with streams
+    if (isStream && strategy === "isolate") {
+      throw new Error(
+        "The 'isolate' error strategy is not supported with stream input. Use 'fail-fast' or 'discard' instead.",
+      );
+    }
+
+    // Validate that validation is not attempted on streams
+    if (isStream && shouldValidate) {
+      console.warn(
+        "Validation is not supported with stream input. Validation will be skipped.",
+      );
+    }
+
+    return { isStream, strategy, shouldValidate };
+  }
+
+  /**
+   * Handles early return cases for empty data
+   * @private
+   */
+  private handleEmptyData(
+    data: T[] | Readable,
+    isStream: boolean,
+  ): InsertResult<T> | null {
+    if (isStream && !data) {
+      return {
+        successful: 0,
+        failed: 0,
+        total: 0,
+      };
+    }
+
+    if (!isStream && (!data || (data as T[]).length === 0)) {
+      return {
+        successful: 0,
+        failed: 0,
+        total: 0,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Performs pre-insertion validation for array data
+   * @private
+   */
+  private async performPreInsertionValidation(
+    data: T[],
+    shouldValidate: boolean,
+    strategy: string,
+    options?: InsertOptions,
+  ): Promise<{ validatedData: T[]; validationErrors: ValidationError[] }> {
+    if (!shouldValidate) {
+      return { validatedData: data, validationErrors: [] };
+    }
+
+    try {
+      const validationResult = await this.validateRecords(data as unknown[]);
+      const validatedData = validationResult.valid;
+      const validationErrors = validationResult.invalid;
+
+      if (validationErrors.length > 0) {
+        this.handleValidationErrors(validationErrors, strategy, data, options);
+
+        // Return appropriate data based on strategy
+        switch (strategy) {
+          case "discard":
+            return { validatedData, validationErrors };
+          case "isolate":
+            return { validatedData: data, validationErrors };
+          default:
+            return { validatedData, validationErrors };
+        }
+      }
+
+      return { validatedData, validationErrors };
+    } catch (validationError) {
+      if (strategy === "fail-fast") {
+        throw validationError;
+      }
+      console.warn("Validation error:", validationError);
+      return { validatedData: data, validationErrors: [] };
+    }
+  }
+
+  /**
+   * Handles validation errors based on the specified strategy
+   * @private
+   */
+  private handleValidationErrors(
+    validationErrors: ValidationError[],
+    strategy: string,
+    data: T[],
+    options?: InsertOptions,
+  ): void {
+    switch (strategy) {
+      case "fail-fast":
+        const firstError = validationErrors[0];
+        throw new Error(
+          `Validation failed for record at index ${firstError.index}: ${firstError.error}`,
+        );
+
+      case "discard":
+        this.checkValidationThresholds(validationErrors, data.length, options);
+        break;
+
+      case "isolate":
+        // For isolate strategy, validation errors will be handled in the final result
+        break;
+    }
+  }
+
+  /**
+   * Checks if validation errors exceed configured thresholds
+   * @private
+   */
+  private checkValidationThresholds(
+    validationErrors: ValidationError[],
+    totalRecords: number,
+    options?: InsertOptions,
+  ): void {
+    const validationFailedCount = validationErrors.length;
+    const validationFailedRatio = validationFailedCount / totalRecords;
+
+    if (
+      options?.allowErrors !== undefined &&
+      validationFailedCount > options.allowErrors
+    ) {
+      throw new Error(
+        `Too many validation failures: ${validationFailedCount} > ${options.allowErrors}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
+      );
+    }
+
+    if (
+      options?.allowErrorsRatio !== undefined &&
+      validationFailedRatio > options.allowErrorsRatio
+    ) {
+      throw new Error(
+        `Validation failure ratio too high: ${validationFailedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
+      );
+    }
+  }
+
+  /**
+   * Prepares insert options for ClickHouse client
+   * @private
+   */
+  private prepareInsertOptions(
+    tableName: string,
+    data: T[] | Readable,
+    validatedData: T[],
+    isStream: boolean,
+    strategy: string,
+    options?: InsertOptions,
+  ): any {
+    const insertOptions: any = {
+      table: tableName,
+      format: "JSONEachRow",
+      clickhouse_settings: {
+        date_time_input_format: "best_effort",
+      },
+    };
+
+    // Handle stream vs array input
+    if (isStream) {
+      insertOptions.values = data;
+    } else {
+      insertOptions.values = validatedData;
+    }
+
+    // For discard strategy, add ClickHouse error tolerance settings
+    if (
+      strategy === "discard" &&
+      (options?.allowErrors !== undefined ||
+        options?.allowErrorsRatio !== undefined)
+    ) {
+      const querySettings: Record<string, any> = {};
+
+      if (options.allowErrors !== undefined) {
+        querySettings.input_format_allow_errors_num = options.allowErrors;
+      }
+
+      if (options.allowErrorsRatio !== undefined) {
+        querySettings.input_format_allow_errors_ratio =
+          options.allowErrorsRatio;
+      }
+
+      insertOptions.query_params = querySettings;
+    }
+
+    return insertOptions;
+  }
+
+  /**
+   * Creates success result for completed insertions
+   * @private
+   */
+  private createSuccessResult(
+    data: T[] | Readable,
+    validatedData: T[],
+    validationErrors: ValidationError[],
+    isStream: boolean,
+    shouldValidate: boolean,
+    strategy: string,
+  ): InsertResult<T> {
+    if (isStream) {
+      return {
+        successful: -1, // -1 indicates stream mode where count is unknown
+        failed: 0,
+        total: -1,
+      };
+    }
+
+    const insertedCount = validatedData.length;
+    const totalProcessed =
+      shouldValidate ? (data as T[]).length : insertedCount;
+
+    const result: InsertResult<T> = {
+      successful: insertedCount,
+      failed: shouldValidate ? validationErrors.length : 0,
+      total: totalProcessed,
+    };
+
+    // Add failed records if there are validation errors and using discard strategy
+    if (
+      shouldValidate &&
+      validationErrors.length > 0 &&
+      strategy === "discard"
+    ) {
+      result.failedRecords = validationErrors.map((ve) => ({
+        record: ve.record as T,
+        error: `Validation error: ${ve.error}`,
+        index: ve.index,
+      }));
+    }
+
+    return result;
+  }
+
+  /**
+   * Handles insertion errors based on the specified strategy
+   * @private
+   */
+  private async handleInsertionError(
+    batchError: any,
+    strategy: string,
+    tableName: string,
+    data: T[] | Readable,
+    validatedData: T[],
+    validationErrors: ValidationError[],
+    isStream: boolean,
+    shouldValidate: boolean,
+    options?: InsertOptions,
+  ): Promise<InsertResult<T>> {
+    switch (strategy) {
+      case "fail-fast":
+        throw new Error(
+          `Failed to insert data into table ${tableName}: ${batchError}`,
+        );
+
+      case "discard":
+        throw new Error(
+          `Too many errors during insert into table ${tableName}. Error threshold exceeded: ${batchError}`,
+        );
+
+      case "isolate":
+        return await this.handleIsolateStrategy(
+          batchError,
+          tableName,
+          data,
+          validatedData,
+          validationErrors,
+          isStream,
+          shouldValidate,
+          options,
+        );
+
+      default:
+        throw new Error(`Unknown error strategy: ${strategy}`);
+    }
+  }
+
+  /**
+   * Handles the isolate strategy for insertion errors
+   * @private
+   */
+  private async handleIsolateStrategy(
+    batchError: any,
+    tableName: string,
+    data: T[] | Readable,
+    validatedData: T[],
+    validationErrors: ValidationError[],
+    isStream: boolean,
+    shouldValidate: boolean,
+    options?: InsertOptions,
+  ): Promise<InsertResult<T>> {
+    if (isStream) {
+      throw new Error(
+        `Isolate strategy is not supported with stream input: ${batchError}`,
+      );
+    }
+
+    try {
+      const { client } = await this.getMemoizedClient();
+      const skipValidationOnRetry = options?.skipValidationOnRetry || false;
+      const retryData = skipValidationOnRetry ? (data as T[]) : validatedData;
+
+      const { successful, failed } = await this.retryIndividualRecords(
+        client,
+        tableName,
+        retryData,
+      );
+
+      // Combine validation errors with insertion errors
+      const allFailedRecords: FailedRecord<T>[] = [
+        // Validation errors (if any and not skipping validation on retry)
+        ...(shouldValidate && !skipValidationOnRetry ?
+          validationErrors.map((ve) => ({
+            record: ve.record as T,
+            error: `Validation error: ${ve.error}`,
+            index: ve.index,
+          }))
+        : []),
+        // Insertion errors
+        ...failed,
+      ];
+
+      this.checkInsertionThresholds(
+        allFailedRecords,
+        (data as T[]).length,
+        options,
+      );
+
+      return {
+        successful: successful.length,
+        failed: allFailedRecords.length,
+        total: (data as T[]).length,
+        failedRecords: allFailedRecords,
+      };
+    } catch (isolationError) {
+      throw new Error(
+        `Failed to insert data into table ${tableName} during record isolation: ${isolationError}`,
+      );
+    }
+  }
+
+  /**
+   * Checks if insertion errors exceed configured thresholds
+   * @private
+   */
+  private checkInsertionThresholds(
+    failedRecords: FailedRecord<T>[],
+    totalRecords: number,
+    options?: InsertOptions,
+  ): void {
+    const totalFailed = failedRecords.length;
+    const failedRatio = totalFailed / totalRecords;
+
+    if (
+      options?.allowErrors !== undefined &&
+      totalFailed > options.allowErrors
+    ) {
+      throw new Error(
+        `Too many failed records: ${totalFailed} > ${options.allowErrors}. Failed records: ${failedRecords.map((f) => f.error).join(", ")}`,
+      );
+    }
+
+    if (
+      options?.allowErrorsRatio !== undefined &&
+      failedRatio > options.allowErrorsRatio
+    ) {
+      throw new Error(
+        `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${failedRecords.map((f) => f.error).join(", ")}`,
+      );
+    }
+  }
+
+  /**
    * Inserts data directly into the ClickHouse table with enhanced error handling and validation.
    * This method establishes a direct connection to ClickHouse using the project configuration
    * and inserts the provided data into the versioned table.
@@ -392,39 +783,14 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     data: T[] | Readable,
     options?: InsertOptions,
   ): Promise<InsertResult<T>> {
-    const isStream = data instanceof Readable;
-    const strategy = options?.strategy || "fail-fast";
-    const shouldValidate = options?.validate !== false; // Default to true
-    const skipValidationOnRetry = options?.skipValidationOnRetry || false;
+    // Validate input parameters and strategy compatibility
+    const { isStream, strategy, shouldValidate } =
+      this.validateInsertParameters(data, options);
 
-    // Validate strategy compatibility with streams
-    if (isStream && strategy === "isolate") {
-      throw new Error(
-        "The 'isolate' error strategy is not supported with stream input. Use 'fail-fast' or 'discard' instead.",
-      );
-    }
-
-    // Validate that validation is not attempted on streams
-    if (isStream && shouldValidate) {
-      console.warn(
-        "Validation is not supported with stream input. Validation will be skipped.",
-      );
-    }
-
-    if (isStream && !data) {
-      return {
-        successful: 0,
-        failed: 0,
-        total: 0,
-      };
-    }
-
-    if (!isStream && (!data || data.length === 0)) {
-      return {
-        successful: 0,
-        failed: 0,
-        total: 0,
-      };
+    // Handle early return cases for empty data
+    const emptyResult = this.handleEmptyData(data, isStream);
+    if (emptyResult) {
+      return emptyResult;
     }
 
     // Pre-insertion validation for arrays
@@ -432,234 +798,58 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     let validationErrors: ValidationError[] = [];
 
     if (!isStream && shouldValidate) {
-      try {
-        const validationResult = await this.validateRecords(data as unknown[]);
-        validatedData = validationResult.valid;
-        validationErrors = validationResult.invalid;
-
-        // Handle validation errors based on strategy
-        if (validationErrors.length > 0) {
-          switch (strategy) {
-            case "fail-fast":
-              const firstError = validationErrors[0];
-              throw new Error(
-                `Validation failed for record at index ${firstError.index}: ${firstError.error}`,
-              );
-
-            case "discard":
-              // Check if validation errors exceed thresholds
-              const validationFailedCount = validationErrors.length;
-              const validationFailedRatio =
-                validationFailedCount / (data as T[]).length;
-
-              if (
-                options?.allowErrors !== undefined &&
-                validationFailedCount > options.allowErrors
-              ) {
-                throw new Error(
-                  `Too many validation failures: ${validationFailedCount} > ${options.allowErrors}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
-                );
-              }
-
-              if (
-                options?.allowErrorsRatio !== undefined &&
-                validationFailedRatio > options.allowErrorsRatio
-              ) {
-                throw new Error(
-                  `Validation failure ratio too high: ${validationFailedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Errors: ${validationErrors.map((e) => e.error).join(", ")}`,
-                );
-              }
-
-              // Continue with only valid data
-              break;
-
-            case "isolate":
-              // For isolate strategy, we'll handle validation errors in the final result
-              // Continue with all data (valid + invalid) and let ClickHouse handle the invalid ones
-              validatedData = data as T[];
-              break;
-          }
-        }
-      } catch (validationError) {
-        if (strategy === "fail-fast") {
-          throw validationError;
-        }
-        // For other strategies, log the validation error but continue
-        console.warn("Validation error:", validationError);
-        validatedData = data as T[];
-      }
+      const validationResult = await this.performPreInsertionValidation(
+        data as T[],
+        shouldValidate,
+        strategy,
+        options,
+      );
+      validatedData = validationResult.validatedData;
+      validationErrors = validationResult.validationErrors;
     } else {
       // No validation or stream input
       validatedData = isStream ? [] : (data as T[]);
     }
 
-    // Get memoized client and current config
-    const { client, config: clickhouseConfig } = await this.getMemoizedClient();
-
-    // Generate the versioned table name
+    // Get memoized client and generate table name
+    const { client } = await this.getMemoizedClient();
     const tableName = this.generateTableName();
 
     try {
-      // Prepare insert options
-      const insertOptions: any = {
-        table: tableName,
-        format: "JSONEachRow",
-        clickhouse_settings: {
-          // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
-          date_time_input_format: "best_effort",
-        },
-      };
+      // Prepare and execute insertion
+      const insertOptions = this.prepareInsertOptions(
+        tableName,
+        data,
+        validatedData,
+        isStream,
+        strategy,
+        options,
+      );
 
-      // Handle stream vs array input
-      if (isStream) {
-        insertOptions.values = data; // ClickHouse client accepts streams in the values field
-      } else {
-        insertOptions.values = validatedData;
-      }
-
-      // For discard strategy, add ClickHouse error tolerance settings
-      if (
-        strategy === "discard" &&
-        (options?.allowErrors !== undefined ||
-          options?.allowErrorsRatio !== undefined)
-      ) {
-        const querySettings: Record<string, any> = {};
-
-        if (options.allowErrors !== undefined) {
-          querySettings.input_format_allow_errors_num = options.allowErrors;
-        }
-
-        if (options.allowErrorsRatio !== undefined) {
-          querySettings.input_format_allow_errors_ratio =
-            options.allowErrorsRatio;
-        }
-
-        insertOptions.query_params = querySettings;
-      }
-
-      // Try insertion
       await client.insert(insertOptions);
 
-      // For streams, we can't easily count records, so we return success with unknown count
-      if (isStream) {
-        return {
-          successful: -1, // -1 indicates stream mode where count is unknown
-          failed: 0,
-          total: -1,
-        };
-      } else {
-        // Include validation results in the response
-        const insertedCount = validatedData.length;
-        const totalProcessed =
-          shouldValidate ? (data as T[]).length : insertedCount;
-
-        const result: InsertResult<T> = {
-          successful: insertedCount,
-          failed: shouldValidate ? validationErrors.length : 0,
-          total: totalProcessed,
-        };
-
-        // Add failed records if there are validation errors and using discard strategy
-        if (
-          shouldValidate &&
-          validationErrors.length > 0 &&
-          strategy === "discard"
-        ) {
-          result.failedRecords = validationErrors.map((ve) => ({
-            record: ve.record as T,
-            error: `Validation error: ${ve.error}`,
-            index: ve.index,
-          }));
-        }
-
-        return result;
-      }
+      // Return success result
+      return this.createSuccessResult(
+        data,
+        validatedData,
+        validationErrors,
+        isStream,
+        shouldValidate,
+        strategy,
+      );
     } catch (batchError) {
       // Handle insertion failure based on strategy
-      switch (strategy) {
-        case "fail-fast":
-          throw new Error(
-            `Failed to insert data into table ${tableName}: ${batchError}`,
-          );
-
-        case "discard":
-          // With discard strategy and ClickHouse error tolerance, this shouldn't happen
-          // unless the error threshold was exceeded
-          throw new Error(
-            `Too many errors during insert into table ${tableName}. Error threshold exceeded: ${batchError}`,
-          );
-
-        case "isolate":
-          // Only supported for arrays, not streams
-          if (isStream) {
-            throw new Error(
-              `Isolate strategy is not supported with stream input: ${batchError}`,
-            );
-          }
-
-          // Retry individual records to isolate failures and provide detailed error information
-          try {
-            const retryData =
-              skipValidationOnRetry ? (data as T[]) : validatedData;
-            const { successful, failed } = await this.retryIndividualRecords(
-              client,
-              tableName,
-              retryData,
-            );
-
-            // Combine validation errors with insertion errors
-            const allFailedRecords: FailedRecord<T>[] = [
-              // Validation errors (if any and not skipping validation on retry)
-              ...(shouldValidate && !skipValidationOnRetry ?
-                validationErrors.map((ve) => ({
-                  record: ve.record as T,
-                  error: `Validation error: ${ve.error}`,
-                  index: ve.index,
-                }))
-              : []),
-              // Insertion errors
-              ...failed,
-            ];
-
-            const totalFailed = allFailedRecords.length;
-            const totalProcessed = (data as T[]).length;
-            const failedRatio = totalFailed / totalProcessed;
-
-            // Check if we exceeded error thresholds
-            if (
-              options?.allowErrors !== undefined &&
-              totalFailed > options.allowErrors
-            ) {
-              throw new Error(
-                `Too many failed records: ${totalFailed} > ${options.allowErrors}. Failed records: ${allFailedRecords.map((f) => f.error).join(", ")}`,
-              );
-            }
-
-            if (
-              options?.allowErrorsRatio !== undefined &&
-              failedRatio > options.allowErrorsRatio
-            ) {
-              throw new Error(
-                `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${allFailedRecords.map((f) => f.error).join(", ")}`,
-              );
-            }
-
-            // Return detailed results
-            return {
-              successful: successful.length,
-              failed: totalFailed,
-              total: totalProcessed,
-              failedRecords: allFailedRecords,
-            };
-          } catch (isolationError) {
-            throw new Error(
-              `Failed to insert data into table ${tableName} during record isolation: ${isolationError}`,
-            );
-          }
-
-        default:
-          throw new Error(`Unknown error strategy: ${strategy}`);
-      }
+      return await this.handleInsertionError(
+        batchError,
+        strategy,
+        tableName,
+        data,
+        validatedData,
+        validationErrors,
+        isStream,
+        shouldValidate,
+        options,
+      );
     }
     // Note: We don't close the client here since it's memoized for reuse
     // Use closeClient() method if you need to explicitly close the connection

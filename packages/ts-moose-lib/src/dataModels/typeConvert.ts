@@ -105,7 +105,8 @@ const handleNumberType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        const intMappings = {
+        const numberTypeMappings = {
+          float: "Float32",
           int8: "Int8",
           int16: "Int16",
           int32: "Int32",
@@ -115,7 +116,7 @@ const handleNumberType = (
           uint32: "UInt32",
           uint64: "UInt64",
         };
-        const match = Object.entries(intMappings).find(([k, _]) =>
+        const match = Object.entries(numberTypeMappings).find(([k, _]) =>
           isStringLiteral(valueTypeLiteral, checker, k),
         );
         if (match) {

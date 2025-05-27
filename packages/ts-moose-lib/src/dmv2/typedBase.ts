@@ -17,7 +17,7 @@ export class TypedBase<T, C> {
 
   /** A dictionary mapping column names (keys of T) to their Column definitions. */
   columns: {
-    [columnName in keyof T]: Column;
+    [columnName in keyof Required<T>]: Column;
   };
   /** An array containing the Column definitions for this resource. Injected by the compiler plugin. */
   columnArray: Column[];

@@ -1,8 +1,15 @@
-use crate::framework::core::infrastructure::table::{ColumnType, FloatType, IntType, Table};
+use crate::framework::core::infrastructure::table::{
+    ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
+};
 use convert_case::{Case, Casing};
+use std::collections::HashMap;
 use std::fmt::Write;
 
-fn map_column_type_to_python(column_type: &ColumnType) -> String {
+fn map_column_type_to_python(
+    column_type: &ColumnType,
+    enums: &HashMap<&DataEnum, String>,
+    nested: &HashMap<&Nested, String>,
+) -> String {
     match column_type {
         ColumnType::String => "str".to_string(),
         ColumnType::Boolean => "bool".to_string(),
@@ -22,22 +29,22 @@ fn map_column_type_to_python(column_type: &ColumnType) -> String {
         },
         ColumnType::BigInt => "int".to_string(),
         ColumnType::Float(float_type) => match float_type {
-            FloatType::Float32 => "float".to_string(),
+            FloatType::Float32 => "Annotated[float, ClickhouseSize(4)]".to_string(),
             FloatType::Float64 => "float".to_string(),
         },
         ColumnType::Decimal { precision, scale } => format!("Decimal({}, {})", precision, scale),
-        ColumnType::DateTime { precision: None } => "datetime".to_string(),
+        ColumnType::DateTime { precision: None } => "datetime.datetime".to_string(),
         ColumnType::DateTime {
             precision: Some(precision),
-        } => format!("datetime({})", precision),
-        ColumnType::Date => "date".to_string(),
-        ColumnType::Date16 => "date".to_string(),
-        ColumnType::Enum(_) => "TODO".to_string(),
+        } => format!("clickhouse_datetime64({})", precision),
+        ColumnType::Date => "datetime.date".to_string(),
+        ColumnType::Date16 => "Annotated[datetime.date, ClickhouseSize(2)]".to_string(),
+        ColumnType::Enum(data_enum) => enums.get(data_enum).unwrap().to_string(),
         ColumnType::Array {
             element_type,
             element_nullable,
         } => {
-            let inner_type = map_column_type_to_python(element_type);
+            let inner_type = map_column_type_to_python(element_type, enums, nested);
             let inner_type = if *element_nullable {
                 format!("Optional[{}]", inner_type)
             } else {
@@ -45,11 +52,69 @@ fn map_column_type_to_python(column_type: &ColumnType) -> String {
             };
             format!("list[{}]", inner_type)
         }
-        ColumnType::Nested(_) => "TODO".to_string(),
+        ColumnType::Nested(nested_type) => nested.get(nested_type).unwrap().to_string(),
         ColumnType::Json => "Any".to_string(),
         ColumnType::Bytes => "bytes".to_string(),
         ColumnType::Uuid => "UUID".to_string(),
     }
+}
+
+fn generate_enum_class(data_enum: &DataEnum, name: &str) -> String {
+    let mut enum_class = String::new();
+    writeln!(
+        enum_class,
+        "class {}({}):",
+        name,
+        if data_enum
+            .values
+            .iter()
+            .all(|v| matches!(v.value, EnumValue::Int(_)))
+        {
+            "StringToEnumMixin, IntEnum"
+        } else {
+            "Enum"
+        }
+    )
+    .unwrap();
+    for member in &data_enum.values {
+        match &member.value {
+            EnumValue::Int(i) => writeln!(enum_class, "    {} = {}", member.name, i).unwrap(),
+            EnumValue::String(s) => {
+                writeln!(enum_class, "    {} = \"{}\"", member.name, s).unwrap()
+            }
+        }
+    }
+    writeln!(enum_class).unwrap();
+    enum_class
+}
+
+fn generate_nested_model(
+    nested: &Nested,
+    name: &str,
+    enums: &HashMap<&DataEnum, String>,
+    nested_models: &HashMap<&Nested, String>,
+) -> String {
+    let mut model = String::new();
+    writeln!(model, "class {}(BaseModel):", name).unwrap();
+
+    for column in &nested.columns {
+        let type_str = map_column_type_to_python(&column.data_type, enums, nested_models);
+
+        let (type_str, default) = if !column.required {
+            (format!("Optional[{}]", type_str), " = None")
+        } else {
+            (type_str, "")
+        };
+
+        let type_str = if column.primary_key {
+            format!("Key[{}]", type_str)
+        } else {
+            type_str
+        };
+        writeln!(model, "    {}: {}{}", column.name, type_str, default).unwrap();
+    }
+    writeln!(model).unwrap();
+    model
 }
 
 pub fn tables_to_python(tables: &[Table]) -> String {
@@ -58,20 +123,50 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     // Add imports
     writeln!(output, "from pydantic import BaseModel").unwrap();
     writeln!(output, "from typing import Optional, Any, Annotated").unwrap();
-    writeln!(output, "from datetime import datetime").unwrap();
+    writeln!(output, "import datetime").unwrap();
+    writeln!(output, "from enum import IntEnum, Enum").unwrap();
     writeln!(
         output,
-        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig"
+        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin"
     )
     .unwrap();
     writeln!(output).unwrap();
+
+    // Collect all enums and nested types
+    let mut enums: HashMap<&DataEnum, String> = HashMap::new();
+    let mut nested_models: HashMap<&Nested, String> = HashMap::new();
+
+    // First pass: collect all nested types and enums
+    for table in tables {
+        for column in &table.columns {
+            match &column.data_type {
+                ColumnType::Enum(data_enum) => {
+                    enums.insert(data_enum, column.name.to_case(Case::Pascal));
+                }
+                ColumnType::Nested(nested) => {
+                    nested_models.insert(nested, column.name.to_case(Case::Pascal));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Generate enum classes
+    for (data_enum, name) in enums.iter() {
+        output.push_str(&generate_enum_class(data_enum, name));
+    }
+
+    // Generate nested model classes
+    for (nested, name) in nested_models.iter() {
+        output.push_str(&generate_nested_model(nested, name, &enums, &nested_models));
+    }
 
     // Generate model classes
     for table in tables {
         writeln!(output, "class {}(BaseModel):", table.name).unwrap();
 
         for column in &table.columns {
-            let type_str = map_column_type_to_python(&column.data_type);
+            let type_str = map_column_type_to_python(&column.data_type, &enums, &nested_models);
 
             let (type_str, default) = if !column.required {
                 (format!("Optional[{}]", type_str), " = None")
@@ -112,7 +207,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{Column, ColumnType};
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, Nested};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 
     #[test]
@@ -165,8 +260,9 @@ mod tests {
         assert!(result.contains(
             r#"from pydantic import BaseModel
 from typing import Optional, Any, Annotated
-from datetime import datetime
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig
+import datetime
+from enum import IntEnum, Enum
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin
 
 class Foo(BaseModel):
     primary_key: Key[str]
@@ -243,6 +339,108 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     nested_numbers: list[list[Optional[Annotated[int, "int32"]]]]
 
 nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))"#
+        ));
+    }
+
+    #[test]
+    fn test_nested_types() {
+        let address_nested = Nested {
+            name: "Address".to_string(),
+            columns: vec![
+                Column {
+                    name: "street".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "city".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "zip_code".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+            ],
+            jwt: false,
+        };
+
+        let tables = vec![Table {
+            name: "User".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: true,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "address".to_string(),
+                    data_type: ColumnType::Nested(address_nested.clone()),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "addresses".to_string(),
+                    data_type: ColumnType::Array {
+                        element_type: Box::new(ColumnType::Nested(address_nested)),
+                        element_nullable: false,
+                    },
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            deduplicate: false,
+            engine: Some("MergeTree".to_string()),
+            version: None,
+            source_primitive: PrimitiveSignature {
+                name: "User".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            metadata: None,
+        }];
+
+        let result = tables_to_python(&tables);
+        println!("{}", result);
+        assert!(result.contains(
+            r#"class Address(BaseModel):
+    street: str
+    city: str
+    zip_code: Optional[str] = None
+
+class User(BaseModel):
+    id: Key[str]
+    address: Address
+    addresses: Optional[list[Address]] = None
+
+user_model = IngestPipeline[User]("User", IngestPipelineConfig(
     ingest=True,
     stream=True,
     table=True

@@ -112,9 +112,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{
-        Column, ColumnType, DataEnum, EnumMember, EnumValue,
-    };
+    use crate::framework::core::infrastructure::table::{Column, ColumnType};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 
     #[test]

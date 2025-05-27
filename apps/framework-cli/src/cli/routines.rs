@@ -119,6 +119,7 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 pub mod auth;
 pub mod build;
 pub mod clean;
+pub mod code_generation;
 pub mod dev;
 pub mod docker_packager;
 pub mod logs;

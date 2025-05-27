@@ -333,7 +333,6 @@ pub async fn create_project_from_template(
 ) -> Result<String, RoutineFailure> {
     let template_config = get_template_config(template, CLI_VERSION).await?;
 
-    // let dir_path = Path::new(location.as_deref().unwrap_or(name));
     if !no_fail_already_exists && dir_path.exists() {
         return Err(RoutineFailure::error(Message {
             action: "Init".to_string(),

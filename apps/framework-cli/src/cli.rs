@@ -4,7 +4,7 @@ pub(crate) mod display;
 mod commands;
 pub mod local_webserver;
 pub mod logger;
-mod routines;
+pub mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
@@ -28,8 +28,6 @@ use routines::scripts::{
     terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
-use std::env;
-use std::io::Write;
 
 use settings::Settings;
 use std::path::Path;
@@ -52,13 +50,10 @@ use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 
+use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
-use crate::framework::python::generate::tables_to_python;
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::olap::OlapOperations;
 use anyhow::Result;
-use reqwest::Url;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -121,7 +116,7 @@ pub async fn top_command_handler(
 
             let template = match template {
                 None => match language.as_ref().map(|l| l.to_lowercase()).as_deref() {
-                    None => panic!("Either template or language should be specified."), // clap comamnd line parsing expects either
+                    None => panic!("Either template or language should be specified."), // clap command line parsing enforces either is present
                     Some("typescript") => "typescript-empty".to_string(),
                     Some("python") => "python-empty".to_string(),
                     Some(lang) => {
@@ -150,90 +145,7 @@ pub async fn top_command_handler(
                     .await?;
 
             if let Some(remote_url) = from_remote {
-                let url = Url::parse(remote_url).map_err(|e| {
-                    RoutineFailure::error(Message::new(
-                        "Invalid URL".to_string(),
-                        format!("Failed to parse remote_url '{}': {}", remote_url, e),
-                    ))
-                })?;
-
-                let mut client = clickhouse::Client::default().with_url(remote_url);
-                let url_username = url.username();
-                if !url_username.is_empty() {
-                    client = client.with_user(url_username)
-                }
-                if let Some(password) = url.password() {
-                    client = client.with_password(password);
-                }
-
-                let url_db = url
-                    .query_pairs()
-                    .filter_map(|(k, v)| {
-                        if k == "database" {
-                            Some(v.to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .last();
-
-                let client = ConfiguredDBClient {
-                    client,
-                    config: Default::default(),
-                };
-
-                let db = match url_db {
-                    None => client
-                        .client
-                        .query("select database()")
-                        .fetch_one::<String>()
-                        .await
-                        .map_err(|e| {
-                            RoutineFailure::new(
-                                Message::new(
-                                    "Failure".to_string(),
-                                    "fetching database".to_string(),
-                                ),
-                                e,
-                            )
-                        })?,
-                    Some(db) => db,
-                };
-                env::set_current_dir(dir_path).map_err(|e| {
-                    RoutineFailure::new(
-                        Message::new("Failure".to_string(), "changing directory".to_string()),
-                        e,
-                    )
-                })?;
-
-                let project = load_project()?;
-                let tables = client.list_tables(&db, &project).await.map_err(|e| {
-                    RoutineFailure::new(
-                        Message::new("Failure".to_string(), "listing tables".to_string()),
-                        e,
-                    )
-                })?;
-
-                let table_definitions = tables_to_python(&tables);
-                let mut file = std::fs::OpenOptions::new()
-                    .append(true)
-                    .open("app/main.py")
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new("Failure".to_string(), "opening main.py".to_string()),
-                            e,
-                        )
-                    })?;
-
-                writeln!(file, "\n\n{}", table_definitions).map_err(|e| {
-                    RoutineFailure::new(
-                        Message::new(
-                            "Failure".to_string(),
-                            "writing table definitions".to_string(),
-                        ),
-                        e,
-                    )
-                })?;
+                db_to_dmv2(remote_url, dir_path).await?;
             }
 
             wait_for_usage_capture(capture_handle).await;

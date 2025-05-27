@@ -175,6 +175,16 @@ export class MooseClient {
   }
 }
 
+export const toStaticQuery = (sql: Sql): string => {
+  const [query, params] = toQuery(sql);
+  if (Object.keys(params).length !== 0) {
+    throw new Error(
+      "Dynamic SQL is not allowed in the select statement in view creation.",
+    );
+  }
+  return query;
+};
+
 export const toQuery = (sql: Sql): [string, { [pN: string]: any }] => {
   const parameterizedStubs = sql.values.map((v, i) =>
     createClickhouseParameter(i, v),

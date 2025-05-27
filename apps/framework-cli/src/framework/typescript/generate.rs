@@ -20,9 +20,20 @@ fn map_column_type_to_typescript(
         ColumnType::BigInt => "bigint".to_string(),
         ColumnType::Float(FloatType::Float64) => "number".to_string(),
         ColumnType::Float(FloatType::Float32) => "number & typia.tags.Type<\"float\">".to_string(),
-        ColumnType::Decimal { .. } => "number".to_string(),
-        ColumnType::DateTime { .. } => "Date".to_string(),
-        ColumnType::Date | ColumnType::Date16 => "Date".to_string(),
+        ColumnType::Decimal { precision, scale } => {
+            format!("string & ClickHouseDecimal<{}, {}>", precision, scale)
+        }
+        ColumnType::DateTime { precision: None } => "Date".to_string(),
+        ColumnType::DateTime {
+            precision: Some(precision),
+        } => format!(
+            "string & typia.tags.Format<\"date-time\"> & ClickHousePrecision<{}>",
+            precision
+        ),
+        ColumnType::Date => "string & typia.tags.Format<\"date\">".to_string(),
+        ColumnType::Date16 => {
+            "string & typia.tags.Format<\"date\"> & ClickHouseByteSize<2>".to_string()
+        }
         ColumnType::Enum(data_enum) => enums.get(data_enum).unwrap().to_string(),
         ColumnType::Array {
             element_type,
@@ -30,7 +41,7 @@ fn map_column_type_to_typescript(
         } => {
             let inner_type = map_column_type_to_typescript(element_type, enums, nested);
             let inner_type = if *element_nullable {
-                format!("({} | null)", inner_type)
+                format!("({} | undefined)", inner_type)
             } else {
                 inner_type
             };
@@ -97,7 +108,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     // Add imports
     writeln!(
         output,
-        "import {{ IngestPipeline, Key, ClickHouseInt }} from \"@514labs/moose-lib\";"
+        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize }} from \"@514labs/moose-lib\";"
     )
     .unwrap();
     writeln!(output, "import typia from \"typia\";").unwrap();
@@ -270,7 +281,7 @@ mod tests {
         let result = tables_to_typescript(&tables);
         println!("{}", result);
         assert!(result.contains(
-            r#"import { IngestPipeline, Key, ClickHouseInt } from "@514labs/moose-lib";
+            r#"import { IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize } from "@514labs/moose-lib";
 import typia from "typia";
 
 export interface Address {
@@ -345,7 +356,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
         let result = tables_to_typescript(&tables);
         println!("{}", result);
         assert!(result.contains(
-            r#"import { IngestPipeline, Key, ClickHouseInt } from "@514labs/moose-lib";
+            r#"import { IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize } from "@514labs/moose-lib";
 import typia from "typia";
 
 export enum Status {

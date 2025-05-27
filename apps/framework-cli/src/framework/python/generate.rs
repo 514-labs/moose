@@ -264,6 +264,7 @@ mod tests {
             r#"from pydantic import BaseModel
 from typing import Optional, Any, Annotated
 import datetime
+import ipaddress
 from enum import IntEnum, Enum
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin
 

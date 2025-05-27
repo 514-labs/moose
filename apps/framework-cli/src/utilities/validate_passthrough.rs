@@ -263,7 +263,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     )))
                 }
             }
-            ColumnType::Date => {
+            ColumnType::Date | ColumnType::Date16 => {
                 if DATE_REGEX.is_match(v) {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {

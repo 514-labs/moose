@@ -3,6 +3,7 @@ pub mod blocks;
 pub mod checker;
 pub mod consumption;
 pub mod export_collectors;
+pub mod generate;
 pub mod generator;
 pub mod parser;
 pub mod scripts_worker;

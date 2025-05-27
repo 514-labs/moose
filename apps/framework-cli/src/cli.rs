@@ -199,7 +199,12 @@ pub async fn top_command_handler(
                         })?,
                     Some(db) => db,
                 };
-                env::set_current_dir(dir_path).unwrap();
+                env::set_current_dir(dir_path).map_err(|e| {
+                    RoutineFailure::new(
+                        Message::new("Failure".to_string(), "changing directory".to_string()),
+                        e,
+                    )
+                })?;
 
                 let project = load_project()?;
                 let tables = client.list_tables(&db, &project).await.map_err(|e| {

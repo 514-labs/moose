@@ -68,6 +68,8 @@ pub enum ClickHouseColumnType {
         precision: u8,
     },
     LowCardinality(Box<ClickHouseColumnType>),
+    IpV4,
+    IpV6,
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -174,6 +176,8 @@ impl ClickHouseColumnType {
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
             ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),
+            ClickHouseColumnType::IpV4 => ColumnType::IpV4,
+            ClickHouseColumnType::IpV6 => ColumnType::IpV6,
         };
         (column_type, required)
     }
@@ -233,6 +237,8 @@ impl ClickHouseColumnType {
             }
             "Date32" => Self::Date32,
             "Date" => Self::Date,
+            "IPv4" => Self::IpV4,
+            "IPv6" => Self::IpV6,
             "DateTime" | "DateTime('UTC')" => Self::DateTime,
             "JSON" => Self::Json,
 

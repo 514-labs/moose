@@ -150,7 +150,12 @@ pub async fn top_command_handler(
                     .await?;
 
             if let Some(remote_url) = from_remote {
-                let url = Url::parse(remote_url).unwrap();
+                let url = Url::parse(remote_url).map_err(|e| {
+                    RoutineFailure::error(Message::new(
+                        "Invalid URL".to_string(),
+                        format!("Failed to parse remote_url '{}': {}", remote_url, e),
+                    ))
+                })?;
 
                 let mut client = clickhouse::Client::default().with_url(remote_url);
                 let url_username = url.username();

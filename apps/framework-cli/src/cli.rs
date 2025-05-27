@@ -4,7 +4,7 @@ pub(crate) mod display;
 mod commands;
 pub mod local_webserver;
 pub mod logger;
-mod routines;
+pub mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
@@ -13,7 +13,6 @@ use clap::Parser;
 use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
 use display::with_spinner;
-use home::home_dir;
 use log::{debug, info};
 use regex::Regex;
 use routines::auth::generate_hash_token;
@@ -35,8 +34,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::cli::routines::logs::{follow_logs, show_logs};
+use crate::cli::routines::remote_refresh;
 use crate::cli::routines::setup_redis_client;
-use crate::cli::routines::{remote_refresh, templates};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::settings::user_directory;
 use crate::cli::{
@@ -46,14 +45,14 @@ use crate::cli::{
 use crate::framework::core::check::check_system_reqs;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
-use crate::framework::languages::SupportedLanguages;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
-use crate::utilities::git::is_git_repo;
 
+use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
+use crate::cli::routines::templates::create_project_from_template;
 use anyhow::Result;
 
 #[derive(Parser)]
@@ -95,41 +94,6 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
     Ok(())
 }
 
-fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
-    let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
-
-    if !is_git_repo {
-        crate::utilities::git::create_init_commit(project_arc, dir_path);
-        show_message!(
-            MessageType::Info,
-            Message {
-                action: "Init".to_string(),
-                details: "Created a new git repository".to_string(),
-            }
-        );
-    }
-
-    {
-        show_message!(
-            MessageType::Success,
-            Message {
-                action: "Success!".to_string(),
-                details: format!("Created project at {} 🚀", dir_path.to_string_lossy()),
-            }
-        );
-    }
-
-    {
-        show_message!(
-            MessageType::Info,
-            Message {
-                action: "".to_string(),
-                details: "\n".to_string(),
-            }
-        );
-    }
-}
-
 pub async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
@@ -141,11 +105,31 @@ pub async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            from_remote,
+            language,
+            // database,
         } => {
             info!(
-                "Running init command with name: {}, location: {:?}, template: {:?}",
-                name, location, template
+                "Running init command with name: {}, location: {:?}, template: {:?}, language: {:?}",
+                name, location, template, language
             );
+
+            let template = match template {
+                None => match language.as_ref().map(|l| l.to_lowercase()).as_deref() {
+                    None => panic!("Either template or language should be specified."), // clap command line parsing enforces either is present
+                    Some("typescript") => "typescript-empty".to_string(),
+                    Some("python") => "python-empty".to_string(),
+                    Some(lang) => {
+                        return Err(RoutineFailure::error(Message::new(
+                            "Unknown".to_string(),
+                            format!("language {}", lang),
+                        )))
+                    }
+                },
+                Some(template) => template.to_lowercase(),
+            };
+
+            let dir_path = Path::new(location.as_deref().unwrap_or(name));
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::InitTemplateCommand,
@@ -156,114 +140,15 @@ pub async fn top_command_handler(
 
             check_project_name(name)?;
 
-            let template_config =
-                templates::get_template_config(&template.to_lowercase(), CLI_VERSION).await?;
+            let post_install_message =
+                create_project_from_template(&template, name, dir_path, *no_fail_already_exists)
+                    .await?;
 
-            let dir_path = Path::new(location.as_deref().unwrap_or(name));
-            if !no_fail_already_exists && dir_path.exists() {
-                return Err(RoutineFailure::error(Message {
-                    action: "Init".to_string(),
-                    details:
-                        "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
-                            .to_string(),
-                }));
-            }
-            std::fs::create_dir_all(dir_path).expect("Failed to create directory");
-
-            if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
-                return Err(RoutineFailure::error(Message {
-                    action: "Init".to_string(),
-                    details: "You cannot create a project in your home directory".to_string(),
-                }));
+            if let Some(remote_url) = from_remote {
+                db_to_dmv2(remote_url, dir_path).await?;
             }
 
-            let language = match template_config.language.as_str() {
-                "typescript" => SupportedLanguages::Typescript,
-                "python" => SupportedLanguages::Python,
-                _ => SupportedLanguages::Typescript,
-            };
-
-            templates::generate_template(&template.to_lowercase(), CLI_VERSION, dir_path).await?;
-            let project = Project::new(dir_path, name.clone(), language);
-            let project_arc = Arc::new(project);
-
-            // Update project configuration based on language
-            match language {
-                SupportedLanguages::Typescript => {
-                    let package_json_path = dir_path.join("package.json");
-                    if package_json_path.exists() {
-                        let mut package_json: serde_json::Value = serde_json::from_str(
-                            &std::fs::read_to_string(&package_json_path).map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to read package.json: {}", e),
-                                })
-                            })?,
-                        )
-                        .map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to parse package.json: {}", e),
-                            })
-                        })?;
-
-                        if let Some(obj) = package_json.as_object_mut() {
-                            obj.insert("name".to_string(), serde_json::Value::String(name.clone()));
-                            std::fs::write(
-                                &package_json_path,
-                                serde_json::to_string_pretty(&package_json).map_err(|e| {
-                                    RoutineFailure::error(Message {
-                                        action: "Init".to_string(),
-                                        details: format!("Failed to serialize package.json: {}", e),
-                                    })
-                                })?,
-                            )
-                            .map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to write package.json: {}", e),
-                                })
-                            })?;
-                        }
-                    }
-                }
-                SupportedLanguages::Python => {
-                    let setup_py_path = dir_path.join("setup.py");
-                    if setup_py_path.exists() {
-                        let setup_py_content =
-                            std::fs::read_to_string(&setup_py_path).map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to read setup.py: {}", e),
-                                })
-                            })?;
-
-                        // Replace the name in setup.py
-                        let name_pattern = Regex::new(r"name='[^']*'").map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to create regex pattern: {}", e),
-                            })
-                        })?;
-                        let new_setup_py =
-                            name_pattern.replace(&setup_py_content, &format!("name='{}'", name));
-
-                        std::fs::write(&setup_py_path, new_setup_py.as_bytes()).map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to write setup.py: {}", e),
-                            })
-                        })?;
-                    }
-                }
-            }
-
-            maybe_create_git_repo(dir_path, project_arc);
             wait_for_usage_capture(capture_handle).await;
-
-            let post_install_message = template_config
-                .post_install_print
-                .replace("{project_dir}", &dir_path.to_string_lossy());
 
             Ok(RoutineSuccess::highlight(Message::new(
                 "Get Started".to_string(),

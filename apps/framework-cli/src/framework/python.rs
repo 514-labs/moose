@@ -5,6 +5,7 @@ pub mod checker;
 pub mod consumption;
 pub mod datamodel_config;
 pub mod executor;
+pub mod generate;
 pub mod parser;
 pub mod scripts_worker;
 pub mod streaming;

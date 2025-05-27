@@ -273,34 +273,18 @@ mod tests {
             r#"import { IngestPipeline, Key, ClickHouseInt } from "@514labs/moose-lib";
 import typia from "typia";
 
-/**
- * Data Pipeline: Raw Record → Processed Record
- * Raw → HTTP → Raw Stream → Transform → Derived → Processed Stream → DB Table
- */
-
-/** =======Data Models========= */
-
-/** Nested type for Address
- * @see https://docs.moosejs.com/nested-types
- */
 export interface Address {
     street: string;
     city: string;
-    zipCode?: string;
+    zipCode: string | undefined;
 }
 
-/** Data model for User */
 export interface User {
     id: Key<string>;
     address: Address;
-    addresses?: Address[];
+    addresses: Address[] | undefined;
 }
 
-/** =======Pipeline Configuration========= */
-
-/** Pipeline configuration for User
- * @see https://docs.moosejs.com/pipelines
- */
 export const UserPipeline = new IngestPipeline<User>("User", {
     table: true,
     stream: true,
@@ -364,32 +348,16 @@ export const UserPipeline = new IngestPipeline<User>("User", {
             r#"import { IngestPipeline, Key, ClickHouseInt } from "@514labs/moose-lib";
 import typia from "typia";
 
-/**
- * Data Pipeline: Raw Record → Processed Record
- * Raw → HTTP → Raw Stream → Transform → Derived → Processed Stream → DB Table
- */
-
-/** =======Data Models========= */
-
-/** Enum values for Status
- * @see https://docs.moosejs.com/enums
- */
 export enum Status {
     OK = "ok",
     ERROR = "error",
 }
 
-/** Data model for Task */
 export interface Task {
     id: Key<string>;
     status: Status;
 }
 
-/** =======Pipeline Configuration========= */
-
-/** Pipeline configuration for Task
- * @see https://docs.moosejs.com/pipelines
- */
 export const TaskPipeline = new IngestPipeline<Task>("Task", {
     table: true,
     stream: true,

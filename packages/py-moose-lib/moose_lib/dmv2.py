@@ -349,7 +349,7 @@ class DeadLetterModel(BaseModel, Generic[T]):
     failed_at: datetime.datetime
     source: Literal["api", "transform", "table"]
 
-    def as_t(self) -> T:
+    def as_typed(self) -> T:
         return self._t.model_validate(self.original_record)
 
 

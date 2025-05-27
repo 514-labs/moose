@@ -24,7 +24,7 @@ class Foo(BaseModel):
     primary_key: Key[str]
     timestamp: float
     baz: Baz
-    optional_text: Optional[str]
+    optional_text: Optional[str] = None
 
 
 class Bar(BaseModel):

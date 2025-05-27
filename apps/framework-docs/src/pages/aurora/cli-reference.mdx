@@ -5,15 +5,15 @@ description: CLI Reference for Aurora
 
 # CLI Reference
 
-### Installation
+## Install CLI
 
 ```
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
 
-### Commands
+## Commands
 
-### Init
+### init
 
 Creates a data engineering project with Moose, with Aurora MCP preconfigured.
 
@@ -27,7 +27,11 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 - `-location <location>`: Location of your app or service. The default is the name of the project.
 - `-no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
 
-### Setup
+### init  from-remote
+
+Creates a data engineering project with Moose from a pre-existing Clickhouse database, with Aurora MCP preconfigured.
+
+### setup
 
 Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
 

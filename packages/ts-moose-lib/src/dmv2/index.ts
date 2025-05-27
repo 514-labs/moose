@@ -16,6 +16,7 @@ import {
   populateTable,
   Sql,
   toQuery,
+  toStaticQuery,
 } from "../index";
 
 /**
@@ -679,9 +680,13 @@ export class View extends SqlResource {
    */
   constructor(
     name: string,
-    selectStatement: string,
+    selectStatement: string | Sql,
     baseTables: (OlapTable<any> | View)[],
   ) {
+    if (typeof selectStatement !== "string") {
+      selectStatement = toStaticQuery(selectStatement);
+    }
+
     super(
       name,
       [
@@ -750,13 +755,7 @@ export class MaterializedView<TargetTable> extends SqlResource {
   ) {
     let selectStatement = options.selectStatement;
     if (typeof selectStatement !== "string") {
-      const [query, params] = toQuery(selectStatement);
-      if (Object.keys(params).length !== 0) {
-        throw new Error(
-          "Dynamic SQL is not allowed in the select statement in materialized view creation.",
-        );
-      }
-      selectStatement = query;
+      selectStatement = toStaticQuery(selectStatement);
     }
 
     if (targetSchema === undefined || targetColumns === undefined) {

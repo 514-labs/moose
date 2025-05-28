@@ -7,36 +7,12 @@ import { Database, FileCode, Download, Zap } from "lucide-react";
 <LanguageSwitcher />
 
 <Callout type="warning" title="Beta Feature">
-This feature is currently in beta. We're working on complete type support for all ClickHouse data types. Tables containing unsupported types are currently skipped during the initialization process. Check the [Type Mapping](#type-mapping) section below to see what's currently supported.
+This feature is currently in beta. We're working on complete type support for all ClickHouse data types. Tables containing unsupported types are currently skipped during the initialization process. Check the [Current Limitations](#current-limitations) section below to see what's currently supported.
 </Callout>
 
-Got a ClickHouse database that's already running in production? This guide will walk you through how to bootstrap a Moose project directly from your existing schema.
+Bootstrap a Moose project directly from your existing ClickHouse database in minutes.
 
-## Why Bother?
-
-ClickHouse is a blazingly-fast analytical database, but with the power comes complexity and a lot of manual work:
-<BulletPointsCard
-  title="Manually Managing ClickHouse?"
-  bulletStyle="x"
-  bullets={[
-    {
-      title: "Copy-pasting DDL between environments",
-      description: "Running the same CREATE TABLE and CREATE MATERIALIZED VIEW statements in dev, staging, and prod, hoping you didn't miss a field",
-    },
-    {
-      title: "Forgetting dependency order",
-      description: "Creating a materialized view before its source table exists, then scrambling to figure out what broke",
-    },
-    {
-      title: "Manual type mapping to your language of choice",
-      description: "Your frontend expects user_id as a string but your SELECT query returns UInt64, and you only find out at runtime",
-    },
-    {
-      title: "Lost schema changes",
-      description: "That ALTER TABLE you ran last week? Good luck remembering what it was when you need to apply it to production",
-    },
-  ]}
-/>
+## Quick Setup
 
 Moose provides a code layer on top of your existing ClickHouse database.
 
@@ -46,7 +22,7 @@ Moose provides a code layer on top of your existing ClickHouse database.
   title="How Moose Can Speed Things Up:"
   bullets={[
     {
-      title: "Stop writing boilerplate",
+      title: "Reduce boilerplate",
       description: "Generate typed models from your existing tables instead of hand-coding everything",
     },
     {
@@ -54,7 +30,7 @@ Moose provides a code layer on top of your existing ClickHouse database.
       description: "Write actual TypeScript/Python functions with proper testing, debugging, and IDE support instead of figuring out how to make your API logic work with templated SQL",
     },
     {
-      title: "Add streaming in a line of code",
+      title: "Add streaming with one line of code",
       description: "Turn any table into a real-time streaming destination without configuring Kafka topics, serialization, or message schemas",
     },
     {
@@ -99,23 +75,21 @@ http://username:password@host:port/?database=database_name
 
 | Setup Type | Connection String | Notes |
 |------------|-------------------|-------|
-| **Local setup** | `http://default:@localhost:8123/?database=mydb` | Default ClickHouse installation |
-| **ClickHouse Cloud** | `https://username:password@your-cluster.clickhouse.cloud:8443/?database=production` | Replace with your actual credentials |
-| **ClickHouse Playground** | `https://explorer:@play.clickhouse.com:443/?database=default` | For testing (read-only) |
+| **Local setup** | `http://default:@localhost:8123/?database=mydb` |
+| **ClickHouse Cloud** | `https://username:password@your-cluster.clickhouse.cloud:8443/?database=production` |
+| **ClickHouse Playground** | `https://explorer:@play.clickhouse.com:443/?database=default` |
 
 <Callout type="info" title="Try with ClickHouse Playground">
 Want to test Moose without setting up your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets you can experiment with, though it's read-only so you can't modify the data.
 </Callout>
 
-<ToggleBlock openText="Finding Credentials by Setup Type" closeText="Hide Credential Help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted ClickHouse", "Docker ClickHouse"]}>
+<ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
+<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
 <Tabs.Tab>
-- Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
-- Go to your service details page
-- Find "Connect" or "Connection Details" section
-- Copy the HTTPS endpoint and your username/password
-- Format: `https://username:password@your-cluster.clickhouse.cloud:8443/?database=your_db`
-
+1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+2. Go to your service details page
+3. Find "Connect" or "Connection Details" section
+4. Copy the HTTPS endpoint and your username/password
 </Tabs.Tab>
 <Tabs.Tab>
 - Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
@@ -129,7 +103,6 @@ Want to test Moose without setting up your own ClickHouse? Use the [ClickHouse P
 - Default is usually `http://default:@localhost:8123/?database=default`
 </Tabs.Tab>
 </Tabs>
-
 </ToggleBlock>
 
 <ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
@@ -145,6 +118,7 @@ Want to test Moose without setting up your own ClickHouse? Use the [ClickHouse P
 
 
 ### Install Moose & Bootstrap Your Project
+
 ```bash copy
 # Install Moose
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
@@ -195,7 +169,6 @@ Moose created data models for each of your ClickHouse tables. Check <Python inli
 <FileTree.File name="requirements.txt" />
 <FileTree.File name="setup.py" />
 </FileTree>
-
 </Python>
 
 <TypeScript>
@@ -230,6 +203,8 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `UUID` | `UUID` | |
 | `Boolean` | `bool` | |
 | `Nullable(T)` | `Optional[T]` | |
+| `LowCardinality(T)` | `T` | Maps to base type |
+| `JSON` | `any` | Partial support |
 
 </Tabs.Tab>
 <Tabs.Tab>
@@ -247,26 +222,23 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `UUID` | `string` | |
 | `Boolean` | `boolean` | |
 | `Nullable(T)` | `T \| null` | |
+| `LowCardinality(T)` | `T` | Maps to base type |
+| `JSON` | `Record<string, any>` | Partial support |
 
 </Tabs.Tab>
 </Tabs>
 
 ## What's Next?
 
-Alright, you've got Moose talking to your ClickHouse database. Now let's build something useful with it:
+Now that you've got Moose talking to your ClickHouse database:
 
-### 1. Get Some Data Locally (Do This First)
-
-You'll want actual data to work with during development:
+### 1. Get Some Data Locally
 
 ```bash copy
 # Coming soon - CLI command to seed from remote ClickHouse
-moose seed --from-remote 'http://username:password@host:port/?database=your_db'
+moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
 ```
 
-<Callout type="info" title="Coming Soon">
-The `moose seed` command is in development. For now, you can manually insert some test data or connect directly to your remote database during development.
-</Callout>
 
 ### 2. Build Materialized Views
 
@@ -278,20 +250,20 @@ Moose Materialized View abstraction helps speed things up for building and maint
   title="What you'll actually build:"
   bullets={[
     {
-      title: "Just schema + SELECT, Moose handles the rest",
-      description: "Define your target data model and write your SELECT statement - Moose generates the target table DDL and sets up the materialized view triggers automatically",
+      title: "Schema + SELECT only",
+      description: "Define your target model and SELECT statement - Moose generates DDL and sets up materialized view triggers automatically",
     },
     {
-      title: "Type-safe aggregation functions",
-      description: "Aggregated<\"sum\", [number]> types that catch mismatches between your code and ClickHouse schemas at compile time",
+      title: "Type-safe aggregations",
+      description: "Aggregated<\"sum\", [number]> types catch mismatches between your code and ClickHouse schemas at compile time",
     },
     {
-      title: "Automatic dependency orchestration",
-      description: "Reference source tables directly in your SELECT statements - Moose figures out creation order and handles migrations",
+      title: "Auto dependency order",
+      description: "Reference source tables directly in SELECT statements - Moose figures out correct execution order",
     },
     {
       title: "Hot-reload development",
-      description: "Change your view logic and see it applied to your local ClickHouse instantly, no manual DROP/CREATE cycles",
+      description: "Change view logic and see it applied to local ClickHouse instantly, no manual DROP/CREATE cycles",
     },
   ]}
 />
@@ -302,28 +274,26 @@ Check out the [Materialized Views docs](/moose/building/materialized-views) for 
 
 ### 3. Create APIs Your Frontend Will Love
 
-Turn your materialized views into fast HTTP endpoints that your dashboards can actually use.
-
 <BulletPointsCard
   bulletStyle="check"
   divider={false}
-  title="What you can build:"
+  title="What you'll actually build:"
   bullets={[
     {
-      title: "Type-safe endpoints with auto-validation",
+      title: "Type-safe endpoints with auto-validation & OpenAPI docs",
       description: "Request/response models that match your frontend, with automatic OpenAPI docs generation",
     },
     {
-      title: "SQL queries in actual code",
-      description: "Write TypeScript/Python functions instead of wrestling with Jinja templates - get proper IDE support, testing, and debugging",
+      title: "SQL in actual code",
+      description: "Write TypeScript/Python functions instead of Jinja templates for more expressiveness",
     },
     {
-      title: "Direct table/column references",
-      description: "Import your materialized views and tables directly in your code for IDE autocompletion and type safety",
+      title: "Direct table references",
+      description: "Import tables for autocompletion & type safety",
     },
     {
-      title: "Built-in auth & security",
-      description: "JWT validation, parameter sanitization, and SQL injection protection out of the box",
+      title: "Built-in security",
+      description: "JWT validation and SQL injection protection",
     },
   ]}
 />
@@ -332,35 +302,25 @@ Turn your materialized views into fast HTTP endpoints that your dashboards can a
 See the [Consumption APIs docs](/moose/building/consumption-apis) for authentication, query patterns, and examples.
 </Callout>
 
-## Troubleshooting
 
-<ToggleBlock openText="Common Issues" closeText="Hide Troubleshooting">
+### 4. Use AI to Generate Analytics & APIs
 
-**Can't connect to ClickHouse**
-- Check if your server is actually running (`curl http://your-host:8123/ping`)
-- Verify the connection string format
-- Make sure your user has the right permissions
-
-**No tables show up**
-- Double-check the database name in your URL
-- Confirm tables exist: `SHOW TABLES` in your ClickHouse client
-- Verify your user can `SELECT` from those tables
-
-**Generated types look weird**
-- Complex ClickHouse types sometimes map to generic ones
-- You can manually fix the generated models afterward
-- Enums currently become strings (we're working on it)
-
-**Taking forever with large schemas**
-- Yeah, scanning hundreds of tables takes time
-- Table filtering is coming soon
-- For now, maybe create a smaller test database first
-
-</ToggleBlock>
+<Callout type="info" title="Try Aurora">
+Want AI to generate insights and APIs from your data? Try [Aurora](/aurora/quickstart) - our AI analytics agent for Moose projects.
+</Callout>
 
 ## Current Limitations
 
-<Callout type="info" title="What Doesn't Work Yet">
-- **Selective table import**: It grabs everything (filtering coming soon)
+<Callout type="info" title="What doesn't work yet">
+- **Selective table import**: Imports all tables (filtering coming soon)
 - **Custom ClickHouse functions**: Default values with functions get stripped
+- **Advanced ClickHouse types**: These aren't supported yet:
+  - `Map(K, V)` types
+  - `Tuple(T1, T2, ...)` types  
+  - `Geo` types (Point, Ring, Polygon, etc.)
+- **Partial support**:
+  - `LowCardinality(T)` → maps to base type `T` (full support coming soon)
+  - `JSON` types → `any` (Python) / `Record<string, any>` (TypeScript) (better typing coming soon)
+
+Right now, tables featuring these types will be skipped during the initialization process.
 </Callout>

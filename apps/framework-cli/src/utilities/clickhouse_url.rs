@@ -3,7 +3,7 @@ use reqwest::Url;
 
 /// Transforms a ClickHouse connection string to ensure it uses HTTP(S) protocol
 /// Handles both clickhouse:// and https:// URLs
-pub fn normalize_clickhouse_url(conn_str: &str) -> anyhow::Result<Url> {
+pub fn convert_clickhouse_url(conn_str: &str) -> anyhow::Result<Url> {
     let mut url = Url::parse(conn_str)?;
 
     // Handle clickhouse:// protocol by converting to http(s)

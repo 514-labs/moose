@@ -7,11 +7,11 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::project::Project;
-use crate::utilities::clickhouse_url::normalize_clickhouse_url;
+use crate::utilities::clickhouse_url::convert_clickhouse_url;
 use log::{debug, info};
 
 fn parse_clickhouse_connection_string(conn_str: &str) -> anyhow::Result<ClickHouseConfig> {
-    let url = normalize_clickhouse_url(conn_str)?;
+    let url = convert_clickhouse_url(conn_str)?;
 
     let user = url.username().to_string();
     let password = url.password().unwrap_or("").to_string();
@@ -111,7 +111,7 @@ pub async fn handle_seed_command(
 
             Ok(RoutineSuccess::success(Message::new(
                 "Seeded ClickHouse".to_string(),
-                format!("{}", summary.join("\n")),
+                summary.join("\n"),
             )))
         }
         None => Err(RoutineFailure::error(Message {

@@ -5,14 +5,14 @@ use crate::framework::python::generate::tables_to_python;
 use crate::framework::typescript::generate::tables_to_typescript;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::olap::OlapOperations;
-use crate::utilities::clickhouse_url::normalize_clickhouse_url;
+use crate::utilities::clickhouse_url::convert_clickhouse_url;
 use crate::utilities::constants::{APP_DIR, PYTHON_MAIN_FILE, TYPESCRIPT_MAIN_FILE};
 use std::env;
 use std::io::Write;
 use std::path::Path;
 
 pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), RoutineFailure> {
-    let url = normalize_clickhouse_url(remote_url).map_err(|e| {
+    let url = convert_clickhouse_url(remote_url).map_err(|e| {
         RoutineFailure::error(Message::new(
             "Invalid URL".to_string(),
             format!("Failed to parse remote_url '{}': {}", remote_url, e),

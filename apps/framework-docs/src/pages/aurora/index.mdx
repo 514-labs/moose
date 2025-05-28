@@ -19,18 +19,19 @@ Aurora is a set of tools to make your chat, copilot or BI fluent in data enginee
 
 ## Quickstart Guides
 
-<FeatureGrid>
+<FeatureGrid columns={3}>
   <FeatureCard
-    href="/aurora/quickstart/clickhouse-chat#quickstart-ad-hoc-analytics-with-clickhouse-playground-or-your-own-clickhouse-database"
-    Icon={Icons.models}
+    href="/aurora/quickstart"
+    Icon={Icons.api}
     title="Chat with Clickhouse"
     description="
+    Connect your LLM client to a Clickhouse database and chat with your data. 
     "
   />
   
   <FeatureCard
     href="/aurora/quickstart/clickhouse-proj#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
-    Icon={Icons.ingestion}
+    Icon={Icons.contact}
     title="Build analytics project from Clickhouse"
     description="
     "
@@ -38,7 +39,7 @@ Aurora is a set of tools to make your chat, copilot or BI fluent in data enginee
   
   <FeatureCard
     href="/aurora/quickstart/from-template#quickstart-new-complete-local-olap-project-from-template"
-    Icon={Icons.streams}
+    Icon={Icons.db}
     title="Full stack OLAP project from Template"
     description="
     "
@@ -47,42 +48,87 @@ Aurora is a set of tools to make your chat, copilot or BI fluent in data enginee
 </FeatureGrid>
 
 ## Core features
-AUrora offers a comprehensive suite of MCP tools and agents designed to streamline data engineering workflows, enabling faster and more efficient deployment and management.
+Aurora offers a comprehensive suite of MCP tools and agents designed to streamline data engineering workflows, enabling faster and more efficient deployment and management.
 
-### CLI based fast deployment
-Deploy and configure your system in minutes with a simple, straightforward CLI setup.
+<FeatureGrid columns={1}>
+  <FeatureCard
+    href="/aurora/quickstart"
+    Icon={Icons.api}
+    title="CLI based fast deployment"
+    description={
+      <>
+        <ul>
+          <li>3 steps in CLI to chat with Clickhouse</li>
+          <li>5 minutes to build a full stack OLAP project</li>
+          <li>Template based new projects for building your own infrastructure</li>
+        </ul>
+      </>
+    }
+  />
+  
+  <FeatureCard
+    href="/aurora/reference/cli-reference#setup"
+    Icon={Icons.contact}
+    title="Client agnostic"
+    description={
+      <>
+        <ul>
+          <li>Data engineering in your IDE</li>
+          <li>Data analytics and analytics engineering in your chat client</li>
+          <li>BI in your BI tool of choice</li>
+        </ul>
+      </>
+    }
+  />
+  
+  <FeatureCard
+    href="/aurora/reference/cli-reference#init"
+    Icon={Icons.db}
+    title="Infrastructure agnostic, opinionated stack available"
+    description={
+      <>
+        <ul>
+          <li>Opinionated OLAP deployments with Moose: Optimized ClickHouse development and deployment</li>
+          <li>Direct integration with your architecture: DuckDB, Snowflake, Databricks</li>
+          <li>Integration with your enterprise: metadata, CICD, logging and more</li>
+        </ul>
+      </>
+    }
+  />
 
-- As simple as 3-command setup: install, configure, chat
-- Modular agent selection by function
-- Native integration: IDE, BI tools, CLI
+  <FeatureCard
+    href="aurora/reference/tool-reference#read-tools"
+    Icon={Icons.workflows}
+    title="Context-aware data engineering agents"
+    description={
+      <>
+        <ul>
+          <li>Full-stack context: code, logs, data, docs</li>
+          <li>Self-improving feedback loops</li>
+          <li>Embedded metadata for continuity</li>
+        </ul>
+      </>
+    }
+  />
 
-### Client agnostic
-Seamlessly integrate with your preferred tools, allowing you to work in the environments you're already using without disruption.
+  <FeatureCard
+    href="aurora/reference/tool-reference"
+    Icon={Icons.models}
+    title="Enterprise ready by default"
+    description={
+      <>
+        <ul>
+          <li>Each agent: context gathering → implementation → testing → doc workflows</li>
+          <li>Governance defaults, easily configurable: SDLC, data quality, reporting, privacy and security default practices</li>
+          <li>Learns your policies with minimal context, enforces them automatically</li>
+        </ul>
+      </>
+    }
+  />
 
-- Data engineering in your IDE
-- Data analytics and analytics engineering in your chat client
-- BI in your BI tool of choice
+</FeatureGrid>
 
-### Infrastructure agnostic, opinionated stack available
-Enhance existing infrastructure with AI; or if you are building an OLAP system for high performance analytics, Moose framework allows Aurora to build quickly and efficiently in languages your aplication engineers know—python and typescript.
 
-- Opinionated OLAP deployments with Moose: Optimized ClickHouse development and deployment
-- Direct integration with your existing data architecture: DuckDB, Polars, Databricks
-- Integration with your enterprise systems: metadata management, CICD, logging and more
-
-### Context-aware data engineering agents
-LLMs use Aurora to access all relevant context.
-
-- Full-stack context: code, logs, data, docs
-- Self-improving feedback loops
-- Embedded metadata for continuity
-
-### Enterprise ready by default
-Out-of-the-box production-grade features ensure your environment meets the highest standards for governance, security, and quality.
-
-- Each agent built with context gathering → implementation → testing → documentation workflows
-- Governance defaults, easily configurable: SDLC, data quality, reporting, privacy and security default practices
-- Learns your policies with minimal context, enforces them automatically
 
 ## Getting Involved / Giving Feedback / Community
 

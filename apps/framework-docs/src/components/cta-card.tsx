@@ -57,9 +57,7 @@ export function CTACard({
               )}
             />
           : null}
-          <SmallText className="text-primary text-moose-purple my-0">
-            {cardName}
-          </SmallText>
+          <SmallText className="text-primary my-0">{cardName}</SmallText>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">

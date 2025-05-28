@@ -5,15 +5,15 @@ description: CLI Reference for Aurora
 
 # CLI Reference
 
-### Installation
+## Install CLI
 
 ```
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
 
-### Commands
+## Commands
 
-### Init
+### init
 
 Creates a data engineering project with Moose, with Aurora MCP preconfigured.
 
@@ -22,12 +22,30 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 ```
 
 - `<name>`: name of your application
-- `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
-- `-mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
-- `-location <location>`: Location of your app or service. The default is the name of the project.
-- `-no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
+- `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
+- `--location <location>`: Location of your app or service. The default is the name of the project.
+- `--no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
 
-### Setup
+- If creating a new project:
+    - `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
+    - `--from-remote <connection-string>`: If you are creating a project from a pre-existing Clickhouse database, use this flag. Do not use a template.
+
+- If creating a project from a pre-existing Clickhouse database:
+    - `--from-remote <connection-string>`: The connection string to your Clickhouse database.
+    - `--language <language>`: The language of your application. [possible values] `typescript` or `python`].
+
+### connect
+
+Connects to an existing data source. Currently only `clickhouse` is supported.
+
+```
+aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
+```
+
+- `--connection-string <connection-string>`: The connection string to your Clickhouse database.
+- `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
+
+### setup
 
 Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
 
@@ -38,11 +56,11 @@ aurora setup [path] <--mcp <host>>
 - Path to the Moose project (defaults to current directory)
 - `-mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
 
-### Config
+### config
 
 Configure Aurora settings
 
-### Config Focus
+### config focus
 
 List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at a time.
 
@@ -50,7 +68,7 @@ List Aurora configured projects, allows selection of project globally configured
 aurora config focus
 ```
 
-### Config Keys
+### config keys
 
 Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key.
 
@@ -60,11 +78,11 @@ aurora config keys <KEY>
 
 - `<KEY>`: Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup
 
-### Config Models
+### config models
 
 [Coming Soon]. Allows you to configure which models Aurora agents use.
 
-### Config Tools
+### config tools
 
 Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` sets.
 
@@ -76,7 +94,7 @@ aurora config tools [EXPERIMENTAL_PREFERENCE]
 
 Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.
 
-### Login
+### login
 
 [Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.
 

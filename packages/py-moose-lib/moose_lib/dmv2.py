@@ -498,6 +498,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
     table: Optional[OlapTable[T]] = None
     stream: Optional[Stream[T]] = None
     ingest_api: Optional[IngestApi[T]] = None
+    metadata: Optional[dict] = None
 
     def get_table(self) -> OlapTable[T]:
         """Retrieves the pipeline's OLAP table component.
@@ -747,6 +748,7 @@ class MaterializedViewOptions(BaseModel):
     materialized_view_name: str
     engine: Optional[ClickHouseEngines] = None
     order_by_fields: Optional[list[str]] = None
+    metadata: Optional[dict] = None
     # Ensure arbitrary types are allowed for Pydantic validation
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -778,7 +780,6 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
     def __init__(
             self,
             options: MaterializedViewOptions,
-            metadata: dict = None,
             **kwargs
     ):
         self._set_type(options.materialized_view_name, self._get_type(kwargs))
@@ -804,7 +805,7 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
             teardown,
             pulls_data_from=options.select_tables,
             pushes_data_to=[target_table],
-            metadata=metadata
+            metadata=options.metadata
         )
 
         self.target_table = target_table

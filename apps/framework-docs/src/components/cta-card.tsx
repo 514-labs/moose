@@ -29,7 +29,7 @@ interface CTACardProps {
   };
   className?: string;
   cardName?: string;
-  variant?: "default" | "gradient";
+  variant?: "default" | "gradient" | "aurora";
 }
 
 export function CTACard({
@@ -50,11 +50,14 @@ export function CTACard({
           {badge ?
             <ProductBadge variant={badge.variant}>{badge.text}</ProductBadge>
           : Icon ?
-            <Icon className="h-[20px] w-[20px] text-moose-purple" />
+            <Icon
+              className={cn(
+                "h-[20px] w-[20px]",
+                variant === "aurora" ? "text-aurora-teal" : "text-moose-purple",
+              )}
+            />
           : null}
-          <SmallText className="text-primary text-moose-purple my-0">
-            {cardName}
-          </SmallText>
+          <SmallText className="text-primary my-0">{cardName}</SmallText>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">

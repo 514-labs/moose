@@ -7,38 +7,39 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::project::Project;
-use crate::utilities::clickhouse_url::convert_clickhouse_url;
+use crate::utilities::clickhouse_url::convert_http_to_clickhouse;
 use log::{debug, info};
 
 fn parse_clickhouse_connection_string(
     conn_str: &str,
 ) -> anyhow::Result<(ClickHouseConfig, Option<String>)> {
-    let url = convert_clickhouse_url(conn_str)?;
+    let url = convert_http_to_clickhouse(conn_str)?;
 
     let user = url.username().to_string();
     let password = url.password().unwrap_or("").to_string();
     let host = url.host_str().unwrap_or("localhost").to_string();
-    let use_ssl = url.scheme() == "https";
-    let default_port = if use_ssl { 8443 } else { 8123 };
-    let port = url.port().unwrap_or(default_port) as i32;
 
-    // Try to get db_name from query string first, then from path
-    let db_name = url
-        .query_pairs()
-        .find(|(k, _)| k == "database")
-        .map(|(_, v)| v.to_string())
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            let path = url.path().trim_start_matches('/').to_string();
-            if !path.is_empty() {
-                Some(path)
-            } else {
-                None
-            }
-        });
+    // Determine SSL based on scheme and port
+    let use_ssl = match url.scheme() {
+        "https" => true,
+        "clickhouse" => url.port().unwrap_or(9000) == 9440,
+        _ => url.port().unwrap_or(9000) == 9440,
+    };
+
+    let port = url.port().unwrap_or(if use_ssl { 9440 } else { 9000 }) as i32;
+
+    // Get database name from path or query parameter
+    let db_name = if !url.path().is_empty() && url.path() != "/" {
+        Some(url.path().trim_start_matches('/').to_string())
+    } else {
+        url.query_pairs()
+            .find(|(k, _)| k == "database")
+            .map(|(_, v)| v.to_string())
+            .filter(|s| !s.is_empty())
+    };
 
     let config = ClickHouseConfig {
-        db_name: db_name.clone().unwrap_or_else(|| "".to_string()), // will be set later if not specified
+        db_name: db_name.clone().unwrap_or_default(),
         user,
         password,
         use_ssl,
@@ -95,7 +96,7 @@ pub async fn handle_seed_command(
 
             if db_name.is_none() {
                 let mut client = clickhouse::Client::default().with_url(connection_string);
-                let url = convert_clickhouse_url(connection_string).map_err(|e| {
+                let url = convert_http_to_clickhouse(connection_string).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
                         format!("Failed to parse connection string: {}", e),
@@ -171,6 +172,7 @@ pub async fn seed_clickhouse_tables(
 ) -> Result<Vec<String>, RoutineFailure> {
     let remote_host = &remote_config.host;
     let remote_db = &remote_config.db_name;
+    let remote_port = &remote_config.native_port;
     let remote_user = &remote_config.user;
     let remote_password = &remote_config.password;
     let local_db = &local_clickhouse.config().db_name;
@@ -193,10 +195,12 @@ pub async fn seed_clickhouse_tables(
         table_list
     };
 
+    let remote_host_and_port = format!("{}:{}", remote_host, remote_port);
+
     for table_name in tables {
         let sql = format!(
             "INSERT INTO `{db}`.`{table}` SELECT * FROM remoteSecure('{}', '{}', '{}', '{}', '{}') LIMIT {limit}",
-            remote_host,
+            remote_host_and_port,
             remote_db,
             table_name,
             remote_user,

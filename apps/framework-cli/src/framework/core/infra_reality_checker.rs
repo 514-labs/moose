@@ -109,7 +109,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
 
         // Get actual tables from OLAP database
         debug!("Fetching actual tables from OLAP database");
-        let actual_tables = self
+        let (actual_tables, _) = self
             .olap_client
             .list_tables(&project.clickhouse_config.db_name, project)
             .await?;
@@ -233,6 +233,7 @@ mod tests {
         PrimitiveSignature, PrimitiveTypes, TableChange,
     };
     use crate::framework::versions::Version;
+    use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use async_trait::async_trait;
 
     // Mock OLAP client for testing
@@ -246,8 +247,8 @@ mod tests {
             &self,
             _db_name: &str,
             _project: &Project,
-        ) -> Result<Vec<Table>, OlapChangesError> {
-            Ok(self.tables.clone())
+        ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError> {
+            Ok((self.tables.clone(), vec![]))
         }
     }
 

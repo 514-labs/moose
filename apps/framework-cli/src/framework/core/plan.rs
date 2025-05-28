@@ -240,6 +240,7 @@ mod tests {
     use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
     use crate::framework::versions::Version;
+    use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use crate::infrastructure::olap::OlapChangesError;
     use crate::infrastructure::olap::OlapOperations;
     use async_trait::async_trait;
@@ -255,8 +256,8 @@ mod tests {
             &self,
             _db_name: &str,
             _project: &Project,
-        ) -> Result<Vec<Table>, OlapChangesError> {
-            Ok(self.tables.clone())
+        ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError> {
+            Ok((self.tables.clone(), vec![]))
         }
     }
 

@@ -2,7 +2,7 @@ import { Tabs, Steps, Card, FileTree } from "nextra/components";
 import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard } from "@/components";
 import { Database, FileCode, Download, Zap } from "lucide-react";
 
-# Initialize from Existing ClickHouse Database
+# Start With Your ClickHouse Database
 
 <LanguageSwitcher />
 
@@ -92,19 +92,13 @@ http://username:password@host:port/?database=database_name
 
 <Callout type="info" title="Try with ClickHouse Playground">
 Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
+
+```txt copy
+https://explorer:@play.clickhouse.com:443/?database=default
+```
+
 </Callout>
 
-<Python>
-```bash copy
-moose init moose-clickhouse-playground --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language python
-```
-</Python>
-
-<TypeScript>
-```bash copy
-moose init moose-clickhouse-playground --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language typescript
-```
-</TypeScript>
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
 <Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>

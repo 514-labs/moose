@@ -1,4 +1,4 @@
-import { FeatureCard, FeatureGrid, Icons, Callout } from "@/components";
+import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg } from "@/components";
 import { Steps } from "nextra/components";
 
 ## Quickstart: Analytics engineering project from Clickhouse Playground or your own Clickhouse database
@@ -67,6 +67,8 @@ This will improve the context provided to Aurora's MCP tools, and make it easier
 The `aurora init` command above configured Cursor to use Aurora MCP tools. You can check this by opening Cursor and looking at `cursor > settings > cursor settings > MCP` menu. You should see `aurora` in the list of MCPs, alongside a list of tools. 
 
 You may need to enable the MCP. Once you do so, you should see a green 🟢 status indicator next to it.
+
+<ZoomImg light="/cursor-mcp-settings.png" dark="/cursor-mcp-settings.png" alt="Claude search and tools, MCP running" />
 
 If you would like to use a different client, you can use the following command from within the project directory:
 

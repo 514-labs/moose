@@ -32,7 +32,9 @@ fn map_column_type_to_python(
             FloatType::Float32 => "Annotated[float, ClickhouseSize(4)]".to_string(),
             FloatType::Float64 => "float".to_string(),
         },
-        ColumnType::Decimal { precision, scale } => format!("Decimal({}, {})", precision, scale),
+        ColumnType::Decimal { precision, scale } => {
+            format!("clickhouse_decimal({}, {})", precision, scale)
+        }
         ColumnType::DateTime { precision: None } => "datetime.datetime".to_string(),
         ColumnType::DateTime {
             precision: Some(precision),
@@ -127,10 +129,11 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     writeln!(output, "from typing import Optional, Any, Annotated").unwrap();
     writeln!(output, "import datetime").unwrap();
     writeln!(output, "import ipaddress").unwrap();
+    writeln!(output, "from uuid import UUID").unwrap();
     writeln!(output, "from enum import IntEnum, Enum").unwrap();
     writeln!(
         output,
-        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin"
+        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin"
     )
     .unwrap();
     writeln!(output).unwrap();
@@ -265,8 +268,9 @@ mod tests {
 from typing import Optional, Any, Annotated
 import datetime
 import ipaddress
+from uuid import UUID
 from enum import IntEnum, Enum
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, ClickhouseSize, StringToEnumMixin
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
 
 class Foo(BaseModel):
     primary_key: Key[str]

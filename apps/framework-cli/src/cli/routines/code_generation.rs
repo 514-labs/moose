@@ -5,64 +5,19 @@ use crate::framework::python::generate::tables_to_python;
 use crate::framework::typescript::generate::tables_to_typescript;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::olap::OlapOperations;
+use crate::utilities::clickhouse_url::normalize_clickhouse_url;
 use crate::utilities::constants::{APP_DIR, PYTHON_MAIN_FILE, TYPESCRIPT_MAIN_FILE};
-use log::debug;
-use reqwest::Url;
-use std::borrow::Cow;
 use std::env;
 use std::io::Write;
 use std::path::Path;
 
 pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), RoutineFailure> {
-    let mut url = Url::parse(remote_url).map_err(|e| {
+    let url = normalize_clickhouse_url(remote_url).map_err(|e| {
         RoutineFailure::error(Message::new(
             "Invalid URL".to_string(),
             format!("Failed to parse remote_url '{}': {}", remote_url, e),
         ))
     })?;
-
-    if url.scheme() == "clickhouse" {
-        debug!("Only HTTP(s) supported. Transforming native protocol connection string.");
-        let is_secure = match (url.host_str(), url.port()) {
-            (_, Some(9000)) => false,
-            (_, Some(9440)) => true,
-            (Some(host), _) if host == "localhost" || host == "127.0.0.1" => false,
-            _ => true,
-        };
-        let (new_port, new_scheme) = if is_secure {
-            (8443, "https")
-        } else {
-            (8123, "http")
-        };
-        // cannot set_scheme from clickhouse to http(s)
-        url = Url::parse(&remote_url.replacen("clickhouse", new_scheme, 1)).unwrap();
-        url.set_port(Some(new_port)).unwrap();
-
-        let path_segments = url.path().split('/').collect::<Vec<&str>>();
-        if path_segments.len() == 2 && path_segments[0].is_empty() {
-            let database = path_segments[1].to_string(); // to_string to end the borrow
-            url.set_path("");
-            url.query_pairs_mut().append_pair("database", &database);
-        };
-
-        let display_url = if url.password().is_some() {
-            let mut cloned = url.clone();
-            cloned.set_password(Some("******")).unwrap();
-            Cow::Owned(cloned)
-        } else {
-            Cow::Borrowed(&url)
-        };
-        show_message!(
-            MessageType::Highlight,
-            Message {
-                action: "Protocol".to_string(),
-                details: format!(
-                    "native protocol detected. Converting to HTTP(s): {}",
-                    display_url
-                ),
-            }
-        );
-    }
 
     let mut client = clickhouse::Client::default().with_url(remote_url);
     let url_username = url.username();

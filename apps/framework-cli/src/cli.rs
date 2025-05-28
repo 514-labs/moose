@@ -11,7 +11,7 @@ mod watcher;
 use super::metrics::Metrics;
 use crate::utilities::docker::DockerClient;
 use clap::Parser;
-use commands::{Commands, GenerateCommand, SeedSubcommands, TemplateSubCommands, WorkflowCommands};
+use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
 use display::with_spinner;
 use log::{debug, info};
@@ -54,10 +54,7 @@ use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
-use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use anyhow::Result;
-
-use url;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -96,48 +93,6 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
         }));
     }
     Ok(())
-}
-
-fn parse_clickhouse_connection_string(
-    conn_str: &str,
-) -> anyhow::Result<crate::infrastructure::olap::clickhouse::config::ClickHouseConfig> {
-    // Example: clickhouse://user:pass@host:port/db?database=dbname
-    let url = url::Url::parse(conn_str)?;
-    let user = url.username().to_string();
-    let password = url.password().unwrap_or("").to_string();
-    let host = url.host_str().unwrap_or("localhost").to_string();
-    let use_ssl = url.scheme() == "https";
-    let default_port = if use_ssl { 443 } else { 8123 };
-    let port = url.port().unwrap_or(default_port) as i32;
-
-    // Try to get db_name from query string first, then from path
-    let db_name = url
-        .query_pairs()
-        .find(|(k, _)| k == "database")
-        .map(|(_, v)| v.to_string())
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            let path = url.path().trim_start_matches('/').to_string();
-            if !path.is_empty() {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| "default".to_string());
-
-    Ok(
-        crate::infrastructure::olap::clickhouse::config::ClickHouseConfig {
-            db_name,
-            user,
-            password,
-            use_ssl,
-            host,
-            host_port: port,
-            native_port: port,
-            host_data_path: None,
-        },
-    )
 }
 
 pub async fn top_command_handler(
@@ -787,69 +742,10 @@ pub async fn top_command_handler(
 
             output
         }
-        Commands::Seed(seed_args) => match &seed_args.command {
-            Some(SeedSubcommands::Clickhouse {
-                connection_string,
-                limit,
-                table,
-            }) => {
-                info!(
-                    "Running seed clickhouse command with connection string: {}",
-                    connection_string
-                );
-                let project = load_project()?;
-                let infra_map = if project.features.data_model_v2 {
-                    InfrastructureMap::load_from_user_code(&project)
-                        .await
-                        .map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "SeedClickhouse".to_string(),
-                                details: format!("Failed to load InfrastructureMap: {:?}", e),
-                            })
-                        })?
-                } else {
-                    let primitive_map = PrimitiveMap::load(&project).await.map_err(|e| {
-                        RoutineFailure::error(Message {
-                            action: "SeedClickhouse".to_string(),
-                            details: format!("Failed to load Primitives: {:?}", e),
-                        })
-                    })?;
-                    InfrastructureMap::new(&project, primitive_map)
-                };
-                // Parse connection string and create remote ClickHouseConfig
-                let remote_config =
-                    parse_clickhouse_connection_string(connection_string).map_err(|e| {
-                        RoutineFailure::error(Message::new(
-                            "SeedClickhouse".to_string(),
-                            format!("Invalid connection string: {}", e),
-                        ))
-                    })?;
-                // Create local ClickHouseClient from local config
-                let local_clickhouse =
-                    ClickHouseClient::new(&project.clickhouse_config).map_err(|e| {
-                        RoutineFailure::error(Message::new(
-                            "SeedClickhouse".to_string(),
-                            format!("Failed to create local ClickHouseClient: {}", e),
-                        ))
-                    })?;
-                let summary = seed_data::seed_clickhouse_tables(
-                    &infra_map,
-                    &local_clickhouse,
-                    &remote_config,
-                    table.clone(),
-                    *limit,
-                )
-                .await?;
-                Ok(RoutineSuccess::success(Message::new(
-                    "Seeded ClickHouse".to_string(),
-                    format!("{}", summary.join("\n")),
-                )))
-            }
-            None => Err(RoutineFailure::error(Message {
-                action: "Seed".to_string(),
-                details: "No subcommand provided".to_string(),
-            })),
-        },
+        Commands::Seed(seed_args) => {
+            let project = load_project()?;
+            seed_data::handle_seed_command(seed_args, &project).await
+        }
     }
 }
 

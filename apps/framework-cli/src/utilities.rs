@@ -2,6 +2,7 @@ use std::path::Path;
 
 pub mod auth;
 pub mod capture;
+pub mod clickhouse_url;
 pub mod constants;
 pub mod decode_object;
 pub mod docker;

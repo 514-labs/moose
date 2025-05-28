@@ -693,6 +693,12 @@ struct TableDetail {
     pub total_rows: Option<u64>,
 }
 
+pub struct TableWithUnsupportedType {
+    pub name: String,
+    pub col_name: String,
+    pub col_type: String,
+}
+
 #[async_trait::async_trait]
 impl OlapOperations for ConfiguredDBClient {
     /// Retrieves all tables from the ClickHouse database and converts them to framework Table objects
@@ -701,7 +707,8 @@ impl OlapOperations for ConfiguredDBClient {
     /// * `db_name` - The name of the database to list tables from
     ///
     /// # Returns
-    /// * `Result<Vec<Table>, OlapChangesError>` - A list of Table objects on success
+    /// * `Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError>` -
+    /// A list of Table objects and a list of TableWithUnsupportedType on success
     ///
     /// # Details
     /// This implementation:
@@ -720,7 +727,7 @@ impl OlapOperations for ConfiguredDBClient {
         &self,
         db_name: &str,
         project: &Project,
-    ) -> Result<Vec<Table>, OlapChangesError> {
+    ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError> {
         debug!("Starting list_tables operation for database: {}", db_name);
         debug!("Using project version: {}", project.cur_version());
 
@@ -752,8 +759,9 @@ impl OlapOperations for ConfiguredDBClient {
             })?;
 
         let mut tables = Vec::new();
+        let mut unsupported_tables = Vec::new();
 
-        while let Some((table_name, engine, create_query)) = cursor
+        'table_loop: while let Some((table_name, engine, create_query)) = cursor
             .next()
             .await
             .map_err(|e| OlapChangesError::DatabaseError(e.to_string()))?
@@ -807,13 +815,22 @@ impl OlapOperations for ConfiguredDBClient {
                     col_name, col_type, is_primary, is_sorting
                 );
 
-                // Convert ClickHouse types to framework types
                 let (data_type, is_nullable) =
-                    type_parser::convert_clickhouse_type_to_column_type(&col_type)?;
-                debug!(
-                    "Converted column type: {:?}, nullable: {}",
-                    data_type, is_nullable
-                );
+                    match type_parser::convert_clickhouse_type_to_column_type(&col_type) {
+                        Ok(pair) => pair,
+                        Err(_) => {
+                            debug!(
+                                "Column type not recognized: {} of field {} in table {}",
+                                col_type, col_name, table_name
+                            );
+                            unsupported_tables.push(TableWithUnsupportedType {
+                                name: table_name,
+                                col_name,
+                                col_type,
+                            });
+                            continue 'table_loop;
+                        }
+                    };
 
                 let column = Column {
                     name: col_name.clone(),
@@ -859,7 +876,7 @@ impl OlapOperations for ConfiguredDBClient {
             "Completed list_tables operation, found {} tables",
             tables.len()
         );
-        Ok(tables)
+        Ok((tables, unsupported_tables))
     }
 }
 

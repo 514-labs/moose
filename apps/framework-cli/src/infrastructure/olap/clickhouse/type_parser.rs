@@ -2236,8 +2236,6 @@ mod tests {
         let special_types = vec![
             "Nothing",
             "BFloat16",
-            "IPv4",
-            "IPv6",
             "Dynamic",
             "Object",
             "Object('schema')",

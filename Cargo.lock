@@ -2650,7 +2650,6 @@ dependencies = [
  "toml_edit",
  "tonic",
  "tracing",
- "url",
  "uuid",
  "walkdir",
 ]

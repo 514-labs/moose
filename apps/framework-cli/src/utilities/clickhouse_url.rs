@@ -1,5 +1,5 @@
 use log::{debug, info};
-use url::Url;
+use reqwest::Url;
 
 /// Transforms a ClickHouse connection string to ensure it uses HTTP(S) protocol
 /// Handles both clickhouse:// and https:// URLs

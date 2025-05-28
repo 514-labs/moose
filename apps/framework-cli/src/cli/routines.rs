@@ -129,6 +129,7 @@ pub mod openapi;
 pub mod peek;
 pub mod ps;
 pub mod scripts;
+pub mod seed_data;
 pub mod templates;
 mod util;
 pub mod validate;

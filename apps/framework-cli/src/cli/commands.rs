@@ -156,6 +156,8 @@ pub enum Commands {
         // #[arg(default_value = "true", short, long)]
         // interactive: bool,
     },
+    /// Seed data into your project
+    Seed(SeedCommands),
 }
 
 #[derive(Debug, Args)]
@@ -264,4 +266,27 @@ pub struct TemplateCommands {
 pub enum TemplateSubCommands {
     /// List available templates
     List {},
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct SeedCommands {
+    #[command(subcommand)]
+    pub command: Option<SeedSubcommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SeedSubcommands {
+    /// Seed ClickHouse tables with data
+    Clickhouse {
+        /// ClickHouse connection string (e.g. clickhouse://user:pass@host:port/db)
+        #[arg(long, value_name = "CONNECTION_STRING")]
+        connection_string: String,
+        /// Limit the number of rows to copy per table (default: 1000)
+        #[arg(long, value_name = "LIMIT", default_value_t = 1000)]
+        limit: usize,
+        /// Only seed a specific table (optional)
+        #[arg(long, value_name = "TABLE_NAME")]
+        table: Option<String>,
+    },
 }

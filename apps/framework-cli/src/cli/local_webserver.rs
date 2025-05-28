@@ -240,7 +240,7 @@ async fn get_consumption_api_res(
     let returned_response = Response::builder()
         .status(status)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Method", "GET, POST")
+        .header("Access-Control-Allow-Methods", "GET, POST")
         .header(
             "Access-Control-Allow-Headers",
             "Authorization, Content-Type, sentry-trace, baggage",
@@ -326,7 +326,7 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         .header(
             "Access-Control-Allow-Headers",
             "Authorization, Content-Type, Baggage, Sentry-Trace",

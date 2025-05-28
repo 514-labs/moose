@@ -184,6 +184,31 @@ impl ClickHouseClient {
             Ok(())
         }
     }
+
+    /// Executes a SQL statement without a body (e.g., INSERT...SELECT, CREATE TABLE, etc.)
+    pub async fn execute_sql(&self, sql: &str) -> anyhow::Result<String> {
+        let query: String = query_param(sql)?;
+        let uri = self.uri(format!("/?{}", query))?;
+        let req = Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("Host", self.host())
+            .header("Authorization", self.auth_header())
+            .header("Content-Length", 0)
+            .body(Full::new(Bytes::new()))?;
+        let res = self.request(req, MAX_RETRIES, BACKOFF_START_MILLIS).await?;
+        let status = res.status();
+        let response_body = res.collect().await?.to_bytes().to_vec();
+        let body_str = String::from_utf8(response_body)?;
+
+        if status != 200 {
+            error!("Failed to execute SQL: Res {} - {}", &status, body_str);
+            Err(anyhow::anyhow!("Failed to execute SQL: {}", body_str))
+        } else {
+            debug!("SQL executed successfully: {}", sql);
+            Ok(body_str.trim().to_string())
+        }
+    }
 }
 
 fn query_param(query: &str) -> anyhow::Result<String> {

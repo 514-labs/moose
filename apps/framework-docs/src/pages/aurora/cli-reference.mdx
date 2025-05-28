@@ -36,13 +36,12 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 
 ### connect
 
-Connects to an existing data source.
+Connects to an existing data source. Currently only `clickhouse` is supported.
 
 ```
-aurora connect <data-source> <--connection-string <connection-string>> <--mcp <claude-desktop>>
+aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
 ```
 
-- `<data-source>`: The data source to connect to. Currently only `clickhouse` is supported.
 - `--connection-string <connection-string>`: The connection string to your Clickhouse database.
 - `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
 

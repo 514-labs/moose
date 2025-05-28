@@ -243,7 +243,7 @@ async fn get_consumption_api_res(
         .header("Access-Control-Allow-Methods", "GET, POST")
         .header(
             "Access-Control-Allow-Headers",
-            "Authorization, Content-Type, sentry-trace, baggage",
+            "Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate",
         )
         .header("Content-Type", "application/json")
         .body(Full::new(body))
@@ -329,7 +329,7 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
         .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         .header(
             "Access-Control-Allow-Headers",
-            "Authorization, Content-Type, Baggage, Sentry-Trace",
+            "Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate",
         )
         .body(Full::new(Bytes::from("Success")))
         .unwrap();

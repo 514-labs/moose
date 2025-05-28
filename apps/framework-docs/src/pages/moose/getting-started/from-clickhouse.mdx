@@ -65,8 +65,6 @@ Moose provides a code layer on top of your existing ClickHouse database.
   ]}
 />
 
-Basically, you get modern tooling for your existing data & ClickHouse setup without throwing away months of work.
-
 ## Quick Setup
 <Callout type="info" title="Prerequisites">
 <TypeScript>
@@ -95,8 +93,6 @@ http://username:password@host:port/?database=database_name
 <Callout type="info" title="Try with ClickHouse Playground">
 Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
 </Callout>
-
-#### Example: ClickHouse Playground
 
 <Python>
 ```bash copy
@@ -146,11 +142,13 @@ moose init moose-clickhouse-playground --from-remote https://explorer:@play.clic
 
 ### Install Moose & Bootstrap Your Project
 
+Install Moose if you haven't already:
 ```bash copy
 # Install Moose
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
 
+Create a new project:
 <Python>
 ```bash copy
 # Bootstrap from your ClickHouse database
@@ -336,16 +334,23 @@ Want AI to generate insights and APIs from your data? Try [Aurora](/aurora/quick
 
 ## Current Limitations
 
-<Callout type="info" title="What doesn't work yet">
+### What doesn't work yet
 - **Selective table import**: Imports all tables (filtering coming soon)
 - **Custom ClickHouse functions**: Default values with functions get stripped
 - **Advanced ClickHouse types**: These aren't supported yet:
   - `Map(K, V)` types
   - `Tuple(T1, T2, ...)` types  
   - `Geo` types (Point, Ring, Polygon, etc.)
-- **Partial support**:
-  - `LowCardinality(T)` → maps to base type `T` (full support coming soon)
-  - `JSON` types → `any` (Python) / `Record<string, any>` (TypeScript) (better typing coming soon)
 
+<Callout type="warning" title="Skipped tables">
 Right now, tables featuring these types will be skipped during the initialization process.
+</Callout>
+
+### Partially supported types
+  - `LowCardinality(T)` → maps to base type `T`
+  - `JSON` types → `any` (Python) / `Record<string, any>` (TypeScript)
+  - `Enum` types
+
+<Callout type="info" title="Minor edge cases">
+These types are supported but may need manual type adjustments in generated code.
 </Callout>

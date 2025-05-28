@@ -3,40 +3,94 @@ title: Aurora - Automated Data Engineering
 description: AI-powered tools and agents exposed through an easy to configure MCP server for data engineering and infrastructure
 ---
 
-import { Callout, ToggleBlock, FeatureGrid, FeatureCard, CTACard } from "@/components";
+import { FeatureGrid, FeatureCard, Icons } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+
+
+# Aurora
 
 ```
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
 
-// to do: add links to quickstarts
+## What is Aurora?
 
-# Aurora Research Preview
+Aurora is a set of tools to make your chat, copilot or BI fluent in data engineering. Use the CLI to set up MCPs with the tools you need in the clients you use. Create new data engineering projects with a moose-managed Clickhouse based infrastructure or use these agents with your existing data infrastructure.
 
-Aurora is your data engineering AI team. It is an agentic data engineering [MCP](https://modelcontextprotocol.io/introduction) that has your code, data, and infrastructure in context. Will help you build and build with your data systems. Won't get in your way.
+## Quickstarts
 
+<FeatureGrid>
+  <FeatureCard
+    href="/aurora/quickstart#quickstart-ad-hoc-analytics-with-clickhouse-playground-or-your-own-clickhouse-database"
+    Icon={Icons.models}
+    title="Quickstart: Chat with Clickhouse + Aurora"
+    description="
+    "
+  />
+  
+  <FeatureCard
+    href="/aurora/quickstart#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
+    Icon={Icons.ingestion}
+    title="Quickstart: Analytics engineering with Clickhous + Moose + Aurora"
+    description="
+    "
+  />
+  
+  <FeatureCard
+    href="/aurora/quickstart#quickstart-new-complete-local-olap-project-from-template"
+    Icon={Icons.streams}
+    title="Quickstart: Deploy a full analytics backend from a template, develop with chat"
+    description="
+    "
+  />
 
-### Requirements
+</FeatureGrid>
 
-- Requires an [Anthropic token](https://www.anthropic.com/), as some tools are agentic.
-- Requires [Docker](https://www.docker.com/) and [Node](https://nodejs.org/en) for Typescript use.  
-- Requires [Docker](https://www.docker.com/) and [Python 3.12+](https://www.python.org/downloads/) for Python use. 
-- Some templates have other dependencies. 
+## Core features
+AUrora offers a comprehensive suite of MCP tools and agents designed to streamline data engineering workflows, enabling faster and more efficient deployment and management.
 
-### Quick Links:
+### CLI based fast deployment
+Deploy and configure your system in minutes with a simple, straightforward CLI setup.
 
-- 🔗 [Quick start guide](https://docs.fiveonefour.com/aurora/quickstart)
-- 🔗 [MCP tools](https://docs.fiveonefour.com/aurora/tool-reference)
-- 🔗 [CLI reference](https://docs.fiveonefour.com/aurora/cli-reference)
+- As simple as 3-command setup: install, configure, chat
+- Modular agent selection by function
+- Native integration: IDE, BI tools, CLI
 
-### Alpha Warning
+### Client agnostic
+Seamlessly integrate with your preferred tools, allowing you to work in the environments you're already using without disruption.
 
-- This is a research preview
-- Limitations
-    - Your tokens / no Boreal login
-    - [Several tools remain experimental](https://docs.fiveonefour.com/aurora/tool-reference#experimental-tools)
+- Data engineering in your IDE
+- Data analytics and analytics engineering in your chat client
+- BI in your BI tool of choice
 
-### Getting Involved / Giving Feedback / Community
+### Infrastructure agnostic, opinionated stack available
+Enhance existing infrastructure with AI; or if you are building an OLAP system for high performance analytics, Moose framework allows Aurora to build quickly and efficiently in languages your aplication engineers know—python and typescript.
+
+- Opinionated OLAP deployments with Moose: Optimized ClickHouse development and deployment
+- Direct integration with your existing data architecture: DuckDB, Polars, Databricks
+- Integration with your enterprise systems: metadata management, CICD, logging and more
+
+### Context-aware data engineering agents
+LLMs use Aurora to access all relevant context.
+
+- Full-stack context: code, logs, data, docs
+- Self-improving feedback loops
+- Embedded metadata for continuity
+
+### Enterprise ready by default
+Out-of-the-box production-grade features ensure your environment meets the highest standards for governance, security, and quality.
+
+- Each agent built with context gathering → implementation → testing → documentation workflows
+- Governance defaults, easily configurable: SDLC, data quality, reporting, privacy and security default practices
+- Learns your policies with minimal context, enforces them automatically
+
+## Why we built Aurora
+
+## Jobs done
+
+## Doing this without Aurora
+
+## Getting Involved / Giving Feedback / Community
 
 - [Email aurora@fiveonefour.com](mailto:aurora@fiveonefour.com)
 - [Join our Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)

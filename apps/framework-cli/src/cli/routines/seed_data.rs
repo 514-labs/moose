@@ -85,7 +85,6 @@ pub async fn handle_seed_command(
                 InfrastructureMap::new(project, primitive_map)
             };
 
-            // Parse connection string and create remote ClickHouseConfig
             let (mut remote_config, db_name) =
                 parse_clickhouse_connection_string(connection_string).map_err(|e| {
                     RoutineFailure::error(Message::new(
@@ -94,7 +93,6 @@ pub async fn handle_seed_command(
                     ))
                 })?;
 
-            // If no database was specified in the URL, query the remote database to get the current database
             if db_name.is_none() {
                 let mut client = clickhouse::Client::default().with_url(connection_string);
                 let url = convert_clickhouse_url(connection_string).map_err(|e| {

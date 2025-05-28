@@ -105,7 +105,8 @@ const handleNumberType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        const intMappings = {
+        const numberTypeMappings = {
+          float: "Float32",
           int8: "Int8",
           int16: "Int16",
           int32: "Int32",
@@ -115,7 +116,7 @@ const handleNumberType = (
           uint32: "UInt32",
           uint64: "UInt64",
         };
-        const match = Object.entries(intMappings).find(([k, _]) =>
+        const match = Object.entries(numberTypeMappings).find(([k, _]) =>
           isStringLiteral(valueTypeLiteral, checker, k),
         );
         if (match) {
@@ -203,6 +204,10 @@ const handleStringType = (
           } else {
             throw new UnsupportedFeature(`Date with size ${size}`);
           }
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv4")) {
+          return "IPv4";
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv6")) {
+          return "IPv6";
         } else if (isStringLiteral(valueTypeLiteral, checker, DecimalRegex)) {
           let precision = 10;
           let scale = 0;

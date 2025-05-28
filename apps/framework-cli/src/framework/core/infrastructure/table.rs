@@ -188,6 +188,8 @@ pub enum ColumnType {
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Uuid,
+    IpV4,
+    IpV6,
 }
 
 impl fmt::Display for ColumnType {
@@ -216,6 +218,8 @@ impl fmt::Display for ColumnType {
             ColumnType::Uuid => write!(f, "UUID"),
             ColumnType::Date => write!(f, "Date"),
             ColumnType::Date16 => write!(f, "Date16"),
+            ColumnType::IpV4 => write!(f, "IPv4"),
+            ColumnType::IpV6 => write!(f, "IPv6"),
         }
     }
 }
@@ -262,6 +266,8 @@ impl Serialize for ColumnType {
             ColumnType::Uuid => serializer.serialize_str("UUID"),
             ColumnType::Date => serializer.serialize_str("Date"),
             ColumnType::Date16 => serializer.serialize_str("Date16"),
+            ColumnType::IpV4 => serializer.serialize_str("IPv4"),
+            ColumnType::IpV6 => serializer.serialize_str("IPv6"),
         }
     }
 }
@@ -388,6 +394,10 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             ColumnType::Bytes
         } else if v == "UUID" {
             ColumnType::Uuid
+        } else if v == "IPv4" {
+            ColumnType::IpV4
+        } else if v == "IPv6" {
+            ColumnType::IpV6
         } else {
             return Err(E::custom(format!("Unknown column type {}.", v)));
         };
@@ -566,6 +576,8 @@ impl ColumnType {
             ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID_TYPE.into()),
             ColumnType::Date => T::Simple(SimpleColumnType::DATE.into()),
             ColumnType::Date16 => T::Simple(SimpleColumnType::DATE16.into()),
+            ColumnType::IpV4 => T::Simple(SimpleColumnType::IPV4.into()),
+            ColumnType::IpV6 => T::Simple(SimpleColumnType::IPV6.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -592,6 +604,8 @@ impl ColumnType {
                     SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
                     SimpleColumnType::DATE => ColumnType::Date,
                     SimpleColumnType::DATE16 => ColumnType::Date16,
+                    SimpleColumnType::IPV4 => ColumnType::IpV4,
+                    SimpleColumnType::IPV6 => ColumnType::IpV6,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),

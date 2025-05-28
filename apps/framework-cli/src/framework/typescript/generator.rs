@@ -185,6 +185,7 @@ impl TypescriptPackage {
     }
 }
 
+// not maintained, see map_column_type_to_typescript in generate.rs
 fn std_field_type_to_typescript_field_mapper(
     field_type: ColumnType,
 ) -> Result<InterfaceFieldType, TypescriptGeneratorError> {
@@ -236,6 +237,8 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Uuid => Ok(InterfaceFieldType::String),
         ColumnType::Date => Ok(InterfaceFieldType::String),
         ColumnType::Date16 => Ok(InterfaceFieldType::String),
+        ColumnType::IpV4 => Ok(InterfaceFieldType::String),
+        ColumnType::IpV6 => Ok(InterfaceFieldType::String),
     }
 }
 

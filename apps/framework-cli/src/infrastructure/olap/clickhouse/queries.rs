@@ -286,6 +286,8 @@ pub fn basic_field_type_to_string(
             "LowCardinality({})",
             basic_field_type_to_string(inner_type)?
         )),
+        ClickHouseColumnType::IpV4 => Ok("IPv4".to_string()),
+        ClickHouseColumnType::IpV6 => Ok("IPv6".to_string()),
     }
 }
 

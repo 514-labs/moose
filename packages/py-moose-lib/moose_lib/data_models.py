@@ -10,6 +10,7 @@ from typing import Literal, Tuple, Union, Any, get_origin, get_args, TypeAliasTy
     GenericAlias
 from pydantic import BaseModel, Field, PlainSerializer, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import CoreSchema, core_schema
+import ipaddress
 
 type Key[T: (str, int)] = T
 type JWT[T] = T
@@ -146,7 +147,13 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
         else:
             data_type = "Int"
     elif t is float:
-        data_type = "Float"
+        size = next((md for md in mds if isinstance(md, ClickhouseSize)), None)
+        if size is None or size.size == 8:
+            data_type = "Float64"
+        elif size.size == 4:
+            data_type = "Float32"
+        else:
+            raise ValueError(f"Unsupported float size {size.size}")
     elif t is Decimal:
         precision = next((md.max_digits for md in mds if hasattr(md, "max_digits")), 10)
         scale = next((md.decimal_places for md in mds if hasattr(md, "decimal_places")), 0)
@@ -167,6 +174,10 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
             data_type = "Date16"
         else:
             raise ValueError(f"Unsupported date size {size.size}")
+    elif t is ipaddress.IPv4Address:
+        data_type = "IPv4"
+    elif t is ipaddress.IPv6Address:
+        data_type = "IPv6"
     elif get_origin(t) is list:
         inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0], [])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)

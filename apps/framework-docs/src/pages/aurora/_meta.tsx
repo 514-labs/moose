@@ -8,8 +8,6 @@ const meta = {
     },
   },
   quickstart: "Quickstart",
-  Install: "Installation",
-  host_setup: "Host setup guide",
   "cli-reference": "CLI reference",
   "tool-reference": "Tool reference",
   "data-collection-policy": "Data collection policy",

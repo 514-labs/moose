@@ -2,6 +2,7 @@ use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
 };
 use convert_case::{Case, Casing};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -140,6 +141,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
 
     // Collect all enums and nested types
     let mut enums: HashMap<&DataEnum, String> = HashMap::new();
+    let mut extra_class_names: HashMap<String, usize> = HashMap::new();
     let mut nested_models: HashMap<&Nested, String> = HashMap::new();
 
     // First pass: collect all nested types and enums
@@ -147,10 +149,36 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         for column in &table.columns {
             match &column.data_type {
                 ColumnType::Enum(data_enum) => {
-                    enums.insert(data_enum, column.name.to_case(Case::Pascal));
+                    if !enums.contains_key(data_enum) {
+                        let name = column.name.to_case(Case::Pascal);
+                        let name = match extra_class_names.entry(name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                *entry.get_mut() = entry.get() + 1;
+                                format!("{}{}", name, entry.get())
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(0);
+                                name
+                            }
+                        };
+                        enums.insert(data_enum, name);
+                    }
                 }
                 ColumnType::Nested(nested) => {
-                    nested_models.insert(nested, column.name.to_case(Case::Pascal));
+                    if !nested_models.contains_key(nested) {
+                        let name = column.name.to_case(Case::Pascal);
+                        let name = match extra_class_names.entry(name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                *entry.get_mut() = entry.get() + 1;
+                                format!("{}{}", name, entry.get())
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(0);
+                                name
+                            }
+                        };
+                        nested_models.insert(nested, name);
+                    }
                 }
                 _ => {}
             }

@@ -253,10 +253,9 @@ moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
 ```
 
 ### 2. Build Materialized Views That Don't Break
+Moose lets you define materialized views in code with automatic schema management and dependency orchestration:
 
-<ToggleBlock openText="See how Moose fixes common ClickHouse pain points" closeText="Hide details">
-
-**The ClickHouse Reality:**
+**What you're probably doing now:**
 
 ```sql
 -- Step 1: Create target table (remember the exact schema!)
@@ -357,8 +356,6 @@ daily_stats = MaterializedView[DailyUserStats](
 # ✅ Provides hot-reload in development
 ```
 </Python>
-
-</ToggleBlock>
 
 **Ready to dive deeper?** → [Materialized Views docs](/moose/building/materialized-views)
 

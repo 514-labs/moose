@@ -6,16 +6,13 @@ import { Database, FileCode, Download, Zap } from "lucide-react";
 
 <LanguageSwitcher />
 
-Bootstrap a Moose project directly from your existing ClickHouse database in minutes.
-
-
 <Callout type="info" title="Early Access Feature">
 We're actively developing this feature and would love your feedback. While it's ready for most use cases, check out [Known Limitations](#known-limitations) for details on what's still in progress.
 </Callout>
 
 
 ## Why Use Moose with ClickHouse?
-Moose provides a code layer on top of your existing ClickHouse database to make it simpler to manage your tables, views, pipelines, and APIs in plain <TypeScript inline>TypeScript</TypeScript> or <Python inline>Python</Python>:
+Moose provides a layer on top of your existing ClickHouse database to make it simpler to manage your tables, views, pipelines, and APIs in plain <TypeScript inline>TypeScript</TypeScript><Python inline>Python</Python> code:
 
 <BulletPointsCard
   title="Manually Managing ClickHouse?"
@@ -256,10 +253,9 @@ moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
 ```
 
 ### 2. Build Materialized Views That Don't Break
+Moose lets you define materialized views in code with automatic schema management and dependency orchestration:
 
-<ToggleBlock openText="See how Moose fixes common ClickHouse pain points" closeText="Hide details">
-
-**The ClickHouse Reality:**
+**What you're probably doing now:**
 
 ```sql
 -- Step 1: Create target table (remember the exact schema!)
@@ -360,8 +356,6 @@ daily_stats = MaterializedView[DailyUserStats](
 # ✅ Provides hot-reload in development
 ```
 </Python>
-
-</ToggleBlock>
 
 **Ready to dive deeper?** → [Materialized Views docs](/moose/building/materialized-views)
 

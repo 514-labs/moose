@@ -29,10 +29,6 @@ ClickHouse is a blazingly-fast analytical database, but with the power comes com
       description: "Creating a materialized view before its source table exists, then scrambling to figure out what broke",
     },
     {
-      title: "Manual type mapping to your language of choice",
-      description: "Your frontend expects user_id as a string but your SELECT query returns UInt64, and you only find out at runtime",
-    },
-    {
       title: "Lost schema changes",
       description: "That ALTER TABLE you ran last week? Good luck remembering what it was when you need to apply it to production",
     },
@@ -52,7 +48,7 @@ Moose provides a code layer on top of your existing ClickHouse database.
     },
     {
       title: "Build APIs in code, not Jinja templates",
-      description: "Write actual TypeScript/Python functions with proper testing, debugging, and IDE support instead of figuring out how to make your API logic work with templated SQL",
+      description: "Write TypeScript/Python functions with proper IDE support instead of templated SQL",
     },
     {
       title: "Add streaming with one line of code",
@@ -98,6 +94,9 @@ http://username:password@host:port/?database=database_name
 
 <Callout type="info" title="Try with ClickHouse Playground">
 Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
+</Callout>
+
+#### Example: ClickHouse Playground
 
 <Python>
 ```bash copy
@@ -110,7 +109,6 @@ moose init moose-clickhouse-playground --from-remote https://explorer:@play.clic
 moose init moose-clickhouse-playground --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language typescript
 ```
 </TypeScript>
-</Callout>
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
 <Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>

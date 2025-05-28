@@ -174,8 +174,8 @@ main > p {
 }
 
 :is(
-    html[class~="dark"].dark\:_shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
-  ) {
+  html[class~="dark"].dark\:_shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
+) {
   box-shadow: none;
 }
 
@@ -386,4 +386,9 @@ footer {
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+html,
+body {
+  scroll-padding-top: 72px; /* 64px sticky bar + 8px extra for spacing */
 }

@@ -1,4 +1,5 @@
 import { render } from "@/components";
+import { HandMetal, BookMarked, History } from "lucide-react";
 
 const meta = {
   index: {
@@ -7,10 +8,18 @@ const meta = {
       breadcrumb: false,
     },
   },
-  quickstart: "Quickstart",
-  "cli-reference": "CLI reference",
-  "tool-reference": "Tool reference",
-  "data-collection-policy": "Data collection policy",
+  quickstart: {
+    title: "Quickstart Guides",
+    Icon: HandMetal,
+  },
+  reference: {
+    title: "Reference",
+    Icon: BookMarked,
+  },
+  "data-collection-policy": {
+    title: "Data collection policy",
+    Icon: History,
+  },
 } as const;
 
 export default render(meta);

@@ -7,24 +7,26 @@ import { Callout } from "@/components";
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
 
 
-# Quickstart: Ad hoc analytics on your clickhouse database
+# Quickstart: Ad hoc analytics with Clickhouse Playground or your own Clickhouse database
 
 This will walk you through using Aurora CLI to connect Aurora MCP tools to your Clickhouse database, allowing you to chat with your data in your client of choice. We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
-gi- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
 - **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
 </Callout>
 
 <Steps>
 ### Install Aurora CLI
 
-```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora```
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
+```
 
 ### Configure your Aurora MCP
 
-```
+```bash filename="Terminal" copy
 aurora connect clickhouse --connection-string "clickhouse://explorer:@play.clickhouse.com:443/default" --mcp cursor-project
 ```
 
@@ -42,7 +44,7 @@ We recommend starting the chat with a context setting question like "tell me abo
 
 </Steps>
 
-# Quickstart: New analytics engineering project from your clickhouse database
+# Quickstart: New analytics engineering project from Clickhouse Playground or your own Clickhouse database
 
 This will walk you through creating a new local Moose project reflecting the structure of your Clickhouse database. It will allow you to add data to your local dev environment from your remote Clickhouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
 
@@ -57,9 +59,11 @@ This will walk you through creating a new local Moose project reflecting the str
 <Steps>
 ### Install Moose and Aurora CLIs
 
-```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora```
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
+```
 
-We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`. 
+We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`. If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
 
 ### Create a new Moose project from your Clickhouse database
 
@@ -69,21 +73,33 @@ This will create a new Moose project from your Clickhouse database. [See Moose d
 
 The new project is called "my_project_name" and is created in the current directory. the string after `--from-remote` is the connection string to your Clickhouse database, structured as `clickhouse://<username>:<password>@<host>:<port>/<database>` (note, the Clickhouse Playground has no password).
 
-### Run your Moose project
+### Install dependencies and run the dev server
 
 Before you can run Moose's local dev server, Docker Desktop must be running.
 
 Navigate into the project directory:
 
-```cd my_project_name```
+```bash filename="Terminal" copy
+cd my_project_name
+```
 
-Start the dev server:
+Install the dependencies: 
 
-```moose dev```
+```bash filename="Terminal" copy
+npm i
+```
+
+Run the dev server:
+
+```bash filename="Terminal" copy
+moose dev
+```
 
 ### Get sample data
 
-```moose seed from-remote-clickhouse clickhouse://explorer:@play.clickhouse.com:443/default --rows 200```
+```bash filename="Terminal" copy
+moose seed from-remote-clickhouse clickhouse://explorer:@play.clickhouse.com:443/default --rows 200
+```
 
 This will seed your local Clickhouse database with 200 rows of sample data from your remote Clickhouse database—here, the Clickhouse Playground. You can change the number of rows with the `--rows` flag.
 
@@ -97,7 +113,9 @@ You may need to enable the MCP. Once you do so, you should see a green 🟢 stat
 
 If you would like to use a different client, you can use the following command from within the project directory:
 
-```aurora setup --mcp <host>```
+```bash filename="Termainal" copy
+aurora setup --mcp <host>
+```
 
 ### Enrich project with metadata
 
@@ -133,28 +151,30 @@ The client will use `create_egress_api` and `test_egress_api` to create an egres
 
 </Steps>
 
-# Quickstart: New Moose project from template
-*ADS-B (aircraft transponder) data for getting started*
+# Quickstart: New data engineering project from template
 
 This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
 
-Requirements:
+<Callout type="info" title="Prerequisites">
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Anthropic API Key**: [Get one here](https://docs.anthropic.com/en/docs/initial-setup)
+- **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
+</Callout>
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Node](https://nodejs.org/en)
-- [Claude Desktop](https://claude.ai/download) or [Cursor](https://www.cursor.com/)
+<Steps>
 
-### Install
+### Install Aurora and Moose CLIs
 
 ```bash filename="Terminal" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
 
-This will install [Moose](/moose) (our open source developer framework for Data Engineering) and [Aurora](https://aurora.fiveonefour.com).
+We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`.  If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
 
-This prompt you for an Anthropic token, if you don't have one, see: https://docs.anthropic.com/en/docs/initial-setup
 
-### Creating your Project
+### Create a new Moose project from the ADS-B template
 
 ```bash filename="Terminal" copy
 aurora init <project-name> ads-b
@@ -164,7 +184,7 @@ This will create a new Moose project using the ADS-B template to gather ADS-B (a
 
 If you want to create an empty project, and build your own Data Models and ingestion, try `aurora init <project-name> typescript-empty` or `aurora init <project-name> python-empty`
 
-### Installing Dependencies
+### Install dependencies and run the dev server
 
 Navigate into the created project directory: 
 
@@ -178,17 +198,17 @@ Install the dependencies:
 npm i
 ```
 
-### Open Cursor and Enable the MCPs
+Run the dev server:
 
-Then open your code editor `cursor .`
+```bash filename="Terminal" copy
+moose dev
+```
+
+### Set up your client: open Cursor and Enable the MCPs
+
+Then open your code editor (e.g. by `cursor .`).
 
 Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "aurora". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
-
-### Run the Moose Dev Server Locally
-
-**Warning: make sure you have docker desktop running before this step!**
-
-You now have the project ready to go, run `moose dev` to start the dev server.
 
 ### Start Ingesting Data
 
@@ -196,8 +216,36 @@ Run the command to start ingesting data with the configured ingest scripts: `moo
 
 You should start to see hundreds of live datapoints ingesting instantly!
 
-### Start Using Aurora
+### Enrich project with metadata
 
-In the LLM discussion pane, ask your host about your Moose project, it should use Aurora MCP tools to deliver rich context!
+Since we have a Moose project with sample data and some metadata, we can use this to create more metadata! 
 
-[Check out the related blog post for ideas on what you can build!](https://fiveonefour.com/blog/)
+If we ask our client "Can you add a description to each Moose primitive in this project?", the LLM will use the `write_metadata` tool to add a description to each Moose primitive.
+
+```TypeScript filename="my_project_name/index.ts"
+const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
+    "AircraftTrackingProcessed",
+    {
+      table: true,
+      stream: true,
+      ingest: false,
+      metadata: {
+          description: "Pipeline for ingesting raw aircraft data" } // new description field!
+      }
+    
+);
+```
+
+### Chat with your data
+
+You can also now just chat with your client about your data! Try asking "What aircraft are listed in the data I have available."
+
+The client will use `read_moose_project`, `read_clickhouse_tables` and maybe `read_production_clickhouse` to answer your question.
+
+### Create new Egress APIs with Aurora MCP tools
+
+If you find a thread that you find interesting enough to want to productionize, try asking the client "can you create an egress API to furnish that data?"
+
+The client will use `create_egress_api` and `test_egress_api` to create an egress API primitives in Moose, that will automatically deploy in your local dev environment when you save.
+
+</Steps>

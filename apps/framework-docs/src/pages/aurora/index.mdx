@@ -3,8 +3,11 @@ title: Aurora - Automated Data Engineering
 description: AI-powered tools and agents exposed through an easy to configure MCP server for data engineering and infrastructure
 ---
 
-import { FeatureGrid, FeatureCard, Icons } from "@/components";
+import { FeatureGrid, FeatureCard, Icons, BulletPointsCard, CTACards, CTACard } from "@/components";
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { paths } from "@/lib/paths";
 
 
 # Welcome to Aurora
@@ -12,6 +15,28 @@ import { Tabs, Steps, Card, FileTree } from "nextra/components";
 ```
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 ```
+
+<div className="flex flex-col md:flex-row gap-4 my-8">
+  <Link href="/aurora/quickstart">
+    <Button variant="default">Quick Start →</Button>
+  </Link>
+  <Link href="/aurora/quickstart/clickhouse-chat">
+    <Button variant="secondary">
+      Start from ClickHouse
+    </Button>
+  </Link>
+  <Link href="/templates">
+    <Button variant="secondary">
+      See Examples
+    </Button>
+  </Link>
+  <Link href="/reference/tool-reference">
+    <Button variant="outline">
+      Tools Reference
+    </Button>
+  </Link>
+
+</div>
 
 ## What is Aurora?
 
@@ -25,7 +50,6 @@ Aurora is a set of tools to make your chat, copilot or BI fluent in data enginee
     Icon={Icons.api}
     title="Chat with Clickhouse"
     description="
-    Connect your LLM client to a Clickhouse database and chat with your data. 
     "
   />
   
@@ -128,10 +152,144 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
 
 </FeatureGrid>
 
+## Why Aurora exists
 
+<BulletPointsCard
+  title="LLMs don't have the tools or context they need to be good data engineers, or to make good data engineering cyborgs."
+  bullets={[
+    {
+      title: "LLM tools are hard to set up, and usually small in scope",
+      description: "It takes me minutes to set up an MCP server, and I have to hold my breath every time I want to use it.",
+    },
+    {
+      title: "Shallow context makes bad data",
+      description: "If I'm just looking at the data, if I'm just looking at the code, if I'm just looking at the logs, if i'm just looking at the docs, I'm not going to make good decisions. I need all that context.",
+    },
+    {
+      title: "I don't want to start from scratch to use AI",
+      description: "I've already got an entire data infrastructure, why should I start from scratch to use AI?",
+    },
+    {
+      title: "Brittle data engineering agents make for annoying coworkers",
+      description: "I want my agents to be easy to prompt, to be able to test their work, and to be able to fit within my SDLC.",
+    },
+  ]}
+/>
+
+### The DIY Approach
+
+<BulletPointsCard
+  bulletStyle="number"
+  divider={false}
+  title="How would I prompt my LLM to create a new egress API on top of Clickhouse."
+  bullets={[
+    {
+      title: "Use an LLM to create a SQL query representing the data I want to expose",
+    },
+    {
+      title: "Iterate on that until I'm happy with the query, and ready to create the egress API",
+    },
+    {
+      title: "Write a SQL query to get the DDL for that database",
+    },
+    {
+      title: "Open my IDE to wherever I have my egress API code, and feed its LLM the DDL as context",
+    },
+    {
+      title: "Manually add sample data as further context",
+    },   
+    {
+      title: "Manually add code examples as further context",
+    },    
+    {
+      title: "Replicate my Clickhouse database locally",
+    },
+    {
+      title: "Prompt chat to create the egress API",
+    },
+    {
+      title: "Manually test the egress API",
+    },
+    {
+      title: "Deploy the egress API",
+    },
+  ]}
+/>
+
+### The Aurora Approach
+
+<BulletPointsCard
+  bulletStyle="number"
+  divider={false}
+  title="How would I use Aurora to create a new egress API on top of Clickhouse."
+  bullets={[
+    {
+      title: "Install Aurora and Moose",
+    },
+    {
+      title: "Create a project from my data in Clickhouse",
+    },
+    {
+      title: "Prompt Aurora to create the egress API with the given business requirements. Context added automatically. Used by Aurora to build egress API and test it.",
+    },
+    {
+      title: "Deploy",
+    },
+  ]}
+/>
+
+## What jobs can you do with Aurora?
+
+<div className="my-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Ad hoc analytics</p>
+    <p className="text-muted-foreground text-sm">Give your LLM client a way to chat with your data, in Clickhouse, Databricks, Snowflake, or wherever it lives</p>
+  </div>
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Analytics Engineering</p>
+    <p className="text-muted-foreground text-sm">Agents that can build new data products, materialized views and egress methods</p>
+  </div>
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Data Engineering</p>
+    <p className="text-muted-foreground text-sm">Have agents build and test end to end data pipelines</p>
+  </div>
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Data Wrangling</p>
+    <p className="text-muted-foreground text-sm">Agents that interact with your data systems like DuckDB, Databricks, Snowflake and more to create scripts, clean data, and prepare data for use"</p>
+  </div>
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Data Migration</p>
+    <p className="text-muted-foreground text-sm">Automated creation of data pipelines to migrate data from legacy systems to a modern data backend</p>
+  </div>
+  <div className="p-5 border border-border rounded-lg bg-muted/30">
+    <p className="font-medium text-primary mb-2">Data quality, governance and reporting</p>
+    <p className="text-muted-foreground text-sm">Agents that can help you enforce data quality, governance and reporting during development and in run time</p>
+  </div>
+</div>
 
 ## Getting Involved / Giving Feedback / Community
 
-- [Email aurora@fiveonefour.com](mailto:aurora@fiveonefour.com)
-- [Join our Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
-- [Star / follow us on Github](https://github.com/514-labs/moose)
+<CTACards columns={3}>
+  <CTACard
+    title="Join our Slack"
+    description="Join our community, we'd love to hear from you!"
+    ctaLink="https://cal.com/team/514/talk-to-eng"
+    ctaLabel="Talk to the Team"
+    Icon={Icons.contact}
+  />
+  <CTACard
+    title="Talk to the Aurora Team"
+    description="We're always looking to improve Moose and would love to hear from you!"
+    ctaLink="https://cal.com/team/514/talk-to-eng"
+    ctaLabel="Talk to the Team"
+    Icon={Icons.contact}
+  />
+  <CTACard
+    title="GitHub"
+    description="Star, check out the code, and contribute on GitHub"
+    ctaLink="https://github.com/514-labs/moose"
+    ctaLabel="GitHub"
+    Icon={Icons.github}
+  />
+
+</CTACards>

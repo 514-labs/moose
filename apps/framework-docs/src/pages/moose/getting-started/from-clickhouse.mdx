@@ -71,16 +71,20 @@ You need a ClickHouse connection URL. Format looks like this:
 http://username:password@host:port/?database=database_name
 ```
 
-**Connection examples:**
-
-| Setup Type | Connection String | Notes |
-|------------|-------------------|-------|
-| **Local setup** | `http://default:@localhost:8123/?database=mydb` |
-| **ClickHouse Cloud** | `https://username:password@your-cluster.clickhouse.cloud:8443/?database=production` |
-| **ClickHouse Playground** | `https://explorer:@play.clickhouse.com:443/?database=default` |
-
 <Callout type="info" title="Try with ClickHouse Playground">
-Want to test Moose without setting up your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets you can experiment with, though it's read-only so you can't modify the data.
+Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
+
+<Python>
+```bash copy
+moose init moose-clickhouse-playground --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language python
+```
+</Python>
+
+<TypeScript>
+```bash copy
+moose init moose-clickhouse-playground --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language typescript
+```
+</TypeScript>
 </Callout>
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
@@ -187,8 +191,7 @@ Moose created data models for each of your ClickHouse tables. Check <Python inli
 
 Moose automatically maps ClickHouse data types to appropriate language-specific types:
 
-<Tabs items={["Python", "TypeScript"]}>
-<Tabs.Tab>
+<Python>
 
 | ClickHouse Type | Python Type | Notes |
 |-----------------|-------------|-------|
@@ -206,8 +209,8 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `LowCardinality(T)` | `T` | Maps to base type |
 | `JSON` | `any` | Partial support |
 
-</Tabs.Tab>
-<Tabs.Tab>
+</Python>
+<TypeScript>
 
 | ClickHouse Type | TypeScript Type | Notes |
 |-----------------|-----------------|-------|
@@ -225,8 +228,7 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `LowCardinality(T)` | `T` | Maps to base type |
 | `JSON` | `Record<string, any>` | Partial support |
 
-</Tabs.Tab>
-</Tabs>
+</TypeScript>
 
 ## What's Next?
 
@@ -235,7 +237,7 @@ Now that you've got Moose talking to your ClickHouse database:
 ### 1. Get Some Data Locally
 
 ```bash copy
-# Coming soon - CLI command to seed from remote ClickHouse
+# CLI command to seed from remote ClickHouse
 moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
 ```
 

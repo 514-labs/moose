@@ -6,8 +6,19 @@ description: Quickstart guide for Aurora
 import { Callout } from "@/components";
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
 
+# Quickstart: Aurora MCPs
 
-# Quickstart: Ad hoc analytics with Clickhouse Playground or your own Clickhouse database
+Aurora is a CLI and an Model Context Protocol (MCP) server which gives data engineering tools and context to LLM clients like Claude Desktop, Cursor, or Windsurf. These tools allow the clients  to interact with your data systems—for example, querying a Clickhouse database, inspecting a local Moose project, or generating new primitives like egress APIs.
+
+This page includes quickstarts for three typical workflows:
+
+- *Ad hoc analytics*: Connect your LLM client to a Clickhouse database and explore it using natural language. This uses the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+
+- *New analytics engineering project*: Scaffold a local Moose project from a remote Clickhouse schema and enrich it with metadata and new egress methods with Aurora. This uses the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+
+- *Template-based project*: Set up a Moose project with example ingest pipelines and test Aurora’s MCP tools on real data. This uses the ADS-B template as our example project, but you can use any Moose project template, or start a new project from scratch.
+
+## Quickstart: Ad hoc analytics with Clickhouse Playground or your own Clickhouse database
 
 This will walk you through using Aurora CLI to connect Aurora MCP tools to your Clickhouse database, allowing you to chat with your data in your client of choice. We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
 
@@ -44,7 +55,7 @@ We recommend starting the chat with a context setting question like "tell me abo
 
 </Steps>
 
-# Quickstart: New analytics engineering project from Clickhouse Playground or your own Clickhouse database
+## Quickstart: New analytics engineering project from Clickhouse Playground or your own Clickhouse database
 
 This will walk you through creating a new local Moose project reflecting the structure of your Clickhouse database. It will allow you to add data to your local dev environment from your remote Clickhouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
 
@@ -151,7 +162,7 @@ The client will use `create_egress_api` and `test_egress_api` to create an egres
 
 </Steps>
 
-# Quickstart: New data engineering project from template
+## Quickstart: New data engineering project from template
 
 This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
 

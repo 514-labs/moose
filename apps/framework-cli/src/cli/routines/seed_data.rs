@@ -10,14 +10,16 @@ use crate::project::Project;
 use crate::utilities::clickhouse_url::convert_clickhouse_url;
 use log::{debug, info};
 
-fn parse_clickhouse_connection_string(conn_str: &str) -> anyhow::Result<ClickHouseConfig> {
+fn parse_clickhouse_connection_string(
+    conn_str: &str,
+) -> anyhow::Result<(ClickHouseConfig, Option<String>)> {
     let url = convert_clickhouse_url(conn_str)?;
 
     let user = url.username().to_string();
     let password = url.password().unwrap_or("").to_string();
     let host = url.host_str().unwrap_or("localhost").to_string();
     let use_ssl = url.scheme() == "https";
-    let default_port = if use_ssl { 443 } else { 8123 };
+    let default_port = if use_ssl { 8443 } else { 8123 };
     let port = url.port().unwrap_or(default_port) as i32;
 
     // Try to get db_name from query string first, then from path
@@ -33,11 +35,10 @@ fn parse_clickhouse_connection_string(conn_str: &str) -> anyhow::Result<ClickHou
             } else {
                 None
             }
-        })
-        .unwrap_or_else(|| "default".to_string());
+        });
 
-    Ok(ClickHouseConfig {
-        db_name,
+    let config = ClickHouseConfig {
+        db_name: db_name.clone().unwrap_or_else(|| "".to_string()), // will be set later if not specified
         user,
         password,
         use_ssl,
@@ -45,7 +46,9 @@ fn parse_clickhouse_connection_string(conn_str: &str) -> anyhow::Result<ClickHou
         host_port: port,
         native_port: port,
         host_data_path: None,
-    })
+    };
+
+    Ok((config, db_name))
 }
 
 pub async fn handle_seed_command(
@@ -83,13 +86,52 @@ pub async fn handle_seed_command(
             };
 
             // Parse connection string and create remote ClickHouseConfig
-            let remote_config =
+            let (mut remote_config, db_name) =
                 parse_clickhouse_connection_string(connection_string).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
                         format!("Invalid connection string: {}", e),
                     ))
                 })?;
+
+            // If no database was specified in the URL, query the remote database to get the current database
+            if db_name.is_none() {
+                let mut client = clickhouse::Client::default().with_url(connection_string);
+                let url = convert_clickhouse_url(connection_string).map_err(|e| {
+                    RoutineFailure::error(Message::new(
+                        "SeedClickhouse".to_string(),
+                        format!("Failed to parse connection string: {}", e),
+                    ))
+                })?;
+
+                if !url.username().is_empty() {
+                    client = client.with_user(url.username());
+                }
+                if let Some(password) = url.password() {
+                    client = client.with_password(password);
+                }
+
+                let current_db = client
+                    .query("select database()")
+                    .fetch_one::<String>()
+                    .await
+                    .map_err(|e| {
+                        RoutineFailure::error(Message::new(
+                            "SeedClickhouse".to_string(),
+                            format!("Failed to query remote database: {}", e),
+                        ))
+                    })?;
+
+                remote_config.db_name = current_db;
+            }
+
+            // Ensure we have a valid database name
+            if remote_config.db_name.is_empty() {
+                return Err(RoutineFailure::error(Message::new(
+                    "SeedClickhouse".to_string(),
+                    "No database specified in connection string and unable to determine current database".to_string(),
+                )));
+            }
 
             // Create local ClickHouseClient from local config
             let local_clickhouse =

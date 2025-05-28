@@ -6,11 +6,13 @@ import { Database, FileCode, Download, Zap } from "lucide-react";
 
 <LanguageSwitcher />
 
-<Callout type="warning" title="Beta Feature">
-This feature is in beta. Tables with unsupported types are skipped during initialization. See [Current Limitations](#current-limitations) for supported types.
+Bootstrap a Moose project directly from your existing ClickHouse database in minutes.
+
+
+<Callout type="info" title="Early Access Feature">
+We're actively developing this feature and would love your feedback. While it's ready for most use cases, check out [Known Limitations](#known-limitations) for details on what's still in progress.
 </Callout>
 
-Bootstrap a Moose project directly from your existing ClickHouse database in minutes.
 
 ## Why Use Moose with ClickHouse?
 
@@ -256,95 +258,305 @@ Now that you've got Moose talking to your ClickHouse database:
 moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
 ```
 
+### 2. Build Materialized Views That Don't Break
 
-### 2. Build Materialized Views
+<ToggleBlock openText="See how Moose fixes common ClickHouse pain points" closeText="Hide details">
 
-Moose Materialized View abstraction helps speed things up for building and maintaining your transformation layer in ClickHouse:
+**The ClickHouse Reality:**
 
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  title="What you'll actually build:"
-  bullets={[
-    {
-      title: "Schema + SELECT only",
-      description: "Define your target model and SELECT statement - Moose generates DDL and sets up materialized view triggers automatically",
-    },
-    {
-      title: "Type-safe aggregations",
-      description: "Aggregated<\"sum\", [number]> types catch mismatches between your code and ClickHouse schemas at compile time",
-    },
-    {
-      title: "Auto dependency order",
-      description: "Reference source tables directly in SELECT statements - Moose figures out correct execution order",
-    },
-    {
-      title: "Hot-reload development",
-      description: "Change view logic and see it applied to local ClickHouse instantly, no manual DROP/CREATE cycles",
-    },
-  ]}
-/>
+```sql
+-- Step 1: Create target table (remember the exact schema!)
+CREATE TABLE daily_user_stats (
+    user_id UInt64,
+    date Date,
+    event_count UInt64
+) ENGINE = MergeTree()
+ORDER BY (user_id, date);
 
-<Callout type="info" title="Learn More">
-Check out the [Materialized Views docs](/moose/building/materialized-views) for the full implementation guide.
-</Callout>
+-- Step 2: Create materialized view (hope you got the dependency order right!)
+CREATE MATERIALIZED VIEW daily_user_stats_mv TO daily_user_stats AS
+SELECT 
+    user_id,
+    toDate(timestamp) as date,
+    count(*) as event_count
+FROM user_events 
+GROUP BY user_id, date;
 
-### 3. Create APIs Your Frontend Will Love
+-- Step 3: Copy-paste this to staging... then production... 
+-- Step 4: Pray you didn't miss anything when the schema changes
+-- Step 5: Remember to DROP VIEW before changing SELECT logic
+```
 
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  title="What you'll actually build:"
-  bullets={[
-    {
-      title: "Type-safe endpoints with auto-validation & OpenAPI docs",
-      description: "Request/response models that match your frontend, with automatic OpenAPI docs generation",
-    },
-    {
-      title: "SQL in actual code",
-      description: "Write TypeScript/Python functions instead of Jinja templates for more expressiveness",
-    },
-    {
-      title: "Direct table references",
-      description: "Import tables for autocompletion & type safety",
-    },
-    {
-      title: "Built-in security",
-      description: "JWT validation and SQL injection protection",
-    },
-  ]}
-/>
+**With Moose:**
 
-<Callout type="info" title="Learn More">
-See the [Consumption APIs docs](/moose/building/consumption-apis) for authentication, query patterns, and examples.
-</Callout>
+<TypeScript>
+```typescript
+import { userEvents } from "./tables"; // Import existing tables
+import { MaterializedView, sql } from "@514labs/moose-lib";
 
+// Define your target schema
+interface DailyUserStats {
+  user_id: number;
+  date: Date;
+  event_count: number;
+}
+
+// Define what you want - Moose generates all the DDL
+const dailyStats = new MaterializedView<DailyUserStats>({
+  // ✅ SQL in actual code, directly reference table names and columns for autocompletion
+  selectStatement: sql`
+    SELECT 
+      ${userEvents.user_id}, 
+      toDate(${userEvents.timestamp}) as date, 
+      count(*) as event_count
+    FROM ${userEvents} 
+    GROUP BY ${userEvents.user_id}, date
+  `,
+  selectTables: [userEvents],
+  tableName: "daily_user_stats",
+  materializedViewName: "daily_user_stats_mv",
+  orderByFields: ["user_id", "date"]
+});
+
+// Moose automatically:
+// ✅ Creates the target table with correct schema
+// ✅ Sets up the materialized view 
+// ✅ Handles dependency order
+// ✅ Manages schema migrations
+// ✅ Provides hot-reload in development
+```
+</TypeScript>
+
+<Python>
+```python
+from moose_lib import MaterializedView, OlapTable, MaterializedViewOptions
+from pydantic import BaseModel
+from datetime import date
+from app.tables import user_events ## Import existing tables
+
+## Define your target schema
+class DailyUserStats(BaseModel):
+    user_id: int
+    date: date  
+    event_count: int
+
+
+# Define what you want - Moose generates all the DDL
+daily_stats = MaterializedView[DailyUserStats](
+    MaterializedViewOptions(
+        select_statement="""
+            SELECT user_id, toDate(timestamp) as date, count(*) as event_count
+            FROM user_events GROUP BY user_id, date
+        """,
+        select_tables=[user_events],
+        table_name="daily_user_stats",
+        materialized_view_name="daily_user_stats_mv",
+        order_by_fields=["user_id", "date"]
+    )
+)
+
+# Moose automatically:
+# ✅ Creates the target table with correct schema  
+# ✅ Sets up the materialized view
+# ✅ Handles dependency order
+# ✅ Manages schema migrations
+# ✅ Provides hot-reload in development
+```
+</Python>
+
+</ToggleBlock>
+
+**Ready to dive deeper?** → [Materialized Views docs](/moose/building/materialized-views)
+
+### 3. Build APIs That Handle the Annoying Stuff
+Consumption APIs are a way to write native <TypeScript inline>TypeScript</TypeScript><Python inline>Python</Python> functions that wrap your ClickHouse queries and make them available for your frontend clients via a type-safe REST API.
+
+They are designed to take care of the boilerplate that slows you down like:
+- Request validation
+- Response type mapping
+- SQL injection protection
+- Documentation
+- JWT validation (if you're using it)
+
+<ToggleBlock openText="Example code" closeText="Hide details">
+<TypeScript>
+```typescript
+import { ConsumptionApi } from "@514labs/moose-lib";
+import { tags } from "typia";
+
+interface GetUserStatsParams {
+  userId: number;                            // ✅ Automatic validation
+  startDate: string & tags.Format<"date">;   // ✅ Automatic validation  
+  endDate: string & tags.Format<"date">;     // ✅ Automatic validation
+}
+
+interface GetUserStatsResponse {
+  date: string;
+  event_count: number;
+}
+
+export const UserStatsApi = new ConsumptionApi<GetUserStatsParams, GetUserStatsResponse[]>(
+  "user-stats",
+  async ({ userId, startDate, endDate }, { client, sql }) => {
+    const query = sql`
+      SELECT date, event_count 
+      FROM daily_user_stats 
+      WHERE user_id = ${userId} 
+        AND date BETWEEN ${startDate} AND ${endDate}
+      ORDER BY date
+    `;
+
+    const data = await client.query.execute<GetUserStatsResponse>(query);
+    return await data.json();
+  }
+);
+
+// Moose automatically provides:
+// ✅ Request validation based on TypeScript types
+// ✅ Response type mapping to your target schema
+// ✅ SQL injection protection  
+// ✅ OpenAPI documentation generation
+// ✅ JWT validation (if configured)
+// ✅ IDE autocompletion for table names
+```
+</TypeScript>
+
+<Python>
+```python
+from moose_lib import ConsumptionApi, MooseClient
+from pydantic import BaseModel
+from datetime import date
+
+class GetUserStatsParams(BaseModel):
+    user_id: int           # ✅ Automatic validation
+    start_date: date       # ✅ Automatic validation
+    end_date: date         # ✅ Automatic validation
+
+class GetUserStatsResponse(BaseModel):
+    date: date
+    event_count: int
+
+def get_user_stats(client: MooseClient, params: GetUserStatsParams):
+    query = f"""
+        SELECT date, event_count 
+        FROM daily_user_stats 
+        WHERE user_id = {params.user_id} 
+          AND date BETWEEN '{params.start_date}' AND '{params.end_date}'
+        ORDER BY date
+    """
+    return client.query.execute(query)
+
+api = ConsumptionApi[GetUserStatsParams, GetUserStatsResponse](
+    name="user-stats", 
+    query_function=get_user_stats
+)
+
+# Moose automatically provides:
+# ✅ Request validation based on Pydantic models
+# ✅ Response type mapping to your target schema
+# ✅ SQL injection protection
+# ✅ OpenAPI documentation generation  
+# ✅ JWT validation (if configured)
+# ✅ IDE autocompletion for table names
+```
+</Python>
+
+</ToggleBlock>
+
+**Ready to dive deeper?** → [Consumption APIs docs](/moose/building/consumption-apis)
 
 ### 4. Use AI to Generate Analytics & APIs
 
-<Callout type="info" title="Try Aurora">
 Want AI to generate insights and APIs from your data? Try [Aurora](/aurora/quickstart) - our AI analytics agent for Moose projects.
-</Callout>
 
 ## Current Limitations
 
-### What doesn't work yet
+### What we're working on adding:
 - **Selective table import**: Imports all tables (filtering coming soon)
-- **Custom ClickHouse functions**: Default values with functions get stripped
-- **Advanced ClickHouse types**: These aren't supported yet:
+- **Default values**: Adding annotations to your models to set default values for your tables
+- **Advanced ClickHouse types**:
   - `Map(K, V)` types
   - `Tuple(T1, T2, ...)` types  
   - `Geo` types (Point, Ring, Polygon, etc.)
 
-<Callout type="warning" title="Skipped tables">
+<Callout type="warning" title="Tables with these types will be skipped">
 Right now, tables featuring these types will be skipped during the initialization process.
 </Callout>
 
-### Partially supported types
-  - `LowCardinality(T)` → maps to base type `T`
-  - `JSON` types → `any` (Python) / `Record<string, any>` (TypeScript)
-  - `Enum` types
+### Known Limitations
 
-<Callout type="info" title="Minor edge cases">
-These types are supported but may need manual type adjustments in generated code.
-</Callout>
+#### Supported Types with Manual Type Adjustments:
+
+#### `LowCardinality(T)` 
+Currently, `LowCardinality(T)` maps to base type `T`.
+
+You can override the autogenerated data models by making the following adjustments to fields that are `LowCardinality` in your generated code:
+
+<TypeScript>
+You can add LowCardinality optimization by using intersection types:
+```typescript
+interface MyModel {
+  status: string & LowCardinality; // Optimized for low cardinality
+  category: string;                // Regular string
+}
+```
+</TypeScript>
+
+<Python>
+LowCardinality is automatically applied to `Literal` types:
+```python
+from typing import Literal
+
+class MyModel(BaseModel):
+    status: Literal["active", "inactive", "pending"]  # Automatically 
+    category: str                                     # Regular string
+```
+</Python>
+
+#### `JSON` types 
+<Python>
+Maps to `any` 
+</Python>
+
+<TypeScript>
+Maps to `Record<string, any>`
+</TypeScript>
+
+#### `Enum` types
+Enum column types that have an empty string as a key will be skipped:
+
+```sql
+CREATE TABLE my_table (
+    my_enum Enum8(""=0, "A"=1, "B"=2)
+);
+```
+
+```python
+## This does not work:
+class my_enum(StringToEnumMixin, IntEnum):
+    "" = 0 ## Illegal to have an empty string as a key
+    A = 1
+    B = 2
+
+## Instead what will be generated is:
+class my_enum(StringToEnumMixin, IntEnum):
+    = 0 ## Will lead to a type error, consider using a different key
+    A = 1
+    B = 2
+```
+
+<Python>
+In Python, using a numeric key in a string enum will lead to a type error:
+```sql
+CREATE TABLE my_table (
+    my_enum Enum8("1"=0, "A"=1, "B"=2)
+);
+```
+
+```python
+class my_enum(StringToEnumMixin, IntEnum):
+    1 = 0 ## Will lead to a type error, consider using a different key
+    A = 1
+    B = 2
+```
+</Python>

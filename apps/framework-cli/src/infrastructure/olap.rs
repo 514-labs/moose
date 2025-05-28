@@ -1,5 +1,6 @@
 use clickhouse::ClickhouseChangesError;
 
+use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
 use crate::{
     framework::core::infrastructure::table::Table, framework::core::infrastructure_map::OlapChange,
     project::Project,
@@ -34,7 +35,8 @@ pub trait OlapOperations {
     ///
     /// # Returns
     ///
-    /// * `Result<Vec<Table>, OlapChangesError>` - A list of Table objects on success, or an error if the operation fails
+    /// * `Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError>` -
+    /// A list of Table objects and a list of TableWithUnsupportedType on success, or an error if the operation fails
     ///
     /// # Errors
     ///
@@ -47,7 +49,7 @@ pub trait OlapOperations {
         &self,
         db_name: &str,
         project: &Project,
-    ) -> Result<Vec<Table>, OlapChangesError>;
+    ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError>;
 }
 
 /// This method dispatches the execution of the changes to the right olap storage.

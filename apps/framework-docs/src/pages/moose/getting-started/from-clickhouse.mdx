@@ -12,7 +12,32 @@ This feature is in beta. Tables with unsupported types are skipped during initia
 
 Bootstrap a Moose project directly from your existing ClickHouse database in minutes.
 
-## Quick Setup
+## Why Use Moose with ClickHouse?
+
+ClickHouse is a blazingly-fast analytical database, but with the power comes complexity and a lot of manual work:
+
+<BulletPointsCard
+  title="Manually Managing ClickHouse?"
+  bulletStyle="x"
+  bullets={[
+    {
+      title: "Copy-pasting DDL between environments",
+      description: "Running the same CREATE TABLE and CREATE MATERIALIZED VIEW statements in dev, staging, and prod, hoping you didn't miss a field",
+    },
+    {
+      title: "Forgetting dependency order",
+      description: "Creating a materialized view before its source table exists, then scrambling to figure out what broke",
+    },
+    {
+      title: "Manual type mapping to your language of choice",
+      description: "Your frontend expects user_id as a string but your SELECT query returns UInt64, and you only find out at runtime",
+    },
+    {
+      title: "Lost schema changes",
+      description: "That ALTER TABLE you ran last week? Good luck remembering what it was when you need to apply it to production",
+    },
+  ]}
+/>
 
 Moose provides a code layer on top of your existing ClickHouse database.
 

@@ -1,0 +1,366 @@
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard } from "@/components";
+import { Database, FileCode, Download, Zap } from "lucide-react";
+
+# Initialize from Existing ClickHouse Database
+
+<LanguageSwitcher />
+
+<Callout type="warning" title="Beta Feature">
+This feature is currently in beta. We're working on complete type support for all ClickHouse data types. Tables containing unsupported types are currently skipped during the initialization process. Check the [Type Mapping](#type-mapping) section below to see what's currently supported.
+</Callout>
+
+Got a ClickHouse database that's already running in production? This guide will walk you through how to bootstrap a Moose project directly from your existing schema.
+
+## Why Bother?
+
+ClickHouse is a blazingly-fast analytical database, but with the power comes complexity and a lot of manual work:
+<BulletPointsCard
+  title="Manually Managing ClickHouse?"
+  bulletStyle="x"
+  bullets={[
+    {
+      title: "Copy-pasting DDL between environments",
+      description: "Running the same CREATE TABLE and CREATE MATERIALIZED VIEW statements in dev, staging, and prod, hoping you didn't miss a field",
+    },
+    {
+      title: "Forgetting dependency order",
+      description: "Creating a materialized view before its source table exists, then scrambling to figure out what broke",
+    },
+    {
+      title: "Manual type mapping to your language of choice",
+      description: "Your frontend expects user_id as a string but your SELECT query returns UInt64, and you only find out at runtime",
+    },
+    {
+      title: "Lost schema changes",
+      description: "That ALTER TABLE you ran last week? Good luck remembering what it was when you need to apply it to production",
+    },
+  ]}
+/>
+
+Moose provides a code layer on top of your existing ClickHouse database.
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="How Moose Can Speed Things Up:"
+  bullets={[
+    {
+      title: "Stop writing boilerplate",
+      description: "Generate typed models from your existing tables instead of hand-coding everything",
+    },
+    {
+      title: "Build APIs in code, not Jinja templates",
+      description: "Write actual TypeScript/Python functions with proper testing, debugging, and IDE support instead of figuring out how to make your API logic work with templated SQL",
+    },
+    {
+      title: "Add streaming in a line of code",
+      description: "Turn any table into a real-time streaming destination without configuring Kafka topics, serialization, or message schemas",
+    },
+    {
+      title: "Version control your database",
+      description: "Manage schema changes, materialized views, and transformations like actual code",
+    },
+    {
+      title: "Leverage CI/CD built for ClickHouse",
+      description: "See a plan for your database changes before promoting to production, and apply them automatically when you do",
+    },
+  ]}
+/>
+
+Basically, you get modern tooling for your existing data & ClickHouse setup without throwing away months of work.
+
+## Quick Setup
+<Callout type="info" title="Prerequisites">
+<TypeScript>
+- **Node.js**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+</TypeScript>
+
+<Python>
+- **Python**: [version 3.12+](https://www.python.org/downloads/) 
+</Python>
+
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
+- **Access to ClickHouse Database**: Connection URL with credentials
+</Callout>
+
+<Steps>
+
+### Get Your ClickHouse Connection String
+
+You need a ClickHouse connection URL. Format looks like this:
+
+```
+http://username:password@host:port/?database=database_name
+```
+
+**Connection examples:**
+
+| Setup Type | Connection String | Notes |
+|------------|-------------------|-------|
+| **Local setup** | `http://default:@localhost:8123/?database=mydb` | Default ClickHouse installation |
+| **ClickHouse Cloud** | `https://username:password@your-cluster.clickhouse.cloud:8443/?database=production` | Replace with your actual credentials |
+| **ClickHouse Playground** | `https://explorer:@play.clickhouse.com:443/?database=default` | For testing (read-only) |
+
+<Callout type="info" title="Try with ClickHouse Playground">
+Want to test Moose without setting up your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets you can experiment with, though it's read-only so you can't modify the data.
+</Callout>
+
+<ToggleBlock openText="Finding Credentials by Setup Type" closeText="Hide Credential Help">
+<Tabs items={["ClickHouse Cloud", "Self-Hosted ClickHouse", "Docker ClickHouse"]}>
+<Tabs.Tab>
+- Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+- Go to your service details page
+- Find "Connect" or "Connection Details" section
+- Copy the HTTPS endpoint and your username/password
+- Format: `https://username:password@your-cluster.clickhouse.cloud:8443/?database=your_db`
+
+</Tabs.Tab>
+<Tabs.Tab>
+- Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
+- Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
+- Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
+- Default user is often `default` with no password
+</Tabs.Tab>
+<Tabs.Tab>
+- Check your docker-compose.yml or docker run command for environment variables
+- Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+- Default is usually `http://default:@localhost:8123/?database=default`
+</Tabs.Tab>
+</Tabs>
+
+</ToggleBlock>
+
+<ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
+
+- **Can't connect?** Try `curl http://your-host:8123/ping` to test connectivity
+- **Authentication failed?** Verify username/password with `clickhouse-client --user=username --password=password`
+- **Database not found?** Run `SHOW DATABASES` to see available databases
+- **Permission denied?** Check user permissions with `SHOW GRANTS FOR username`
+
+**Still stuck?** Check the [ClickHouse documentation](https://clickhouse.com/docs/en/getting-started/install) for your specific deployment method.
+
+</ToggleBlock>
+
+
+### Install Moose & Bootstrap Your Project
+```bash copy
+# Install Moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+<Python>
+```bash copy
+# Bootstrap from your ClickHouse database
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
+
+# Set up dependencies
+cd my-project
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+</Python>
+
+<TypeScript>
+```bash copy
+# Bootstrap from your ClickHouse database
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+
+# Set up dependencies
+cd my-project
+npm install
+```
+</TypeScript>
+
+### Start Your Local Environment
+
+```bash copy
+moose dev
+```
+
+This spins up your entire data stack locally and generates typed models from your ClickHouse tables.
+
+### Check What Got Generated
+
+Moose created data models for each of your ClickHouse tables. Check <Python inline>`app/main.py`</Python><TypeScript inline>`app/index.ts`</TypeScript> to see what you got.
+
+<Python>
+<FileTree>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.File name="main.py" />
+</FileTree.Folder>
+<FileTree.File name="moose.config.toml" />
+<FileTree.File name="requirements.txt" />
+<FileTree.File name="setup.py" />
+</FileTree>
+
+</Python>
+
+<TypeScript>
+<FileTree>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.File name="index.ts" />
+</FileTree.Folder>
+<FileTree.File name="moose.config.toml" />
+<FileTree.File name="package.json" />
+</FileTree>
+</TypeScript>
+
+</Steps>
+
+## Type Mapping
+
+Moose automatically maps ClickHouse data types to appropriate language-specific types:
+
+<Tabs items={["Python", "TypeScript"]}>
+<Tabs.Tab>
+
+| ClickHouse Type | Python Type | Notes |
+|-----------------|-------------|-------|
+| `String` | `str` | |
+| `Int8`, `Int16`, `Int32`, `Int64` | `int` | With size annotations |
+| `UInt8`, `UInt16`, `UInt32`, `UInt64` | `int` | With size annotations |
+| `Float32`, `Float64` | `float` | With precision annotations |
+| `Decimal(P,S)` | `Decimal` | With precision/scale |
+| `Date`, `Date32` | `date` | |
+| `DateTime`, `DateTime64` | `datetime` | With precision for DateTime64 |
+| `Array(T)` | `list[T]` | Nested type mapping |
+| `UUID` | `UUID` | |
+| `Boolean` | `bool` | |
+| `Nullable(T)` | `Optional[T]` | |
+
+</Tabs.Tab>
+<Tabs.Tab>
+
+| ClickHouse Type | TypeScript Type | Notes |
+|-----------------|-----------------|-------|
+| `String` | `string` | |
+| `Int8`, `Int16`, `Int32`, `Int64` | `number` | |
+| `UInt8`, `UInt16`, `UInt32`, `UInt64` | `number` | |
+| `Float32`, `Float64` | `number` | |
+| `Decimal(P,S)` | `number` | |
+| `Date`, `Date32` | `Date` | |
+| `DateTime`, `DateTime64` | `Date` | |
+| `Array(T)` | `T[]` | Nested type mapping |
+| `UUID` | `string` | |
+| `Boolean` | `boolean` | |
+| `Nullable(T)` | `T \| null` | |
+
+</Tabs.Tab>
+</Tabs>
+
+## What's Next?
+
+Alright, you've got Moose talking to your ClickHouse database. Now let's build something useful with it:
+
+### 1. Get Some Data Locally (Do This First)
+
+You'll want actual data to work with during development:
+
+```bash copy
+# Coming soon - CLI command to seed from remote ClickHouse
+moose seed --from-remote 'http://username:password@host:port/?database=your_db'
+```
+
+<Callout type="info" title="Coming Soon">
+The `moose seed` command is in development. For now, you can manually insert some test data or connect directly to your remote database during development.
+</Callout>
+
+### 2. Build Materialized Views
+
+Moose Materialized View abstraction helps speed things up for building and maintaining your transformation layer in ClickHouse:
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="What you'll actually build:"
+  bullets={[
+    {
+      title: "Just schema + SELECT, Moose handles the rest",
+      description: "Define your target data model and write your SELECT statement - Moose generates the target table DDL and sets up the materialized view triggers automatically",
+    },
+    {
+      title: "Type-safe aggregation functions",
+      description: "Aggregated<\"sum\", [number]> types that catch mismatches between your code and ClickHouse schemas at compile time",
+    },
+    {
+      title: "Automatic dependency orchestration",
+      description: "Reference source tables directly in your SELECT statements - Moose figures out creation order and handles migrations",
+    },
+    {
+      title: "Hot-reload development",
+      description: "Change your view logic and see it applied to your local ClickHouse instantly, no manual DROP/CREATE cycles",
+    },
+  ]}
+/>
+
+<Callout type="info" title="Learn More">
+Check out the [Materialized Views docs](/moose/building/materialized-views) for the full implementation guide.
+</Callout>
+
+### 3. Create APIs Your Frontend Will Love
+
+Turn your materialized views into fast HTTP endpoints that your dashboards can actually use.
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  title="What you can build:"
+  bullets={[
+    {
+      title: "Type-safe endpoints with auto-validation",
+      description: "Request/response models that match your frontend, with automatic OpenAPI docs generation",
+    },
+    {
+      title: "SQL queries in actual code",
+      description: "Write TypeScript/Python functions instead of wrestling with Jinja templates - get proper IDE support, testing, and debugging",
+    },
+    {
+      title: "Direct table/column references",
+      description: "Import your materialized views and tables directly in your code for IDE autocompletion and type safety",
+    },
+    {
+      title: "Built-in auth & security",
+      description: "JWT validation, parameter sanitization, and SQL injection protection out of the box",
+    },
+  ]}
+/>
+
+<Callout type="info" title="Learn More">
+See the [Consumption APIs docs](/moose/building/consumption-apis) for authentication, query patterns, and examples.
+</Callout>
+
+## Troubleshooting
+
+<ToggleBlock openText="Common Issues" closeText="Hide Troubleshooting">
+
+**Can't connect to ClickHouse**
+- Check if your server is actually running (`curl http://your-host:8123/ping`)
+- Verify the connection string format
+- Make sure your user has the right permissions
+
+**No tables show up**
+- Double-check the database name in your URL
+- Confirm tables exist: `SHOW TABLES` in your ClickHouse client
+- Verify your user can `SELECT` from those tables
+
+**Generated types look weird**
+- Complex ClickHouse types sometimes map to generic ones
+- You can manually fix the generated models afterward
+- Enums currently become strings (we're working on it)
+
+**Taking forever with large schemas**
+- Yeah, scanning hundreds of tables takes time
+- Table filtering is coming soon
+- For now, maybe create a smaller test database first
+
+</ToggleBlock>
+
+## Current Limitations
+
+<Callout type="info" title="What Doesn't Work Yet">
+- **Selective table import**: It grabs everything (filtering coming soon)
+- **Custom ClickHouse functions**: Default values with functions get stripped
+</Callout>

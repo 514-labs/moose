@@ -1,4 +1,4 @@
-use crate::cli::display::Message;
+use crate::cli::display::{Message, MessageType};
 use crate::cli::routines::RoutineFailure;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::generate::tables_to_python;
@@ -66,12 +66,29 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
     })?;
 
     let project = crate::cli::load_project()?;
-    let tables = client.list_tables(&db, &project).await.map_err(|e| {
+    let (tables, unsupported) = client.list_tables(&db, &project).await.map_err(|e| {
         RoutineFailure::new(
             Message::new("Failure".to_string(), "listing tables".to_string()),
             e,
         )
     })?;
+
+    if !unsupported.is_empty() {
+        show_message!(
+            MessageType::Highlight,
+            Message {
+                action: "Table(s)".to_string(),
+                details: format!(
+                    "with types unsupported: {}",
+                    unsupported
+                        .iter()
+                        .map(|t| t.name.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ),
+            }
+        );
+    }
 
     match project.language {
         SupportedLanguages::Typescript => {

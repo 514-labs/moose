@@ -1,5 +1,5 @@
-import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg } from "@/components";
-import { Steps } from "nextra/components";
+import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg, ToggleBlock } from "@/components";
+import { Steps, Tabs } from "nextra/components";
 
 ## Quickstart: Ad hoc analytics with Clickhouse Playground or your own Clickhouse database
 
@@ -24,11 +24,59 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
 aurora connect clickhouse --connection-string "clickhouse://explorer:@play.clickhouse.com:443/default" --mcp cursor-project
 ```
 
-This will configure the [Clickhouse MCP tools](https://docs.fiveonefour.com/aurora/tool-reference#remote-clickhouse) to read data from Clickhouse's Playground, but you can point this at any Clickhouse database. It sets up the MCP in Claude Desktop, but you can change this with the `--mcp` flag.
+You need a ClickHouse connection URL. Format looks like this:
+
+```
+http://username:password@host:port/?database=database_name
+```
+
+<Callout type="info" title="Try with ClickHouse Playground">
+Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
+
+```txt copy
+https://explorer:@play.clickhouse.com:443/?database=default
+```
+
+</Callout>
+
+
+<ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
+<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
+<Tabs.Tab>
+1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+2. Go to your service details page
+3. Find "Connect" or "Connection Details" section
+4. Copy the HTTPS endpoint and your username/password
+</Tabs.Tab>
+<Tabs.Tab>
+- Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
+- Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
+- Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
+- Default user is often `default` with no password
+</Tabs.Tab>
+<Tabs.Tab>
+- Check your docker-compose.yml or docker run command for environment variables
+- Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+- Default is usually `http://default:@localhost:8123/?database=default`
+</Tabs.Tab>
+</Tabs>
+</ToggleBlock>
+
+<ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
+
+- **Can't connect?** Try `curl http://your-host:8123/ping` to test connectivity
+- **Authentication failed?** Verify username/password with `clickhouse-client --user=username --password=password`
+- **Database not found?** Run `SHOW DATABASES` to see available databases
+- **Permission denied?** Check user permissions with `SHOW GRANTS FOR username`
+
+**Still stuck?** Check the [ClickHouse documentation](https://clickhouse.com/docs/en/getting-started/install) for your specific deployment method.
+
+</ToggleBlock>
+
 
 ### Chat
 
-Open your Claude Desktop client. 
+Open your Claude Desktop client. We recommend starting the chat with a context setting question like "tell me about the data I have available to me in Clickhouse".
 
 You can check that the MCP is correctly configured by looking at `claude > settings > developer > aurora`. It should say "running".
 
@@ -37,8 +85,6 @@ You can check that the MCP is correctly configured by looking at `claude > setti
 You can can also look at `search and tools` beneath the chat window, you should see `aurora` in the list of MCPs—if you click into it, you should see the tools that are enabled.
 
 <ZoomImg light="/claude-search-and-tools.png" dark="/claude-search-and-tools.png" alt="Claude search and tools, MCP running" />
-
-We recommend starting the chat with a context setting question like "tell me about the data I have available to me in Clickhouse".
 
 </Steps>
 

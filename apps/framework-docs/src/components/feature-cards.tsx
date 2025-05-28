@@ -36,7 +36,12 @@ export function FeatureCard({
       <div className="flex items-center gap-4">
         {Icon && (
           <div className="flex-shrink-0 self-start mt-1">
-            <Icon className="h-[20px] w-[20px] text-moose-purple" />
+            <Icon
+              className={cn(
+                "h-[20px] w-[20px]",
+                variant === "moose" ? "text-moose-purple" : "text-aurora-teal",
+              )}
+            />
           </div>
         )}
         <div>

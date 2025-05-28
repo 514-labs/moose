@@ -5,6 +5,7 @@ mod commands;
 pub mod local_webserver;
 pub mod logger;
 pub mod routines;
+use crate::cli::routines::seed_data;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
@@ -740,6 +741,10 @@ pub async fn top_command_handler(
             wait_for_usage_capture(capture_handle).await;
 
             output
+        }
+        Commands::Seed(seed_args) => {
+            let project = load_project()?;
+            seed_data::handle_seed_command(seed_args, &project).await
         }
     }
 }

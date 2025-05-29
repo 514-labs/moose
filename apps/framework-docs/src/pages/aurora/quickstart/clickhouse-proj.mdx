@@ -101,10 +101,10 @@ moose dev
 ### Get sample data
 
 ```bash filename="Terminal" copy
-moose seed from-remote-clickhouse clickhouse://explorer:@play.clickhouse.com:443/default --rows 200
+moose seed clickhouse --connection-string clickhouse://explorer:@play.clickhouse.com/default --limit 100
 ```
 
-This will seed your local Clickhouse database with 200 rows of sample data from your remote Clickhouse database—here, the Clickhouse Playground. You can change the number of rows with the `--rows` flag.
+This will seed your local Clickhouse database with 100 rows of sample data from your remote Clickhouse database—here, the Clickhouse Playground. You can change the number of rows with the `--limit` flag.
 
 This will improve the context provided to Aurora's MCP tools, and make it easier to validate analytic engineering tasks.
 

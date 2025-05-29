@@ -21,4 +21,12 @@ export const paths = {
   // Reference
   mooseCli: `${basePaths.reference}/moose-cli`,
   mooseLibrary: `${basePaths.reference}/moose-lib`,
+  // Social
+  calendly: "https://cal.com/team/514/talk-to-eng",
+  slack:
+    "https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA",
+  github: "https://github.com/514-labs/moose",
+  twitter: "https://x.com/514hq",
+  youtube: "https://www.youtube.com/channel/UCmIj6NoAAP7kOSNYk77u4Zw",
+  linkedin: "https://www.linkedin.com/company/fiveonefour",
 };

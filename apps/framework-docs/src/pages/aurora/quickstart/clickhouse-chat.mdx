@@ -21,7 +21,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
 ### Configure your Aurora MCP
 
 ```bash filename="Terminal" copy
-aurora connect clickhouse --connection-string "clickhouse://explorer:@play.clickhouse.com:443/default" --mcp cursor-project
+aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp cursor-project
 ```
 
 You need a ClickHouse connection URL. Format looks like this:

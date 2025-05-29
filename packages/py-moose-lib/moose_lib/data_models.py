@@ -227,9 +227,11 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
                     ("LowCardinality", True)
                 )
 
+        column_name = field_name if field_info.alias is None else field_info.alias
+
         columns.append(
             Column(
-                name=field_name,
+                name=column_name,
                 data_type=data_type,
                 required=not optional,
                 unique=False,

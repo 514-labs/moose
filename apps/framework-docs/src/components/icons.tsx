@@ -7,6 +7,11 @@ import {
   HardDriveUpload,
   GitBranch,
   Users,
+  Slack,
+  Contact,
+  Github,
+  Youtube,
+  Twitter,
 } from "lucide-react";
 
 export const Icons = {
@@ -16,6 +21,9 @@ export const Icons = {
   db: Database,
   api: HardDriveUpload,
   workflows: Clock,
-  github: GitBranch,
-  contact: Users,
+  github: Github,
+  contact: Contact,
+  slack: Slack,
+  youtube: Youtube,
+  twitter: Twitter,
 };

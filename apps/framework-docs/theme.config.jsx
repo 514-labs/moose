@@ -21,6 +21,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
+import { Contact } from "./src/components/contact";
+import { paths } from "./src/lib/paths";
+import { Slack } from "lucide-react";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -178,18 +181,19 @@ export default {
             Star
           </a>
         </div>
-        <Link href="https://www.boreal.cloud/sign-in">
-          <Button variant="default">Sign In</Button>
+        <Link href={paths.slack}>
+          <Button variant="default">
+            <Slack />
+            Join Slack
+          </Button>
         </Link>
       </div>
     ),
   },
   // main: ({ children }) => (
   //   <div className="relative">
-  //     <div className="absolute right-0 top-0 z-10">
-  //       <LanguageSwitcher />
-  //     </div>
   //     {children}
+  //     <Contact />
   //   </div>
   // ),
   navigation: {
@@ -288,17 +292,69 @@ export default {
     content: () => {
       const year = new Date().getFullYear();
       return (
-        <p className={baseTextStyles.small}>
-          MIT | {year} ©{" "}
-          <a
-            href="https://fiveonefour.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-moose-purple hover:text-moose-purple/90 transition-colors"
-          >
-            Fiveonefour Labs Inc
-          </a>
-        </p>
+        <div className="flex flex-row justify-between w-full">
+          <p className={baseTextStyles.small}>
+            MIT | {year} ©{" "}
+            <a
+              href="https://fiveonefour.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+            >
+              Fiveonefour Labs Inc
+            </a>
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className={baseTextStyles.small}>Follow us:</span>
+            <div className="flex items-center gap-3">
+              <a
+                href={paths.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="GitHub"
+              >
+                GitHub
+              </a>
+              <a
+                href={paths.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="X (Twitter)"
+              >
+                Twitter
+              </a>
+              <a
+                href={paths.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="LinkedIn"
+              >
+                LinkedIn
+              </a>
+              <a
+                href={paths.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="YouTube"
+              >
+                YouTube
+              </a>
+              <a
+                href={paths.slack}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="Slack Community"
+              >
+                Slack
+              </a>
+            </div>
+          </div>
+        </div>
       );
     },
   },

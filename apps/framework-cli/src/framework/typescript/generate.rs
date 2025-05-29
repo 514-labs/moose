@@ -2,6 +2,7 @@ use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, Nested, Table,
 };
 use convert_case::{Case, Casing};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -39,12 +40,13 @@ fn map_column_type_to_typescript(
             element_type,
             element_nullable,
         } => {
-            let inner_type = map_column_type_to_typescript(element_type, enums, nested);
-            let inner_type = if *element_nullable {
-                format!("({} | undefined)", inner_type)
-            } else {
-                inner_type
+            let mut inner_type = map_column_type_to_typescript(element_type, enums, nested);
+            if *element_nullable {
+                inner_type = format!("({} | undefined)", inner_type)
             };
+            if inner_type.contains(' ') {
+                inner_type = format!("({})", inner_type)
+            }
             format!("{}[]", inner_type)
         }
         ColumnType::Nested(nested_type) => nested.get(nested_type).unwrap().to_string(),
@@ -61,7 +63,13 @@ fn generate_enum(data_enum: &DataEnum, name: &str) -> String {
     writeln!(enum_def, "export enum {} {{", name).unwrap();
     for member in &data_enum.values {
         match &member.value {
-            EnumValue::Int(i) => writeln!(enum_def, "    {} = {},", member.name, i).unwrap(),
+            EnumValue::Int(i) => {
+                if member.name.chars().all(char::is_numeric) {
+                    writeln!(enum_def, "    // \"{}\" = {},", member.name, i).unwrap()
+                } else {
+                    writeln!(enum_def, "    \"{}\" = {},", member.name, i).unwrap()
+                }
+            }
             EnumValue::String(s) => writeln!(enum_def, "    {} = \"{}\",", member.name, s).unwrap(),
         }
     }
@@ -118,6 +126,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
 
     // Collect all enums and nested types
     let mut enums: HashMap<&DataEnum, String> = HashMap::new();
+    let mut extra_type_names: HashMap<String, usize> = HashMap::new();
     let mut nested_models: HashMap<&Nested, String> = HashMap::new();
 
     // First pass: collect all nested types and enums
@@ -125,10 +134,36 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
         for column in &table.columns {
             match &column.data_type {
                 ColumnType::Enum(data_enum) => {
-                    enums.insert(data_enum, column.name.to_case(Case::Pascal));
+                    if !enums.contains_key(data_enum) {
+                        let name = column.name.to_case(Case::Pascal);
+                        let name = match extra_type_names.entry(name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                *entry.get_mut() = entry.get() + 1;
+                                format!("{}{}", name, entry.get())
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(0);
+                                name
+                            }
+                        };
+                        enums.insert(data_enum, name);
+                    }
                 }
                 ColumnType::Nested(nested) => {
-                    nested_models.insert(nested, column.name.to_case(Case::Pascal));
+                    if !nested_models.contains_key(nested) {
+                        let name = column.name.to_case(Case::Pascal);
+                        let name = match extra_type_names.entry(name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                *entry.get_mut() = entry.get() + 1;
+                                format!("{}{}", name, entry.get())
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(0);
+                                name
+                            }
+                        };
+                        nested_models.insert(nested, name);
+                    }
                 }
                 _ => {}
             }

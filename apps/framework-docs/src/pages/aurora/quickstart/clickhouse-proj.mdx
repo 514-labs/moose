@@ -24,7 +24,9 @@ We'll be using generative MCP tools here, so make sure you add your Anthropic AP
 
 ### Create a new Moose project from your Clickhouse database
 
-```aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp cursor-project```
+```bash filename="Terminal" copy
+aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp cursor-project
+```
 
 <Callout type="info" title="Try with ClickHouse Playground">
 Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.

@@ -5,14 +5,10 @@ import {
   HardDriveDownload,
   RectangleEllipsis,
   HardDriveUpload,
-  GitBranch,
-  Users,
   Slack,
   Contact,
   Github,
   Youtube,
-  Twitter,
-  X,
 } from "lucide-react";
 
 const XIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (

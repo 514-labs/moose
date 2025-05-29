@@ -2,9 +2,11 @@ use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
 };
 use convert_case::{Case, Casing};
+use regex::Regex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::sync::LazyLock;
 
 fn map_column_type_to_python(
     column_type: &ColumnType,
@@ -83,7 +85,14 @@ fn generate_enum_class(data_enum: &DataEnum, name: &str) -> String {
     .unwrap();
     for member in &data_enum.values {
         match &member.value {
-            EnumValue::Int(i) => writeln!(enum_class, "    {} = {}", member.name, i).unwrap(),
+            EnumValue::Int(i) => {
+                if PYTHON_IDENTIFIER_PATTERN.is_match(&member.name) {
+                    writeln!(enum_class, "    {} = {}", member.name, i).unwrap();
+                } else {
+                    // skip names that are not valid identifiers
+                    writeln!(enum_class, "    # {} = \"{}\"", member.name, i).unwrap()
+                }
+            }
             EnumValue::String(s) => {
                 writeln!(enum_class, "    {} = \"{}\"", member.name, s).unwrap()
             }
@@ -92,6 +101,10 @@ fn generate_enum_class(data_enum: &DataEnum, name: &str) -> String {
     writeln!(enum_class).unwrap();
     enum_class
 }
+
+const PYTHON_IDENTIFIER_REGEX: &str = r"^[^\d\W]\w*$";
+pub static PYTHON_IDENTIFIER_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(PYTHON_IDENTIFIER_REGEX).unwrap());
 
 fn generate_nested_model(
     nested: &Nested,

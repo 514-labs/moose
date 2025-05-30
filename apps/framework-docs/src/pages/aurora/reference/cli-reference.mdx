@@ -3,6 +3,9 @@ title: CLI Reference
 description: CLI Reference for Aurora
 ---
 
+import { CommandDocCard } from "@/components/command-doc-card";
+
+
 # CLI Reference
 
 ## Install CLI
@@ -15,24 +18,19 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
 
 ### init
 
-Creates a data engineering project with Moose, with Aurora MCP preconfigured.
-
-```
-aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> 
-```
-
-- `<name>`: name of your application
-- `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
-- `--location <location>`: Location of your app or service. The default is the name of the project.
-- `--no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
-
-- If creating a new project:
-    - `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
-    - `--from-remote <connection-string>`: If you are creating a project from a pre-existing Clickhouse database, use this flag. Do not use a template.
-
-- If creating a project from a pre-existing Clickhouse database:
-    - `--from-remote <connection-string>`: The connection string to your Clickhouse database.
-    - `--language <language>`: The language of your application. [possible values] `typescript` or `python`].
+<CommandDocCard
+  title="Aurora Init"
+  description="Creates a data engineering project with Moose, with Aurora MCP preconfigured."
+  command={`aurora init <project-name> <template-name> <--mcp <host>> <--location <location>>`}
+  parameters={[
+    { name: "<project-name>", description: "Name of your application", required: true },
+    { name: "<template-name>", description: "Template to base your app on (e.g. typescript-empty, ads-b)", required: true },
+    { name: "--mcp", description: "Which MCP host to use", required: false, example: "cursor-project" },
+    { name: "--location", description: "Location of your app or service", required: false },
+    { name: "--no-fail-already-exists", description: "Allow rerun if location exists", required: false },
+    // ...add more as needed
+  ]}
+/>
 
 ### connect
 

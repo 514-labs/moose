@@ -78,10 +78,11 @@ def generate_mock_ant_hr_data():
             json_data = json.dumps(ant_packet)
             
             try:
-                logger.info(f"Sending JSON: {json_data}")
+                # logger.info(f"Sending JSON: {json_data}")
                 response = requests.post(url, data=json_data, headers=headers)
                 if response.status_code == 200:
-                    logger.info(f"Successfully sent packet: {ant_packet}")
+                    # logger.info(f"Successfully sent packet: {ant_packet}")
+                    pass
                 else:
                     print(f"Failed to send packet: {response.status_code}, {response.text}")
             except requests.exceptions.RequestException as e:

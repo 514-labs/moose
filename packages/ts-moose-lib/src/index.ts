@@ -46,6 +46,7 @@ export { createConsumptionApi } from "./consumption-apis/runner";
 export {
   ClickHousePrecision,
   ClickHouseDecimal,
+  ClickHouseByteSize,
   ClickHouseInt,
   LowCardinality,
 } from "./dataModels/types";

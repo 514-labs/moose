@@ -30,6 +30,7 @@ interface CTACardProps {
   className?: string;
   cardName?: string;
   variant?: "default" | "gradient" | "aurora";
+  orientation?: "vertical" | "horizontal";
 }
 
 export function CTACard({
@@ -42,6 +43,7 @@ export function CTACard({
   badge,
   className = "",
   variant = "default",
+  orientation = "vertical",
 }: CTACardProps) {
   return (
     <Card className={cn("h-full flex flex-col", className)}>
@@ -49,7 +51,7 @@ export function CTACard({
         <div className="flex gap-2 items-center">
           {badge ?
             <ProductBadge variant={badge.variant}>{badge.text}</ProductBadge>
-          : Icon ?
+          : orientation === "vertical" && Icon ?
             <Icon
               className={cn(
                 "h-[20px] w-[20px]",
@@ -59,11 +61,30 @@ export function CTACard({
           : null}
           <SmallText className="text-primary my-0">{cardName}</SmallText>
         </div>
+        {orientation === "horizontal" && (
+          <div className="flex gap-2 items-center mt-2">
+            {!badge && Icon && (
+              <Icon
+                className={cn(
+                  "h-[20px] w-[20px]",
+                  variant === "aurora" ? "text-aurora-teal" : (
+                    "text-moose-purple"
+                  ),
+                )}
+              />
+            )}
+            <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+              {title}
+            </Heading>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-grow">
-        <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
-          {title}
-        </Heading>
+        {orientation === "vertical" && (
+          <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+            {title}
+          </Heading>
+        )}
         <CardDescription className="mt-2">{description}</CardDescription>
       </CardContent>
       <CardFooter>

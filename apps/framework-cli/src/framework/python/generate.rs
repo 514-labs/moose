@@ -106,6 +106,7 @@ const PYTHON_IDENTIFIER_REGEX: &str = r"^[^\d\W]\w*$";
 pub static PYTHON_IDENTIFIER_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(PYTHON_IDENTIFIER_REGEX).unwrap());
 
+// TODO: merge with table model generation logic
 fn generate_nested_model(
     nested: &Nested,
     name: &str,
@@ -129,7 +130,21 @@ fn generate_nested_model(
         } else {
             type_str
         };
-        writeln!(model, "    {}: {}{}", column.name, type_str, default).unwrap();
+
+        let (mapped_name, mapped_default) = if column.name.starts_with('_') {
+            (
+                format!("UNDERSCORE_PREFIXED{}", column.name),
+                if default == " = None" {
+                    format!(" = Field(default=None, alias=\"{}\")", column.name)
+                } else {
+                    format!(" = Field(alias=\"{}\")", column.name)
+                },
+            )
+        } else {
+            (column.name.clone(), default.to_string())
+        };
+
+        writeln!(model, "    {}: {}{}", mapped_name, type_str, mapped_default).unwrap();
     }
     writeln!(model).unwrap();
     model
@@ -139,7 +154,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     let mut output = String::new();
 
     // Add imports
-    writeln!(output, "from pydantic import BaseModel").unwrap();
+    writeln!(output, "from pydantic import BaseModel, Field").unwrap();
     writeln!(output, "from typing import Optional, Any, Annotated").unwrap();
     writeln!(output, "import datetime").unwrap();
     writeln!(output, "import ipaddress").unwrap();
@@ -226,7 +241,26 @@ pub fn tables_to_python(tables: &[Table]) -> String {
             } else {
                 type_str
             };
-            writeln!(output, "    {}: {}{}", column.name, type_str, default).unwrap();
+
+            let (mapped_name, mapped_default) = if column.name.starts_with('_') {
+                (
+                    format!("UNDERSCORE_PREFIXED{}", column.name),
+                    if default == " = None" {
+                        format!(" = Field(default=None, alias=\"{}\")", column.name)
+                    } else {
+                        format!(" = Field(alias=\"{}\")", column.name)
+                    },
+                )
+            } else {
+                (column.name.clone(), default.to_string())
+            };
+
+            writeln!(
+                output,
+                "    {}: {}{}",
+                mapped_name, type_str, mapped_default
+            )
+            .unwrap();
         }
         writeln!(output).unwrap();
     }
@@ -305,7 +339,7 @@ mod tests {
 
         println!("{}", result);
         assert!(result.contains(
-            r#"from pydantic import BaseModel
+            r#"from pydantic import BaseModel, Field
 from typing import Optional, Any, Annotated
 import datetime
 import ipaddress

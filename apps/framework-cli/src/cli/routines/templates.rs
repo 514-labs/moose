@@ -574,7 +574,7 @@ mod tests {
         assert!(result.is_ok());
         let config = result.unwrap();
         assert_eq!(config.language, "typescript");
-        assert_eq!(config.description, "default ts project");
+        assert_eq!(config.description, "default typescript project");
         // Add more assertions if needed for post_install_print etc.
     }
 

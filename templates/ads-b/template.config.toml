@@ -1,5 +1,5 @@
 language = "typescript" # Must be typescript or python
-description = ""
+description = "Real time aircraft transponder data."
 post_install_print = """
 📂 Go to your project directory:
     $ cd {project_dir}

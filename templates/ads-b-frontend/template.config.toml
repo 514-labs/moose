@@ -1,5 +1,5 @@
 language = "typescript" # Must be typescript or python
-description = ""
+description = "Realtime aircraft transponder data, with a frontend"
 post_install_print = """
 🫎 Initialize Moose project
 

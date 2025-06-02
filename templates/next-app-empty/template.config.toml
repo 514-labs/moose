@@ -1,5 +1,5 @@
 language = "typescript" # Must be typescript or python
-description = "A typescript project with a NextJS frontend (empty)"
+description = "A typescript project with a NextJS frontend (empty)."
 post_install_print = """
 📂 Go to your project directory:
     $ cd {project_dir}/moose

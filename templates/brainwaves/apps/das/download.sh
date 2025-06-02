@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 files=(
   "brain_data_coding.csv"
+  "brain_data_meditation.csv"
+  "brain_data_exercise.csv"
+  "brain_data_qigong.csv"
   # Add more filenames here as needed
 )
 

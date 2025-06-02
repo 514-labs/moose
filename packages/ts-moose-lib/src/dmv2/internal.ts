@@ -12,15 +12,11 @@
  *           Its API might change without notice.
  */
 import process from "process";
-import {
-  IngestApi,
-  OlapTable,
-  Stream,
-  ConsumptionApi,
-  SqlResource,
-  ConsumerConfig,
-  TransformConfig,
-} from "./index";
+import { OlapTable } from "./olapTable";
+import { Stream } from "./stream";
+import { IngestApi, ConsumptionApi } from "./api";
+import { SqlResource } from "./sql";
+import { ConsumerConfig, TransformConfig } from "./types";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
 import { ConsumptionUtil } from "../index";

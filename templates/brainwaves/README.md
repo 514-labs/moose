@@ -4,24 +4,59 @@ A Moose Application for Brainwave Data Capture & Analysis
 
 ![Brainwaves](./docs/brainmoose.jpg)
 
+---
+
 ## Table of Contents
-1. [Overview](#overview)
-2. [Features](#features)
-3. [How It Works](#how-it-works)
-4. [Getting Started](#getting-started)
-5. [Data Analysis & API](#data-analysis--api)
-6. [Database Schema](#database-schema)
-7. [Sample Analysis](#sample-analysis)
-8. [Audio Podcasts](#audio-podcasts)
-9. [References](#references)
+1. [Project Overview](#project-overview)
+2. [Quick Start Guide](#quick-start-guide)
+3. [DAS: Data Acquisition Server](#das-data-acquisition-server)
+4. [Brainmoose: Analytics & API](#brainmoose-analytics--api)
+5. [Data Model & Analysis](#data-model--analysis)
+6. [References](#references)
 
-## Overview
+---
 
-**Brainwaves** is a demo application for brain mapping and movement analytics using the [Moose](https://docs.fiveonefour.com/moose) platform and the [Muse Headband](https://choosemuse.com) EEG device. It demonstrates real-time data ingestion, storage, and analysis of brainwave and movement data, with optional integration for OpenAI-powered insights.
+## Project Overview
 
-## Quick starts
-### Watch the video
-> Video link here
+**Brainwaves** is a comprehensive demo platform for brain mapping and movement analytics, built with [Moose](https://docs.fiveonefour.com/moose) and designed to work with the [Muse Headband](https://choosemuse.com) EEG device. The project consists of two main applications:
+
+- **DAS (Data Acquisition Server):** Real-time collection, analysis, visualization, and logging of brainwave and movement data from a Muse device or simulator.
+- **Brainmoose:** A Moose-powered backend for data ingestion, storage, analytics, and API access, with optional OpenAI-powered insights.
+
+The platform supports both live device streaming and simulation using freely available datasets, making it ideal for experimentation, research, and educational use.
+
+---
+
+## Quick Start Guide
+
+### 1. Try Without a Muse Device (Simulation)
+
+- Download sample data and simulate device streaming:
+  ```sh
+  cd apps/das
+  ./download.sh
+  ./sim.sh brain_data_coding.csv
+  ```
+- **Important:** When running DAS, always provide a `--sessionId` (e.g., `npm run dev -- --sessionId=MyTestSession`) to ensure your data is grouped and identifiable in the backend.
+
+### 2. Using a Physical Muse Device
+
+- Connect your Muse device and configure it to stream OSC data to your computer (default UDP port: 43134).
+- Start DAS with a session ID:
+  ```sh
+  npm run dev -- --sessionId=YOUR_SESSION_ID
+  ```
+- The terminal UI will display live brainwave and movement data, and all data will be logged and sent to the backend.
+
+### 3. Start the Analytics Backend (Brainmoose)
+
+- In a separate terminal:
+  ```sh
+  cd ../brainmoose
+  npm install
+  moose dev
+  ```
+- (Optional) Enable OpenAI analysis by adding your API key to `.env.local` in `apps/brainmoose`.
 
 ### Listen to ~15 minute podcasts
 > Generated using NotebookLM
@@ -30,82 +65,84 @@ A Moose Application for Brainwave Data Capture & Analysis
 - **Research Using Consumer EEG Devices Podcast**  
   [ResearchUsingConsumerEEGDevices.mp3](https://downloads.fiveonefour.com/moose/template-data/brainwaves/podcasts/ResearchUsingConsumerEEGDevices.mp3)
 
-## Features
-- **Real-time brainwave and movement data capture** from Muse Headband
-- **Data ingestion pipeline** using Moose, Redpanda, and ClickHouse
-- **Movement scoring** using accelerometer and gyroscope data
-- **Consumption API** for querying session insights
-- **Optional OpenAI GPT-4o integration** for advanced data analysis
-- **Sample analysis and podcasts** for educational purposes
-- **Freely available brainwave datasets** for simulation and testing (no device required)
+---
 
-## How It Works
+## DAS: Data Acquisition Server
 
-1. **Data Acquisition**: The Muse Headband streams brainwave and movement data via UDP.
-2. **DAS (Data Acquisition Service)**: A Node.js server (`apps/das`) receives UDP packets, parses them with [osc-min](https://github.com/colinbdclark/osc-min), and forwards them to Moose via HTTP.
-3. **Data Storage**: Moose ingests the data and stores it in Redpanda (streaming) and ClickHouse (analytical DB).
-4. **Analysis**: Movement scores are calculated using the Euclidean norm of accelerometer and gyroscope vectors.
-5. **API & Insights**: The Consumption API exposes session movement scores for further analysis or visualization.
+**DAS** is a Node.js/TypeScript application for real-time collection, analysis, and visualization of brainwave and movement data.
 
-## Getting Started
+### Features
+- Real-time UDP/OSC data ingestion from Muse or simulator
+- Live terminal dashboard (charts, tables, logs)
+- Session-based CSV logging
+- Automatic data forwarding to Moose backend
+- Relaxation and movement state analysis
 
-### Prerequisites
-- Node.js (for running Moose and DAS)
-- Muse Headband device (optional)
-- (Optional) OpenAI API key for GPT-4o analysis
-
-### Try Without a Muse Device
-
-You do **not** need a Muse device to try this project!
-Sample brainwave datasets are freely available from Fiveonefour Labs.
-
-- Use the provided script to download sample data:
-  ```sh
-  cd apps/das
-  ./download.sh
-  ```
-- You can then simulate device data using:
+### Usage
+- **Simulate data:**
   ```sh
   ./sim.sh brain_data_coding.csv
+  npm run dev -- --sessionId=MyTestSession
+  ```
+- **With device:**
+  ```sh
+  npm run dev -- --sessionId=YOUR_SESSION_ID
   ```
 
-This allows you to explore the full data pipeline and analysis features without any hardware.
+### File Structure
+- `src/` - TypeScript source files
+  - `main.ts` - Entry point, orchestrates server, UI, and data flow
+  - `udp-server.ts` - UDP/OSC server for data ingestion
+  - `display-manager.ts` - Handles terminal dashboard updates
+  - `brainwave-analyzer.ts` - Analyzes relaxation and movement
+  - `blessed-setup.ts` - UI layout setup
+  - `logger.ts` - Colorful logging to the UI
+  - `types.ts` - Type definitions for brainwave data
+- `brain_data_*.csv` - Session logs of all received data
+- `send-csv-to-udp.js` - Simulator script for CSV playback
 
-### Setup Steps
-1. **Clone the repository and navigate to the project:**
-   ```sh
-   cd {project_dir}/apps/brainmoose
-   ```
-2. **Install dependencies:**
-   ```sh
-   npm install
-   ```
-3. **(Optional) Enable OpenAI Analysis:**
-   - Create a `.env.local` file in `apps/brainmoose`.
-   - Add your OpenAI API key:
-     ```
-     OPENAI_API_KEY=your-key-here
-     ```
-4. **Start the development server:**
-   ```sh
-   moose dev
-   ```
+### Environment Variables
+- `MOOSE_INGEST_URL`: Moose backend endpoint for data ingestion
+- `DAS_PORT`: UDP port to listen for incoming OSC data
 
-## Data Analysis & API
+---
 
-### Movement Scoring
-The Muse device provides accelerometer and gyroscope data. Movement scores are calculated for each session by aggregating the magnitude of these vectors.
+## Brainmoose: Analytics & API
 
-### Consumption API Example
+**Brainmoose** is a Moose-powered backend for ingesting, storing, and analyzing brainwave session data.
+
+### Features
+- Modular architecture for data models, serverless functions, analytics blocks, and APIs
+- Ingests and stores data from DAS
+- Provides APIs for querying session insights and movement scores
+- Optional OpenAI GPT-4o integration for advanced analysis
+
+### Setup
+- Install dependencies:
+  ```sh
+  npm install
+  ```
+- (Optional) Enable OpenAI analysis by adding your API key to `.env.local`:
+  ```
+  OPENAI_API_KEY=your-key-here
+  ```
+- Start the backend:
+  ```sh
+  moose dev
+  ```
+
+### API Example
 Query movement scores for sessions:
 ```
 GET http://localhost:4000/consumption/sessionInsights?sessions=1735784964|Meditation,1735785243|Coding
 ```
 - `sessions` parameter: Comma-separated list of `sessionId|sessionLabel` pairs.
-- See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a sample response and analysis.
 
-## Database Schema
+---
 
+## Data Model & Analysis
+
+### Database Schema
 | Field      | Type                        | Description                       |
 |------------|-----------------------------|-----------------------------------|
 | timestamp  | DateTime('UTC')             | Timestamp of data point           |
@@ -133,16 +170,13 @@ WHERE sessionId = '1735785243'
 GROUP BY sessionId;
 ```
 
-## Sample Analysis
-
-Example movement scores for two sessions:
-
+#### Example Movement Scores
 | sessionId    | acc_movement_score | gyro_movement_score | total_movement_score |
 |--------------|-------------------|--------------------|---------------------|
 | 1735784964   | 96,119.65         | 773,537.96         | 869,657.61          |
 | 1735785243   | 91,714.62         | 801,765.32         | 893,479.94          |
 
-See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a detailed breakdown and interpretation of multiple session types (Meditation, Coding, Exercise).
+---
 
 ## References
 - [Moose Documentation](https://docs.fiveonefour.com/moose)
@@ -150,3 +184,12 @@ See [`SampleAnalysis/session01.md`](SampleAnalysis/session01.md) for a detailed 
 - [osc-min Library](https://github.com/russellmcc/node-osc-min)
 - [Redpanda](https://redpanda.com)
 - [ClickHouse](https://clickhouse.com)
+- [blessed](https://github.com/chjj/blessed)
+- [blessed-contrib](https://github.com/yaronn/blessed-contrib)
+- [node-fetch](https://www.npmjs.com/package/node-fetch)
+- [dotenv](https://www.npmjs.com/package/dotenv)
+- [yargs](https://www.npmjs.com/package/yargs)
+
+---
+
+For more details, see the code and comments in each app's `src/` directory.

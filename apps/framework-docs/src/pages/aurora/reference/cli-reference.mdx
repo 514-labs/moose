@@ -16,86 +16,101 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
 
 ## Commands
 
-### init
-
 <CommandDocCard
-  title="Aurora Init"
+  title="init"
+  headingLevel="h3"
   description="Creates a data engineering project with Moose, with Aurora MCP preconfigured."
   command={`aurora init <project-name> <template-name> <--mcp <host>> <--location <location>>`}
   parameters={[
     { name: "<project-name>", description: "Name of your application", required: true },
-    { name: "<template-name>", description: "Template to base your app on (e.g. typescript-empty, ads-b)", required: true },
-    { name: "--mcp", description: "Which MCP host to use", required: false, example: "cursor-project" },
+    { name: "<template-name>", description: "Template to base your app on", required: true, example: "typescript-empty, ads-b"  },
+    { name: "--mcp", description: "Which MCP host to use", required: false, },
     { name: "--location", description: "Location of your app or service", required: false },
     { name: "--no-fail-already-exists", description: "Allow rerun if location exists", required: false },
-    // ...add more as needed
   ]}
+  className="mb-8"
 />
 
-### connect
+<CommandDocCard
+  title="connect"
+  headingLevel="h3"
+  description="Connects to an existing data source. Currently only clickhouse is supported."
+  command={`aurora connect clickhouse <--connection-string <connection-string>> <--mcp <host>>`}
+  parameters={[
+    {
+      name: "--connection-string",
+      description: "The connection string to your Clickhouse database.",
+      required: true,
+      example: "clickhouse://user:pass@host:port/db"
+    },
+    {
+      name: "--mcp",
+      description: "Choice of which MCP host to use",
+      required: false,
+      example: "cursor-project (default), claude-desktop, cursor-global, windsurf-global"
+    }
+  ]}
+  className="mb-8"
+/>
 
-Connects to an existing data source. Currently only `clickhouse` is supported.
+<CommandDocCard
+  title="setup"
+  headingLevel="h3"
+  description="Takes an existing data engineering project built with Moose and configures Aurora MCP for it."
+  command={`aurora setup [path] <--mcp <host>>`}
+  parameters={[
+    { name: "[path]", description: "Path to the Moose project (defaults to current directory)", required: false },
+    { name: "--mcp", description: "Choice of which MCP host to use", required: false, example: "cursor-project (default) claude-desktop, cursor-global, windsurf-global" },
+  ]}
+  className="mb-8"
+/>
 
-```
-aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
-```
+### Config
 
-- `--connection-string <connection-string>`: The connection string to your Clickhouse database.
-- `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
+<CommandDocCard
+  title="config focus"
+  headingLevel="h4"
+  description="List Aurora configured projects, allows selection of project globally configured hosts are 'focused' on. No more than one Moose Project may be run at a time."
+  command={`aurora config focus`}
+  parameters={[]}
+  className="mb-8"
+/>
 
-### setup
+<CommandDocCard
+  title="config keys"
+  headingLevel="h4"
+  description="Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key."
+  command={`aurora config keys <KEY>`}
+  parameters={[
+    { name: "<KEY>", description: "Your Anthropic API key.", required: true },
+  ]}
+  className="mb-8"
+/>
 
-Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
+<CommandDocCard
+  title="config tools"
+  headingLevel="h4"
+  description="Toggles availability of experimental MCP tools. See Tools documentation for which tools are in 'standard' and which are added in the 'experimental' sets. Note: if you select 'boreal-experimental', you will need to add your ClickHouse Cloud / Boreal credentials to mcp.json."
+  command={`aurora config tools`}
+  className="mb-8"
+/>
 
-```
-aurora setup [path] <--mcp <host>>
-```
+### Coming Soon
 
-- Path to the Moose project (defaults to current directory)
-- `-mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
+<CommandDocCard
+  title="login"
+  headingLevel="h4"
+  description="[Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision."
+  command={`aurora login`}
+  parameters={[]}
+  className="mb-8"
+/>
 
-### config
-
-Configure Aurora settings
-
-### config focus
-
-List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at a time.
-
-```
-aurora config focus
-```
-
-### config keys
-
-Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key.
-
-```
-aurora config keys <KEY>
-```
-
-- `<KEY>`: Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup
-
-### config models
-
-[Coming Soon]. Allows you to configure which models Aurora agents use.
-
-### config tools
-
-Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` sets.
-
-```
-aurora config tools [EXPERIMENTAL_PREFERENCE]
-```
-
-- `[EXPERIMENTAL_PREFERENCE]`: Preference for experimental tools. 
-
-Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.
-
-### login
-
-[Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.
-
-```
-aurora login
-```
+<CommandDocCard
+  title="config models"
+  headingLevel="h4"
+  description="[Coming Soon]. Allows you to configure which models Aurora agents use."
+  command={`aurora config models`}
+  parameters={[]}
+  className="mb-8"
+/>

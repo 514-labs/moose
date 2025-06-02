@@ -30,7 +30,7 @@ In another terminal:
 
 Connect your own Apple Watch to the system. This has only been tested on the AppleWatch SE! Please feel free to add your device, following the example in `app/scripts/apple_watch_hr_client` 
 
-1. Download the Echo App on your IPhone/Android
+1. Download the Echo App on your IPhone/Android device since the Apple Watch doesn't nativley support broadcasting HR data over BLE
 2. Update the name in the code to match your device name (or a substring)  `app/scripts/apple_watch_hr_client/apple_heart_rate_client` 
 3. Update the "user table" in the `mock-user-db.json` to match your details. 
 4. Run your `moose dev` server and then run `moose workflow run apple_watch_hr_client`

@@ -4,30 +4,25 @@ pub(crate) mod display;
 mod commands;
 pub mod local_webserver;
 pub mod logger;
-mod routines;
+pub mod routines;
+use crate::cli::routines::seed_data;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
-use crate::cli::routines::block::create_block_file;
-use crate::cli::routines::consumption::create_consumption_file;
 use crate::utilities::docker::DockerClient;
 use clap::Parser;
-use commands::{
-    BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
-    GenerateCommand, TemplateSubCommands, WorkflowCommands,
-};
+use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
-use display::{with_spinner, with_spinner_async};
-use home::home_dir;
+use display::with_spinner;
 use log::{debug, info};
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::build::build_package;
 use routines::clean::clean_project;
-use routines::datamodel::parse_and_generate;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
+use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
     get_workflow_status, init_workflow, list_workflows, pause_workflow, run_workflow,
@@ -40,30 +35,25 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::cli::routines::logs::{follow_logs, show_logs};
-use crate::cli::routines::peek::peek;
+use crate::cli::routines::remote_refresh;
 use crate::cli::routines::setup_redis_client;
-use crate::cli::routines::streaming::create_streaming_function_file;
-use crate::cli::routines::templates;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::settings::user_directory;
 use crate::cli::{
     display::{Message, MessageType},
     routines::dev::run_local_infrastructure,
 };
-use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::check::check_system_reqs;
-use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
-use crate::framework::languages::SupportedLanguages;
-use crate::framework::sdk::ingest::generate_sdk;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
-use crate::utilities::git::is_git_repo;
 
+use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
+use crate::cli::routines::templates::create_project_from_template;
 use anyhow::Result;
 
 #[derive(Parser)]
@@ -105,41 +95,6 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
     Ok(())
 }
 
-fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
-    let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
-
-    if !is_git_repo {
-        crate::utilities::git::create_init_commit(project_arc, dir_path);
-        show_message!(
-            MessageType::Info,
-            Message {
-                action: "Init".to_string(),
-                details: "Created a new git repository".to_string(),
-            }
-        );
-    }
-
-    {
-        show_message!(
-            MessageType::Success,
-            Message {
-                action: "Success!".to_string(),
-                details: format!("Created project at {} 🚀", dir_path.to_string_lossy()),
-            }
-        );
-    }
-
-    {
-        show_message!(
-            MessageType::Info,
-            Message {
-                action: "".to_string(),
-                details: "\n".to_string(),
-            }
-        );
-    }
-}
-
 pub async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
@@ -151,11 +106,31 @@ pub async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            from_remote,
+            language,
+            // database,
         } => {
             info!(
-                "Running init command with name: {}, location: {:?}, template: {:?}",
-                name, location, template
+                "Running init command with name: {}, location: {:?}, template: {:?}, language: {:?}",
+                name, location, template, language
             );
+
+            let template = match template {
+                None => match language.as_ref().map(|l| l.to_lowercase()).as_deref() {
+                    None => panic!("Either template or language should be specified."), // clap command line parsing enforces either is present
+                    Some("typescript") => "typescript-empty".to_string(),
+                    Some("python") => "python-empty".to_string(),
+                    Some(lang) => {
+                        return Err(RoutineFailure::error(Message::new(
+                            "Unknown".to_string(),
+                            format!("language {}", lang),
+                        )))
+                    }
+                },
+                Some(template) => template.to_lowercase(),
+            };
+
+            let dir_path = Path::new(location.as_deref().unwrap_or(name));
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::InitTemplateCommand,
@@ -166,114 +141,15 @@ pub async fn top_command_handler(
 
             check_project_name(name)?;
 
-            let template_config =
-                templates::get_template_config(&template.to_lowercase(), CLI_VERSION).await?;
+            let post_install_message =
+                create_project_from_template(&template, name, dir_path, *no_fail_already_exists)
+                    .await?;
 
-            let dir_path = Path::new(location.as_deref().unwrap_or(name));
-            if !no_fail_already_exists && dir_path.exists() {
-                return Err(RoutineFailure::error(Message {
-                    action: "Init".to_string(),
-                    details:
-                        "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
-                            .to_string(),
-                }));
-            }
-            std::fs::create_dir_all(dir_path).expect("Failed to create directory");
-
-            if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
-                return Err(RoutineFailure::error(Message {
-                    action: "Init".to_string(),
-                    details: "You cannot create a project in your home directory".to_string(),
-                }));
+            if let Some(remote_url) = from_remote {
+                db_to_dmv2(remote_url, dir_path).await?;
             }
 
-            let language = match template_config.language.as_str() {
-                "typescript" => SupportedLanguages::Typescript,
-                "python" => SupportedLanguages::Python,
-                _ => SupportedLanguages::Typescript,
-            };
-
-            templates::generate_template(&template.to_lowercase(), CLI_VERSION, dir_path).await?;
-            let project = Project::new(dir_path, name.clone(), language);
-            let project_arc = Arc::new(project);
-
-            // Update project configuration based on language
-            match language {
-                SupportedLanguages::Typescript => {
-                    let package_json_path = dir_path.join("package.json");
-                    if package_json_path.exists() {
-                        let mut package_json: serde_json::Value = serde_json::from_str(
-                            &std::fs::read_to_string(&package_json_path).map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to read package.json: {}", e),
-                                })
-                            })?,
-                        )
-                        .map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to parse package.json: {}", e),
-                            })
-                        })?;
-
-                        if let Some(obj) = package_json.as_object_mut() {
-                            obj.insert("name".to_string(), serde_json::Value::String(name.clone()));
-                            std::fs::write(
-                                &package_json_path,
-                                serde_json::to_string_pretty(&package_json).map_err(|e| {
-                                    RoutineFailure::error(Message {
-                                        action: "Init".to_string(),
-                                        details: format!("Failed to serialize package.json: {}", e),
-                                    })
-                                })?,
-                            )
-                            .map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to write package.json: {}", e),
-                                })
-                            })?;
-                        }
-                    }
-                }
-                SupportedLanguages::Python => {
-                    let setup_py_path = dir_path.join("setup.py");
-                    if setup_py_path.exists() {
-                        let setup_py_content =
-                            std::fs::read_to_string(&setup_py_path).map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Init".to_string(),
-                                    details: format!("Failed to read setup.py: {}", e),
-                                })
-                            })?;
-
-                        // Replace the name in setup.py
-                        let name_pattern = Regex::new(r"name='[^']*'").map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to create regex pattern: {}", e),
-                            })
-                        })?;
-                        let new_setup_py =
-                            name_pattern.replace(&setup_py_content, &format!("name='{}'", name));
-
-                        std::fs::write(&setup_py_path, new_setup_py.as_bytes()).map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Init".to_string(),
-                                details: format!("Failed to write setup.py: {}", e),
-                            })
-                        })?;
-                    }
-                }
-            }
-
-            maybe_create_git_repo(dir_path, project_arc);
             wait_for_usage_capture(capture_handle).await;
-
-            let post_install_message = template_config
-                .post_install_print
-                .replace("{project_dir}", &dir_path.to_string_lossy());
 
             Ok(RoutineSuccess::highlight(Message::new(
                 "Get Started".to_string(),
@@ -508,80 +384,6 @@ pub async fn top_command_handler(
                     "Success".to_string(),
                 )))
             }
-            Some(GenerateCommand::Sdk {
-                language,
-                destination,
-                project_location,
-                full_package: packaged,
-                overwrite,
-            }) => {
-                let canonical_location = project_location.canonicalize().map_err(|e| {
-                    RoutineFailure::error(Message {
-                        action: "Generate".to_string(),
-                        details: format!("Failed to canonicalize path: {:?}", e),
-                    })
-                })?;
-
-                if destination.exists() && destination.is_dir() {
-                    // Check if the directory contains any files or subdirectories
-                    let is_empty = std::fs::read_dir(destination)
-                        .map(|mut dir| dir.next().is_none())
-                        .unwrap_or(false);
-
-                    if !is_empty && !overwrite {
-                        return Err(RoutineFailure::error(Message {
-                            action: "Generate".to_string(),
-                            details: format!(
-                                "Directory '{}' is not empty, and --overwrite flag is not set.",
-                                destination.display()
-                            ),
-                        }));
-                    }
-                }
-
-                let project = Project::load(&canonical_location).map_err(|e| {
-                    RoutineFailure::error(Message {
-                        action: "Generate".to_string(),
-                        details: format!("Failed to load project: {:?}", e),
-                    })
-                })?;
-
-                let capture_handle = crate::utilities::capture::capture_usage(
-                    ActivityType::GenerateSDKCommand,
-                    Some(project.name()),
-                    &settings,
-                    machine_id.clone(),
-                );
-
-                with_spinner_async(
-                    "Generating SDK",
-                    async {
-                        let primitive_map = PrimitiveMap::load(&project).await.map_err(|e| {
-                            RoutineFailure::error(Message {
-                                action: "Generate".to_string(),
-                                details: format!("Failed to load initial project state: {:?}", e),
-                            })
-                        })?;
-
-                        generate_sdk(language, &project, &primitive_map, destination, packaged)
-                            .map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Generate".to_string(),
-                                    details: format!("Failed to generate SDK: {:?}", e),
-                                })
-                            })
-                    },
-                    true,
-                )
-                .await?;
-
-                wait_for_usage_capture(capture_handle).await;
-
-                Ok(RoutineSuccess::success(Message::new(
-                    "Generated".to_string(),
-                    "SDK".to_string(),
-                )))
-            }
             None => Err(RoutineFailure::error(Message {
                 action: "Generate".to_string(),
                 details: "Please provide a subcommand".to_string(),
@@ -701,140 +503,6 @@ pub async fn top_command_handler(
                 "Project".to_string(),
             )))
         }
-        Commands::Function(function_args) => {
-            info!("Running function command");
-
-            let func_cmd = function_args.command.as_ref().unwrap();
-            match func_cmd {
-                FunctionCommands::Init(init) => {
-                    let project = load_project()?;
-                    let project_arc = Arc::new(project);
-
-                    let capture_handle = crate::utilities::capture::capture_usage(
-                        ActivityType::FuncInitCommand,
-                        Some(project_arc.name()),
-                        &settings,
-                        machine_id.clone(),
-                    );
-
-                    check_project_name(&project_arc.name())?;
-                    let result = create_streaming_function_file(
-                        &project_arc,
-                        init.source.clone(),
-                        init.destination.clone(),
-                    )
-                    .await;
-
-                    wait_for_usage_capture(capture_handle).await;
-
-                    result
-                }
-            }
-        }
-        Commands::DataModel(data_model_args) => {
-            let dm_cmd = data_model_args.command.as_ref().unwrap();
-            let project = load_project()?;
-            match dm_cmd {
-                DataModelCommands::Init(args) => {
-                    debug!("Running datamodel init command");
-
-                    let capture_handle = crate::utilities::capture::capture_usage(
-                        ActivityType::DataModelInitCommand,
-                        Some(project.name()),
-                        &settings,
-                        machine_id.clone(),
-                    );
-
-                    let file = std::fs::read_to_string(&args.sample).map_err(|e| {
-                        RoutineFailure::new(
-                            Message {
-                                action: "Failed".to_string(),
-                                details: "to read samples".to_string(),
-                            },
-                            e,
-                        )
-                    })?;
-                    let interface = parse_and_generate(&args.name, file, project.language);
-                    std::fs::write(
-                        project.data_models_dir().join(format!(
-                            "{}.{}",
-                            args.name,
-                            project.language.extension()
-                        )),
-                        interface.as_bytes(),
-                    )
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message {
-                                action: "Failed".to_string(),
-                                details: "to write data model".to_string(),
-                            },
-                            e,
-                        )
-                    })?;
-
-                    wait_for_usage_capture(capture_handle).await;
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "DataModel".to_string(),
-                        "Initialized".to_string(),
-                    )))
-                }
-            }
-        }
-        Commands::Block(block) => {
-            info!("Running block command");
-
-            let block_cmd = block.command.as_ref().unwrap();
-            match block_cmd {
-                BlockCommands::Init { name } => {
-                    let project = load_project()?;
-                    let project_arc = Arc::new(project);
-
-                    let capture_handle = crate::utilities::capture::capture_usage(
-                        ActivityType::BlockInitCommand,
-                        Some(project_arc.name()),
-                        &settings,
-                        machine_id.clone(),
-                    );
-
-                    check_project_name(&project_arc.name())?;
-                    let result = create_block_file(&project_arc, name.to_string()).await;
-
-                    wait_for_usage_capture(capture_handle).await;
-
-                    result
-                }
-            }
-        }
-        Commands::Consumption(consumption) => {
-            info!("Running consumption command");
-
-            let consumption_cmd = consumption.command.as_ref().unwrap();
-            match consumption_cmd {
-                ConsumptionCommands::Init { name } => {
-                    let project = load_project()?;
-                    let project_arc = Arc::new(project);
-
-                    let capture_handle = crate::utilities::capture::capture_usage(
-                        ActivityType::ConsumptionInitCommand,
-                        Some(project_arc.name()),
-                        &settings,
-                        machine_id.clone(),
-                    );
-
-                    check_project_name(&project_arc.name())?;
-                    create_consumption_file(&project_arc, name.to_string())?.show();
-
-                    wait_for_usage_capture(capture_handle).await;
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "Created".to_string(),
-                        "Api".to_string(),
-                    )))
-                }
-            }
-        }
         Commands::Logs { tail, filter } => {
             info!("Running logs command");
 
@@ -922,113 +590,12 @@ pub async fn top_command_handler(
 
             res
         }
-
-        Commands::Metrics {} => {
-            let capture_handle = crate::utilities::capture::capture_usage(
-                ActivityType::MetricsCommand,
-                None,
-                &settings,
-                machine_id.clone(),
-            );
-
-            let result = run_console().await;
-
-            wait_for_usage_capture(capture_handle).await;
-
-            result
-        }
-
-        Commands::Import {
-            data_model_name,
-            file,
-            format,
-            destination,
-            version,
-        } => {
-            let project = load_project()?;
-
-            let capture_handle = crate::utilities::capture::capture_usage(
-                ActivityType::ImportCommand,
-                Some(project.name()),
-                &settings,
-                machine_id.clone(),
-            );
-
-            let primitive_map = crate::framework::core::primitive_map::PrimitiveMap::load(&project)
-                .await
-                .map_err(|e| {
-                    RoutineFailure::error(Message {
-                        action: "Import".to_string(),
-                        details: format!("Failed to load primitive map: {:?}", e),
-                    })
-                })?;
-
-            let infrastructure_map =
-                crate::framework::core::infrastructure_map::InfrastructureMap::new(
-                    &project,
-                    primitive_map,
-                );
-
-            let api_endpoint = infrastructure_map
-                .api_endpoints
-                .values()
-                .find(|endpoint| {
-                    endpoint.name == *data_model_name
-                        && matches!(endpoint.api_type, APIType::INGRESS { .. })
-                        && match version {
-                            None => true,
-                            Some(v) => endpoint
-                                .version
-                                .as_ref()
-                                .is_some_and(|endpoint_version| endpoint_version.to_string() == *v),
-                        }
-                })
-                .ok_or_else(|| {
-                    RoutineFailure::error(Message {
-                        action: "Import".to_string(),
-                        details: format!(
-                            "Could not find ingress API endpoint for data model {}",
-                            data_model_name
-                        ),
-                    })
-                })?;
-
-            let format = format
-                .as_deref()
-                .or_else(|| file.extension().and_then(|ext| ext.to_str()))
-                .ok_or(RoutineFailure::error(Message::new(
-                    "Format".to_string(),
-                    "missing".to_string(),
-                )))?;
-
-            if format == "csv" {
-                import_csv_file(&api_endpoint.api_type, file, destination)
-                    .await
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new("Import".to_string(), "failed".to_string()),
-                            e,
-                        )
-                    })?;
-            } else {
-                return Err(RoutineFailure::error(Message::new(
-                    "Unknown Format".to_string(),
-                    "only 'csv' is supported currently".to_string(),
-                )));
-            }
-
-            wait_for_usage_capture(capture_handle).await;
-
-            Ok(RoutineSuccess::success(Message::new(
-                "Imported".to_string(),
-                "".to_string(),
-            )))
-        }
         Commands::Peek {
-            data_model_name,
+            name,
             limit,
             file,
-            topic,
+            table: _,
+            stream,
         } => {
             info!("Running peek command");
 
@@ -1042,7 +609,29 @@ pub async fn top_command_handler(
                 machine_id.clone(),
             );
 
-            let result = peek(project_arc, data_model_name, *limit, file.clone(), *topic).await;
+            // Default to table if neither table nor stream is specified
+            let is_stream = if *stream {
+                true
+            } else {
+                // Default to table (false) when neither flag is specified or table is explicitly specified
+                false
+            };
+
+            let result = peek(project_arc, name, *limit, file.clone(), is_stream).await;
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
+        }
+        Commands::Metrics {} => {
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::MetricsCommand,
+                None,
+                &settings,
+                machine_id.clone(),
+            );
+
+            let result = run_console().await;
 
             wait_for_usage_capture(capture_handle).await;
 
@@ -1132,6 +721,30 @@ pub async fn top_command_handler(
                     result
                 }
             }
+        }
+        Commands::Refresh { url, token } => {
+            info!("Running refresh command");
+
+            let project = load_project()?;
+
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::RefreshListCommand,
+                Some(project.name()),
+                &settings,
+                machine_id.clone(),
+            );
+
+            let output = remote_refresh(&project, url, token).await.map_err(|e| {
+                RoutineFailure::new(Message::new("failed".to_string(), "".to_string()), e)
+            });
+
+            wait_for_usage_capture(capture_handle).await;
+
+            output
+        }
+        Commands::Seed(seed_args) => {
+            let project = load_project()?;
+            seed_data::handle_seed_command(seed_args, &project).await
         }
     }
 }

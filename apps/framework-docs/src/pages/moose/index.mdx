@@ -1,3 +1,9 @@
+---
+title: Moose - Analytical Backends Framework
+description: Open source TypeScript/Python framework for building analytical backends with real-time streaming, API generation, and type-safe data models
+image: /moose-og-image.png
+---
+
 import {
   CTACard,
   CTACards,
@@ -12,6 +18,7 @@ import {
   QnABullets,
   CheckmarkBullets,
   Icons,
+  Contact,
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -43,8 +50,13 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
   <Link href={paths.quickstart}>
     <Button variant="default">Quick Start →</Button>
   </Link>
-  <Link href="/templates">
+  <Link href="/moose/getting-started/from-clickhouse">
     <Button variant="secondary">
+      Start from ClickHouse
+    </Button>
+  </Link>
+  <Link href="/templates">
+    <Button variant="outline">
       See Examples
     </Button>
   </Link>
@@ -469,22 +481,4 @@ Moose is ideal for a wide range of data-intensive applications, from real-time a
 
 ---
 
-## Community
-
-<CTACards>
-  <CTACard
-    title="GitHub"
-    description="Star, check out the code, and contribute to Moose on GitHub"
-    ctaLink="https://github.com/514-labs/moose"
-    ctaLabel="GitHub"
-    Icon={Icons.github}
-  />
-  <CTACard
-    title="Talk to the Moose Maintainers"
-    description="We're always looking to improve Moose and would love to hear from you!"
-    ctaLink="https://cal.com/team/514/talk-to-eng"
-    ctaLabel="Talk to the Team"
-    Icon={Icons.contact}
-  />
-</CTACards>
-
+<Contact />

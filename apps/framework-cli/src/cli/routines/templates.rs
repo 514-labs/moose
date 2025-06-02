@@ -1,10 +1,13 @@
+use flate2::read::GzDecoder;
+use futures::StreamExt;
+use home::home_dir;
+use log::warn;
+use regex::Regex;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-
-use flate2::read::GzDecoder;
-use futures::StreamExt;
+use std::sync::Arc;
 use tar::Archive;
 use toml::Value;
 
@@ -12,6 +15,10 @@ use super::RoutineFailure;
 use super::RoutineSuccess;
 use crate::cli::display::{Message, MessageType};
 use crate::cli::settings::user_directory;
+use crate::framework::languages::SupportedLanguages;
+use crate::project::Project;
+use crate::utilities::constants::CLI_VERSION;
+use crate::utilities::git::is_git_repo;
 
 const TEMPLATE_REGISTRY_URL: &str = "https://templates.514.dev";
 const DOWNLOAD_DIR: &str = "templates";
@@ -316,6 +323,159 @@ pub async fn list_available_templates(
         "Templates".to_string(),
         output,
     )))
+}
+
+pub async fn create_project_from_template(
+    template: &str,
+    name: &str,
+    dir_path: &Path,
+    no_fail_already_exists: bool,
+) -> Result<String, RoutineFailure> {
+    let template_config = get_template_config(template, CLI_VERSION).await?;
+
+    if !no_fail_already_exists && dir_path.exists() {
+        return Err(RoutineFailure::error(Message {
+            action: "Init".to_string(),
+            details:
+            "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
+                .to_string(),
+        }));
+    }
+    std::fs::create_dir_all(dir_path).expect("Failed to create directory");
+
+    if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
+        return Err(RoutineFailure::error(Message {
+            action: "Init".to_string(),
+            details: "You cannot create a project in your home directory".to_string(),
+        }));
+    }
+
+    let language = match template_config.language.as_str() {
+        "typescript" => SupportedLanguages::Typescript,
+        "python" => SupportedLanguages::Python,
+        lang => {
+            warn!("Unknown language {} in template {}", lang, template);
+            SupportedLanguages::Typescript
+        }
+    };
+
+    generate_template(template, CLI_VERSION, dir_path).await?;
+    let project = Project::new(dir_path, name.to_string(), language);
+    let project_arc = Arc::new(project);
+
+    // Update project configuration based on language
+    match language {
+        SupportedLanguages::Typescript => {
+            let package_json_path = dir_path.join("package.json");
+            if package_json_path.exists() {
+                let mut package_json: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(&package_json_path).map_err(|e| {
+                        RoutineFailure::error(Message {
+                            action: "Init".to_string(),
+                            details: format!("Failed to read package.json: {}", e),
+                        })
+                    })?,
+                )
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Init".to_string(),
+                        details: format!("Failed to parse package.json: {}", e),
+                    })
+                })?;
+
+                if let Some(obj) = package_json.as_object_mut() {
+                    obj.insert(
+                        "name".to_string(),
+                        serde_json::Value::String(name.to_string()),
+                    );
+                    std::fs::write(
+                        &package_json_path,
+                        serde_json::to_string_pretty(&package_json).map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Init".to_string(),
+                                details: format!("Failed to serialize package.json: {}", e),
+                            })
+                        })?,
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::error(Message {
+                            action: "Init".to_string(),
+                            details: format!("Failed to write package.json: {}", e),
+                        })
+                    })?;
+                }
+            }
+        }
+        SupportedLanguages::Python => {
+            let setup_py_path = dir_path.join("setup.py");
+            if setup_py_path.exists() {
+                let setup_py_content = std::fs::read_to_string(&setup_py_path).map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Init".to_string(),
+                        details: format!("Failed to read setup.py: {}", e),
+                    })
+                })?;
+
+                // Replace the name in setup.py
+                let name_pattern = Regex::new(r"name='[^']*'").map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Init".to_string(),
+                        details: format!("Failed to create regex pattern: {}", e),
+                    })
+                })?;
+                let new_setup_py =
+                    name_pattern.replace(&setup_py_content, &format!("name='{}'", name));
+
+                std::fs::write(&setup_py_path, new_setup_py.as_bytes()).map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Init".to_string(),
+                        details: format!("Failed to write setup.py: {}", e),
+                    })
+                })?;
+            }
+        }
+    }
+
+    maybe_create_git_repo(dir_path, project_arc);
+
+    Ok(template_config
+        .post_install_print
+        .replace("{project_dir}", &dir_path.to_string_lossy()))
+}
+
+fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
+    let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
+
+    if !is_git_repo {
+        crate::utilities::git::create_init_commit(project_arc, dir_path);
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "Init".to_string(),
+                details: "Created a new git repository".to_string(),
+            }
+        );
+    }
+
+    {
+        show_message!(
+            MessageType::Success,
+            Message {
+                action: "Success!".to_string(),
+                details: format!("Created project at {} 🚀", dir_path.to_string_lossy()),
+            }
+        );
+    }
+
+    {
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "".to_string(),
+                details: "\n".to_string(),
+            }
+        );
+    }
 }
 
 #[cfg(test)]

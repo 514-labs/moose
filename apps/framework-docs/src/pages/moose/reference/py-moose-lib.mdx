@@ -1,3 +1,7 @@
+---
+title: Python Moose Lib Reference
+description: Python Moose Lib Reference
+---
 
 # API Reference
 
@@ -37,15 +41,6 @@ class MooseClient:
     workflow: Optional[WorkflowClient]  # For workflow operations
 ```
 
-### `IngestionFormat`
-Enum defining supported data ingestion formats.
-
-```python
-class IngestionFormat(Enum):
-    JSON = "JSON"  # Single JSON object
-    JSON_ARRAY = "JSON_ARRAY"  # Array of JSON objects
-```
-
 ### `ConsumptionApiResult`
 Class representing the result of a consumption API call.
 
@@ -83,7 +78,6 @@ Configuration for data ingestion.
 
 ```python
 class IngestConfig(BaseModel):
-    format: Optional[IngestionFormat] = None
     destination: Optional[OlapTable[Any]] = None
 ```
 

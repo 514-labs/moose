@@ -13,10 +13,10 @@ import {
   ConsumptionUtil,
   createMaterializedView,
   dropView,
-  IngestionFormat,
   populateTable,
   Sql,
   toQuery,
+  toStaticQuery,
 } from "../index";
 
 /**
@@ -69,6 +69,7 @@ export interface StreamConfig<T> {
    * An optional version string for this configuration. Can be used for tracking changes or managing deployments.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -103,6 +104,7 @@ export type IngestPipelineConfig<T> = {
    * An optional version string applying to all components (table, stream, ingest) created by this pipeline configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 };
 
 /**
@@ -148,12 +150,34 @@ type SyncOrAsyncTransform<T, U> = (
 ) => ZeroOrMany<U> | Promise<ZeroOrMany<U>>;
 type Consumer<T> = (record: T) => Promise<void> | void;
 
-export interface TransformConfig {
-  version?: string;
+export interface DeadLetterModel {
+  originalRecord: Record<string, any>;
+  errorMessage: string;
+  errorType: string;
+  failedAt: Date;
+  source: "api" | "transform" | "table";
 }
 
-export interface ConsumerConfig {
+export interface DeadLetter<T> extends DeadLetterModel {
+  asTyped: () => T;
+}
+
+function attachTypeGuard<T>(
+  dl: DeadLetterModel,
+  typeGuard: (input: any) => T,
+): asserts dl is DeadLetter<T> {
+  (dl as any).asTyped = () => typeGuard(dl.originalRecord);
+}
+
+export interface TransformConfig<T> {
   version?: string;
+  metadata?: { description?: string };
+  deadLetterQueue?: DeadLetterQueue<T>;
+}
+
+export interface ConsumerConfig<T> {
+  version?: string;
+  deadLetterQueue?: DeadLetterQueue<T>;
 }
 
 /**
@@ -163,6 +187,7 @@ export interface ConsumerConfig {
  * @template T The data type of the messages flowing through the stream. The structure of T defines the message schema.
  */
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
+  metadata?: { description?: string };
   /**
    * Creates a new Stream instance.
    * @param name The name of the stream. This name is used for the underlying Redpanda topic.
@@ -185,16 +210,19 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config ?? {}, schema, columns);
-
+    this.metadata = config?.metadata;
     getMooseInternal().streams.set(name, this);
   }
 
   _transformations = new Map<
     string,
-    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig][]
+    [Stream<any>, SyncOrAsyncTransform<T, any>, TransformConfig<T>][]
   >();
   _multipleTransformations?: (record: T) => [RoutedMessage];
-  _consumers = new Array<{ consumer: Consumer<T>; config: ConsumerConfig }>();
+  _consumers = new Array<{
+    consumer: Consumer<T>;
+    config: ConsumerConfig<T>;
+  }>();
 
   /**
    * Adds a transformation step that processes messages from this stream and sends the results to a destination stream.
@@ -206,11 +234,11 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    *                       Return `null` or `undefined` or an empty array `[]` to filter out a message. Return an array to emit multiple messages.
    * @param config Optional configuration for this specific transformation step, like a version.
    */
-  addTransform = <U>(
+  addTransform<U>(
     destination: Stream<U>,
     transformation: SyncOrAsyncTransform<T, U>,
-    config?: TransformConfig,
-  ) => {
+    config?: TransformConfig<T>,
+  ) {
     const transformConfig = config ?? {};
 
     if (this._transformations.has(destination.name)) {
@@ -227,7 +255,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
         [destination, transformation, transformConfig],
       ]);
     }
-  };
+  }
 
   /**
    * Adds a consumer function that processes messages from this stream.
@@ -236,7 +264,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    * @param consumer A function that takes a message of type T and performs an action (e.g., side effect, logging). Should return void or Promise<void>.
    * @param config Optional configuration for this specific consumer, like a version.
    */
-  addConsumer = (consumer: Consumer<T>, config?: ConsumerConfig) => {
+  addConsumer(consumer: Consumer<T>, config?: ConsumerConfig<T>) {
     const consumerConfig = config ?? {};
     const hasVersion = this._consumers.some(
       (existing) => existing.config.version === consumerConfig.version,
@@ -245,7 +273,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     if (!hasVersion) {
       this._consumers.push({ consumer, config: consumerConfig });
     }
-  };
+  }
 
   /**
    * Helper method for `addMultiTransform` to specify the destination and values for a routed message.
@@ -262,9 +290,81 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
    * @param transformation A function that takes a message of type T and returns an array of `RoutedMessage` objects,
    *                       each specifying a destination stream and the message(s) to send to it.
    */
-  addMultiTransform = (transformation: (record: T) => [RoutedMessage]) => {
+  addMultiTransform(transformation: (record: T) => [RoutedMessage]) {
     this._multipleTransformations = transformation;
-  };
+  }
+}
+
+export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
+  constructor(name: string, config?: StreamConfig<DeadLetterModel>);
+
+  /** @internal **/
+  constructor(
+    name: string,
+    config: StreamConfig<DeadLetterModel>,
+    schema: IJsonSchemaCollection.IV3_1,
+    columns: Column[],
+    validate: (originalRecord: any) => T,
+  );
+
+  constructor(
+    name: string,
+    config?: StreamConfig<DeadLetterModel>,
+    schema?: IJsonSchemaCollection.IV3_1,
+    columns?: Column[],
+    typeGuard?: (originalRecord: any) => T,
+  ) {
+    if (
+      schema === undefined ||
+      columns === undefined ||
+      typeGuard === undefined
+    ) {
+      throw new Error(
+        "Supply the type param T so that the schema is inserted by the compiler plugin.",
+      );
+    }
+
+    super(name, config ?? {}, schema, columns);
+    this.typeGuard = typeGuard;
+    getMooseInternal().streams.set(name, this);
+  }
+  private typeGuard: (originalRecord: any) => T;
+
+  addTransform<U>(
+    destination: Stream<U>,
+    transformation: SyncOrAsyncTransform<DeadLetter<T>, U>,
+    config?: TransformConfig<DeadLetterModel>,
+  ) {
+    const withValidate: SyncOrAsyncTransform<DeadLetterModel, U> = (
+      deadLetter,
+    ) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return transformation(deadLetter);
+    };
+    super.addTransform(destination, withValidate, config);
+  }
+  addConsumer(
+    consumer: Consumer<DeadLetter<T>>,
+    config?: ConsumerConfig<DeadLetterModel>,
+  ) {
+    const withValidate: Consumer<DeadLetterModel> = (deadLetter) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return consumer(deadLetter);
+    };
+    super.addConsumer(withValidate, config);
+  }
+
+  addMultiTransform(
+    transformation: (record: DeadLetter<T>) => [RoutedMessage],
+  ) {
+    const withValidate: (record: DeadLetterModel) => [RoutedMessage] = (
+      deadLetter,
+    ) => {
+      attachTypeGuard<T>(deadLetter, this.typeGuard);
+      return transformation(deadLetter);
+    };
+    super.addMultiTransform(withValidate);
+  }
 }
 
 class RoutedMessage {
@@ -285,14 +385,10 @@ interface IngestConfig<T> {
    */
   destination: Stream<T>;
   /**
-   * Specifies the expected format of the incoming data (e.g., JSON, CSV).
-   * @deprecated May be removed in future versions. Format is often inferred.
-   */
-  format?: IngestionFormat; // TODO: we may not need this
-  /**
    * An optional version string for this configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -302,6 +398,7 @@ interface IngestConfig<T> {
  * @template T The data type of the records that this API endpoint accepts. The structure of T defines the expected request body schema.
  */
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
+  metadata?: { description?: string };
   /**
    * Creates a new IngestApi instance.
    * @param name The name of the ingest API endpoint.
@@ -324,7 +421,7 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
-
+    this.metadata = config?.metadata;
     getMooseInternal().ingestApis.set(name, this);
   }
 }
@@ -350,6 +447,7 @@ interface EgressConfig<T> {
    * An optional version string for this configuration.
    */
   version?: string;
+  metadata?: { description?: string };
 }
 
 /**
@@ -360,6 +458,7 @@ interface EgressConfig<T> {
  * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
  */
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
+  metadata?: { description?: string };
   /** @internal The handler function that processes requests and generates responses. */
   _handler: ConsumptionHandler<T, R>;
   /** @internal The JSON schema definition for the response type R. */
@@ -392,6 +491,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
     responseSchema?: IJsonSchemaCollection.IV3_1,
   ) {
     super(name, config ?? {}, schema, columns);
+    this.metadata = config?.metadata;
     this._handler = handler;
     this.responseSchema = responseSchema ?? {
       version: "3.1",
@@ -418,6 +518,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
  *             Ingest API input, the Stream messages, and the Olap Table rows.
  */
 export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
+  metadata?: { description?: string };
   /** The OLAP table component of the pipeline, if configured. */
   table?: OlapTable<T>;
   /** The stream component of the pipeline, if configured. */
@@ -449,6 +550,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
+    this.metadata = config?.metadata;
 
     if (config.table) {
       const tableConfig = {
@@ -475,6 +577,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         this.schema,
         this.columnArray,
       );
+      (this.stream as any).pipelineParent = this;
     }
 
     if (config.ingest) {
@@ -493,6 +596,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         this.schema,
         this.columnArray,
       );
+      (this.ingestApi as any).pipelineParent = this;
     }
   }
 }
@@ -576,9 +680,13 @@ export class View extends SqlResource {
    */
   constructor(
     name: string,
-    selectStatement: string,
+    selectStatement: string | Sql,
     baseTables: (OlapTable<any> | View)[],
   ) {
+    if (typeof selectStatement !== "string") {
+      selectStatement = toStaticQuery(selectStatement);
+    }
+
     super(
       name,
       [
@@ -647,13 +755,7 @@ export class MaterializedView<TargetTable> extends SqlResource {
   ) {
     let selectStatement = options.selectStatement;
     if (typeof selectStatement !== "string") {
-      const [query, params] = toQuery(selectStatement);
-      if (Object.keys(params).length !== 0) {
-        throw new Error(
-          "Dynamic SQL is not allowed in the select statement in materialized view creation.",
-        );
-      }
-      selectStatement = query;
+      selectStatement = toStaticQuery(selectStatement);
     }
 
     if (targetSchema === undefined || targetColumns === undefined) {

@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Python, TypeScript } from "./src/components/language-wrappers";
 import { LanguageSwitcher } from "./src/components/language-switcher";
+import { ImageZoom } from "nextra/components";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,6 +19,11 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/router";
+import { useConfig } from "nextra-theme-docs";
+import { Contact } from "./src/components/contact";
+import { paths } from "./src/lib/paths";
+import { Slack } from "lucide-react";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -85,29 +91,109 @@ export default {
     </div>
   ),
   logoLink: false,
-  project: {
-    link: "https://github.com/514-labs/moose",
-  },
   docsRepositoryBase:
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
-  head: () => (
-    <>
-      <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
-    </>
-  ),
+  head: () => {
+    const { asPath, defaultLocale, locale } = useRouter();
+    const { frontMatter } = useConfig();
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://docs.fiveonefour.com";
+    const url = `${baseUrl}${asPath !== "/" ? asPath : ""}`;
+
+    // Determine which default OG image to use based on the path
+    let defaultImage = "/og-image-fiveonefour.png"; // Default for root/main page
+    if (asPath.startsWith("/moose")) {
+      defaultImage = "/og-image-moose.png";
+    } else if (asPath.startsWith("/aurora")) {
+      defaultImage = "/og-image-aurora.png";
+    }
+
+    return (
+      <>
+        <title>{frontMatter.title || "514 Labs Documentation"}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta property="og:url" content={url} />
+        <meta property="og:site_name" content="514 Labs Documentation" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@514hq" />
+        <meta
+          property="og:title"
+          content={frontMatter.title || "514 Labs Documentation"}
+        />
+        <meta
+          property="twitter:title"
+          content={frontMatter.title || "514 Labs Documentation"}
+        />
+        <meta
+          property="og:description"
+          content={
+            frontMatter.description ||
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+          }
+        />
+        <meta
+          property="twitter:description"
+          content={
+            frontMatter.description ||
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+          }
+        />
+        <meta
+          name="description"
+          content={
+            frontMatter.description ||
+            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+          }
+        />
+        {/* Use frontMatter.image if specified, otherwise use the default image based on path */}
+        <meta
+          property="og:image"
+          content={`${baseUrl}${frontMatter.image || defaultImage}`}
+        />
+        <meta
+          name="twitter:image"
+          content={`${baseUrl}${frontMatter.image || defaultImage}`}
+        />
+        <link
+          rel="icon"
+          href="/favicon.ico"
+          type="image/x-icon"
+          sizes="16x16"
+        />
+        <script async defer src="https://buttons.github.io/buttons.js"></script>
+        <link rel="canonical" href={url} />
+      </>
+    );
+  },
   navbar: {
     extraContent: () => (
-      <Link href="https://www.boreal.cloud/sign-in">
-        <Button variant="default">Sign In</Button>
-      </Link>
+      <div className="flex items-center gap-2 h-full">
+        <div className="max-h-7">
+          <a
+            className="github-button"
+            href="https://github.com/514-labs/moose"
+            data-color-scheme="no-preference: dark; light: light; dark: dark;"
+            data-icon="octicon-star"
+            data-size="large"
+            data-show-count="true"
+            aria-label="Star buttons/github-buttons on GitHub"
+          >
+            Star
+          </a>
+        </div>
+        <Link href={paths.slack}>
+          <Button variant="default">
+            <Slack />
+            Join Slack
+          </Button>
+        </Link>
+      </div>
     ),
   },
   // main: ({ children }) => (
   //   <div className="relative">
-  //     <div className="absolute right-0 top-0 z-10">
-  //       <LanguageSwitcher />
-  //     </div>
   //     {children}
+  //     <Contact />
   //   </div>
   // ),
   navigation: {
@@ -135,6 +221,10 @@ export default {
       <Heading {...props} level={HeadingLevel.l4}>
         {children}
       </Heading>
+    ),
+    // Image component with zoom
+    img: ({ src, alt, ...props }) => (
+      <ImageZoom src={src} alt={alt || ""} {...props} />
     ),
     // Text components with direct styling
     p: ({ children, className, ...props }) => (
@@ -202,17 +292,69 @@ export default {
     content: () => {
       const year = new Date().getFullYear();
       return (
-        <p className={baseTextStyles.small}>
-          MIT | {year} ©{" "}
-          <a
-            href="https://fiveonefour.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-moose-purple hover:text-moose-purple/90 transition-colors"
-          >
-            Fiveonefour Labs Inc
-          </a>
-        </p>
+        <div className="flex flex-row justify-between w-full">
+          <p className={baseTextStyles.small}>
+            MIT | {year} ©{" "}
+            <a
+              href="https://fiveonefour.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+            >
+              Fiveonefour Labs Inc
+            </a>
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className={baseTextStyles.small}>Follow us:</span>
+            <div className="flex items-center gap-3">
+              <a
+                href={paths.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="GitHub"
+              >
+                GitHub
+              </a>
+              <a
+                href={paths.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="X (Twitter)"
+              >
+                Twitter
+              </a>
+              <a
+                href={paths.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="LinkedIn"
+              >
+                LinkedIn
+              </a>
+              <a
+                href={paths.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="YouTube"
+              >
+                YouTube
+              </a>
+              <a
+                href={paths.slack}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moose-purple hover:text-moose-purple/90 transition-colors"
+                aria-label="Slack Community"
+              >
+                Slack
+              </a>
+            </div>
+          </div>
+        </div>
       );
     },
   },

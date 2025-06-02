@@ -18,10 +18,12 @@ import {
   Stream,
   ConsumptionApi,
   SqlResource,
+  ConsumerConfig,
+  TransformConfig,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ConsumptionUtil, IngestionFormat } from "../index";
+import { ConsumptionUtil } from "../index";
 
 /**
  * Internal registry holding all defined Moose dmv2 resources.
@@ -56,6 +58,8 @@ interface TableJson {
   engine?: string;
   /** Optional version string for the table configuration. */
   version?: string;
+  /** Optional metadata for the table (e.g., description). */
+  metadata?: { description?: string };
 }
 /**
  * Represents a target destination for data flow, typically a stream.
@@ -67,6 +71,8 @@ interface Target {
   kind: "stream"; // may add `| "table"` in the future
   /** Optional version string of the target resource's configuration. */
   version?: string;
+  /** Optional metadata for the target (e.g., description for function processes). */
+  metadata?: { description?: string };
 }
 
 /**
@@ -101,6 +107,8 @@ interface StreamJson {
   hasMultiTransform: boolean;
   /** List of consumers attached to this stream. */
   consumers: Consumer[];
+  /** Optional description for the stream. */
+  metadata?: { description?: string };
 }
 /**
  * JSON representation of an Ingest API configuration.
@@ -110,12 +118,13 @@ interface IngestApiJson {
   name: string;
   /** Array defining the expected input schema (columns/fields). */
   columns: Column[];
-  /** The expected input data format (e.g., JSON). */
-  format: IngestionFormat;
+
   /** The target stream where ingested data is written. */
   writeTo: Target;
   /** Optional version string for the API configuration. */
   version?: string;
+  /** Optional description for the API. */
+  metadata?: { description?: string };
 }
 
 /**
@@ -130,6 +139,8 @@ interface EgressApiJson {
   responseSchema: IJsonSchemaCollection.IV3_1;
   /** Optional version string for the API configuration. */
   version?: string;
+  /** Optional description for the API. */
+  metadata?: { description?: string };
 }
 
 /**
@@ -181,6 +192,11 @@ const toInfraMap = (registry: typeof moose_internal) => {
   const sqlResources: { [key: string]: SqlResourceJson } = {};
 
   registry.tables.forEach((table) => {
+    // If the table is part of an IngestPipeline, inherit metadata if not set
+    let metadata = (table as any).metadata;
+    if (!metadata && table.config && (table as any).pipelineParent) {
+      metadata = (table as any).pipelineParent.metadata;
+    }
     tables[table.name] = {
       name: table.name,
       columns: table.columnArray,
@@ -188,10 +204,16 @@ const toInfraMap = (registry: typeof moose_internal) => {
       deduplicate: table.config.deduplicate ?? false,
       engine: table.config.engine,
       version: table.config.version,
+      metadata,
     };
   });
 
   registry.streams.forEach((stream) => {
+    // If the stream is part of an IngestPipeline, inherit metadata if not set
+    let metadata = stream.metadata;
+    if (!metadata && stream.config && (stream as any).pipelineParent) {
+      metadata = (stream as any).pipelineParent.metadata;
+    }
     const transformationTargets: Target[] = [];
     const consumers: Consumer[] = [];
 
@@ -201,6 +223,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
           kind: "stream",
           name: destinationName,
           version: config.version,
+          metadata: config.metadata,
         });
       });
     });
@@ -222,19 +245,25 @@ const toInfraMap = (registry: typeof moose_internal) => {
       transformationTargets,
       hasMultiTransform: stream._multipleTransformations === undefined,
       consumers,
+      metadata,
     };
   });
 
   registry.ingestApis.forEach((api) => {
+    // If the ingestApi is part of an IngestPipeline, inherit metadata if not set
+    let metadata = api.metadata;
+    if (!metadata && api.config && (api as any).pipelineParent) {
+      metadata = (api as any).pipelineParent.metadata;
+    }
     ingestApis[api.name] = {
       name: api.name,
       columns: api.columnArray,
-      format: api.config.format ?? IngestionFormat.JSON,
       version: api.config.version,
       writeTo: {
         kind: "stream",
         name: api.config.destination.name,
       },
+      metadata,
     };
   });
 
@@ -244,6 +273,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
       version: api.config.version,
+      metadata: api.metadata,
     };
   });
 
@@ -256,8 +286,9 @@ const toInfraMap = (registry: typeof moose_internal) => {
       pullsDataFrom: sqlResource.pullsDataFrom.map((r) => {
         if (r.kind === "OlapTable") {
           const table = r as OlapTable<any>;
-          const id = table.config.version
-            ? `${table.name}_${table.config.version}`
+          const id =
+            table.config.version ?
+              `${table.name}_${table.config.version}`
             : table.name;
           return {
             id,
@@ -276,8 +307,9 @@ const toInfraMap = (registry: typeof moose_internal) => {
       pushesDataTo: sqlResource.pushesDataTo.map((r) => {
         if (r.kind === "OlapTable") {
           const table = r as OlapTable<any>;
-          const id = table.config.version
-            ? `${table.name}_${table.config.version}`
+          const id =
+            table.config.version ?
+              `${table.name}_${table.config.version}`
             : table.name;
           return {
             id,
@@ -350,20 +382,26 @@ export const getStreamingFunctions = async () => {
   await require(`${process.cwd()}/app/index.ts`);
 
   const registry = getMooseInternal();
-  const transformFunctions = new Map<string, (data: unknown) => unknown>();
+  const transformFunctions = new Map<
+    string,
+    [(data: unknown) => unknown, TransformConfig<any> | ConsumerConfig<any>]
+  >();
 
   registry.streams.forEach((stream) => {
     stream._transformations.forEach((transforms, destinationName) => {
       transforms.forEach(([_, transform, config]) => {
         const transformFunctionKey = `${stream.name}_${destinationName}${config.version ? `_${config.version}` : ""}`;
         console.log(`getStreamingFunctions: ${transformFunctionKey}`);
-        transformFunctions.set(transformFunctionKey, transform);
+        transformFunctions.set(transformFunctionKey, [transform, config]);
       });
     });
 
     stream._consumers.forEach((consumer) => {
       const consumerFunctionKey = `${stream.name}_<no-target>${consumer.config.version ? `_${consumer.config.version}` : ""}`;
-      transformFunctions.set(consumerFunctionKey, consumer.consumer);
+      transformFunctions.set(consumerFunctionKey, [
+        consumer.consumer,
+        consumer.config,
+      ]);
     });
   });
 

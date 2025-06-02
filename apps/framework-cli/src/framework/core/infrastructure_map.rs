@@ -1218,6 +1218,58 @@ impl InfrastructureMap {
         );
     }
 
+    pub fn diff_table(table: &Table, target_table: &Table) -> Option<TableChange> {
+        let column_changes = compute_table_columns_diff(table, target_table);
+
+        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
+            target_table
+                .columns
+                .iter()
+                .filter_map(|c| {
+                    if c.primary_key {
+                        Some(c.name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+
+        let order_by_changed = table.order_by != target_table.order_by
+            // target may leave order_by unspecified,
+            // but the implicit order_by from primary keys can be the same
+            && !(target_table.order_by.is_empty()
+                && order_by_from_primary_key(target_table) == table.order_by);
+
+        let order_by_change = if order_by_changed {
+            OrderByChange {
+                before: table.order_by.clone(),
+                after: target_table.order_by.clone(),
+            }
+        } else {
+            OrderByChange {
+                before: vec![],
+                after: vec![],
+            }
+        };
+
+        // Only push changes if there are actual differences to report
+        if !column_changes.is_empty()
+            || order_by_changed
+            || table.deduplicate != target_table.deduplicate
+        {
+            Some(TableChange::Updated {
+                name: table.name.clone(),
+                column_changes,
+                order_by_change,
+                before: table.clone(),
+                after: target_table.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
     /// Compare tables between two infrastructure maps and compute the differences
     ///
     /// This method identifies added, removed, and updated tables by comparing
@@ -1249,34 +1301,10 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
-                    let column_changes = compute_table_columns_diff(table, target_table);
-
-                    let order_by_change = if table.order_by != target_table.order_by {
-                        OrderByChange {
-                            before: table.order_by.clone(),
-                            after: target_table.order_by.clone(),
-                        }
-                    } else {
-                        OrderByChange {
-                            before: vec![],
-                            after: vec![],
-                        }
-                    };
-
-                    // Only push changes if there are actual differences to report
-                    if !column_changes.is_empty()
-                        || table.order_by != target_table.order_by
-                        || table.deduplicate != target_table.deduplicate
-                    {
+                    if let Some(diff) = InfrastructureMap::diff_table(table, target_table) {
                         table_updates += 1;
-                        olap_changes.push(OlapChange::Table(TableChange::Updated {
-                            name: table.name.clone(),
-                            column_changes,
-                            order_by_change,
-                            before: table.clone(),
-                            after: target_table.clone(),
-                        }));
-                    }
+                        olap_changes.push(OlapChange::Table(diff));
+                    };
                 }
             } else {
                 log::debug!("Table '{}' removed", table.name);
@@ -1767,6 +1795,7 @@ mod tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         };
 
         let after = Table {
@@ -1808,6 +1837,7 @@ mod tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         };
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -1843,6 +1873,7 @@ mod diff_tests {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 
@@ -2669,6 +2700,7 @@ mod diff_topic_tests {
                 default: None,
                 annotations: Vec::new(),
             }],
+            metadata: None,
         }
     }
 
@@ -3290,6 +3322,7 @@ mod diff_function_process_tests {
                 name: name.to_string(),
                 primitive_type: PrimitiveTypes::Function,
             },
+            metadata: None,
         }
     }
 

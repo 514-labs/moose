@@ -1,4 +1,9 @@
-import { CTACards, CTACard } from "@/components";
+---
+title: 514 Labs Documentation
+description: Documentation hub for Moose and Aurora, open source tools for building analytical backends and automated data engineering
+---
+
+import { CTACards, CTACard, Contact } from "@/components";
 
 # Docs
 
@@ -10,7 +15,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 
 <CTACards>
   <CTACard
-    title="Analytical Backends Framework"
+    title="Analytical Backend Framework"
     description="Open source Typescript or Python framework for building analytical backends"
     ctaLink="/moose"
     ctaLabel="Start Developing"
@@ -31,7 +36,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
   />
 </CTACards>
 
-### Start from example projects
+### Quick Start Options
 
 <CTACards>
   <CTACard
@@ -40,9 +45,19 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
     ctaLink="/templates"
     ctaLabel="Start Now"
     badge={{
-
       text: "Templates"
+    }}
+  />
+  <CTACard
+    title="Start from ClickHouse"
+    description="Already have a ClickHouse database? Bootstrap a Moose project directly from your existing tables"
+    ctaLink="/moose/getting-started/from-clickhouse"
+    ctaLabel="Import from ClickHouse"
+    badge={{
+      variant: "moose",
+      text: "Moose"
     }}
   />
 </CTACards>
 
+<Contact />

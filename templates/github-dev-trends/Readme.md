@@ -11,7 +11,7 @@ This template provides a real-time dashboard tracking trending repositories and 
 
 ## Prerequisites
 
-*   Node.js (v20+ recommended)
+*   Node.js (Minimum version 22+)
 *   npm (or yarn/pnpm)
 *   Moose CLI
 *   Docker Desktop (For underlying services like Kafka/ClickHouse if used by `moose dev`)

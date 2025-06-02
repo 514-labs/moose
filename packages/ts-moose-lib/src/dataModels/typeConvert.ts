@@ -41,7 +41,7 @@ const throwNullType = (fieldName: string, typeName: string): never => {
 
 const toArrayType = ([elementNullable, _, elementType]: [
   boolean,
-  AggregationFunction | undefined,
+  [string, any][],
   DataType,
 ]): ArrayType => {
   return {
@@ -96,9 +96,8 @@ const handleNumberType = (
     const typiaProps = checker.getNonNullableType(
       checker.getTypeOfSymbol(tagSymbol),
     );
-    const props: ts.Type[] = typiaProps.isIntersection()
-      ? typiaProps.types
-      : [typiaProps];
+    const props: ts.Type[] =
+      typiaProps.isIntersection() ? typiaProps.types : [typiaProps];
 
     for (const prop of props) {
       const valueSymbol = prop.getProperty("value");
@@ -106,7 +105,8 @@ const handleNumberType = (
         console.log(`Props.value is undefined for ${fieldName}`);
       } else {
         const valueTypeLiteral = checker.getTypeOfSymbol(valueSymbol);
-        const intMappings = {
+        const numberTypeMappings = {
+          float: "Float32",
           int8: "Int8",
           int16: "Int16",
           int32: "Int32",
@@ -116,14 +116,15 @@ const handleNumberType = (
           uint32: "UInt32",
           uint64: "UInt64",
         };
-        const match = Object.entries(intMappings).find(([k, _]) =>
+        const match = Object.entries(numberTypeMappings).find(([k, _]) =>
           isStringLiteral(valueTypeLiteral, checker, k),
         );
         if (match) {
           return match[1];
         } else {
-          const typeString = valueTypeLiteral.isStringLiteral()
-            ? valueTypeLiteral.value
+          const typeString =
+            valueTypeLiteral.isStringLiteral() ?
+              valueTypeLiteral.value
             : "unknown";
 
           console.log(
@@ -160,9 +161,8 @@ const handleStringType = (
     const typiaProps = checker.getNonNullableType(
       checker.getTypeOfSymbol(tagSymbol),
     );
-    const props: ts.Type[] = typiaProps.isIntersection()
-      ? typiaProps.types
-      : [typiaProps];
+    const props: ts.Type[] =
+      typiaProps.isIntersection() ? typiaProps.types : [typiaProps];
 
     for (const prop of props) {
       const valueSymbol = prop.getProperty("value");
@@ -186,7 +186,28 @@ const handleStringType = (
           }
           return `DateTime(${precision})`;
         } else if (isStringLiteral(valueTypeLiteral, checker, "date")) {
-          return "Date";
+          let size = 4;
+          const sizeSymbol = t.getProperty("_clickhouse_byte_size");
+          if (sizeSymbol !== undefined) {
+            const sizeType = checker.getNonNullableType(
+              checker.getTypeOfSymbol(sizeSymbol),
+            );
+            if (sizeType.isNumberLiteral()) {
+              size = sizeType.value;
+            }
+          }
+
+          if (size === 4) {
+            return "Date";
+          } else if (size === 2) {
+            return "Date16";
+          } else {
+            throw new UnsupportedFeature(`Date with size ${size}`);
+          }
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv4")) {
+          return "IPv4";
+        } else if (isStringLiteral(valueTypeLiteral, checker, "ipv6")) {
+          return "IPv6";
         } else if (isStringLiteral(valueTypeLiteral, checker, DecimalRegex)) {
           let precision = 10;
           let scale = 0;
@@ -213,8 +234,9 @@ const handleStringType = (
 
           return `Decimal(${precision}, ${scale})`;
         } else {
-          const typeString = valueTypeLiteral.isStringLiteral()
-            ? valueTypeLiteral.value
+          const typeString =
+            valueTypeLiteral.isStringLiteral() ?
+              valueTypeLiteral.value
             : "unknown";
 
           console.log(`Unknown format: ${typeString} in field ${fieldName}`);
@@ -226,51 +248,75 @@ const handleStringType = (
   }
 };
 
+const isStringAnyRecord = (t: ts.Type, checker: ts.TypeChecker): boolean => {
+  const indexInfos = checker.getIndexInfosOfType(t);
+  if (indexInfos && indexInfos.length === 1) {
+    const indexInfo = indexInfos[0];
+    return (
+      indexInfo.keyType == checker.getStringType() &&
+      indexInfo.type == checker.getAnyType()
+    );
+  }
+
+  return false;
+};
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
   fieldName: string,
   typeName: string,
   isJwt: boolean,
-): [boolean, AggregationFunction | undefined, DataType] => {
+): [boolean, [string, any][], DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
 
   const aggregationFunction = handleAggregated(t, checker, fieldName, typeName);
 
-  // this looks nicer if we turn on experimentalTernaries in prettier
-  const dataType: DataType = isEnum(nonNull)
-    ? enumConvert(nonNull)
-    : checker.isTypeAssignableTo(nonNull, checker.getStringType())
-      ? handleStringType(nonNull, checker, fieldName)
-      : isNumberType(nonNull, checker)
-        ? handleNumberType(nonNull, checker, fieldName)
-        : checker.isTypeAssignableTo(nonNull, checker.getBooleanType())
-          ? "Boolean"
-          : checker.isTypeAssignableTo(nonNull, dateType(checker))
-            ? "DateTime"
-            : checker.isArrayType(nonNull)
-              ? toArrayType(
-                  tsTypeToDataType(
-                    nonNull.getNumberIndexType()!,
-                    checker,
-                    fieldName,
-                    typeName,
-                    isJwt,
-                  ),
-                )
-              : nonNull.isClassOrInterface() ||
-                  (nonNull.flags & TypeFlags.Object) !== 0
-                ? {
-                    name: getNestedName(nonNull, fieldName),
-                    columns: toColumns(nonNull, checker),
-                    jwt: isJwt,
-                  }
-                : nonNull == checker.getNeverType()
-                  ? throwNullType(fieldName, typeName)
-                  : throwUnknownType(t, fieldName, typeName);
+  const dataType: DataType =
+    isEnum(nonNull) ? enumConvert(nonNull)
+    : isStringAnyRecord(nonNull, checker) ? "Json"
+    : checker.isTypeAssignableTo(nonNull, checker.getStringType()) ?
+      handleStringType(nonNull, checker, fieldName)
+    : isNumberType(nonNull, checker) ?
+      handleNumberType(nonNull, checker, fieldName)
+    : checker.isTypeAssignableTo(nonNull, checker.getBooleanType()) ? "Boolean"
+    : checker.isTypeAssignableTo(nonNull, dateType(checker)) ? "DateTime"
+    : checker.isArrayType(nonNull) ?
+      toArrayType(
+        tsTypeToDataType(
+          nonNull.getNumberIndexType()!,
+          checker,
+          fieldName,
+          typeName,
+          isJwt,
+        ),
+      )
+    : nonNull.isClassOrInterface() || (nonNull.flags & TypeFlags.Object) !== 0 ?
+      {
+        name: getNestedName(nonNull, fieldName),
+        columns: toColumns(nonNull, checker),
+        jwt: isJwt,
+      }
+    : nonNull == checker.getNeverType() ? throwNullType(fieldName, typeName)
+    : throwUnknownType(t, fieldName, typeName);
+  const annotations: [string, any][] = [];
+  if (aggregationFunction !== undefined) {
+    annotations.push(["aggregationFunction", aggregationFunction]);
+  }
 
-  return [nullable, aggregationFunction, dataType];
+  const lowCardinalitySymbol = t.getProperty("_LowCardinality");
+  if (lowCardinalitySymbol !== undefined) {
+    const lowCardinalityType = checker.getNonNullableType(
+      checker.getTypeOfSymbol(lowCardinalitySymbol),
+    );
+
+    if (lowCardinalityType == checker.getTrueType()) {
+      annotations.push(["LowCardinality", true]);
+    }
+  }
+
+  return [nullable, annotations, dataType];
 };
 
 const getNestedName = (t: ts.Type, fieldName: string) => {
@@ -312,18 +358,13 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
 
     const isKey = hasKeyWrapping(node.type);
     const isJwt = hasJwtWrapping(node.type);
-    const [nullable, aggregationFunction, dataType] = tsTypeToDataType(
+    const [nullable, annotations, dataType] = tsTypeToDataType(
       type,
       checker,
       prop.name,
       t.symbol.name,
       isJwt,
     );
-
-    const annotations: [string, any][] = [];
-    if (aggregationFunction !== undefined) {
-      annotations.push(["aggregationFunction", aggregationFunction]);
-    }
 
     return {
       name: prop.name,

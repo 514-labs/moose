@@ -12,8 +12,6 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ActivityType {
-    #[serde(rename = "blockInitCommand")]
-    BlockInitCommand,
     #[serde(rename = "buildCommand")]
     BuildCommand,
     #[serde(rename = "planCommand")]
@@ -22,16 +20,10 @@ pub enum ActivityType {
     CleanCommand,
     #[serde(rename = "checkCommand")]
     CheckCommand,
-    #[serde(rename = "consumptionInitCommand")]
-    ConsumptionInitCommand,
     #[serde(rename = "devCommand")]
     DevCommand,
-    #[serde(rename = "dataModelCommand")]
-    DataModelCommand,
     #[serde(rename = "dockerCommand")]
     DockerCommand,
-    #[serde(rename = "funcInitCommand")]
-    FuncInitCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
     #[serde(rename = "initTemplateCommand")]
@@ -50,8 +42,6 @@ pub enum ActivityType {
     MetricsCommand,
     #[serde(rename = "importCommand")]
     ImportCommand,
-    #[serde(rename = "datamodelInitCommand")]
-    DataModelInitCommand,
     #[serde(rename = "generateHashCommand")]
     GenerateHashCommand,
     #[serde(rename = "generateSDKCommand")]
@@ -78,6 +68,8 @@ pub enum ActivityType {
     WorkflowStatusCommand,
     #[serde(rename = "templateListCommand")]
     TemplateListCommand,
+    #[serde(rename = "refreshListCommand")]
+    RefreshListCommand,
 }
 
 pub fn capture_usage(

@@ -9,6 +9,7 @@ interface CalloutProps {
   type: CalloutType;
   title?: string;
   href?: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -45,7 +46,7 @@ const calloutVariants = {
 
 type CalloutType = keyof typeof calloutVariants;
 
-export function Callout({ type, title, href, children }: CalloutProps) {
+export function Callout({ type, title, href, icon, children }: CalloutProps) {
   const variantProps = calloutVariants[type];
 
   const TitleContent = () => (
@@ -69,15 +70,13 @@ export function Callout({ type, title, href, children }: CalloutProps) {
       )}
     >
       <CardContent className="flex items-start space-x-2 p-0">
-        <div className="flex-shrink-0 mt-1">{variantProps.icon}</div>
+        <div className="flex-shrink-0 mt-1">{icon || variantProps.icon}</div>
         <div className="flex-1">
-          {href ? (
+          {href ?
             <Link href={href}>
               <TitleContent />
             </Link>
-          ) : (
-            <TitleContent />
-          )}
+          : <TitleContent />}
           {children}
         </div>
       </CardContent>

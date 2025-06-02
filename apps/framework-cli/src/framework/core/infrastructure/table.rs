@@ -1,5 +1,6 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
+use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
@@ -18,6 +19,11 @@ use serde_json::Value;
 use std::fmt;
 use std::fmt::Debug;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
+pub struct Metadata {
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
@@ -27,9 +33,9 @@ pub struct Table {
     pub deduplicate: bool,
     #[serde(default)]
     pub engine: Option<String>,
-
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
+    pub metadata: Option<Metadata>,
 }
 
 impl Table {
@@ -77,11 +83,16 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
-
             deduplicate: self.deduplicate,
             engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
                 value: engine.to_string(),
                 special_fields: Default::default(),
+            })),
+            metadata: MessageField::from_option(self.metadata.as_ref().map(|m| {
+                infrastructure_map::Metadata {
+                    description: m.description.clone().unwrap_or_default(),
+                    special_fields: Default::default(),
+                }
             })),
             special_fields: Default::default(),
         }
@@ -96,6 +107,13 @@ impl Table {
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
             deduplicate: proto.deduplicate,
             engine: proto.engine.into_option().map(|wrapper| wrapper.value),
+            metadata: proto.metadata.into_option().map(|m| Metadata {
+                description: if m.description.is_empty() {
+                    None
+                } else {
+                    Some(m.description)
+                },
+            }),
         }
     }
 }
@@ -156,7 +174,11 @@ pub enum ColumnType {
     DateTime {
         precision: Option<u8>,
     },
+    // most databases use 4 bytes or more for a date
+    // in clickhouse that's `Date32`
     Date,
+    // `Date` in clickhouse is 2 bytes
+    Date16,
     Enum(DataEnum),
     Array {
         element_type: Box<ColumnType>,
@@ -166,6 +188,8 @@ pub enum ColumnType {
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Uuid,
+    IpV4,
+    IpV6,
 }
 
 impl fmt::Display for ColumnType {
@@ -193,6 +217,9 @@ impl fmt::Display for ColumnType {
             ColumnType::Bytes => write!(f, "Bytes"),
             ColumnType::Uuid => write!(f, "UUID"),
             ColumnType::Date => write!(f, "Date"),
+            ColumnType::Date16 => write!(f, "Date16"),
+            ColumnType::IpV4 => write!(f, "IPv4"),
+            ColumnType::IpV6 => write!(f, "IPv6"),
         }
     }
 }
@@ -238,6 +265,9 @@ impl Serialize for ColumnType {
             ColumnType::Bytes => serializer.serialize_str("Bytes"),
             ColumnType::Uuid => serializer.serialize_str("UUID"),
             ColumnType::Date => serializer.serialize_str("Date"),
+            ColumnType::Date16 => serializer.serialize_str("Date16"),
+            ColumnType::IpV4 => serializer.serialize_str("IPv4"),
+            ColumnType::IpV6 => serializer.serialize_str("IPv6"),
         }
     }
 }
@@ -356,12 +386,18 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             }
         } else if v == "Date" {
             ColumnType::Date
+        } else if v == "Date16" {
+            ColumnType::Date16
         } else if v == "Json" {
             ColumnType::Json
         } else if v == "Bytes" {
             ColumnType::Bytes
         } else if v == "UUID" {
             ColumnType::Uuid
+        } else if v == "IPv4" {
+            ColumnType::IpV4
+        } else if v == "IPv6" {
+            ColumnType::IpV6
         } else {
             return Err(E::custom(format!("Unknown column type {}.", v)));
         };
@@ -539,6 +575,9 @@ impl ColumnType {
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
             ColumnType::Uuid => column_type::T::Simple(SimpleColumnType::UUID_TYPE.into()),
             ColumnType::Date => T::Simple(SimpleColumnType::DATE.into()),
+            ColumnType::Date16 => T::Simple(SimpleColumnType::DATE16.into()),
+            ColumnType::IpV4 => T::Simple(SimpleColumnType::IPV4.into()),
+            ColumnType::IpV6 => T::Simple(SimpleColumnType::IPV6.into()),
         };
         ProtoColumnType {
             t: Some(t),
@@ -564,6 +603,9 @@ impl ColumnType {
                     SimpleColumnType::BYTES => ColumnType::Bytes,
                     SimpleColumnType::UUID_TYPE => ColumnType::Uuid,
                     SimpleColumnType::DATE => ColumnType::Date,
+                    SimpleColumnType::DATE16 => ColumnType::Date16,
+                    SimpleColumnType::IPV4 => ColumnType::IpV4,
+                    SimpleColumnType::IPV6 => ColumnType::IpV6,
                 }
             }
             column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),

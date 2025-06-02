@@ -62,10 +62,14 @@ pub enum ClickHouseColumnType {
         Box<ClickHouseColumnType>,
     ),
     Uuid,
+    Date,
     Date32,
     DateTime64 {
         precision: u8,
     },
+    LowCardinality(Box<ClickHouseColumnType>),
+    IpV4,
+    IpV6,
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -128,6 +132,7 @@ impl ClickHouseColumnType {
                 precision: *precision,
                 scale: *scale,
             },
+            ClickHouseColumnType::Date => ColumnType::Date16,
             ClickHouseColumnType::Date32 => ColumnType::Date,
             ClickHouseColumnType::DateTime => ColumnType::DateTime { precision: None },
             ClickHouseColumnType::DateTime64 { precision } => ColumnType::DateTime {
@@ -170,6 +175,9 @@ impl ClickHouseColumnType {
                 return return_type.to_std_column_type();
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
+            ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),
+            ClickHouseColumnType::IpV4 => ColumnType::IpV4,
+            ClickHouseColumnType::IpV6 => ColumnType::IpV6,
         };
         (column_type, required)
     }
@@ -228,7 +236,10 @@ impl ClickHouseColumnType {
                 Self::DateTime64 { precision }
             }
             "Date32" => Self::Date32,
-            "DateTime" | "DateTime('UTC')" | "Date" => Self::DateTime,
+            "Date" => Self::Date,
+            "IPv4" => Self::IpV4,
+            "IPv6" => Self::IpV6,
+            "DateTime" | "DateTime('UTC')" => Self::DateTime,
             "JSON" => Self::Json,
 
             // recursively parsing Nullable and Array

@@ -1,0 +1,4 @@
+name: "CodeQL Configuration"
+
+paths-ignore:
+  - "apps/framework-cli/tests/test_project/app/datamodels/syntax_error.ts"

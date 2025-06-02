@@ -1,69 +1,54 @@
+---
+title: Quickstart
+description: Quickstart guide for Aurora
+---
 
-# Quickstart
-*ADS-B (aircraft transponder) data for getting started*
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
 
-This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
+# Aurora MCP Quickstart
 
-Requirements:
+Aurora exposes tools to your LLM client for reading, exploring, and building on Clickhouse data—locally or in production. Go from remote Clickhouse to natural language queries, metadata, and egress APIs in minutes. These quickstarts will show you how to get started with ad-hoc analytics on your Clickhouse project, create your own local dev environment that you can build on with Aurora MCP tools, and deploy a full analytics backend from a template.
+<FeatureGrid columns={3}>
+  <FeatureCard
+    href="/aurora/quickstart/clickhouse-chat"
+    Icon={Icons.api}
+    title="Chat with your Clickhouse data"
+    description="
+    "
+    variant="aurora"
+  />
+  
+  <FeatureCard
+    href="/aurora/quickstart/clickhouse-proj#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
+    Icon={Icons.contact}
+    title="Build analytics project from your Clickhouse"
+    description="
+    "
+    variant="aurora"
+  />
+  
+  <FeatureCard
+    href="/aurora/quickstart/from-template#quickstart-new-complete-local-olap-project-from-template"
+    Icon={Icons.db}
+    title="Full stack OLAP project from Template"
+    description="
+    "
+    variant="aurora"
+  />
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Node](https://nodejs.org/en)
-- [Claude Desktop](https://claude.ai/download) or [Cursor](https://www.cursor.com/)
-
-### Install
-
-```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
-```
-
-This will install [Moose](/moose) (our open source developer framework for Data Engineering) and [Aurora](https://aurora.fiveonefour.com).
-
-This prompt you for an Anthropic token, if you don't have one, see: https://docs.anthropic.com/en/docs/initial-setup
-
-### Creating your Project
-
-```bash filename="Terminal" copy
-aurora init <project-name> ads-b
-```
-
-This will create a new Moose project using the ADS-B template to gather ADS-B (aircraft transponder) data that you can use to explore Aurora's MCP offerings. By default, it will create the project configured for use with Cursor (by creating `~/.cursor/mcp.config`), but if you would like to use Claude Desktop, append `--mcp claude-desktop`.
-
-If you want to create an empty project, and build your own Data Models and ingestion, try `aurora init <project-name> typescript-empty` or `aurora init <project-name> python-empty`
-
-### Installing Dependencies
-
-Navigate into the created project directory: 
-
-```bash filename="Terminal" copy
-cd <project-name>
-```
-
-Install the dependencies: 
-
-```bash filename="Terminal" copy
-npm i
-```
-
-### Open Cursor and Enable the MCPs
-
-Then open your code editor `cursor .`
-
-Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "aurora". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
-
-### Run the Moose Dev Server Locally
-
-**Warning: make sure you have docker desktop running before this step!**
-
-You now have the project ready to go, run `moose dev` to start the dev server.
-
-### Start Ingesting Data
-
-Run the command to start ingesting data with the configured ingest scripts: `moose workflow run military_aircraft_tracking`
-
-You should start to see hundreds of live datapoints ingesting instantly!
-
-### Start Using Aurora
-
-In the LLM discussion pane, ask your host about your Moose project, it should use Aurora MCP tools to deliver rich context!
-
-[Check out the related blog post for ideas on what you can build!](https://fiveonefour.com/blog/)
+</FeatureGrid>

@@ -48,7 +48,10 @@ pub async fn import_csv_file(
                 if let Some(value) = record.get(i) {
                     if let Some(t) = types.get(key) {
                         match t {
-                            ColumnType::Date
+                            ColumnType::Date16
+                            | ColumnType::Date
+                            | ColumnType::IpV4
+                            | ColumnType::IpV6
                             | ColumnType::String
                             | ColumnType::DateTime { .. }
                             | ColumnType::Enum(_) => {

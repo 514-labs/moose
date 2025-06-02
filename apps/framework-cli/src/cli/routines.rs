@@ -86,10 +86,11 @@
 //! - Organize routines better in the file hiearchy
 //!
 
-use crate::cli::local_webserver::RouteMeta;
+use crate::cli::local_webserver::{IntegrateChangesRequest, RouteMeta};
 use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -99,7 +100,8 @@ use tokio::time::{interval, Duration};
 
 use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
-use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
+use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::project::Project;
 
@@ -115,11 +117,9 @@ use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
 
 pub mod auth;
-pub mod block;
 pub mod build;
 pub mod clean;
-pub mod consumption;
-pub mod datamodel;
+pub mod code_generation;
 pub mod dev;
 pub mod docker_packager;
 pub mod logs;
@@ -129,7 +129,7 @@ pub mod openapi;
 pub mod peek;
 pub mod ps;
 pub mod scripts;
-pub mod streaming;
+pub mod seed_data;
 pub mod templates;
 mod util;
 pub mod validate;
@@ -506,6 +506,17 @@ pub async fn start_production_mode(
     Ok(())
 }
 
+fn prepend_base_url(base_url: Option<&str>, path: &str) -> String {
+    format!(
+        "{}/{}",
+        match base_url {
+            Some(u) => u.trim_end_matches('/'),
+            None => "http://localhost:4000",
+        },
+        path
+    )
+}
+
 /// Authentication for remote plan requests:
 ///
 /// When making requests to a remote Moose instance, authentication is required for admin operations.
@@ -530,7 +541,7 @@ pub async fn start_production_mode(
 /// * Result indicating success or failure
 pub async fn remote_plan(
     project: &Project,
-    url: &Option<String>,
+    base_url: &Option<String>,
     token: &Option<String>,
 ) -> anyhow::Result<()> {
     // Build the inframap from the local project=
@@ -545,10 +556,7 @@ pub async fn remote_plan(
     };
 
     // Determine the target URL
-    let target_url = match url {
-        Some(u) => format!("{}/admin/plan", u.trim_end_matches('/')),
-        None => "http://localhost:4000/admin/plan".to_string(),
-    };
+    let target_url = prepend_base_url(base_url.as_deref(), "admin/plan");
 
     display::show_message_wrapper(
         MessageType::Info,
@@ -627,4 +635,147 @@ pub async fn remote_plan(
     display::show_changes(&temp_plan);
 
     Ok(())
+}
+
+pub async fn remote_refresh(
+    project: &Project,
+    base_url: &Option<String>,
+    token: &Option<String>,
+) -> anyhow::Result<RoutineSuccess> {
+    // Build the inframap from the local project
+    let local_infra_map = if project.features.data_model_v2 {
+        debug!("Loading InfrastructureMap from user code (DMV2)");
+        InfrastructureMap::load_from_user_code(project).await?
+    } else {
+        debug!("Loading InfrastructureMap from primitives");
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(project, primitive_map)
+    };
+
+    // Get authentication token - prioritize command line parameter, then env var, then project config
+    let auth_token = token
+        .clone()
+        .or_else(|| std::env::var("MOOSE_ADMIN_TOKEN").ok())
+        .ok_or_else(|| anyhow::anyhow!("Authentication token required. Please provide token via --token parameter or MOOSE_ADMIN_TOKEN environment variable"))?;
+
+    let client = reqwest::Client::new();
+
+    let reality_check_url = prepend_base_url(base_url.as_deref(), "admin/reality-check");
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Remote State".to_string(),
+            details: format!("Checking database state at {}", reality_check_url),
+        },
+    );
+
+    let response = client
+        .get(&reality_check_url)
+        .header("Authorization", format!("Bearer {}", auth_token))
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        return Err(anyhow::anyhow!(
+            "Failed to get reality check from remote instance: {}",
+            error_text
+        ));
+    }
+
+    #[derive(Deserialize)]
+    struct RealityCheckResponse {
+        discrepancies: InfraDiscrepancies,
+    }
+
+    let reality_check: RealityCheckResponse = response.json().await?;
+    debug!("Remote discrepancies: {:?}", reality_check.discrepancies);
+
+    // Step 3: Find tables that exist both in local infra map and remote tables
+    let mut tables_to_integrate = Vec::new();
+
+    // mismatch between local and remote reality
+    fn warn_about_mismatch(table_name: &str) {
+        display::show_message_wrapper(
+            MessageType::Highlight,
+            Message {
+                action: "Table".to_string(),
+                details: format!(
+                    "Table {} in remote DB differs from local definition. It will not be integrated.",
+                    table_name,
+                ),
+            },
+        );
+    }
+
+    for table in reality_check.discrepancies.unmapped_tables.iter().chain(
+        // reality_check.discrepancies.mismatched_tables is about remote infra-map and remote reality
+        // not to be confused with mismatch between local and remote reality in `warn_about_mismatch`
+        reality_check
+            .discrepancies
+            .mismatched_tables
+            .iter()
+            .filter_map(|change| match change {
+                OlapChange::Table(TableChange::Added(table)) => Some(table),
+                OlapChange::Table(TableChange::Updated { after, .. }) => Some(after),
+                _ => None,
+            }),
+    ) {
+        if let Some(local_table) = local_infra_map
+            .tables
+            .values()
+            .find(|t| t.name == table.name)
+        {
+            match InfrastructureMap::diff_table(table, local_table) {
+                None => {
+                    debug!("Found matching table: {}", table.name);
+                    tables_to_integrate.push(table.name.clone());
+                }
+                Some(_) => warn_about_mismatch(&table.name),
+            }
+        }
+    }
+
+    if tables_to_integrate.is_empty() {
+        return Ok(RoutineSuccess::success(Message {
+            action: "No Changes".to_string(),
+            details: "No matching tables found to integrate".to_string(),
+        }));
+    }
+
+    let integrate_url = prepend_base_url(base_url.as_deref(), "admin/integrate-changes");
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Integrating Changes".to_string(),
+            details: format!(
+                "Integrating {} table(s) into remote instance: {}",
+                tables_to_integrate.len(),
+                tables_to_integrate.join(", ")
+            ),
+        },
+    );
+
+    let response = client
+        .post(&integrate_url)
+        .header("Content-Type", "application/json")
+        .json(&IntegrateChangesRequest {
+            tables: tables_to_integrate,
+        })
+        .header("Authorization", format!("Bearer {}", auth_token))
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        return Err(anyhow::anyhow!(
+            "Failed to integrate changes: {}",
+            error_text
+        ));
+    }
+
+    Ok(RoutineSuccess::success(Message::new(
+        "Changes".to_string(),
+        "integrated.".to_string(),
+    )))
 }

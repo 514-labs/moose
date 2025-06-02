@@ -144,6 +144,9 @@ importers:
       next:
         specifier: ^14.2.26
         version: 14.2.26(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next-sitemap:
+        specifier: ^4.2.3
+        version: 4.2.3(next@14.2.26(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       nextra:
         specifier: ^3.3.1
         version: 3.3.1(@types/react@18.3.20)(acorn@8.14.1)(next@14.2.26(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3)
@@ -222,7 +225,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.138(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
+        version: 0.4.162(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -241,7 +244,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.138
+        version: 0.4.162
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -585,8 +588,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.138':
-    resolution: {integrity: sha512-tf+aUBC3KjC+YnAkONML68vJHQzSnFQDTi5ABq6C2Gwt1/b/6KX3BAg8sE+cLCfGpGnj6wH+ErkEge7s+vyQ+Q==}
+  '@514labs/moose-cli-darwin-arm64@0.4.162':
+    resolution: {integrity: sha512-URRdYgxLX0HH1YOFp3uq66mnd8JNMCfxbVn2uMjNmRxgrFdaxQ2bSG5GdAH44MsO23pu6YtkhhEZpc2CFcb0oA==}
     cpu: [arm64]
     os: [darwin]
 
@@ -595,8 +598,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.138':
-    resolution: {integrity: sha512-HZbk9B30Ao5S9aI/Mi4x/xtq7+U2QZ1ZZdUbwFeQdmb/mz2+unaRZxQRFsEjEcTvDCaVXprgd6jqU0C2yGcOLw==}
+  '@514labs/moose-cli-darwin-x64@0.4.162':
+    resolution: {integrity: sha512-/mRoqMBWCTw2bOH4c6hzr5jKaO1VnyR9jLo8bR1z9JpebsnuCKqvOpWEUYeaKY65rIseQs870ykCBPVkRxb9xw==}
     cpu: [x64]
     os: [darwin]
 
@@ -605,8 +608,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.138':
-    resolution: {integrity: sha512-Bl5HgIPJ1cbD5k7xyUT/DuWJDDQxh73uCP6QWIB/5umYBiEjm1XBErsTxv70S78liLaKxMFuEimeNyiSjv4ltA==}
+  '@514labs/moose-cli-linux-arm64@0.4.162':
+    resolution: {integrity: sha512-KHkA+DvNFrJQ+cWeIsiR1klrE3Pw1DbH6qibwxobEFKBOmC0pWkJErDbZQH7MIjRD0LL/tx64Py17/1EyVhJxw==}
     cpu: [arm64]
     os: [linux]
 
@@ -615,8 +618,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.138':
-    resolution: {integrity: sha512-8DisDDDOPMgLEW+BnU1Cs95Oh3i5IczECwBMJzGJDSOCZMcEx9agJF/v0Hw9fhGOesD7NC6rDsHc6HCBQ4Yi2A==}
+  '@514labs/moose-cli-linux-x64@0.4.162':
+    resolution: {integrity: sha512-ZqwtBtUnnAKrbPjQ5e+h0P+N2KPlTOfVxJWY3Js15x0p/hJV5ueCmsowZpkIHSQ2YJ+ZzILHeON0hOu8Hqd74A==}
     cpu: [x64]
     os: [linux]
 
@@ -624,12 +627,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.138':
-    resolution: {integrity: sha512-FSMuF/w/2gPAhlrNFdJYw0Zhrlv92P7VR6Bn1MNimrgP/PkU/eFm8gqpTNocQvuxm4P/5EVPmIhvit9356/PpA==}
+  '@514labs/moose-cli@0.4.162':
+    resolution: {integrity: sha512-FGJ/YL3E31cp9jNJt5W/2bDpGeIsNL1N77RDmc41AHc4brYKbgkEiY6MD9zYpBvvFPTZt3ZruBH0Y8dwIde4aQ==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.138':
-    resolution: {integrity: sha512-F9YE51LF0W0/hnKflsYP1pkwa0j6uJwFm2meKatasn7IM+/tln5nhiEMfePbNgPAJ1B1LM5Mq/XoQ1lAf506Cw==}
+  '@514labs/moose-lib@0.4.162':
+    resolution: {integrity: sha512-Y7/7sp83ZFnlFxbzyjlmy86zMG03sYfRIXFmz/gHrq06PCYV5h7DwPobeNtSKnIZsQQ2RD8yfs2SdlcE3JPrPQ==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -907,6 +910,9 @@ packages:
   '@clickhouse/client@1.8.1':
     resolution: {integrity: sha512-Ec0pCdwftIPD7hCxhOukHS0Zxr2tDc5mNAHBqkT3c0c6GO2WQdZkME9+EcfGcoF7+foUp82F5a0bPfSDDjfWmg==}
     engines: {node: '>=16'}
+
+  '@corex/deepmerge@4.0.43':
+    resolution: {integrity: sha512-N8uEMrMPL0cu/bdboEWpQYb/0i2K5Qn8eCsxzOmxSggJbbQte7ljMRoXm917AbntqTGOzdTu+vP3KOOzoC70HQ==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -1458,6 +1464,9 @@ packages:
 
   '@napi-rs/wasm-runtime@0.2.8':
     resolution: {integrity: sha512-OBlgKdX7gin7OIq4fadsjpg+cp2ZphvAIKucHsNfTdJiqdOmOEwQd/bHi0VwNrcw5xpBJyUw6cK/QilCqy1BSg==}
+
+  '@next/env@13.5.11':
+    resolution: {integrity: sha512-fbb2C7HChgM7CemdCY+y3N1n8pcTKdqtQLbC7/EQtPdLvlMUT9JX/dBYl8MMZAtYG4uVMyPFHXckb68q/NRwqg==}
 
   '@next/env@14.2.26':
     resolution: {integrity: sha512-vO//GJ/YBco+H7xdQhzJxF7ub3SUwft76jwaeOyVVQFHCi5DCnkP16WHB+JBylo4vOKPoZBlR94Z8xBxNBdNJA==}
@@ -5515,6 +5524,13 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
+  next-sitemap@4.2.3:
+    resolution: {integrity: sha512-vjdCxeDuWDzldhCnyFCQipw5bfpl4HmZA7uoo3GAaYGjGgfL4Cxb1CiztPuWGmS+auYs7/8OekRS8C2cjdAsjQ==}
+    engines: {node: '>=14.18'}
+    hasBin: true
+    peerDependencies:
+      next: '*'
+
   next-themes@0.2.1:
     resolution: {integrity: sha512-B+AKNfYNIzh0vqQQKqQItTS8evEouKD7H5Hj3kmuPERwddR2TxvDSFZuTj6T7Jfn1oyeUyJMydPl1Bkxkh0W7A==}
     peerDependencies:
@@ -7223,25 +7239,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.138':
+  '@514labs/moose-cli-darwin-arm64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.138':
+  '@514labs/moose-cli-darwin-x64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.138':
+  '@514labs/moose-cli-linux-arm64@0.4.162':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.138':
+  '@514labs/moose-cli-linux-x64@0.4.162':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7251,14 +7267,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.138':
+  '@514labs/moose-cli@0.4.162':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.138
-      '@514labs/moose-cli-darwin-x64': 0.4.138
-      '@514labs/moose-cli-linux-arm64': 0.4.138
-      '@514labs/moose-cli-linux-x64': 0.4.138
+      '@514labs/moose-cli-darwin-arm64': 0.4.162
+      '@514labs/moose-cli-darwin-x64': 0.4.162
+      '@514labs/moose-cli-linux-arm64': 0.4.162
+      '@514labs/moose-cli-linux-x64': 0.4.162
 
-  '@514labs/moose-lib@0.4.138(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.162(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.17.30)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -7564,6 +7580,8 @@ snapshots:
   '@clickhouse/client@1.8.1':
     dependencies:
       '@clickhouse/client-common': 1.8.1
+
+  '@corex/deepmerge@4.0.43': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -8193,6 +8211,8 @@ snapshots:
       '@emnapi/runtime': 1.4.0
       '@tybys/wasm-util': 0.9.0
     optional: true
+
+  '@next/env@13.5.11': {}
 
   '@next/env@14.2.26': {}
 
@@ -13462,6 +13482,14 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
+
+  next-sitemap@4.2.3(next@14.2.26(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@corex/deepmerge': 4.0.43
+      '@next/env': 13.5.11
+      fast-glob: 3.3.3
+      minimist: 1.2.8
+      next: 14.2.26(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   next-themes@0.2.1(next@14.2.26(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:

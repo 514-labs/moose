@@ -1,6 +1,6 @@
 import { render } from "@/components";
 
-export default {
+const metadata = {
   monitoring: "Monitoring",
   planning: "Planning",
   security: "Security",
@@ -9,3 +9,5 @@ export default {
     type: "separator",
   },
 };
+
+export default render(metadata);

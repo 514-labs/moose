@@ -13,15 +13,8 @@ export interface ConsumptionUtil {
   jwt: JWTPayload | undefined;
 }
 
-export enum IngestionFormat {
-  JSON = "JSON",
-  JSON_ARRAY = "JSON_ARRAY",
-}
-
 export type DataModelConfig<T> = Partial<{
-  ingestion: {
-    format?: IngestionFormat;
-  };
+  ingestion: true;
   storage: {
     enabled?: boolean;
     order_by_fields?: (keyof T)[];
@@ -38,6 +31,8 @@ export * from "./scripts/task";
 export {
   OlapTable,
   Stream,
+  DeadLetterModel,
+  DeadLetterQueue,
   IngestApi,
   ConsumptionApi,
   IngestPipeline,
@@ -51,5 +46,7 @@ export { createConsumptionApi } from "./consumption-apis/runner";
 export {
   ClickHousePrecision,
   ClickHouseDecimal,
+  ClickHouseByteSize,
   ClickHouseInt,
+  LowCardinality,
 } from "./dataModels/types";

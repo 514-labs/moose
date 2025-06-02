@@ -1,5 +1,10 @@
+---
+title: Quickstart
+description: Quickstart for Moose
+---
+
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard } from "@/components";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, Contact } from "@/components";
 import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play } from "lucide-react";
 import { paths } from "@/lib/paths";
 
@@ -40,6 +45,9 @@ import { paths } from "@/lib/paths";
 - **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
 </Callout>
 
+<Callout type="info" title="Already have data in ClickHouse?">
+You can bootstrap a Moose project directly from your existing ClickHouse database instead of starting from scratch. → [Start from ClickHouse](/moose/getting-started/from-clickhouse)
+</Callout>
 
 ## Install Moose
 The easiest way to install Moose is to use the one-liner below:
@@ -419,15 +427,15 @@ Take a deeper dive into core Moose concepts:
 
 <FeatureGrid columns={3}>
 <FeatureCard
-  title="Build Data Models"
-  description="Create your own data streams"
+  title="Define Data Models"
+  description="Learn basics of schema design in Moose"
   href={paths.dataModels}
   Icon={Database}
 />
 <FeatureCard
-  title="Add Views"
-  description="Define custom aggregations"
-  href={paths.materializedViews}
+  title="Streaming Transformations"
+  description="Transform data on the fly"
+  href={paths.streams}
   Icon={Square}
 />
 <FeatureCard 
@@ -458,3 +466,5 @@ host_port = 18123
 </Tabs.Tab>
 </Tabs>
 </ToggleBlock>
+
+<Contact />

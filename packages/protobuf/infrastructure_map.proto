@@ -23,6 +23,10 @@ message InfrastructureMap {
   map<string, SqlResource> sql_resources = 12;
 }
 
+message Metadata {
+  string description = 1;
+}
+
 message Topic {
   optional string version = 1;
   string name = 2;
@@ -31,6 +35,7 @@ message Topic {
   PrimitiveSignature source_primitive = 5;
   optional int32 partition_count = 6;
   optional int32 max_message_bytes = 7;
+  Metadata metadata = 8;
 }
 
 message ApiEndpoint {
@@ -43,11 +48,12 @@ message ApiEndpoint {
   Method method = 5;
   optional string version = 6;
   PrimitiveSignature source_primitive = 7;
+  Metadata metadata = 8;
 }
 
 message IngressDetails {
   string target_topic = 1;
-  EndpointIngestionFormat format = 2;
+  optional EndpointIngestionFormat format = 2 [deprecated = true];
 }
 
 message EgressDetails {
@@ -63,6 +69,7 @@ message ConsumptionQueryParam {
 }
 
 enum EndpointIngestionFormat {
+  option deprecated = true;
   JSON = 0;
   JSON_ARRAY = 1;
 }
@@ -83,6 +90,7 @@ message Table {
 
   bool deduplicate = 6;
   google.protobuf.StringValue engine = 7;
+  Metadata metadata = 8;
 }
 
 message View {
@@ -122,6 +130,7 @@ message FunctionProcess {
   optional string version = 8;
   PrimitiveSignature source_primitive = 9;
   optional int32 parallel_process_count = 10;
+  optional Metadata metadata = 11;
 }
 
 message InitialDataLoad {
@@ -152,6 +161,9 @@ enum SimpleColumnType {
   // otherwise, see DateType where the precision can be specified
   DATETIME = 6;
   DATE = 7;
+  DATE16 = 8;
+  IPV4 = 9;
+  IPV6 = 10;
 
   UUID_TYPE = 13;
   JSON_COLUMN = 14;

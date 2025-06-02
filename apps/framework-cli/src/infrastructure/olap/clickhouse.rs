@@ -44,9 +44,7 @@ use serde::{Deserialize, Serialize};
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
-use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Table,
-};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
 use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::versions::Version;
@@ -61,6 +59,7 @@ pub mod inserter;
 pub mod mapper;
 pub mod model;
 pub mod queries;
+pub mod type_parser;
 
 pub use config::ClickHouseConfig;
 
@@ -404,38 +403,28 @@ async fn execute_run_teardown_sql(
 /// assert_eq!(base_name, "my_table");
 /// assert_eq!(version.to_string(), "1.0.0");
 /// ```
-fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (String, Version) {
+fn extract_version_from_table_name(table_name: &str) -> (String, Option<Version>) {
     debug!("Extracting version from table name: {}", table_name);
-    debug!("Using default version: {}", default_version);
 
     // Special case for empty table name
     if table_name.is_empty() {
-        debug!("Empty table name, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        debug!("Empty table name, no version");
+        return (table_name.to_string(), None);
     }
 
     // Special case for tables ending in _MV (materialized views)
     if table_name.ends_with("_MV") {
-        debug!("Materialized view detected, using default version");
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        debug!("Materialized view detected, skipping version parsing");
+        return (table_name.to_string(), None);
     }
 
     let parts: Vec<&str> = table_name.split('_').collect();
     debug!("Split table name into parts: {:?}", parts);
 
     if parts.len() < 2 {
-        debug!("Table name has fewer than 2 parts, using default version");
+        debug!("Table name has fewer than 2 parts, no version");
         // If table doesn't follow naming convention, return full name and default version
-        return (
-            table_name.to_string(),
-            Version::from_string(default_version.to_string()),
-        );
+        return (table_name.to_string(), None);
     }
 
     // Find the first numeric part - this marks the start of the version
@@ -472,24 +461,18 @@ fn extract_version_from_table_name(table_name: &str, default_version: &str) -> (
 
             // If we have no valid version parts, return the original name and default version
             if version_parts.is_empty() {
-                debug!("No valid version parts found, using default version");
-                return (
-                    table_name.to_string(),
-                    Version::from_string(default_version.to_string()),
-                );
+                debug!("No valid version parts found.");
+                return (table_name.to_string(), None);
             }
 
             let version_str = version_parts.join(".");
             debug!("Created version string: {}", version_str);
 
-            (base_name, Version::from_string(version_str))
+            (base_name, Some(Version::from_string(version_str)))
         }
         None => {
-            debug!("No version parts found, using default version");
-            (
-                table_name.to_string(),
-                Version::from_string(default_version.to_string()),
-            )
+            debug!("No version parts found");
+            (table_name.to_string(), None)
         }
     }
 }
@@ -710,6 +693,12 @@ struct TableDetail {
     pub total_rows: Option<u64>,
 }
 
+pub struct TableWithUnsupportedType {
+    pub name: String,
+    pub col_name: String,
+    pub col_type: String,
+}
+
 #[async_trait::async_trait]
 impl OlapOperations for ConfiguredDBClient {
     /// Retrieves all tables from the ClickHouse database and converts them to framework Table objects
@@ -718,7 +707,8 @@ impl OlapOperations for ConfiguredDBClient {
     /// * `db_name` - The name of the database to list tables from
     ///
     /// # Returns
-    /// * `Result<Vec<Table>, OlapChangesError>` - A list of Table objects on success
+    /// * `Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError>` -
+    /// A list of Table objects and a list of TableWithUnsupportedType on success
     ///
     /// # Details
     /// This implementation:
@@ -737,7 +727,7 @@ impl OlapOperations for ConfiguredDBClient {
         &self,
         db_name: &str,
         project: &Project,
-    ) -> Result<Vec<Table>, OlapChangesError> {
+    ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError> {
         debug!("Starting list_tables operation for database: {}", db_name);
         debug!("Using project version: {}", project.cur_version());
 
@@ -750,7 +740,8 @@ impl OlapOperations for ConfiguredDBClient {
                 create_table_query
             FROM system.tables 
             WHERE database = '{}' 
-            AND engine != 'View'
+            AND engine != 'View' 
+            AND engine != 'MaterializedView'
             AND NOT name LIKE '.%'
             ORDER BY name
             "#,
@@ -768,8 +759,9 @@ impl OlapOperations for ConfiguredDBClient {
             })?;
 
         let mut tables = Vec::new();
+        let mut unsupported_tables = Vec::new();
 
-        while let Some((table_name, engine, create_query)) = cursor
+        'table_loop: while let Some((table_name, engine, create_query)) = cursor
             .next()
             .await
             .map_err(|e| OlapChangesError::DatabaseError(e.to_string()))?
@@ -793,7 +785,7 @@ impl OlapOperations for ConfiguredDBClient {
                 FROM system.columns
                 WHERE database = '{}'
                 AND table = '{}'
-                ORDER BY name
+                ORDER BY position
                 "#,
                 db_name, table_name
             );
@@ -823,13 +815,22 @@ impl OlapOperations for ConfiguredDBClient {
                     col_name, col_type, is_primary, is_sorting
                 );
 
-                // Convert ClickHouse types to framework types
-                let (data_type, is_nullable) = convert_clickhouse_type_to_column_type(&col_type)
-                    .map_err(OlapChangesError::DatabaseError)?;
-                debug!(
-                    "Converted column type: {:?}, nullable: {}",
-                    data_type, is_nullable
-                );
+                let (data_type, is_nullable) =
+                    match type_parser::convert_clickhouse_type_to_column_type(&col_type) {
+                        Ok(pair) => pair,
+                        Err(_) => {
+                            debug!(
+                                "Column type not recognized: {} of field {} in table {}",
+                                col_type, col_name, table_name
+                            );
+                            unsupported_tables.push(TableWithUnsupportedType {
+                                name: table_name,
+                                col_name,
+                                col_type,
+                            });
+                            continue 'table_loop;
+                        }
+                    };
 
                 let column = Column {
                     name: col_name.clone(),
@@ -844,14 +845,10 @@ impl OlapOperations for ConfiguredDBClient {
                 columns.push(column);
             }
 
-            // Sort columns by name for consistent ordering
-            columns.sort_by(|a, b| a.name.cmp(&b.name));
-
             debug!("Found {} columns for table {}", columns.len(), table_name);
 
             // Extract base name and version for source primitive
-            let (base_name, version) =
-                extract_version_from_table_name(&table_name, project.cur_version().as_str());
+            let (base_name, version) = extract_version_from_table_name(&table_name);
 
             // Create source primitive signature using the base name
             let source_primitive = PrimitiveSignature {
@@ -866,8 +863,9 @@ impl OlapOperations for ConfiguredDBClient {
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
                 deduplicate: engine.contains("ReplacingMergeTree"),
                 engine: Some(engine),
-                version: Some(version), // Still store the version for reference
+                version,
                 source_primitive,
+                metadata: None,
             };
             debug!("Created table object: {:?}", table);
 
@@ -878,202 +876,8 @@ impl OlapOperations for ConfiguredDBClient {
             "Completed list_tables operation, found {} tables",
             tables.len()
         );
-        Ok(tables)
+        Ok((tables, unsupported_tables))
     }
-}
-
-/// Converts a ClickHouse column type string to the framework's ColumnType
-///
-/// # Arguments
-/// * `ch_type` - The ClickHouse type string to convert
-///
-/// # Returns
-/// * `Result<(ColumnType, bool), String>` - A tuple containing:
-///   - The converted framework type
-///   - A boolean indicating if the type is nullable (true = nullable)
-///
-/// # Type Mappings
-/// - String -> ColumnType::String
-/// - UInt8/16/32, Int8/16/32 -> ColumnType::Int
-/// - UInt64, Int64 -> ColumnType::BigInt
-/// - Float32/64 -> ColumnType::Float
-/// - Decimal* -> ColumnType::Decimal
-/// - DateTime -> ColumnType::DateTime
-/// - DateTime64(precision) -> ColumnType::DateTime
-/// - DateTime('timezone') -> ColumnType::DateTime
-/// - DateTime64(precision, 'timezone') -> ColumnType::DateTime
-/// - Bool/Boolean -> ColumnType::Boolean
-/// - Array(*) -> ColumnType::Array
-/// - JSON -> ColumnType::Json
-/// - Enum8/16 -> ColumnType::Enum
-/// - Nullable(*) -> (inner_type, true)
-///
-/// # Example
-/// ```rust
-/// let (framework_type, is_nullable) = convert_clickhouse_type_to_column_type("Nullable(Int32)")?;
-/// assert_eq!(framework_type, ColumnType::Int(IntType::Int64));
-/// assert!(is_nullable);
-/// ```
-fn convert_clickhouse_type_to_column_type(ch_type: &str) -> Result<(ColumnType, bool), String> {
-    use regex::Regex;
-
-    // TODO: handle AggregateFunction, we don't know the result type the function
-
-    // Handle Nullable type wrapper
-    if ch_type.starts_with("Nullable(") {
-        let inner_type = ch_type
-            .strip_prefix("Nullable(")
-            .and_then(|s| s.strip_suffix(")"))
-            .ok_or_else(|| format!("Invalid Nullable type format: {}", ch_type))?;
-
-        let (inner_column_type, _) = convert_clickhouse_type_to_column_type(inner_type)?;
-        return Ok((inner_column_type, true));
-    }
-
-    // Handle DateTime types with parameters
-    if ch_type.starts_with("DateTime64(") {
-        let precision = ch_type
-            .strip_prefix("DateTime64(")
-            .unwrap()
-            .split(")")
-            .next()
-            .and_then(|s| s.split(",").next())
-            .and_then(|precision| precision.trim().parse::<u8>().ok())
-            .ok_or_else(|| format!("Invalid DateTime64 precision: {}", ch_type))?;
-        // All DateTime variants map to ColumnType::DateTime
-        // We could store precision and timezone as metadata if needed in the future
-        return Ok((
-            ColumnType::DateTime {
-                precision: Some(precision),
-            },
-            false,
-        ));
-    }
-
-    // Handle DateTime types with parameters
-    if ch_type.starts_with("DateTime") {
-        // All DateTime variants map to ColumnType::DateTime
-        // We could store precision and timezone as metadata if needed in the future
-        return Ok((ColumnType::DateTime { precision: None }, false));
-    }
-
-    // Handle DateTime types with parameters
-    if ch_type == "Date32" {
-        // All DateTime variants map to ColumnType::DateTime
-        // We could store precision and timezone as metadata if needed in the future
-        return Ok((ColumnType::Date, false));
-    }
-    // TODO: this function should call ClickHouseColumnType::from_type_str and not have duplicate logic
-    if ch_type.starts_with("Decimal(") {
-        let precision_and_scale = ch_type
-            .trim_start_matches("Decimal(")
-            .trim_end_matches(')')
-            .split(',')
-            .map(|s| s.trim().parse::<u8>().map_err(|e| e.to_string()))
-            .collect::<Result<Vec<u8>, String>>()?;
-
-        let precision = precision_and_scale.first().copied().unwrap_or(10);
-        let scale = precision_and_scale.get(1).copied().unwrap_or(0);
-
-        return Ok((ColumnType::Decimal { precision, scale }, false));
-    }
-
-    // Handle Enum types first since they contain parentheses which would interfere with the base type extraction
-    if ch_type.starts_with("Enum8(") || ch_type.starts_with("Enum16(") {
-        let enum_content = ch_type
-            .trim_start_matches("Enum8(")
-            .trim_start_matches("Enum16(")
-            .trim_end_matches(')');
-
-        // Return error if enum content is empty
-        if enum_content.trim().is_empty() {
-            return Err(format!("Empty enum definition: {}", ch_type));
-        }
-
-        // Use regex to match enum values, handling potential commas in the names
-        let re = Regex::new(r"'([^']*)'\s*=\s*(\d+)").map_err(|e| e.to_string())?;
-        let values = re
-            .captures_iter(enum_content)
-            .map(|cap| {
-                let name = cap[1].to_string();
-                let value = cap[2].parse::<u8>().map_err(|e| e.to_string())?;
-
-                Ok(EnumMember {
-                    name: name.clone(),
-                    value: EnumValue::Int(value),
-                })
-            })
-            .collect::<Result<Vec<_>, String>>()?;
-
-        // Return error if no valid enum values were found
-        if values.is_empty() {
-            return Err(format!("No valid enum values found in: {}", ch_type));
-        }
-
-        return Ok((
-            ColumnType::Enum(DataEnum {
-                name: "Unknown".to_string(), // The actual enum name will be set elsewhere
-                values,
-            }),
-            false,
-        ));
-    }
-
-    // Remove any parameters from type string for other types
-    let base_type = ch_type.split('(').next().unwrap_or(ch_type);
-
-    let column_type = match base_type {
-        "String" => Ok(ColumnType::String),
-        "Int8" => Ok(ColumnType::Int(IntType::Int8)),
-        "Int16" => Ok(ColumnType::Int(IntType::Int16)),
-        "Int32" => Ok(ColumnType::Int(IntType::Int32)),
-        "Int64" => Ok(ColumnType::Int(IntType::Int64)),
-        "Int128" => Ok(ColumnType::Int(IntType::Int128)),
-        "Int256" => Ok(ColumnType::Int(IntType::Int256)),
-        "UInt8" => Ok(ColumnType::Int(IntType::UInt8)),
-        "UInt16" => Ok(ColumnType::Int(IntType::UInt16)),
-        "UInt32" => Ok(ColumnType::Int(IntType::UInt32)),
-        "UInt64" => Ok(ColumnType::Int(IntType::UInt64)),
-        "UInt128" => Ok(ColumnType::Int(IntType::UInt128)),
-        "UInt256" => Ok(ColumnType::Int(IntType::UInt256)),
-        "Float32" => Ok(ColumnType::Float(FloatType::Float32)),
-        "Float64" => Ok(ColumnType::Float(FloatType::Float64)),
-        "Bool" | "Boolean" => Ok(ColumnType::Boolean),
-        "Array" => {
-            // Extract the inner type from Array(...) format
-            let inner_type = ch_type
-                .strip_prefix("Array(")
-                .and_then(|s| s.strip_suffix(")"))
-                .ok_or_else(|| format!("Invalid Array type format: {}", ch_type))?;
-
-            // Check if inner type is Nullable
-            if inner_type.starts_with("Nullable(") {
-                let nullable_inner = inner_type
-                    .strip_prefix("Nullable(")
-                    .and_then(|s| s.strip_suffix(")"))
-                    .ok_or_else(|| format!("Invalid Nullable type format: {}", inner_type))?;
-
-                let (inner_column_type, _) =
-                    convert_clickhouse_type_to_column_type(nullable_inner)?;
-                Ok(ColumnType::Array {
-                    element_type: Box::new(inner_column_type),
-                    element_nullable: true, // Mark elements as nullable
-                })
-            } else {
-                // Regular non-nullable array elements
-                let (inner_column_type, _) = convert_clickhouse_type_to_column_type(inner_type)?;
-                Ok(ColumnType::Array {
-                    element_type: Box::new(inner_column_type),
-                    element_nullable: false,
-                })
-            }
-        }
-        "JSON" => Ok(ColumnType::Json),
-        "UUID" => Ok(ColumnType::Uuid),
-        _ => Err(format!("Unsupported ClickHouse type: {}", ch_type)),
-    }?;
-
-    Ok((column_type, false))
 }
 
 /// Extracts ORDER BY columns from a CREATE TABLE query
@@ -1139,231 +943,80 @@ fn extract_order_by_from_create_query(create_query: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{ColumnType, EnumValue};
-
-    #[test]
-    fn test_datetime_type_conversion() {
-        // Test basic DateTime
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("DateTime"),
-            Ok((ColumnType::DateTime { precision: None }, false))
-        );
-
-        // Test DateTime64 with precision
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("DateTime64(3)"),
-            Ok((ColumnType::DateTime { precision: Some(3) }, false))
-        );
-
-        // Test DateTime with timezone
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("DateTime('UTC')"),
-            Ok((ColumnType::DateTime { precision: None }, false))
-        );
-
-        // Test DateTime64 with precision and timezone
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("DateTime64(6, 'America/New_York')"),
-            Ok((ColumnType::DateTime { precision: Some(6) }, false))
-        );
-    }
-
-    #[test]
-    fn test_enum_type_conversion() {
-        // Test Enum8
-        let enum8_type = "Enum8('RED' = 1, 'GREEN' = 2, 'BLUE' = 3)";
-        let result = convert_clickhouse_type_to_column_type(enum8_type).unwrap();
-
-        match result {
-            (ColumnType::Enum(data_enum), false) => {
-                assert_eq!(data_enum.values.len(), 3);
-                assert_eq!(data_enum.values[0].name, "RED");
-                assert_eq!(data_enum.values[0].value, EnumValue::Int(1));
-                assert_eq!(data_enum.values[1].name, "GREEN");
-                assert_eq!(data_enum.values[1].value, EnumValue::Int(2));
-                assert_eq!(data_enum.values[2].name, "BLUE");
-                assert_eq!(data_enum.values[2].value, EnumValue::Int(3));
-            }
-            _ => panic!("Expected Enum type"),
-        }
-
-        // Test Enum16
-        let enum16_type = "Enum16('PENDING' = 0, 'ACTIVE' = 1, 'INACTIVE' = 2)";
-        let result = convert_clickhouse_type_to_column_type(enum16_type).unwrap();
-
-        match result {
-            (ColumnType::Enum(data_enum), false) => {
-                assert_eq!(data_enum.values.len(), 3);
-                assert_eq!(data_enum.values[0].name, "PENDING");
-                assert_eq!(data_enum.values[0].value, EnumValue::Int(0));
-                assert_eq!(data_enum.values[1].name, "ACTIVE");
-                assert_eq!(data_enum.values[1].value, EnumValue::Int(1));
-                assert_eq!(data_enum.values[2].name, "INACTIVE");
-                assert_eq!(data_enum.values[2].value, EnumValue::Int(2));
-            }
-            _ => panic!("Expected Enum type"),
-        }
-
-        // Test enum with spaces and special characters in names
-        let complex_enum = "Enum8('NOT FOUND' = 1, 'BAD_REQUEST' = 2, 'SERVER ERROR!' = 3)";
-        let result = convert_clickhouse_type_to_column_type(complex_enum).unwrap();
-
-        match result {
-            (ColumnType::Enum(data_enum), false) => {
-                assert_eq!(data_enum.values.len(), 3);
-                assert_eq!(data_enum.values[0].name, "NOT FOUND");
-                assert_eq!(data_enum.values[1].name, "BAD_REQUEST");
-                assert_eq!(data_enum.values[2].name, "SERVER ERROR!");
-            }
-            _ => panic!("Expected Enum type"),
-        }
-    }
-
-    #[test]
-    fn test_nullable_type_conversion() {
-        // Test basic nullable types
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("Nullable(Int32)"),
-            Ok((ColumnType::Int(IntType::Int32), true))
-        );
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("Nullable(String)"),
-            Ok((ColumnType::String, true))
-        );
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("Nullable(Float64)"),
-            Ok((ColumnType::Float(FloatType::Float64), true))
-        );
-
-        // Test nullable datetime
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("Nullable(DateTime)"),
-            Ok((ColumnType::DateTime { precision: None }, true))
-        );
-        assert_eq!(
-            convert_clickhouse_type_to_column_type("Nullable(DateTime64(3))"),
-            Ok((ColumnType::DateTime { precision: Some(3) }, true))
-        );
-
-        // Test nullable array
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Nullable(Array(Int32))").unwrap();
-        assert!(is_nullable);
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
-                assert!(!element_nullable);
-            }
-            _ => panic!("Expected Array type"),
-        }
-
-        // Test nullable enum
-        let enum_type = "Nullable(Enum8('RED' = 1, 'GREEN' = 2, 'BLUE' = 3))";
-        let (column_type, is_nullable) = convert_clickhouse_type_to_column_type(enum_type).unwrap();
-        assert!(is_nullable);
-        match column_type {
-            ColumnType::Enum(data_enum) => {
-                assert_eq!(data_enum.values.len(), 3);
-                assert_eq!(data_enum.values[0].name, "RED");
-                assert_eq!(data_enum.values[0].value, EnumValue::Int(1));
-            }
-            _ => panic!("Expected Enum type"),
-        }
-
-        // Test Array of Nullable types
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Array(Nullable(Int32))").unwrap();
-        assert!(!is_nullable); // Array itself is not nullable
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
-                assert!(element_nullable); // Elements are nullable
-            }
-            _ => panic!("Expected Array type"),
-        }
-    }
 
     #[test]
     fn test_extract_version_from_table_name() {
         // Test two-part versions
-        let (base_name, version) = extract_version_from_table_name("Bar_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar_0_0");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Foo_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo_0_0");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
         // Test three-part versions
-        let (base_name, version) = extract_version_from_table_name("Bar_0_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar_0_0_0");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "0.0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Foo_1_2_3", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo_1_2_3");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "1.2.3");
+        assert_eq!(version.unwrap().to_string(), "1.2.3");
 
         // Test table names with underscores
-        let (base_name, version) = extract_version_from_table_name("My_Table_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("My_Table_0_0");
         assert_eq!(base_name, "My_Table");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) =
-            extract_version_from_table_name("Complex_Table_Name_1_0_0", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("Complex_Table_Name_1_0_0");
         assert_eq!(base_name, "Complex_Table_Name");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.unwrap().to_string(), "1.0.0");
 
         // Test invalid formats - should use default version
-        let (base_name, version) = extract_version_from_table_name("TableWithoutVersion", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("TableWithoutVersion");
         assert_eq!(base_name, "TableWithoutVersion");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) =
-            extract_version_from_table_name("Table_WithoutNumericVersion", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table_WithoutNumericVersion");
         assert_eq!(base_name, "Table_WithoutNumericVersion");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
         // Test edge cases
-        let (base_name, version) = extract_version_from_table_name("", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("");
         assert_eq!(base_name, "");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) = extract_version_from_table_name("_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("_0_0");
         assert_eq!(base_name, "");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("Table_0_0_", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table_0_0_");
         assert_eq!(base_name, "Table");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
         // Test mixed numeric and non-numeric parts
-        let (base_name, version) = extract_version_from_table_name("Table2_0_0", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Table2_0_0");
         assert_eq!(base_name, "Table2");
-        assert_eq!(version.to_string(), "0.0");
+        assert_eq!(version.unwrap().to_string(), "0.0");
 
-        let (base_name, version) = extract_version_from_table_name("V2_Table_1_0_0", "0.0.0");
+        let (base_name, version) = extract_version_from_table_name("V2_Table_1_0_0");
         assert_eq!(base_name, "V2_Table");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.unwrap().to_string(), "1.0.0");
 
         // Test materialized views
-        let (base_name, version) = extract_version_from_table_name("BarAggregated_MV", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("BarAggregated_MV");
         assert_eq!(base_name, "BarAggregated_MV");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
         // Test non-versioned tables
-        let (base_name, version) = extract_version_from_table_name("Foo", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Foo");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
 
-        let (base_name, version) = extract_version_from_table_name("Bar", "1.0.0");
+        let (base_name, version) = extract_version_from_table_name("Bar");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.to_string(), "1.0.0");
+        assert_eq!(version.is_none(), true);
     }
 
     #[test]
@@ -1456,109 +1109,5 @@ mod tests {
         let query = "CREATE TABLE test (`PRIMARY KEY` Int64) ENGINE = MergeTree() ORDER BY (`id`)";
         let order_by = extract_order_by_from_create_query(query);
         assert_eq!(order_by, vec!["id".to_string()]);
-    }
-
-    #[test]
-    fn test_convert_clickhouse_type_error_handling() {
-        // Test invalid Nullable format
-        assert!(convert_clickhouse_type_to_column_type("Nullable").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Nullable()").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Nullable(").is_err());
-
-        // Test invalid Array format
-        assert!(convert_clickhouse_type_to_column_type("Array").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Array()").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Array(").is_err());
-
-        // Test invalid Enum format
-        assert!(convert_clickhouse_type_to_column_type("Enum8").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Enum8()").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Enum8(").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Enum8('RED' = )").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Enum8('RED' = x)").is_err());
-
-        // Test unsupported types
-        assert!(convert_clickhouse_type_to_column_type("IPv4").is_err());
-        assert!(convert_clickhouse_type_to_column_type("IPv6").is_err());
-
-        // Test nested type combinations
-        assert!(convert_clickhouse_type_to_column_type("Array(Nullable())").is_err());
-        assert!(convert_clickhouse_type_to_column_type("Nullable(Array())").is_err());
-    }
-
-    #[test]
-    fn test_complex_type_combinations() {
-        // Test Array of Nullable types
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Array(Nullable(Int32))").unwrap();
-        assert!(!is_nullable); // Array itself is not nullable
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
-                assert!(element_nullable); // Elements are nullable
-            }
-            _ => panic!("Expected Array type"),
-        }
-
-        // Test Nullable Array of Nullable types
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Nullable(Array(Nullable(Int32)))").unwrap();
-        assert!(is_nullable); // Array itself is nullable
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                assert_eq!(*element_type, ColumnType::Int(IntType::Int32));
-                assert!(element_nullable); // Elements are nullable
-            }
-            _ => panic!("Expected Array type"),
-        }
-
-        // Test Array of Enums
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Array(Enum8('RED' = 1, 'GREEN' = 2))").unwrap();
-        assert!(!is_nullable);
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                match *element_type {
-                    ColumnType::Enum(data_enum) => {
-                        assert_eq!(data_enum.values.len(), 2);
-                        assert_eq!(data_enum.values[0].name, "RED");
-                        assert_eq!(data_enum.values[0].value, EnumValue::Int(1));
-                    }
-                    _ => panic!("Expected Enum type"),
-                }
-                assert!(!element_nullable);
-            }
-            _ => panic!("Expected Array type"),
-        }
-
-        // Test Nullable Array of Enums
-        let (array_type, is_nullable) =
-            convert_clickhouse_type_to_column_type("Nullable(Array(Enum8('RED' = 1)))").unwrap();
-        assert!(is_nullable);
-        match array_type {
-            ColumnType::Array {
-                element_type,
-                element_nullable,
-            } => {
-                match *element_type {
-                    ColumnType::Enum(data_enum) => {
-                        assert_eq!(data_enum.values.len(), 1);
-                        assert_eq!(data_enum.values[0].name, "RED");
-                    }
-                    _ => panic!("Expected Enum type"),
-                }
-                assert!(!element_nullable);
-            }
-            _ => panic!("Expected Array type"),
-        }
     }
 }

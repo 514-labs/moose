@@ -30,6 +30,11 @@ export default render({
     title: "Templates",
     href: "/templates",
   },
+  "release-notes": {
+    type: "page",
+    title: "Release Notes",
+    href: "/release-notes",
+  },
   "usage-data": {
     display: "hidden",
   },

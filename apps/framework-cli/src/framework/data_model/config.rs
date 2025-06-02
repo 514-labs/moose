@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use crate::framework::core::infrastructure::table::Metadata;
 use crate::framework::python::datamodel_config::execute_python_model_file_for_config;
 use crate::framework::typescript::export_collectors::get_data_model_configs;
 use crate::utilities::_true;
@@ -8,43 +9,11 @@ use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
-use std::fmt::{Display, Formatter};
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum EndpointIngestionFormat {
-    #[serde(alias = "JSON", alias = "json")]
-    Json,
-    #[serde(alias = "JSON_ARRAY", alias = "jsonArray")]
-    JsonArray,
-}
-
-impl Display for EndpointIngestionFormat {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                EndpointIngestionFormat::Json => "JSON",
-                EndpointIngestionFormat::JsonArray => "JSON_ARRAY",
-            }
-        )
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub struct IngestionConfig {
-    pub format: EndpointIngestionFormat,
-}
-
-impl Default for IngestionConfig {
-    fn default() -> Self {
-        Self {
-            format: EndpointIngestionFormat::Json,
-        }
-    }
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash, Default)]
+pub struct IngestionConfig {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct StorageConfig {
@@ -77,6 +46,8 @@ pub struct DataModelConfig {
     pub storage: StorageConfig,
     #[serde(default = "default_parallelism")]
     pub parallelism: usize,
+    #[serde(default)]
+    pub metadata: Option<Metadata>,
 }
 
 impl Default for DataModelConfig {
@@ -85,6 +56,7 @@ impl Default for DataModelConfig {
             ingestion: IngestionConfig::default(),
             storage: StorageConfig::default(),
             parallelism: default_parallelism(),
+            metadata: None,
         }
     }
 }

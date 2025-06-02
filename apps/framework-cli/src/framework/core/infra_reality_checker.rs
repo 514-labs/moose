@@ -23,10 +23,9 @@ use crate::{
     project::Project,
 };
 use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-
-use super::plan::PlanningError;
 
 /// Represents errors that can occur during infrastructure reality checking.
 #[derive(Debug, Error)]
@@ -43,17 +42,13 @@ pub enum RealityCheckError {
     /// Error occurred while loading the infrastructure map
     #[error("Failed to load infrastructure map: {0}")]
     InfraMapLoad(#[from] anyhow::Error),
-
-    /// Error occurred while planning changes
-    #[error("Failed to plan changes: {0}")]
-    PlanningError(#[from] PlanningError),
 }
 
 /// Represents discrepancies found between actual infrastructure and documented map.
 /// This struct holds information about tables that exist in reality but not in the map,
 /// tables that are in the map but don't exist in reality, and tables that exist in both
 /// but have structural differences.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InfraDiscrepancies {
     /// Tables that exist in reality but are not in the map
     pub unmapped_tables: Vec<Table>,
@@ -114,7 +109,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
 
         // Get actual tables from OLAP database
         debug!("Fetching actual tables from OLAP database");
-        let actual_tables = self
+        let (actual_tables, _) = self
             .olap_client
             .list_tables(&project.clickhouse_config.db_name, project)
             .await?;
@@ -134,8 +129,8 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
 
         // Create maps for easier comparison
         let actual_table_map: HashMap<_, _> = actual_tables
-            .iter()
-            .map(|t| (t.name.clone(), t.clone()))
+            .into_iter()
+            .map(|t| (t.name.clone(), t))
             .collect();
         debug!("Actual table names: {:?}", actual_table_map.keys());
 
@@ -238,6 +233,7 @@ mod tests {
         PrimitiveSignature, PrimitiveTypes, TableChange,
     };
     use crate::framework::versions::Version;
+    use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use async_trait::async_trait;
 
     // Mock OLAP client for testing
@@ -251,8 +247,8 @@ mod tests {
             &self,
             _db_name: &str,
             _project: &Project,
-        ) -> Result<Vec<Table>, OlapChangesError> {
-            Ok(self.tables.clone())
+        ) -> Result<(Vec<Table>, Vec<TableWithUnsupportedType>), OlapChangesError> {
+            Ok((self.tables.clone(), vec![]))
         }
     }
 
@@ -307,6 +303,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 

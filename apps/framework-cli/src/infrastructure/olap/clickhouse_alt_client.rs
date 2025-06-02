@@ -225,7 +225,10 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::Decimal { .. }
         | ClickHouseColumnType::DateTime
         | ClickHouseColumnType::Date32
+        | ClickHouseColumnType::Date
         | ClickHouseColumnType::DateTime64 { .. }
+        | ClickHouseColumnType::IpV4
+        | ClickHouseColumnType::IpV6
         | ClickHouseColumnType::Json
         | ClickHouseColumnType::Uuid
         | ClickHouseColumnType::AggregateFunction { .. }
@@ -249,6 +252,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
             ),
         }),
         ClickHouseColumnType::Nullable(inner) => column_type_to_enum_mapping(inner),
+        ClickHouseColumnType::LowCardinality(inner) => column_type_to_enum_mapping(inner),
     }
 }
 

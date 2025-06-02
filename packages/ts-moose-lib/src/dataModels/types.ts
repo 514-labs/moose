@@ -12,6 +12,14 @@ export type ClickHouseDecimal<P extends number, S extends number> = {
   _clickhouse_scale?: S;
 } & Pattern<typeof DecimalRegex>;
 
+export type ClickHouseByteSize<N extends number> = {
+  _clickhouse_byte_size?: N;
+};
+
+export type LowCardinality = {
+  _LowCardinality?: true;
+};
+
 export type ClickHouseInt<
   Value extends
     | "int8"
@@ -26,21 +34,17 @@ export type ClickHouseInt<
     | "uint64",
   // | "uint128"
   // | "uint256",
-> = Value extends "int32" | "int64" | "uint32" | "uint64"
-  ? tags.Type<Value>
+> =
+  Value extends "int32" | "int64" | "uint32" | "uint64" ? tags.Type<Value>
   : TagBase<{
       target: "number";
       kind: "type";
       value: Value;
-      validate: Value extends "int8"
-        ? "-128 <= $input && $input <= 127"
-        : Value extends "int16"
-          ? "-32768 <= $input && $input <= 32767"
-          : Value extends "uint8"
-            ? "0 <= $input && $input <= 255"
-            : Value extends "uint16"
-              ? "0 <= $input && $input <= 65535"
-              : never;
+      validate: Value extends "int8" ? "-128 <= $input && $input <= 127"
+      : Value extends "int16" ? "-32768 <= $input && $input <= 32767"
+      : Value extends "uint8" ? "0 <= $input && $input <= 255"
+      : Value extends "uint16" ? "0 <= $input && $input <= 65535"
+      : never;
       exclusive: true;
       schema: {
         type: "integer";

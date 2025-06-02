@@ -1,3 +1,8 @@
+---
+title: Data Modeling
+description: Data Modeling for Moose
+---
+
 import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid, CheckmarkBullets, BulletPointsCard } from "@/components";
 import { FileTree, Tabs } from "nextra/components";
 import { paths } from "@/lib/paths";
@@ -68,9 +73,9 @@ class MyFirstDataModel(BaseModel):
 
 # 2. YOU control which infrastructure to create (HOW to handle your data)
 my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", IngestPipelineConfig(
-    ingest=True,  // Create API endpoint
-    stream=True,  // Create stream topic
-    table=True    // Create database table
+    ingest=True,  # Create API endpoint
+    stream=True,  # Create stream topic
+    table=True    # Create database table
 ))
 ```
 </Python>
@@ -97,6 +102,8 @@ my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", Ingest
 <TypeScript>
 ```ts filename="app/datamodels/BasicDataModel.ts" copy
 import { Key } from "@514labs/moose-lib";
+import { tags } from "typia";
+import { ClickHouseDecimal, ClickHousePrecision, LowCardinality } from "@514labs/moose-lib";
 
 export interface BasicDataModel {
   // Required: Primary key for your data model
@@ -106,17 +113,30 @@ export interface BasicDataModel {
 
   // Common types
   someString: string;         // Text
-  someNumber: number;         // Numbers
+  someNumber: number;         // Numbers (Float64 by default)
   someBoolean: boolean;       // Boolean
-  someDate: Date;             // Timestamps
+  someDate: Date;             // Timestamps (DateTime)
   someArray: string[];        // Arrays
-  someObject: object;         // Objects
-  someInteger: number & tags.Type<"int64">; // Integer type possible with specific tags
-  
+  someJsonObject: Record<string, any>;        // JSON object 
+
+  // Explicit integer types
+  intField: number & tags.Type<"int64">;   // Int64
+  uintField: number & tags.Type<"uint32">; // UInt32
+
+  // Decimal with precision/scale
+  price: ClickHouseDecimal<10, 2>;         // Decimal(10,2)
+
+  // DateTime64 with precision
+  eventTime: Date & ClickHousePrecision<6>; // DateTime64(6)
+
+  // UUID
+  userId: string & tags.Type<"uuid">;      // UUID
+
   // Nullable fields
   nullableField?: string;  // Optional field
-  nullableField2?: string | null;  // Union type
 
+  // LowCardinality
+  lowCardinalityField: string & LowCardinality; // LowCardinality(String)
 }
 ```
 </TypeScript>
@@ -125,10 +145,12 @@ export interface BasicDataModel {
 You use Pydantic to define your schemas:
 
 ```python filename="app/datamodels/BasicDataModel.py"
-from moose_lib import Key
-from datetime import datetime
-from typing import List, Optional
+from moose_lib import Key, clickhouse_decimal, clickhouse_datetime64
+from datetime import datetime, date
+from typing import List, Optional, Any, Annotated
+from uuid import UUID
 from pydantic import BaseModel, Field
+from decimal import Decimal
 
 class BasicDataModel(BaseModel):
     # Required: Primary key for your data model
@@ -138,13 +160,30 @@ class BasicDataModel(BaseModel):
     
     # Common types
     some_string: str             # Text
-    some_number: int             # Numbers
+    some_number: int             # Numbers (Int64 by default)
     some_boolean: bool           # Boolean
-    some_date: datetime          # Timestamps
+    some_date: datetime          # Timestamps (DateTime)
     some_array: List[str]        # Arrays
-    
+    some_json_object: Any        # JSON object
+
+    # Explicit integer types
+    small_int: Annotated[int, "int16"]   # Int16
+    big_uint: Annotated[int, "uint64"]   # UInt64
+
+    # Decimal with precision/scale
+    price: clickhouse_decimal(10, 2)     # Decimal(10,2)
+
+    # DateTime64 with precision
+    event_time: clickhouse_datetime64(6) # DateTime64(6)
+
+    # UUID
+    user_id: UUID                        # UUID
+
     # Optional fields
     optional_field: Optional[str] = None  # May not be present in all records
+
+    # LowCardinality
+    low_cardinality_field: Annotated[str, "LowCardinality"]
 ```
 </Python>
 
@@ -241,12 +280,18 @@ class Order(BaseModel):
 |------------|------------|-------------|
 | `string` | String | Text values |
 | `number` | Float64 | Numeric values |
-| `number & tags.Type<"int64">` | Int64 | Integer values |
+| `number & tags.Type<"int64">` | Int64 | 64-bit integer |
+| `number & tags.Type<"uint32">` | UInt32 | 32-bit unsigned integer |
 | `boolean` | Boolean | True/false values |
 | `Date` | DateTime | Timestamp values |
+| `Date & ClickHousePrecision<P>` | DateTime64(P) | Timestamp with precision |
+| `ClickHouseDecimal<P, S>` | Decimal(P, S) | Decimal with precision/scale |
+| `string & tags.Type<"uuid">` | UUID | Universally unique identifier |
 | `Array` | Array | Lists of values |
 | `object` | Nested | Nested structures |
 | `Enum` | Enum | Enumerated values |
+| `any` | JSON | JSON object (discouraged, see below) |
+| `Optional<T>` | Nullable | Optional/nullable fields |
 </TypeScript>
 
 <Python>
@@ -254,31 +299,41 @@ class Order(BaseModel):
 |--------|------------|-------------|
 | `str` | String | Text values |
 | `int` | Int64 | Integer values |
+| `Annotated[int, "int16"]` | Int16 | 16-bit integer |
+| `Annotated[int, "uint64"]` | UInt64 | 64-bit unsigned integer |
 | `float` | Float64 | Decimal values |
+| `Decimal` | Decimal | Arbitrary-precision decimal |
+| `clickhouse_decimal(p, s)` | Decimal(p, s) | Decimal with precision/scale |
 | `bool` | Boolean | True/false values |
 | `datetime` | DateTime | Timestamp values |
+| `clickhouse_datetime64(p)` | DateTime64(p) | Timestamp with precision |
+| `date` | Date | Date values |
 | `List[T]` | Array | Lists of values |
+| `UUID` | UUID | Universally unique identifier |
+| `Any` | JSON | Any value, use with caution |
 | `Enum` | Enum | Enumerated values |
 | `Optional[T]` | Nullable | Values may be present or not |
-| `Any` | JSON | Any value, use with caution |
-
+| Nested Pydantic | Nested | Nested structures |
 </Python>
 
 ### Data Modeling Dos and Don'ts
 
 <TypeScript>
-Do not use `any` or `unknown` types:
+Do not use `unknown` types for flexible fields (prefer explicit types or `any` for JSON):
 ```ts filename="app/datamodels/AnyFields.ts" copy
 interface BadDataModel {
   unknownField: unknown;
-  // or
-  anyField: any;
+}
+```
+```
+// DO -> Use a specific type or a JSON type if truly needed
+interface GoodDataModel {
+  jsonField: any; // Only if you need to store arbitrary JSON
 }
 ```
 </TypeScript>
 
-
-Do not use union types for flexible fields:
+Do not use union types for flexible or nullable fields:
 
 <TypeScript>
 ```ts filename="app/datamodels/FlexibleFields.ts"
@@ -293,25 +348,7 @@ interface GoodDataModel {
   conditionalNumber?: number; // Optional field
 }
 ```
-</TypeScript>
-
-<Python>
-```python filename="app/datamodels/FlexibleFields.py"
-
-# DO NOT -> Use union types for flexible fields
-class BadDataModel(BaseModel):
-    flexible_field: Union[str, int]
-
-# DO -> Use Any type for flexible fields
-class FlexibleDataModel(BaseModel):
-    flexible_field: Any ## Maps to JSON type in ClickHouse
-```
-</Python>
-
-Do not use union types for nullable fields:
-
-<TypeScript>
-```typescript filename="app/datamodels/NullableFields.ts"
+```ts filename="app/datamodels/NullableFields.ts"
 // DO NOT -> Use union types for nullable fields
 interface BadDataModel {
   nullableField: string | null;
@@ -325,8 +362,16 @@ interface GoodDataModel {
 </TypeScript>
 
 <Python>
-```python filename="app/datamodels/NullableFields.py"
+```python filename="app/datamodels/FlexibleFields.py"
+# DO NOT -> Use union types for flexible fields
+class BadDataModel(BaseModel):
+    flexible_field: Union[str, int]
 
+# DO -> Use Any type for flexible fields
+class FlexibleDataModel(BaseModel):
+    flexible_field: Any # Maps to JSON type in ClickHouse
+```
+```python filename="app/datamodels/NullableFields.py"
 # DO NOT -> Use union types for nullable fields
 class BadDataModel(BaseModel):
     nullable_field: Union[str, None]
@@ -335,20 +380,15 @@ class BadDataModel(BaseModel):
 class GoodDataModel(BaseModel):
     nullable_field: Optional[str]
 ```
-</Python>
-
-<Python>
-Do not use `dict` types:
 ```python filename="app/datamodels/DictFields.py"
-
-# DO NOT -> Use dict types
+# DO NOT -> Use dict types for nested fields
 class BadDataModel(BaseModel):
-    dict_field: Dict[str, Any]
+    dict_field: dict[str, Any]
 
 class NestedObject(BaseModel):
     nested_field: str
 
-# DO -> Use Nested type
+# DO -> Use Nested type (Pydantic model)
 class GoodDataModel(BaseModel):
     dict_field: NestedObject
 ```
@@ -552,7 +592,7 @@ Validation at runtime takes place at the following points:
     description="Learn how to process, transform, and manage data streams in real-time."
   />
   <FeatureCard
-    href={paths.olapTable}
+    href={paths.olapTables}
     title="Working with Tables"
     description="Discover how to optimize storage, querying, and analytics with OLAP tables."
   />

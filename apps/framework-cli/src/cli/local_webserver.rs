@@ -34,7 +34,6 @@ use crate::framework::versions::Version;
 use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
-use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::kafka;
 use crate::infrastructure::stream::kafka::models::ConfiguredProducer;
 
@@ -58,10 +57,8 @@ use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::{debug, log, trace};
 use log::{error, info, warn};
 use rdkafka::error::KafkaError;
-use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
 use rdkafka::producer::{DeliveryFuture, FutureRecord};
-use rdkafka::util::Timeout;
 use reqwest::Client;
 use serde::Serialize;
 use serde::{Deserialize, Deserializer};
@@ -84,7 +81,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use std::time::Instant;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -114,8 +110,6 @@ fn default_management_port() -> u16 {
 pub struct RouteMeta {
     /// The Kafka topic name associated with this route
     pub kafka_topic_name: String,
-    /// The format of data ingestion (JSON, CSV, etc.)
-    pub format: EndpointIngestionFormat,
     /// The data model associated with this route
     pub data_model: DataModel,
     /// The version of the the api
@@ -246,10 +240,10 @@ async fn get_consumption_api_res(
     let returned_response = Response::builder()
         .status(status)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Method", "GET, POST")
+        .header("Access-Control-Allow-Methods", "GET, POST")
         .header(
             "Access-Control-Allow-Headers",
-            "Authorization, Content-Type, sentry-trace, baggage",
+            "Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate",
         )
         .header("Content-Type", "application/json")
         .body(Full::new(body))
@@ -332,10 +326,10 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         .header(
             "Access-Control-Allow-Headers",
-            "Authorization, Content-Type, Baggage, Sentry-Trace",
+            "Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate",
         )
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
@@ -415,25 +409,10 @@ async fn admin_reality_check_route(
     redis_client: &Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
-    let bearer_token = auth_header
-        .and_then(|header_value| header_value.to_str().ok())
-        .and_then(|header_str| header_str.strip_prefix("Bearer "));
 
-    // Check API key authentication
-    if let Some(key) = admin_api_key.as_ref() {
-        if !validate_token(bearer_token, key).await {
-            return Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body(Full::new(Bytes::from(
-                    "Unauthorized: Invalid or missing token",
-                )));
-        }
-    } else {
-        return Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(Full::new(Bytes::from(
-                "Unauthorized: Admin API key not configured",
-            )));
+    // Validate authentication
+    if let Err(e) = validate_admin_auth(auth_header, admin_api_key).await {
+        return e.to_response();
     }
 
     // Create OLAP client and reality checker
@@ -461,11 +440,7 @@ async fn admin_reality_check_route(
         Ok(discrepancies) => {
             let response = serde_json::json!({
                 "status": "success",
-                "discrepancies": {
-                    "unmapped_tables": discrepancies.unmapped_tables,
-                    "missing_tables": discrepancies.missing_tables,
-                    "mismatched_tables": discrepancies.mismatched_tables,
-                }
+                "discrepancies": discrepancies
             });
 
             Ok(Response::builder()
@@ -493,7 +468,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
             };
             show_message!(cli_message.message_type, message);
         }
-        Err(e) => println!("Received unkn message: {:?}", e),
+        Err(e) => println!("Received unknown message: {:?}", e),
     }
 
     Response::builder()
@@ -618,63 +593,8 @@ fn route_not_found_response() -> hyper::http::Result<Response<Full<Bytes>>> {
         .body(Full::new(Bytes::from("no match")))
 }
 
-async fn send_payload_to_topic(
-    configured_producer: &ConfiguredProducer,
-    topic_name: &str,
-    payload: Vec<u8>,
-) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
-    debug!("Sending payload {:?} to topic: {}", payload, topic_name);
-
-    configured_producer
-        .producer
-        .send(
-            FutureRecord::to(topic_name)
-                .key(topic_name) // This should probably be generated by the client that pushes data to the API
-                .payload(payload.as_slice()),
-            Timeout::After(Duration::from_secs(1)),
-        )
-        .await
-}
-
 async fn to_reader(req: Request<Incoming>) -> bytes::buf::Reader<impl Buf + Sized> {
     req.collect().await.unwrap().aggregate().reader()
-}
-
-async fn handle_json_req(
-    configured_producer: &ConfiguredProducer,
-    topic_name: &str,
-    data_model: &DataModel,
-    req: Request<Incoming>,
-    jwt_config: &Option<JwtConfig>,
-) -> Response<Full<Bytes>> {
-    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
-    let jwt_claims = get_claims(auth_header, jwt_config);
-
-    // TODO probably a refactor to be done here with the array json but it doesn't seem to be
-    // straightforward to do it in a generic way.
-    let body = to_reader(req).await;
-
-    let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(
-        &data_model.columns,
-        jwt_claims.as_ref(),
-    ));
-
-    // TODO add check that the payload has the proper schema
-
-    if let Err(e) = parsed {
-        return bad_json_response(e);
-    }
-
-    let res = send_payload_to_topic(configured_producer, topic_name, parsed.ok().unwrap()).await;
-    if let Err((kafka_error, _)) = res {
-        debug!(
-            "Failed to deliver message to {} with error: {}",
-            topic_name, kafka_error
-        );
-        return internal_server_error_response();
-    }
-
-    success_response(&data_model.name)
 }
 
 async fn wait_for_batch_complete(
@@ -704,7 +624,7 @@ async fn handle_json_array_body(
 
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
-    let number_of_bytes = req.body().size_hint().exact().unwrap();
+    let number_of_bytes = req.body().size_hint().exact().unwrap_or(0);
     let body = to_reader(req).await;
 
     debug!(
@@ -837,24 +757,14 @@ async fn ingest_route(
         .find(|(k, _)| k.to_str().unwrap_or("").to_lowercase().eq(&route_str));
 
     match matching_route {
-        Some((_, route_meta)) => match route_meta.format {
-            EndpointIngestionFormat::Json => Ok(handle_json_req(
-                &configured_producer,
-                &route_meta.kafka_topic_name,
-                &route_meta.data_model,
-                req,
-                &jwt_config,
-            )
-            .await),
-            EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
-                &configured_producer,
-                &route_meta.kafka_topic_name,
-                &route_meta.data_model,
-                req,
-                &jwt_config,
-            )
-            .await),
-        },
+        Some((_, route_meta)) => Ok(handle_json_array_body(
+            &configured_producer,
+            &route_meta.kafka_topic_name,
+            &route_meta.data_model,
+            req,
+            &jwt_config,
+        )
+        .await),
         None => {
             if !is_prod {
                 println!(
@@ -1136,6 +1046,7 @@ async fn management_router<I: InfraMapProvider>(
             Ok(metrics_log_route(req, metrics.clone()).await)
         }
         (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
+        // TODO: changes from admin/integrate-changes should apply here
         (&hyper::Method::GET, "infra-map") => {
             let accept_header = req
                 .headers()
@@ -1233,7 +1144,6 @@ impl Webserver {
                             APIType::INGRESS {
                                 target_topic_id,
                                 data_model,
-                                format,
                             } => {
                                 // This is not namespaced
                                 let topic =
@@ -1248,7 +1158,6 @@ impl Webserver {
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
-                                        format,
                                         data_model: data_model.unwrap(),
                                         kafka_topic_name: kafka_topic.name,
                                         version: api_endpoint.version,
@@ -1282,7 +1191,6 @@ impl Webserver {
                             APIType::INGRESS {
                                 target_topic_id,
                                 data_model,
-                                format,
                             } => {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
@@ -1297,7 +1205,6 @@ impl Webserver {
                                 route_table.insert(
                                     after.path.clone(),
                                     RouteMeta {
-                                        format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
                                         kafka_topic_name: kafka_topic.name,
                                         version: after.version,
@@ -1603,9 +1510,9 @@ async fn shutdown(
     std::process::exit(0);
 }
 
-#[derive(Debug, Deserialize)]
-struct IntegrateChangesRequest {
-    tables: Vec<String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IntegrateChangesRequest {
+    pub tables: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1973,80 +1880,78 @@ async fn admin_plan_route(
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
-    match validate_admin_auth(auth_header, admin_api_key).await {
-        Ok(_) => {
-            // Authentication successful, proceed with plan calculation
-            let body = req.into_body();
-            let bytes = match body.collect().await {
-                Ok(collected) => collected.to_bytes(),
-                Err(e) => {
-                    error!("Failed to read request body: {}", e);
-                    return Ok(Response::builder()
-                        .status(StatusCode::BAD_REQUEST)
-                        .body(Full::new(Bytes::from("Failed to read request body")))
-                        .unwrap());
-                }
-            };
-
-            // Deserialize the request body into a PlanRequest
-            let plan_request: PlanRequest = match serde_json::from_slice(&bytes) {
-                Ok(plan_request) => plan_request,
-                Err(e) => {
-                    error!("Failed to deserialize plan request: {}", e);
-                    return Ok(Response::builder()
-                        .status(StatusCode::BAD_REQUEST)
-                        .body(Full::new(Bytes::from(format!(
-                            "Invalid request format: {}",
-                            e
-                        ))))
-                        .unwrap());
-                }
-            };
-
-            let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
-                Ok(Some(infra_map)) => infra_map,
-                Ok(None) => InfrastructureMap::default(),
-                Err(e) => {
-                    error!("Failed to retrieve infrastructure map from Redis: {}", e);
-                    return Ok(Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from(
-                            "Failed to acquire lock on Redis client",
-                        )))
-                        .unwrap());
-                }
-            };
-
-            // Calculate the changes between the submitted infrastructure map and the current one
-            let changes = current_infra_map.diff(&plan_request.infra_map);
-
-            // Prepare the response
-            let response = PlanResponse {
-                status: "success".to_string(),
-                changes,
-            };
-
-            // Serialize the response to JSON
-            let json_response = match serde_json::to_string(&response) {
-                Ok(json) => json,
-                Err(e) => {
-                    error!("Failed to serialize plan response: {}", e);
-                    return Ok(Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from("Internal server error")))
-                        .unwrap());
-                }
-            };
-
-            // Return the response
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(Full::new(Bytes::from(json_response)))
-                .unwrap())
-        }
-        Err(e) => e.to_response(),
+    if let Err(e) = validate_admin_auth(auth_header, admin_api_key).await {
+        return e.to_response();
     }
+    // Authentication successful, proceed with plan calculation
+    let body = req.into_body();
+    let bytes = match body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(e) => {
+            error!("Failed to read request body: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from("Failed to read request body")))
+                .unwrap());
+        }
+    };
+
+    // Deserialize the request body into a PlanRequest
+    let plan_request: PlanRequest = match serde_json::from_slice(&bytes) {
+        Ok(plan_request) => plan_request,
+        Err(e) => {
+            error!("Failed to deserialize plan request: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(format!(
+                    "Invalid request format: {}",
+                    e
+                ))))
+                .unwrap());
+        }
+    };
+
+    let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
+        Ok(Some(infra_map)) => infra_map,
+        Ok(None) => InfrastructureMap::default(),
+        Err(e) => {
+            error!("Failed to retrieve infrastructure map from Redis: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(
+                    "Failed to acquire lock on Redis client",
+                )))
+                .unwrap());
+        }
+    };
+
+    // Calculate the changes between the submitted infrastructure map and the current one
+    let changes = current_infra_map.diff(&plan_request.infra_map);
+
+    // Prepare the response
+    let response = PlanResponse {
+        status: "success".to_string(),
+        changes,
+    };
+
+    // Serialize the response to JSON
+    let json_response = match serde_json::to_string(&response) {
+        Ok(json) => json,
+        Err(e) => {
+            error!("Failed to serialize plan response: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from("Internal server error")))
+                .unwrap());
+        }
+    };
+
+    // Return the response
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(json_response)))
+        .unwrap())
 }
 
 #[cfg(test)]
@@ -2079,6 +1984,7 @@ mod tests {
                 name: "test".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
             },
+            metadata: None,
         }
     }
 

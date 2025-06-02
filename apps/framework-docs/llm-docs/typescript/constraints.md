@@ -26,8 +26,6 @@
 
 ### Ingest Configuration
 - `destination` must be valid `Stream` instance
-- `format` must be either `IngestionFormat.JSON` or `IngestionFormat.JSON_ARRAY`
-
 
 ## Type System Constraints
 

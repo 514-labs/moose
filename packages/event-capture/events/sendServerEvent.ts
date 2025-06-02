@@ -117,9 +117,9 @@ export const sendTrackEvent = async (
   const env = process.env.NODE_ENV;
 
   const mooseHost =
-    env == "development"
-      ? "http://localhost:4000"
-      : "https://moosefood.514.dev";
+    env == "development" ?
+      "http://localhost:4000"
+    : "https://moosefood.514.dev";
 
   try {
     await fetch(`${mooseHost}/ingest/TrackEvent`, {

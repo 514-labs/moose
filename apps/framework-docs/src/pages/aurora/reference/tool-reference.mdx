@@ -1,0 +1,61 @@
+---
+title: Tool Reference
+description: MCP tools and external tools for Aurora
+---
+
+# Tool Reference
+
+Aurora CLI can allow you to use various Aurora MCP tool-sets, as well as install and configure certain external tools. The command `aurora config tools` allows you to configure the tools you want to use. These tools are additive, select the tools you wish to use (if certain tools have dependencies, they will be enabled automatically).
+
+## Read tools
+Tools needed to read the Moose project and its associated infrastructure. These are enabled by default. Toggle `read-only` in `aurora config tools` to enable manually.
+
+- `read_moose_project`
+    - Reads `moose.config.toml` to get configuration details about Moose project and infrastructure.
+- `read_file`
+    - Gives access to moose primitives in the moose project directory (Workflows, Data Models, Streaming Functions, APIs).
+- `read_clickhouse_tables`
+    - Read queries from ClickHouse.
+- `read_redpanda_topic`
+    - Read from Redpanda.
+
+## Egress tools
+Tools needed to create and test egress APIs. Toggle `egress-tools` in `aurora config tools` to enable.
+
+- `create_egress_api`
+    - Creates an egress API from Moose ClickHouse. Can utilize type safe parameters.
+- `test_egress_api`
+    - Tests the specified APIs.
+
+## Experimental: Moose Metadata tools [coming soon]
+Tools for creating metadata in Moose primitives, based on Moose code and available data. Toggle `experimental-moose-metadata-tools` in `aurora config tools` to enable.
+
+- `write_metadata`
+    - Writes metadata to a Moose primitive.
+
+## Experimental: Moose tools 
+Tools for creating and testing Moose data pipelines. Toggle `experimental-moose-tools` in `aurora config tools` to enable.
+
+- `write_spec`
+    - Generate or update a specification for a data-intensive feature.
+- `write_workflow`
+    - Write a script for use in Moose Workflows.
+- `write_data_model`
+    - Generate a Moose data model file and write it to the project's datamodels directory.
+- `run_workflow`
+    - Runs said scripts.
+- `write_stream_function`
+    - Generate a Moose stream processing function using an LLM and write it to the project's functions directory.
+- `write_and_run_temp_script`
+    - Creates and runs a temporary script, usually for sampling purposes.
+
+## Experimental: Remote Clickhouse  Tools `remote-clickhouse`
+Tools for reading data in your external Clickhouse database. Set this up with the `aurora connect clickhouse` command or by configuring your toolset to include `remote-clickhouse` with `aurora config tools`.
+
+- `read_remote_clickhouse`
+    - Read your Boreal ClickHouse database. In this iteration, requires manually inputting certain fields into `mcp.json`: `BOREAL_CLICKHOUSE_HOST`, `BOREAL_CLICKHOUSE_PORT`, `BOREAL_CLICKHOUSE_USER`, `BOREAL_CLICKHOUSE_PASSWORD`, `BOREAL_CLICKHOUSE_DATABASE`. Whilst the tool is read only, we suggest furnishing the MCP with read-only credentials in an abundance of caution.
+
+## External tools
+Tools for interacting with external data systems. Toggle `external-duck-db-mcp` in `aurora config tools` to enable DuckDB, more coming soon.
+
+- `external-duck-db-mcp` allows you to use and configure the official DuckDB MCP. This requires the path to your DuckDB file.

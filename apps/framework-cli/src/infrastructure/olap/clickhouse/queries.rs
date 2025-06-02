@@ -159,9 +159,9 @@ pub fn create_table_query(
         "table_name": table.name,
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
-            Some(format!("`{}`", primary_key.join("`, `")))
+            format!("`{}`", primary_key.join("`, `"))
         } else {
-            None
+            "()".to_string()
         },
         "order_by_string": if !table.order_by.is_empty() {
             Some(table.order_by.iter().map(|item| {format!("`{}`", item)}).collect::<Vec<String>>().join(", "))
@@ -280,7 +280,14 @@ pub fn basic_field_type_to_string(
         }
         ClickHouseColumnType::Uuid => Ok("UUID".to_string()),
         ClickHouseColumnType::Date32 => Ok("Date32".to_string()),
+        ClickHouseColumnType::Date => Ok("Date".to_string()),
         ClickHouseColumnType::DateTime64 { precision } => Ok(format!("DateTime64({})", precision)),
+        ClickHouseColumnType::LowCardinality(inner_type) => Ok(format!(
+            "LowCardinality({})",
+            basic_field_type_to_string(inner_type)?
+        )),
+        ClickHouseColumnType::IpV4 => Ok("IPv4".to_string()),
+        ClickHouseColumnType::IpV6 => Ok("IPv6".to_string()),
     }
 }
 

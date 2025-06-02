@@ -39,7 +39,7 @@ bluetoothHRPipeline = IngestPipeline[BluetoothHRPacket]("bluetooth_hr_packet", I
     stream=True,
     table=True
 ))
-# Create a ingest pipeline for Appple Health
+# Create an ingest pipeline for HR data streaming from iPhone Echo system & Apple Watch to System via Bluetooth
 
 appleWatchHRPipeline = IngestPipeline[AppleWatchHRPacket]("apple_health_watch_packet", IngestPipelineConfig(
     ingest=True,

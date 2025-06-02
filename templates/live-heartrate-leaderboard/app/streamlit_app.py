@@ -7,6 +7,25 @@ from datetime import datetime, timezone
 import numpy as np
 import json
 
+# Load user database once at module level
+_USER_DB_CACHE = None
+
+def load_user_db():
+    """Load user database from JSON file and cache it."""
+    global _USER_DB_CACHE
+    if _USER_DB_CACHE is None:
+        try:
+            with open("mock-user-db.json", "r") as f:
+                _USER_DB_CACHE = json.load(f)
+        except Exception as e:
+            # Use Streamlit's error display only if we are in a Streamlit context
+            try:
+                st.error(f"Failed to load user database: {str(e)}")
+            except Exception:
+                pass
+            _USER_DB_CACHE = {}
+    return _USER_DB_CACHE
+
 # Page config
 st.set_page_config(
     page_title="Live Heart Rate Monitor",
@@ -44,21 +63,13 @@ def ensure_default_selected_user():
 
 ensure_default_selected_user()
 
-# Helper: fetch profile image for a given user name from mock-user-db.json
+# Helper: fetch profile image for a given user name from cached user database
 def get_profile_image(user_name: str):
     """Return the profile image URL for the provided user name or None if not found."""
-    try:
-        with open("mock-user-db.json", "r") as f:
-            user_db = json.load(f)
-        for user in user_db.values():
-            if user.get("user_name") == user_name:
-                return user.get("profile_image")
-    except Exception as e:
-        # Use Streamlit's error display only if we are in a Streamlit context
-        try:
-            st.error(f"Failed to load user image: {str(e)}")
-        except Exception:
-            pass
+    user_db = load_user_db()
+    for user in user_db.values():
+        if user.get("user_name") == user_name:
+            return user.get("profile_image")
     return None
 
 # Function to update the live graph

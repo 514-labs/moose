@@ -46,6 +46,9 @@ let lastBPMDisplayTime = 0;
 const BPM_DISPLAY_INTERVAL = 5000; // 5 seconds
 let latestCalculatedBPM: number | null = null;
 
+const sessionFileName = `./brain_data_${argv.sessionId}-ingest.csv`;
+const s = fs.createWriteStream(sessionFileName, { flags: "a" });
+
 /**
  * @description dump object to file
  */
@@ -80,9 +83,6 @@ function writeFile(fileName: string, document: BrainwaveData): void {
     // Do not record, display, or send
     return;
   }
-
-  const sessionFileName = `./brain_data_${argv.sessionId}.csv`;
-  const s = fs.createWriteStream(sessionFileName, { flags: "a" });
 
   document.sessionId = `${argv.sessionId}`;
   if (!process.env.MOOSE_INGEST_URL) {
@@ -183,6 +183,7 @@ async function main(): Promise<void> {
 function cleanup() {
   server.close();
   screen.destroy();
+  s.end(); // Close the write stream
   process.stdout.write("\x1b[2J\x1b[0f");
   process.exit(0);
 }

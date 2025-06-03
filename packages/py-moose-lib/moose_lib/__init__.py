@@ -9,3 +9,5 @@ from .tasks import *
 from .data_models import *
 
 from .dmv2 import *
+
+from .clients.redis_client import MooseCache

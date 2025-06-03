@@ -21,10 +21,12 @@ export class MooseCache {
       url: redisUrl,
     });
 
-    this.client.on("error", (err: Error) => {
+    process.on("SIGTERM", this.gracefulShutdown);
+    process.on("SIGINT", this.gracefulShutdown);
+
+    this.client.on("error", async (err: Error) => {
       console.error("TS Redis client error:", err);
-      this.isConnected = false;
-      this.clearDisconnectTimer();
+      await this.disconnect();
     });
 
     this.client.on("connect", () => {
@@ -68,6 +70,13 @@ export class MooseCache {
       await this.client.connect();
       this.resetDisconnectTimer();
     }
+  }
+
+  private async gracefulShutdown(): Promise<void> {
+    if (this.isConnected) {
+      await this.disconnect();
+    }
+    process.exit(0);
   }
 
   private getPrefixedKey(key: string): string {

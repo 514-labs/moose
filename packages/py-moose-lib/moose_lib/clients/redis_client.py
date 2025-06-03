@@ -3,11 +3,13 @@ import os
 import time
 import threading
 import atexit
-from typing import Any, Optional, TypeVar, Generic, Type
+from typing import Optional, TypeVar, Type, Union, TypeAlias
 import redis
 from redis import Redis
+from pydantic import BaseModel
 
 T = TypeVar('T')
+SupportedValue: TypeAlias = Union[str, BaseModel]
 
 class MooseCache:
     """
@@ -57,33 +59,51 @@ class MooseCache:
     def _ensure_connected(self) -> None:
         """Ensure the client is connected and reset the disconnect timer."""
         if not self._is_connected:
-            self._client = redis.from_url(self._redis_url)
+            self._client = redis.from_url(self._redis_url, decode_responses=True)
             self._is_connected = True
             print("Python Redis client connected")
 
         self._clear_disconnect_timer()
         self._disconnect_timer.start()
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+    def set(self, key: str, value: SupportedValue, ttl_seconds: Optional[int] = None) -> None:
         """
-        Sets a value in the cache. Objects are automatically JSON stringified.
+        Sets a value in the cache. Only accepts strings or Pydantic models.
+        Objects are automatically JSON stringified.
 
         Args:
             key: The key to store the value under
-            value: The value to store. Can be a string or any object (will be JSON stringified)
+            value: The value to store. Must be a string or Pydantic model
             ttl_seconds: Optional time-to-live in seconds. If provided, the key will automatically expire after this duration
 
+        Raises:
+            TypeError: If value is not a string or Pydantic model
+
         Example:
-            # Store a string
+            ### Store a string
             cache.set("foo", "bar")
 
-            # Store an object with TTL
-            cache.set("foo:config", {"baz": 123, "qux": True}, 3600)  # expires in 1 hour
+            ### Store a Pydantic model
+            class Config(BaseModel):
+                baz: int
+                qux: bool
+            cache.set("foo:config", Config(baz=123, qux=True))
         """
         try:
+            # Validate value type
+            if not isinstance(value, (str, BaseModel)):
+                raise TypeError(
+                    "Value must be a string or Pydantic model. "
+                    f"Got {type(value).__name__}"
+                )
+
             self._ensure_connected()
             prefixed_key = self._get_prefixed_key(key)
-            string_value = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+
+            if isinstance(value, str):
+                string_value = value
+            else:
+                string_value = value.model_dump_json()
 
             if ttl_seconds:
                 self._client.setex(prefixed_key, ttl_seconds, string_value)
@@ -93,45 +113,60 @@ class MooseCache:
             print(f"Error setting cache key {key}: {e}")
             raise
 
-    def get(self, key: str, type_hint: Optional[Type[T]] = None) -> Optional[T]:
+    def get(self, key: str, type_hint: Type[T] = str) -> Optional[T]:
         """
-        Retrieves a value from the cache. Attempts to parse the value as JSON if possible.
+        Retrieves a value from the cache. Only supports strings or Pydantic models.
+        The type_hint parameter determines how the value will be parsed and returned.
 
         Args:
             key: The key to retrieve
-            type_hint: Optional type hint for the return value
+            type_hint: Type hint for the return value. Must be str or a Pydantic model class.
+                      Defaults to str.
 
         Returns:
-            The value, parsed as the specified type if it was JSON, or as string if not.
-            Returns None if key doesn't exist
+            The value parsed as the specified type. Returns None if key doesn't exist.
+
+        Raises:
+            TypeError: If type_hint is not a supported type
+            ValueError: If the stored value cannot be parsed as the requested type
 
         Example:
-            # Get a string
+            ### Get a string (default)
             value = cache.get("foo")
 
-            # Get and parse an object with type safety
-            from typing import TypedDict
-            class Config(TypedDict):
+            ### Get and parse as Pydantic model
+            class Config(BaseModel):
                 baz: int
                 qux: bool
             config = cache.get("foo:config", Config)
         """
         try:
+            # Validate type_hint
+            if not isinstance(type_hint, type):
+                raise TypeError("type_hint must be a type")
+            if not (type_hint is str or issubclass(type_hint, BaseModel)):
+                raise TypeError(
+                    "type_hint must be str or a Pydantic model class. "
+                    f"Got {type_hint.__name__}"
+                )
+
             self._ensure_connected()
             prefixed_key = self._get_prefixed_key(key)
             value = self._client.get(prefixed_key)
 
             if value is None:
                 return None
+            elif type_hint is str:
+                return value
+            elif isinstance(type_hint, type) and issubclass(type_hint, BaseModel):
+                try:
+                    parsed = json.loads(value)
+                    return type_hint.model_validate(parsed)
+                except Exception as e:
+                    raise ValueError(f"Failed to validate as {type_hint.__name__}: {e}")
+            else:
+                raise TypeError(f"Unsupported type_hint: {type_hint}")
 
-            # Try to parse as JSON, if it fails return as string
-            try:
-                parsed = json.loads(value)
-                if type_hint:
-                    return type_hint(parsed)
-                return parsed
-            except json.JSONDecodeError:
-                return value.decode() if isinstance(value, bytes) else value
         except Exception as e:
             print(f"Error getting cache key {key}: {e}")
             raise

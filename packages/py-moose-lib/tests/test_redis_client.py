@@ -2,7 +2,82 @@ import os
 import sys
 import subprocess
 import pytest
+from pydantic import BaseModel
 from moose_lib import MooseCache
+
+class Config(BaseModel):
+    baz: int
+    qux: bool
+
+@pytest.mark.integration
+def test_cache_strings():
+    cache = MooseCache()
+
+    # Test setting and getting strings
+    cache.set("test:string", "hello")
+    value = cache.get("test:string")
+    assert value == "hello"
+
+    # Test with explicit str type hint
+    value = cache.get("test:string", str)
+    assert value == "hello"
+
+    # Test with TTL
+    cache.set("test:string:ttl", "world", ttl_seconds=5)
+    value = cache.get("test:string:ttl")
+    assert value == "world"
+
+    # Clean up
+    cache.clear_keys("test")
+
+@pytest.mark.integration
+def test_cache_pydantic():
+    cache = MooseCache()
+
+    # Test setting and getting Pydantic models
+    config = Config(baz=123, qux=True)
+    cache.set("test:config", config)
+
+    # Get and verify
+    retrieved = cache.get("test:config", Config)
+    assert retrieved is not None
+    assert retrieved.baz == 123
+    assert retrieved.qux is True
+
+    # Test with TTL
+    cache.set("test:config:ttl", config, ttl_seconds=5)
+    retrieved = cache.get("test:config:ttl", Config)
+    assert retrieved is not None
+    assert retrieved.baz == 123
+    assert retrieved.qux is True
+
+    # Test invalid JSON
+    cache.set("test:invalid", "not json")
+    with pytest.raises(ValueError):
+        cache.get("test:invalid", Config)
+
+    # Clean up
+    cache.clear_keys("test")
+
+@pytest.mark.integration
+def test_cache_nonexistent():
+    cache = MooseCache()
+
+    # Test getting nonexistent keys
+    assert cache.get("nonexistent") is None
+    assert cache.get("nonexistent", str) is None
+    assert cache.get("nonexistent", Config) is None
+
+@pytest.mark.integration
+def test_cache_invalid_type():
+    cache = MooseCache()
+
+    # Test invalid type hints
+    with pytest.raises(TypeError):
+        cache.get("test", int)  # int is not supported
+
+    with pytest.raises(TypeError):
+        cache.get("test", dict)  # dict is not supported
 
 @pytest.mark.integration
 def test_atexit_cleanup():
@@ -43,6 +118,3 @@ sys.exit(0)
     finally:
         # Clean up the test script
         os.remove("test_atexit.py")
-
-if __name__ == "__main__":
-    test_atexit_cleanup()

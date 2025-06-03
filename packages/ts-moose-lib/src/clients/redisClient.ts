@@ -1,7 +1,11 @@
 import { createClient, RedisClientType } from "redis";
 
+// Module-level singleton instance
+let instance: MooseCache | null = null;
+
+type SupportedTypes = string | object;
+
 export class MooseCache {
-  private static instance: MooseCache;
   private client: RedisClientType;
   private isConnected: boolean = false;
   private readonly keyPrefix: string;
@@ -92,11 +96,11 @@ export class MooseCache {
    * const cache = await MooseCache.get();
    */
   public static async get(): Promise<MooseCache> {
-    if (!MooseCache.instance) {
-      MooseCache.instance = new MooseCache();
-      await MooseCache.instance.connect();
+    if (!instance) {
+      instance = new MooseCache();
+      await instance.connect();
     }
-    return MooseCache.instance;
+    return instance;
   }
 
   /**
@@ -151,7 +155,9 @@ export class MooseCache {
    * interface Config { baz: number; qux: boolean; }
    * const config = await cache.get<Config>("foo:config");
    */
-  public async get<T = string>(key: string): Promise<T | null> {
+  public async get<T extends SupportedTypes = string>(
+    key: string,
+  ): Promise<T | null> {
     try {
       await this.ensureConnected();
       const prefixedKey = this.getPrefixedKey(key);
@@ -159,10 +165,18 @@ export class MooseCache {
 
       if (value === null) return null;
 
-      // Try to parse as JSON, if it fails return as string
+      // Note: We can't check if T is string at runtime because TypeScript types are erased.
+      // Instead, we try to parse as JSON and return the original string if that fails.
       try {
-        return JSON.parse(value) as T;
+        const parsed = JSON.parse(value);
+        // Only return parsed value if it's an object
+        if (typeof parsed === "object" && parsed !== null) {
+          return parsed as T;
+        }
+        // If parsed value isn't an object, return as string
+        return value as T;
       } catch {
+        // If JSON parse fails, return as string
         return value as T;
       }
     } catch (error) {

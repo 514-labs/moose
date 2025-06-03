@@ -1,12 +1,11 @@
+import atexit
 import json
 import os
-import time
-import threading
-import atexit
-from typing import Optional, TypeVar, Type, Union, TypeAlias
 import redis
-from redis import Redis
+import threading
 from pydantic import BaseModel
+from typing import Optional, TypeVar, Type, Union, TypeAlias
+
 
 T = TypeVar('T')
 SupportedValue: TypeAlias = Union[str, BaseModel]
@@ -22,7 +21,7 @@ class MooseCache:
     _instance = None
     _redis_url: str
     _key_prefix: str
-    _client: Optional[Redis] = None
+    _client: Optional[redis.Redis] = None
     _is_connected: bool = False
     _disconnect_timer: Optional[threading.Timer] = None
     _idle_timeout: int
@@ -74,10 +73,8 @@ class MooseCache:
         Args:
             key: The key to store the value under
             value: The value to store. Must be a string or Pydantic model
-            ttl_seconds: Optional time-to-live in seconds. If provided, the key will automatically expire after this duration
-
-        Raises:
-            TypeError: If value is not a string or Pydantic model
+            ttl_seconds: Optional time-to-live in seconds. If not provided, defaults to 1 hour (3600 seconds).
+                       Must be a non-negative number. If 0, the key will expire immediately.
 
         Example:
             ### Store a string
@@ -93,9 +90,12 @@ class MooseCache:
             # Validate value type
             if not isinstance(value, (str, BaseModel)):
                 raise TypeError(
-                    "Value must be a string or Pydantic model. "
-                    f"Got {type(value).__name__}"
+                    f"Value must be a string or Pydantic model. Got {type(value).__name__}"
                 )
+
+            # Validate TTL
+            if ttl_seconds is not None and ttl_seconds < 0:
+                raise ValueError("ttl_seconds must be a non-negative number")
 
             self._ensure_connected()
             prefixed_key = self._get_prefixed_key(key)
@@ -105,10 +105,9 @@ class MooseCache:
             else:
                 string_value = value.model_dump_json()
 
-            if ttl_seconds:
-                self._client.setex(prefixed_key, ttl_seconds, string_value)
-            else:
-                self._client.set(prefixed_key, string_value)
+            # Use provided TTL or default to 1 hour
+            ttl = ttl_seconds if ttl_seconds is not None else 3600
+            self._client.setex(prefixed_key, ttl, string_value)
         except Exception as e:
             print(f"Error setting cache key {key}: {e}")
             raise
@@ -125,10 +124,6 @@ class MooseCache:
 
         Returns:
             The value parsed as the specified type. Returns None if key doesn't exist.
-
-        Raises:
-            TypeError: If type_hint is not a supported type
-            ValueError: If the stored value cannot be parsed as the requested type
 
         Example:
             ### Get a string (default)

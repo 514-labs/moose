@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import subprocess
 import pytest
 from pydantic import BaseModel
@@ -22,11 +23,6 @@ def test_cache_strings():
     value = cache.get("test:string", str)
     assert value == "hello"
 
-    # Test with TTL
-    cache.set("test:string:ttl", "world", ttl_seconds=5)
-    value = cache.get("test:string:ttl")
-    assert value == "world"
-
     # Clean up
     cache.clear_keys("test")
 
@@ -38,15 +34,7 @@ def test_cache_pydantic():
     config = Config(baz=123, qux=True)
     cache.set("test:config", config)
 
-    # Get and verify
     retrieved = cache.get("test:config", Config)
-    assert retrieved is not None
-    assert retrieved.baz == 123
-    assert retrieved.qux is True
-
-    # Test with TTL
-    cache.set("test:config:ttl", config, ttl_seconds=5)
-    retrieved = cache.get("test:config:ttl", Config)
     assert retrieved is not None
     assert retrieved.baz == 123
     assert retrieved.qux is True
@@ -55,6 +43,25 @@ def test_cache_pydantic():
     cache.set("test:invalid", "not json")
     with pytest.raises(ValueError):
         cache.get("test:invalid", Config)
+
+    # Clean up
+    cache.clear_keys("test")
+
+@pytest.mark.integration
+def test_cache_ttl():
+    cache = MooseCache()
+
+    # Test setting and getting with TTL
+    cache.set("test:ttl", "hello", ttl_seconds=3)
+    value = cache.get("test:ttl")
+    assert value == "hello"
+    time.sleep(5)
+    value = cache.get("test:ttl")
+    assert value is None
+
+    # Test negative TTL
+    with pytest.raises(ValueError):
+        cache.set("test:negative_ttl", "hello", ttl_seconds=-1)
 
     # Clean up
     cache.clear_keys("test")
@@ -74,10 +81,10 @@ def test_cache_invalid_type():
 
     # Test invalid type hints
     with pytest.raises(TypeError):
-        cache.get("test", int)  # int is not supported
+        cache.get("test", int)
 
     with pytest.raises(TypeError):
-        cache.get("test", dict)  # dict is not supported
+        cache.get("test", dict)
 
 @pytest.mark.integration
 def test_atexit_cleanup():

@@ -104,13 +104,14 @@ export class MooseCache {
    *
    * @param key - The key to store the value under
    * @param value - The value to store. Can be a string or any object (will be JSON stringified)
-   * @param ttlSeconds - Optional time-to-live in seconds. If provided, the key will automatically expire after this duration
+   * @param ttlSeconds - Optional time-to-live in seconds. If not provided, defaults to 1 hour (3600 seconds).
+   *                    Must be a non-negative number. If 0, the key will expire immediately.
    * @example
    * // Store a string
    * await cache.set("foo", "bar");
    *
-   * // Store an object with TTL
-   * await cache.set("foo:config", { baz: 123, qux: true }, 3600); // expires in 1 hour
+   * // Store an object with custom TTL
+   * await cache.set("foo:config", { baz: 123, qux: true }, 60); // expires in 1 minute
    */
   public async set(
     key: string,
@@ -118,16 +119,19 @@ export class MooseCache {
     ttlSeconds?: number,
   ): Promise<void> {
     try {
+      // Validate TTL
+      if (ttlSeconds !== undefined && ttlSeconds < 0) {
+        throw new Error("ttlSeconds must be a non-negative number");
+      }
+
       await this.ensureConnected();
       const prefixedKey = this.getPrefixedKey(key);
       const stringValue =
         typeof value === "object" ? JSON.stringify(value) : value;
 
-      if (ttlSeconds) {
-        await this.client.setEx(prefixedKey, ttlSeconds, stringValue);
-      } else {
-        await this.client.set(prefixedKey, stringValue);
-      }
+      // Use provided TTL or default to 1 hour
+      const ttl = ttlSeconds ?? 3600;
+      await this.client.setEx(prefixedKey, ttl, stringValue);
     } catch (error) {
       console.error(`Error setting cache key ${key}:`, error);
       throw error;

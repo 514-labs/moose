@@ -249,7 +249,7 @@ Now that you've got Moose talking to your ClickHouse database:
 
 ```bash copy
 # CLI command to seed from remote ClickHouse
-moose seed from-remote-clickhouse <YOUR_CLICKHOUSE_CONNECTION_STRING> --rows 100
+moose seed clickhouse --connection-string <YOUR_CLICKHOUSE_CONNECTION_STRING> --limit 100
 ```
 
 ### 2. Build Materialized Views That Don't Break

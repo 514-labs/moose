@@ -28,5 +28,6 @@ setup(
         "pydantic==2.10.6",
         "temporalio==1.9.0",
         "kafka-python-ng==2.2.2",
+        "redis==6.2.0",
     ],
 )

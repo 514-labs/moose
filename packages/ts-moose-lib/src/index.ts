@@ -29,9 +29,11 @@ export * from "./commons";
 export * from "./consumption-apis/helpers";
 export * from "./scripts/task";
 export {
+  Aggregated,
   OlapTable,
   Stream,
   DeadLetterModel,
+  DeadLetter,
   DeadLetterQueue,
   IngestApi,
   ConsumptionApi,
@@ -50,3 +52,5 @@ export {
   ClickHouseInt,
   LowCardinality,
 } from "./dataModels/types";
+
+export { MooseCache } from "./clients/redisClient";

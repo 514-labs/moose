@@ -23,6 +23,8 @@ pub async fn start_worker(
     project: &Project,
     clickhouse_config: &ClickHouseConfig,
 ) -> Result<Child, WorkerProcessError> {
+    log::debug!("start_worker");
+
     let project_path = project.project_location.clone();
     let temporal_url = project.temporal_config.temporal_url();
     let scripts_dir = project.scripts_dir();
@@ -55,6 +57,8 @@ pub async fn start_worker(
     ]);
 
     let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();
+
+    log::debug!("args: {:?}", args);
 
     let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args)?;
 

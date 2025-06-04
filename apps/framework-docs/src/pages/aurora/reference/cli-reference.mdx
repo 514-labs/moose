@@ -28,10 +28,10 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 
 - If creating a new project:
     - `<template-name>`: the template you are basing your application on. Choose from an empty project (e.g. `typescript-empty`, a default project `typescript` or a pre-built project `ads-b`).
-    - `--from-remote <connection-string>`: If you are creating a project from a pre-existing Clickhouse database, use this flag. Do not use a template.
+    - `--from-remote <connection-string>`: If you are creating a project from a pre-existing ClickHouse database, use this flag. Do not use a template.
 
-- If creating a project from a pre-existing Clickhouse database:
-    - `--from-remote <connection-string>`: The connection string to your Clickhouse database.
+- If creating a project from a pre-existing ClickHouse database:
+    - `--from-remote <connection-string>`: The connection string to your ClickHouse database.
     - `--language <language>`: The language of your application. [possible values] `typescript` or `python`].
 
 ### connect
@@ -42,7 +42,7 @@ Connects to an existing data source. Currently only `clickhouse` is supported.
 aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
 ```
 
-- `--connection-string <connection-string>`: The connection string to your Clickhouse database.
+- `--connection-string <connection-string>`: The connection string to your ClickHouse database.
 - `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
 
 ### setup

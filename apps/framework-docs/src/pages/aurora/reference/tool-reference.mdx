@@ -49,8 +49,8 @@ Tools for creating and testing Moose data pipelines. Toggle `experimental-moose-
 - `write_and_run_temp_script`
     - Creates and runs a temporary script, usually for sampling purposes.
 
-## Experimental: Remote Clickhouse  Tools `remote-clickhouse`
-Tools for reading data in your external Clickhouse database. Set this up with the `aurora connect clickhouse` command or by configuring your toolset to include `remote-clickhouse` with `aurora config tools`.
+## Experimental: Remote ClickHouse  Tools `remote-clickhouse`
+Tools for reading data in your external ClickHouse database. Set this up with the `aurora connect clickhouse` command or by configuring your toolset to include `remote-clickhouse` with `aurora config tools`.
 
 - `read_remote_clickhouse`
     - Read your Boreal ClickHouse database. In this iteration, requires manually inputting certain fields into `mcp.json`: `BOREAL_CLICKHOUSE_HOST`, `BOREAL_CLICKHOUSE_PORT`, `BOREAL_CLICKHOUSE_USER`, `BOREAL_CLICKHOUSE_PASSWORD`, `BOREAL_CLICKHOUSE_DATABASE`. Whilst the tool is read only, we suggest furnishing the MCP with read-only credentials in an abundance of caution.

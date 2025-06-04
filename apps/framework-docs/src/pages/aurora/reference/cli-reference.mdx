@@ -175,6 +175,20 @@ Note, if you select `boreal-experimental`, you will need to add your ClickHouse 
 
 [Coming Soon]. Allows you to configure which models Aurora agents use.
 
+```bash filename="Terminal" copy
+aurora config models <model-name>
+```
+
+<ArgTable
+  args={[
+    {
+      name: "<model-name>",
+      description: "Model of your choice to use for agentic tool calls",
+      examples: ["claude-3-5-sonnet-20240620", "gemini-2.0-flash-exp"]
+    }
+  ]}
+/>
+
 #### login
 
 [Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.

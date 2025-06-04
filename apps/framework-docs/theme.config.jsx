@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { Python, TypeScript } from "./src/components/language-wrappers";
 import { LanguageSwitcher } from "./src/components/language-switcher";
 import { ImageZoom } from "nextra/components";
@@ -110,7 +111,9 @@ export default {
 
     return (
       <>
-        <title>{frontMatter.title || "514 Labs Documentation"}</title>
+        <title suppressHydrationWarning>
+          {frontMatter.title || "514 Labs Documentation"}
+        </title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta property="og:url" content={url} />
         <meta property="og:site_name" content="514 Labs Documentation" />
@@ -160,14 +163,17 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
-        <script async defer src="https://buttons.github.io/buttons.js"></script>
+        <Script
+          src="https://buttons.github.io/buttons.js"
+          strategy="lazyOnload"
+        />
         <link rel="canonical" href={url} />
       </>
     );
   },
   navbar: {
     extraContent: () => (
-      <div className="flex items-center gap-2 h-full">
+      <div className="flex items-center gap-2 h-full" suppressHydrationWarning>
         <div className="max-h-7">
           <a
             className="github-button"

@@ -8,10 +8,6 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://buttons.github.io https://apollo.io https://assets.apollo.io https://posthog.com https://us-assets.i.posthog.com https://us.i.posthog.com https://vercel.live https://api.github.com https://aplo-evnt.com https://inferred.litix.io"
-        },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" },
         { "key": "Access-Control-Allow-Private-Network", "value": "true" },
         {
@@ -29,7 +25,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live inferred.litix.io *.gstatic.com; style-src 'self' 'unsafe-inline' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live inferred.litix.io 'unsafe-eval' data:; img-src 'self' data: blob: buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live vercel.com inferred.litix.io *.mux.com; media-src 'self' blob: *.mux.com; font-src 'self' data: vercel.live assets.vercel.com; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live api.github.com aplo-evnt.com inferred.litix.io *.mux.com wss://ws-us3.pusher.com docs.fiveonefour.com; frame-src 'self' vercel.live inferred.litix.io; frame-ancestors 'self' vercel.live"
+          "value": "default-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live inferred.litix.io *.gstatic.com app.athenahq.ai; style-src 'self' 'unsafe-inline' buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live inferred.litix.io 'unsafe-eval' data:; img-src 'self' data: blob: buttons.github.io apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live vercel.com inferred.litix.io *.mux.com; media-src 'self' blob: *.mux.com; font-src 'self' data: vercel.live assets.vercel.com; connect-src 'self' apollo.io assets.apollo.io posthog.com us-assets.i.posthog.com us.i.posthog.com vercel.live api.github.com aplo-evnt.com inferred.litix.io *.mux.com wss://ws-us3.pusher.com docs.fiveonefour.com app.athenahq.ai; frame-src 'self' vercel.live inferred.litix.io; frame-ancestors 'self' vercel.live"
         },
         {
           "key": "Permissions-Policy",

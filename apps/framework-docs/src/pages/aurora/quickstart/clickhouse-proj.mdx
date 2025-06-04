@@ -1,9 +1,10 @@
 import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg, ToggleBlock } from "@/components";
 import { Steps, Tabs } from "nextra/components";
 
-## Quickstart: Analytics engineering project from Clickhouse Playground or your own Clickhouse database
+## Quickstart: AI analytics engineering from your ClickHouse
+*Generate a local OLAP project from your ClickHouse deployment; Aurora MCP pre-configured for analytics engineering.*
 
-This will walk you through creating a new local Moose project reflecting the structure of your Clickhouse database. It will allow you to add data to your local dev environment from your remote Clickhouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+This will walk you through creating a new local Moose project reflecting the structure of your ClickHouse database. It will allow you to add data to your local dev environment from your remote ClickHouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -22,7 +23,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 
 We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`. If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
 
-### Create a new Moose project from your Clickhouse database
+### Create a new Moose project from your ClickHouse database
 
 ```bash filename="Terminal" copy
 aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp cursor-project
@@ -72,9 +73,9 @@ https://explorer:@play.clickhouse.com:443/?database=default
 </ToggleBlock>
 
 
-This will create a new Moose project from your Clickhouse database. [See Moose docs](https://docs.fiveonefour.com/moose) for more information about the project structure, and how it spins up your local development environment (including a local Clickhouse database).
+This will create a new Moose project from your ClickHouse database. [See Moose docs](https://docs.fiveonefour.com/moose) for more information about the project structure, and how it spins up your local development environment (including a local ClickHouse database).
 
-The new project is called "my_project_name" and is created in the current directory. the string after `--from-remote` is the connection string to your Clickhouse database, structured as `clickhouse://<username>:<password>@<host>:<port>/<database>` (note, the Clickhouse Playground has no password).
+The new project is called "my_project_name" and is created in the current directory. the string after `--from-remote` is the connection string to your ClickHouse database, structured as `clickhouse://<username>:<password>@<host>:<port>/<database>` (note, the Clickhouse Playground has no password).
 
 ### Install dependencies and run the dev server
 
@@ -104,7 +105,7 @@ moose dev
 moose seed clickhouse --connection-string clickhouse://explorer:@play.clickhouse.com/default --limit 100
 ```
 
-This will seed your local Clickhouse database with 100 rows of sample data from your remote Clickhouse database—here, the Clickhouse Playground. You can change the number of rows with the `--limit` flag.
+This will seed your local ClickHouse database with 100 rows of sample data from your remote ClickHouse database—here, the ClickHouse Playground. You can change the number of rows with the `--limit` flag.
 
 This will improve the context provided to Aurora's MCP tools, and make it easier to validate analytic engineering tasks.
 
@@ -144,7 +145,7 @@ const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
 
 ### Chat with your data
 
-You can also now just chat with your client about your data! Try asking "Look at my MTA data in clickhouse, tell me about the trains that ran in the last 24 hours."
+You can also now just chat with your client about your data! Try asking "Look at my MTA data in ClickHouse, tell me about the trains that ran in the last 24 hours."
 
 The client will use `read_moose_project`, `read_clickhouse_tables` and maybe `read_production_clickhouse` to answer your question.
 
@@ -163,23 +164,22 @@ Try adding new [ingestion scripts, data models, or materialized views to your pr
 
 <FeatureGrid>
   <FeatureCard
-    href="/aurora/quickstart/clickhouse-chat#quickstart-ad-hoc-analytics-with-clickhouse-playground-or-your-own-clickhouse-database"
-    Icon={Icons.models}
-    title="Chat with Clickhouse"
+    href="/aurora/quickstart/clickhouse-chat"
+    Icon={Icons.api}
+    title="AI Chat with ClickHouse"
     description="
-    Connect your LLM client to a Clickhouse database and chat with your data. 
     "
     variant="aurora"
   />
   
+  
   <FeatureCard
     href="/aurora/quickstart/from-template#quickstart-new-complete-local-olap-project-from-template"
-    Icon={Icons.streams}
-    title="Full stack OLAP project from Template"
+    Icon={Icons.db}
+    title="AI powered OLAP templates"
     description="
-    Create a full local OLAP dev environment with one command. Data primitives in ts or py. Aurora MCP tools for creating new primitives.
     "
     variant="aurora"
   />
 
-</FeatureGrid> 
+</FeatureGrid>

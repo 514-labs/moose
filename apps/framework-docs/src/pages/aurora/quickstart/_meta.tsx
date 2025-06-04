@@ -1,7 +1,7 @@
 import { render } from "@/components";
 const meta = {
-  "clickhouse-chat": "Chat with Clickhouse",
-  "clickhouse-proj": "Build analytics project from Clickhouse",
-  "from-template": "Full stack OLAP project from Template",
+  "clickhouse-chat": "AI Chat with ClickHouse",
+  "clickhouse-proj": "AI analytics engineering on ClickHouse",
+  "from-template": "AI powered OLAP templates",
 };
 export default render(meta);

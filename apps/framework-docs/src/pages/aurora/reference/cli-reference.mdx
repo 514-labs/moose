@@ -3,6 +3,8 @@ title: CLI Reference
 description: CLI Reference for Aurora
 ---
 
+import { ArgTable } from "@/components/ArgTable";
+
 # CLI Reference
 
 ## Install CLI
@@ -17,7 +19,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
 
 Creates a data engineering project with Moose, with Aurora MCP preconfigured.
 
-```
+```bash filename="Terminal" copy
 aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> 
 ```
 
@@ -38,18 +40,31 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 
 Connects to an existing data source. Currently only `clickhouse` is supported.
 
-```
+```bash filename="Terminal" copy
 aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
 ```
 
-- `--connection-string <connection-string>`: The connection string to your ClickHouse database.
-- `--mcp <host>`: Choice of which MCP host to [default: `cursor-project`] [possible values: `claude-desktop`, `cursor-global`, `cursor-project`, `windsurf-global`]
+<ArgTable
+  args={[
+    {
+      name: "--connection-string <connection-string>",
+      required: true,
+      description: "The connection string to your ClickHouse database.",
+      examples: ["clickhouse://user:pass@host:port/db"]
+    },
+    {
+      name: "--mcp <host>",
+      description: "Choice of which MCP host to use. Default: cursor-project.",
+      examples: ["claude-desktop", "cursor-global", "cursor-project", "windsurf-global"]
+    }
+  ]}
+/>
 
 ### setup
 
 Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
 
-```
+```bash filename="Terminal" copy
 aurora setup [path] <--mcp <host>>
 ```
 
@@ -64,7 +79,7 @@ Configure Aurora settings
 
 List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at a time.
 
-```
+```bash filename="Terminal" copy
 aurora config focus
 ```
 
@@ -72,7 +87,7 @@ aurora config focus
 
 Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key.
 
-```
+```bash filename="Terminal" copy
 aurora config keys <KEY>
 ```
 
@@ -86,7 +101,7 @@ aurora config keys <KEY>
 
 Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` sets.
 
-```
+```bash filename="Terminal" copy
 aurora config tools [EXPERIMENTAL_PREFERENCE]
 ```
 
@@ -98,6 +113,6 @@ Note, if you select `boreal-experimental`, you will need to add your ClickHouse 
 
 [Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.
 
-```
+```bash filename="Terminal" copy
 aurora login
 ```

@@ -52,3 +52,5 @@ export {
   ClickHouseInt,
   LowCardinality,
 } from "./dataModels/types";
+
+export { MooseCache } from "./clients/redisClient";

@@ -13,6 +13,10 @@ from .types import WorkflowStepResult
 from .serialization import moose_json_decode
 import json
 
+# TODO: make this configurable
+START_TO_CLOSE_TIMEOUT_MINUTES = 60 
+
+
 @dataclass
 class WorkflowState:
     """Represents the current state of a script workflow execution.
@@ -127,7 +131,7 @@ class ScriptWorkflow:
             result = await workflow.execute_activity(
                 activity_name,
                 ScriptExecutionInput(script_path=script_path, input_data=input_data),
-                start_to_close_timeout=timedelta(minutes=10),
+                start_to_close_timeout=timedelta(minutes=START_TO_CLOSE_TIMEOUT_MINUTES),
                 retry_policy=RetryPolicy(
                     maximum_attempts=retries,
                 ),

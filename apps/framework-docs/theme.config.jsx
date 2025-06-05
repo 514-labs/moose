@@ -41,9 +41,9 @@ export function Logo() {
       href="https://www.fiveonefour.com"
       className="shrink-0 flex items-center"
     >
-      <div className="w-[16px] h-[16px] relative">
+      <div className="w-[16px] h-[16px] mr-2 relative">
         <Image
-          src="/logo.png"
+          src="/logo-light.png"
           alt="logo"
           fill
           sizes="16px"
@@ -51,7 +51,7 @@ export function Logo() {
           className="object-contain object-center hidden dark:block"
         />
         <Image
-          src="/logo-light.png"
+          src="/logo-dark.png"
           alt="logo"
           fill
           sizes="16px"

@@ -187,6 +187,14 @@ main > p {
   background-color: hsl(var(--background)) !important;
 }
 
+.nextra-nav-container {
+  z-index: 40 !important;
+}
+
+.nextra-nav-container-content {
+  z-index: 41 !important;
+}
+
 :is(html[class~="dark"] .dark\:_shadow-\[0_-12px_16px_\#111\]) {
   box-shadow: none;
 }

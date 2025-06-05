@@ -37,23 +37,28 @@ const baseTextStyles = {
 
 export function Logo() {
   return (
-    <Link href="https://www.fiveonefour.com" className="shrink-0">
-      <Image
-        src="/logo.png"
-        alt="logo"
-        width={48}
-        height={48}
-        priority
-        className="hidden dark:block"
-      />
-      <Image
-        src="/logo-light.png"
-        alt="logo"
-        width={48}
-        height={48}
-        priority
-        className="block dark:hidden"
-      />
+    <Link
+      href="https://www.fiveonefour.com"
+      className="shrink-0 flex items-center"
+    >
+      <div className="w-[16px] h-[16px] mr-2 relative aspect-square">
+        <Image
+          src="/Logo-Icon-light.png"
+          alt="logo"
+          fill
+          sizes="16px"
+          priority
+          className="object-contain object-center hidden dark:block"
+        />
+        <Image
+          src="/Logo-Icon-dark.png"
+          alt="logo"
+          fill
+          sizes="16px"
+          priority
+          className="object-contain object-center block dark:hidden"
+        />
+      </div>
     </Link>
   );
 }

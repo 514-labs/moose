@@ -41,20 +41,20 @@ export function Logo() {
       href="https://www.fiveonefour.com"
       className="shrink-0 flex items-center"
     >
-      <div className="w-[24px] h-[24px] relative">
+      <div className="w-[16px] h-[16px] relative">
         <Image
-          src="/logo-light.png"
+          src="/logo.png"
           alt="logo"
           fill
-          sizes="24px"
+          sizes="16px"
           priority
           className="object-contain object-center hidden dark:block"
         />
         <Image
-          src="/logo-dark.png"
+          src="/logo-light.png"
           alt="logo"
           fill
-          sizes="24px"
+          sizes="16px"
           priority
           className="object-contain object-center block dark:hidden"
         />

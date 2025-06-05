@@ -123,6 +123,8 @@ struct PartialIngestApi {
     pub write_to: WriteTo,
     pub version: Option<String>,
     pub metadata: Option<Metadata>,
+    #[serde(default)]
+    pub dead_letter_queue: Option<String>,
 }
 
 /// Represents an egress API endpoint definition before conversion to a complete [`ApiEndpoint`].
@@ -484,6 +486,7 @@ impl PartialInfrastructureMap {
                 api_type: APIType::INGRESS {
                     target_topic_id: target_topic.id(),
                     data_model: Some(data_model),
+                    dead_letter_queue: partial_api.dead_letter_queue.clone(),
                 },
                 path: PathBuf::from_iter(
                     [

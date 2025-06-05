@@ -29,7 +29,7 @@ export function LanguageSwitcher() {
     //     </span>
     //   </Heading>
     // </div>
-    <div className="sticky top-[64px] z-50 py-2 border-t-0 bg-background border-y flex items-center justify-between">
+    <div className="sticky top-[64px] z-30 py-2 px-4 border-t-0 bg-background border-y flex items-center justify-between">
       <Heading level={HeadingLevel.l5} className="text-capitalize">
         Viewing
       </Heading>

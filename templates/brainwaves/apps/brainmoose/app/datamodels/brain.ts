@@ -1,4 +1,4 @@
-import { Key } from "@514labs/moose-lib";
+import { Key, IngestPipeline } from "@514labs/moose-lib";
 
 interface AccelerometerData {
   x: number;
@@ -31,3 +31,12 @@ export interface Brain {
   gamma: number;
   ppm: PpmData;
 }
+// DMV2 Pipeline for Brain data
+export const BrainPipeline = new IngestPipeline<Brain>("Brain", {
+  table: {
+    orderByFields: ["sessionId", "timestamp"],
+    deduplicate: false,
+  },
+  stream: true,
+  ingest: true, // POST /ingest/Brain
+});

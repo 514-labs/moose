@@ -9,7 +9,9 @@
   "dependencies": {
     "@514labs/moose-lib": "latest",
     "axios": "^1.7.9",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "ts-patch": "^3.3.0",
+    "typia": "^7.6.0"
   },
   "devDependencies": {
     "@514labs/moose-cli": "latest",

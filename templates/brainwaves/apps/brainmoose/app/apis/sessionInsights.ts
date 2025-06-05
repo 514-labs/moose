@@ -1,4 +1,4 @@
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { ConsumptionApi } from "@514labs/moose-lib";
 import { config } from "dotenv";
 import axios from "axios";
 
@@ -12,14 +12,23 @@ you'll provide expert analysis in Markdown format.
 
 // This file is where you can define your API templates for consuming your data
 // All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
-export interface QueryParams {
+interface QueryParams {
   sessions: string; // sessionId|sessionLabel, sessionId|sessionLabel, ...
 }
 
-export default async function handle(
-  { sessions }: QueryParams,
-  { client, sql }: ConsumptionUtil,
-) {
+interface SessionInsightResponse {
+  status: number;
+  success: boolean;
+  data: {
+    insights: string | null;
+    queryResult: any[];
+  };
+}
+
+export const sessionInsightsApi = new ConsumptionApi<
+  QueryParams,
+  SessionInsightResponse
+>("session-insights", async ({ sessions }, { client, sql }) => {
   const openAIKey = process.env.OPENAI_API_KEY;
 
   // Parse the sessions string into an array of sessionId and sessionLabel pairs
@@ -31,27 +40,28 @@ export default async function handle(
   // Map through each sessionData and run the query
   const queryResults = await Promise.all(
     sessionData.map(async ({ sessionId, sessionLabel }) => {
-      return client.query(sql`SELECT
-        sessionId,
-        ${sessionLabel} AS sessionLabel,
-        SUM(sqrt((arrayElement(acc, 1) * arrayElement(acc, 1)) +
-                 (arrayElement(acc, 2) * arrayElement(acc, 2)) +
-                 (arrayElement(acc, 3) * arrayElement(acc, 3)))) AS acc_movement_score,
-        SUM(sqrt((arrayElement(gyro, 1) * arrayElement(gyro, 1)) +
-                 (arrayElement(gyro, 2) * arrayElement(gyro, 2)) +
-                 (arrayElement(gyro, 3) * arrayElement(gyro, 3)))) AS gyro_movement_score,
-        (SUM(sqrt((arrayElement(acc, 1) * arrayElement(acc, 1)) +
-                  (arrayElement(acc, 2) * arrayElement(acc, 2)) +
-                  (arrayElement(acc, 3) * arrayElement(acc, 3)))) +
-         SUM(sqrt((arrayElement(gyro, 1) * arrayElement(gyro, 1)) +
-                  (arrayElement(gyro, 2) * arrayElement(gyro, 2)) +
-                  (arrayElement(gyro, 3) * arrayElement(gyro, 3))))) AS total_movement_score
-    FROM
-        Brain_0_0
-    WHERE
-        sessionId = ${sessionId}
-    GROUP BY
-        sessionId`);
+      const result = await client.query.execute(sql`SELECT
+          sessionId,
+          ${sessionLabel} AS sessionLabel,
+          SUM(sqrt((arrayElement(acc, 1) * arrayElement(acc, 1)) +
+                   (arrayElement(acc, 2) * arrayElement(acc, 2)) +
+                   (arrayElement(acc, 3) * arrayElement(acc, 3)))) AS acc_movement_score,
+          SUM(sqrt((arrayElement(gyro, 1) * arrayElement(gyro, 1)) +
+                   (arrayElement(gyro, 2) * arrayElement(gyro, 2)) +
+                   (arrayElement(gyro, 3) * arrayElement(gyro, 3)))) AS gyro_movement_score,
+          (SUM(sqrt((arrayElement(acc, 1) * arrayElement(acc, 1)) +
+                    (arrayElement(acc, 2) * arrayElement(acc, 2)) +
+                    (arrayElement(acc, 3) * arrayElement(acc, 3)))) +
+           SUM(sqrt((arrayElement(gyro, 1) * arrayElement(gyro, 1)) +
+                    (arrayElement(gyro, 2) * arrayElement(gyro, 2)) +
+                    (arrayElement(gyro, 3) * arrayElement(gyro, 3))))) AS total_movement_score
+      FROM
+          Brain
+      WHERE
+          sessionId = ${sessionId}
+      GROUP BY
+          sessionId`);
+      return result;
     }),
   );
 
@@ -79,7 +89,7 @@ export default async function handle(
       queryResult: formattedData,
     },
   };
-}
+});
 
 /**
  * Queries the OpenAI API with a given prompt.

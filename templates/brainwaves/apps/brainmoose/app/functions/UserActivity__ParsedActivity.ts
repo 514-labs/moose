@@ -1,16 +1,26 @@
-// Example streaming function: Converts local timestamps in UserActivity data to UTC.
+// DMV2 Streaming Function: Converts local timestamps in UserActivity data to UTC.
+// Using DMV2 IngestPipeline streams for type-safe stream processing
 
-// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity, UserActivity } from "datamodels/models";
+import {
+  ParsedActivity,
+  UserActivity,
+  UserActivityPipeline,
+  ParsedActivityPipeline,
+} from "../datamodels/models";
 
-// The 'run' function transforms UserActivity data to ParsedActivity format.
-// For more details on how Moose streaming functions work, see: docs.fiveonefour.com/moose
-export default function run(source: UserActivity): ParsedActivity {
-  // Convert local timestamp to UTC and return new ParsedActivity object.
-  return {
-    eventId: source.eventId, // Retain original event ID.
-    userId: "puid" + source.userId, // Example: Prefix user ID.
-    activity: source.activity, // Copy activity unchanged.
-    timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
-  };
-}
+// DMV2 Stream Transformation using pipeline streams
+UserActivityPipeline.stream!.addTransform(
+  ParsedActivityPipeline.stream!,
+  (source: UserActivity): ParsedActivity => {
+    // Convert local timestamp to UTC and return new ParsedActivity object.
+    return {
+      eventId: source.eventId, // Retain original event ID.
+      userId: "puid" + source.userId, // Example: Prefix user ID.
+      activity: source.activity, // Copy activity unchanged.
+      timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
+    };
+  },
+  {
+    metadata: { description: "Convert UserActivity timestamps to UTC" },
+  },
+);

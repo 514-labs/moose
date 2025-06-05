@@ -27,9 +27,18 @@ const nextConfig = {
     unoptimized: true,
     domains: ["docs.fiveonefour.com"],
   },
+  env: {
+    // Make Athena token available on the client side
+    NEXT_PUBLIC_ATHENA_TRACKING_TOKEN:
+      process.env.NEXT_PUBLIC_ATHENA_TRACKING_TOKEN,
+  },
   // Optional build-time configuration options
   async rewrites() {
     return [
+      {
+        source: "/robots.txt",
+        destination: "/api/robots.txt",
+      },
       {
         source: "/ingest/static/:path*",
         destination: "https://us-assets.i.posthog.com/static/:path*",

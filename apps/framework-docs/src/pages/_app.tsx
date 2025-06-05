@@ -7,6 +7,13 @@ import posthog from "posthog-js";
 import Script from "next/script";
 import type { AppProps } from "next/app";
 
+// Global type declaration for Athena telemetry
+declare global {
+  interface Window {
+    athenaTelemetryQueue: any[];
+  }
+}
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
@@ -83,6 +90,30 @@ export default function App({ Component, pageProps }: AppProps) {
             `,
         }}
       />
+      {process.env.NEXT_PUBLIC_ATHENA_TRACKING_TOKEN && (
+        <Script
+          id="athena-telemetry-secure"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                window.athenaTelemetryQueue = window.athenaTelemetryQueue || [];
+                
+                var script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://app.athenahq.ai/api/tracking/${process.env.NEXT_PUBLIC_ATHENA_TRACKING_TOKEN}';
+                
+                var firstScript = document.getElementsByTagName('script')[0];
+                if (firstScript && firstScript.parentNode) {
+                  firstScript.parentNode.insertBefore(script, firstScript);
+                } else {
+                  document.head.appendChild(script);
+                }
+              })();
+            `,
+          }}
+        />
+      )}
       <Component {...pageProps} />
     </RootLayout>
   );

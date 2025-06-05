@@ -49,6 +49,7 @@ use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::framework::core::infrastructure_map::Change::Added;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::datamodel_config::load_main_py;
+use crate::framework::scripts::Workflow;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
@@ -391,6 +392,10 @@ pub struct InfrastructureMap {
     /// resources that have setup and teardown
     #[serde(default)]
     pub sql_resources: HashMap<String, SqlResource>,
+
+    /// Collection of workflows indexed by workflow name
+    #[serde(default)]
+    pub workflows: HashMap<String, Workflow>,
 }
 
 impl InfrastructureMap {
@@ -550,6 +555,7 @@ impl InfrastructureMap {
             consumption_api_web_server,
             orchestration_workers,
             sql_resources: Default::default(),
+            workflows: Default::default(),
         }
     }
 
@@ -1534,6 +1540,8 @@ impl InfrastructureMap {
                 .into_iter()
                 .map(|(k, v)| (k, SqlResource::from_proto(v)))
                 .collect(),
+            // TODO: add proto
+            workflows: HashMap::new(),
         })
     }
 
@@ -1738,6 +1746,7 @@ impl Default for InfrastructureMap {
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),
+            workflows: HashMap::new(),
         }
     }
 }

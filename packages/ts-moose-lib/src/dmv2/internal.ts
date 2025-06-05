@@ -20,6 +20,8 @@ import {
   SqlResource,
   ConsumerConfig,
   TransformConfig,
+  Workflow,
+  Task,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
@@ -36,6 +38,7 @@ const moose_internal = {
   ingestApis: new Map<string, IngestApi<any>>(),
   egressApis: new Map<string, ConsumptionApi<any>>(),
   sqlResources: new Map<string, SqlResource>(),
+  workflows: new Map<string, Workflow>(),
 };
 /**
  * Default retention period for streams if not specified (7 days in seconds).
@@ -160,6 +163,13 @@ interface InfrastructureSignatureJson {
     | "SqlResource";
 }
 
+interface WorkflowJson {
+  name: string;
+  retries?: number;
+  timeout?: string;
+  schedule?: string;
+}
+
 /**
  * JSON representation of a generic SQL resource (like View, MaterializedView).
  */
@@ -190,6 +200,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
   const ingestApis: { [key: string]: IngestApiJson } = {};
   const egressApis: { [key: string]: EgressApiJson } = {};
   const sqlResources: { [key: string]: SqlResourceJson } = {};
+  const workflows: { [key: string]: WorkflowJson } = {};
 
   registry.tables.forEach((table) => {
     // If the table is part of an IngestPipeline, inherit metadata if not set
@@ -328,12 +339,22 @@ const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
+  registry.workflows.forEach((workflow) => {
+    workflows[workflow.name] = {
+      name: workflow.name,
+      retries: workflow.config.retries,
+      timeout: workflow.config.timeout,
+      schedule: workflow.config.schedule,
+    };
+  });
+
   return {
     topics,
     tables,
     ingestApis,
     egressApis,
     sqlResources,
+    workflows,
   };
 };
 
@@ -428,4 +449,49 @@ export const getEgressApis = async () => {
   });
 
   return egressFunctions;
+};
+
+export const getWorkflows = async () => {
+  await require(`${process.cwd()}/app/index.ts`);
+
+  const registry = getMooseInternal();
+  return registry.workflows;
+};
+
+function findTaskInTree(
+  task: Task<any, any>,
+  targetName: string,
+): Task<any, any> | undefined {
+  if (task.name === targetName) {
+    return task;
+  }
+
+  if (task.config.onComplete?.length) {
+    for (const childTask of task.config.onComplete) {
+      const found = findTaskInTree(childTask, targetName);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+export const getTaskForWorkflow = async (
+  workflowName: string,
+  taskName: string,
+): Promise<Task<any, any>> => {
+  const workflows = await getWorkflows();
+  const workflow = workflows.get(workflowName);
+  if (!workflow) {
+    throw new Error(`Workflow ${workflowName} not found`);
+  }
+
+  const task = findTaskInTree(workflow.config.startingTask, taskName);
+  if (!task) {
+    throw new Error(`Task ${taskName} not found in workflow ${workflowName}`);
+  }
+
+  return task;
 };

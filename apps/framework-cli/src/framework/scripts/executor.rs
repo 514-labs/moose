@@ -3,9 +3,8 @@ use log::info;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use toml;
 
-use super::config::WorkflowConfig;
+use super::{config::WorkflowConfig, Workflow};
 use crate::framework::{
     languages::SupportedLanguages,
     scripts::utils::{
@@ -53,25 +52,17 @@ pub(crate) async fn execute_workflow(
     temporal_config: &TemporalConfig,
     language: SupportedLanguages,
     workflow_id: &str,
+    config: &WorkflowConfig,
     execution_path: &Path,
     input: Option<String>,
 ) -> Result<String, WorkflowExecutionError> {
-    let config_path = execution_path.join("config.toml");
-    let config_content = std::fs::read_to_string(config_path).map_err(|e| {
-        WorkflowExecutionError::ConfigError(format!("Failed to read config.toml: {}", e))
-    })?;
-
-    let config: WorkflowConfig = toml::from_str(&config_content).map_err(|e| {
-        WorkflowExecutionError::ConfigError(format!("Failed to parse config.toml: {}", e))
-    })?;
-
     match language {
         SupportedLanguages::Python => {
             let params = WorkflowExecutionParams {
                 temporal_config,
                 workflow_id,
                 execution_path,
-                config: &config,
+                config,
                 input,
                 task_queue_name: PYTHON_TASK_QUEUE,
             };
@@ -83,7 +74,7 @@ pub(crate) async fn execute_workflow(
                 temporal_config,
                 workflow_id,
                 execution_path,
-                config: &config,
+                config,
                 input,
                 task_queue_name: TYPESCRIPT_TASK_QUEUE,
             };
@@ -127,7 +118,10 @@ async fn execute_workflow_for_language(
 ///
 /// # Returns
 /// * `Result<(), WorkflowExecutionError>` - Success or an error if workflow startup fails
-pub(crate) async fn execute_scheduled_workflows(project: &Project) {
+pub(crate) async fn execute_scheduled_workflows(
+    project: &Project,
+    dmv2_workflows: &HashMap<String, Workflow>,
+) {
     if !project.features.workflows {
         info!("Workflows are not enabled for this project. Not auto-starting scheduled workflows");
         return;
@@ -143,15 +137,19 @@ pub(crate) async fn execute_scheduled_workflows(project: &Project) {
 
     info!(
         "Auto-start workflows found {} workflows",
-        workflows.get_defined_workflows().len()
+        workflows.get_defined_workflows().len() + dmv2_workflows.len()
     );
 
     let running_workflows = list_running_workflows(project).await;
     info!("Found {} running workflow IDs", running_workflows.len());
 
-    for workflow in workflows.get_defined_workflows() {
+    async fn handle_workflow(
+        workflow: &Workflow,
+        running_workflows: &HashSet<String>,
+        project: &Project,
+    ) {
         if workflow.config.schedule.is_empty() {
-            continue;
+            return;
         }
 
         if running_workflows.contains(&workflow.name) {
@@ -159,17 +157,23 @@ pub(crate) async fn execute_scheduled_workflows(project: &Project) {
                 "Workflow {} is already running. Skipping auto-start",
                 workflow.name
             );
-        } else {
-            let start_result = workflow.start(&project.temporal_config, None).await;
-            match start_result {
-                Ok(_) => {
-                    info!("Auto-started workflow: {}", workflow.name);
-                }
-                Err(e) => {
-                    log::error!("Failed to auto-start workflow {}: {}", workflow.name, e);
-                }
-            }
+            return;
         }
+
+        match workflow.start(&project.temporal_config, None).await {
+            Ok(_) => info!("Auto-started workflow: {}", workflow.name),
+            Err(e) => log::error!("Failed to auto-start workflow {}: {}", workflow.name, e),
+        }
+    }
+
+    // Handle regular workflows
+    for workflow in workflows.get_defined_workflows() {
+        handle_workflow(workflow, &running_workflows, project).await;
+    }
+
+    // Handle dmv2 workflows
+    for workflow in dmv2_workflows.values() {
+        handle_workflow(workflow, &running_workflows, project).await;
     }
 }
 

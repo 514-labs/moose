@@ -28,3 +28,8 @@ key_prefix = "MS"
 main_branch_name = "main"
 
 [supported_old_versions]
+
+[features]
+streaming_engine = true
+workflows = true
+data_model_v2 = true

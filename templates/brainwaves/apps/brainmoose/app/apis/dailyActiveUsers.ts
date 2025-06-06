@@ -1,23 +1,32 @@
-// Here is a sample api configuration that creates an API which serves the daily active users materialized view
-import { ConsumptionUtil } from "@514labs/moose-lib";
+// DMV2 ConsumptionApi: Serves the daily active users materialized view
+import { ConsumptionApi } from "@514labs/moose-lib";
 
 interface QueryParams {
-  limit: string;
-  minDailyActiveUsers: string;
+  limit?: string;
+  minDailyActiveUsers?: string;
 }
 
-export default async function handle(
-  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-  { client, sql }: ConsumptionUtil,
-) {
-  return client.query(
-    sql`SELECT 
-      date,
-      uniqMerge(dailyActiveUsers) as dailyActiveUsers
-  FROM DailyActiveUsers
-  GROUP BY date 
-  HAVING dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
-  ORDER BY date 
-  LIMIT ${parseInt(limit)}`,
-  );
+interface DailyActiveUsersResponse {
+  date: string;
+  dailyActiveUsers: number;
 }
+
+export const dailyActiveUsersApi = new ConsumptionApi<
+  QueryParams,
+  DailyActiveUsersResponse[]
+>(
+  "daily-active-users",
+  async ({ limit = "10", minDailyActiveUsers = "0" }, { client, sql }) => {
+    const result = await client.query.execute(
+      sql`SELECT 
+        date,
+        uniqMerge(dailyActiveUsers) as dailyActiveUsers
+      FROM DailyActiveUsers
+      GROUP BY date 
+      HAVING dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+      ORDER BY date 
+      LIMIT ${parseInt(limit)}`,
+    );
+    return await result.json();
+  },
+);

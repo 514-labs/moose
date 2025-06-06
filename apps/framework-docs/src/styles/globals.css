@@ -179,8 +179,12 @@ main > p {
   box-shadow: none;
 }
 
+.nextra-nav-container-blur {
+  background-color: hsl(var(--background)) !important;
+}
+
 :is(html[class~="dark"] .nextra-nav-container-blur) {
-  background-color: hsl(var(--background) / 0.8) !important;
+  background-color: hsl(var(--background)) !important;
 }
 
 :is(html[class~="dark"] .dark\:_shadow-\[0_-12px_16px_\#111\]) {

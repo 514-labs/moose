@@ -46,7 +46,11 @@ export function ContactCard({
               {description}
             </p>
             <Link href={ctaLink}>
-              <Button size="sm" className="text-xs h-7 px-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs h-7 px-3 font-normal border hover:bg-secondary/20"
+              >
                 {ctaLabel}
               </Button>
             </Link>

@@ -41,6 +41,8 @@ export {
   SqlResource,
   View,
   MaterializedView,
+  Task,
+  Workflow,
 } from "./dmv2";
 
 export { createConsumptionApi } from "./consumption-apis/runner";

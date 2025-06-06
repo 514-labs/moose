@@ -119,7 +119,7 @@ pub async fn execute_initial_infra_change(
     )
     .await?;
 
-    execute_scheduled_workflows(project).await;
+    execute_scheduled_workflows(project, &plan.target_infra_map.workflows).await;
 
     // Check if this process instance has the "leadership" lock
     if redis_client

@@ -44,7 +44,8 @@ use tokio::process::Child;
 
 use crate::{
     framework::{
-        consumption::model::ConsumptionQueryParam, languages::SupportedLanguages, versions::Version,
+        consumption::model::ConsumptionQueryParam, languages::SupportedLanguages,
+        scripts::Workflow, versions::Version,
     },
     utilities::constants,
 };
@@ -167,6 +168,14 @@ pub struct Consumer {
     pub version: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialWorkflow {
+    pub name: String,
+    pub retries: Option<u32>,
+    pub timeout: Option<String>,
+    pub schedule: Option<String>,
+}
+
 /// Errors that can occur during the loading of Data Model V2 infrastructure definitions.
 ///
 /// This error type follows the Rust error handling best practices and provides
@@ -233,6 +242,8 @@ pub struct PartialInfrastructureMap {
     function_processes: HashMap<String, FunctionProcess>,
     block_db_processes: Option<OlapProcess>,
     consumption_api_web_server: Option<ConsumptionApiWebServer>,
+    #[serde(default)]
+    workflows: HashMap<String, PartialWorkflow>,
 }
 
 impl PartialInfrastructureMap {
@@ -338,6 +349,7 @@ impl PartialInfrastructureMap {
         let topic_to_table_sync_processes =
             self.create_topic_to_table_sync_processes(&tables, &topics);
         let function_processes = self.create_function_processes(main_file, language, &topics);
+        let workflows = self.convert_workflows(language);
 
         // Why does dmv1 InfrastructureMap::new do this?
         let mut orchestration_workers = HashMap::new();
@@ -358,6 +370,7 @@ impl PartialInfrastructureMap {
                 .consumption_api_web_server
                 .unwrap_or(ConsumptionApiWebServer {}),
             orchestration_workers,
+            workflows,
         }
     }
 
@@ -683,5 +696,31 @@ impl PartialInfrastructureMap {
         }
 
         function_processes
+    }
+
+    /// Creates workflows from user code.
+    ///
+    /// This method converts partial workflow definitions into complete [`Workflow`] instances.
+    /// It handles the creation of workflows from user-defined code, ensuring that all necessary
+    /// configuration is set up correctly.
+    ///
+    /// # Arguments
+    ///
+    /// * `language` - The programming language of the user's code
+    fn convert_workflows(&self, language: SupportedLanguages) -> HashMap<String, Workflow> {
+        self.workflows
+            .values()
+            .map(|partial_workflow| {
+                let workflow = Workflow::from_user_code(
+                    partial_workflow.name.clone(),
+                    language,
+                    partial_workflow.retries,
+                    partial_workflow.timeout.clone(),
+                    partial_workflow.schedule.clone(),
+                )
+                .expect("Failed to create workflow from user code");
+                (partial_workflow.name.clone(), workflow)
+            })
+            .collect()
     }
 }

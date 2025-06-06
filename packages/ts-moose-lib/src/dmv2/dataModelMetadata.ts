@@ -14,6 +14,7 @@ const typesToArgsLength = new Map([
   ["IngestApi", 2],
   ["ConsumptionApi", 2],
   ["MaterializedView", 1],
+  ["Task", 2],
 ]);
 
 export const isNewMooseResourceWithTypeParam = (
@@ -40,7 +41,8 @@ export const isNewMooseResourceWithTypeParam = (
     (node.arguments?.length === 1 ||
       // config param
       node.arguments?.length === 2) &&
-    node.typeArguments?.length === 1
+    // TODO: Is this okay? Should I add a new check?
+    (node.typeArguments?.length === 1 || node.typeArguments?.length === 2)
   );
 };
 

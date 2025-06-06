@@ -15,6 +15,7 @@ export * from "./blocks/DailyActiveUsers";
 
 // Consumption APIs
 export * from "./apis/getBrainBySessionId";
+export * from "./apis/getMostActiveBrainwaves";
 export * from "./apis/dailyActiveUsers";
 export * from "./apis/sessionInsights";
 

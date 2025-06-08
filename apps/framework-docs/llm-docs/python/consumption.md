@@ -1,6 +1,7 @@
 # Consumption APIs
 
 ## Overview
+
 Moose provides two main types of APIs for exposing data:
 
 1. **EgressApi**: Use this for simple data surfacing from tables with SQL queries and parameter support. This is the recommended approach for most data access patterns.
@@ -8,6 +9,7 @@ Moose provides two main types of APIs for exposing data:
 2. **ConsumptionApi**: Use this for complex data transformations, custom business logic, or when you need fine-grained control over the response format.
 
 Choose the right API type based on your needs:
+
 - Use `EgressApi` when you just need to surface table data with filtering and pagination
 - Use `ConsumptionApi` when you need custom business logic or complex data transformations
 
@@ -16,6 +18,7 @@ Choose the right API type based on your needs:
 The `EgressApi` is the recommended way to surface table data. It provides a simple, type-safe interface for exposing data with built-in parameter support.
 
 ### Basic Setup
+
 ```python
 from moose_lib import EgressApi
 
@@ -39,6 +42,7 @@ get_brain_data = EgressApi(
 ```
 
 ### Features
+
 - Type-safe parameter handling
 - Built-in pagination support
 - Automatic parameter validation
@@ -47,12 +51,15 @@ get_brain_data = EgressApi(
 - Default parameter values
 
 ### Best Practices
+
 1. **Parameter Types**
+
    - Use `Nullable(T)` for optional parameters
    - Specify exact types (e.g., `Float64`, `Int32`)
    - Provide default values when appropriate
 
 2. **SQL Queries**
+
    - Use parameterized queries for all user input
    - Include proper WHERE clauses for filtering
    - Add ORDER BY for consistent results
@@ -73,199 +80,138 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
 # Define your query parameters model
-class BrainDataQuery(BaseModel):
-    id: str
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
-    limit: Optional[int] = 100
+class HeartRateStatsQuery(BaseModel):
+    start_time: str  # ISO8601 string, beginning of the time range
+    end_time: str    # ISO8601 string, end of the time range
 
 # Define your response model
-class BrainData(BaseModel):
-    id: str
-    timestamp: float
-    value: float
+class HeartRateStats(BaseModel):
+    min_heart_rate: float = 0.0
+    max_heart_rate: float = 0.0
+    avg_heart_rate: float = 0.0
 
 # Define your query function
-def get_brain_data(params: BrainDataQuery, utils) -> BrainData:
-    client = utils.client
-    sql = utils.sql
-    
-    result = client.query.execute("""
-        SELECT * FROM brain_data
-        WHERE id = {params.id}
-        AND ({params.start_time} IS NULL OR timestamp >= {params.start_time})
-        AND ({params.end_time} IS NULL OR timestamp <= {params.end_time})
-        ORDER BY timestamp DESC
-        LIMIT {params.limit}
-    """)
-    
-    if not result:
-        return BrainData(
-            id="",
-            timestamp=0.0,
-            value=0.0
-        )
-    
-    return BrainData(**result[0])
+def get_heart_rate_stats(client, params: HeartRateStatsQuery) -> HeartRateStats:
+    """
+    Retrieve the minimum, maximum, and average heart rate for a given time range.
 
-# CORRECT: Use generic type parameters, provide name as first positional parameter, and use EgressConfig
-brain_data_api = ConsumptionApi[BrainDataQuery, BrainData](
-    "get_brain_data",           # Required: First positional parameter
-    query_function=get_brain_data,  # Required: Query function
-    source="brain_data",        # Required: Source table name
-    config=EgressConfig(        # Required: Configuration wrapped in EgressConfig
-        auth={
-            "required": True,
-            "roles": ["admin"]
+    Args:
+        client: Database client for executing queries
+        params: Contains start_time and end_time parameters
+
+    Returns:
+        HeartRateStats object containing min, max, and avg heart rate values
+    """
+
+    # Execute the query with parameterized values
+    result = client.query.execute(
+        """
+        SELECT
+            MIN(heart_rate) AS min_heart_rate,
+            MAX(heart_rate) AS max_heart_rate,
+            AVG(heart_rate) AS avg_heart_rate
+        FROM heart_rate_measurement
+        WHERE timestamp >= {start_time}
+        AND timestamp <= {end_time}
+        """,
+        {
+            "start_time": params.start_time,
+            "end_time": params.end_time
         }
     )
-)
 
-# INCORRECT: Missing name as first positional parameter
-brain_data_api = ConsumptionApi[BrainDataQuery, BrainData](  # This will cause an error
-    query_function=get_brain_data,
-    source="brain_data",
-    config=EgressConfig(
-        auth={"required": True}
-    )
-)
+    # Handle case when no data is found
+    if not result or len(result) == 0:
+        return HeartRateStats()
 
-# INCORRECT: Settings not wrapped in EgressConfig
-brain_data_api = ConsumptionApi[BrainDataQuery, BrainData](  # This will cause an error
-    "get_brain_data",
-    query_function=get_brain_data,
-    source="brain_data",
-    settings={  # Wrong: settings should be in EgressConfig
-        "auth": {"required": True}
-    }
+    # Return the first (and only) row of results
+    return HeartRateStats(**result[0])
+
+# Create the consumption API
+heart_rate_stats_api = ConsumptionApi[HeartRateStatsQuery, HeartRateStats](
+    "getHeartRateStats",
+    query_function=get_heart_rate_stats,
+    source="heart_rate_measurement",
+    config=EgressConfig()  # Empty config is valid
 )
 ```
 
 ### Required Parameters
 
-1. **Name Parameter**
-   - Must be provided as the first positional parameter
-   - Should match the API's purpose
-   - Used for endpoint identification
-   ```python
-   # CORRECT
-   api = ConsumptionApi[InputType, OutputType](
-       "get_brain_data",  # Required: First positional parameter
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(...)
-   )
+1. **Function Signature**
 
-   # INCORRECT
-   api = ConsumptionApi[InputType, OutputType](  # Missing name as first positional parameter
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(...)
-   )
-   ```
+   - Must be synchronous (not async)
+   - First parameter must be `client`
+   - Second parameter must be typed with your query parameters model
+   - Return type must be your response model
+   - ❌ Incorrect: `def function_name(params: QueryModel, utils) -> ResponseModel`
+   - ✅ Correct: `def function_name(client, params: QueryModel) -> ResponseModel`
 
-2. **Configuration**
-   - Must use `EgressConfig` for settings
-   - Must provide required configuration options
-   - Must be passed as `config` parameter
-   ```python
-   # CORRECT
-   api = ConsumptionApi[InputType, OutputType](
-       "get_brain_data",
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(
-           auth={"required": True}
-       )
-   )
+2. **Query Execution**
 
-   # INCORRECT
-   api = ConsumptionApi[InputType, OutputType](  # Settings not in EgressConfig
-       "get_brain_data",
-       query_function=get_brain_data,
-       source="brain_data",
-       settings={  # Wrong: should be in EgressConfig
-           "auth": {"required": True}
-       }
-   )
-   ```
+   - Must use `client.query.execute(query, variables)` with both arguments
+   - First argument is the SQL query string
+   - Second argument is a dictionary of parameter values
+   - ❌ Incorrect: `client.query.execute(query)`
+   - ✅ Correct: `client.query.execute(query, {"param": value})`
+
+3. **API Creation**
+   - Must use generic type parameters: `ConsumptionApi[QueryModel, ResponseModel]`
+   - Must provide name as first positional parameter
+   - Must provide query function
+   - Must provide source table name
+   - Must use empty `EgressConfig()` for configuration
+   - ❌ Incorrect: `config=EgressConfig(auth={"required": True})`
+   - ✅ Correct: `config=EgressConfig()`
 
 ### Common Issues and Solutions
 
-1. **Missing Name Parameter**
-   - Problem: Not providing name as first positional parameter
-   - Solution: Always include name as first argument
-   ```python
-   # Wrong
-   api = ConsumptionApi[BrainDataQuery, BrainData](
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(...)
-   )
-   
-   # Correct
-   api = ConsumptionApi[BrainDataQuery, BrainData](
-       "get_brain_data",  # First positional parameter
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(...)
-   )
-   ```
+1. **Function Signature Errors**
 
-2. **Incorrect Configuration**
-   - Problem: Settings not wrapped in EgressConfig
-   - Solution: Always use EgressConfig for settings
-   ```python
-   # Wrong
-   api = ConsumptionApi[BrainDataQuery, BrainData](
-       "get_brain_data",
-       query_function=get_brain_data,
-       source="brain_data",
-       settings={  # Wrong: should be in EgressConfig
-           "auth": {"required": True}
-       }
-   )
-   
-   # Correct
-   api = ConsumptionApi[BrainDataQuery, BrainData](
-       "get_brain_data",
-       query_function=get_brain_data,
-       source="brain_data",
-       config=EgressConfig(  # Correct: settings in EgressConfig
-           auth={"required": True}
-       )
-   )
-   ```
+   - Problem: Using `utils` instead of `client` or wrong parameter order
+   - Solution: Use `def function_name(client, params: QueryModel) -> ResponseModel`
+
+2. **Query Execution Errors**
+
+   - Problem: Missing variables dictionary or using Python-style parameter substitution
+   - Solution: Always use `client.query.execute(query, variables)` with ClickHouse-style `{param}` syntax
+
+3. **Configuration Errors**
+   - Problem: Passing parameters to EgressConfig
+   - Solution: Use empty EgressConfig: `config=EgressConfig()`
 
 ### Best Practices
 
-1. **API Naming**
-   - Use descriptive names that match the API's purpose
-   - Follow consistent naming conventions
-   - Avoid generic names
+1. **Query Functions**
 
-2. **Configuration**
-   - Always use EgressConfig for settings
-   - Provide all required configuration options
-   - Use proper authentication settings
+   - Use proper function signature with `client` first
+   - Always provide variables dictionary to execute
+   - Use ClickHouse-style parameter syntax
+   - Handle empty results with default values
 
-3. **Type Safety**
-   - Always define both input and output types
-   - Use Pydantic models for type validation
-   - Make query parameters explicit with a dedicated model
+2. **Parameter Models**
 
-4. **Required Parameters**
-   - Always provide name as first positional parameter
-   - Always provide both type parameters
-   - Always provide the query function
-   - Always provide the source
-   - Always use EgressConfig for settings
+   - Use Pydantic BaseModel
+   - Document parameter types (especially timestamps)
+   - Use proper type hints
+
+3. **Response Models**
+
+   - Use Pydantic BaseModel
+   - Provide default values for all fields
+   - Match database column names
+
+4. **API Creation**
+   - Use proper generic type parameters
+   - Provide all required parameters
+   - Use empty EgressConfig
 
 ## Python-Specific Requirements
 
 When creating Python consumption APIs, you must follow these requirements exactly:
 
 1. **Imports**
+
    ```python
    from moose_lib import ConsumptionApi
    from pydantic import BaseModel
@@ -273,10 +219,12 @@ When creating Python consumption APIs, you must follow these requirements exactl
    ```
 
 2. **Response Models**
+
    - Always use Pydantic models
    - Use standard Python types (not Key[str])
    - Use snake_case for field names
    - Define all nested models explicitly
+
    ```python
    class Accelerometer(BaseModel):
        x: float = 0.0
@@ -300,25 +248,27 @@ When creating Python consumption APIs, you must follow these requirements exactl
    ```
 
 3. **Query Functions**
+
    - Must be synchronous (not async)
    - Must take params and utils arguments
    - Must return a single instance of the response model
    - Must never return None, a list, or a dict
    - Must handle the case when no data is found
    - Use snake_case for function names
+
    ```python
    # CORRECT: Returns a single model instance with default values
    def get_brain_data(params: Dict[str, Any], utils) -> BrainData:
        client = utils.client
        sql = utils.sql
-       
+
        result = client.query.execute(sql"""
            SELECT *
            FROM brain_data
            WHERE id = {params['id']}
            LIMIT 1
        """)
-       
+
        if not result:
            # Return a default-constructed model with zero values
            return BrainData(
@@ -328,21 +278,21 @@ When creating Python consumption APIs, you must follow these requirements exactl
                gyro=Gyroscope(),
                ppm=PPM()
            )
-       
+
        return BrainData(**result[0])
 
    # CORRECT: Returns a single model instance with custom defaults
    def get_user_event(params: Dict[str, Any], utils) -> UserEvent:
        client = utils.client
        sql = utils.sql
-       
+
        result = client.query.execute(sql"""
            SELECT *
            FROM UserEventTable
            WHERE user_id = {params['user_id']}
            LIMIT 1
        """)
-       
+
        if not result:
            # Return a default-constructed model with meaningful defaults
            return UserEvent(
@@ -351,57 +301,59 @@ When creating Python consumption APIs, you must follow these requirements exactl
                event_type="unknown",
                timestamp="1970-01-01T00:00:00Z"
            )
-       
+
        return UserEvent(**result[0])
 
    # INCORRECT: Returns a list
    def get_brain_data(params: Dict[str, Any], utils) -> list[BrainData]:  # This will cause an error
        client = utils.client
        sql = utils.sql
-       
+
        result = client.query.execute(sql"""
            SELECT * FROM brain_data
        """)
-       
+
        return result  # Wrong: returning a list
 
    # INCORRECT: Returns None
    def get_brain_data(params: Dict[str, Any], utils) -> BrainData:
        client = utils.client
        sql = utils.sql
-       
+
        result = client.query.execute(sql"""
            SELECT * FROM brain_data
            WHERE id = {params['id']}
            LIMIT 1
        """)
-       
+
        if not result:
            return None  # Wrong: returning None
-       
+
        return BrainData(**result[0])
 
    # INCORRECT: Returns a dict
    def get_brain_data(params: Dict[str, Any], utils) -> BrainData:
        client = utils.client
        sql = utils.sql
-       
+
        result = client.query.execute(sql"""
            SELECT * FROM brain_data
            WHERE id = {params['id']}
            LIMIT 1
        """)
-       
+
        if not result:
            return {}  # Wrong: returning a dict
-       
+
        return result[0]  # Wrong: returning a dict
    ```
 
 4. **API Creation**
+
    - Use two type parameters: response model and query function
    - The API name is derived from the variable name, DO NOT specify it in the constructor
    - Configure settings for auth and rate limiting
+
    ```python
    # CORRECT: API name is derived from the variable name
    BrainDataApi = ConsumptionApi[BrainData, get_brain_data](
@@ -439,14 +391,16 @@ When creating Python consumption APIs, you must follow these requirements exactl
 ## Common Issues and Solutions
 
 ### 1. Return Type Errors
+
 - **Problem**: Function returns a list, None, or dict instead of a model instance
 - **Solution**: Always return a valid model instance, even when no data is found
 - **Example**:
+
   ```python
   # Wrong
   if not result:
       return None  # or return [] or return {}
-  
+
   # Correct
   if not result:
       return BrainData(
@@ -459,34 +413,38 @@ When creating Python consumption APIs, you must follow these requirements exactl
   ```
 
 ### 2. Nested Model Errors
+
 - **Problem**: Missing or invalid nested model definitions
 - **Solution**: Define all nested models explicitly with proper defaults
 - **Example**:
+
   ```python
   # Wrong
   class BrainData(BaseModel):
       id: str
       acc: Dict[str, float]  # Using dict instead of proper model
-  
+
   # Correct
   class Accelerometer(BaseModel):
       x: float = 0.0
       y: float = 0.0
       z: float = 0.0
-  
+
   class BrainData(BaseModel):
       id: str
       acc: Accelerometer
   ```
 
 ### 3. Type Hint Errors
+
 - **Problem**: Incorrect return type hints
 - **Solution**: Use proper type hints for the model and function
 - **Example**:
+
   ```python
   # Wrong
   def get_brain_data(params: Dict[str, Any], utils) -> list[BrainData]:
-  
+
   # Correct
   def get_brain_data(params: Dict[str, Any], utils) -> BrainData:
   ```
@@ -508,7 +466,7 @@ class UserEvent(BaseModel):
 def get_user_events(params: Dict[str, Any], utils) -> list[UserEvent]:
     client = utils.client
     sql = utils.sql
-    
+
     # Use the SQL helper for type-safe queries
     result = await client.query.execute(sql"""
         SELECT *
@@ -517,7 +475,7 @@ def get_user_events(params: Dict[str, Any], utils) -> list[UserEvent]:
         ORDER BY timestamp DESC
         LIMIT {params.get('limit', 10)}
     """)
-    
+
     return result
 
 UserEventApi = ConsumptionApi[UserEvent, get_user_events](
@@ -544,19 +502,20 @@ QueryFunction = Callable[[Dict[str, Any], Any], list[BaseModel]]
 ## API Operations
 
 ### Basic Endpoints
+
 ```python
 # Get by ID endpoint
 def get_event_by_id(params: Dict[str, Any], utils) -> Optional[UserEvent]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT *
         FROM UserEventTable
         WHERE id = {params['id']}
         LIMIT 1
     """)
-    
+
     return result[0] if result else None
 
 GetByIdApi = ConsumptionApi[UserEvent, get_event_by_id](
@@ -568,7 +527,7 @@ GetByIdApi = ConsumptionApi[UserEvent, get_event_by_id](
 def list_events(params: Dict[str, Any], utils) -> list[UserEvent]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT *
         FROM UserEventTable
@@ -578,7 +537,7 @@ def list_events(params: Dict[str, Any], utils) -> list[UserEvent]:
         ORDER BY timestamp DESC
         LIMIT {params.get('limit', 10)}
     """)
-    
+
     return result
 
 ListApi = ConsumptionApi[UserEvent, list_events](
@@ -588,6 +547,7 @@ ListApi = ConsumptionApi[UserEvent, list_events](
 ```
 
 ### Advanced Endpoints
+
 ```python
 class EventStats(BaseModel):
     event_type: str
@@ -599,7 +559,7 @@ class EventStats(BaseModel):
 def get_event_stats(params: Dict[str, Any], utils) -> list[EventStats]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT
             event_type,
@@ -613,7 +573,7 @@ def get_event_stats(params: Dict[str, Any], utils) -> list[EventStats]:
         GROUP BY event_type
         ORDER BY count DESC
     """)
-    
+
     return result
 
 StatsApi = ConsumptionApi[EventStats, get_event_stats](
@@ -625,21 +585,22 @@ StatsApi = ConsumptionApi[EventStats, get_event_stats](
 ## Security
 
 ### Authentication
+
 ```python
 def get_secure_events(params: Dict[str, Any], utils) -> list[UserEvent]:
     # Check authentication
     if not utils.jwt:
         raise Exception("Authentication required")
-    
+
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT *
         FROM UserEventTable
         WHERE user_id = {params['user_id']}
     """)
-    
+
     return result
 
 SecureApi = ConsumptionApi[UserEvent, get_secure_events](
@@ -655,17 +616,18 @@ SecureApi = ConsumptionApi[UserEvent, get_secure_events](
 ```
 
 ### Rate Limiting
+
 ```python
 def get_rate_limited_events(params: Dict[str, Any], utils) -> list[UserEvent]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT *
         FROM UserEventTable
         LIMIT {params.get('limit', 10)}
     """)
-    
+
     return result
 
 RateLimitedApi = ConsumptionApi[UserEvent, get_rate_limited_events](
@@ -683,18 +645,21 @@ RateLimitedApi = ConsumptionApi[UserEvent, get_rate_limited_events](
 ## Best Practices
 
 1. **API Design**
+
    - Use meaningful endpoint paths
    - Implement proper error handling
    - Document your APIs
    - Version your APIs
 
 2. **Security**
+
    - Implement authentication
    - Use rate limiting
    - Validate input parameters
    - Sanitize SQL queries
 
 3. **Performance**
+
    - Use appropriate caching
    - Optimize queries
    - Monitor API usage
@@ -709,18 +674,19 @@ RateLimitedApi = ConsumptionApi[UserEvent, get_rate_limited_events](
 ## Example Usage
 
 ### Basic API
+
 ```python
 def get_basic_events(params: Dict[str, Any], utils) -> list[UserEvent]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT *
         FROM UserEventTable
         ORDER BY timestamp DESC
         LIMIT {params.get('limit', 10)}
     """)
-    
+
     return result
 
 BasicApi = ConsumptionApi[UserEvent, get_basic_events](
@@ -730,11 +696,12 @@ BasicApi = ConsumptionApi[UserEvent, get_basic_events](
 ```
 
 ### Advanced API
+
 ```python
 def get_advanced_stats(params: Dict[str, Any], utils) -> list[EventStats]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT
             event_type,
@@ -748,7 +715,7 @@ def get_advanced_stats(params: Dict[str, Any], utils) -> list[EventStats]:
         GROUP BY event_type
         ORDER BY count DESC
     """)
-    
+
     return result
 
 AdvancedApi = ConsumptionApi[EventStats, get_advanced_stats](
@@ -770,6 +737,7 @@ AdvancedApi = ConsumptionApi[EventStats, get_advanced_stats](
 ## Choosing Between APIs
 
 ### Use EgressApi when:
+
 - You need to surface table data directly
 - You want simple filtering and pagination
 - You don't need complex business logic
@@ -777,6 +745,7 @@ AdvancedApi = ConsumptionApi[EventStats, get_advanced_stats](
 - You need automatic parameter validation
 
 ### Use ConsumptionApi when:
+
 - You need custom business logic
 - You want to transform the data before returning
 - You need to combine data from multiple sources
@@ -786,6 +755,7 @@ AdvancedApi = ConsumptionApi[EventStats, get_advanced_stats](
 ## Example: Converting from ConsumptionApi to EgressApi
 
 ### Before (ConsumptionApi):
+
 ```python
 from moose_lib import ConsumptionApi
 from pydantic import BaseModel
@@ -798,7 +768,7 @@ class BrainData(BaseModel):
 def get_brain_data(params: Dict[str, Any], utils) -> list[BrainData]:
     client = utils.client
     sql = utils.sql
-    
+
     result = await client.query.execute(sql"""
         SELECT * FROM brain_data
         WHERE timestamp >= {params.get('start_time')}
@@ -806,7 +776,7 @@ def get_brain_data(params: Dict[str, Any], utils) -> list[BrainData]:
         ORDER BY timestamp DESC
         LIMIT {params.get('limit', 100)}
     """)
-    
+
     return result
 
 BrainDataApi = ConsumptionApi[BrainDataQuery, BrainData](
@@ -815,6 +785,7 @@ BrainDataApi = ConsumptionApi[BrainDataQuery, BrainData](
 ```
 
 ### After (EgressApi):
+
 ```python
 from moose_lib import EgressApi
 
@@ -841,14 +812,17 @@ get_brain_data = EgressApi(
 ### Common Issues
 
 1. **Parameter Type Errors**
+
    - Problem: Parameters not matching expected types
    - Solution: Use correct type annotations in query_params
 
 2. **SQL Errors**
+
    - Problem: Invalid SQL syntax or missing columns
    - Solution: Test SQL queries directly in your database
 
 3. **Performance Issues**
+
    - Problem: Slow queries or large result sets
    - Solution: Add proper indexes and use LIMIT
 
@@ -861,6 +835,7 @@ get_brain_data = EgressApi(
 When writing SQL queries in your query functions, follow these rules:
 
 1. **Query String Format**
+
    ```python
    # CORRECT: Use triple quotes for multi-line queries
    result = client.query.execute("""
@@ -881,6 +856,7 @@ When writing SQL queries in your query functions, follow these rules:
    ```
 
 2. **Parameter Interpolation**
+
    ```python
    # CORRECT: Use params model attributes
    result = client.query.execute("""
@@ -905,10 +881,11 @@ When writing SQL queries in your query functions, follow these rules:
    ```
 
 3. **Query Structure**
+
    ```python
    # CORRECT: Well-structured query with proper formatting
    result = client.query.execute("""
-       SELECT 
+       SELECT
            id,
            timestamp,
            value
@@ -929,14 +906,16 @@ When writing SQL queries in your query functions, follow these rules:
 ### Common Issues and Solutions
 
 1. **SQL Syntax Errors**
+
    - Problem: Using incorrect SQL string syntax
    - Solution: Use triple quotes for multi-line queries
+
    ```python
    # Wrong
    result = client.query.execute(sql"""
        SELECT * FROM brain_data
    """)
-   
+
    # Correct
    result = client.query.execute("""
        SELECT * FROM brain_data
@@ -944,15 +923,17 @@ When writing SQL queries in your query functions, follow these rules:
    ```
 
 2. **Parameter Interpolation**
+
    - Problem: Unsafe parameter interpolation
    - Solution: Use the params model attributes
+
    ```python
    # Wrong
    result = client.query.execute(f"""
        SELECT * FROM brain_data
        WHERE id = {params.id}
    """)
-   
+
    # Correct
    result = client.query.execute("""
        SELECT * FROM brain_data
@@ -961,14 +942,16 @@ When writing SQL queries in your query functions, follow these rules:
    ```
 
 3. **Query Structure**
+
    - Problem: Poorly formatted or unsafe queries
    - Solution: Use proper SQL formatting and parameterization
+
    ```python
    # Wrong
    result = client.query.execute("""
        SELECT * FROM brain_data WHERE id=" + params.id
    """)
-   
+
    # Correct
    result = client.query.execute("""
        SELECT * FROM brain_data
@@ -1007,7 +990,7 @@ class BrainDataQuery(BaseModel):
 def get_brain_data(params: BrainDataQuery, utils) -> BrainDataListResponse:
     client = utils.client
     sql = utils.sql
-    
+
     result = client.query.execute("""
         SELECT * FROM brain_data
         WHERE ({params.start_time} IS NULL OR timestamp >= {params.start_time})
@@ -1015,10 +998,10 @@ def get_brain_data(params: BrainDataQuery, utils) -> BrainDataListResponse:
         ORDER BY timestamp DESC
         LIMIT {params.limit}
     """)
-    
+
     if not result:
         return BrainDataListResponse(items=[])
-    
+
     return BrainDataListResponse(
         items=[BrainData(**item) for item in result],
         total=len(result)
@@ -1054,9 +1037,11 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
 ### Response Model Structure
 
 1. **Base Data Model**
+
    - Define your core data structure
    - Use proper Python types
    - Match your database schema
+
    ```python
    class BrainData(BaseModel):
        id: str
@@ -1065,9 +1050,11 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
    ```
 
 2. **List Response Model**
+
    - Wrap your base model in a list response
    - Include total count if needed
    - Use proper type hints
+
    ```python
    class BrainDataListResponse(BaseModel):
        items: List[BrainData]
@@ -1092,9 +1079,11 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
 ### EgressConfig Usage
 
 1. **Basic Configuration**
+
    - Empty config is valid
    - Use only supported parameters
    - Follow configuration guidelines
+
    ```python
    # CORRECT
    config=EgressConfig()  # Empty config is valid
@@ -1106,9 +1095,11 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
    ```
 
 2. **Supported Parameters**
+
    - Check documentation for supported options
    - Use proper parameter types
    - Follow configuration patterns
+
    ```python
    # CORRECT
    config=EgressConfig(
@@ -1124,39 +1115,45 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
 ### Common Issues and Solutions
 
 1. **Incorrect Response Model**
+
    - Problem: Using base model for list response
    - Solution: Create proper list response model
+
    ```python
    # Wrong
    def get_brain_data(params: BrainDataQuery, utils) -> List[BrainData]:
        # ...
-   
+
    # Correct
    def get_brain_data(params: BrainDataQuery, utils) -> BrainDataListResponse:
        # ...
    ```
 
 2. **Invalid EgressConfig**
+
    - Problem: Using unsupported parameters
    - Solution: Use only supported parameters
+
    ```python
    # Wrong
    config=EgressConfig(
        auth={"required": True}  # Wrong: invalid parameter
    )
-   
+
    # Correct
    config=EgressConfig()  # Empty config is valid
    ```
 
 3. **Empty Results**
+
    - Problem: Not handling empty results properly
    - Solution: Return empty list response
+
    ```python
    # Wrong
    if not result:
        return None  # Wrong: should return empty list response
-   
+
    # Correct
    if not result:
        return BrainDataListResponse(items=[])
@@ -1165,16 +1162,19 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
 ### Best Practices
 
 1. **Response Models**
+
    - Create proper list response models
    - Include total count when needed
    - Use proper type hints
 
 2. **Configuration**
+
    - Use empty EgressConfig if no settings needed
    - Follow configuration guidelines
    - Use only supported parameters
 
 3. **Query Functions**
+
    - Return proper response model
    - Handle empty results
    - Convert database results to models

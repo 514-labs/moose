@@ -2,7 +2,7 @@
 
 A Moose Application for Brainwave Data Capture & Analysis
 
-![Brainwaves](./docs/brainwaves.gif)
+![Brainwaves](https://downloads.fiveonefour.com/moose/template-data/brainwaves/videos/brainwaves.gif)
 
 ---
 

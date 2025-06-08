@@ -1,19 +1,23 @@
 # Configuration Constraints and Materialized Views
 
 ## Overview
+
 Configuration constraints in Moose provide a way to enforce rules and limitations on your data processing pipeline. They help ensure data quality, control resource usage, and maintain system stability.
 
 ## Table Configuration Constraints
 
 ### Key Requirements
+
 - Schema must have `Key[type]` on a top level field passed into IngestPipeline or OlapTable
 - `Key[type]` must be the first field in `order_by_fields` when specified
 
 ### OrderByFields Requirements
+
 - Fields used in `order_by_fields` must exist on the top level schema
 - No Optional fields in `order_by_fields` (fields with `Optional` or `None` default)
 
 ## Schema Design Constraints
+
 - No Optional objects or custom types in `order_by_fields`
 - No tuples
 - No union types (except `Optional`)
@@ -21,11 +25,79 @@ Configuration constraints in Moose provide a way to enforce rules and limitation
 - No complex Python types
 - Large integers must be stored as strings
 
+## Consumption API Constraints
+
+### Function Signature Requirements
+
+- Query functions must follow the exact signature: `def function_name(client, params: QueryModel) -> ResponseModel`
+- First parameter must be `client` (database client)
+- Second parameter must be typed with your query parameters model
+- Return type must be your response model
+- No async/await allowed - functions must be synchronous
+
+### Query Execution Requirements
+
+- Always use `client.query.execute(query, variables)` with both arguments
+- SQL queries must use parameterized variables with ClickHouse-style syntax
+- Variables dictionary must be provided (even if empty)
+- ClickHouse uses `{param_name}` syntax for parameters, not Python's `%(param_name)s`
+
+### Parameter Model Requirements
+
+- Must inherit from `pydantic.BaseModel`
+- Use proper type hints for all fields
+- No complex nested types
+- No Optional objects
+- Timestamp parameters must be strings in ISO8601 format
+
+### Response Model Requirements
+
+- Must inherit from `pydantic.BaseModel`
+- All fields must have default values
+- No Optional objects
+- No complex nested types
+
+### API Creation Requirements
+
+- Must use generic type parameters: `ConsumptionApi[QueryModel, ResponseModel]`
+- Must provide name as first positional parameter
+- Must provide query function
+- Must provide source table name
+- Must use empty `EgressConfig()` for configuration
+
+### Common Issues and Solutions
+
+1. **Function Signature Errors**
+
+   - Problem: Incorrect function signature (e.g., using `utils` instead of `client`)
+   - Solution: Use `def function_name(client, params: QueryModel) -> ResponseModel`
+
+2. **Query Execution Errors**
+
+   - Problem: Missing variables dictionary or using Python-style parameter substitution
+   - Solution: Always use `client.query.execute(query, variables)` with ClickHouse-style `{param}` syntax
+
+3. **Parameter Type Errors**
+
+   - Problem: Mismatched parameter types or incorrect timestamp formats
+   - Solution: Use proper type hints and ensure timestamps are ISO8601 strings
+
+4. **Response Model Errors**
+
+   - Problem: Missing default values or incorrect field types
+   - Solution: Provide default values for all fields and use simple types
+
+5. **API Creation Errors**
+   - Problem: Incorrect API configuration
+   - Solution: Use empty EgressConfig: `config=EgressConfig()`
+
 ## Field Naming and Structure
+
 - Similar field names (e.g., ppm1, ppm2, ppm3) must be treated as distinct fields
 - Do not collapse similar fields into arrays or objects unless explicitly required
 - Each field should be defined individually, even if they follow a naming pattern
 - Example of correct field definition:
+
 ```python
 @dataclass
 class SensorData:
@@ -38,18 +110,21 @@ class SensorData:
 ## Pipeline Configuration Constraints
 
 ### Stream Configuration
+
 - `parallelism` must be a positive integer (use default unless you have specific scaling requirements)
 - `retention_period` must be in seconds (use default unless you have specific data retention needs)
 - `destination` must be a valid `OlapTable` instance or name
 - Recommended to use `stream=True` instead of custom configuration unless specific requirements exist
 
 ### Ingest Configuration
+
 - `destination` must be a valid `Stream` instance or name
 - `format` must always be `JSON_ARRAY`
 
 ## Type System Constraints
 
 ### Supported Types Only
+
 - `str` → String
 - `float` → Float64
 - `bool` → Boolean
@@ -61,6 +136,7 @@ class SensorData:
 - `Key[T]` → Same as T
 
 ### Unsupported Types -- Do not use
+
 - `Any`
 - Union types (except `Optional`)
 - `None` as direct type
@@ -71,11 +147,13 @@ class SensorData:
 - types not listed in supported types
 
 ### Optional Field Restrictions -- Do not use
+
 - Objects
 - Nested arrays
 - Optional custom types
 
 ### Nullable Array Constraints
+
 - Nested arrays cannot be nullable in ClickHouse tables
 - For schemas with nullable nested arrays:
   - You must disable table creation in the pipeline (`table=False`)
@@ -86,6 +164,7 @@ class SensorData:
 # In-Database Transformations
 
 ## Overview
+
 Materialized views in Moose provide a powerful way to transform and aggregate data directly in your database. They are automatically updated as new data arrives, making them perfect for real-time analytics and reporting.
 
 ## Basic View Setup
@@ -104,7 +183,7 @@ class UserEvent:
 user_event_stats = MaterializedView(
     name="user_event_stats",
     query="""
-    SELECT 
+    SELECT
         user_id,
         COUNT(*) as event_count,
         COUNT(DISTINCT event_type) as unique_event_types
@@ -207,6 +286,7 @@ except Exception as error:
 ## Best Practices
 
 1. **Query Design**
+
    - Keep queries simple and focused
    - Use appropriate aggregations
    - Consider performance impact
@@ -215,6 +295,7 @@ except Exception as error:
    - Avoid complex joins when possible
 
 2. **Performance**
+
    - Set appropriate refresh intervals
    - Monitor view size
    - Optimize query patterns
@@ -223,6 +304,7 @@ except Exception as error:
    - Monitor query performance
 
 3. **Maintenance**
+
    - Monitor view health
    - Check refresh status
    - Clean up unused views
@@ -241,6 +323,7 @@ except Exception as error:
 ## Example Usage
 
 ### Event Statistics View
+
 ```python
 from dataclasses import dataclass
 from datetime import datetime
@@ -270,7 +353,7 @@ class UserEvent:
 event_stats = MaterializedView(
     name="event_stats",
     query="""
-    SELECT 
+    SELECT
         event_type,
         COUNT(*) as count,
         COUNT(DISTINCT user_id) as unique_users,
@@ -284,11 +367,11 @@ event_stats = MaterializedView(
 
 async def get_event_statistics(min_count: int = 100, limit: int = 10) -> List[dict]:
     """Get event statistics with error handling.
-    
+
     Args:
         min_count: Minimum count threshold for events
         limit: Maximum number of results to return
-        
+
     Returns:
         List of event statistics
     """
@@ -311,6 +394,7 @@ async def main():
 ```
 
 ### User Activity View
+
 ```python
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -344,7 +428,7 @@ class UserActivity:
 user_activity = MaterializedView(
     name="user_activity",
     query="""
-    SELECT 
+    SELECT
         user_id,
         event_type,
         DATE_TRUNC('day', timestamp) as date,
@@ -362,11 +446,11 @@ async def get_user_activity(
     min_total_count: int = 10
 ) -> List[UserActivity]:
     """Get user activity statistics.
-    
+
     Args:
         start_date: Start date for activity query
         min_total_count: Minimum total count threshold
-        
+
     Returns:
         List of UserActivity objects
     """
@@ -400,6 +484,7 @@ async def main():
 ```
 
 ### Real-time Analytics View
+
 ```python
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -433,7 +518,7 @@ class AnalyticsMetrics:
 analytics_view = MaterializedView(
     name="real_time_analytics",
     query="""
-    SELECT 
+    SELECT
         DATE_TRUNC('hour', timestamp) as hour,
         event_type,
         COUNT(*) as event_count,
@@ -452,11 +537,11 @@ async def get_realtime_analytics(
     limit: Optional[int] = None
 ) -> List[AnalyticsMetrics]:
     """Get real-time analytics data.
-    
+
     Args:
         hours_ago: Number of hours to look back
         limit: Maximum number of results to return
-        
+
     Returns:
         List of AnalyticsMetrics objects
     """
@@ -515,6 +600,7 @@ rate_limit = Constraint(
 ## Constraint Types
 
 ### Rate Limiting
+
 ```python
 # Rate limit by user
 user_rate_limit = Constraint(
@@ -540,6 +626,7 @@ event_type_rate_limit = Constraint(
 ```
 
 ### Data Validation
+
 ```python
 # Field validation
 field_validation = Constraint(
@@ -584,6 +671,7 @@ custom_validation = Constraint(
 ```
 
 ### Resource Limits
+
 ```python
 # Memory limits
 memory_limit = Constraint(
@@ -624,6 +712,7 @@ class ConstraintConfig(TypedDict):
 ## Constraint Operations
 
 ### Managing Constraints
+
 ```python
 # Enable/disable constraint
 await rate_limit.enable()
@@ -645,6 +734,7 @@ print("Constraint metrics:", metrics)
 ```
 
 ### Monitoring Constraints
+
 ```python
 # Get violation history
 violations = await rate_limit.get_violations(
@@ -685,6 +775,7 @@ except Exception as error:
 ## Best Practices
 
 1. **Constraint Design**
+
    - Start with conservative limits
    - Monitor constraint effectiveness
    - Adjust limits based on usage
@@ -693,6 +784,7 @@ except Exception as error:
    - Plan for growth
 
 2. **Performance**
+
    - Monitor constraint overhead
    - Use efficient validation rules
    - Optimize rate limits
@@ -701,6 +793,7 @@ except Exception as error:
    - Monitor system load
 
 3. **Maintenance**
+
    - Review constraint effectiveness
    - Update limits regularly
    - Monitor violation patterns
@@ -719,6 +812,7 @@ except Exception as error:
 ## Example Usage
 
 ### Rate Limiting Example
+
 ```python
 from moose_lib import Constraint, Key
 from typing import Dict, Any
@@ -754,10 +848,10 @@ event_type_rate_limit = Constraint(
 try:
     # Apply user rate limit
     await user_rate_limit.apply(event)
-    
+
     # Apply event type rate limit
     await event_type_rate_limit.apply(event)
-    
+
     # Process event if constraints pass
     await process_event(event)
 except RateLimitExceededError as error:
@@ -769,6 +863,7 @@ except Exception as error:
 ```
 
 ### Validation Example
+
 ```python
 # Create validation constraints
 field_validation = Constraint(
@@ -796,7 +891,7 @@ field_validation = Constraint(
 try:
     # Apply field validation
     await field_validation.apply(event)
-    
+
     # Process event if validation passes
     await process_event(event)
 except ValidationError as error:
@@ -808,6 +903,7 @@ except Exception as error:
 ```
 
 ### Resource Limiting Example
+
 ```python
 # Create resource constraints
 memory_limit = Constraint(
@@ -823,7 +919,7 @@ memory_limit = Constraint(
 try:
     # Apply memory limit
     await memory_limit.apply(event)
-    
+
     # Process event if resource constraints pass
     await process_event(event)
 except ResourceLimitExceededError as error:
@@ -832,4 +928,4 @@ except ResourceLimitExceededError as error:
 except Exception as error:
     print("Unexpected error:", error)
     # Handle other errors
-``` 
+```

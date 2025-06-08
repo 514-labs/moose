@@ -2,7 +2,7 @@
 
 A Moose Application for Brainwave Data Capture & Analysis
 
-![Brainwaves](./docs/brainmoose.jpg)
+![Brainwaves](./docs/brainwaves.gif)
 
 ---
 

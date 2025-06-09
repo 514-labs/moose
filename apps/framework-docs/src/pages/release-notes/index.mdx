@@ -266,7 +266,7 @@ Aurora is in research preview, to help us improve our product, we've added data 
 * **LLM Docs**. Want docs for your LLMs that work with Moose projects? [Here](https://docs.fiveonefour.com/api/llms.txt).
 * **Read only tools**. We've had requests for a read-only toolset, especially for people using chat based MCP clients. We've split standard tools into: read-only and egress-tools. [Docs](https://docs.fiveonefour.com/aurora/tool-reference).
 * **Sorting Projects**. Projects in the CLI are now sorted (hopefully y'all have enough Aurora projects that this is useful)! Affects aurora config tools and structure of ~/.aurora/config.toml. [Docs](https://docs.fiveonefour.com/aurora/tool-reference). Deleted projects will now be cleaned from ~/.aurora/config.toml and from whenever the CLI prints lists of projects.
-* **🐛Read tools now only read**. clickhouse read tool was doing a little more than read, especially when used by Claude. Tool has been tightened up, and if you want extra certainty, create a read-only user (see snippet below).
+* **🐛Read tools now only read**. ClickHouse read tool was doing a little more than read, especially when used by Claude. Tool has been tightened up, and if you want extra certainty, create a read-only user (see snippet below).
 
 ```SQL
 CREATE USER username IDENTIFIED BY 'password' SETTINGS PROFILE 'readonly'

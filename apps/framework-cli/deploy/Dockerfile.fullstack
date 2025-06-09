@@ -42,7 +42,7 @@ RUN apt-get update \
 
 RUN mkdir -p /var/log/supervisor
 
-# Install Redpandas
+# Install Redpanda
 # TODO pin version
 
 RUN curl -1sLf 'https://dl.redpanda.com/nzc4ZYQK3WRGd9sy/redpanda/cfg/setup/bash.deb.sh' | bash && apt install redpanda -y

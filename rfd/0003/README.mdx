@@ -40,7 +40,7 @@ configured JWT settings or the `MOOSE_INGEST_API_KEY`.
 ## Data Flow
 
 Upon successful authentication and request validation, the `framework-cli` ingests the data.
-The primary action is to publish the received data messages to a specific stream (topic) in RedPanda.
+The primary action is to publish the received data messages to a specific stream (topic) in Redpanda.
 Downstream processes, such as data transformation jobs or real-time analytics, can then consume the data
-from these RedPanda topics. The specifics of these downstream processes are outside the scope of this
+from these Redpanda topics. The specifics of these downstream processes are outside the scope of this
 ingestion RFD.

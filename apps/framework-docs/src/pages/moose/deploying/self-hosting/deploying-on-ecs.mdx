@@ -38,7 +38,7 @@ While still in the Amazon ECS Task definition section, you'll need to provide th
 Scroll down to the Environment variables section and fill in each of the following variables.
 
 <Callout type="info" title="Required vs Optional Components">
-  Clickhouse and Redis are required components for Moose. Redpanda and Temporal are optional - configure them only if you're using these components in your application.
+  ClickHouse and Redis are required components for Moose. Redpanda and Temporal are optional - configure them only if you're using these components in your application.
 </Callout>
 
 > Note: if you prefer, you can provide the environment variables below via an env file hosted on S3 or using AWS Secrets Manager for sensitive values.
@@ -59,17 +59,17 @@ Scroll down to the Environment variables section and fill in each of the followi
 | MOOSE_HTTP_SERVER_CONFIG__HOST | Your moose network binding address | 0.0.0.0 |
 | MOOSE_HTTP_SERVER_CONFIG__PORT | The network port your moose server is using | 4000 |
 
-### Clickhouse Configuration (Required)
+### ClickHouse Configuration (Required)
 
 | Key | Description | Example Value |
 |-----|-------------|---------------|
-| MOOSE_CLICKHOUSE_CONFIG__DB_NAME | The name of your Clickhouse database | moose_production |
+| MOOSE_CLICKHOUSE_CONFIG__DB_NAME | The name of your ClickHouse database | moose_production |
 | MOOSE_CLICKHOUSE_CONFIG__USER | The database user name | clickhouse_user |
-| MOOSE_CLICKHOUSE_CONFIG__PASSWORD | The password to your Clickhouse database | (use AWS Secrets Manager) |
-| MOOSE_CLICKHOUSE_CONFIG__HOST | The hostname for your Clickhouse database | your-clickhouse.cloud.example.com |
-| MOOSE_CLICKHOUSE_CONFIG__HOST_PORT | The HTTPS port for your Clickhouse database | 8443 |
+| MOOSE_CLICKHOUSE_CONFIG__PASSWORD | The password to your ClickHouse database | (use AWS Secrets Manager) |
+| MOOSE_CLICKHOUSE_CONFIG__HOST | The hostname for your ClickHouse database | your-clickhouse.cloud.example.com |
+| MOOSE_CLICKHOUSE_CONFIG__HOST_PORT | The HTTPS port for your ClickHouse database | 8443 |
 | MOOSE_CLICKHOUSE_CONFIG__USE_SSL | Whether your database connection requires SSL | 1 |
-| MOOSE_CLICKHOUSE_CONFIG__NATIVE_PORT | The native port for your Clickhouse database | 9440 |
+| MOOSE_CLICKHOUSE_CONFIG__NATIVE_PORT | The native port for your ClickHouse database | 9440 |
 
 ### Redis Configuration (Required)
 

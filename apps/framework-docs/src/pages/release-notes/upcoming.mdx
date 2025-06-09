@@ -47,7 +47,7 @@ const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
 **Where is this used?** Aurora tools that create Moose primitives will now write the intention of the Moose primitive into the description field to give tools/agents that work with that primitive in the future more context. Practically, every description is now served to the tools as context too when the infra map is loaded up as context.
 
 **Future of the feature:** Two main extensions of this feature are planned:
-* Embedding the descriptions into the underlying infrastructure (e.g. as table level comments in Clickhouse)
+* Embedding the descriptions into the underlying infrastructure (e.g. as table level comments in ClickHouse)
 * Extending the metadata:
     * To be on a field level as well as a primitive level
     * To include any arbitrary key value pair, not just a description (use this for managing labels like PII!)

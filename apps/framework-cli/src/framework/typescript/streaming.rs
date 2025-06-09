@@ -3,6 +3,7 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::infrastructure::stream::StreamConfig;
 
@@ -15,6 +16,7 @@ const FUNCTION_RUNNER_BIN: &str = "streaming-functions";
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     kafka_config: &KafkaConfig,
+    clickhouse_config: &ClickHouseConfig,
     source_topic: &StreamConfig,
     target_topic: Option<&StreamConfig>,
     streaming_function_file: &Path,
@@ -24,6 +26,7 @@ pub fn run(
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
     let subscriber_count_str = max_subscriber_count.to_string();
+    let host_port = clickhouse_config.host_port.to_string();
 
     let source_topic_config_str = source_topic.as_json_string();
     let target_topic_config_str = target_topic.map(|t| t.as_json_string());
@@ -33,11 +36,20 @@ pub fn run(
         streaming_function_file.to_str().unwrap(),
         &kafka_config.broker,
         &subscriber_count_str,
+        &clickhouse_config.db_name,
+        &clickhouse_config.host,
+        &host_port,
+        &clickhouse_config.user,
+        &clickhouse_config.password,
     ];
 
     if let Some(ref target_str) = target_topic_config_str {
         args.push("--target-topic");
         args.push(target_str.as_str());
+    }
+
+    if clickhouse_config.use_ssl {
+        args.push("--clickhouse-use-ssl");
     }
 
     info!(

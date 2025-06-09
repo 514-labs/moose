@@ -22,6 +22,14 @@ interface TemporalConfig {
 interface ScriptsConfig {
   scriptDir: string;
   temporalConfig: TemporalConfig;
+  clickhouseConfig?: {
+    database: string;
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    useSSL: boolean;
+  };
 }
 
 // Maintain a global set of activity names we've already registered
@@ -263,26 +271,25 @@ async function registerWorkflows(
 export async function runScripts(
   config: ScriptsConfig,
 ): Promise<Worker | null> {
+  // Set ClickHouse configuration in registry if provided
+  if (config.clickhouseConfig) {
+    const { configRegistry } = await import("../config/runtime");
+    configRegistry.setClickHouseConfig(config.clickhouseConfig);
+  }
+
   const logger = initializeLogger();
+  logger.info("Starting scripts worker");
 
-  // Add process-level uncaught exception handler
-  process.on("uncaughtException", (error) => {
-    console.error(`[PROCESS] Uncaught Exception: ${error}`);
-    process.exit(1);
-  });
-
-  logger.info(`Starting worker for script directory: ${config.scriptDir}`);
   const worker = await registerWorkflows(logger, config);
 
   if (!worker) {
-    const msg = `No scripts found to register in ${config.scriptDir}`;
-    logger.warn(msg);
-    process.exit(0);
+    logger.info("No worker created, exiting");
+    return null;
   }
 
   let isShuttingDown = false;
 
-  // Handle shutdown signals
+  // Handle graceful shutdown
   async function handleSignal(signal: string) {
     console.log(`[SHUTDOWN] Received ${signal}`);
 
@@ -319,13 +326,8 @@ export async function runScripts(
     });
   });
 
-  logger.info("Starting TypeScript worker...");
-  try {
-    await worker.run();
-  } catch (error) {
-    console.log(`[SHUTDOWN] Error: ${error}`);
-    process.exit(1);
-  }
+  logger.info("Starting worker");
+  await worker.run();
 
   return worker;
 }

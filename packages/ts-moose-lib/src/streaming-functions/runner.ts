@@ -83,6 +83,14 @@ export interface StreamingFunctionArgs {
   saslPassword?: string;
   saslMechanism?: string;
   securityProtocol?: string;
+  clickhouseConfig?: {
+    database: string;
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    useSSL: boolean;
+  };
 }
 
 /**
@@ -712,6 +720,12 @@ export function validateTopicConfig(config: TopicConfig): void {
 export const runStreamingFunctions = async (
   args: StreamingFunctionArgs,
 ): Promise<void> => {
+  // Set ClickHouse configuration in registry if provided
+  if (args.clickhouseConfig) {
+    const { configRegistry } = await import("../config/runtime");
+    configRegistry.setClickHouseConfig(args.clickhouseConfig);
+  }
+
   // Validate topic configurations at startup
   validateTopicConfig(args.sourceTopic);
   if (args.targetTopic) {

@@ -92,10 +92,17 @@ impl OrchestrationWorkersRegistry {
         }
 
         if language == SupportedLanguages::Python {
+            log::debug!("start_worker python");
+
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {
-            let child = typescript::scripts_worker::start_worker(&self.project).await?;
+            log::debug!("start_worker typescript");
+            let child = typescript::scripts_worker::start_worker(
+                &self.project,
+                &self.project.clickhouse_config,
+            )
+            .await?;
             self.workers.insert(orchestration_worker.id(), child);
         }
         Ok(())

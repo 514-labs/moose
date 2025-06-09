@@ -15,15 +15,6 @@ if (
   process.argv[2] == "streaming-functions" ||
   process.argv[2] == "scripts"
 ) {
-  const transformFile =
-    (
-      process.argv[2] !== "dmv2-serializer" &&
-      process.argv[2] !== "streaming-functions" &&
-      process.argv[2] !== "consumption-apis" &&
-      process.argv[2] !== "scripts"
-    ) ?
-      "consumption-apis/insertTypiaValidation.js"
-    : "dmv2/compilerPlugin.js";
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -31,7 +22,7 @@ if (
     compilerOptions: {
       plugins: [
         {
-          transform: `./node_modules/@514labs/moose-lib/dist/${transformFile}`,
+          transform: `./node_modules/@514labs/moose-lib/dist/compilerPlugin.js`,
           transformProgram: true,
         },
         {
@@ -42,6 +33,8 @@ if (
     },
   });
 } else {
+  // Scripts (workflows) use basic ts-node without typia to avoid
+  // duplicate compilation of already-transformed models
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -185,14 +178,31 @@ program
   .argument("<function-file-path>", "Path to the function file")
   .argument("<broker>", "Kafka broker address")
   .argument("<max-subscriber-count>", "Maximum number of subscribers")
+  .argument("<clickhouse-db>", "ClickHouse database name")
+  .argument("<clickhouse-host>", "ClickHouse host")
+  .argument("<clickhouse-port>", "ClickHouse port")
+  .argument("<clickhouse-username>", "ClickHouse username")
+  .argument("<clickhouse-password>", "ClickHouse password")
   .option("--target-topic <target-topic>", "Target topic configuration as JSON")
+  .option("--clickhouse-use-ssl", "Use SSL for ClickHouse connection", false)
   .option("--sasl-username <username>", "SASL username")
   .option("--sasl-password <password>", "SASL password")
   .option("--sasl-mechanism <mechanism>", "SASL mechanism")
   .option("--security-protocol <protocol>", "Security protocol")
   .option("--is-dmv2", "Whether this is a DMv2 function", false)
   .action(
-    (sourceTopic, functionFilePath, broker, maxSubscriberCount, options) => {
+    (
+      sourceTopic,
+      functionFilePath,
+      broker,
+      maxSubscriberCount,
+      clickhouseDb,
+      clickhouseHost,
+      clickhousePort,
+      clickhouseUsername,
+      clickhousePassword,
+      options,
+    ) => {
       const config: StreamingFunctionArgs = {
         sourceTopic: JSON.parse(sourceTopic),
         targetTopic:
@@ -201,6 +211,14 @@ program
         broker,
         maxSubscriberCount: parseInt(maxSubscriberCount),
         isDmv2: options.isDmv2,
+        clickhouseConfig: {
+          database: clickhouseDb,
+          host: clickhouseHost,
+          port: clickhousePort,
+          username: clickhouseUsername,
+          password: clickhousePassword,
+          useSSL: options.clickhouseUseSsl,
+        },
         saslUsername: options.saslUsername,
         saslPassword: options.saslPassword,
         saslMechanism: options.saslMechanism,
@@ -222,20 +240,44 @@ program
   .command("scripts")
   .description("Run scripts")
   .argument("<script-dir>", "Directory containing scripts")
+  .argument("<clickhouse-db>", "ClickHouse database name")
+  .argument("<clickhouse-host>", "ClickHouse host")
+  .argument("<clickhouse-port>", "ClickHouse port")
+  .argument("<clickhouse-username>", "ClickHouse username")
+  .argument("<clickhouse-password>", "ClickHouse password")
+  .option("--clickhouse-use-ssl", "Use SSL for ClickHouse connection", false)
   .option("--temporal-url <url>", "Temporal server URL")
   .option("--client-cert <path>", "Path to client certificate")
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
-  .action((scriptDir, options) => {
-    runScripts({
+  .action(
+    (
       scriptDir,
-      temporalConfig: {
-        url: options.temporalUrl,
-        clientCert: options.clientCert,
-        clientKey: options.clientKey,
-        apiKey: options.apiKey,
-      },
-    });
-  });
+      clickhouseDb,
+      clickhouseHost,
+      clickhousePort,
+      clickhouseUsername,
+      clickhousePassword,
+      options,
+    ) => {
+      runScripts({
+        scriptDir,
+        clickhouseConfig: {
+          database: clickhouseDb,
+          host: clickhouseHost,
+          port: clickhousePort,
+          username: clickhouseUsername,
+          password: clickhousePassword,
+          useSSL: options.clickhouseUseSsl,
+        },
+        temporalConfig: {
+          url: options.temporalUrl,
+          clientCert: options.clientCert,
+          clientKey: options.clientKey,
+          apiKey: options.apiKey,
+        },
+      });
+    },
+  );
 
 program.parse();

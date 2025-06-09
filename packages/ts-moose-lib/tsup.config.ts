@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/dataModels/toDataModels.ts",
+    "src/compilerPlugin.ts",
     "src/consumption-apis/insertTypiaValidation.ts",
     "src/scripts/workflow.ts",
     "src/moose-tspc.ts",

@@ -38,16 +38,16 @@ For each HTTP `/ingest` and `/consumption` endpoint that is configured in your M
   enter to view more details about that endpoint.
 </Callout>
 
-## Kafka To Clickhouse Sync Process Metrics
+## Kafka To ClickHouse Sync Process Metrics
 
-The following metrics analyze the performance of the process that syncs data from the configured Redpanda topic for a particular Data Model to the Clickhouse database table for that Data Model.
+The following metrics analyze the performance of the process that syncs data from the configured Redpanda topic for a particular Data Model to the ClickHouse database table for that Data Model.
 
 | Metric      | Description                                                                                         |
 | :---------- | :-------------------------------------------------------------------------------------------------- |
 | `MSG READ`  | Total number of messages sent from `/ingest` API endpoint to the Kafka topic                        |
 | `LAG`       | The number of messages that have been sent to the consumer but not yet received                     |
 | `MSG/SEC`   | Average number of messages sent from `/ingest` API endpoint to the Kafka topic per second           |
-| `BYTES/SEC` | Average number of bytes of data received by the Clickhouse consumer from the Kafka topic per second |
+| `BYTES/SEC` | Average number of bytes of data received by the ClickHouse consumer from the Kafka topic per second |
 
 ## Streaming Functions Metrics
 

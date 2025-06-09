@@ -1,21 +1,21 @@
 ---
-title: Preparing access to Clickhouse, Redis, Temporal and Redpanda
-description: Preparing access to Clickhouse, Redis, Temporal and Redpanda
+title: Preparing access to ClickHouse, Redis, Temporal and Redpanda
+description: Preparing access to ClickHouse, Redis, Temporal and Redpanda
 ---
 
-# Preparing access to Clickhouse, Redis, Temporal and Redpanda 
+# Preparing access to ClickHouse, Redis, Temporal and Redpanda 
 
-Your hosted Moose application requires access to hosted Clickhouse and Redis service instances. You can also optionally use Redpanda for event streaming. 
+Your hosted Moose application requires access to hosted ClickHouse and Redis service instances. You can also optionally use Redpanda for event streaming. 
 You can stand up open source versions of these applications within your environments or opt to use cloud-hosted versions available at:
 
-- [Clickhouse Cloud](https://clickhouse.com)
+- [ClickHouse Cloud](https://clickhouse.com)
 - [Redis Cloud](https://redis.com)
 - [Redpanda Cloud](https://redpanda.com) 
 - [Temporal Cloud](https://temporal.io)
 
-## Clickhouse Configuration
+## ClickHouse Configuration
 
-For Clickhouse, you'll need the following information:
+For ClickHouse, you'll need the following information:
 
 | Parameter | Description | Default Value |
 |-----------|-------------|---------------|
@@ -27,7 +27,7 @@ For Clickhouse, you'll need the following information:
 | USE_SSL | Whether to use SSL (1 for true, 0 for false) | 1 |
 | NATIVE_PORT | Native protocol port | 9440 |
 
-These values are used to configure the Moose application's connection to Clickhouse through environment variables following this pattern:
+These values are used to configure the Moose application's connection to ClickHouse through environment variables following this pattern:
 
 ```
 MOOSE_CLICKHOUSE_CONFIG__<PARAMETER>=<value>

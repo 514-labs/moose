@@ -1,0 +1,107 @@
+import {
+  ClickHouseEngines,
+  createMaterializedView,
+  dropView,
+  populateTable,
+} from "../../blocks/helpers";
+import { Sql, toStaticQuery } from "../../consumption-apis/helpers";
+import { OlapTable } from "./olapTable";
+import { SqlResource } from "./sqlResource";
+import { View } from "./view";
+import { IJsonSchemaCollection } from "typia";
+import { Column } from "../../dataModels/dataModelTypes";
+
+/**
+ * Configuration options for creating a Materialized View.
+ * @template T The data type of the records stored in the target table of the materialized view.
+ */
+export interface MaterializedViewConfig<T> {
+  /** The SQL SELECT statement or `Sql` object defining the data to be materialized. Dynamic SQL (with parameters) is not allowed here. */
+  selectStatement: string | Sql;
+  /** An array of OlapTable or View objects that the `selectStatement` reads from. */
+  selectTables: (OlapTable<any> | View)[];
+
+  /** The name for the underlying target OlapTable that stores the materialized data. */
+  tableName: string;
+  /** The name for the ClickHouse MATERIALIZED VIEW object itself. */
+  materializedViewName: string;
+
+  /** Optional ClickHouse engine for the target table (e.g., ReplacingMergeTree). Defaults to MergeTree. */
+  engine?: ClickHouseEngines;
+  /** Optional ordering fields for the target table. Crucial if using ReplacingMergeTree. */
+  orderByFields?: (keyof T & string)[];
+}
+
+/**
+ * Represents a Materialized View in ClickHouse.
+ * This encapsulates both the target OlapTable that stores the data and the MATERIALIZED VIEW definition
+ * that populates the table based on inserts into the source tables.
+ *
+ * @template TargetTable The data type of the records stored in the underlying target OlapTable. The structure of T defines the target table schema.
+ */
+export class MaterializedView<TargetTable> extends SqlResource {
+  /** The target OlapTable instance where the materialized data is stored. */
+  targetTable: OlapTable<TargetTable>;
+
+  /**
+   * Creates a new MaterializedView instance.
+   * Requires the `TargetTable` type parameter to be explicitly provided or inferred,
+   * as it's needed to define the schema of the underlying target table.
+   *
+   * @param options Configuration options for the materialized view.
+   */
+  constructor(options: MaterializedViewConfig<TargetTable>);
+
+  /** @internal **/
+  constructor(
+    options: MaterializedViewConfig<TargetTable>,
+    targetSchema: IJsonSchemaCollection.IV3_1,
+    targetColumns: Column[],
+  );
+  constructor(
+    options: MaterializedViewConfig<TargetTable>,
+    targetSchema?: IJsonSchemaCollection.IV3_1,
+    targetColumns?: Column[],
+  ) {
+    let selectStatement = options.selectStatement;
+    if (typeof selectStatement !== "string") {
+      selectStatement = toStaticQuery(selectStatement);
+    }
+
+    if (targetSchema === undefined || targetColumns === undefined) {
+      throw new Error(
+        "Supply the type param T so that the schema is inserted by the compiler plugin.",
+      );
+    }
+
+    const targetTable = new OlapTable(
+      options.tableName,
+      {
+        orderByFields: options.orderByFields,
+      },
+      targetSchema,
+      targetColumns,
+    );
+    super(
+      options.materializedViewName,
+      [
+        createMaterializedView({
+          name: options.materializedViewName,
+          destinationTable: options.tableName,
+          select: selectStatement,
+        }),
+        populateTable({
+          destinationTable: options.tableName,
+          select: selectStatement,
+        }),
+      ],
+      [dropView(options.materializedViewName)],
+      {
+        pullsDataFrom: options.selectTables,
+        pushesDataTo: [targetTable],
+      },
+    );
+
+    this.targetTable = targetTable;
+  }
+}

@@ -1,17 +1,6 @@
-import { JWTPayload } from "jose";
-import { MooseClient, sql } from "./consumption-apis/helpers";
-
 export type Key<T extends string | number | Date> = T;
 
 export type JWT<T extends object> = T;
-
-export interface ConsumptionUtil {
-  client: MooseClient;
-
-  // SQL interpolator
-  sql: typeof sql;
-  jwt: JWTPayload | undefined;
-}
 
 export type DataModelConfig<T> = Partial<{
   ingestion: true;
@@ -38,7 +27,9 @@ export {
   DeadLetter,
   DeadLetterQueue,
   IngestApi,
+  IngestConfig,
   ConsumptionApi,
+  EgressConfig,
   IngestPipeline,
   SqlResource,
   View,
@@ -58,3 +49,5 @@ export {
 } from "./dataModels/types";
 
 export { MooseCache } from "./clients/redisClient";
+
+export { ConsumptionUtil } from "./consumption-apis/helpers";

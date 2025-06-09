@@ -31,7 +31,9 @@ export * from "./scripts/task";
 export {
   Aggregated,
   OlapTable,
+  OlapConfig,
   Stream,
+  StreamConfig,
   DeadLetterModel,
   DeadLetter,
   DeadLetterQueue,

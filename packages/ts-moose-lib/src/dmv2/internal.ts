@@ -14,11 +14,8 @@
 import process from "process";
 import {
   IngestApi,
-  Stream,
   ConsumptionApi,
   SqlResource,
-  ConsumerConfig,
-  TransformConfig,
   Workflow,
   Task,
 } from "./index";
@@ -26,6 +23,7 @@ import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollect
 import { Column } from "../dataModels/dataModelTypes";
 import { ConsumptionUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
+import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 
 /**
  * Internal registry holding all defined Moose dmv2 resources.

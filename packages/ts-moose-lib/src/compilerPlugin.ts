@@ -10,34 +10,16 @@ import {
   transformCreateConsumptionApi,
   transformLegacyConsumptionApi,
 } from "./consumption-apis/typiaValidation";
-import * as fs from "fs";
-import * as path from "path";
 
-// Create log file path
-const logFilePath = path.join(
-  process.cwd(),
-  ".moose",
-  "compiler-plugin-debug.log",
-);
+// Check if debug logging is enabled via environment variable
+const isDebugLoggingEnabled =
+  process.env.MOOSE_COMPILER_PLUGIN_DEBUG === "true";
 
-// Ensure .moose directory exists
-const ensureLogDirectory = () => {
-  const dir = path.dirname(logFilePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-// Initialize log file
-ensureLogDirectory();
-fs.writeFileSync(
-  logFilePath,
-  `[CompilerPlugin] Debug log started at ${new Date().toISOString()}\n`,
-);
-
-// Helper function to write logs
+// Helper function to write logs to stdout using the MOOSE_STUFF pattern
 const writeLog = (message: string) => {
-  fs.appendFileSync(logFilePath, `${message}\n`);
+  if (isDebugLoggingEnabled) {
+    console.error(`___MOOSE_STUFF___${message}___MOOSE_STUFF___`);
+  }
 };
 
 /**
@@ -57,29 +39,39 @@ export const createTypiaImport = () =>
 
 /**
  * Applies the appropriate transformation based on node type
+ * Returns both the transformed node and whether a transformation occurred
  */
 const applyTransformation = (
   node: ts.Node,
   typeChecker: ts.TypeChecker,
-): ts.Node => {
+): { transformed: ts.Node; wasTransformed: boolean } => {
   if (isCreateConsumptionApi(node, typeChecker)) {
     writeLog("[CompilerPlugin] Found legacy consumption API, transforming...");
-    return transformLegacyConsumptionApi(node, typeChecker);
+    return {
+      transformed: transformLegacyConsumptionApi(node, typeChecker),
+      wasTransformed: true,
+    };
   }
 
   if (isCreateConsumptionApiV2(node, typeChecker)) {
     writeLog("[CompilerPlugin] Found consumption API v2, transforming...");
-    return transformCreateConsumptionApi(node, typeChecker);
+    return {
+      transformed: transformCreateConsumptionApi(node, typeChecker),
+      wasTransformed: true,
+    };
   }
 
   if (isNewMooseResourceWithTypeParam(node, typeChecker)) {
     writeLog(
       "[CompilerPlugin] Found Moose resource with type param, transforming...",
     );
-    return transformNewMooseResource(node, typeChecker);
+    return {
+      transformed: transformNewMooseResource(node, typeChecker),
+      wasTransformed: true,
+    };
   }
 
-  return node;
+  return { transformed: node, wasTransformed: false };
 };
 
 /**
@@ -137,37 +129,6 @@ const addTypiaImport = (sourceFile: ts.SourceFile): ts.SourceFile => {
 };
 
 /**
- * Checks if a source file contains references to the typia namespace
- */
-const containsTypiaReferences = (sourceFile: ts.SourceFile): boolean => {
-  let hasTypiaReferences = false;
-  let identifierCount = 0;
-
-  const visitNode = (node: ts.Node): void => {
-    if (ts.isIdentifier(node)) {
-      identifierCount++;
-      if (node.text === avoidTypiaNameClash) {
-        writeLog(
-          `[CompilerPlugin] Found typia reference: ${node.text} at position ${node.pos}`,
-        );
-        hasTypiaReferences = true;
-        return;
-      }
-    }
-    ts.forEachChild(node, visitNode);
-  };
-
-  writeLog(
-    `[CompilerPlugin] Checking for typia references in ${sourceFile.fileName}...`,
-  );
-  ts.forEachChild(sourceFile, visitNode);
-  writeLog(
-    `[CompilerPlugin] Scanned ${identifierCount} identifiers, found typia references: ${hasTypiaReferences}`,
-  );
-  return hasTypiaReferences;
-};
-
-/**
  * Main transformation function that processes TypeScript source files
  */
 const transform =
@@ -179,14 +140,18 @@ const transform =
     );
 
     let transformationCount = 0;
+    let hasTypiaTransformations = false;
 
     const visitNode = (node: ts.Node): ts.Node => {
-      const originalNode = node;
-      // Apply transformation and recursively visit children
-      const transformed = applyTransformation(node, typeChecker);
+      // Apply transformation and check if it was transformed
+      const { transformed, wasTransformed } = applyTransformation(
+        node,
+        typeChecker,
+      );
 
-      if (transformed !== originalNode) {
+      if (wasTransformed) {
         transformationCount++;
+        hasTypiaTransformations = true;
         writeLog(
           `[CompilerPlugin] Transformation #${transformationCount} applied at position ${node.pos}`,
         );
@@ -205,12 +170,10 @@ const transform =
       `[CompilerPlugin] Total transformations applied: ${transformationCount}`,
     );
 
-    // Check if the transformed file contains typia references
-    const needsTypiaImport = containsTypiaReferences(transformedSourceFile);
+    // Use transformation tracking instead of scanning for typia references
+    writeLog(`[CompilerPlugin] Needs typia import: ${hasTypiaTransformations}`);
 
-    writeLog(`[CompilerPlugin] Needs typia import: ${needsTypiaImport}`);
-
-    if (needsTypiaImport) {
+    if (hasTypiaTransformations) {
       const result = addTypiaImport(transformedSourceFile);
       writeLog(
         `[CompilerPlugin] ========== Completed processing ${sourceFile.fileName} (with import) ==========\n`,

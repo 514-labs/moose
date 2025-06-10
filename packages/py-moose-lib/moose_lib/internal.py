@@ -11,7 +11,7 @@ from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
 import json
 from .data_models import Column, _to_columns
-from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources
+from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources, _workflows
 from moose_lib.dmv2 import OlapTable, View, MaterializedView
 from pydantic.alias_generators import to_camel
 from pydantic.json_schema import JsonSchemaValue
@@ -131,6 +131,22 @@ class EgressApiConfig(BaseModel):
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
+class WorkflowJson(BaseModel):
+    """Internal representation of a workflow configuration for serialization.
+
+    Attributes:
+        name: Name of the workflow.
+        retries: Optional number of retry attempts for the entire workflow.
+        timeout: Optional timeout string for the entire workflow.
+        schedule: Optional cron-like schedule string for recurring execution.
+    """
+    model_config = model_config
+
+    name: str
+    retries: Optional[int] = None
+    timeout: Optional[str] = None
+    schedule: Optional[str] = None
+
 class InfrastructureSignatureJson(BaseModel):
     """Represents the unique signature of an infrastructure component (Table, Topic, etc.).
 
@@ -175,6 +191,7 @@ class InfrastructureMap(BaseModel):
         ingest_apis: Dictionary mapping ingest API names to their configurations.
         egress_apis: Dictionary mapping egress API names to their configurations.
         sql_resources: Dictionary mapping SQL resource names to their configurations.
+        workflows: Dictionary mapping workflow names to their configurations.
     """
     model_config = model_config
 
@@ -183,6 +200,7 @@ class InfrastructureMap(BaseModel):
     ingest_apis: dict[str, IngestApiConfig]
     egress_apis: dict[str, EgressApiConfig]
     sql_resources: dict[str, SqlResourceConfig]
+    workflows: dict[str, WorkflowJson]
 
 
 def _map_sql_resource_ref(r: Any) -> InfrastructureSignatureJson:
@@ -233,6 +251,7 @@ def to_infra_map() -> dict:
     ingest_apis = {}
     egress_apis = {}
     sql_resources = {}
+    workflows = {}
 
     for name, table in _tables.items():
         engine = table.config.engine
@@ -308,12 +327,21 @@ def to_infra_map() -> dict:
             metadata=getattr(resource, "metadata", None),
         )
 
+    for name, workflow in _workflows.items():
+        workflows[name] = WorkflowJson(
+            name=workflow.name,
+            retries=workflow.config.retries,
+            timeout=workflow.config.timeout,
+            schedule=workflow.config.schedule,
+        )
+
     infra_map = InfrastructureMap(
         tables=tables,
         topics=topics,
         ingest_apis=ingest_apis,
         egress_apis=egress_apis,
-        sql_resources=sql_resources
+        sql_resources=sql_resources,
+        workflows=workflows
     )
 
     return infra_map.model_dump(by_alias=True)

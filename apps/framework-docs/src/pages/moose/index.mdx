@@ -127,15 +127,28 @@ export const ingestApi = new IngestApi<DataModel>("post-api-route", {
 // Create consumption API endpoint
 interface QueryParams {
   limit?: number;
+  minScore?: number;
 }
-export const consumptionApi = new ConsumptionApi<QueryParams, DataModel>("get-api-route", {
-  async handler({limit = 10}: QueryParams, {client, sql}): {
-    const result = await client.query.execute(sql`SELECT * FROM ${clickhouseTable} LIMIT ${limit}`);
-    return await result.json();
-  }
+
+// Create consumption API
+export const getLeaderboard = new ConsumptionApi<
+  LeaderboardParams, 
+  LeaderboardEntry[]
+>("leaderboard", async (params, { client }) => {
+  const limit = params.limit || 10;
+  const minScore = params.minScore || 0;
+  
+  return await client.query(`
+    SELECT postId, totalScore, totalVotes, hour
+    FROM post_leaderboard_table 
+    WHERE totalScore >= ${minScore}
+    ORDER BY totalScore DESC 
+    LIMIT ${limit}
+  `);
 });
 ```
 </Tabs.Tab>
+
 <Tabs.Tab>
 ```python filename="Complete Analytical Backend in 1 Python file" copy
 from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi

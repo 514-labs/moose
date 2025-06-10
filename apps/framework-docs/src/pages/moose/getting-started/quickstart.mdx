@@ -440,6 +440,32 @@ newgrp docker
 chmod +x ~/.moose/bin/moose
 ```
 </Tabs.Tab>
+
+<Tabs.Tab>
+**Port 4000 already in use:**
+```bash filename="Terminal" copy
+# Find what's using port 4000
+lsof -i :4000
+
+# Kill the process (replace PID)
+kill -9 <PID>
+
+# Or use a different port
+moose dev --port 4001
+```
+</Tabs.Tab>
+
+<Tabs.Tab>
+**Permission denied:**
+```bash filename="Terminal" copy
+# Fix Docker permissions (Linux)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Fix file permissions
+chmod +x ~/.moose/bin/moose
+```
+</Tabs.Tab>
 </Tabs>
 
 **Still stuck?** Join our [Slack community](https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA) or [open an issue](https://github.com/514-labs/moose/issues).

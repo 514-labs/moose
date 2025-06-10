@@ -160,6 +160,13 @@ https://username:password@host:port/?database=database_name
 - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
 - Default is usually `http://default:@localhost:8123/?database=default`
 </Tabs.Tab>
+<Tabs.Tab>
+Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground):
+
+```txt copy
+https://explorer:@play.clickhouse.com:443/?database=default
+```
+</Tabs.Tab>
 </Tabs>
 </ToggleBlock>
 
@@ -207,6 +214,11 @@ Check what Moose created from your tables in the `app/main.py` file:
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="main.py" />
+<FileTree.Folder name="tables" defaultOpen>
+<FileTree.File name="users.py" />
+<FileTree.File name="events.py" />
+<FileTree.File name="..." />
+</FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </Python>
@@ -216,6 +228,11 @@ Check what Moose created from your tables in the `app/index.ts` file:
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="index.ts" />
+<FileTree.Folder name="tables" defaultOpen>
+<FileTree.File name="users.ts" />
+<FileTree.File name="events.ts" />
+<FileTree.File name="..." />
+</FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </TypeScript>

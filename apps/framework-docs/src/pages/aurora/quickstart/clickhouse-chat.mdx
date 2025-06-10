@@ -1,9 +1,10 @@
 import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg, ToggleBlock } from "@/components";
 import { Steps, Tabs } from "nextra/components";
 
-## Quickstart: Ad hoc analytics with Clickhouse Playground or your own Clickhouse database
+## Quickstart: AI Chat with ClickHouse
+*Use your LLM client to explore your ClickHouse with Aurora MCP tools.*
 
-This will walk you through using Aurora CLI to connect Aurora MCP tools to your Clickhouse database, allowing you to chat with your data in your client of choice. We'll use the Clickhouse Playground as our example database, but you can use any Clickhouse database.
+This will walk you through using Aurora CLI to connect Aurora MCP tools to your ClickHouse database, allowing you to chat with your data in your client of choice. We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -73,10 +74,9 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 </ToggleBlock>
 
-
 ### Chat
 
-Open your Claude Desktop client. We recommend starting the chat with a context setting question like "tell me about the data I have available to me in Clickhouse".
+Open your Claude Desktop client. We recommend starting the chat with a context setting question like "tell me about the data I have available to me in ClickHouse".
 
 You can check that the MCP is correctly configured by looking at `claude > settings > developer > aurora`. It should say "running".
 
@@ -86,30 +86,34 @@ You can can also look at `search and tools` beneath the chat window, you should 
 
 <ZoomImg light="/claude-search-and-tools.png" dark="/claude-search-and-tools.png" alt="Claude search and tools, MCP running" />
 
+### What's next?
+
+Try [creating a Moose Project from your ClickHouse database](https://docs.fiveonefour.com/aurora/quickstart/clickhouse-proj). That way, you can use Aurora MCP tools to create new primitives, like ingestion paths, data models, egress APIs, and more!
+
+Or try [deploying your project to Boreal](https://www.fiveonefour.com/boreal), our hosting platform for Moose projects.
+
 </Steps>
 
 ## Other Quickstart Guides
 
 <FeatureGrid>
-  
+
   <FeatureCard
     href="/aurora/quickstart/clickhouse-proj#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
-    Icon={Icons.ingestion}
-    title="Build analytics project from Clickhouse"
+    Icon={Icons.contact}
+    title="AI analytics engineering from your ClickHouse"
     description="
-    Mirror of your production Clickhouse OLAP stack locally—new data/analytics engineering created in chat with Aurora MCP.
     "
     variant="aurora"
   />
   
   <FeatureCard
     href="/aurora/quickstart/from-template#quickstart-new-complete-local-olap-project-from-template"
-    Icon={Icons.streams}
-    title="Full stack OLAP project from Template"
+    Icon={Icons.db}
+    title="AI powered OLAP templates"
     description="
-    Create a full local OLAP dev environment with one command. Data primitives in ts or py. Aurora MCP tools for creating new primitives.
     "
     variant="aurora"
   />
 
-</FeatureGrid> 
+</FeatureGrid>

@@ -11,6 +11,15 @@ import * as fs from "fs";
 import { Column } from "../dataModels/dataModelTypes";
 import { AggregationFunction } from "../dataModels/typeConvert";
 import { OlapTable } from "../dmv2";
+import { JWTPayload } from "jose";
+
+export interface ConsumptionUtil {
+  client: MooseClient;
+
+  // SQL interpolator
+  sql: typeof sql;
+  jwt: JWTPayload | undefined;
+}
 
 /**
  * Convert the JS type (source is JSON format by API query parameter) to the corresponding ClickHouse type for generating named placeholder of parameterized query.

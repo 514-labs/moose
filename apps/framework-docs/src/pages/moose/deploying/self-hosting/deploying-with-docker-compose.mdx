@@ -31,7 +31,7 @@ Before you begin, you'll need:
 
 The Moose stack consists of:
 - Your Moose Application
-- [Clickhouse](https://clickhouse.com) (required)
+- [ClickHouse](https://clickhouse.com) (required)
 - [Redis](https://redis.io) (required)
 - [Redpanda](https://redpanda.com) (optional for event streaming)
 - [Temporal](https://temporal.io) (optional for workflow orchestration)
@@ -253,7 +253,7 @@ configs:
 services:
   # REQUIRED SERVICES
 
-  # Clickhouse - Required analytics database
+  # ClickHouse - Required analytics database
   clickhouse-0:
     container_name: clickhouse-0
     restart: always
@@ -504,7 +504,7 @@ services:
       MOOSE_LOGGER__STDOUT: "true"
       
       # Required services configuration
-      # Clickhouse configuration
+      # ClickHouse configuration
       MOOSE_CLICKHOUSE_CONFIG__DB_NAME: "moose"
       MOOSE_CLICKHOUSE_CONFIG__USER: "moose"
       MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "your_moose_password"
@@ -552,22 +552,22 @@ At this point, don't start the services yet. First, we need to configure the ind
 
 ## Configuring Services for Production
 
-### Configuring Clickhouse Securely (Required)
+### Configuring ClickHouse Securely (Required)
 
-For production Clickhouse deployment, we'll use environment variables to configure users and access control 
+For production ClickHouse deployment, we'll use environment variables to configure users and access control 
 (as recommended in the [official Docker image documentation](https://hub.docker.com/r/clickhouse/clickhouse-server)):
 
-1. First, start the Clickhouse container:
+1. First, start the ClickHouse container:
 
 ```bash
-# Start just the Clickhouse container
+# Start just the ClickHouse container
 docker compose up -d clickhouse-0
 ```
 
-2. After Clickhouse has started, connect to create additional users:
+2. After ClickHouse has started, connect to create additional users:
 
 ```bash
-# Connect to Clickhouse with the admin user
+# Connect to ClickHouse with the admin user
 docker exec -it clickhouse-0 clickhouse-client --user admin --password adminpassword
 
 # Create moose application user
@@ -579,7 +579,7 @@ CREATE USER power_bi IDENTIFIED BY 'your_powerbi_password' SETTINGS PROFILE 'rea
 GRANT SHOW TABLES, SELECT ON moose.* TO power_bi;
 ```
 
-3. To exit the Clickhouse client, type `\q` and press Enter.
+3. To exit the ClickHouse client, type `\q` and press Enter.
 
 4. Update your Moose environment variables to use the new moose user:
 
@@ -601,7 +601,7 @@ MOOSE_CLICKHOUSE_CONFIG__PASSWORD: "adminpassword"
 
 6. For additional security in production, consider using Docker secrets for passwords.
 
-7. Restart the Clickhouse container to apply the changes:
+7. Restart the ClickHouse container to apply the changes:
 
 ```bash
 docker compose restart clickhouse-0
@@ -620,7 +620,7 @@ SHOW TABLES FROM moose;
 \q
 ```
 
-If you can connect successfully and run commands with the new user, your Clickhouse configuration is working properly.
+If you can connect successfully and run commands with the new user, your ClickHouse configuration is working properly.
 
 ### Securing Redpanda (Optional)
 
@@ -819,7 +819,7 @@ Alternatively, for manual deployment:
 No more worrying about unexpected outages or performance issues. Set up proper monitoring:
 
 - Set up log monitoring with a tool like [Loki](https://grafana.com/oss/loki/)
-- Regularly backup your volumes (especially Clickhouse data)
+- Regularly backup your volumes (especially ClickHouse data)
 - Monitor disk space usage
 - Set up alerting for service health
 

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::scripts::utils::get_temporal_namespace;
 use crate::framework::scripts::Workflow;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
@@ -59,36 +60,53 @@ pub async fn run_workflow(
     name: &str,
     input: Option<String>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let workflow_dir = project.scripts_dir().join(name);
     let temporal_url = project.temporal_config.temporal_url_with_scheme();
     let namespace = get_temporal_namespace(&temporal_url);
 
-    // Check if workflow directory exists
-    if !workflow_dir.exists() {
-        return Err(RoutineFailure::error(Message {
-            action: "Workflow".to_string(),
-            details: format!(
-                "'{}' not found in directory {}\n",
-                name,
-                workflow_dir.display()
-            ),
-        }));
-    }
+    let infra_map = InfrastructureMap::load_from_user_code(project)
+        .await
+        .map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Load".to_string(),
+                    details: "Infrastructure".to_string(),
+                },
+                e,
+            )
+        })?;
 
-    let workflow: Workflow = Workflow::from_dir(workflow_dir.clone()).map_err(|e| {
-        RoutineFailure::new(
-            Message {
+    // Check if workflow exists in infra map, otherwise check if it's a folder-based workflow
+    let workflow = if infra_map.workflows.contains_key(name) {
+        infra_map.workflows.get(name).unwrap().clone()
+    } else {
+        let workflow_dir = project.scripts_dir().join(name);
+        // Check if workflow directory exists
+        if !workflow_dir.exists() {
+            return Err(RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
                 details: format!(
-                    "Could not create workflow '{}' from directory {}: {}\n",
+                    "'{}' not found. Add to directory {} or use Workflow & Task from moose-lib\n",
                     name,
-                    workflow_dir.display(),
-                    e
+                    workflow_dir.display()
                 ),
-            },
-            e,
-        )
-    })?;
+            }));
+        }
+
+        Workflow::from_dir(workflow_dir.clone()).map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Workflow".to_string(),
+                    details: format!(
+                        "Could not create workflow '{}' from directory {}: {}\n",
+                        name,
+                        workflow_dir.display(),
+                        e
+                    ),
+                },
+                e,
+            )
+        })?
+    };
 
     let run_id: String = workflow
         .start(&project.temporal_config, input)

@@ -273,52 +273,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       }
     }
 
-    // Fallback to basic validation if typia validators aren't available
-    return this.basicValidateRecord(record);
-  }
-
-  /**
-   * Basic validation fallback that doesn't require typia injection.
-   * Performs fundamental checks like null/undefined and required fields.
-   *
-   * @param record The record to validate
-   * @returns Basic validation result
-   */
-  private basicValidateRecord(record: unknown): {
-    success: boolean;
-    data?: T;
-    errors?: string[];
-  } {
-    if (record === null || record === undefined) {
-      return {
-        success: false,
-        errors: ["Record cannot be null or undefined"],
-      };
-    }
-
-    if (typeof record !== "object") {
-      return {
-        success: false,
-        errors: ["Record must be an object"],
-      };
-    }
-
-    // Check required fields based on column metadata
-    const errors: string[] = [];
-    const data = record as Record<string, any>;
-
-    for (const column of this.columnArray) {
-      if (
-        column.required &&
-        (data[column.name] === undefined || data[column.name] === null)
-      ) {
-        errors.push(`Required field '${column.name}' is missing`);
-      }
-    }
-
-    return errors.length > 0 ?
-        { success: false, errors }
-      : { success: true, data: record as T };
+    throw new Error("No typia validator found");
   }
 
   /**
@@ -333,9 +288,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       return this.validators.is(record);
     }
 
-    // Fallback: basic type check
-    const result = this.basicValidateRecord(record);
-    return result.success;
+    throw new Error("No typia validator found");
   }
 
   /**
@@ -351,12 +304,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       return this.validators.assert(record);
     }
 
-    // Fallback: basic assertion
-    const result = this.basicValidateRecord(record);
-    if (!result.success) {
-      throw new Error(`Validation failed: ${result.errors?.join(", ")}`);
-    }
-    return result.data!;
+    throw new Error("No typia validator found");
   }
 
   /**

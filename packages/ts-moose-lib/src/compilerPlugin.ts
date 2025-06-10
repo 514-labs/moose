@@ -18,7 +18,7 @@ const isDebugLoggingEnabled =
 // Helper function to write logs to stdout using the MOOSE_STUFF pattern
 const writeLog = (message: string) => {
   if (isDebugLoggingEnabled) {
-    console.error(`___MOOSE_STUFF___${message}___MOOSE_STUFF___`);
+    console.log(message);
   }
 };
 

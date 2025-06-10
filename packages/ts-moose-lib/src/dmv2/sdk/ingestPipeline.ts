@@ -1,5 +1,5 @@
 import { IJsonSchemaCollection } from "typia";
-import { TypedBase } from "../typedBase";
+import { TypedBase, TypiaValidators } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
 import { Stream, StreamConfig } from "./stream";
 import { OlapConfig, OlapTable } from "./olapTable";
@@ -177,6 +177,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     config: IngestPipelineConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
+    validators?: TypiaValidators<T>,
   );
 
   constructor(
@@ -184,8 +185,9 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     config: IngestPipelineConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
+    validators?: TypiaValidators<T>,
   ) {
-    super(name, config, schema, columns);
+    super(name, config, schema, columns, validators);
     this.metadata = config?.metadata;
 
     // Create OLAP table if configured
@@ -199,6 +201,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         tableConfig,
         this.schema,
         this.columnArray,
+        this.validators,
       );
     }
 

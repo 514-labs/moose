@@ -2,6 +2,18 @@ import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollect
 import { Column } from "../dataModels/dataModelTypes";
 
 /**
+ * Type definition for typia validation functions
+ */
+export interface TypiaValidators<T> {
+  /** Typia validator function: returns { success: boolean, data?: T, errors?: any[] } */
+  validate?: (data: unknown) => { success: boolean; data?: T; errors?: any[] };
+  /** Typia assert function: throws on validation failure, returns T on success */
+  assert?: (data: unknown) => T;
+  /** Typia is function: returns boolean indicating if data matches type T */
+  is?: (data: unknown) => data is T;
+}
+
+/**
  * Base class for all typed Moose dmv2 resources (OlapTable, Stream, etc.).
  * Handles the storage and injection of schema information (JSON schema and Column array)
  * provided by the Moose compiler plugin.
@@ -24,6 +36,9 @@ export class TypedBase<T, C> {
 
   /** The configuration object specific to this resource type. */
   config: C;
+
+  /** Typia validation functions for type T. Injected by the compiler plugin for OlapTable. */
+  validators?: TypiaValidators<T>;
 
   /**
    * @internal Constructor intended for internal use by subclasses and the compiler plugin.

@@ -184,7 +184,7 @@ mod tests {
             project.dependencies,
             vec![
                 "clickhouse_connect==0.7.16; python_version >= \"3.12\"".to_string(),
-                "requests==2.32.3; python_version >= \"3.12\"".to_string(),
+                "requests==2.32.4; python_version >= \"3.12\"".to_string(),
                 "moose-cli; python_version >= \"3.12\"".to_string(),
                 "moose-lib; python_version >= \"3.12\"".to_string(),
             ]

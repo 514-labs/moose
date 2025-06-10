@@ -15,15 +15,6 @@ if (
   process.argv[2] == "streaming-functions" ||
   process.argv[2] == "scripts"
 ) {
-  const transformFile =
-    (
-      process.argv[2] !== "dmv2-serializer" &&
-      process.argv[2] !== "streaming-functions" &&
-      process.argv[2] !== "consumption-apis" &&
-      process.argv[2] !== "scripts"
-    ) ?
-      "consumption-apis/insertTypiaValidation.js"
-    : "dmv2/compilerPlugin.js";
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -31,7 +22,7 @@ if (
     compilerOptions: {
       plugins: [
         {
-          transform: `./node_modules/@514labs/moose-lib/dist/${transformFile}`,
+          transform: `./node_modules/@514labs/moose-lib/dist/compilerPlugin.js`,
           transformProgram: true,
         },
         {

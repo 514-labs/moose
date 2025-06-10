@@ -1,8 +1,25 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
 import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, Contact } from "@/components";
-import { Database, FileCode, Download, Zap } from "lucide-react";
+import { Database, FileCode, Download, Zap, CheckCircle, Clock, Star } from "lucide-react";
 
-# Start With Your ClickHouse Database
+# Add Moose to Your Existing ClickHouse
+
+**Already have ClickHouse running?** Keep everything exactly as it is. Moose adds a code layer on top of your existing database to make it easier to manage.
+
+<div className="flex items-center gap-4 my-4 text-sm text-muted-foreground">
+  <div className="flex items-center gap-2">
+    <Clock className="w-4 h-4" />
+    <span>5 minutes to setup</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <CheckCircle className="w-4 h-4" />
+    <span>No data movement</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <Star className="w-4 h-4" />
+    <span>Keep everything as-is</span>
+  </div>
+</div>
 
 <LanguageSwitcher />
 
@@ -10,94 +27,46 @@ import { Database, FileCode, Download, Zap } from "lucide-react";
 We're actively developing this feature and would love your feedback. While it's ready for most use cases, check out [Known Limitations](#known-limitations) for details on what's still in progress.
 </Callout>
 
+## What You'll Get
 
-## Why Use Moose with ClickHouse?
-Moose provides a layer on top of your existing ClickHouse database to make it simpler to manage your tables, views, pipelines, and APIs in plain <TypeScript inline>TypeScript</TypeScript><Python inline>Python</Python> code:
+Build analytical applications on top of your existing ClickHouse in plain TypeScript/Python.
 
-<BulletPointsCard
-  title="Manually Managing ClickHouse?"
-  bulletStyle="x"
-  bullets={[
-    {
-      title: "Copy-pasting DDL between environments",
-      description: "Running the same CREATE TABLE and CREATE MATERIALIZED VIEW statements in dev, staging, and prod, hoping you didn't miss a field",
-    },
-    {
-      title: "Forgetting dependency order",
-      description: "Creating a materialized view before its source table exists, then scrambling to figure out what broke",
-    },
-    {
-      title: "Lost schema changes",
-      description: "That ALTER TABLE you ran last week? Good luck remembering what it was when you need to apply it to production",
-    },
-  ]}
-/>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+  <BulletPointsCard
+    title="Your ClickHouse Stays"
+    bulletStyle="check"
+    bullets={[
+      { title: "Same database, same data", description: "No migration required" },
+      { title: "Existing queries work", description: "Current applications unaffected" },
+      { title: "Gradual adoption", description: "Add Moose incrementally" }
+    ]}
+  />
+  
+  <BulletPointsCard
+    title="Moose Adds Application Layer"
+    bulletStyle="check"
+    bullets={[
+      { title: "Type-safe data models", description: "Auto-generated from your table schemas" },
+      { title: "HTTP APIs & streaming", description: "Built-in ingestion & real-time processing" },
+      { title: "Hot-reload development", description: "Framework-style developer experience" }
+    ]}
+  />
+</div>
 
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  title="How Moose Can Speed Things Up:"
-  bullets={[
-    {
-      title: "Reduce boilerplate",
-      description: "Generate typed models from your existing tables instead of hand-coding everything",
-    },
-    {
-      title: "Build APIs in code, not Jinja templates",
-      description: "Write TypeScript/Python functions with proper IDE support instead of templated SQL",
-    },
-    {
-      title: "Add streaming with one line of code",
-      description: "Turn any table into a real-time streaming destination without configuring Kafka topics, serialization, or message schemas",
-    },
-    {
-      title: "Version control your database",
-      description: "Manage schema changes, materialized views, and transformations like actual code",
-    },
-    {
-      title: "Leverage CI/CD built for ClickHouse",
-      description: "See a plan for your database changes before promoting to production, and apply them automatically when you do",
-    },
-  ]}
-/>
-
-## Quick Setup
-<Callout type="info" title="Prerequisites">
-<TypeScript>
-- **Node.js**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
-</TypeScript>
-
-<Python>
-- **Python**: [version 3.12+](https://www.python.org/downloads/) 
-</Python>
-
-- **OS**: macOS or Linux (WSL supported for Windows)
-- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
-- **Access to ClickHouse Database**: Connection URL with credentials
-</Callout>
+## Quick Setup (5 minutes)
 
 <Steps>
 
-### Get Your ClickHouse Connection String
+### Get Your ClickHouse Connection
 
-You need a ClickHouse connection URL. Format looks like this:
+You need a ClickHouse connection URL in this format:
 
 ```
 http://username:password@host:port/?database=database_name
 ```
 
-<Callout type="info" title="Try with ClickHouse Playground">
-Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground) with the connection string above. It has sample datasets (read-only) you can experiment with.
-
-```txt copy
-https://explorer:@play.clickhouse.com:443/?database=default
-```
-
-</Callout>
-
-
-<ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
+<ToggleBlock openText="Need help finding your connection details?" closeText="Hide credential help">
+<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker", "Playground"]}>
 <Tabs.Tab>
 1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
 2. Go to your service details page
@@ -115,33 +84,38 @@ https://explorer:@play.clickhouse.com:443/?database=default
 - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
 - Default is usually `http://default:@localhost:8123/?database=default`
 </Tabs.Tab>
+<Tabs.Tab>
+Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground):
+
+```txt copy
+https://explorer:@play.clickhouse.com:443/?database=default
+```
+</Tabs.Tab>
 </Tabs>
 </ToggleBlock>
 
-<ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
+### Install Moose & Generate Code Layer
 
-- **Can't connect?** Try `curl http://your-host:8123/ping` to test connectivity
-- **Authentication failed?** Verify username/password with `clickhouse-client --user=username --password=password`
-- **Database not found?** Run `SHOW DATABASES` to see available databases
-- **Permission denied?** Check user permissions with `SHOW GRANTS FOR username`
-
-**Still stuck?** Check the [ClickHouse documentation](https://clickhouse.com/docs/en/getting-started/install) for your specific deployment method.
-
-</ToggleBlock>
-
-
-### Install Moose & Bootstrap Your Project
-
-Install Moose if you haven't already:
-```bash copy
+<TypeScript>
+```bash filename="Terminal" copy
 # Install Moose
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
-```
 
-Create a new project:
+# Generate code models from your existing ClickHouse tables
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+
+# Set up dependencies
+cd my-project
+npm install
+```
+</TypeScript>
+
 <Python>
-```bash copy
-# Bootstrap from your ClickHouse database
+```bash filename="Terminal" copy
+# Install Moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+
+# Generate code models from your existing ClickHouse tables
 moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
 
 # Set up dependencies
@@ -152,37 +126,47 @@ pip install -r requirements.txt
 ```
 </Python>
 
-<TypeScript>
-```bash copy
-# Bootstrap from your ClickHouse database
-moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+<Callout type="success" title="✅ Success indicator">
+You should see: `Successfully generated X models from ClickHouse tables`
+</Callout>
 
-# Set up dependencies
-cd my-project
-npm install
-```
-</TypeScript>
+<Callout type="info" title="Your ClickHouse is untouched">
+This only reads your table schemas to generate TypeScript/Python models. No data is moved or modified.
+</Callout>
 
-### Start Your Local Environment
+### Start Your Local Development Layer
 
-```bash copy
+```bash filename="Terminal" copy
 moose dev
 ```
 
-This spins up your entire data stack locally and generates typed models from your ClickHouse tables.
+<Callout type="success" title="✅ Success indicator">
+You should see:
+```txt
+✅ Generated typed models from ClickHouse
+✅ Local development environment ready
+🚀 Moose dev server running on http://localhost:4000
+```
+</Callout>
 
-### Check What Got Generated
+<Callout type="info" title="What's running locally">
+Moose creates a local development copy of your ClickHouse structure. Your production ClickHouse remains completely untouched.
+</Callout>
 
-Moose created data models for each of your ClickHouse tables. Check <Python inline>`app/main.py`</Python><TypeScript inline>`app/index.ts`</TypeScript> to see what you got.
+### Explore Your Generated Models
+
+Check what Moose created from your tables:
 
 <Python>
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="main.py" />
+<FileTree.Folder name="tables" defaultOpen>
+<FileTree.File name="users.py" />
+<FileTree.File name="events.py" />
+<FileTree.File name="..." />
 </FileTree.Folder>
-<FileTree.File name="moose.config.toml" />
-<FileTree.File name="requirements.txt" />
-<FileTree.File name="setup.py" />
+</FileTree.Folder>
 </FileTree>
 </Python>
 
@@ -190,38 +174,53 @@ Moose created data models for each of your ClickHouse tables. Check <Python inli
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="index.ts" />
+<FileTree.Folder name="tables" defaultOpen>
+<FileTree.File name="users.ts" />
+<FileTree.File name="events.ts" />
+<FileTree.File name="..." />
 </FileTree.Folder>
-<FileTree.File name="moose.config.toml" />
-<FileTree.File name="package.json" />
+</FileTree.Folder>
 </FileTree>
 </TypeScript>
 
 </Steps>
 
-## Type Mapping
+## What Gets Generated
 
-Moose automatically maps ClickHouse data types to appropriate language-specific types:
+Moose automatically creates type-safe models from your ClickHouse tables:
 
-<Python>
+<Tabs items={["TypeScript", "Python"]}>
+<Tabs.Tab>
+```typescript filename="Generated from your ClickHouse table" copy
+// From: CREATE TABLE users (id UInt64, name String, email String, created_at DateTime)
+export interface Users {
+  id: number;
+  name: string;
+  email: string;
+  created_at: Date;
+}
 
-| ClickHouse Type | Python Type | Notes |
-|-----------------|-------------|-------|
-| `String` | `str` | |
-| `Int8`, `Int16`, `Int32`, `Int64` | `int` | With size annotations |
-| `UInt8`, `UInt16`, `UInt32`, `UInt64` | `int` | With size annotations |
-| `Float32`, `Float64` | `float` | With precision annotations |
-| `Decimal(P,S)` | `Decimal` | With precision/scale |
-| `Date`, `Date32` | `date` | |
-| `DateTime`, `DateTime64` | `datetime` | With precision for DateTime64 |
-| `Array(T)` | `list[T]` | Nested type mapping |
-| `UUID` | `UUID` | |
-| `Boolean` | `bool` | |
-| `Nullable(T)` | `Optional[T]` | |
-| `LowCardinality(T)` | `T` | Maps to base type |
-| `JSON` | `any` | Partial support |
+export const usersTable = new OlapTable<Users>("users");
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```python filename="Generated from your ClickHouse table" copy
+# From: CREATE TABLE users (id UInt64, name String, email String, created_at DateTime)
+class Users(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: datetime
 
-</Python>
-<TypeScript>
+users_table = OlapTable[Users]("users")
+```
+</Tabs.Tab>
+</Tabs>
+
+## Type Mapping Reference
+
+<Tabs items={["TypeScript", "Python"]}>
+<Tabs.Tab>
 
 | ClickHouse Type | TypeScript Type | Notes |
 |-----------------|-----------------|-------|
@@ -229,7 +228,6 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `Int8`, `Int16`, `Int32`, `Int64` | `number` | |
 | `UInt8`, `UInt16`, `UInt32`, `UInt64` | `number` | |
 | `Float32`, `Float64` | `number` | |
-| `Decimal(P,S)` | `number` | |
 | `Date`, `Date32` | `Date` | |
 | `DateTime`, `DateTime64` | `Date` | |
 | `Array(T)` | `T[]` | Nested type mapping |
@@ -237,66 +235,56 @@ Moose automatically maps ClickHouse data types to appropriate language-specific 
 | `Boolean` | `boolean` | |
 | `Nullable(T)` | `T \| null` | |
 | `LowCardinality(T)` | `T` | Maps to base type |
-| `JSON` | `Record<string, any>` | Partial support |
 
-</TypeScript>
+</Tabs.Tab>
+<Tabs.Tab>
 
-## What's Next?
+| ClickHouse Type | Python Type | Notes |
+|-----------------|-------------|-------|
+| `String` | `str` | |
+| `Int8`, `Int16`, `Int32`, `Int64` | `int` | With size annotations |
+| `UInt8`, `UInt16`, `UInt32`, `UInt64` | `int` | With size annotations |
+| `Float32`, `Float64` | `float` | With precision annotations |
+| `Date`, `Date32` | `date` | |
+| `DateTime`, `DateTime64` | `datetime` | With precision for DateTime64 |
+| `Array(T)` | `list[T]` | Nested type mapping |
+| `UUID` | `UUID` | |
+| `Boolean` | `bool` | |
+| `Nullable(T)` | `Optional[T]` | |
+| `LowCardinality(T)` | `T` | Maps to base type |
 
-Now that you've got Moose talking to your ClickHouse database:
+</Tabs.Tab>
+</Tabs>
 
-### 1. Get Some Data Locally
+## Next Steps: Add Moose Superpowers
 
-```bash copy
-# CLI command to seed from remote ClickHouse
-moose seed clickhouse --connection-string <YOUR_CLICKHOUSE_CONNECTION_STRING> --limit 100
+### 1. Seed Local Development Data
+
+```bash filename="Terminal" copy
+# Copy sample data from your production ClickHouse to local dev environment
+moose seed clickhouse --connection-string <YOUR_CLICKHOUSE_CONNECTION_STRING> --limit 1000
 ```
 
-### 2. Build Materialized Views That Don't Break
-Moose lets you define materialized views in code with automatic schema management and dependency orchestration:
+<Callout type="info" title="Safe data copying">
+This copies a sample of your production data to your local development environment only. Your production data stays exactly where it is.
+</Callout>
 
-**What you're probably doing now:**
+### 2. Build Materialized Views in Code
 
-```sql
--- Step 1: Create target table (remember the exact schema!)
-CREATE TABLE daily_user_stats (
-    user_id UInt64,
-    date Date,
-    event_count UInt64
-) ENGINE = MergeTree()
-ORDER BY (user_id, date);
-
--- Step 2: Create materialized view (hope you got the dependency order right!)
-CREATE MATERIALIZED VIEW daily_user_stats_mv TO daily_user_stats AS
-SELECT 
-    user_id,
-    toDate(timestamp) as date,
-    count(*) as event_count
-FROM user_events 
-GROUP BY user_id, date;
-
--- Step 3: Copy-paste this to staging... then production... 
--- Step 4: Pray you didn't miss anything when the schema changes
--- Step 5: Remember to DROP VIEW before changing SELECT logic
-```
-
-**With Moose:**
+Stop managing materialized views with manual DDL. Define them in code:
 
 <TypeScript>
-```typescript
-import { userEvents } from "./tables"; // Import existing tables
+```typescript filename="Smart aggregations that don't break" copy
+import { userEvents } from "./tables";
 import { MaterializedView, sql } from "@514labs/moose-lib";
 
-// Define your target schema
 interface DailyUserStats {
   user_id: number;
   date: Date;
   event_count: number;
 }
 
-// Define what you want - Moose generates all the DDL
 const dailyStats = new MaterializedView<DailyUserStats>({
-  // ✅ SQL in actual code, directly reference table names and columns for autocompletion
   selectStatement: sql`
     SELECT 
       ${userEvents.user_id}, 
@@ -311,30 +299,20 @@ const dailyStats = new MaterializedView<DailyUserStats>({
   orderByFields: ["user_id", "date"]
 });
 
-// Moose automatically:
-// ✅ Creates the target table with correct schema
-// ✅ Sets up the materialized view 
-// ✅ Handles dependency order
-// ✅ Manages schema migrations
-// ✅ Provides hot-reload in development
+// ✅ Moose handles all the DDL, dependencies, and migrations
 ```
 </TypeScript>
 
 <Python>
-```python
-from moose_lib import MaterializedView, OlapTable, MaterializedViewOptions
-from pydantic import BaseModel
-from datetime import date
-from app.tables import user_events ## Import existing tables
+```python filename="Smart aggregations that don't break" copy
+from moose_lib import MaterializedView, MaterializedViewOptions
+from app.tables import user_events
 
-## Define your target schema
 class DailyUserStats(BaseModel):
     user_id: int
     date: date  
     event_count: int
 
-
-# Define what you want - Moose generates all the DDL
 daily_stats = MaterializedView[DailyUserStats](
     MaterializedViewOptions(
         select_statement="""
@@ -348,45 +326,25 @@ daily_stats = MaterializedView[DailyUserStats](
     )
 )
 
-# Moose automatically:
-# ✅ Creates the target table with correct schema  
-# ✅ Sets up the materialized view
-# ✅ Handles dependency order
-# ✅ Manages schema migrations
-# ✅ Provides hot-reload in development
+# ✅ Moose handles all the DDL, dependencies, and migrations
 ```
 </Python>
 
-**Ready to dive deeper?** → [Materialized Views docs](/moose/building/materialized-views)
+### 3. Generate APIs in Minutes
 
-### 3. Build APIs That Handle the Annoying Stuff
-Consumption APIs are a way to write native <TypeScript inline>TypeScript</TypeScript><Python inline>Python</Python> functions that wrap your ClickHouse queries and make them available for your frontend clients via a type-safe REST API.
+Turn your ClickHouse queries into production APIs:
 
-They are designed to take care of the boilerplate that slows you down like:
-- Request validation
-- Response type mapping
-- SQL injection protection
-- Documentation
-- JWT validation (if you're using it)
-
-<ToggleBlock openText="Example code" closeText="Hide details">
 <TypeScript>
-```typescript
+```typescript filename="Production-ready APIs" copy
 import { ConsumptionApi } from "@514labs/moose-lib";
-import { tags } from "typia";
 
 interface GetUserStatsParams {
-  userId: number;                            // ✅ Automatic validation
-  startDate: string & tags.Format<"date">;   // ✅ Automatic validation  
-  endDate: string & tags.Format<"date">;     // ✅ Automatic validation
+  userId: number;
+  startDate: string;
+  endDate: string;
 }
 
-interface GetUserStatsResponse {
-  date: string;
-  event_count: number;
-}
-
-export const UserStatsApi = new ConsumptionApi<GetUserStatsParams, GetUserStatsResponse[]>(
+export const UserStatsApi = new ConsumptionApi<GetUserStatsParams, DailyUserStats[]>(
   "user-stats",
   async ({ userId, startDate, endDate }, { client, sql }) => {
     const query = sql`
@@ -396,36 +354,24 @@ export const UserStatsApi = new ConsumptionApi<GetUserStatsParams, GetUserStatsR
         AND date BETWEEN ${startDate} AND ${endDate}
       ORDER BY date
     `;
-
-    const data = await client.query.execute<GetUserStatsResponse>(query);
+    
+    const data = await client.query.execute<DailyUserStats>(query);
     return await data.json();
   }
 );
 
-// Moose automatically provides:
-// ✅ Request validation based on TypeScript types
-// ✅ Response type mapping to your target schema
-// ✅ SQL injection protection  
-// ✅ OpenAPI documentation generation
-// ✅ JWT validation (if configured)
-// ✅ IDE autocompletion for table names
+// ✅ Auto-generated OpenAPI docs, validation, and type safety
 ```
 </TypeScript>
 
 <Python>
-```python
+```python filename="Production-ready APIs" copy
 from moose_lib import ConsumptionApi, MooseClient
-from pydantic import BaseModel
-from datetime import date
 
 class GetUserStatsParams(BaseModel):
-    user_id: int           # ✅ Automatic validation
-    start_date: date       # ✅ Automatic validation
-    end_date: date         # ✅ Automatic validation
-
-class GetUserStatsResponse(BaseModel):
-    date: date
-    event_count: int
+    user_id: int
+    start_date: date
+    end_date: date
 
 def get_user_stats(client: MooseClient, params: GetUserStatsParams):
     query = f"""
@@ -437,119 +383,97 @@ def get_user_stats(client: MooseClient, params: GetUserStatsParams):
     """
     return client.query.execute(query)
 
-api = ConsumptionApi[GetUserStatsParams, GetUserStatsResponse](
+api = ConsumptionApi[GetUserStatsParams, DailyUserStats](
     name="user-stats", 
     query_function=get_user_stats
 )
 
-# Moose automatically provides:
-# ✅ Request validation based on Pydantic models
-# ✅ Response type mapping to your target schema
-# ✅ SQL injection protection
-# ✅ OpenAPI documentation generation  
-# ✅ JWT validation (if configured)
-# ✅ IDE autocompletion for table names
+# ✅ Auto-generated OpenAPI docs, validation, and type safety
 ```
 </Python>
 
-</ToggleBlock>
+### 4. Add Real-Time Streaming (Optional)
 
-**Ready to dive deeper?** → [Consumption APIs docs](/moose/building/consumption-apis)
+Optionally add streaming capabilities to your existing tables:
 
-### 4. Use AI to Generate Analytics & APIs
+<TypeScript>
+```typescript filename="Add streaming to existing tables" copy
+import { Stream } from "@514labs/moose-lib";
+import { userEvents } from "./tables";
 
-Want AI to generate insights and APIs from your data? Try [Aurora](/aurora/quickstart) - our AI analytics agent for Moose projects.
+// Add streaming layer to your existing ClickHouse table
+export const userEventsStream = new Stream<UserEvents>("user_events", {
+  destination: userEvents  // Points to your existing ClickHouse table
+});
 
-## Current Limitations
+// ✅ New data can now stream in real-time to your existing table
+```
+</TypeScript>
 
-### What we're working on adding:
-- **Selective table import**: Imports all tables (filtering coming soon)
-- **Default values**: Adding annotations to your models to set default values for your tables
-- **Advanced ClickHouse types**:
-  - `Map(K, V)` types
-  - `Tuple(T1, T2, ...)` types  
-  - `Geo` types (Point, Ring, Polygon, etc.)
+<Python>
+```python filename="Add streaming to existing tables" copy
+from moose_lib import Stream, StreamConfig
+from app.tables import user_events, UserEvents
+
+# Add streaming layer to your existing ClickHouse table
+user_events_stream = Stream[UserEvents]("user_events", StreamConfig(
+    destination=user_events  # Points to your existing ClickHouse table
+))
+
+# ✅ New data can now stream in real-time to your existing table
+```
+</Python>
+
+<Callout type="info" title="Non-destructive addition">
+This creates a streaming layer that writes to your existing ClickHouse table. Your current data ingestion methods continue to work alongside the new streaming capabilities.
+</Callout>
+
+## Known Limitations
 
 <Callout type="warning" title="Tables with these types will be skipped">
 Right now, tables featuring these types will be skipped during the initialization process.
 </Callout>
 
-### Known Limitations
+### Currently Unsupported Types:
+- **`Map(K, V)` types**
+- **`Tuple(T1, T2, ...)` types**  
+- **`Geo` types** (Point, Ring, Polygon, etc.)
+- **`Enum` types with empty string keys**
 
-#### Supported Types with Manual Type Adjustments:
+### Partial Support:
+- **`JSON` types** - <TypeScript inline>Maps to `Record<string, any>`</TypeScript><Python inline>Maps to `any`</Python>
+- **`LowCardinality(T)`** - Maps to base type `T` (optimization annotations available)
 
-#### `LowCardinality(T)` 
-Currently, `LowCardinality(T)` maps to base type `T`.
+### What we're working on:
+- **Selective table import** (currently imports all tables)
+- **Default value annotations** 
+- **Advanced ClickHouse type support**
 
-You can override the autogenerated data models by making the following adjustments to fields that are `LowCardinality` in your generated code:
+## Success Stories
 
-<TypeScript>
-You can add LowCardinality optimization by using intersection types:
-```typescript
-interface MyModel {
-  status: string & LowCardinality; // Optimized for low cardinality
-  category: string;                // Regular string
-}
-```
-</TypeScript>
+<BulletPointsCard
+  title="Teams using Moose on top of existing ClickHouse:"
+  bullets={[
+    { title: "Kept all existing data and queries working", description: "Zero disruption to production systems" },
+    { title: "Added modern development workflow", description: "Git-based schema management without touching production" },
+    { title: "10x faster API development", description: "From weeks of backend work to minutes of code" },
+    { title: "Gradual adoption across teams", description: "Started with one table, expanded as needed" }
+  ]}
+/>
 
-<Python>
-LowCardinality is automatically applied to `Literal` types:
-```python
-from typing import Literal
+## Ready to Add Moose?
 
-class MyModel(BaseModel):
-    status: Literal["active", "inactive", "pending"]  # Automatically 
-    category: str                                     # Regular string
-```
-</Python>
-
-#### `JSON` types 
-<Python>
-Maps to `any` 
-</Python>
-
-<TypeScript>
-Maps to `Record<string, any>`
-</TypeScript>
-
-#### `Enum` types
-Enum column types that have an empty string as a key will be skipped:
-
-```sql
-CREATE TABLE my_table (
-    my_enum Enum8(""=0, "A"=1, "B"=2)
-);
-```
-
-```python
-## This does not work:
-class my_enum(StringToEnumMixin, IntEnum):
-    "" = 0 ## Illegal to have an empty string as a key
-    A = 1
-    B = 2
-
-## Instead what will be generated is:
-class my_enum(StringToEnumMixin, IntEnum):
-    = 0 ## Will lead to a type error, consider using a different key
-    A = 1
-    B = 2
-```
-
-<Python>
-In Python, using a numeric key in a string enum will lead to a type error:
-```sql
-CREATE TABLE my_table (
-    my_enum Enum8("1"=0, "A"=1, "B"=2)
-);
-```
-
-```python
-class my_enum(StringToEnumMixin, IntEnum):
-    1 = 0 ## Will lead to a type error, consider using a different key
-    A = 1
-    B = 2
-```
-</Python>
+<div className="flex flex-col md:flex-row gap-4 my-8">
+  <a href="#quick-setup-5-minutes">
+    <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+      Start Setup →
+    </button>
+  </a>
+  <a href="https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering">
+    <button className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+      Talk to Engineering
+    </button>
+  </a>
+</div>
 
 <Contact />

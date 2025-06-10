@@ -33,9 +33,8 @@ export async function transformGhEvent(
       repoForks: repoData.forks_count,
       repoWatchers: repoData.watchers_count,
       repoOpenIssues: repoData.open_issues_count,
-      repoCreatedAt: repoData.created_at
-        ? new Date(repoData.created_at)
-        : new Date(),
+      repoCreatedAt:
+        repoData.created_at ? new Date(repoData.created_at) : new Date(),
       repoOwnerLogin: repoData.owner.login,
       repoOwnerId: repoData.owner.id,
       repoOwnerUrl: repoData.owner.url,

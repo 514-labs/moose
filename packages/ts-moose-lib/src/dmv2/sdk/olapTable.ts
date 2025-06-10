@@ -153,7 +153,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     columns?: Column[],
     validators?: TypiaValidators<T>,
   ) {
-    super(name, config ?? {}, schema, columns);
+    super(name, config ?? {}, schema, columns, validators);
 
     getMooseInternal().tables.set(name, this);
   }

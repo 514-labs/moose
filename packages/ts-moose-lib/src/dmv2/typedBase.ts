@@ -54,6 +54,7 @@ export class TypedBase<T, C> {
     config: C,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
+    validators?: TypiaValidators<T>,
   ) {
     if (schema === undefined || columns === undefined) {
       throw new Error(
@@ -71,5 +72,6 @@ export class TypedBase<T, C> {
 
     this.name = name;
     this.config = config;
+    this.validators = validators;
   }
 }

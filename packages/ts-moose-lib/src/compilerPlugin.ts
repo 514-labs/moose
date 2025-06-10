@@ -11,15 +11,9 @@ import {
   transformLegacyConsumptionApi,
 } from "./consumption-apis/typiaValidation";
 
-// Check if debug logging is enabled via environment variable
-const isDebugLoggingEnabled =
-  process.env.MOOSE_COMPILER_PLUGIN_DEBUG === "true";
-
 // Helper function to write logs to stdout using the MOOSE_STUFF pattern
 const writeLog = (message: string) => {
-  if (isDebugLoggingEnabled) {
-    console.log(message);
-  }
+  console.log(message);
 };
 
 /**

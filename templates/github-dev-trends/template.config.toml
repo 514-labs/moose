@@ -3,7 +3,7 @@ description = "A real-time look at top trending topics on GitHub. Collects & ana
 post_install_print = """
 
 📂 Go to your project directory:
-    $ cd {project_dir}/moose-backend
+    $ cd {project_dir}
 
 📦 Install Dependencies:
     $ npm install

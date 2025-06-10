@@ -148,29 +148,27 @@ export function TrendingTopicsChart() {
               onClick={() => {
                 setIsPlaying(false);
                 setCurrentTimeIndex(
-                  currentTimeIndex === 0
-                    ? data.length - 1
-                    : currentTimeIndex - 1,
+                  currentTimeIndex === 0 ?
+                    data.length - 1
+                  : currentTimeIndex - 1,
                 );
               }}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <Button onClick={() => setIsPlaying(!isPlaying)} variant="outline">
-              {isPlaying ? (
+              {isPlaying ?
                 <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
+              : <Play className="w-4 h-4" />}
             </Button>
             <Button
               variant="outline"
               onClick={() => {
                 setIsPlaying(false);
                 setCurrentTimeIndex(
-                  currentTimeIndex === data.length - 1
-                    ? 0
-                    : currentTimeIndex + 1,
+                  currentTimeIndex === data.length - 1 ?
+                    0
+                  : currentTimeIndex + 1,
                 );
               }}
             >
@@ -193,14 +191,14 @@ export function TrendingTopicsChart() {
                   setIsPlaying(false);
                 }}
                 className={`px-3 py-1 rounded text-sm whitespace-nowrap cursor-pointer hover:bg-secondary/80 hover:text-secondary-foreground transition-colors ${
-                  index === currentTimeIndex
-                    ? "bg-secondary text-secondary-foreground font-medium"
-                    : "bg-muted text-muted-foreground"
+                  index === currentTimeIndex ?
+                    "bg-secondary text-secondary-foreground font-medium"
+                  : "bg-muted text-muted-foreground"
                 }`}
               >
-                {interval === "day"
-                  ? new Date(timeData.time).toLocaleDateString()
-                  : new Date(timeData.time).toLocaleTimeString()}
+                {interval === "day" ?
+                  new Date(timeData.time).toLocaleDateString()
+                : new Date(timeData.time).toLocaleTimeString()}
               </Button>
             ))}
           </div>

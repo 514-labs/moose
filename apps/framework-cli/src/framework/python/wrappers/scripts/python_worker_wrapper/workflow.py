@@ -145,7 +145,7 @@ class ScriptWorkflow:
             # Re-raise the exception to maintain existing error handling
             raise
 
-    async def _handle_dmv2_workflow(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> Any:
+    async def _execute_dmv2_activity_with_state(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> Any:
         activity_name = f"{dmv2wf.name}/{task.name}"
         self._state.current_step = activity_name
         results = []
@@ -197,7 +197,7 @@ class ScriptWorkflow:
         
         dmv2wf = _get_workflow(path)
         if dmv2wf:
-            return await self._handle_dmv2_workflow(dmv2wf, dmv2wf.config.starting_task, current_data)
+            return await self._execute_dmv2_activity_with_state(dmv2wf, dmv2wf.config.starting_task, current_data)
         else:
             if os.path.isfile(path) and path.endswith(".py"):
                 # Single script execution

@@ -47,6 +47,32 @@ export const myworkflow = new Workflow("myworkflow", {
 The file must export `Task` & `Workflow` objects. These objects are used to register the task with the workflow. Inside this `Workflow` object, you must specify the `startingTask`, which is the task you defined above.
 </TypeScript>
 
+<Python>
+```python filename="app/main.py" copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+  name: str;
+
+def run_task1(input: Foo) -> None:
+  name = input.name or "world"
+  greeting = f"hello, {name}!"
+
+task1 = Task[Foo, None](
+  name="task1",
+  config=TaskConfig(run=run_task1)
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1)
+)
+```
+
+The file must export `Task` & `Workflow` objects. These objects are used to register the task with the workflow. Inside this `Workflow` object, you must specify the `starting_task`, which is the task you defined above.
+</Python>
+
 
 ## Data Flow Between Tasks
 
@@ -95,6 +121,53 @@ export const myworkflow = new Workflow("myworkflow", {
 });
 ```
 </TypeScript>
+
+<Python>
+```python filename="app/main.py" copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, Logger
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+  name: str
+
+class Bar(BaseModel):
+  name: str
+  greeting: str
+  counter: int
+
+def run_task2(input: Bar) -> None:
+  logger = Logger(action="run_task2")
+  logger.info(f"task2 input: {input.model_dump_json()}")
+
+task2 = Task[Bar, None](
+  name="task2",
+  config=TaskConfig(run=run_task2)
+)
+
+def run_task1(input: Foo) -> Bar:
+  name = input.name or "world"
+  greeting = f"hello, {name}!"
+
+  return Bar(
+      name=name,
+      greeting=greeting,
+      counter=1
+  )
+
+task1 = Task[Foo, Bar](
+  name="task1",
+  config=TaskConfig(
+      run=run_task1,
+      on_complete=[task2]
+  )
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1)
+)
+```
+</Python>
 
 ## Running Workflows
 
@@ -189,6 +262,17 @@ export const myworkflow = new Workflow("myworkflow", {
 ```
 </TypeScript>
 
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, schedule="0 12 * * *") # Runs at 12:00 PM every day
+)
+```
+</Python>
+
 
 ```text
 |------------------------------- Minute (0-59)
@@ -232,6 +316,16 @@ export const myworkflow = new Workflow("myworkflow", {
 ```
 </TypeScript>
 
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, schedule="@every 1h")
+)
+```
+</Python>
 
 ## Advanced: Triggering Workflows Programmatically
 You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
@@ -250,7 +344,25 @@ const triggerApi = new ConsumptionAPI<WorkflowParams>("trigger-workflow", ({inpu
 ```
 </TypeScript>
 
+<Python>
+```python filename="app/apis/trigger_workflow.py" copy
+from moose_lib import MooseClient, ConsumptionAPI
+from pydantic import BaseModel, Field
 
+class WorkflowParams(BaseModel):
+    input_value: str = Field(default="default")
+
+def run(client: MooseClient, params: WorkflowParams) -> dict:
+    return client.workflows.execute(
+        workflow="example",
+        params={input_value: params.input_value}
+    )
+
+api = ConsumptionAPI[WorkflowParams]("trigger-workflow", run)
+```
+
+For more information on how to set up a Moose API, see the [Consumption API](/moose/building/consumption-apis) documentation.
+</Python>
 
 ## Error Detection and Handling
 Moose provides multiple layers of error protection, both at the workflow and task level:
@@ -273,12 +385,23 @@ export const myworkflow = new Workflow("myworkflow", {
 ```
 </TypeScript>
 
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=1, timeout="10m")
+)
+```
+</Python>
+
 ### Task-Level Errors and Retries
 
 For more granular control over task-level errors and retries, you can configure your individual tasks to have their own retry behavior:
 
 <TypeScript>
-```typescript filename="app/index.ts" {5-6,11-12} copy
+```typescript filename="app/index.ts" {5-6} copy
 import { Task, Workflow } from "@514labs/moose-lib";
 
 export const task1 = new Task<Foo>("task1", {
@@ -294,6 +417,25 @@ export const myworkflow = new Workflow("myworkflow", {
 });
 ```
 </TypeScript>
+
+<Python>
+```python filename="app/main.py" {8} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+def run_task1(input: Foo) -> None:
+    pass
+
+task1 = Task[Foo, None](
+    name="task1",
+    config=TaskConfig(run=run_task1, retries=1, timeout="5m")
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=2, timeout="10m")
+)
+```
+</Python>
 
 ### Example: Workflow and Task Retry Interplay
 
@@ -317,6 +459,25 @@ export const myworkflow = new Workflow("myworkflow", {
 });
 ```
 </TypeScript>
+
+<Python>
+```python filename="app/main.py" {8,13} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+def run_task1(input: Foo) -> None:
+    pass
+
+task1 = Task[Foo, None](
+    name="task1",
+    config=TaskConfig(run=run_task1, retries=2)
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=3)
+)
+```
+</Python>
 
 If the execution of the workflow encounters an error, the retry sequence would proceed as follows:
 

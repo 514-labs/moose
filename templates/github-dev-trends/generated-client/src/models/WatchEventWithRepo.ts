@@ -213,9 +213,9 @@ export function WatchEventWithRepoFromJSONTyped(
     repoDescription:
       json["repoDescription"] == null ? undefined : json["repoDescription"],
     repoOwnerAvatarUrl:
-      json["repoOwnerAvatarUrl"] == null
-        ? undefined
-        : json["repoOwnerAvatarUrl"],
+      json["repoOwnerAvatarUrl"] == null ?
+        undefined
+      : json["repoOwnerAvatarUrl"],
     repoName: json["repoName"],
     repoOpenIssues:
       json["repoOpenIssues"] == null ? undefined : json["repoOpenIssues"],

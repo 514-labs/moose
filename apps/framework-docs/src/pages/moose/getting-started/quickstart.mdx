@@ -264,9 +264,7 @@ You should see JSON data with your processed events:
   loop={true}
 />
 
-## Step 5: See the Magic (1 minute)
-
-### Hot-reload in action
+## Step 5: Hot Reload Schema Changes (1 minute)
 
 1. Open <TypeScript inline>`app/ingest/models.ts`</TypeScript><Python inline>`app/ingest/models.py`</Python>
 2. Add a new field to your data model:
@@ -309,28 +307,41 @@ You should see Moose automatically update your infrastructure:
 
 You've built a complete analytical backend with:
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-  <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
-    <h3 className="font-semibold text-green-800 mb-2">✅ What's Working</h3>
-    <ul className="space-y-1 text-sm text-green-700">
-      <li>• Type-safe data ingestion API</li>
-      <li>• Real-time stream processing</li>
-      <li>• ClickHouse database with auto-schema</li>
-      <li>• Analytics API with filtering</li>
-      <li>• Hot-reload development</li>
-    </ul>
-  </div>
+<BulletPointsCard
+  bulletStyle="check"
+  title="✅ What's Working"
+  bullets={[
+    { title: "Type-safe data ingestion API" },
+    { title: "Real-time stream processing" },
+    { title: "ClickHouse database with auto-schema" },
+    { title: "Analytics API with filtering" },
+    { title: "Hot-reload development" }
+  ]}
+/>
   
-  <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
-    <h3 className="font-semibold text-blue-800 mb-2">🚀 Next Steps</h3>
-    <ul className="space-y-1 text-sm text-blue-700">
-      <li>• <a href={paths.dataModels} className="hover:underline">Learn about data models</a></li>
-      <li>• <a href={paths.streams} className="hover:underline">Build custom transformations</a></li>
-      <li>• <a href={paths.consumptionApis} className="hover:underline">Create advanced APIs</a></li>
-      <li>• <a href="/templates" className="hover:underline">Explore example projects</a></li>
-    </ul>
-  </div>
-</div>
+
+## Next Steps
+
+<FeatureGrid columns={3}>
+<FeatureCard
+  title="Data Modeling"
+  description="Learn schema design patterns"
+  href={paths.dataModels}
+  Icon={Database}
+/>
+<FeatureCard
+  title="Stream Processing"
+  description="Transform data in real-time"
+  href={paths.streams}
+  Icon={Square}
+/>
+<FeatureCard 
+  title="Analytics APIs"
+  description="Build powerful query endpoints"
+  href={paths.consumptionApis}
+  Icon={FileCode}
+/>
+</FeatureGrid>
 
 ## Need Help?
 
@@ -413,27 +424,5 @@ chmod +x ~/.moose/bin/moose
 **Still stuck?** Join our [Discord community](https://discord.gg/moose) or [open an issue](https://github.com/514-labs/moose/issues).
 </ToggleBlock>
 
-## What's Next?
-
-<FeatureGrid columns={3}>
-<FeatureCard
-  title="Data Models"
-  description="Learn schema design patterns"
-  href={paths.dataModels}
-  Icon={Database}
-/>
-<FeatureCard
-  title="Stream Processing"
-  description="Transform data in real-time"
-  href={paths.streams}
-  Icon={Square}
-/>
-<FeatureCard 
-  title="Analytics APIs"
-  description="Build powerful query endpoints"
-  href={paths.consumptionApis}
-  Icon={FileCode}
-/>
-</FeatureGrid>
 
 <Contact />

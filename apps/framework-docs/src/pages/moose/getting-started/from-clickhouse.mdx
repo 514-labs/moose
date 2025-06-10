@@ -57,12 +57,12 @@ Build analytical applications on top of your existing ClickHouse in plain TypeSc
 
 <Steps>
 
-### Get Your ClickHouse Connection
+### Get Your ClickHouse Connection String
 
 You need a ClickHouse connection URL in this format:
 
 ```
-http://username:password@host:port/?database=database_name
+https://username:password@host:port/?database=database_name
 ```
 
 <ToggleBlock openText="Need help finding your connection details?" closeText="Hide credential help">
@@ -94,16 +94,32 @@ https://explorer:@play.clickhouse.com:443/?database=default
 </Tabs>
 </ToggleBlock>
 
-### Install Moose & Generate Code Layer
+### Install Moose (30 seconds)
 
-<TypeScript>
 ```bash filename="Terminal" copy
-# Install Moose
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
 
+### Project Setup (1 minute)
+<Callout type="info" title="Don't have ClickHouse?">
+Use the ClickHouse Playground tab to try it out!
+</Callout>
+<TypeScript>
+<Tabs items={["Your own ClickHouse", "ClickHouse Playground"]}>
+<Tabs.Tab>
+```bash filename="Initialize new project" copy
 # Generate code models from your existing ClickHouse tables
 moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Try using the ClickHouse Playground!" copy
+moose init my-project --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language typescript
+```
+</Tabs.Tab>
+</Tabs>
 
+```bash filename="Install dependencies" copy
 # Set up dependencies
 cd my-project
 npm install
@@ -111,22 +127,30 @@ npm install
 </TypeScript>
 
 <Python>
-```bash filename="Terminal" copy
-# Install Moose
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
-
+<Tabs items={["From your own ClickHouse", "From the ClickHouse Playground"]}>
+<Tabs.Tab>
+```bash filename="Initialize new project from your own ClickHouse" copy
 # Generate code models from your existing ClickHouse tables
 moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Try using the ClickHouse Playground!" copy
+moose init my-project --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language python
+```
+</Tabs.Tab>
+</Tabs>
 
-# Set up dependencies
+```bash filename="Install dependencies" copy
 cd my-project
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
 </Python>
 
-<Callout type="success" title="✅ Success indicator">
+<Callout type="success" title="Success indicator">
 You should see: `Successfully generated X models from ClickHouse tables`
 </Callout>
 
@@ -140,14 +164,12 @@ This only reads your table schemas to generate TypeScript/Python models. No data
 moose dev
 ```
 
-<Callout type="success" title="✅ Success indicator">
 You should see:
 ```txt
 ✅ Generated typed models from ClickHouse
 ✅ Local development environment ready
 🚀 Moose dev server running on http://localhost:4000
 ```
-</Callout>
 
 <Callout type="info" title="What's running locally">
 Moose creates a local development copy of your ClickHouse structure. Your production ClickHouse remains completely untouched.

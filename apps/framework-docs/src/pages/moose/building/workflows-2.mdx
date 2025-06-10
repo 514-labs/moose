@@ -1,0 +1,504 @@
+---
+title: Workflows
+description: Workflows for Moose
+---
+
+import { FileTree } from "nextra/components";
+import { Python, TypeScript, Callout, LanguageSwitcher } from "@/components";
+
+# Workflow Orchestration 2.0
+
+<LanguageSwitcher />
+
+## Overview
+
+Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of tasks that execute in order.
+
+<Callout type="info" title="Powered by Temporal">
+This workflow abstraction is powered by Temporal under the hood. You can use the Temporal GUI to monitor your workflow runs as they execute, providing extra debugging capabilities.
+</Callout>
+
+## Writing Workflow Tasks
+
+<TypeScript>
+
+Tasks are defined as objects with a `run` asynchronous function that perform some operations and return nothing or an object you want passed to the next task.
+
+```typescript filename="app/index.ts" copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export interface Foo {
+  name: string;
+}
+
+export const task1 = new Task<Foo>("task1", {
+  run: async (input: Foo) => {
+    const name = input.name ?? "world";
+    const greeting = `hello, ${name}!`;
+    console.log(greeting);
+  },
+});
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+});
+```
+
+The file must export `Task` & `Workflow` objects. These objects are used to register the task with the workflow. Inside this `Workflow` object, you must specify the `startingTask`, which is the task you defined above.
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+  name: str;
+
+def run_task1(input: Foo) -> None:
+  name = input.name or "world"
+  greeting = f"hello, {name}!"
+
+task1 = Task[Foo, None](
+  name="task1",
+  config=TaskConfig(run=run_task1)
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1)
+)
+```
+
+The file must export `Task` & `Workflow` objects. These objects are used to register the task with the workflow. Inside this `Workflow` object, you must specify the `starting_task`, which is the task you defined above.
+</Python>
+
+
+## Data Flow Between Tasks
+
+Tasks communicate through their return values. Each task can return an object that is automatically passed as input to the next task in the workflow.
+
+- Only values inside the object are passed to the next task.
+- The object must be JSON-serializable.
+
+
+<TypeScript>
+```typescript filename="app/index.ts" copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export interface Foo {
+  name: string;
+}
+
+export interface Bar {
+  name: string;
+  greeting: string;
+  counter: number;
+}
+
+export const task2 = new Task<Bar>("task2", {
+  run: async (input: Bar) => {
+    console.log(`task2 input: ${JSON.stringify(input)}`);
+  }
+});
+
+export const task1 = new Task<Foo, Bar>("task1", {
+  run: async (input: Foo) => {
+    const name = input.name ?? "world";
+    const greeting = `hello, ${name}!`;
+
+    return {
+      name: name,
+      greeting: greeting,
+      counter: 1
+    };
+  },
+  onComplete: [task2],
+});
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, Logger
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+  name: str
+
+class Bar(BaseModel):
+  name: str
+  greeting: str
+  counter: int
+
+def run_task2(input: Bar) -> None:
+  logger = Logger(action="run_task2")
+  logger.info(f"task2 input: {input.model_dump_json()}")
+
+task2 = Task[Bar, None](
+  name="task2",
+  config=TaskConfig(run=run_task2)
+)
+
+def run_task1(input: Foo) -> Bar:
+  name = input.name or "world"
+  greeting = f"hello, {name}!"
+
+  return Bar(
+      name=name,
+      greeting=greeting,
+      counter=1
+  )
+
+task1 = Task[Foo, Bar](
+  name="task1",
+  config=TaskConfig(
+      run=run_task1,
+      on_complete=[task2]
+  )
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1)
+)
+```
+</Python>
+
+## Running Workflows
+
+As you develop workflows, you can run them directly using the Moose CLI:
+
+```bash filename="Terminal" copy
+moose workflow run example
+```
+The terminal will print the following:
+```txt filename="Terminal"
+      Workflow 'example' started successfully.
+View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/example/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
+```
+
+Notice that you are given a URL to view the workflow in the Temporal dashboard. This is a helpful way to monitor the workflow execution in real time and debug any issues through a GUI.
+
+### Passing Input to Workflows
+When you run a workflow, you can pass input to the workflow by using the `--input` flag.
+
+```bash filename="Terminal" copy
+moose workflow run example --input '{"name": "John"}'
+```
+
+The input is passed to the workflow as deserialized JSON.
+
+## Debugging Workflows
+While the Temporal dashboard is a helpful tool for debugging, you can also leverage the Moose CLI to monitor and debug workflows. This is useful if you want to monitor a workflow without having to leave your terminal.
+
+Use the `moose workflow status` command to monitor a workflow:
+
+```bash filename="Terminal" copy
+moose workflow status example
+```
+
+This will print high level information about the workflow run:
+
+```txt filename="Terminal"
+      Workflow Workflow Status: example
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+```
+
+If you want more detailed information about the workflow's status, including task level logs and inputs/outputs, you can use the `--verbose` flag:
+
+```bash filename="Terminal" copy
+moose workflow status example --verbose
+```
+
+```txt filename="Terminal"
+      Workflow Workflow Status: example
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "example", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
+
+Found 17 events
+Event History:
+  • [2025-02-21T14:16:56.234808764+00:00] EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+  • [2025-02-21T14:16:56.235132389+00:00] EVENT_TYPE_WORKFLOW_TASK_SCHEDULED
+  • [2025-02-21T14:16:56.259341847+00:00] EVENT_TYPE_WORKFLOW_TASK_STARTED
+  • [2025-02-21T14:16:56.329856180+00:00] EVENT_TYPE_WORKFLOW_TASK_COMPLETED
+  • [2025-02-21T14:16:56.329951889+00:00] EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+    Activity: example/task1
+  • [2025-02-21T14:16:56.333761680+00:00] EVENT_TYPE_ACTIVITY_TASK_STARTED
+  • [2025-02-21T14:16:56.497156055+00:00] EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+    Result:
+      {
+        "counter": 1,
+        "greeting": "hello, no name!",
+        "name": "no name",
+      }
+```
+
+With this more detailed output, you can see the exact sequence of events and the inputs and outputs of each task. This is useful for debugging and understanding the workflow's behavior.
+The result of each task is included in the output, allowing you to inspect the data that was passed between task for debugging purposes.
+
+If your workflow fails due to some runtime error, you can use the event history timeline to identify the task that failed.
+
+## Scheduling Workflows
+Workflows can be configured to run on a schedule using cron expressions or a string `"@every <interval>"`. The `schedule` field in `Workflow` is used to specify the schedule. This field is optional, and blank by default:
+
+### Cron Expressions
+<TypeScript>
+```typescript filename="app/index.ts" {5} copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+  schedule: "0 12 * * *" // Runs at 12:00 PM every day
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, schedule="0 12 * * *") # Runs at 12:00 PM every day
+)
+```
+</Python>
+
+
+```text
+|------------------------------- Minute (0-59)
+|     |------------------------- Hour (0-23)
+|     |     |------------------- Day of the month (1-31)
+|     |     |     |------------- Month (1-12; or JAN to DEC)
+|     |     |     |     |------- Day of the week (0-6; or SUN to SAT; or 7 for Sunday)
+|     |     |     |     |
+|     |     |     |     |
+*     *     *     *     *
+```
+
+Below are some example cron expressions along with their scheduling details:
+
+| Cron Expression             | Description                                   |
+|-----------------------------|-----------------------------------------------|
+| <code>0 12 * * *</code>      | Runs at 12:00 PM every day                    |
+| <code>0 0 * * 0</code>       | Runs at 12:00 AM every Sunday                 |
+| <code>0 8 * * 1-5</code>      | Runs at 8:00 AM on weekdays (Monday to Friday)|
+| <code>* * * * *</code>        | Runs every minute                             |
+
+<Callout type="info" title="Cron Expression Visualizer">
+Use an online cron expression visualizer like [crontab.guru](https://crontab.guru/) to help you understand how the cron expression will schedule your workflow.
+</Callout>
+
+
+If your dev server is running, you should see logs in the terminal when your scheduled workflow is executed to make sure your schedule is working as expected.
+
+### Interval Schedules
+
+Interval schedules can be specified as a string `"@every <interval>"`. The interval is a string that follows the format `"1h"`, `"1m"`, `"1s"`, etc.
+
+<TypeScript>
+```typescript filename="app/index.ts" {5} copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+  schedule: "@every 1h"
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, schedule="@every 1h")
+)
+```
+</Python>
+
+## Advanced: Triggering Workflows Programmatically
+You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
+
+<TypeScript>
+```ts filename="app/apis/trigger_workflow.ts" copy
+import { ConsumptionAPI } from "@514labs/moose-lib";
+
+interface WorkflowParams {
+    inputValue: string;
+}
+
+const triggerApi = new ConsumptionAPI<WorkflowParams>("trigger-workflow", ({inputValue}: WorkflowParams, {client, sql}) => {
+    client.workflows.execute(workflow="example", params={inputValue: inputValue})
+})
+```
+</TypeScript>
+
+<Python>
+```python filename="app/apis/trigger_workflow.py" copy
+from moose_lib import MooseClient, ConsumptionAPI
+from pydantic import BaseModel, Field
+
+class WorkflowParams(BaseModel):
+    input_value: str = Field(default="default")
+
+def run(client: MooseClient, params: WorkflowParams) -> dict:
+    return client.workflows.execute(
+        workflow="example",
+        params={input_value: params.input_value}
+    )
+
+api = ConsumptionAPI[WorkflowParams]("trigger-workflow", run)
+```
+
+For more information on how to set up a Moose API, see the [Consumption API](/moose/building/consumption-apis) documentation.
+</Python>
+
+## Error Detection and Handling
+Moose provides multiple layers of error protection, both at the workflow and task level:
+
+### Workflow-Level Retries and Timeouts
+
+Moose automatically catches any runtime errors during workflow execution. Errors are logged for debugging, and the orchestrator will retry failed tasks according to the `retries` option.
+
+In your `Workflow`, you can configure the following options to control workflow behavior, including timeouts and retries:
+
+<TypeScript>
+```typescript filename="app/index.ts" {5,6} copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+  retries: 1,
+  timeout: "10m",
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" {5} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=1, timeout="10m")
+)
+```
+</Python>
+
+### Task-Level Errors and Retries
+
+For more granular control over task-level errors and retries, you can configure your individual tasks to have their own retry behavior:
+
+<TypeScript>
+```typescript filename="app/index.ts" {5-6} copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export const task1 = new Task<Foo>("task1", {
+  run: async (input: Foo) => {},
+  retries: 1,
+  timeout: "5m"
+});
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+  retries: 2,
+  timeout: "10m",
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" {8} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+def run_task1(input: Foo) -> None:
+    pass
+
+task1 = Task[Foo, None](
+    name="task1",
+    config=TaskConfig(run=run_task1, retries=1, timeout="5m")
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=2, timeout="10m")
+)
+```
+</Python>
+
+### Example: Workflow and Task Retry Interplay
+
+When configuring retries, it's important to understand how workflow-level and task-level retries interact. Consider the following scenario:
+
+<TypeScript>
+- **Workflow Retry Policy**: 2 attempts
+- **Task Retry Policy**: 3 attempts
+
+```typescript filename="app/index.ts" {5,10} copy
+import { Task, Workflow } from "@514labs/moose-lib";
+
+export const task1 = new Task<Foo>("task1", {
+  run: async (input: Foo) => {},
+  retries: 3,
+});
+
+export const myworkflow = new Workflow("myworkflow", {
+  startingTask: task1,
+  retries: 2,
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py" {8,13} copy
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig
+
+def run_task1(input: Foo) -> None:
+    pass
+
+task1 = Task[Foo, None](
+    name="task1",
+    config=TaskConfig(run=run_task1, retries=2)
+)
+
+myworkflow = Workflow(
+  name="myworkflow",
+  config=WorkflowConfig(starting_task=task1, retries=3)
+)
+```
+</Python>
+
+If the execution of the workflow encounters an error, the retry sequence would proceed as follows:
+
+1. **Workflow Attempt 1**
+   - **Task Attempt 1**: Task fails
+   - **Task Attempt 2**: Task fails
+   - **Task Attempt 3**: Task fails
+   - Workflow attempt fails after exhausting task retries
+
+2. **Workflow Attempt 2**
+   - **Task Attempt 1**: Task fails
+   - **Task Attempt 2**: Task fails
+   - **Task Attempt 3**: Task fails
+   - Workflow attempt fails after exhausting task retries
+
+In this example, the workflow will make a total of 2 attempts, and each task within those attempts will retry up to 3 times before the workflow itself retries.
+
+### Terminating Workflows
+
+To terminate a workflow before it has finished running, use the `workflow terminate` command.
+
+```bash filename="Terminal" copy
+moose workflow terminate example
+```

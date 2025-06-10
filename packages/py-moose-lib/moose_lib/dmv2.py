@@ -570,7 +570,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             if config.version:
                 stream_config.version = config.version
             stream_config.metadata = stream_metadata
-            self.dead_letter_queue = DeadLetterQueue(name, stream_config, t=self._t)
+            self.dead_letter_queue = DeadLetterQueue(f"{name}DeadLetterQueue", stream_config, t=self._t)
         if config.ingest:
             if self.stream is None:
                 raise ValueError("Ingest API needs a stream to write to.")

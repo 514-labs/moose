@@ -1183,3 +1183,99 @@ brain_data_api = ConsumptionApi[BrainDataQuery, BrainDataListResponse](
    - Use proper type hints
    - Match function signatures
    - Validate response structure
+
+### Type Handling
+
+The system provides automatic type mapping between Python and ClickHouse types:
+
+```python
+from moose_lib import EgressApi
+from typing import Optional, Dict, Any
+
+# Example with various Python types
+get_data = EgressApi(
+    name="get_data",
+    table="data_table",
+    sql="""
+        SELECT * FROM data_table
+        WHERE id = {id:Int64}
+          AND value = {value:Float64}
+          AND is_active = {is_active:Boolean}
+          AND created_at = {created_at:DateTime}
+          AND metadata = {metadata:Map(String, String)}
+    """,
+    query_params={
+        "id": {"type": "int", "required": True},
+        "value": {"type": "float", "required": True},
+        "is_active": {"type": "bool", "required": True},
+        "created_at": {"type": "datetime", "required": True},
+        "metadata": {"type": "Dict[str, Any]", "required": False}
+    }
+)
+```
+
+#### Supported Python Types
+
+The system supports the following Python types and their ClickHouse mappings:
+
+| Python Type          | ClickHouse Type        | Notes               |
+| -------------------- | ---------------------- | ------------------- |
+| `str`                | `String`               | Basic string type   |
+| `int`                | `Int64`                | Integer type        |
+| `float`              | `Float64`              | Floating point type |
+| `bool`               | `Boolean`              | Boolean type        |
+| `datetime`           | `DateTime`             | Date and time type  |
+| `Optional[str]`      | `Nullable(String)`     | Optional string     |
+| `Optional[int]`      | `Nullable(Int64)`      | Optional integer    |
+| `Optional[float]`    | `Nullable(Float64)`    | Optional float      |
+| `Optional[bool]`     | `Nullable(Boolean)`    | Optional boolean    |
+| `Optional[datetime]` | `Nullable(DateTime)`   | Optional datetime   |
+| `Dict[str, Any]`     | `Map(String, String)`  | Dictionary type     |
+| `Dict[str, str]`     | `Map(String, String)`  | String dictionary   |
+| `Dict[str, int]`     | `Map(String, Int64)`   | Integer dictionary  |
+| `Dict[str, float]`   | `Map(String, Float64)` | Float dictionary    |
+| `Dict[str, bool]`    | `Map(String, Boolean)` | Boolean dictionary  |
+
+#### Type Validation
+
+The system validates types at multiple levels:
+
+1. **Parameter Validation**
+
+   - Validates parameter types against the query_params definition
+   - Ensures required parameters are provided
+   - Converts Python types to ClickHouse types
+   - Respects the original type of timestamp fields (str vs datetime)
+
+2. **Query Validation**
+
+   - Validates SQL syntax
+   - Ensures parameter types match ClickHouse expectations
+   - Tests the query with sample data
+   - Handles string timestamps correctly (does not force DateTime)
+
+3. **Result Validation**
+   - Validates result types against the response model
+   - Ensures all required fields are present
+   - Converts ClickHouse types back to Python types
+   - Preserves string timestamps as strings
+
+#### Timestamp Handling
+
+The system respects your choice of timestamp representation:
+
+```python
+# String timestamps (as in your example)
+class HeartRateMeasurement(BaseModel):
+    user_id: str
+    timestamp: str  # Will be handled as String in ClickHouse
+    heart_rate: int
+
+# Or datetime timestamps
+class HeartRateMeasurement(BaseModel):
+    user_id: str
+    timestamp: datetime  # Will be handled as DateTime in ClickHouse
+    heart_rate: int
+```
+
+Both approaches are valid and the system will handle them appropriately.

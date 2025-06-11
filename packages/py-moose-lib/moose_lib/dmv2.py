@@ -435,6 +435,7 @@ class IngestConfigWithDestination[T: BaseModel]:
         metadata: Optional metadata for the ingestion configuration.
     """
     destination: Stream[T]
+    dead_letter_queue: Optional[DeadLetterQueue[T]] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
@@ -456,6 +457,7 @@ class IngestPipelineConfig(BaseModel):
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
     ingest: bool | IngestConfig = True
+    dead_letter_queue: bool | StreamConfig = True
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
@@ -504,6 +506,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
         table: The created `OlapTable` instance, if configured.
         stream: The created `Stream` instance, if configured.
         ingest_api: The created `IngestApi` instance, if configured.
+        dead_letter_queue: The created `DeadLetterQueue` instance, if configured.
         columns (Columns[T]): Helper for accessing data field names safely.
         name (str): The base name of the pipeline.
         model_type (type[T]): The Pydantic model associated with this pipeline.
@@ -511,6 +514,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
     table: Optional[OlapTable[T]] = None
     stream: Optional[Stream[T]] = None
     ingest_api: Optional[IngestApi[T]] = None
+    dead_letter_queue: Optional[DeadLetterQueue[T]] = None
     metadata: Optional[dict] = None
 
     def get_table(self) -> OlapTable[T]:
@@ -574,6 +578,12 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
                 stream_config.version = config.version
             stream_config.metadata = stream_metadata
             self.stream = Stream(name, stream_config, t=self._t)
+        if config.dead_letter_queue:
+            stream_config = StreamConfig() if config.dead_letter_queue is True else config.dead_letter_queue
+            if config.version:
+                stream_config.version = config.version
+            stream_config.metadata = stream_metadata
+            self.dead_letter_queue = DeadLetterQueue(f"{name}DeadLetterQueue", stream_config, t=self._t)
         if config.ingest:
             if self.stream is None:
                 raise ValueError("Ingest API needs a stream to write to.")
@@ -583,6 +593,8 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             ingest_config_dict["destination"] = self.stream
             if config.version:
                 ingest_config_dict["version"] = config.version
+            if self.dead_letter_queue:
+                ingest_config_dict["dead_letter_queue"] = self.dead_letter_queue
             ingest_config_dict["metadata"] = ingest_metadata
             ingest_config = IngestConfigWithDestination(**ingest_config_dict)
             self.ingest_api = IngestApi(name, ingest_config, t=self._t)
@@ -707,13 +719,13 @@ class SqlResource:
     pushes_data_to: list[Union[OlapTable, "SqlResource"]]
 
     def __init__(
-        self,
-        name: str,
-        setup: list[str],
-        teardown: list[str],
-        pulls_data_from: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
-        pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
-        metadata: dict = None
+            self,
+            name: str,
+            setup: list[str],
+            teardown: list[str],
+            pulls_data_from: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
+            pushes_data_to: Optional[list[Union[OlapTable, "SqlResource"]]] = None,
+            metadata: dict = None
     ):
         self.name = name
         self.setup = setup
@@ -734,7 +746,8 @@ class View(SqlResource):
                      that this view depends on.
     """
 
-    def __init__(self, name: str, select_statement: str, base_tables: list[Union[OlapTable, SqlResource]], metadata: dict = None):
+    def __init__(self, name: str, select_statement: str, base_tables: list[Union[OlapTable, SqlResource]],
+                 metadata: dict = None):
         setup = [
             f"CREATE VIEW IF NOT EXISTS {name} AS {select_statement}".strip()
         ]

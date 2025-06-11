@@ -1,7 +1,7 @@
 import { IJsonSchemaCollection } from "typia";
 import { TypedBase, TypiaValidators } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
-import { Stream, StreamConfig } from "./stream";
+import { DeadLetterQueue, Stream, StreamConfig } from "./stream";
 import { OlapConfig, OlapTable } from "./olapTable";
 import { IngestApi, IngestConfig } from "./ingestApi";
 
@@ -66,6 +66,15 @@ export type IngestPipelineConfig<T> = {
    * @default false
    */
   ingest: boolean | Omit<IngestConfig<T>, "destination">;
+
+  /**
+   * Configuration for the dead letter queue of the pipeline.
+   * If `true`, a dead letter queue with default settings is created.
+   * If a partial `StreamConfig` object (excluding `destination`) is provided, it specifies the dead letter queue's configuration.
+   * The API's destination will automatically be set to the pipeline's stream if one exists.
+   * If `false` or `undefined`, no dead letter queue is created.
+   */
+  deadLetterQueue?: boolean | Omit<StreamConfig<T>, "destination">;
 
   /**
    * An optional version string applying to all components (table, stream, ingest) created by this pipeline configuration.
@@ -143,6 +152,9 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
    */
   ingestApi?: IngestApi<T>;
 
+  /** The dead letter queue of the pipeline, if configured. */
+  deadLetterQueue?: DeadLetterQueue<T>;
+
   /**
    * Creates a new IngestPipeline instance.
    * Based on the configuration, it automatically creates and links the IngestApi, Stream, and OlapTable components.
@@ -177,7 +189,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     config: IngestPipelineConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
-    validators?: TypiaValidators<T>,
+    validators: TypiaValidators<T>,
   );
 
   constructor(
@@ -222,6 +234,21 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
       (this.stream as any).pipelineParent = this;
     }
 
+    if (config.deadLetterQueue) {
+      const streamConfig = {
+        destination: undefined,
+        ...(typeof config.deadLetterQueue === "object" ?
+          config.deadLetterQueue
+        : {}),
+        ...(config.version && { version: config.version }),
+      };
+      this.deadLetterQueue = new DeadLetterQueue<T>(
+        `${name}DeadLetterQueue`,
+        streamConfig,
+        validators!.assert!,
+      );
+    }
+
     // Create ingest API if configured, requiring a stream as destination
     if (config.ingest) {
       if (!this.stream) {
@@ -230,6 +257,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
 
       const ingestConfig = {
         destination: this.stream,
+        deadLetterQueue: this.deadLetterQueue,
         ...(typeof config.ingest === "object" ? config.ingest : {}),
         ...(config.version && { version: config.version }),
       };

@@ -6,18 +6,20 @@ import { getMooseInternal } from "../internal";
 /**
  * A function type that handles task execution.
  *
- * @template T - The input type for the task handler
- * @template R - The return type for the task handler
+ * @template T - The input type for the task handler (defaults to null for no input)
+ * @template R - The return type for the task handler (defaults to null for no output)
  * @param input - The input data to be processed by the task
  * @returns A promise that resolves to the processed result or void
  */
-type TaskHandler<T, R> = (input: T) => Promise<R | void>;
+type TaskHandler<T, R> =
+  T extends null ? () => Promise<R extends null ? void : R>
+  : (input: T) => Promise<R extends null ? void : R>;
 
 /**
  * Configuration options for defining a task within a workflow.
  *
- * @template T - The input type for the task
- * @template R - The return type for the task
+ * @template T - The input type for the task (defaults to null for no input)
+ * @template R - The return type for the task (defaults to null for no output)
  */
 export interface TaskConfig<T, R> {
   /** The main function that executes the task logic */
@@ -39,21 +41,41 @@ export interface TaskConfig<T, R> {
  * A Task encapsulates the execution logic, completion handlers, and configuration
  * for a unit of work that can be chained with other tasks in a workflow.
  *
- * @template T - The input type that this task expects
- * @template R - The return type that this task produces (defaults to any)
+ * @template T - The input type that this task expects (defaults to null for no input)
+ * @template R - The return type that this task produces (defaults to null for no output)
  *
  * @example
  * ```typescript
- * const processDataTask = new Task("processData", {
- *   run: async (data: RawData) => {
- *     return processData(data);
- *   },
- *   timeout: "30s",
- *   retries: 3
+ * // No input, no output
+ * const task1 = new Task("task1", {
+ *   run: async () => {
+ *     console.log("No input/output");
+ *   }
+ * });
+ *
+ * // No input, but has output
+ * const task2 = new Task<null, OutputType>("task2", {
+ *   run: async () => {
+ *     return someOutput;
+ *   }
+ * });
+ *
+ * // Has input, no output
+ * const task3 = new Task<InputType, null>("task3", {
+ *   run: async (input: InputType) => {
+ *     // process input but return nothing
+ *   }
+ * });
+ *
+ * // Has both input and output
+ * const task4 = new Task<InputType, OutputType>("task4", {
+ *   run: async (input: InputType) => {
+ *     return process(input);
+ *   }
  * });
  * ```
  */
-export class Task<T, R = any> extends TypedBase<T, TaskConfig<T, R>> {
+export class Task<T = null, R = null> extends TypedBase<T, TaskConfig<T, R>> {
   /**
    * Creates a new Task instance.
    *
@@ -96,7 +118,7 @@ export class Task<T, R = any> extends TypedBase<T, TaskConfig<T, R>> {
  */
 export interface WorkflowConfig {
   /** The initial task that begins the workflow execution */
-  startingTask: Task<any, any>;
+  startingTask: Task<any, any> | Task<null, void>;
 
   /** Optional number of retry attempts if the entire workflow fails */
   retries?: number;

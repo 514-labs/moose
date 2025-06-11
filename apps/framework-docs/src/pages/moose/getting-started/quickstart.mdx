@@ -4,7 +4,7 @@ description: Build your first analytical backend with Moose in 5 minutes
 ---
 
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, Contact } from "@/components";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, ValuePropCards, InlineProps, Contact } from "@/components";
 import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play, CheckCircle, Clock } from "lucide-react";
 import { paths } from "@/lib/paths";
 
@@ -12,16 +12,41 @@ import { paths } from "@/lib/paths";
 
 **Build a complete analytical backend with real-time streaming, APIs, and a database.** No configuration required.
 
-<div className="flex items-center gap-4 my-4 text-sm text-muted-foreground">
-  <div className="flex items-center gap-2">
-    <Clock className="w-4 h-4" />
-    <span>5 minutes to working pipeline</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <CheckCircle className="w-4 h-4" />
-    <span>Zero configuration</span>
-  </div>
-</div>
+<ValuePropCards
+  items={[
+    {
+      icon: Database,
+      title: "ClickHouse Database",
+      description: "Auto-generated schema",
+      iconColor: "text-blue-600"
+    },
+    {
+      icon: Workflow,
+      title: "Real-time Streaming",
+      description: "Redpanda/Kafka built-in",
+      iconColor: "text-green-600"
+    },
+    {
+      icon: FileCode,
+      title: "HTTP APIs",
+      description: "Ingestion & analytics",
+      iconColor: "text-purple-600"
+    }
+  ]}
+/>
+
+<InlineProps
+  items={[
+    {
+      icon: Clock,
+      text: "5 minutes to working pipeline"
+    },
+    {
+      icon: CheckCircle,
+      text: "Zero configuration"
+    }
+  ]}
+/>
 
 <LanguageSwitcher />
 
@@ -45,47 +70,57 @@ import { paths } from "@/lib/paths";
 />
 </Python>
 
-## What You'll Build
-
-By the end of this tutorial, you'll have:
-
-<BulletPointsCard
-  bulletStyle="check"
-  title="A complete data pipeline with:"
-  bullets={[
-    { title: "HTTP API for data ingestion with automatic validation" },
-    { title: "Real-time streaming with Redpanda/Kafka" },
-    { title: "ClickHouse database with auto-generated schema" },
-    { title: "Analytics API for querying your data" },
-    { title: "Hot-reload development environment" }
-  ]}
-/>
-
 ## Prerequisites
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-  <div className="p-4 border border-border rounded-lg">
-    <h3 className="font-semibold mb-2">Required</h3>
-    <ul className="space-y-1 text-sm">
-      <TypeScript>
-      <li>• <strong>Node.js 20+</strong> - <a href="https://nodejs.org/en/download" className="text-blue-600 hover:underline">Download here</a></li>
-      </TypeScript>
-      <Python>
-      <li>• <strong>Python 3.12+</strong> - <a href="https://www.python.org/downloads/" className="text-blue-600 hover:underline">Download here</a></li>
-      </Python>
-      <li>• <strong>Docker Desktop</strong> - <a href="https://docs.docker.com/get-started/get-docker/" className="text-blue-600 hover:underline">Download here</a></li>
-    </ul>
-  </div>
-  
-  <div className="p-4 border border-border rounded-lg">
-    <h3 className="font-semibold mb-2">Supported Platforms</h3>
-    <ul className="space-y-1 text-sm text-muted-foreground">
-      <li>• macOS (Intel & Apple Silicon)</li>
-      <li>• Linux (Ubuntu, Debian, etc.)</li>
-      <li>• Windows (via WSL2)</li>
-    </ul>
-  </div>
-</div>
+<TypeScript>
+<BulletPointsCard
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
+  bullets={[
+    { 
+      title: "Node.js 20+", 
+      description: "Required for TypeScript development",
+      link: { text: "Download →", href: "https://nodejs.org/en/download", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
+    },
+    {
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
+    }
+  ]}
+/>
+</TypeScript>
+
+<Python>
+<BulletPointsCard
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
+  bullets={[
+    { 
+      title: "Python 3.12+", 
+      description: "Required for Python development",
+      link: { text: "Download →", href: "https://www.python.org/downloads/", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
+    },
+    {
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
+    }
+  ]}
+/>
+</Python>
 
 <Callout type="info" title="Already have ClickHouse running?">
 Skip the tutorial and add Moose as a layer on top of your existing database → [Add to ClickHouse](/moose/getting-started/from-clickhouse)

@@ -1,25 +1,27 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, Contact } from "@/components";
-import { Database, FileCode, Download, Zap, CheckCircle, Clock, Star } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, ValuePropCards, InlineProps, Contact } from "@/components";
+import { Database, FileCode, Download, Zap, CheckCircle, Clock, Star, Laptop, Code } from "lucide-react";
 
 # Add Moose to Your Existing ClickHouse
 
-**Already have ClickHouse running?** Keep everything exactly as it is. Moose adds a code layer on top of your existing database to make it easier to manage.
+**Already have ClickHouse running?** Keep everything exactly as it is. Moose lets you build APIs and user facing applications on top of your existing data.
 
-<div className="flex items-center gap-4 my-4 text-sm text-muted-foreground">
-  <div className="flex items-center gap-2">
-    <Clock className="w-4 h-4" />
-    <span>5 minutes to setup</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <CheckCircle className="w-4 h-4" />
-    <span>No data movement</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <Star className="w-4 h-4" />
-    <span>Keep everything as-is</span>
-  </div>
-</div>
+<InlineProps
+  items={[
+    {
+      icon: Clock,
+      text: "5 minute setup",
+    },
+    {
+      icon: CheckCircle,
+      text: "Your ClickHouse stays untouched",
+    },
+    {
+      icon: Star,
+      text: "Build apps on top of your data",
+    }
+  ]}
+/>
 
 <LanguageSwitcher />
 
@@ -27,31 +29,69 @@ import { Database, FileCode, Download, Zap, CheckCircle, Clock, Star } from "luc
 We're actively developing this feature and would love your feedback. While it's ready for most use cases, check out [Known Limitations](#known-limitations) for details on what's still in progress.
 </Callout>
 
-## What You'll Get
+## Prerequisites
 
-Build analytical applications on top of your existing ClickHouse in plain TypeScript/Python.
+<TypeScript>
+<BulletPointsCard
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
+  bullets={[
+    { 
+      title: "Existing ClickHouse Database", 
+      description: "Any ClickHouse instance (Cloud, self-hosted, or playground)"
+    },
+    { 
+      title: "Node.js 20+", 
+      description: "Required for TypeScript development",
+      link: { text: "Download →", href: "https://nodejs.org/en/download", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
+    },
+    {
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
+    }
+  ]}
+/>
+</TypeScript>
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
-  <BulletPointsCard
-    title="Your ClickHouse Stays"
-    bulletStyle="check"
-    bullets={[
-      { title: "Same database, same data", description: "No migration required" },
-      { title: "Existing queries work", description: "Current applications unaffected" },
-      { title: "Gradual adoption", description: "Add Moose incrementally" }
-    ]}
-  />
-  
-  <BulletPointsCard
-    title="Moose Adds Application Layer"
-    bulletStyle="check"
-    bullets={[
-      { title: "Type-safe data models", description: "Auto-generated from your table schemas" },
-      { title: "HTTP APIs & streaming", description: "Built-in ingestion & real-time processing" },
-      { title: "Hot-reload development", description: "Framework-style developer experience" }
-    ]}
-  />
-</div>
+<Python>
+<BulletPointsCard
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
+  bullets={[
+    { 
+      title: "Existing ClickHouse Database", 
+      description: "Any ClickHouse instance (Cloud, self-hosted, or playground)"
+    },
+    { 
+      title: "Python 3.12+", 
+      description: "Required for Python development",
+      link: { text: "Download →", href: "https://www.python.org/downloads/", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
+    },
+    {
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
+    }
+  ]}
+/>
+</Python>
+
+<Callout type="info" title="No ClickHouse yet?">
+Try the [ClickHouse Playground](https://sql.clickhouse.com) to test Moose, or start fresh with our [5-minute quickstart](/moose/getting-started/quickstart).
+</Callout>
 
 ## Quick Setup (5 minutes)
 
@@ -482,20 +522,5 @@ Right now, tables featuring these types will be skipped during the initializatio
     { title: "Gradual adoption across teams", description: "Started with one table, expanded as needed" }
   ]}
 />
-
-## Ready to Add Moose?
-
-<div className="flex flex-col md:flex-row gap-4 my-8">
-  <a href="#quick-setup-5-minutes">
-    <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-      Start Setup →
-    </button>
-  </a>
-  <a href="https://calendly.com/d/cmh5-nrj-9nc/talk-to-engineering">
-    <button className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-      Talk to Engineering
-    </button>
-  </a>
-</div>
 
 <Contact />

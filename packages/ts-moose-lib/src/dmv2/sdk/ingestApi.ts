@@ -2,7 +2,7 @@ import { IJsonSchemaCollection } from "typia";
 import { TypedBase } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
-import { Stream } from "./stream";
+import { DeadLetterQueue, Stream } from "./stream";
 
 /**
  * @template T The data type of the messages expected by the destination stream.
@@ -12,6 +12,8 @@ export interface IngestConfig<T> {
    * The destination stream where the ingested data should be sent.
    */
   destination: Stream<T>;
+
+  deadLetterQueue?: DeadLetterQueue<T>;
   /**
    * An optional version string for this configuration.
    */

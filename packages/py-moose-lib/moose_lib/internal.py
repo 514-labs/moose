@@ -110,6 +110,7 @@ class IngestApiConfig(BaseModel):
     name: str
     columns: List[Column]
     write_to: Target
+    dead_letter_queue: Optional[str] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
@@ -306,6 +307,7 @@ def to_infra_map() -> dict:
                 name=api.config.destination.name
             ),
             metadata=getattr(api, "metadata", None),
+            dead_letter_queue=api.config.dead_letter_queue.name
         )
 
     for name, api in _egress_apis.items():

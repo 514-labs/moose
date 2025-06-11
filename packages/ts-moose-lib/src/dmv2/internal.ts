@@ -122,6 +122,8 @@ interface IngestApiJson {
 
   /** The target stream where ingested data is written. */
   writeTo: Target;
+  /** The DLQ if the data does not fit the schema. */
+  deadLetterQueue?: string;
   /** Optional version string for the API configuration. */
   version?: string;
   /** Optional description for the API. */
@@ -272,6 +274,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
         kind: "stream",
         name: api.config.destination.name,
       },
+      deadLetterQueue: api.config.deadLetterQueue?.name,
       metadata,
     };
   });
@@ -448,6 +451,112 @@ export const getEgressApis = async () => {
 
   return egressFunctions;
 };
+
+export const dlqSchema: IJsonSchemaCollection.IV3_1 = {
+  version: "3.1",
+  components: {
+    schemas: {
+      DeadLetterModel: {
+        type: "object",
+        properties: {
+          originalRecord: {
+            $ref: "#/components/schemas/Recordstringany",
+          },
+          errorMessage: {
+            type: "string",
+          },
+          errorType: {
+            type: "string",
+          },
+          failedAt: {
+            type: "string",
+            format: "date-time",
+          },
+          source: {
+            oneOf: [
+              {
+                const: "api",
+              },
+              {
+                const: "transform",
+              },
+              {
+                const: "table",
+              },
+            ],
+          },
+        },
+        required: [
+          "originalRecord",
+          "errorMessage",
+          "errorType",
+          "failedAt",
+          "source",
+        ],
+      },
+      Recordstringany: {
+        type: "object",
+        properties: {},
+        required: [],
+        description: "Construct a type with a set of properties K of type T",
+        additionalProperties: {},
+      },
+    },
+  },
+  schemas: [
+    {
+      $ref: "#/components/schemas/DeadLetterModel",
+    },
+  ],
+};
+
+export const dlqColumns: Column[] = [
+  {
+    name: "originalRecord",
+    data_type: "Json",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "errorMessage",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "errorType",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "failedAt",
+    data_type: "DateTime",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "source",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+];
 
 export const getWorkflows = async () => {
   await require(`${process.cwd()}/app/index.ts`);

@@ -6,8 +6,8 @@ import { getMooseInternal } from "../internal";
 /**
  * A function type that handles task execution.
  *
- * @template T - The input type for the task handler (defaults to null for no input)
- * @template R - The return type for the task handler (defaults to null for no output)
+ * @template T - The input type for the task handler
+ * @template R - The return type for the task handler
  * @param input - The input data to be processed by the task
  * @returns A promise that resolves to the processed result or void
  */
@@ -18,8 +18,8 @@ type TaskHandler<T, R> =
 /**
  * Configuration options for defining a task within a workflow.
  *
- * @template T - The input type for the task (defaults to null for no input)
- * @template R - The return type for the task (defaults to null for no output)
+ * @template T - The input type for the task
+ * @template R - The return type for the task
  */
 export interface TaskConfig<T, R> {
   /** The main function that executes the task logic */
@@ -41,8 +41,8 @@ export interface TaskConfig<T, R> {
  * A Task encapsulates the execution logic, completion handlers, and configuration
  * for a unit of work that can be chained with other tasks in a workflow.
  *
- * @template T - The input type that this task expects (defaults to null for no input)
- * @template R - The return type that this task produces (defaults to null for no output)
+ * @template T - The input type that this task expects
+ * @template R - The return type that this task produces
  *
  * @example
  * ```typescript

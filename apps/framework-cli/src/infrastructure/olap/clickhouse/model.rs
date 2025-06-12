@@ -62,6 +62,7 @@ pub enum ClickHouseColumnType {
         // the return type of the aggregation function
         Box<ClickHouseColumnType>,
     ),
+    Map(Box<ClickHouseColumnType>, Box<ClickHouseColumnType>),
     Uuid,
     Date,
     Date32,
@@ -174,6 +175,27 @@ impl ClickHouseColumnType {
             }
             ClickHouseColumnType::AggregateFunction(_, return_type) => {
                 return return_type.to_std_column_type();
+            }
+            ClickHouseColumnType::Map(key_type, value_type) => {
+                let (key_std_type, key_required) = key_type.to_std_column_type();
+                let (value_std_type, value_required) = value_type.to_std_column_type();
+
+                let final_key_type = if key_required {
+                    key_std_type
+                } else {
+                    ColumnType::Nullable(Box::new(key_std_type))
+                };
+
+                let final_value_type = if value_required {
+                    value_std_type
+                } else {
+                    ColumnType::Nullable(Box::new(value_std_type))
+                };
+
+                ColumnType::Map {
+                    key_type: Box::new(final_key_type),
+                    value_type: Box::new(final_value_type),
+                }
             }
             ClickHouseColumnType::Uuid => ColumnType::Uuid,
             ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),

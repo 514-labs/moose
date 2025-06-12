@@ -852,6 +852,26 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
+        ColumnType::Map {
+            key_type: _,
+            value_type: _,
+        } => {
+            if let Some(obj) = value.as_object() {
+                // For now, we'll serialize the map as a JSON string
+                // ClickHouse Map types should be handled more specifically
+                let json_string =
+                    serde_json::to_string(obj).map_err(|_| MappingError::TypeMismatch {
+                        column_type: Box::new(column_type.clone()),
+                        value: value.clone(),
+                    })?;
+                Ok(ClickHouseValue::new_string(json_string))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(column_type.clone()),
+                    value: value.clone(),
+                })
+            }
+        }
     }
 }
 

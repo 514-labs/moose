@@ -8,7 +8,7 @@ use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
-use crate::proto::infrastructure_map::{ColumnType as ProtoColumnType, Tuple};
+use crate::proto::infrastructure_map::{ColumnType as ProtoColumnType, Map, Tuple};
 use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
 use protobuf::{EnumOrUnknown, MessageField};
@@ -187,6 +187,10 @@ pub enum ColumnType {
     },
     Nullable(Box<ColumnType>),
     NamedTuple(Vec<(String, ColumnType)>),
+    Map {
+        key_type: Box<ColumnType>,
+        value_type: Box<ColumnType>,
+    },
     Nested(Nested),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
@@ -231,6 +235,10 @@ impl fmt::Display for ColumnType {
                     .try_for_each(|(name, t)| write!(f, "{}: {}", name, t))?;
                 write!(f, ">")
             }
+            ColumnType::Map {
+                key_type,
+                value_type,
+            } => write!(f, "Map<{}, {}>", key_type, value_type),
         }
     }
 }
@@ -287,6 +295,15 @@ impl Serialize for ColumnType {
             ColumnType::Nullable(inner) => {
                 let mut state = serializer.serialize_struct("Nullable", 1)?;
                 state.serialize_field("nullable", inner)?;
+                state.end()
+            }
+            ColumnType::Map {
+                key_type,
+                value_type,
+            } => {
+                let mut state = serializer.serialize_struct("Map", 2)?;
+                state.serialize_field("keyType", key_type)?;
+                state.serialize_field("valueType", value_type)?;
                 state.end()
             }
         }
@@ -438,6 +455,8 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
 
         let mut element_type = None;
         let mut element_nullable = None;
+        let mut key_type = None;
+        let mut value_type = None;
         while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" || key == "element_type" {
                 element_type = Some(map.next_value::<ColumnType>().map_err(|e| {
@@ -457,6 +476,14 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 fields = Some(map.next_value::<Vec<(String, ColumnType)>>()?)
             } else if key == "nullable" {
                 nullable_inner = Some(map.next_value::<ColumnType>()?)
+            } else if key == "keyType" {
+                key_type = Some(map.next_value::<ColumnType>().map_err(|e| {
+                    A::Error::custom(format!("Map key type deserialization error {}.", e))
+                })?)
+            } else if key == "valueType" {
+                value_type = Some(map.next_value::<ColumnType>().map_err(|e| {
+                    A::Error::custom(format!("Map value type deserialization error {}.", e))
+                })?)
             } else {
                 map.next_value::<IgnoredAny>()?;
             }
@@ -474,6 +501,17 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 element_type: Box::new(element_type),
                 element_nullable: element_nullable.unwrap_or(false),
             });
+        }
+
+        if let Some(key_type) = key_type {
+            if let Some(value_type) = value_type {
+                return Ok(ColumnType::Map {
+                    key_type: Box::new(key_type),
+                    value_type: Box::new(value_type),
+                });
+            } else {
+                return Err(A::Error::custom("Map type missing valueType field"));
+            }
         }
 
         let name = name.ok_or(A::Error::custom("Missing field: name."))?;
@@ -620,6 +658,14 @@ impl ColumnType {
                 special_fields: Default::default(),
             }),
             ColumnType::Nullable(inner) => column_type::T::Nullable(Box::new(inner.to_proto())),
+            ColumnType::Map {
+                key_type,
+                value_type,
+            } => column_type::T::Map(Map {
+                key_type: MessageField::some(key_type.to_proto()),
+                value_type: MessageField::some(value_type.to_proto()),
+                special_fields: Default::default(),
+            }),
         };
         ProtoColumnType {
             t: Some(t),
@@ -699,6 +745,10 @@ impl ColumnType {
                 panic!("Mismatched length between names and types.")
             }
             T::Nullable(inner) => ColumnType::Nullable(Box::new(Self::from_proto(*inner))),
+            T::Map(map) => ColumnType::Map {
+                key_type: Box::new(Self::from_proto(map.key_type.clone().unwrap())),
+                value_type: Box::new(Self::from_proto(map.value_type.clone().unwrap())),
+            },
         }
     }
 }

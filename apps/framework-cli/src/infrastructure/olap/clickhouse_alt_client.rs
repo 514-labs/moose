@@ -226,6 +226,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::DateTime
         | ClickHouseColumnType::Date32
         | ClickHouseColumnType::Date
+        | ClickHouseColumnType::Map(_, _)
         | ClickHouseColumnType::DateTime64 { .. }
         | ClickHouseColumnType::IpV4
         | ClickHouseColumnType::IpV6

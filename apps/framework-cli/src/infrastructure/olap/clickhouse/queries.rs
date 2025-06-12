@@ -298,6 +298,11 @@ pub fn basic_field_type_to_string(
                 .join(", ");
             Ok(format!("Tuple({})", pairs))
         }
+        ClickHouseColumnType::Map(key_type, value_type) => Ok(format!(
+            "Map({}, {})",
+            basic_field_type_to_string(key_type)?,
+            basic_field_type_to_string(value_type)?
+        )),
     }
 }
 

@@ -1408,11 +1408,22 @@ pub fn convert_ast_to_column_type(
             ))
         }
 
-        ClickHouseTypeNode::Tuple(_) => {
-            // We don't have a direct equivalent for Tuple in the Moose type system
-            Err(ConversionError::UnsupportedType {
-                type_name: "Tuple".to_string(),
-            })
+        ClickHouseTypeNode::Tuple(elements) => {
+            let mut fields = Vec::new();
+            for (i, element) in elements.iter().enumerate() {
+                match element {
+                    TupleElement::Named { name, type_node } => {
+                        let (field_type, _) = convert_ast_to_column_type(type_node)?;
+                        fields.push((name.clone(), field_type));
+                    }
+                    TupleElement::Unnamed(type_node) => {
+                        let (field_type, _) = convert_ast_to_column_type(type_node)?;
+                        // Use index as field name for unnamed tuple elements
+                        fields.push((format!("field_{}", i), field_type));
+                    }
+                }
+            }
+            Ok((ColumnType::NamedTuple(fields), false))
         }
 
         ClickHouseTypeNode::Map { .. } => {
@@ -1792,6 +1803,40 @@ mod tests {
         } else {
             panic!("Expected Parse error for invalid syntax");
         }
+
+        // Test tuple type conversion - should now succeed
+        let tuple_type = parse_clickhouse_type("Tuple(Int32, String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        assert!(
+            tuple_conversion.is_ok(),
+            "Tuple type should be convertible to NamedTuple"
+        );
+
+        match tuple_conversion.unwrap() {
+            (ColumnType::NamedTuple(fields), false) => {
+                assert_eq!(fields.len(), 2);
+                assert_eq!(fields[0].0, "field_0");
+                assert_eq!(fields[0].1, ColumnType::Int(IntType::Int32));
+                assert_eq!(fields[1].0, "field_1");
+                assert_eq!(fields[1].1, ColumnType::String);
+            }
+            _ => panic!("Expected NamedTuple type"),
+        }
+
+        // Test unsupported type conversion
+        let tuple_type = parse_clickhouse_type("Tuple(Int32, String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        assert!(
+            tuple_conversion.is_err(),
+            "Tuple type should not be convertible"
+        );
+
+        match tuple_conversion {
+            Err(ConversionError::UnsupportedType { type_name }) => {
+                assert_eq!(type_name, "Tuple");
+            }
+            _ => panic!("Expected ConversionError::UnsupportedType"),
+        }
     }
 
     #[test]
@@ -2101,6 +2146,25 @@ mod tests {
                 assert_eq!(type_name, "CustomType");
             }
             _ => panic!("Expected ClickHouseTypeError::Conversion with UnsupportedType source"),
+        }
+
+        // Test tuple type conversion - should now succeed
+        let tuple_type = parse_clickhouse_type("Tuple(Int32, String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        assert!(
+            tuple_conversion.is_ok(),
+            "Tuple type should be convertible to NamedTuple"
+        );
+
+        match tuple_conversion.unwrap() {
+            (ColumnType::NamedTuple(fields), false) => {
+                assert_eq!(fields.len(), 2);
+                assert_eq!(fields[0].0, "field_0");
+                assert_eq!(fields[0].1, ColumnType::Int(IntType::Int32));
+                assert_eq!(fields[1].0, "field_1");
+                assert_eq!(fields[1].1, ColumnType::String);
+            }
+            _ => panic!("Expected NamedTuple type"),
         }
     }
 

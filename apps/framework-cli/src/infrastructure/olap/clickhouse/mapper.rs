@@ -150,6 +150,21 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Date16 => Ok(ClickHouseColumnType::Date),
         ColumnType::IpV4 => Ok(ClickHouseColumnType::IpV4),
         ColumnType::IpV6 => Ok(ClickHouseColumnType::IpV6),
+        ColumnType::Nullable(inner) => {
+            let inner_type = std_field_type_to_clickhouse_type_mapper(*inner, &[])?;
+            Ok(ClickHouseColumnType::Nullable(Box::new(inner_type)))
+        }
+        ColumnType::NamedTuple(fields) => Ok(ClickHouseColumnType::NamedTuple(
+            fields
+                .into_iter()
+                .map(|(name, t)| {
+                    Ok::<_, ClickhouseError>((
+                        name,
+                        std_field_type_to_clickhouse_type_mapper(t, &[])?,
+                    ))
+                })
+                .collect::<Result<_, _>>()?,
+        )),
     }
 }
 

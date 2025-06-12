@@ -2,17 +2,17 @@ use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
-use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
+use crate::proto::infrastructure_map::{ColumnType as ProtoColumnType, Tuple};
 use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
 use protobuf::{EnumOrUnknown, MessageField};
-use serde::de::{Error, MapAccess, Visitor};
+use serde::de::{Error, IgnoredAny, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
@@ -122,6 +122,7 @@ impl Table {
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
+    // TODO: move `required: false` to `data_type: Nullable(...)`
     pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
@@ -184,6 +185,8 @@ pub enum ColumnType {
         element_type: Box<ColumnType>,
         element_nullable: bool,
     },
+    Nullable(Box<ColumnType>),
+    NamedTuple(Vec<(String, ColumnType)>),
     Nested(Nested),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
@@ -220,6 +223,14 @@ impl fmt::Display for ColumnType {
             ColumnType::Date16 => write!(f, "Date16"),
             ColumnType::IpV4 => write!(f, "IPv4"),
             ColumnType::IpV6 => write!(f, "IPv6"),
+            ColumnType::Nullable(inner) => write!(f, "Nullable<{}>", inner),
+            ColumnType::NamedTuple(fields) => {
+                write!(f, "NamedTuple<")?;
+                fields
+                    .iter()
+                    .try_for_each(|(name, t)| write!(f, "{}: {}", name, t))?;
+                write!(f, ">")
+            }
         }
     }
 }
@@ -249,13 +260,13 @@ impl Serialize for ColumnType {
                 element_type,
                 element_nullable,
             } => {
-                let mut state = serializer.serialize_struct("Array", 1)?;
+                let mut state = serializer.serialize_struct("Array", 2)?;
                 state.serialize_field("elementType", element_type)?;
                 state.serialize_field("elementNullable", element_nullable)?;
                 state.end()
             }
             ColumnType::Nested(nested) => {
-                let mut state = serializer.serialize_struct("Nested", 2)?;
+                let mut state = serializer.serialize_struct("Nested", 3)?;
                 state.serialize_field("name", &nested.name)?;
                 state.serialize_field("columns", &nested.columns)?;
                 state.serialize_field("jwt", &nested.jwt)?;
@@ -268,6 +279,16 @@ impl Serialize for ColumnType {
             ColumnType::Date16 => serializer.serialize_str("Date16"),
             ColumnType::IpV4 => serializer.serialize_str("IPv4"),
             ColumnType::IpV6 => serializer.serialize_str("IPv6"),
+            ColumnType::NamedTuple(fields) => {
+                let mut state = serializer.serialize_struct("NamedTuple", 1)?;
+                state.serialize_field("fields", &fields)?;
+                state.end()
+            }
+            ColumnType::Nullable(inner) => {
+                let mut state = serializer.serialize_struct("Nullable", 1)?;
+                state.serialize_field("nullable", inner)?;
+                state.end()
+            }
         }
     }
 }
@@ -411,7 +432,9 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut name = None;
         let mut values = None;
         let mut columns = None;
+        let mut fields = None;
         let mut jwt = None;
+        let mut nullable_inner = None;
 
         let mut element_type = None;
         let mut element_nullable = None;
@@ -430,7 +453,20 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 columns = Some(map.next_value::<Vec<Column>>()?)
             } else if key == "jwt" {
                 jwt = Some(map.next_value::<bool>()?)
+            } else if key == "fields" {
+                fields = Some(map.next_value::<Vec<(String, ColumnType)>>()?)
+            } else if key == "nullable" {
+                nullable_inner = Some(map.next_value::<ColumnType>()?)
+            } else {
+                map.next_value::<IgnoredAny>()?;
             }
+        }
+        if let Some(inner) = nullable_inner {
+            return Ok(ColumnType::Nullable(Box::new(inner)));
+        }
+
+        if let Some(fields) = fields {
+            return Ok(ColumnType::NamedTuple(fields));
         }
 
         if let Some(element_type) = element_type {
@@ -578,6 +614,12 @@ impl ColumnType {
             ColumnType::Date16 => T::Simple(SimpleColumnType::DATE16.into()),
             ColumnType::IpV4 => T::Simple(SimpleColumnType::IPV4.into()),
             ColumnType::IpV6 => T::Simple(SimpleColumnType::IPV6.into()),
+            ColumnType::NamedTuple(fields) => T::Tuple(Tuple {
+                names: fields.iter().map(|(name, _)| name.clone()).collect(),
+                types: fields.iter().map(|(_, t)| t.to_proto()).collect(),
+                special_fields: Default::default(),
+            }),
+            ColumnType::Nullable(inner) => column_type::T::Nullable(Box::new(inner.to_proto())),
         };
         ProtoColumnType {
             t: Some(t),
@@ -643,6 +685,20 @@ impl ColumnType {
             T::DateTime(DateType { precision, .. }) => ColumnType::DateTime {
                 precision: Some(precision.to_u8().unwrap()),
             },
+            T::Tuple(t) if t.names.len() == t.types.len() => ColumnType::NamedTuple(
+                t.names
+                    .iter()
+                    .zip(t.types.iter())
+                    .map(|(name, t)| (name.clone(), Self::from_proto(t.clone())))
+                    .collect(),
+            ),
+            T::Tuple(t) if t.names.is_empty() => {
+                panic!("Unnamed tuples not supported yet.")
+            }
+            T::Tuple(_) => {
+                panic!("Mismatched length between names and types.")
+            }
+            T::Nullable(inner) => ColumnType::Nullable(Box::new(Self::from_proto(*inner))),
         }
     }
 }

@@ -158,6 +158,19 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             | ColumnType::Json
             | ColumnType::Bytes => formatter.write_str("a value matching the column type"),
             ColumnType::Uuid => formatter.write_str("a UUID"),
+            ColumnType::Nullable(inner) => {
+                write!(formatter, "a nullable value of type {}", inner)
+            }
+            ColumnType::NamedTuple(fields) => {
+                write!(formatter, "an object with fields: ")?;
+                for (i, (name, field_type)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        write!(formatter, ", ")?;
+                    }
+                    write!(formatter, "{}: {}", name, field_type)?;
+                }
+                Ok(())
+            }
         }?;
         write!(formatter, " at {}", self.get_path())
     }
@@ -358,6 +371,36 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     Some(&self.context),
                     self.jwt_claims,
                 );
+                let serializer = MapAccessSerializer {
+                    inner: RefCell::new(inner),
+                    map: RefCell::new(map),
+                    _phantom_data: &PHANTOM_DATA,
+                };
+                self.write_to
+                    .serialize_value(&serializer)
+                    .map_err(A::Error::custom)
+            }
+            ColumnType::NamedTuple(ref fields) => {
+                let columns: Vec<Column> = fields
+                    .into_iter()
+                    .map(|(name, t)| {
+                        let (required, data_type) = match t {
+                            ColumnType::Nullable(inner) => (false, inner.as_ref().clone()),
+                            _ => (true, t.clone()),
+                        };
+                        Column {
+                            name: name.clone(),
+                            data_type,
+                            required,
+                            unique: false,
+                            primary_key: false,
+                            default: None,
+                            annotations: vec![],
+                        }
+                    })
+                    .collect();
+                let inner =
+                    DataModelVisitor::with_context(&columns, Some(&self.context), self.jwt_claims);
                 let serializer = MapAccessSerializer {
                     inner: RefCell::new(inner),
                     map: RefCell::new(map),

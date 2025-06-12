@@ -168,6 +168,18 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
         (ColumnType::IpV6, SupportedLanguages::Python) => {
             "ipaddress.IPv6Address('::1')".to_string()
         }
+        (&ColumnType::Nullable(ref inner), lang) => get_default_value_for_type(inner, lang),
+        (&ColumnType::NamedTuple(ref fields), lang) => {
+            let mut field_defaults = Vec::new();
+            for (name, field_type) in fields {
+                let default = get_default_value_for_type(field_type, lang);
+                field_defaults.push(format!("{}: {}", name, default));
+            }
+            match lang {
+                SupportedLanguages::Typescript => format!("{{ {} }}", field_defaults.join(", ")),
+                SupportedLanguages::Python => format!("{{ {} }}", field_defaults.join(", ")),
+            }
+        }
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {

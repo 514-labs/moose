@@ -55,6 +55,18 @@ fn map_column_type_to_typescript(
         ColumnType::Uuid => "string & typia.tags.Format<\"uuid\">".to_string(),
         ColumnType::IpV4 => "string & typia.tags.Format<\"ipv4\">".to_string(),
         ColumnType::IpV6 => "string & typia.tags.Format<\"ipv6\">".to_string(),
+        ColumnType::Nullable(inner) => {
+            let inner_type = map_column_type_to_typescript(inner, enums, nested);
+            format!("{} | undefined", inner_type)
+        }
+        ColumnType::NamedTuple(fields) => {
+            let mut field_types = Vec::new();
+            for (name, field_type) in fields {
+                let type_str = map_column_type_to_typescript(field_type, enums, nested);
+                field_types.push(format!("{}: {}", name, type_str));
+            }
+            format!("{{ {} }} & ClickHouseNamedTuple", field_types.join("; "))
+        }
     }
 }
 
@@ -118,7 +130,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     // Add imports
     writeln!(
         output,
-        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize }} from \"@514labs/moose-lib\";"
+        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple }} from \"@514labs/moose-lib\";"
     )
     .unwrap();
     writeln!(output, "import typia from \"typia\";").unwrap();

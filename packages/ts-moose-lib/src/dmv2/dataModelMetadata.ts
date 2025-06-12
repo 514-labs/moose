@@ -5,6 +5,8 @@ import {
   typiaJsonSchemas,
 } from "../compilerPluginHelper";
 import { toColumns } from "../dataModels/typeConvert";
+import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
+import { dlqSchema } from "./internal";
 
 const typesToArgsLength = new Map([
   ["OlapTable", 2],
@@ -32,8 +34,18 @@ export const isNewMooseResourceWithTypeParam = (
     return false;
   }
   const sym = checker.getSymbolAtLocation(node.expression);
-  if (!typesToArgsLength.has(sym?.name ?? "")) {
+  const typeName = sym?.name ?? "";
+  if (!typesToArgsLength.has(typeName)) {
     return false;
+  }
+
+  if (typeName === "Task") {
+    return (
+      node.arguments?.length === 2 &&
+      (!node.typeArguments ||
+        node.typeArguments.length === 0 ||
+        node.typeArguments.length === 2)
+    );
   }
 
   return (
@@ -41,8 +53,7 @@ export const isNewMooseResourceWithTypeParam = (
     (node.arguments?.length === 1 ||
       // config param
       node.arguments?.length === 2) &&
-    // TODO: Is this okay? Should I add a new check?
-    (node.typeArguments?.length === 1 || node.typeArguments?.length === 2)
+    node.typeArguments?.length === 1
   );
 };
 
@@ -59,130 +70,67 @@ export const parseAsAny = (s: string) =>
     factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
   );
 
-const deadLetterQueueInternalArgs = (node: ts.NewExpression) => {
+const typiaTypeGuard = (node: ts.NewExpression) => {
   const typeNode = node.typeArguments![0];
-  return [
-    parseAsAny(
-      // DeadLetterModel might not be in scope
-      // including the plain data here to avoid headache
-      JSON.stringify({
-        version: "3.1",
-        components: {
-          schemas: {
-            DeadLetterModel: {
-              type: "object",
-              properties: {
-                originalRecord: {
-                  $ref: "#/components/schemas/Recordstringany",
-                },
-                errorMessage: {
-                  type: "string",
-                },
-                errorType: {
-                  type: "string",
-                },
-                failedAt: {
-                  type: "string",
-                  format: "date-time",
-                },
-                source: {
-                  oneOf: [
-                    {
-                      const: "api",
-                    },
-                    {
-                      const: "transform",
-                    },
-                    {
-                      const: "table",
-                    },
-                  ],
-                },
-              },
-              required: [
-                "originalRecord",
-                "errorMessage",
-                "errorType",
-                "failedAt",
-                "source",
-              ],
-            },
-            Recordstringany: {
-              type: "object",
-              properties: {},
-              required: [],
-              description:
-                "Construct a type with a set of properties K of type T",
-              additionalProperties: {},
-            },
-          },
-        },
-        schemas: [
-          {
-            $ref: "#/components/schemas/DeadLetterModel",
-          },
-        ],
-      }),
+  return factory.createCallExpression(
+    factory.createPropertyAccessExpression(
+      factory.createIdentifier(avoidTypiaNameClash),
+      factory.createIdentifier("createAssert"),
     ),
-    parseAsAny(
-      JSON.stringify([
-        {
-          name: "originalRecord",
-          data_type: "Json",
-          primary_key: false,
-          required: true,
-          unique: false,
-          default: null,
-          annotations: [],
-        },
-        {
-          name: "errorMessage",
-          data_type: "String",
-          primary_key: false,
-          required: true,
-          unique: false,
-          default: null,
-          annotations: [],
-        },
-        {
-          name: "errorType",
-          data_type: "String",
-          primary_key: false,
-          required: true,
-          unique: false,
-          default: null,
-          annotations: [],
-        },
-        {
-          name: "failedAt",
-          data_type: "DateTime",
-          primary_key: false,
-          required: true,
-          unique: false,
-          default: null,
-          annotations: [],
-        },
-        {
-          name: "source",
-          data_type: "String",
-          primary_key: false,
-          required: true,
-          unique: false,
-          default: null,
-          annotations: [],
-        },
-      ]),
-    ),
-    factory.createCallExpression(
-      factory.createPropertyAccessExpression(
-        factory.createIdentifier(avoidTypiaNameClash),
-        factory.createIdentifier("createAssert"),
-      ),
-      [typeNode],
-      [],
-    ),
-  ];
+    [typeNode],
+    [],
+  );
 };
+
+function taskInternalArgs(node: ts.NewExpression, checker: ts.TypeChecker) {
+  // If no type arguments provided, treat as null, null
+  const typeNodes = node.typeArguments || [
+    factory.createLiteralTypeNode(factory.createNull()),
+    factory.createLiteralTypeNode(factory.createNull()),
+  ];
+  const inputTypeNode = typeNodes[0];
+
+  const inputSchema =
+    checker.typeToString(checker.getTypeAtLocation(inputTypeNode)) === "null" ?
+      factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier("version"),
+          factory.createStringLiteral("3.1"),
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier("components"),
+          factory.createObjectLiteralExpression([
+            factory.createPropertyAssignment(
+              factory.createIdentifier("schemas"),
+              factory.createObjectLiteralExpression([]),
+            ),
+          ]),
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier("schemas"),
+          factory.createArrayLiteralExpression([
+            factory.createObjectLiteralExpression([
+              factory.createPropertyAssignment(
+                factory.createIdentifier("type"),
+                factory.createStringLiteral("null"),
+              ),
+            ]),
+          ]),
+        ),
+      ])
+    : typiaJsonSchemas(inputTypeNode);
+
+  return [
+    inputSchema,
+    checker.typeToString(checker.getTypeAtLocation(inputTypeNode)) === "null" ?
+      factory.createArrayLiteralExpression([])
+    : parseAsAny(
+        JSON.stringify(
+          toColumns(checker.getTypeAtLocation(inputTypeNode), checker),
+        ),
+      ),
+  ];
+}
 
 export const transformNewMooseResource = (
   node: ts.NewExpression,
@@ -190,10 +138,16 @@ export const transformNewMooseResource = (
 ): ts.Node => {
   const typeName = checker.getSymbolAtLocation(node.expression)!.name;
 
-  const typeNode = node.typeArguments![0];
+  // For Task, handle case where typeArguments is undefined
+  const typeNode =
+    typeName === "Task" && !node.typeArguments ?
+      factory.createLiteralTypeNode(factory.createNull())
+    : node.typeArguments![0];
+
   const internalArguments =
     typeName === "DeadLetterQueue" ?
-      deadLetterQueueInternalArgs(node)
+      [typiaTypeGuard(node)]
+    : typeName === "Task" ? taskInternalArgs(node, checker)
     : [
         typiaJsonSchemas(typeNode),
         parseAsAny(
@@ -202,7 +156,6 @@ export const transformNewMooseResource = (
           ),
         ),
       ];
-
   const resourceName = checker.getSymbolAtLocation(node.expression)!.name;
 
   const argLength = typesToArgsLength.get(resourceName)!;

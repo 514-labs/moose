@@ -29,5 +29,6 @@ setup(
         "temporalio==1.9.0",
         "kafka-python-ng==2.2.2",
         "redis==6.2.0",
+        "humanfriendly==10.0",
     ],
 )

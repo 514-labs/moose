@@ -13,7 +13,7 @@
 import { IJsonSchemaCollection } from "typia";
 import { TypedBase } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
-import { getMooseInternal } from "../internal";
+import { dlqColumns, dlqSchema, getMooseInternal } from "../internal";
 import { OlapTable } from "./olapTable";
 
 /**
@@ -393,29 +393,21 @@ export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
   constructor(
     name: string,
     config: StreamConfig<DeadLetterModel>,
-    schema: IJsonSchemaCollection.IV3_1,
-    columns: Column[],
     validate: (originalRecord: any) => T,
   );
 
   constructor(
     name: string,
     config?: StreamConfig<DeadLetterModel>,
-    schema?: IJsonSchemaCollection.IV3_1,
-    columns?: Column[],
     typeGuard?: (originalRecord: any) => T,
   ) {
-    if (
-      schema === undefined ||
-      columns === undefined ||
-      typeGuard === undefined
-    ) {
+    if (typeGuard === undefined) {
       throw new Error(
         "Supply the type param T so that the schema is inserted by the compiler plugin.",
       );
     }
 
-    super(name, config ?? {}, schema, columns);
+    super(name, config ?? {}, dlqSchema, dlqColumns);
     this.typeGuard = typeGuard;
     getMooseInternal().streams.set(name, this);
   }

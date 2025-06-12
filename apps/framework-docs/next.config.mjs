@@ -54,7 +54,6 @@ const nextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
-  telemetry: false,
 };
 
 // Make sure adding Sentry options is the last code to run before exporting

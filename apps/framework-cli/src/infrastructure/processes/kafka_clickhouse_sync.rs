@@ -467,7 +467,6 @@ async fn sync_kafka_to_clickhouse(
                                 if let Ok(clickhouse_record) =
                                     mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
                                 {
-                                    println!("ClickHouseRecord: {:?}", clickhouse_record);
                                     inserter.insert(
                                         clickhouse_record,
                                         message.partition(),

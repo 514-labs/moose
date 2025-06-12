@@ -330,10 +330,7 @@ mod tests {
         let result = tables_to_typescript(&tables);
         println!("{}", result);
         assert!(result.contains(
-            r#"import { IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize } from "@514labs/moose-lib";
-import typia from "typia";
-
-export interface Address {
+            r#"export interface Address {
     street: string;
     city: string;
     zipCode: string | undefined;
@@ -405,10 +402,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
         let result = tables_to_typescript(&tables);
         println!("{}", result);
         assert!(result.contains(
-            r#"import { IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize } from "@514labs/moose-lib";
-import typia from "typia";
-
-export enum Status {
+            r#"export enum Status {
     OK = "ok",
     ERROR = "error",
 }

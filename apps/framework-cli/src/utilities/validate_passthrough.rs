@@ -382,7 +382,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             }
             ColumnType::NamedTuple(ref fields) => {
                 let columns: Vec<Column> = fields
-                    .into_iter()
+                    .iter()
                     .map(|(name, t)| {
                         let (required, data_type) = match t {
                             ColumnType::Nullable(inner) => (false, inner.as_ref().clone()),

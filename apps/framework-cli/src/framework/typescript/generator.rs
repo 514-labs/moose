@@ -239,6 +239,26 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Date16 => Ok(InterfaceFieldType::String),
         ColumnType::IpV4 => Ok(InterfaceFieldType::String),
         ColumnType::IpV6 => Ok(InterfaceFieldType::String),
+        ColumnType::Nullable(inner) => {
+            // For nullable types, just return the inner type - nullability is handled by is_optional
+            std_field_type_to_typescript_field_mapper(*inner)
+        }
+        ColumnType::NamedTuple(fields) => {
+            let mut interface_fields = Vec::new();
+            for (name, field_type) in fields {
+                let field_type = std_field_type_to_typescript_field_mapper(field_type)?;
+                interface_fields.push(InterfaceField {
+                    name: name.clone(),
+                    comment: None,
+                    is_optional: false,
+                    field_type,
+                });
+            }
+            Ok(InterfaceFieldType::Object(Box::new(TypescriptInterface {
+                name: "NamedTuple".to_string(),
+                fields: interface_fields,
+            })))
+        }
     }
 }
 

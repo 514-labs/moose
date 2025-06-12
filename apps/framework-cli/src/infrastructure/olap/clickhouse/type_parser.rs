@@ -1408,11 +1408,22 @@ pub fn convert_ast_to_column_type(
             ))
         }
 
-        ClickHouseTypeNode::Tuple(_) => {
-            // We don't have a direct equivalent for Tuple in the Moose type system
-            Err(ConversionError::UnsupportedType {
-                type_name: "Tuple".to_string(),
-            })
+        ClickHouseTypeNode::Tuple(elements) => {
+            let mut fields = Vec::new();
+            for element in elements.iter() {
+                match element {
+                    TupleElement::Named { name, type_node } => {
+                        let (field_type, _) = convert_ast_to_column_type(type_node)?;
+                        fields.push((name.clone(), field_type));
+                    }
+                    TupleElement::Unnamed(_) => {
+                        return Err(ConversionError::UnsupportedType {
+                            type_name: "Unnamed tuple".to_string(),
+                        });
+                    }
+                }
+            }
+            Ok((ColumnType::NamedTuple(fields), false))
         }
 
         ClickHouseTypeNode::Map { .. } => {
@@ -1714,6 +1725,66 @@ mod tests {
     }
 
     #[test]
+    fn test_tuple_types() {
+        // Test that Tuple type conversion fails
+        let tuple_type = parse_clickhouse_type("Tuple(String, Int32)").unwrap();
+        let tuple_result = convert_ast_to_column_type(&tuple_type);
+        if let Err(ConversionError::UnsupportedType { type_name }) = tuple_result {
+            assert_eq!(type_name, "Unnamed tuple");
+        } else {
+            panic!("Expected UnsupportedType error for Tuple");
+        }
+
+        // Test the full conversion function with the top level ClickHouseTypeError
+        let result = convert_clickhouse_type_to_column_type("Tuple(String, Int32)");
+        assert!(result.is_err(), "Tuple type should not be convertible");
+
+        // Check the proper error layering
+        if let Err(ClickHouseTypeError::Conversion { source }) = result {
+            if let ConversionError::UnsupportedType { type_name } = source {
+                assert_eq!(type_name, "Unnamed tuple");
+            } else {
+                panic!("Expected UnsupportedType error for Tuple");
+            }
+        } else {
+            panic!("Expected Conversion error with UnsupportedType source");
+        }
+
+        // Test unsupported type conversion
+        let tuple_type = parse_clickhouse_type("Tuple(Int32, String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        assert!(
+            tuple_conversion.is_err(),
+            "Tuple type should not be convertible"
+        );
+
+        match tuple_conversion {
+            Err(ConversionError::UnsupportedType { type_name }) => {
+                assert_eq!(type_name, "Unnamed tuple");
+            }
+            _ => panic!("Expected ConversionError::UnsupportedType"),
+        }
+
+        let tuple_type = parse_clickhouse_type("Tuple(i Int32, s String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        assert!(
+            tuple_conversion.is_ok(),
+            "Tuple type should be convertible to NamedTuple"
+        );
+
+        match tuple_conversion.unwrap() {
+            (ColumnType::NamedTuple(fields), false) => {
+                assert_eq!(fields.len(), 2);
+                assert_eq!(fields[0].0, "i");
+                assert_eq!(fields[0].1, ColumnType::Int(IntType::Int32));
+                assert_eq!(fields[1].0, "s");
+                assert_eq!(fields[1].1, ColumnType::String);
+            }
+            _ => panic!("Expected NamedTuple type"),
+        }
+    }
+
+    #[test]
     fn test_convert_unsupported_types() {
         // Test that Map type conversion fails
         let map_type = parse_clickhouse_type("Map(String, Int32)").unwrap();
@@ -1724,20 +1795,6 @@ mod tests {
             assert_eq!(type_name, "Map");
         } else {
             panic!("Expected UnsupportedType error for Map");
-        }
-
-        // Test that Tuple type conversion fails
-        let tuple_type = parse_clickhouse_type("Tuple(String, Int32)").unwrap();
-        let tuple_result = convert_ast_to_column_type(&tuple_type);
-        assert!(
-            tuple_result.is_err(),
-            "Tuple type should not be convertible"
-        );
-
-        if let Err(ConversionError::UnsupportedType { type_name }) = tuple_result {
-            assert_eq!(type_name, "Tuple");
-        } else {
-            panic!("Expected UnsupportedType error for Tuple");
         }
 
         // Test that AggregateFunction type conversion fails
@@ -1766,21 +1823,6 @@ mod tests {
             assert_eq!(type_name, "SimpleAggregateFunction");
         } else {
             panic!("Expected UnsupportedType error for SimpleAggregateFunction");
-        }
-
-        // Test the full conversion function with the top level ClickHouseTypeError
-        let result = convert_clickhouse_type_to_column_type("Tuple(String, Int32)");
-        assert!(result.is_err(), "Tuple type should not be convertible");
-
-        // Check the proper error layering
-        if let Err(ClickHouseTypeError::Conversion { source }) = result {
-            if let ConversionError::UnsupportedType { type_name } = source {
-                assert_eq!(type_name, "Tuple");
-            } else {
-                panic!("Expected UnsupportedType error for Tuple");
-            }
-        } else {
-            panic!("Expected Conversion error with UnsupportedType source");
         }
 
         // Test parsing invalid syntax results in a Parse error
@@ -2085,7 +2127,7 @@ mod tests {
 
         match tuple_conversion {
             Err(ConversionError::UnsupportedType { type_name }) => {
-                assert_eq!(type_name, "Tuple");
+                assert_eq!(type_name, "Unnamed tuple");
             }
             _ => panic!("Expected ConversionError::UnsupportedType"),
         }
@@ -2101,6 +2143,15 @@ mod tests {
                 assert_eq!(type_name, "CustomType");
             }
             _ => panic!("Expected ClickHouseTypeError::Conversion with UnsupportedType source"),
+        }
+
+        let tuple_type = parse_clickhouse_type("Tuple(Int32, String)").unwrap();
+        let tuple_conversion = convert_ast_to_column_type(&tuple_type);
+        match tuple_conversion {
+            Err(ConversionError::UnsupportedType { type_name }) => {
+                assert_eq!(type_name, "Unnamed tuple");
+            }
+            _ => panic!("Converting unnamed tuple should fail with UnsupportedType"),
         }
     }
 

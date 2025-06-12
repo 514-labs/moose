@@ -55,6 +55,7 @@ pub enum ClickHouseColumnType {
     Array(Box<ClickHouseColumnType>),
     Nullable(Box<ClickHouseColumnType>),
     Enum(DataEnum),
+    NamedTuple(Vec<(String, ClickHouseColumnType)>),
     Nested(Vec<ClickHouseColumn>),
     AggregateFunction(
         AggregationFunction<ClickHouseColumnType>,
@@ -178,6 +179,20 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),
             ClickHouseColumnType::IpV4 => ColumnType::IpV4,
             ClickHouseColumnType::IpV6 => ColumnType::IpV6,
+            ClickHouseColumnType::NamedTuple(fields) => ColumnType::NamedTuple(
+                fields
+                    .iter()
+                    .map(|(name, t)| {
+                        let (t, required) = t.to_std_column_type();
+                        let t = if required {
+                            t
+                        } else {
+                            ColumnType::Nullable(Box::new(t))
+                        };
+                        (name.clone(), t)
+                    })
+                    .collect(),
+            ),
         };
         (column_type, required)
     }
@@ -256,6 +271,33 @@ impl ClickHouseColumnType {
                     None => return None,
                     Some(inner_t) => Self::Array(Box::new(inner_t)),
                 }
+            }
+
+            t if t.starts_with("Tuple(") => {
+                let inner = t.trim_start_matches("Tuple(").trim_end_matches(')');
+                // Simple parsing for now - assumes format like "name1 Type1, name2 Type2"
+                let mut fields = Vec::new();
+                for (i, part) in inner.split(',').enumerate() {
+                    let part = part.trim();
+                    if let Some(space_pos) = part.find(' ') {
+                        // Named tuple element: "name Type"
+                        let name = part[..space_pos].trim().to_string();
+                        let type_str = part[space_pos + 1..].trim();
+                        if let Some(field_type) = Self::from_type_str(type_str) {
+                            fields.push((name, field_type));
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        // Unnamed tuple element, use index as name
+                        if let Some(field_type) = Self::from_type_str(part) {
+                            fields.push((format!("field_{}", i), field_type));
+                        } else {
+                            return None;
+                        }
+                    }
+                }
+                Self::NamedTuple(fields)
             }
 
             t if t.starts_with("Enum8(") || t.starts_with("Enum16(") => {
@@ -368,6 +410,7 @@ pub enum ClickHouseValue {
     Array(Vec<ClickHouseValue>),
     Enum(String),
     Nested(Vec<ClickHouseValue>),
+    NamedTuple(Vec<ClickHouseValue>),
     Null,
 }
 
@@ -416,7 +459,7 @@ impl ClickHouseValue {
 
     pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
         let vals: Vec<ClickHouseValue> = members;
-        ClickHouseValue::Nested(vals)
+        ClickHouseValue::NamedTuple(vals)
     }
 
     pub fn clickhouse_to_string(&self) -> String {
@@ -436,6 +479,13 @@ impl ClickHouseValue {
             ClickHouseValue::Enum(v) => v.clone(),
             ClickHouseValue::Nested(v) => format!(
                 "[({})]",
+                v.iter()
+                    .map(|v| v.clickhouse_to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            ClickHouseValue::NamedTuple(v) => format!(
+                "({})",
                 v.iter()
                     .map(|v| v.clickhouse_to_string())
                     .collect::<Vec<String>>()

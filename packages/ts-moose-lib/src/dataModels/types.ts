@@ -50,3 +50,12 @@ export type ClickHouseInt<
         type: "integer";
       };
     }>;
+
+/**
+ * By default, nested objects map to the `Nested` type in clickhouse.
+ * Write `nestedObject: AnotherInterfaceType & ClickHouseNamedTuple`
+ * to map AnotherInterfaceType to the named tuple type.
+ */
+export type ClickHouseNamedTuple = {
+  _clickhouse_mapped_type?: "namedTuple";
+};

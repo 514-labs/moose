@@ -47,7 +47,12 @@ pub async fn import_csv_file(
             for (i, key) in headers.iter().enumerate() {
                 if let Some(value) = record.get(i) {
                     if let Some(t) = types.get(key) {
-                        match t {
+                        let without_nullability = if let ColumnType::Nullable(inner) = t {
+                            inner.as_ref()
+                        } else {
+                            t
+                        };
+                        match without_nullability {
                             ColumnType::Date16
                             | ColumnType::Date
                             | ColumnType::IpV4
@@ -70,11 +75,15 @@ pub async fn import_csv_file(
                                 json_map.insert(key, json!(value.parse::<f64>()?));
                             }
                             ColumnType::Array { .. }
+                            | ColumnType::NamedTuple(_)
                             | ColumnType::Nested(_)
                             | ColumnType::Json
                             | ColumnType::Uuid
                             | ColumnType::Bytes => {
                                 bail!("CSV importing does not support complex types");
+                            }
+                            ColumnType::Nullable(_) => {
+                                bail!("Encountered twice-nested Nullable");
                             }
                         }
                     }

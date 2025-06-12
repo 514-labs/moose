@@ -11,11 +11,14 @@ import {
   ArrayType,
   Column,
   DataType,
+  DataEnum,
+  Nested,
+  NamedTupleType,
   NullType,
   UnknownType,
   UnsupportedFeature,
 } from "./dataModelTypes";
-import { DecimalRegex } from "./types";
+import { ClickHouseNamedTuple, DecimalRegex } from "./types";
 
 const dateType = (checker: TypeChecker) =>
   checker
@@ -261,6 +264,34 @@ const isStringAnyRecord = (t: ts.Type, checker: ts.TypeChecker): boolean => {
   return false;
 };
 
+/**
+ * see {@link ClickHouseNamedTuple}
+ */
+const isNamedTuple = (t: ts.Type, checker: ts.TypeChecker) => {
+  const mappingSymbol = t.getProperty("_clickhouse_mapped_type");
+  if (mappingSymbol === undefined) {
+    return false;
+  }
+  return isStringLiteral(
+    checker.getNonNullableType(checker.getTypeOfSymbol(mappingSymbol)),
+    checker,
+    "namedTuple",
+  );
+};
+
+const handleNamedTuple = (
+  t: ts.Type,
+  checker: ts.TypeChecker,
+): NamedTupleType => {
+  return {
+    fields: toColumns(t, checker).flatMap((c) => {
+      if (c.name === "_clickhouse_mapped_type") return [];
+      const t = c.required ? c.data_type : { nullable: c.data_type };
+      return [[c.name, t]];
+    }),
+  };
+};
+
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -292,6 +323,7 @@ const tsTypeToDataType = (
           isJwt,
         ),
       )
+    : isNamedTuple(nonNull, checker) ? handleNamedTuple(nonNull, checker)
     : nonNull.isClassOrInterface() || (nonNull.flags & TypeFlags.Object) !== 0 ?
       {
         name: getNestedName(nonNull, fieldName),
@@ -362,7 +394,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       type,
       checker,
       prop.name,
-      t.symbol.name,
+      t.symbol?.name || "inline_type",
       isJwt,
     );
 

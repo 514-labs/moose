@@ -754,7 +754,9 @@ fn map_json_value_to_clickhouse_value(
                     };
                 }
 
-                Ok(ClickHouseValue::new_tuple(values))
+                Ok(ClickHouseValue::new_array(vec![
+                    ClickHouseValue::new_tuple(values),
+                ]))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: Box::new(column_type.clone()),

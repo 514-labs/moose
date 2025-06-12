@@ -2127,7 +2127,7 @@ mod tests {
 
         match tuple_conversion {
             Err(ConversionError::UnsupportedType { type_name }) => {
-                assert_eq!(type_name, "Tuple");
+                assert_eq!(type_name, "Unnamed tuple");
             }
             _ => panic!("Expected ConversionError::UnsupportedType"),
         }

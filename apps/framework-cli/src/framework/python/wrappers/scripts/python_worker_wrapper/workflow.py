@@ -19,6 +19,10 @@ import humanfriendly
 START_TO_CLOSE_TIMEOUT_MINUTES = 60 
 
 
+# TODO: make this configurable
+START_TO_CLOSE_TIMEOUT_MINUTES = 60 
+
+
 @dataclass
 class WorkflowState:
     """Represents the current state of a script workflow execution.

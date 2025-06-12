@@ -3,6 +3,7 @@ import { Heading, HeadingLevel } from "@/components/typography";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { Python, TypeScript } from "./src/components/language-wrappers";
 import { ImageZoom } from "nextra/components";
 import {
@@ -29,23 +30,28 @@ const baseTextStyles = {
 
 export function Logo() {
   return (
-    <Link href="https://www.fiveonefour.com" className="shrink-0">
-      <Image
-        src="/logo.png"
-        alt="logo"
-        width={48}
-        height={48}
-        priority
-        className="hidden dark:block"
-      />
-      <Image
-        src="/logo-light.png"
-        alt="logo"
-        width={48}
-        height={48}
-        priority
-        className="block dark:hidden"
-      />
+    <Link
+      href="https://www.fiveonefour.com"
+      className="shrink-0 flex items-center"
+    >
+      <div className="w-[16px] h-[16px] mr-2 relative">
+        <Image
+          src="/logo-light.png"
+          alt="logo"
+          fill
+          sizes="16px"
+          priority
+          className="object-contain object-center hidden dark:block"
+        />
+        <Image
+          src="/logo-dark.png"
+          alt="logo"
+          fill
+          sizes="16px"
+          priority
+          className="object-contain object-center block dark:hidden"
+        />
+      </div>
     </Link>
   );
 }
@@ -103,7 +109,9 @@ export default {
 
     return (
       <>
-        <title>{frontMatter.title || "514 Labs Documentation"}</title>
+        <title suppressHydrationWarning>
+          {frontMatter.title || "514 Labs Documentation"}
+        </title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta property="og:url" content={url} />
         <meta property="og:site_name" content="514 Labs Documentation" />
@@ -153,14 +161,17 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
-        <script async defer src="https://buttons.github.io/buttons.js"></script>
+        <Script
+          src="https://buttons.github.io/buttons.js"
+          strategy="lazyOnload"
+        />
         <link rel="canonical" href={url} />
       </>
     );
   },
   navbar: {
     extraContent: () => (
-      <div className="flex items-center gap-2 h-full">
+      <div className="flex items-center gap-2 h-full" suppressHydrationWarning>
         <div className="max-h-7">
           <a
             className="github-button"

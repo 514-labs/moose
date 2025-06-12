@@ -11,8 +11,18 @@ from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
 import json
 from .data_models import Column, _to_columns
-from moose_lib.dmv2 import _tables, _streams, _ingest_apis, _egress_apis, SqlResource, _sql_resources, _workflows
-from moose_lib.dmv2 import OlapTable, View, MaterializedView
+from moose_lib.dmv2 import (
+    get_tables,
+    get_streams,
+    get_ingest_apis,
+    get_consumption_apis,
+    get_sql_resources,
+    get_workflows,
+    OlapTable,
+    View,
+    MaterializedView,
+    SqlResource
+)
 from pydantic.alias_generators import to_camel
 from pydantic.json_schema import JsonSchemaValue
 
@@ -254,7 +264,7 @@ def to_infra_map() -> dict:
     sql_resources = {}
     workflows = {}
 
-    for name, table in _tables.items():
+    for name, table in get_tables().items():
         engine = table.config.engine
         tables[name] = TableConfig(
             name=name,
@@ -266,7 +276,7 @@ def to_infra_map() -> dict:
             metadata=getattr(table, "metadata", None),
         )
 
-    for name, stream in _streams.items():
+    for name, stream in get_streams().items():
         transformation_targets = [
             Target(
                 kind="stream",
@@ -297,7 +307,7 @@ def to_infra_map() -> dict:
             metadata=getattr(stream, "metadata", None),
         )
 
-    for name, api in _ingest_apis.items():
+    for name, api in get_ingest_apis().items():
         ingest_apis[name] = IngestApiConfig(
             name=name,
             columns=_to_columns(api._t),
@@ -310,7 +320,7 @@ def to_infra_map() -> dict:
             dead_letter_queue=api.config.dead_letter_queue.name
         )
 
-    for name, api in _egress_apis.items():
+    for name, api in get_consumption_apis().items():
         egress_apis[name] = EgressApiConfig(
             name=name,
             query_params=_to_columns(api.model_type),
@@ -319,7 +329,7 @@ def to_infra_map() -> dict:
             metadata=getattr(api, "metadata", None),
         )
 
-    for name, resource in _sql_resources.items():
+    for name, resource in get_sql_resources().items():
         sql_resources[name] = SqlResourceConfig(
             name=resource.name,
             setup=resource.setup,
@@ -329,7 +339,7 @@ def to_infra_map() -> dict:
             metadata=getattr(resource, "metadata", None),
         )
 
-    for name, workflow in _workflows.items():
+    for name, workflow in get_workflows().items():
         workflows[name] = WorkflowJson(
             name=workflow.name,
             retries=workflow.config.retries,

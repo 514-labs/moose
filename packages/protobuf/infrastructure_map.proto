@@ -54,6 +54,7 @@ message ApiEndpoint {
 message IngressDetails {
   string target_topic = 1;
   optional EndpointIngestionFormat format = 2 [deprecated = true];
+  optional string dead_letter_queue = 3;
 }
 
 message EgressDetails {
@@ -196,6 +197,11 @@ message Decimal {
     int32 scale = 2;
 }
 
+message Tuple {
+  repeated string names = 1;
+  repeated ColumnType types = 2;
+}
+
 // TODO: nullable not being a type, relying on `bool required`
 // is causing some mess e.g. the special case array_of_nullable
 message ColumnType {
@@ -206,6 +212,8 @@ message ColumnType {
     Nested nested = 4;
 
     ColumnType array_of_nullable = 5;
+    Tuple tuple = 6;
+    ColumnType nullable = 7;
 
     DateType date_time = 12;
     Decimal decimal = 13;

@@ -288,6 +288,16 @@ pub fn basic_field_type_to_string(
         )),
         ClickHouseColumnType::IpV4 => Ok("IPv4".to_string()),
         ClickHouseColumnType::IpV6 => Ok("IPv6".to_string()),
+        ClickHouseColumnType::NamedTuple(fields) => {
+            let pairs = fields
+                .iter()
+                .map(|(name, t)| {
+                    Ok::<_, ClickhouseError>(format!("{name} {}", basic_field_type_to_string(t)?))
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .join(", ");
+            Ok(format!("Tuple({})", pairs))
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
+from moose_lib.dmv2 import _get_workflow, Workflow, Task
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from typing import Any, Dict, List, Optional
@@ -12,6 +13,11 @@ from .logging import log
 from .types import WorkflowStepResult
 from .serialization import moose_json_decode
 import json
+import humanfriendly
+
+# TODO: make this configurable
+START_TO_CLOSE_TIMEOUT_MINUTES = 60 
+
 
 # TODO: make this configurable
 START_TO_CLOSE_TIMEOUT_MINUTES = 60 
@@ -143,13 +149,43 @@ class ScriptWorkflow:
             # Re-raise the exception to maintain existing error handling
             raise
 
+    async def _execute_dmv2_activity_with_state(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> Any:
+        activity_name = f"{dmv2wf.name}/{task.name}"
+        self._state.current_step = activity_name
+        results = []
+
+        try:
+            timeout = timedelta(seconds=humanfriendly.parse_timespan(task.config.timeout)) if task.config.timeout else timedelta(minutes=START_TO_CLOSE_TIMEOUT_MINUTES)
+            retries = task.config.retries or 3
+            log.info(f"<DMV2WF> Executing activity {activity_name} with timeout {timeout} and retries {retries}")
+            result = await workflow.execute_activity(
+                activity_name,
+                ScriptExecutionInput(dmv2_workflow_name=dmv2wf.name, script_path=task.name, input_data=input_data),
+                start_to_close_timeout=timeout,
+                retry_policy=RetryPolicy(
+                    maximum_attempts=retries,
+                ),
+            )
+            results.append(result)
+            self._state.completed_steps.append(activity_name)
+
+            if task.config.on_complete:
+                for child_task in task.config.on_complete:
+                    child_result = await self._handle_dmv2_workflow(dmv2wf, child_task, result)
+                    results.extend(child_result)
+
+            return results
+        except Exception as e:
+            self._state.failed_step = activity_name
+            raise
+
     @workflow.run
     async def run(self, path: str, input_data: Optional[Dict] = None) -> List[WorkflowStepResult]:
         results = []
-        
+
         # Add logging to see what input data we receive
-        log.info(f"Initial input_data received: {input_data}")
-        
+        log.info(f"Initial input_data received for workflow: {path} : {input_data}")
+
         current_data = {}
         if input_data:
             try:
@@ -163,38 +199,42 @@ class ScriptWorkflow:
                 log.error(f"Failed to decode input data: {e}")
                 raise
         
-        if os.path.isfile(path) and path.endswith(".py"):
-            # Single script execution
-            activity_name = f"{os.path.basename(os.path.dirname(path))}/{os.path.splitext(os.path.basename(path))[0]}"
-            result = await self._execute_activity_with_state(activity_name, path, current_data)
-            return [result]
-        
-        # Sequential execution with data passing
-        for item in sorted(os.listdir(path)):
-            full_path = os.path.join(path, item)
-            
-            if os.path.isfile(full_path) and item.endswith(".py"):
-                activity_name = f"{os.path.basename(os.path.dirname(full_path))}/{os.path.splitext(item)[0]}"
-                result = await self._execute_activity_with_state(activity_name, full_path, current_data)
-                results.append(result)
-                current_data = result  # Pass result to next step
-            
-            elif os.path.isdir(full_path) and "parallel" in item:
-                # Handle parallel execution
-                parallel_tasks = []
-                for script_file in sorted(os.listdir(full_path)):
-                    if script_file.endswith(".py"):
-                        script_path = os.path.join(full_path, script_file)
-                        activity_name = f"{os.path.basename(full_path)}/{os.path.splitext(script_file)[0]}"
-                        task = self._execute_activity_with_state(activity_name, script_path, current_data)
-                        parallel_tasks.append(task)
-                
-                if parallel_tasks:
-                    parallel_results = await asyncio.gather(*parallel_tasks)
-                    results.extend(parallel_results)
-                    # Merge parallel results if needed
-                    current_data = {
-                        "data": {k: v for result in parallel_results for k, v in result["data"].items()}
-                    }
-        
+        dmv2wf = _get_workflow(path)
+        if dmv2wf:
+            return await self._execute_dmv2_activity_with_state(dmv2wf, dmv2wf.config.starting_task, current_data)
+        else:
+            if os.path.isfile(path) and path.endswith(".py"):
+                # Single script execution
+                activity_name = f"{os.path.basename(os.path.dirname(path))}/{os.path.splitext(os.path.basename(path))[0]}"
+                result = await self._execute_activity_with_state(activity_name, path, current_data)
+                return [result]
+
+            # Sequential execution with data passing
+            for item in sorted(os.listdir(path)):
+                full_path = os.path.join(path, item)
+
+                if os.path.isfile(full_path) and item.endswith(".py"):
+                    activity_name = f"{os.path.basename(os.path.dirname(full_path))}/{os.path.splitext(item)[0]}"
+                    result = await self._execute_activity_with_state(activity_name, full_path, current_data)
+                    results.append(result)
+                    current_data = result  # Pass result to next step
+
+                elif os.path.isdir(full_path) and "parallel" in item:
+                    # Handle parallel execution
+                    parallel_tasks = []
+                    for script_file in sorted(os.listdir(full_path)):
+                        if script_file.endswith(".py"):
+                            script_path = os.path.join(full_path, script_file)
+                            activity_name = f"{os.path.basename(full_path)}/{os.path.splitext(script_file)[0]}"
+                            task = self._execute_activity_with_state(activity_name, script_path, current_data)
+                            parallel_tasks.append(task)
+
+                    if parallel_tasks:
+                        parallel_results = await asyncio.gather(*parallel_tasks)
+                        results.extend(parallel_results)
+                        # Merge parallel results if needed
+                        current_data = {
+                            "data": {k: v for result in parallel_results for k, v in result["data"].items()}
+                        }
+
         return results

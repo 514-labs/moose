@@ -134,7 +134,7 @@ pub struct ProjectFeatures {
 pub struct Project {
     /// Programming language used in the project
     pub language: SupportedLanguages,
-    /// RedPanda streaming configuration
+    /// Redpanda streaming configuration
     #[serde(default, alias = "kafka_config")]
     pub redpanda_config: KafkaConfig,
     /// ClickHouse database configuration

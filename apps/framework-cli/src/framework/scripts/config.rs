@@ -34,6 +34,25 @@ impl WorkflowConfig {
         config
     }
 
+    pub fn with_overrides(
+        name: String,
+        retries: Option<u32>,
+        timeout: Option<String>,
+        schedule: Option<String>,
+    ) -> Self {
+        let mut config = Self::new(name);
+        if let Some(r) = retries {
+            config.retries = r;
+        }
+        if let Some(t) = timeout {
+            config.timeout = t;
+        }
+        if let Some(s) = schedule {
+            config.schedule = s;
+        }
+        config
+    }
+
     pub fn save(&self, path: PathBuf) -> std::io::Result<()> {
         let content = toml::to_string_pretty(self).map_err(std::io::Error::other)?;
         std::fs::write(path, content)

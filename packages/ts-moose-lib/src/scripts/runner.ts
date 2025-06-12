@@ -6,6 +6,8 @@ import {
 } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
+import { Workflow } from "../dmv2";
+import { getWorkflows } from "../dmv2/internal";
 import { createActivityForScript } from "./activity";
 import { activities } from "./activity";
 import { initializeLogger } from "./logger";
@@ -59,6 +61,21 @@ function collectActivities(
 
   walkDir(workflowDir);
   return scriptPaths;
+}
+
+function collectActivitiesDmv2(
+  logger: DefaultLogger,
+  workflows: Map<string, Workflow>,
+) {
+  logger.info(`<DMV2WF> Collecting tasks from dmv2 workflows`);
+  const scriptNames: string[] = [];
+  for (const [name, workflow] of workflows.entries()) {
+    logger.info(
+      `<DMV2WF> Registering dmv2 workflow: ${name} with starting task: ${workflow.config.startingTask.name}`,
+    );
+    scriptNames.push(`${name}/${workflow.config.startingTask.name}`);
+  }
+  return scriptNames;
 }
 
 /**
@@ -129,8 +146,42 @@ async function registerWorkflows(
 
   // Collect all TypeScript scripts
   const allScriptPaths: string[] = [];
+  const dynamicActivities: any[] = [];
 
   try {
+    const workflows = await getWorkflows();
+    if (workflows.size > 0) {
+      logger.info(`<DMV2WF> Found ${workflows.size} dmv2 workflows`);
+      allScriptPaths.push(...collectActivitiesDmv2(logger, workflows));
+
+      if (allScriptPaths.length === 0) {
+        logger.info(`<DMV2WF> No tasks found in dmv2 workflows`);
+        return null;
+      }
+
+      logger.info(
+        `<DMV2WF> Found ${allScriptPaths.length} tasks in dmv2 workflows`,
+      );
+
+      for (const activityName of allScriptPaths) {
+        if (!ALREADY_REGISTERED.has(activityName)) {
+          const activity = await createActivityForScript(activityName);
+          dynamicActivities.push(activity);
+          ALREADY_REGISTERED.add(activityName);
+          logger.info(`<DMV2WF> Registered task ${activityName}`);
+        }
+      }
+
+      if (dynamicActivities.length === 0) {
+        logger.info(`<DMV2WF> No dynamic activities found in dmv2 workflows`);
+        return null;
+      }
+
+      logger.info(
+        `<DMV2WF> Found ${dynamicActivities.length} dynamic activities in dmv2 workflows`,
+      );
+    }
+
     // Process each workflow directory
     const workflowDirs = fs.readdirSync(config.scriptDir);
     for (const workflowDir of workflowDirs) {
@@ -152,7 +203,6 @@ async function registerWorkflows(
     );
 
     // Build dynamic activities
-    const dynamicActivities: any[] = [];
     for (const scriptPath of allScriptPaths) {
       const parentDir = path.basename(path.dirname(scriptPath));
       const baseName = path.basename(scriptPath, path.extname(scriptPath));

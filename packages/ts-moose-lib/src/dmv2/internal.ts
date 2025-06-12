@@ -14,16 +14,16 @@
 import process from "process";
 import {
   IngestApi,
-  OlapTable,
-  Stream,
   ConsumptionApi,
   SqlResource,
-  ConsumerConfig,
-  TransformConfig,
+  Workflow,
+  Task,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
 import { ConsumptionUtil } from "../index";
+import { OlapTable } from "./sdk/olapTable";
+import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 
 /**
  * Internal registry holding all defined Moose dmv2 resources.
@@ -36,6 +36,7 @@ const moose_internal = {
   ingestApis: new Map<string, IngestApi<any>>(),
   egressApis: new Map<string, ConsumptionApi<any>>(),
   sqlResources: new Map<string, SqlResource>(),
+  workflows: new Map<string, Workflow>(),
 };
 /**
  * Default retention period for streams if not specified (7 days in seconds).
@@ -121,6 +122,8 @@ interface IngestApiJson {
 
   /** The target stream where ingested data is written. */
   writeTo: Target;
+  /** The DLQ if the data does not fit the schema. */
+  deadLetterQueue?: string;
   /** Optional version string for the API configuration. */
   version?: string;
   /** Optional description for the API. */
@@ -160,6 +163,13 @@ interface InfrastructureSignatureJson {
     | "SqlResource";
 }
 
+interface WorkflowJson {
+  name: string;
+  retries?: number;
+  timeout?: string;
+  schedule?: string;
+}
+
 /**
  * JSON representation of a generic SQL resource (like View, MaterializedView).
  */
@@ -190,6 +200,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
   const ingestApis: { [key: string]: IngestApiJson } = {};
   const egressApis: { [key: string]: EgressApiJson } = {};
   const sqlResources: { [key: string]: SqlResourceJson } = {};
+  const workflows: { [key: string]: WorkflowJson } = {};
 
   registry.tables.forEach((table) => {
     // If the table is part of an IngestPipeline, inherit metadata if not set
@@ -263,6 +274,7 @@ const toInfraMap = (registry: typeof moose_internal) => {
         kind: "stream",
         name: api.config.destination.name,
       },
+      deadLetterQueue: api.config.deadLetterQueue?.name,
       metadata,
     };
   });
@@ -328,12 +340,22 @@ const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
+  registry.workflows.forEach((workflow) => {
+    workflows[workflow.name] = {
+      name: workflow.name,
+      retries: workflow.config.retries,
+      timeout: workflow.config.timeout,
+      schedule: workflow.config.schedule,
+    };
+  });
+
   return {
     topics,
     tables,
     ingestApis,
     egressApis,
     sqlResources,
+    workflows,
   };
 };
 
@@ -428,4 +450,158 @@ export const getEgressApis = async () => {
   });
 
   return egressFunctions;
+};
+
+export const dlqSchema: IJsonSchemaCollection.IV3_1 = {
+  version: "3.1",
+  components: {
+    schemas: {
+      DeadLetterModel: {
+        type: "object",
+        properties: {
+          originalRecord: {
+            $ref: "#/components/schemas/Recordstringany",
+          },
+          errorMessage: {
+            type: "string",
+          },
+          errorType: {
+            type: "string",
+          },
+          failedAt: {
+            type: "string",
+            format: "date-time",
+          },
+          source: {
+            oneOf: [
+              {
+                const: "api",
+              },
+              {
+                const: "transform",
+              },
+              {
+                const: "table",
+              },
+            ],
+          },
+        },
+        required: [
+          "originalRecord",
+          "errorMessage",
+          "errorType",
+          "failedAt",
+          "source",
+        ],
+      },
+      Recordstringany: {
+        type: "object",
+        properties: {},
+        required: [],
+        description: "Construct a type with a set of properties K of type T",
+        additionalProperties: {},
+      },
+    },
+  },
+  schemas: [
+    {
+      $ref: "#/components/schemas/DeadLetterModel",
+    },
+  ],
+};
+
+export const dlqColumns: Column[] = [
+  {
+    name: "originalRecord",
+    data_type: "Json",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "errorMessage",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "errorType",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "failedAt",
+    data_type: "DateTime",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+  {
+    name: "source",
+    data_type: "String",
+    primary_key: false,
+    required: true,
+    unique: false,
+    default: null,
+    annotations: [],
+  },
+];
+
+export const getWorkflows = async () => {
+  await require(`${process.cwd()}/app/index.ts`);
+
+  const registry = getMooseInternal();
+  return registry.workflows;
+};
+
+function findTaskInTree(
+  task: Task<any, any>,
+  targetName: string,
+): Task<any, any> | undefined {
+  if (task.name === targetName) {
+    return task;
+  }
+
+  if (task.config.onComplete?.length) {
+    for (const childTask of task.config.onComplete) {
+      const found = findTaskInTree(childTask, targetName);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+export const getTaskForWorkflow = async (
+  workflowName: string,
+  taskName: string,
+): Promise<Task<any, any>> => {
+  const workflows = await getWorkflows();
+  const workflow = workflows.get(workflowName);
+  if (!workflow) {
+    throw new Error(`Workflow ${workflowName} not found`);
+  }
+
+  const task = findTaskInTree(
+    workflow.config.startingTask as Task<any, any>,
+    taskName,
+  );
+  if (!task) {
+    throw new Error(`Task ${taskName} not found in workflow ${workflowName}`);
+  }
+
+  return task;
 };

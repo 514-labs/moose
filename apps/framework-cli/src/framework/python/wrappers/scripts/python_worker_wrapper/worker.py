@@ -8,6 +8,8 @@ from .logging import log
 import asyncio
 import signal
 from .utils.temporal import create_temporal_connection
+from moose_lib.dmv2 import _get_workflows, Workflow
+from moose_lib.internal import load_models
 
 # Maintain a global set of activity names we've already created
 _ALREADY_REGISTERED = set()
@@ -38,6 +40,39 @@ def collect_activities(workflow_dir: str) -> List[str]:
     log.info(f"Found {len(script_paths)} scripts")
     return script_paths
 
+def collect_activities_dmv2(workflows: dict[str, Workflow]) -> List[str]:
+    """Collect all task names from DMv2 workflows, formatted as 'workflowName/taskName'.
+
+    Args:
+        workflows: Dictionary of workflow name to Workflow instance
+
+    Returns:
+        List[str]: List of activity names in format 'workflowName/taskName'
+    """
+    log.info(f"<DMV2WF> Collecting tasks from dmv2 workflows")
+    script_names = []
+    for name, workflow in workflows.items():
+        log.info(f"<DMV2WF> Registering dmv2 workflow: {name}")
+        # Get all task names and format them with the workflow name
+        task_names = workflow.get_task_names()
+        script_names.extend(f"{name}/{task_name}" for task_name in task_names)
+        log.info(f"<DMV2WF> Found tasks for workflow {name}: {task_names}")
+
+    return script_names
+
+def load_dmv2_workflows() -> dict[str, Workflow]:
+    """Load DMV2 workflows, returning an empty dict if there's an error.
+
+    Returns:
+        dict[str, Workflow]: Map of workflow names to Workflow objects, empty if loading fails.
+    """
+    try:
+        load_models()
+        return _get_workflows()
+    except Exception as e:
+        log.error(f"Failed to load DMV2 workflows: {e}")
+        return {}
+
 async def register_workflows(temporal_url: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
     """
     Register all workflows and activities without executing them.
@@ -49,6 +84,12 @@ async def register_workflows(temporal_url: str, script_dir: str, client_cert: st
     all_script_paths = []
 
     try:
+        dmv2wfs = load_dmv2_workflows()
+        if (len(dmv2wfs) > 0):
+            log.info(f"<DMV2WF> Found {len(dmv2wfs)} dmv2 workflows")
+            all_script_paths.extend(collect_activities_dmv2(dmv2wfs))
+            log.info(f"<DMV2WF> Script paths: {all_script_paths}")
+
         # As all workflows are defined as root directories under the scripts directory, all the direct 
         # children of the scripts directory are workflows.
         for workflow_dir in os.listdir(script_dir):

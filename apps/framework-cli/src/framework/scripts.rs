@@ -99,6 +99,25 @@ impl Workflow {
         })
     }
 
+    pub fn from_user_code(
+        name: String,
+        language: SupportedLanguages,
+        retries: Option<u32>,
+        timeout: Option<String>,
+        schedule: Option<String>,
+    ) -> Result<Self, anyhow::Error> {
+        let config = WorkflowConfig::with_overrides(name.clone(), retries, timeout, schedule);
+
+        Ok(Self {
+            name: name.clone(),
+            path: PathBuf::from(name.clone()),
+            scripts: Vec::new(),
+            config,
+            language,
+            children: Vec::new(),
+        })
+    }
+
     /// Initialize a new workflow with a list of scripts
     pub fn init(project: &Project, name: &str, scripts: &[String]) -> Result<(), anyhow::Error> {
         let scripts_dir = project.scripts_dir();
@@ -168,6 +187,7 @@ impl Workflow {
             temporal_config,
             self.language,
             &self.name,
+            &self.config,
             &self.path,
             input,
         )

@@ -330,6 +330,7 @@ mod tests {
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),
+            workflows: HashMap::new(),
         };
 
         // Create reality checker
@@ -388,6 +389,7 @@ mod tests {
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),
+            workflows: HashMap::new(),
         };
 
         infra_map
@@ -454,6 +456,7 @@ mod tests {
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),
+            workflows: HashMap::new(),
         };
 
         infra_map
@@ -509,6 +512,7 @@ mod tests {
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),
+            workflows: HashMap::new(),
         };
 
         infra_map

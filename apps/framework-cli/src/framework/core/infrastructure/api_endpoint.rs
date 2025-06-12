@@ -28,6 +28,7 @@ pub enum APIType {
         // TODO data model is a reference to the primitive map, that should not leak into the infrastructure map
         // that's a different level of abstraction
         data_model: Option<DataModel>,
+        dead_letter_queue: Option<String>,
     },
     EGRESS {
         query_params: Vec<ConsumptionQueryParam>,
@@ -58,12 +59,14 @@ pub struct ApiEndpoint {
 }
 
 impl ApiEndpoint {
+    // dmv1 code
     pub fn from_data_model(data_model: &DataModel, topic: &Topic) -> Self {
         ApiEndpoint {
             name: data_model.name.clone(),
             api_type: APIType::INGRESS {
                 target_topic_id: topic.id(),
                 data_model: Some(data_model.clone()),
+                dead_letter_queue: None,
             },
             // This implementation is actually removing the functionality of nestedness of paths in
             // data model to change the ingest path. However, we are changing how this works with an
@@ -203,9 +206,11 @@ impl APIType {
             APIType::INGRESS {
                 target_topic_id,
                 data_model: _data_model,
+                dead_letter_queue,
             } => ProtoApiType::Ingress(IngressDetails {
                 target_topic: target_topic_id.clone(),
                 special_fields: Default::default(),
+                dead_letter_queue: dead_letter_queue.clone(),
                 ..Default::default()
             }),
             APIType::EGRESS {
@@ -237,6 +242,7 @@ impl APIType {
         match proto {
             ProtoApiType::Ingress(details) => APIType::INGRESS {
                 target_topic_id: details.target_topic,
+                dead_letter_queue: details.dead_letter_queue,
                 data_model: None,
             },
             ProtoApiType::Egress(details) => APIType::EGRESS {

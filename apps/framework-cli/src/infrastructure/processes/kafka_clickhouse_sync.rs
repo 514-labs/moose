@@ -853,18 +853,24 @@ fn map_json_value_to_clickhouse_value(
             }
         }
         ColumnType::Map {
-            key_type: _,
-            value_type: _,
+            key_type,
+            value_type,
         } => {
             if let Some(obj) = value.as_object() {
-                // For now, we'll serialize the map as a JSON string
-                // ClickHouse Map types should be handled more specifically
-                let json_string =
-                    serde_json::to_string(obj).map_err(|_| MappingError::TypeMismatch {
-                        column_type: Box::new(column_type.clone()),
-                        value: value.clone(),
-                    })?;
-                Ok(ClickHouseValue::new_string(json_string))
+                let mut map_pairs = Vec::new();
+                for (key_str, value_json) in obj {
+                    // Convert the key string to the appropriate ClickHouse value
+                    let key_json_value = serde_json::Value::String(key_str.clone());
+                    let key_clickhouse_value =
+                        map_json_value_to_clickhouse_value(key_type, &key_json_value)?;
+
+                    // Convert the value to the appropriate ClickHouse value
+                    let value_clickhouse_value =
+                        map_json_value_to_clickhouse_value(value_type, value_json)?;
+
+                    map_pairs.push((key_clickhouse_value, value_clickhouse_value));
+                }
+                Ok(ClickHouseValue::new_map(map_pairs))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: Box::new(column_type.clone()),

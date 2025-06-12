@@ -322,6 +322,25 @@ impl ClickHouseColumnType {
                 Self::NamedTuple(fields)
             }
 
+            t if t.starts_with("Map(") => {
+                let inner = t.trim_start_matches("Map(").trim_end_matches(')');
+                let parts: Vec<&str> = inner.split(',').collect();
+                if parts.len() == 2 {
+                    let key_type_str = parts[0].trim();
+                    let value_type_str = parts[1].trim();
+                    if let (Some(key_type), Some(value_type)) = (
+                        Self::from_type_str(key_type_str),
+                        Self::from_type_str(value_type_str),
+                    ) {
+                        Self::Map(Box::new(key_type), Box::new(value_type))
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            }
+
             t if t.starts_with("Enum8(") || t.starts_with("Enum16(") => {
                 let enum_content = type_str
                     .trim_start_matches("Enum8(")
@@ -433,6 +452,7 @@ pub enum ClickHouseValue {
     Enum(String),
     Nested(Vec<ClickHouseValue>),
     NamedTuple(Vec<ClickHouseValue>),
+    Map(Vec<(ClickHouseValue, ClickHouseValue)>),
     Null,
 }
 
@@ -484,6 +504,10 @@ impl ClickHouseValue {
         ClickHouseValue::NamedTuple(vals)
     }
 
+    pub fn new_map(map: Vec<(ClickHouseValue, ClickHouseValue)>) -> ClickHouseValue {
+        ClickHouseValue::Map(map)
+    }
+
     pub fn clickhouse_to_string(&self) -> String {
         match &self {
             ClickHouseValue::String(v) => format!("\'{}\'", escape_ch_string(v)),
@@ -510,6 +534,17 @@ impl ClickHouseValue {
                 "({})",
                 v.iter()
                     .map(|v| v.clickhouse_to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            ClickHouseValue::Map(v) => format!(
+                "{{{}}}",
+                v.iter()
+                    .map(|(k, v)| format!(
+                        "{}: {}",
+                        k.clickhouse_to_string(),
+                        v.clickhouse_to_string()
+                    ))
                     .collect::<Vec<String>>()
                     .join(",")
             ),

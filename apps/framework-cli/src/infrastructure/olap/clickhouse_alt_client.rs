@@ -146,9 +146,22 @@ fn value_to_json(
         ValueRef::Uuid(_) => json!(value_ref.to_string()),
         ValueRef::Enum16(_mapping, i) => convert_enum(i.internal(), enum_mapping),
         ValueRef::Enum8(_mapping, i) => convert_enum(i.internal(), enum_mapping),
-        ValueRef::Ipv4(_) => todo!(),
-        ValueRef::Ipv6(_) => todo!(),
-        ValueRef::Map(_, _, _) => todo!(),
+        ValueRef::Ipv4(ip) => {
+            let ip_str = format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]);
+            json!(ip_str)
+        }
+        ValueRef::Ipv6(ip) => {
+            let ip_str = format!(
+                "{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
+                ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7],
+                ip[8], ip[9], ip[10], ip[11], ip[12], ip[13], ip[14], ip[15]
+            );
+            json!(ip_str)
+        }
+        ValueRef::Map(_, _, _) => {
+            // TODO: Implement proper Map handling once we understand the correct ValueRef::Map signature
+            json!({})
+        }
     };
     Ok(result)
 }

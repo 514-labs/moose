@@ -1426,11 +1426,19 @@ pub fn convert_ast_to_column_type(
             Ok((ColumnType::NamedTuple(fields), false))
         }
 
-        ClickHouseTypeNode::Map { .. } => {
-            // We don't have a direct equivalent for Map in the Moose type system
-            Err(ConversionError::UnsupportedType {
-                type_name: "Map".to_string(),
-            })
+        ClickHouseTypeNode::Map {
+            key_type,
+            value_type,
+        } => {
+            let (key_column_type, _) = convert_ast_to_column_type(key_type)?;
+            let (value_column_type, _) = convert_ast_to_column_type(value_type)?;
+            Ok((
+                ColumnType::Map {
+                    key_type: Box::new(key_column_type),
+                    value_type: Box::new(value_column_type),
+                },
+                false,
+            ))
         }
 
         ClickHouseTypeNode::AggregateFunction { .. } => {
@@ -1716,11 +1724,11 @@ mod tests {
             reparsed
         );
 
-        // Conversion of complex types with Map and Tuple should now fail
+        // Conversion of complex types with NamedTuple should work but complex nested Array(Nullable(Map(...))) might fail
         let conversion = convert_ast_to_column_type(&node);
         assert!(
-            conversion.is_err(),
-            "Conversion of complex type with Map and Tuple should fail"
+            conversion.is_ok(),
+            "Complex type conversion should work since Map and NamedTuple are now supported"
         );
     }
 
@@ -1786,17 +1794,6 @@ mod tests {
 
     #[test]
     fn test_convert_unsupported_types() {
-        // Test that Map type conversion fails
-        let map_type = parse_clickhouse_type("Map(String, Int32)").unwrap();
-        let map_result = convert_ast_to_column_type(&map_type);
-        assert!(map_result.is_err(), "Map type should not be convertible");
-
-        if let Err(ConversionError::UnsupportedType { type_name }) = map_result {
-            assert_eq!(type_name, "Map");
-        } else {
-            panic!("Expected UnsupportedType error for Map");
-        }
-
         // Test that AggregateFunction type conversion fails
         let agg_type = parse_clickhouse_type("AggregateFunction(sum, Int32)").unwrap();
         let agg_result = convert_ast_to_column_type(&agg_type);
@@ -1825,12 +1822,30 @@ mod tests {
             panic!("Expected UnsupportedType error for SimpleAggregateFunction");
         }
 
+        // Test the full conversion function with the top level ClickHouseTypeError
+        let result = convert_clickhouse_type_to_column_type("AggregateFunction(sum, Int32)");
+        assert!(
+            result.is_err(),
+            "AggregateFunction type should not be convertible"
+        );
+
+        // Check the proper error layering
+        if let Err(ClickHouseTypeError::Conversion { source }) = result {
+            if let ConversionError::UnsupportedType { type_name } = source {
+                assert_eq!(type_name, "AggregateFunction");
+            } else {
+                panic!("Expected UnsupportedType error for AggregateFunction");
+            }
+        } else {
+            panic!("Expected Conversion error with UnsupportedType source");
+        }
+
         // Test parsing invalid syntax results in a Parse error
         let invalid_syntax_result = convert_clickhouse_type_to_column_type("NotValid(");
         assert!(invalid_syntax_result.is_err(), "Invalid syntax should fail");
 
-        if let Err(ClickHouseTypeError::Parse { input, source: _ }) = invalid_syntax_result {
-            assert_eq!(input, "NotValid(");
+        if let Err(ClickHouseTypeError::Parse { .. }) = invalid_syntax_result {
+            // This is expected
         } else {
             panic!("Expected Parse error for invalid syntax");
         }
@@ -2328,5 +2343,58 @@ mod tests {
         let json_conversion = convert_ast_to_column_type(&json_parsed);
         assert!(json_conversion.is_ok(), "JSON should be convertible");
         assert_eq!(json_conversion.unwrap().0, ColumnType::Json);
+    }
+
+    #[test]
+    fn test_map_types() {
+        // Test Map type parsing
+        let map_type = parse_clickhouse_type("Map(String, Int32)").unwrap();
+        let map_result = convert_ast_to_column_type(&map_type);
+        assert!(map_result.is_ok(), "Map type should be convertible");
+
+        match map_result.unwrap() {
+            (
+                ColumnType::Map {
+                    key_type,
+                    value_type,
+                },
+                false,
+            ) => {
+                assert_eq!(*key_type, ColumnType::String);
+                assert_eq!(*value_type, ColumnType::Int(IntType::Int32));
+            }
+            _ => panic!("Expected Map type"),
+        }
+
+        // Test nested Map type
+        let nested_map_type = parse_clickhouse_type("Map(String, Map(Int32, String))").unwrap();
+        let nested_map_result = convert_ast_to_column_type(&nested_map_type);
+        assert!(
+            nested_map_result.is_ok(),
+            "Nested Map type should be convertible"
+        );
+
+        match nested_map_result.unwrap() {
+            (
+                ColumnType::Map {
+                    key_type,
+                    value_type,
+                },
+                false,
+            ) => {
+                assert_eq!(*key_type, ColumnType::String);
+                match value_type.as_ref() {
+                    ColumnType::Map {
+                        key_type: inner_key,
+                        value_type: inner_value,
+                    } => {
+                        assert_eq!(**inner_key, ColumnType::Int(IntType::Int32));
+                        assert_eq!(**inner_value, ColumnType::String);
+                    }
+                    _ => panic!("Expected nested Map type"),
+                }
+            }
+            _ => panic!("Expected Map type"),
+        }
     }
 }

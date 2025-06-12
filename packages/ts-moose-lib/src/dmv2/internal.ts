@@ -595,7 +595,10 @@ export const getTaskForWorkflow = async (
     throw new Error(`Workflow ${workflowName} not found`);
   }
 
-  const task = findTaskInTree(workflow.config.startingTask, taskName);
+  const task = findTaskInTree(
+    workflow.config.startingTask as Task<any, any>,
+    taskName,
+  );
   if (!task) {
     throw new Error(`Task ${taskName} not found in workflow ${workflowName}`);
   }

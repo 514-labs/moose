@@ -10,6 +10,7 @@ export const paths = {
   quickstart: `${basePaths.start}/quickstart`,
   projectStructure: `${basePaths.start}/project-structure`,
   architecture: `${basePaths.start}/architecture`,
+  fromClickhouse: `${basePaths.start}/from-clickhouse`,
   // Building
   dataModels: `${basePaths.build}/data-modeling`,
   ingestion: `${basePaths.build}/ingestion`,

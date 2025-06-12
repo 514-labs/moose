@@ -19,6 +19,7 @@ import {
   CheckmarkBullets,
   Icons,
   Contact,
+  InlineProps,
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -38,21 +39,37 @@ import {
   Star,
   Download,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
 import { paths } from "@/lib/paths";
 
-# Backend Framework for the Analytics Stack
+# Moose: The Backend Framework for the Analytics Stack
 
-**Build analytical backends the same way you build web backends.** Define data models, get APIs and streaming infrastructure automatically.
+**Tired of cobbling together analytics tools? Moose gives you a complete analytics backend in minutes.** Define data models, get APIs and streaming infrastructure automatically.
 
-<div className="flex items-center gap-6 my-4 text-sm text-muted-foreground">
-  <span>2.1k+ GitHub stars</span>
-  <span>Scales to 100M+ events/day</span>
-  <span>Zero downtime migrations</span>
-</div>
+
+<InlineProps
+  items={[
+    {
+      icon: Database,
+      text: "Built on ClickHouse, Kafka, Temporal",
+      iconColor: "blue-600"
+    },
+    {
+      icon: ShieldCheck,
+      text: "Production-grade: 100M+ events/day, zero downtime migrations",
+      iconColor: "green-600"
+    },
+    {
+      icon: TrendingUp,
+      text: "Framework for user-facing analytics, data warehouses, and observability",
+      iconColor: "purple-600"
+    }
+  ]}
+/>
 
 ```bash filename="Get started in 30 seconds" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
@@ -166,9 +183,59 @@ Moose gives you the familiar DX of web frameworks, but with components designed 
   ]}
 />
 
-#### Complete Analytics Pipeline & Insights in One File
+## What You'll Build
+
+Moose helps you build analytical backends that combine:
+
+<BulletPointsCard
+  bulletStyle="check"
+  divider={false}
+  bullets={[
+    { 
+      title: "Type-Safe Data Models", 
+      description: "Define your schema once, get validation everywhere - catch errors at dev time, not in production",
+      link: {
+        text: "Learn about data models",
+        href: paths.dataModels
+      }
+    },
+    { 
+      title: "Real-Time Streaming", 
+      description: "Process events as they arrive with built-in Kafka/Redpanda - no separate streaming infrastructure to manage",
+      link: {
+        text: "Explore streaming",
+        href: paths.streams
+      }
+    },
+    { 
+      title: "Analytical Storage", 
+      description: "Store and query data with ClickHouse's columnar engine - 100x faster than traditional databases for analytics",
+      link: {
+        text: "Learn about storage",
+        href: paths.storage
+      }
+    },
+    { 
+      title: "HTTP APIs", 
+      description: "Expose data ingestion and analytics endpoints automatically - no boilerplate code needed",
+      link: {
+        text: "Explore APIs",
+        href: paths.consumptionApis
+      }
+    },
+    {
+      title: "Data Movement Workflows",
+      description: "Orchestrate background jobs and scheduled tasks to move data between your analytical database and other systems",
+      link: {
+        text: "Learn about workflows",
+        href: paths.workflows
+      }
+    }
+  ]}
+/>
 <Tabs items={["TypeScript", "Python"]}>
 <Tabs.Tab>
+
 #### Data Ingestion
 ```ts filename="Receive & Validate Events from Data Source" copy
 // Define your data model
@@ -421,7 +488,48 @@ curl -X POST http://localhost:4000/ingest/votes \
 curl http://localhost:4000/consumption/leaderboard?limit=10
 ```
 
+## Use Cases
 
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+  <BulletPointsCard
+    title="User Facing Analytics"
+    bulletStyle="default"
+    divider={false}
+    compact={true}
+    bullets={[
+      "Embed dashboards in your product UI",
+      "Provide self-service analytics to customers",
+      "Build user-facing metrics and KPIs",
+      "Create interactive data visualizations"
+    ]}
+  />
+  
+  <BulletPointsCard
+    title="Data Warehouse"
+    bulletStyle="default"
+    divider={false}
+    compact={true}
+    bullets={[
+      "Centralize data from multiple sources",
+      "Run complex analytical queries",
+      "Build business intelligence reports",
+      "Create data pipelines between systems"
+    ]}
+  />
+  
+  <BulletPointsCard
+    title="Observability"
+    bulletStyle="default"
+    divider={false}
+    compact={true}
+    bullets={[
+      "Monitor application performance",
+      "Track high-cardinality metrics",
+      "Process and query logs at scale",
+      "Create real-time alerts and dashboards"
+    ]}
+  />
+</div>
 
 ## Next Steps
 
@@ -435,11 +543,11 @@ curl http://localhost:4000/consumption/leaderboard?limit=10
     variant="default"
   />
   <CTACard
-    title="Star on GitHub"
-    description="Join 2.1k+ developers"
-    ctaLink="https://github.com/514-labs/moose"
-    ctaLabel="⭐ Star on GitHub"
-    Icon={Star}
+    title="Explore Core Concepts"
+    description="Learn how Moose works"
+    ctaLink="/moose/building/overview"
+    ctaLabel="View Architecture"
+    Icon={Code}
     variant="default"
   />
   <CTACard

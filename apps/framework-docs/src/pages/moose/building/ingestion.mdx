@@ -427,3 +427,33 @@ class UserEvent(BaseModel):
 
 
 See the [API Reference](./api-reference#ingestpipeline) for complete configuration options.
+
+## Ingestion Patterns
+
+Moose supports several ingestion patterns to accommodate different data sources and requirements:
+
+### Direct OlapTable Insertion
+
+For programmatic data insertion with full validation and error handling, use the OlapTable `insert()` method:
+
+<TypeScript>
+```ts filename="DirectInsert.ts" copy
+import { OlapTable } from "@514labs/moose-lib";
+
+const table = new OlapTable<MyDataModel>("my_table");
+
+// Insert with validation and error handling
+const result = await table.insert(data, {
+  strategy: 'discard',
+  allowErrorsRatio: 0.05
+});
+```
+</TypeScript>
+
+<Callout type="warning" title="Python support coming soon">
+Python support for direct insert is not yet available. Stay tuned for updates!
+</Callout>
+
+<Callout type="info">
+For detailed information about direct insertion, validation methods, and error handling strategies, see the [OlapTable documentation](/moose/building/olap-table#direct-data-insertion).
+</Callout>

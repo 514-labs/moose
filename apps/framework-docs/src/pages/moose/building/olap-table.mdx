@@ -497,6 +497,165 @@ bad_table3 = OlapTable[BadRecord3]("bad_table3", OlapTableConfig(
 ```
 </Python>
 
+## Direct Data Insertion
+
+The OlapTable class provides a powerful `insert()` method that allows you to directly insert data into ClickHouse tables with comprehensive validation and error handling.
+
+### Basic Insert Operations
+
+<TypeScript>
+```ts filename="DirectInsert.ts" copy
+import { OlapTable, Key } from "@514labs/moose-lib";
+
+interface UserEvent {
+  id: Key<string>;
+  userId: string;
+  timestamp: Date;
+  eventType: string;
+}
+
+const eventsTable = new OlapTable<UserEvent>("user_events");
+
+// Insert single record or array of records
+const result = await eventsTable.insert([
+  { id: "evt_1", userId: "user_123", timestamp: new Date(), eventType: "click" },
+  { id: "evt_2", userId: "user_456", timestamp: new Date(), eventType: "view" }
+]);
+
+console.log(`Successfully inserted: ${result.successful} records`);
+console.log(`Failed: ${result.failed} records`);
+```
+</TypeScript>
+
+<Callout type="warning" title="Python support coming soon">
+Python support for direct insert is not yet available. Stay tuned for updates!
+</Callout>
+
+### Validation Methods
+
+The OlapTable provides three validation methods powered by typia for comprehensive type checking:
+
+<TypeScript>
+```ts filename="ValidationMethods.ts" copy
+// Type guard with compile-time type narrowing
+if (eventsTable.isValidRecord(unknownData)) {
+  // TypeScript now knows unknownData is UserEvent
+  console.log(unknownData.userId); // Type-safe access
+}
+
+// Detailed validation with error reporting
+const validationResult = eventsTable.validateRecord(unknownData);
+if (validationResult.success) {
+  console.log("Valid data:", validationResult.data);
+} else {
+  console.log("Validation errors:", validationResult.errors);
+}
+
+// Assert validation (throws on failure)
+try {
+  const validData = eventsTable.assertValidRecord(unknownData);
+  // Use validData with full type safety
+} catch (error) {
+  console.log("Validation failed:", error.message);
+}
+```
+</TypeScript>
+
+<Callout type="warning" title="Python support coming soon">
+Python support for validation methods is not yet available. Stay tuned for updates!
+</Callout>
+
+### Error Handling Strategies
+
+Choose from three error handling strategies based on your reliability requirements:
+
+#### Fail-Fast Strategy (Default)
+<TypeScript>
+```ts filename="FailFast.ts" copy
+// Stops immediately on any error
+const result = await eventsTable.insert(data, {
+  strategy: 'fail-fast'
+});
+```
+</TypeScript>
+
+<Callout type="warning" title="Python support coming soon">
+Python support for error handling strategies is not yet available. Stay tuned for updates!
+</Callout>
+
+#### Discard Strategy
+<TypeScript>
+```ts filename="Discard.ts" copy
+// Discards invalid records, continues with valid ones
+const result = await eventsTable.insert(data, {
+  strategy: 'discard',
+  allowErrors: 10,           // Allow up to 10 failed records
+  allowErrorsRatio: 0.05     // Allow up to 5% failure rate
+});
+```
+</TypeScript>
+
+#### Isolate Strategy
+<TypeScript>
+```ts filename="Isolate.ts" copy
+// Retries individual records to isolate failures
+const result = await eventsTable.insert(data, {
+  strategy: 'isolate',
+  allowErrorsRatio: 0.1
+});
+
+// Access detailed failure information
+if (result.failedRecords) {
+  result.failedRecords.forEach(failed => {
+    console.log(`Record ${failed.index} failed: ${failed.error}`);
+  });
+}
+```
+</TypeScript>
+
+### Stream Support
+
+For large datasets, use Node.js streams for memory-efficient processing:
+
+<TypeScript>
+```ts filename="StreamInsert.ts" copy
+import { Readable } from 'node:stream';
+
+const dataStream = new Readable({
+  objectMode: true,
+  read() {
+    // Stream implementation
+  }
+});
+
+const result = await eventsTable.insert(dataStream, {
+  strategy: 'fail-fast'  // Note: 'isolate' not supported with streams
+});
+```
+</TypeScript>
+
+### Performance Optimization
+
+The insert API includes several performance optimizations:
+
+- **Memoized connections**: ClickHouse clients are reused across insert calls
+- **Batch processing**: Optimized batch sizes for large datasets
+- **Async inserts**: Automatic async insert mode for datasets > 1000 records
+- **Connection management**: Use `closeClient()` when completely done
+
+<TypeScript>
+```ts filename="Performance.ts" copy
+// For high-throughput scenarios
+const result = await eventsTable.insert(largeDataset, {
+  validate: false,  // Skip validation for performance
+  strategy: 'discard'
+});
+
+// Clean up when completely done (optional)
+await eventsTable.closeClient();
+```
+</TypeScript>
+
 ## Development Workflow
 
 ### Local Development with Hot Reloading

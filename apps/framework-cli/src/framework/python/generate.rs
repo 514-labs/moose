@@ -12,6 +12,7 @@ fn map_column_type_to_python(
     column_type: &ColumnType,
     enums: &HashMap<&DataEnum, String>,
     nested: &HashMap<&Nested, String>,
+    named_tuples: &HashMap<&Vec<(String, ColumnType)>, String>,
 ) -> String {
     match column_type {
         ColumnType::String => "str".to_string(),
@@ -49,7 +50,7 @@ fn map_column_type_to_python(
             element_type,
             element_nullable,
         } => {
-            let inner_type = map_column_type_to_python(element_type, enums, nested);
+            let inner_type = map_column_type_to_python(element_type, enums, nested, named_tuples);
             let inner_type = if *element_nullable {
                 format!("Optional[{}]", inner_type)
             } else {
@@ -58,11 +59,19 @@ fn map_column_type_to_python(
             format!("list[{}]", inner_type)
         }
         ColumnType::Nested(nested_type) => nested.get(nested_type).unwrap().to_string(),
+        ColumnType::NamedTuple(fields) => {
+            let class_name = named_tuples.get(fields).unwrap();
+            format!("Annotated[{}, \"ClickHouseNamedTuple\"]", class_name)
+        }
         ColumnType::Json => "Any".to_string(),
         ColumnType::Bytes => "bytes".to_string(),
         ColumnType::Uuid => "UUID".to_string(),
         ColumnType::IpV4 => "ipaddress.IPv4Address".to_string(),
         ColumnType::IpV6 => "ipaddress.IPv6Address".to_string(),
+        ColumnType::Nullable(inner) => {
+            let inner_type = map_column_type_to_python(inner, enums, nested, named_tuples);
+            format!("Optional[{}]", inner_type)
+        }
     }
 }
 
@@ -112,12 +121,14 @@ fn generate_nested_model(
     name: &str,
     enums: &HashMap<&DataEnum, String>,
     nested_models: &HashMap<&Nested, String>,
+    named_tuples: &HashMap<&Vec<(String, ColumnType)>, String>,
 ) -> String {
     let mut model = String::new();
     writeln!(model, "class {}(BaseModel):", name).unwrap();
 
     for column in &nested.columns {
-        let type_str = map_column_type_to_python(&column.data_type, enums, nested_models);
+        let type_str =
+            map_column_type_to_python(&column.data_type, enums, nested_models, named_tuples);
 
         let (type_str, default) = if !column.required {
             (format!("Optional[{}]", type_str), " = None")
@@ -150,6 +161,24 @@ fn generate_nested_model(
     model
 }
 
+fn generate_named_tuple_model(
+    fields: &Vec<(String, ColumnType)>,
+    name: &str,
+    enums: &HashMap<&DataEnum, String>,
+    nested_models: &HashMap<&Nested, String>,
+    named_tuples: &HashMap<&Vec<(String, ColumnType)>, String>,
+) -> String {
+    let mut model = String::new();
+    writeln!(model, "class {}(BaseModel):", name).unwrap();
+
+    for (field_name, field_type) in fields {
+        let type_str = map_column_type_to_python(field_type, enums, nested_models, named_tuples);
+        writeln!(model, "    {}: {}", field_name, type_str).unwrap();
+    }
+    writeln!(model).unwrap();
+    model
+}
+
 pub fn tables_to_python(tables: &[Table]) -> String {
     let mut output = String::new();
 
@@ -167,12 +196,13 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     .unwrap();
     writeln!(output).unwrap();
 
-    // Collect all enums and nested types
+    // Collect all enums, nested types, and named tuples
     let mut enums: HashMap<&DataEnum, String> = HashMap::new();
     let mut extra_class_names: HashMap<String, usize> = HashMap::new();
     let mut nested_models: HashMap<&Nested, String> = HashMap::new();
+    let mut named_tuples: HashMap<&Vec<(String, ColumnType)>, String> = HashMap::new();
 
-    // First pass: collect all nested types and enums
+    // First pass: collect all nested types, enums, and named tuples
     for table in tables {
         for column in &table.columns {
             match &column.data_type {
@@ -208,6 +238,22 @@ pub fn tables_to_python(tables: &[Table]) -> String {
                         nested_models.insert(nested, name);
                     }
                 }
+                ColumnType::NamedTuple(fields) => {
+                    if !named_tuples.contains_key(fields) {
+                        let name = format!("{}Tuple", column.name.to_case(Case::Pascal));
+                        let name = match extra_class_names.entry(name.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                *entry.get_mut() = entry.get() + 1;
+                                format!("{}{}", name, entry.get())
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(0);
+                                name
+                            }
+                        };
+                        named_tuples.insert(fields, name);
+                    }
+                }
                 _ => {}
             }
         }
@@ -218,9 +264,26 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         output.push_str(&generate_enum_class(data_enum, name));
     }
 
+    // Generate named tuple model classes
+    for (fields, name) in named_tuples.iter() {
+        output.push_str(&generate_named_tuple_model(
+            fields,
+            name,
+            &enums,
+            &nested_models,
+            &named_tuples,
+        ));
+    }
+
     // Generate nested model classes
     for (nested, name) in nested_models.iter() {
-        output.push_str(&generate_nested_model(nested, name, &enums, &nested_models));
+        output.push_str(&generate_nested_model(
+            nested,
+            name,
+            &enums,
+            &nested_models,
+            &named_tuples,
+        ));
     }
 
     // Generate model classes
@@ -228,7 +291,8 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         writeln!(output, "class {}(BaseModel):", table.name).unwrap();
 
         for column in &table.columns {
-            let type_str = map_column_type_to_python(&column.data_type, &enums, &nested_models);
+            let type_str =
+                map_column_type_to_python(&column.data_type, &enums, &nested_models, &named_tuples);
 
             let (type_str, default) = if !column.required {
                 (format!("Optional[{}]", type_str), " = None")
@@ -529,5 +593,80 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
     table=True
 ))"#
         ));
+    }
+
+    #[test]
+    fn test_named_tuple_types() {
+        let tables = vec![Table {
+            name: "Location".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: true,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "coordinates".to_string(),
+                    data_type: ColumnType::NamedTuple(vec![
+                        ("lat".to_string(), ColumnType::Float(FloatType::Float64)),
+                        ("lng".to_string(), ColumnType::Float(FloatType::Float64)),
+                    ]),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                Column {
+                    name: "metadata".to_string(),
+                    data_type: ColumnType::NamedTuple(vec![
+                        ("name".to_string(), ColumnType::String),
+                        ("value".to_string(), ColumnType::Int(IntType::Int32)),
+                    ]),
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            deduplicate: false,
+            engine: Some("MergeTree".to_string()),
+            version: None,
+            source_primitive: PrimitiveSignature {
+                name: "Location".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            metadata: None,
+        }];
+
+        let result = tables_to_python(&tables);
+        println!("{}", result);
+
+        // Check that TypedDict is not in the imports
+        assert!(!result.contains("TypedDict"));
+
+        // Check that NamedTuple classes are generated as BaseModel
+        assert!(result.contains("class CoordinatesTuple(BaseModel):"));
+        assert!(result.contains("class MetadataTuple(BaseModel):"));
+
+        // Check that the main model uses Annotated with ClickHouseNamedTuple
+        assert!(
+            result.contains("coordinates: Annotated[CoordinatesTuple, \"ClickHouseNamedTuple\"]")
+        );
+        assert!(result.contains(
+            "metadata: Optional[Annotated[MetadataTuple, \"ClickHouseNamedTuple\"]] = None"
+        ));
+
+        // Check that tuple fields are properly typed
+        assert!(result.contains("    lat: float"));
+        assert!(result.contains("    lng: float"));
+        assert!(result.contains("    name: str"));
+        assert!(result.contains("    value: Annotated[int, \"int32\"]"));
     }
 }

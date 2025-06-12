@@ -46,6 +46,7 @@ export {
   ClickHouseByteSize,
   ClickHouseInt,
   LowCardinality,
+  ClickHouseNamedTuple,
 } from "./dataModels/types";
 
 export { MooseCache } from "./clients/redisClient";

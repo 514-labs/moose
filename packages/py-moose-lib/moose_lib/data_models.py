@@ -83,7 +83,11 @@ class ArrayType(BaseModel):
     element_nullable: bool
 
 
-type DataType = str | DataEnum | ArrayType | Nested
+class NamedTupleType(BaseModel):
+    fields: list[tuple[str, "DataType"]]
+
+
+type DataType = str | DataEnum | ArrayType | Nested | NamedTupleType
 
 
 def handle_jwt(field_type: type) -> Tuple[bool, type]:
@@ -191,10 +195,18 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
     elif not isclass(t):
         raise ValueError(f"Unknown type {t}")
     elif issubclass(t, BaseModel):
-        data_type = Nested(
-            name=t.__name__,
-            columns=_to_columns(t),
-        )
+        if any(md == "ClickHouseNamedTuple" for md in mds):
+            data_type = NamedTupleType(
+                fields=[(
+                    column.name,
+                    column.data_type
+                ) for column in _to_columns(t)],
+            )
+        else:
+            data_type = Nested(
+                name=t.__name__,
+                columns=_to_columns(t),
+            )
     elif issubclass(t, Enum):
         values = [EnumValue(name=member.name, value=member.value) for member in t]
         data_type = DataEnum(name=t.__name__, values=values)

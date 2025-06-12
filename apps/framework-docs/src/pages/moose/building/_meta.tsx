@@ -1,6 +1,7 @@
 import { render } from "@/components";
 
 const meta = {
+  index: "Overview",
   "data-modeling": "Data Modeling",
   ingestion: "Ingestion APIs",
   streams: "Stream Processing",

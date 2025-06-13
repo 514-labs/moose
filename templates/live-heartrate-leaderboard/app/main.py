@@ -3,12 +3,9 @@ from moose_lib import IngestPipeline, IngestPipelineConfig
 from moose_lib import StreamingFunction
 from moose_lib import ConsumptionApi
 
-from app.pipelines.pipelines import rawAntHRPipeline, processedAntHRPipeline, unifiedHRPipeline, bluetoothHRPipeline
 
-# Instatiated materialized views for in DB processing
-from app.views.aggregated_per_second import aggregateHeartRateSummaryPerSecondMV
+from app.pipelines.pipelines import rawAntHRPipeline, processedAntHRPipeline, unifiedHRPipeline, bluetoothHRPipeline, appleWatchHRPipeline
 
-# Instantiate APIs
 from app.apis.get_leaderboard import get_leaderboard_api
 from app.apis.get_user_live_heart_rate_stats import get_user_live_heart_rate_stats
 

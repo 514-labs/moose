@@ -13,13 +13,6 @@ class Baz(StringToEnumMixin, IntEnum):
     QUUX = auto()
 
 
-def lookup_value[T](value, cls: type[T]) -> Any:
-    if isinstance(value, str):
-        return cls[value]
-    else:
-        return value
-
-
 class Foo(BaseModel):
     primary_key: Key[str]
     timestamp: float
@@ -38,11 +31,13 @@ class Bar(BaseModel):
 fooModel = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=False
+    table=False,
+    dead_letter_queue=True
 ))
 
 barModel = IngestPipeline[Bar]("Bar", IngestPipelineConfig(
     ingest=False,
     stream=True,
-    table=True
+    table=True,
+    dead_letter_queue=True
 ))

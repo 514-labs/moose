@@ -543,6 +543,19 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             raise ValueError("Stream was not configured for this pipeline")
         return self.stream
 
+    def get_dead_letter_queue(self) -> Stream[T]:
+        """Retrieves the pipeline's dead letter queue.
+
+        Raises:
+            ValueError: If the dead letter queue was not configured for this pipeline.
+
+        Returns:
+            The `Stream` instance.
+        """
+        if self.dead_letter_queue is None:
+            raise ValueError("DLQ was not configured for this pipeline")
+        return self.dead_letter_queue
+
     def get_ingest_api(self) -> IngestApi[T]:
         """Retrieves the pipeline's Ingestion API component.
 

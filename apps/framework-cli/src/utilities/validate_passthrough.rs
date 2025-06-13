@@ -116,6 +116,10 @@ impl ParentContext<'_> {
             }
         }
     }
+
+    fn get_path(&self) -> String {
+        add_path_component(parent_context_to_string(self.parent), self.field_name)
+    }
 }
 
 struct ValueVisitor<'a, S: SerializeValue> {
@@ -441,7 +445,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
 
                         let mut map = self.map.borrow_mut();
                         while let Some(key) = map.next_key::<String>().map_err(S::Error::custom)? {
-                            validate_map_key::<S::Error>(&key, self.key_type)?;
+                            validate_map_key::<S::Error>(&key, self.key_type, self.parent_context)?;
                             inner.serialize_key(&key)?;
                             let mut value_visitor = ValueVisitor {
                                 t: &self.value_type,
@@ -508,7 +512,11 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
 }
 
 /// Validate a key string according to the given key type
-fn validate_map_key<E>(key_str: &str, key_type: &ColumnType) -> Result<(), E>
+fn validate_map_key<E>(
+    key_str: &str,
+    key_type: &ColumnType,
+    context: &ParentContext,
+) -> Result<(), E>
 where
     E: serde::ser::Error,
 {
@@ -519,7 +527,7 @@ where
                 E::custom(format!(
                     "Invalid integer key '{}' for Map at {}",
                     key_str,
-                    "" //self.get_path()
+                    context.get_path()
                 ))
             })?;
             Ok(())
@@ -529,7 +537,7 @@ where
                 E::custom(format!(
                     "Invalid float key '{}' for Map at {}",
                     key_str,
-                    "" //self.get_path()
+                    context.get_path()
                 ))
             })?;
             Ok(())
@@ -541,7 +549,7 @@ where
                 Err(E::custom(format!(
                     "Invalid IPv4 key '{}' for Map at {}",
                     key_str,
-                    "" //self.get_path()
+                    context.get_path()
                 )))
             }
         }
@@ -552,7 +560,7 @@ where
                 Err(E::custom(format!(
                     "Invalid IPv6 key '{}' for Map at {}",
                     key_str,
-                    "" //self.get_path()
+                    context.get_path()
                 )))
             }
         }
@@ -561,7 +569,7 @@ where
                 E::custom(format!(
                     "Invalid UUID key '{}' for Map at {}",
                     key_str,
-                    "" //self.get_path()
+                    context.get_path()
                 ))
             })?;
             Ok(())
@@ -569,16 +577,13 @@ where
         _ => Err(E::custom(format!(
             "Unsupported key type {:?} for Map at {}",
             key_type,
-            "" //self.get_path()
+            context.get_path()
         ))),
     }
 }
 impl<S: SerializeValue> ValueVisitor<'_, S> {
     fn get_path(&self) -> String {
-        add_path_component(
-            parent_context_to_string(self.context.parent),
-            self.context.field_name,
-        )
+        self.context.get_path()
     }
 }
 
@@ -1283,10 +1288,9 @@ mod tests {
             .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         assert!(invalid_result.is_err());
-        assert!(invalid_result
-            .unwrap_err()
-            .to_string()
-            .contains("Type validation failed"));
+        let error = invalid_result.unwrap_err();
+        println!("{}", error);
+        assert!(error.to_string().contains(r#"invalid type: string "not_a_number", expected an integer value at user_scores.alice at line"#));
     }
 
     #[test]

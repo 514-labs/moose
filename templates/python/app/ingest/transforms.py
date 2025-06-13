@@ -15,14 +15,12 @@ def foo_to_bar(foo: Foo):
     )
 
 
-dlq = DeadLetterQueue[Foo](name="FooDead")
-
 # Transform Foo events to Bar events
 fooModel.get_stream().add_transform(
     destination=barModel.get_stream(),
     transformation=foo_to_bar,
     config=TransformConfig(
-        dead_letter_queue=dlq
+        dead_letter_queue=fooModel.get_dead_letter_queue()
     )
 )
 
@@ -44,4 +42,4 @@ def print_messages(dead_letter: DeadLetterModel[Foo]):
     print("foo in dead letter:", dead_letter.as_typed())
 
 
-dlq.add_consumer(print_messages)
+fooModel.get_dead_letter_queue().add_consumer(print_messages)

@@ -284,34 +284,33 @@ const handleRecordType = (
   isJwt: boolean,
 ): MapType => {
   const indexInfos = checker.getIndexInfosOfType(t);
-  if (indexInfos && indexInfos.length === 1) {
-    const indexInfo = indexInfos[0];
-
-    // Convert key type
-    const [, , keyType] = tsTypeToDataType(
-      indexInfo.keyType,
-      checker,
-      `${fieldName}_key`,
-      typeName,
-      isJwt,
-    );
-
-    // Convert value type
-    const [, , valueType] = tsTypeToDataType(
-      indexInfo.type,
-      checker,
-      `${fieldName}_value`,
-      typeName,
-      isJwt,
-    );
-
-    return {
-      keyType,
-      valueType,
-    };
+  if (indexInfos && indexInfos.length !== 1) {
+    throw new UnsupportedFeature("Multiple index type");
   }
+  const indexInfo = indexInfos[0];
 
-  throw new Error("Invalid Record type");
+  // Convert key type
+  const [, , keyType] = tsTypeToDataType(
+    indexInfo.keyType,
+    checker,
+    `${fieldName}_key`,
+    typeName,
+    isJwt,
+  );
+
+  // Convert value type
+  const [, , valueType] = tsTypeToDataType(
+    indexInfo.type,
+    checker,
+    `${fieldName}_value`,
+    typeName,
+    isJwt,
+  );
+
+  return {
+    keyType,
+    valueType,
+  };
 };
 
 /**

@@ -420,36 +420,55 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     .serialize_value(&serializer)
                     .map_err(A::Error::custom)
             }
-            ColumnType::Map { .. } => {
-                // For Map types, we just pass through the map as JSON
-                struct JsonPassThrough<'de, MA: MapAccess<'de>> {
+            ColumnType::Map {
+                key_type,
+                value_type,
+            } => {
+                struct MapPassThrough<'de, 'a, MA: MapAccess<'de>> {
+                    parent_context: &'a ParentContext<'a>,
+                    key_type: &'a ColumnType,
+                    value_type: &'a ColumnType,
                     map: RefCell<MA>,
                     _phantom_data: &'de PhantomData<()>,
                 }
-                impl<'de, MA: MapAccess<'de>> Serialize for JsonPassThrough<'de, MA> {
+                impl<'de, 'a, MA: MapAccess<'de>> Serialize for MapPassThrough<'de, 'a, MA> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
                         S: Serializer,
                     {
                         use serde::ser::Error;
                         let mut inner = serializer.serialize_map(None)?;
+
                         let mut map = self.map.borrow_mut();
                         while let Some(key) = map.next_key::<String>().map_err(S::Error::custom)? {
-                            inner.serialize_key(&key).map_err(S::Error::custom)?;
-                            SerializeMap::serialize_value(
-                                &mut inner,
-                                &map.next_value::<serde_json::Value>()
-                                    .map_err(S::Error::custom)?,
-                            )?;
+                            validate_map_key::<S::Error>(&key, self.key_type)?;
+                            inner.serialize_key(&key)?;
+                            let mut value_visitor = ValueVisitor {
+                                t: &self.value_type,
+                                required: true,
+                                write_to: &mut inner,
+                                context: ParentContext {
+                                    parent: Some(&self.parent_context),
+                                    field_name: Either::Left(&key),
+                                },
+                                jwt_claims: None,
+                            };
+                            map.next_value_seed(&mut value_visitor)
+                                .map_err(S::Error::custom)?;
+                            value_visitor.context.field_name = Either::Left("");
                         }
                         inner.end().map_err(S::Error::custom)
                     }
                 }
+                let map = MapPassThrough {
+                    parent_context: &self.context,
+                    key_type: &key_type,
+                    value_type: &value_type,
+                    map: RefCell::new(map),
+                    _phantom_data: &PhantomData,
+                };
                 self.write_to
-                    .serialize_value(&JsonPassThrough {
-                        map: RefCell::new(map),
-                        _phantom_data: &PhantomData,
-                    })
+                    .serialize_value(&map)
                     .map_err(A::Error::custom)
             }
             ColumnType::Json => {
@@ -488,6 +507,72 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     }
 }
 
+/// Validate a key string according to the given key type
+fn validate_map_key<E>(key_str: &str, key_type: &ColumnType) -> Result<(), E>
+where
+    E: serde::ser::Error,
+{
+    match key_type {
+        ColumnType::String => Ok(()), // String keys are always valid
+        ColumnType::Int(_) => {
+            key_str.parse::<i64>().map_err(|_| {
+                E::custom(format!(
+                    "Invalid integer key '{}' for Map at {}",
+                    key_str,
+                    "" //self.get_path()
+                ))
+            })?;
+            Ok(())
+        }
+        ColumnType::Float(_) => {
+            key_str.parse::<f64>().map_err(|_| {
+                E::custom(format!(
+                    "Invalid float key '{}' for Map at {}",
+                    key_str,
+                    "" //self.get_path()
+                ))
+            })?;
+            Ok(())
+        }
+        ColumnType::IpV4 => {
+            if IPV4_PATTERN.is_match(key_str) {
+                Ok(())
+            } else {
+                Err(E::custom(format!(
+                    "Invalid IPv4 key '{}' for Map at {}",
+                    key_str,
+                    "" //self.get_path()
+                )))
+            }
+        }
+        ColumnType::IpV6 => {
+            if IPV6_PATTERN.is_match(key_str) {
+                Ok(())
+            } else {
+                Err(E::custom(format!(
+                    "Invalid IPv6 key '{}' for Map at {}",
+                    key_str,
+                    "" //self.get_path()
+                )))
+            }
+        }
+        ColumnType::Uuid => {
+            uuid::Uuid::parse_str(key_str).map_err(|_| {
+                E::custom(format!(
+                    "Invalid UUID key '{}' for Map at {}",
+                    key_str,
+                    "" //self.get_path()
+                ))
+            })?;
+            Ok(())
+        }
+        _ => Err(E::custom(format!(
+            "Unsupported key type {:?} for Map at {}",
+            key_type,
+            "" //self.get_path()
+        ))),
+    }
+}
 impl<S: SerializeValue> ValueVisitor<'_, S> {
     fn get_path(&self) -> String {
         add_path_component(
@@ -742,11 +827,10 @@ fn is_nested_with_jwt(column_type: &ColumnType) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::{
-        DataEnum, EnumMember, FloatType, IntType, Nested,
-    };
-
     use super::*;
+    use crate::framework::core::infrastructure::table::{
+        Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Nested,
+    };
 
     #[test]
     fn test_happy_path_all_types() {
@@ -1147,5 +1231,116 @@ mod tests {
             String::from_utf8(valid_result),
             Ok(expected_valid.to_string())
         );
+    }
+
+    #[test]
+    fn test_map_validation() {
+        let columns = vec![Column {
+            name: "user_scores".to_string(),
+            data_type: ColumnType::Map {
+                key_type: Box::new(ColumnType::String),
+                value_type: Box::new(ColumnType::Int(IntType::Int64)),
+            },
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        }];
+
+        // Test valid map
+        let valid_json = r#"
+        {
+            "user_scores": {
+                "alice": 100,
+                "bob": 85,
+                "charlie": 92
+            }
+        }
+        "#;
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .unwrap();
+
+        let expected_valid = r#"{"user_scores":{"alice":100,"bob":85,"charlie":92}}"#;
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
+
+        // Test invalid map (wrong value type)
+        let invalid_json = r#"
+        {
+            "user_scores": {
+                "alice": "not_a_number",
+                "bob": 85
+            }
+        }
+        "#;
+
+        let invalid_result = serde_json::Deserializer::from_str(invalid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
+
+        assert!(invalid_result.is_err());
+        assert!(invalid_result
+            .unwrap_err()
+            .to_string()
+            .contains("Type validation failed"));
+    }
+
+    #[test]
+    fn test_map_with_numeric_keys() {
+        let columns = vec![Column {
+            name: "id_to_name".to_string(),
+            data_type: ColumnType::Map {
+                key_type: Box::new(ColumnType::Int(IntType::Int64)),
+                value_type: Box::new(ColumnType::String),
+            },
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+        }];
+
+        // Test valid map with numeric keys (as strings in JSON)
+        let valid_json = r#"
+        {
+            "id_to_name": {
+                "123": "Alice",
+                "456": "Bob"
+            }
+        }
+        "#;
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .unwrap();
+
+        let expected_valid = r#"{"id_to_name":{"123":"Alice","456":"Bob"}}"#;
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
+
+        // Test invalid map with non-numeric keys
+        let invalid_json = r#"
+        {
+            "id_to_name": {
+                "not_a_number": "Alice",
+                "456": "Bob"
+            }
+        }
+        "#;
+
+        let invalid_result = serde_json::Deserializer::from_str(invalid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
+
+        assert!(invalid_result.is_err());
+        assert!(invalid_result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid integer key"));
     }
 }

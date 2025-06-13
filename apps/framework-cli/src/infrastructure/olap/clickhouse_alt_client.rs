@@ -22,7 +22,7 @@ use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
-use itertools::Either;
+use itertools::{Either, Itertools};
 use log::{info, warn};
 use serde::Serialize;
 use serde::__private::from_utf8_lossy;
@@ -151,17 +151,21 @@ fn value_to_json(
             json!(ip_str)
         }
         ValueRef::Ipv6(ip) => {
-            let ip_str = format!(
-                "{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
-                ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7],
-                ip[8], ip[9], ip[10], ip[11], ip[12], ip[13], ip[14], ip[15]
-            );
-            json!(ip_str)
+            json!(ip
+                .chunks(2)
+                .map(|chunk| { format!("{:02x}{:02x}", chunk[0], chunk[1]) })
+                .join(":"))
         }
-        ValueRef::Map(_, _, _) => {
-            // TODO: Implement proper Map handling once we understand the correct ValueRef::Map signature
-            json!({})
-        }
+        ValueRef::Map(_, _, m) => Value::Object(
+            m.iter()
+                .map(|(k, v)| {
+                    Ok::<_, clickhouse_rs::errors::Error>((
+                        k.to_string(),
+                        value_to_json(v, enum_mapping)?,
+                    ))
+                })
+                .collect::<Result<_, _>>()?,
+        ),
     };
     Ok(result)
 }

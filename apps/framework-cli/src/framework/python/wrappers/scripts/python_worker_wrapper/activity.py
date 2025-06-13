@@ -1,6 +1,6 @@
 from temporalio import activity
 from dataclasses import dataclass
-from moose_lib.dmv2 import _get_workflow
+from moose_lib.dmv2 import get_workflow
 from typing import Optional, Any, Callable
 import asyncio
 import os
@@ -37,7 +37,7 @@ def create_activity_for_script(script_name: str) -> Callable:
 
             if execution_input.dmv2_workflow_name:
                 log.info(f"<DMV2WF> Getting workflow {execution_input.dmv2_workflow_name}")
-                workflow = _get_workflow(execution_input.dmv2_workflow_name)
+                workflow = get_workflow(execution_input.dmv2_workflow_name)
                 if not workflow:
                     raise ValueError(f"Workflow {execution_input.dmv2_workflow_name} not found")
 

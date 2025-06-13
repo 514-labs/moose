@@ -28,7 +28,7 @@ import threading
 import time
 from typing import Optional, Callable, Tuple, Any
 
-from moose_lib.dmv2 import _streams, DeadLetterModel
+from moose_lib.dmv2 import get_streams, DeadLetterModel
 from moose_lib import cli_log, CliLogData, DeadLetterQueue
 
 # Force stdout to be unbuffered
@@ -186,7 +186,7 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
         sys.exit(1)
 
     # Find the stream that has a transformation matching our source/destination
-    for source_py_stream_name, stream in _streams.items():
+    for source_py_stream_name, stream in get_streams().items():
         if source_py_stream_name != source_topic.topic_name_to_stream_name():
             continue
 

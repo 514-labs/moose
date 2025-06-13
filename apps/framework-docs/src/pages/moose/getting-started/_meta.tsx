@@ -2,9 +2,9 @@ import { render } from "@/components";
 
 const meta = {
   quickstart: "5-Minute Quickstart",
-  architecture: "How Moose Works",
-  "project-structure": "Project Organization",
   "from-clickhouse": "Use with Existing ClickHouse",
+  architecture: "Core Concepts",
+  "project-structure": "Project Organization",
 };
 
 export default render(meta);

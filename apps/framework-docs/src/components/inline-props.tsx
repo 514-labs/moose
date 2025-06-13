@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
 
 interface InlinePropItem {
-  icon: LucideIcon;
+  Icon: React.ElementType;
   text: string;
   iconColor?: string;
 }
@@ -22,13 +21,17 @@ export function InlineProps({ items, className }: InlinePropsProps) {
     >
       {items.map((item, index) => (
         <div key={index} className="flex items-center gap-2">
-          <item.icon
+          <item.Icon
             className={cn(
               "w-4 h-4",
-              `text-${item.iconColor}` || "text-primary",
+              item.iconColor ? `text-${item.iconColor}` : "text-primary",
             )}
           />
-          <span className={cn(`text-${item.iconColor}` || "text-primary")}>
+          <span
+            className={cn(
+              item.iconColor ? `text-${item.iconColor}` : "text-primary",
+            )}
+          >
             {item.text}
           </span>
         </div>

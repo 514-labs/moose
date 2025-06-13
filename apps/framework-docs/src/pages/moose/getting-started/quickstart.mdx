@@ -4,7 +4,7 @@ description: Build your first analytical backend with Moose in 5 minutes
 ---
 
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, ValuePropCards, InlineProps, Contact } from "@/components";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, InlineProps, Contact } from "@/components";
 import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play, CheckCircle, Clock, MapPin, Sparkles, Lightbulb } from "lucide-react";
 import { paths } from "@/lib/paths";
 
@@ -12,53 +12,22 @@ import { paths } from "@/lib/paths";
 
 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
   <MapPin size={16} />
-  <span>You are here: <strong>Step 1</strong> of your Moose journey - Building your first pipeline</span>
+  <span>You are here: <strong>Quickstart</strong> — Build your first analytical backend in 5 minutes with ClickHouse, Redpanda, and APIs</span>
 </div>
-
-<Callout type="info" title="What You'll Build">
-In this quickstart, you'll create a complete analytics pipeline:
-- Ingest data via HTTP API
-- Stream/process events in real time
-- Store/query data in ClickHouse
-- Expose analytics via an API
-</Callout>
-
-<ZoomImg light="/quickstart-pipeline-light.svg" dark="/quickstart-pipeline-dark.svg" alt="Quickstart Pipeline" />
-
-**Build a complete analytical backend with real-time streaming, APIs, and a database.** No configuration required.
-
-<ValuePropCards
-  items={[
-    {
-      icon: Database,
-      title: "ClickHouse Database",
-      description: "Auto-generated schema",
-      iconColor: "text-blue-600"
-    },
-    {
-      icon: Workflow,
-      title: "Real-time Streaming",
-      description: "Redpanda/Kafka built-in",
-      iconColor: "text-green-600"
-    },
-    {
-      icon: FileCode,
-      title: "HTTP APIs",
-      description: "Ingestion & analytics",
-      iconColor: "text-purple-600"
-    }
-  ]}
-/>
 
 <InlineProps
   items={[
     {
-      icon: Clock,
-      text: "5 minutes to working pipeline"
+      Icon: Clock,
+      text: "5 minutes"
     },
     {
-      icon: CheckCircle,
-      text: "Zero configuration"
+      Icon: CheckCircle,
+      text: "Zero config"
+    },
+    {
+      Icon: Sparkles,
+      text: "Local ClickHouse, Redpanda, and APIs"
     }
   ]}
 />
@@ -147,21 +116,10 @@ Skip the tutorial and add Moose as a layer on top of your existing database → 
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
 
-<Callout type="success" title="Success indicator">
+<Callout type="success">
 You should see: `Moose CLI installed successfully!`
 </Callout>
-
-<Callout type="info" title="What Just Happened?">
-You installed the Moose CLI, which will help you scaffold, run, and manage your analytics backend.
-</Callout>
-
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Value Unlocked:</strong>
-  </div>
-  <p className="text-sm">The Moose CLI handles infrastructure setup that would normally take days to configure manually.</p>
-</div>
+_You now have the Moose CLI to manage your analytics backend._
 
 ## Step 2: Create Your Project (1 minute)
 
@@ -196,27 +154,35 @@ pip install -r requirements.txt
 moose dev
 ```
 
-<Callout type="success" title="✅ Success indicator">
-You should see output like:
+<ToggleBlock openText="Show expected output" closeText="Hide output">
 ```txt
-✅ ClickHouse database ready
-✅ Redpanda streaming ready  
-✅ HTTP APIs ready
-🚀 Moose dev server running on http://localhost:4000
+       Created docker compose file
+⡗ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+      Node Id: my-analytics-app::b15efaca-0c23-42b2-9b0c-642105f9c437
+      Starting development mode
+      Watching "/path/to/my-analytics-app/app"
+       Started Webserver.
+
+
+  Next Steps   
+
+💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure
+
+📥 Send Data to Moose
+	Your local development server is running at: http://localhost:4000/ingest
 ```
-</Callout>
 
-<Callout type="info" title="What Just Happened?">
-You initialized a new Moose project and started your local development environment. All required services (ClickHouse, Redpanda, APIs) are running locally.
+<Callout type="success">
+Your local analytics stack is running. You can now send data to Moose and query it.
 </Callout>
+</ToggleBlock>
 
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Value Unlocked:</strong>
-  </div>
-  <p className="text-sm">You now have a complete analytics stack running locally - something that would typically require multiple separate installations and configurations.</p>
-</div>
 
 </Steps>
 
@@ -260,57 +226,30 @@ Your project includes a complete example pipeline:
 </FileTree>
 </TypeScript>
 
-<BulletPointsCard
-  title="Data Flow:"
-  bulletStyle="number"
-  bullets={[
-    { title: "Raw data enters via `/ingest/Foo` HTTP endpoint" },
-    { title: "Data is transformed in real-time (Foo → Bar)" },
-    { title: "Transformed data lands in ClickHouse" },
-    { title: "Materialized view creates aggregations" },
-    { title: "Analytics API exposes queryable data" }
-  ]}
-/>
-
-<Callout type="info" title="What Just Happened?">
-Your project includes a working example pipeline. You can now ingest, process, and query data end-to-end.
+<Callout type="info" title="Browse your project files">
+to see how data flows from ingestion to analytics APIs. Open `app/ingest/models.ts` or `models.py` to see how data models are defined.
 </Callout>
-
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Value Unlocked:</strong>
-  </div>
-  <p className="text-sm">This project structure follows best practices for analytics applications, separating concerns between ingestion, transformation, and consumption.</p>
-</div>
-
-<div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Lightbulb size={16} className="text-amber-600" />
-    <strong>Try This:</strong>
-  </div>
-  <p className="text-sm">Open <TypeScript inline>`app/ingest/models.ts`</TypeScript><Python inline>`app/ingest/models.py`</Python> to see how data models are defined. Notice how the type system ensures data consistency.</p>
-</div>
 
 ## Step 4: Test Your Pipeline (2 minutes)
 
 ### Send test data
 
-Generate sample data to see your pipeline in action:
+<Callout type="info" title="Open a new terminal window">
+to run these commands.
+</Callout>
 
 <TypeScript>
-```bash filename="Terminal" copy
+```bash filename="Open a new terminal window" copy
 moose workflow run generator
 ```
 </TypeScript>
 
 <Python>
-```bash filename="Terminal" copy
+```bash filename="Open a new terminal window" copy
 moose workflow run generator
 ```
 </Python>
 
-<Callout type="success" title="✅ Success indicator">
 You should see logs like:
 ```txt
 POST ingest/Foo
@@ -318,44 +257,31 @@ POST ingest/Foo
 Received Foo_0_0 -> Bar_0_0 1 message(s)
 [DB] 17 row(s) successfully written to DB table (Bar)
 ```
-</Callout>
+
+<ToggleBlock openText="(Bonus) Peek at your data" closeText="Hide details">
+Run this helper command to peek at your data in ClickHouse:
+
+```bash filename="Terminal" copy
+moose peek Bar --limit 5
+```
+
+</ToggleBlock>
 
 ### Query your data
-
-Test your analytics API:
 
 ```bash filename="Terminal" copy
 curl "http://localhost:4000/consumption/bar"
 ```
+You should see JSON data with your processed events.
 
-<Callout type="success" title="✅ Success indicator">
-You should see JSON data with your processed events:
-```json
-[
-  {
-    "id": "123",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "processed_data": "..."
-  }
-]
-```
+
+<Callout type="success">
+You now have a complete data pipeline working end-to-end
 </Callout>
 
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Value Unlocked:</strong>
-  </div>
-  <p className="text-sm">You now have a complete data pipeline with ingestion, transformation, storage, and querying - all working together automatically.</p>
-</div>
-
-<div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Lightbulb size={16} className="text-amber-600" />
-    <strong>Try This:</strong>
-  </div>
-  <p className="text-sm">Try adding a query parameter to filter results: <code>curl "http://localhost:4000/consumption/bar?limit=5"</code></p>
-</div>
+```bash filename="Try adding a query parameter!" copy
+curl "http://localhost:4000/consumption/bar?limit=5"
+```
 
 ### Explore with OpenAPI UI
 
@@ -396,38 +322,24 @@ class Foo(BaseModel):
     id: Key[str]
     timestamp: datetime
     data: str
-    new_field: str  # Add this line
+    new_field: str  // Add this line
 ```
 </Python>
 
 3. Save the file and watch your terminal
 
-<Callout type="success" title="Success indicator">
 You should see Moose automatically update your infrastructure:
 ```txt
 ~ Table Foo with column changes: [Added(Column { name: "newField", data_type: String })]
 ~ API Endpoint: Foo - Updated validation schema
 ~ Topic: Foo - Schema updated
 ```
+
+Schema changes are automatically applied across your stack.
+
+<Callout type="success" title="That's it!">
+Your API, database schema, and streaming topic all updated automatically. Try adding another field with a different data type.
 </Callout>
-
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Value Unlocked:</strong>
-  </div>
-  <p className="text-sm">Schema changes that would normally require database migrations, API updates, and streaming topic changes are all handled automatically.</p>
-</div>
-
-<div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Lightbulb size={16} className="text-amber-600" />
-    <strong>Try This:</strong>
-  </div>
-  <p className="text-sm">Try adding another field with a different data type, like a number or boolean. Notice how Moose automatically handles the type conversion.</p>
-</div>
-
-**That's it!** Your API, database schema, and streaming topic all updated automatically.
 
 ## Congratulations!
 
@@ -435,7 +347,7 @@ You've built a complete analytical backend with:
 
 <BulletPointsCard
   bulletStyle="check"
-  title="✅ What's Working"
+  title="What's Working"
   bullets={[
     { title: "Type-safe data ingestion API" },
     { title: "Real-time stream processing" },
@@ -446,26 +358,6 @@ You've built a complete analytical backend with:
 />
   
 ## Where to Go Next?
-
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Building a Product Analytics System?</h3>
-    <p className="text-sm text-muted-foreground mb-3">Track user behavior and create funnels</p>
-    <a href="/moose/examples/product-analytics" className="text-sm text-blue-600 hover:underline">View Example →</a>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Creating Real-Time Dashboards?</h3>
-    <p className="text-sm text-muted-foreground mb-3">Build live metrics and KPI monitoring</p>
-    <a href="/moose/examples/real-time-dashboard" className="text-sm text-blue-600 hover:underline">View Example →</a>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Processing IoT Data?</h3>
-    <p className="text-sm text-muted-foreground mb-3">Handle sensor data and device telemetry</p>
-    <a href="/moose/examples/iot-monitoring" className="text-sm text-blue-600 hover:underline">View Example →</a>
-  </div>
-</div>
-
-## Next Steps
 
 <FeatureGrid columns={3}>
 <FeatureCard
@@ -481,9 +373,9 @@ You've built a complete analytical backend with:
   Icon={Database}
 />
 <FeatureCard
-  title="Explore More Building Blocks"
-  description="Learn how to use the other building blocks of Moose"
-  href={paths.building}
+  title="Review the Architecture"
+  description="Understand how Moose fits into your stack"
+  href={paths.architecture}
   Icon={Square}
 />
 </FeatureGrid>
@@ -536,6 +428,7 @@ curl https://pyenv.run | bash
 pyenv install 3.12
 pyenv local 3.12
 ```
+</Python>
 </Tabs.Tab>
 
 <Tabs.Tab>
@@ -567,6 +460,3 @@ chmod +x ~/.moose/bin/moose
 
 **Still stuck?** Join our [Slack community](https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA) or [open an issue](https://github.com/514-labs/moose/issues).
 </ToggleBlock>
-
-
-<Contact />

@@ -20,6 +20,9 @@ import {
   Icons,
   Contact,
   InlineProps,
+  StaggeredCard,
+  StaggeredContent,
+  StaggeredCode,
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -40,33 +43,28 @@ import {
   Download,
   TrendingUp,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  MapPin
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
 import { paths } from "@/lib/paths";
 
-# Moose: The Backend Framework for the Analytics Stack
-
-**Tired of cobbling together analytics tools? Moose gives you a complete analytics backend in minutes.** Define data models, get APIs and streaming infrastructure automatically.
-
+# Welcome to Moose
 
 <InlineProps
   items={[
     {
-      icon: Database,
-      text: "Built on ClickHouse, Kafka, Temporal",
-      iconColor: "blue-600"
+      Icon: Clock,
+      text: "5 minute setup",
     },
     {
-      icon: ShieldCheck,
-      text: "Production-grade: 100M+ events/day, zero downtime migrations",
-      iconColor: "green-600"
+      Icon: ShieldCheck,
+      text: "Pre-integrated ClickHouse, Redpanda, Temporal",
     },
     {
-      icon: TrendingUp,
-      text: "Framework for user-facing analytics, data warehouses, and observability",
-      iconColor: "purple-600"
+      Icon: TrendingUp,
+      text: "Hot-reload development",
     }
   ]}
 />
@@ -102,460 +100,385 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
   />
 </CTACards>
 
-## Why Moose Exists
-Most teams have great, integrated developer experience for transactional apps, but treat analytics as disconnected "data pipelines" + "SQL queries" + "connectors" that break constantly:
-
-<div>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <BulletPointsCard
-      title="Web Development: Streamlined DX"
-      bulletStyle="check"
-      bullets={[
-        { title: "Use frameworks", description: "Next, Django, Rails" },
-        { title: "Hot reload development", description: "Instant feedback on changes" },
-        { title: "Type safety everywhere", description: "Catch errors at dev time" },
-        { title: "One codebase, one deployment", description: "Get to production in minutes" }
-      ]}
-    />
-    
-    <BulletPointsCard
-      title="Analytics Development: Clunky DX"
-      bulletStyle="x"
-      bullets={[
-        { title: "No frameworks", description: "Cobble tools together manually" },
-        { title: "No hot-reload", description: "Restart everything manually" },
-        { title: "No type-safety", description: "YAML configs everywhere" },
-        { title: "Multiple deployments", description: "5+ separate systems to manage" }
-      ]}
-    />
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <BulletPointsCard
-      title="Web Development: Integrated Environment"
-      bulletStyle="check"
-      bullets={[
-        { title: "Integrated database", description: "PostgreSQL/MySQL built-in" },
-        { title: "Built-in HTTP APIs", description: "Routing & endpoints included" },
-        { title: "ORM for data models", description: "Type-safe database queries" },
-        { title: "Middleware for logic", description: "Reusable business logic" }
-      ]}
-    />
-    
-    <BulletPointsCard
-      title="Analytics Development: Disjointed Manual Setup"
-      bulletStyle="x"
-      bullets={[
-        { title: "Separate database setup", description: "Manual ClickHouse configuration" },
-        { title: "Custom API boilerplate", description: "FastAPI/Express from scratch" },
-        { title: "Manual schema management", description: "Write DDL scripts by hand" },
-        { title: "Custom streaming code", description: "Kafka consumers from scratch" }
-      ]}
-    />
-  </div>
-</div>
-> **You probably wouldn't build a web app without a framework.** So why build analytics without one?
-
-### Without Moose: Manual Configuration & Integration
-
-```txt filename="Manually maintaining an analytics stack:" 
-Kafka Config     (300 lines of YAML)
-+ ClickHouse     (Manual schema management)  
-+ dbt            (SQL-only transformations)
-+ Airflow        (Workflow orchestration)
-+ Custom APIs    (Boilerplate code)
-```
-
-> **Result:** 6 months, 3 engineers, constant maintenance
-
-### With Moose: Same Framework Benefits, Built for Analytics
-
-Moose gives you the familiar DX of web frameworks, but with components designed for analytical workloads instead of CRUD operations:
+## What is Moose?
+Open source TypeScript/Python framework for building analytical backends—streaming, storage, and APIs in TypeScript or Python.
 
 <BulletPointsCard
-  title="Complete Analytics Stack in One Application"
+  title="Why Devs Choose Moose"
   bulletStyle="check"
+  compact={true}
   bullets={[
-    { title: "HTTP API Server", description: "For data ingestion & consumption" },
-    { title: "Kafka Streaming", description: "For real-time event processing" },
-    { title: "Analytical Database (ClickHouse)", description: "For columnar analytics storage & aggregation" },
-    { title: "Background Jobs (Temporal)", description: "For batch ETL and data movement" }
+    { title: "Define everything in code", description: "Data models, pipelines, and endpoints." },
+    { title: "Integrated analytics infrastructure", description: "Get ClickHouse tables, Kafka/Redpanda streams, and HTTP APIs, all auto-wired and type-safe." },
+    { title: "Fast setup and local-first development", description: "Zero boilerplate, instant feedback, and no context switching." },
   ]}
 />
 
-## What You'll Build
-
-Moose helps you build analytical backends that combine:
-
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  bullets={[
-    { 
-      title: "Type-Safe Data Models", 
-      description: "Define your schema once, get validation everywhere - catch errors at dev time, not in production",
-      link: {
-        text: "Learn about data models",
-        href: paths.dataModels
-      }
-    },
-    { 
-      title: "Real-Time Streaming", 
-      description: "Process events as they arrive with built-in Kafka/Redpanda - no separate streaming infrastructure to manage",
-      link: {
-        text: "Explore streaming",
-        href: paths.streams
-      }
-    },
-    { 
-      title: "Analytical Storage", 
-      description: "Store and query data with ClickHouse's columnar engine - 100x faster than traditional databases for analytics",
-      link: {
-        text: "Learn about storage",
-        href: paths.storage
-      }
-    },
-    { 
-      title: "HTTP APIs", 
-      description: "Expose data ingestion and analytics endpoints automatically - no boilerplate code needed",
-      link: {
-        text: "Explore APIs",
-        href: paths.consumptionApis
-      }
-    },
-    {
-      title: "Data Movement Workflows",
-      description: "Orchestrate background jobs and scheduled tasks to move data between your analytical database and other systems",
-      link: {
-        text: "Learn about workflows",
-        href: paths.workflows
-      }
-    }
-  ]}
-/>
 <Tabs items={["TypeScript", "Python"]}>
 <Tabs.Tab>
-
-#### Data Ingestion
-```ts filename="Receive & Validate Events from Data Source" copy
-// Define your data model
-interface Vote {
-  postId: Key<string>;
-  userId: string;
-  voteType: 'up' | 'down';
-  timestamp: Date;
+```ts filename="Complete Analytical Backend in 1 TS file" copy
+import { Key, OlapTable, Stream, IngestApi, ConsumptionApi } from "@514labs/moose-lib";
+ 
+interface DataModel {
+  primaryKey: Key<string>;
+  name: string;
 }
-
-// Create pipeline with HTTP API + Stream (no table yet)
-export const votes = new IngestPipeline<Vote>("votes", {
-  ingest: true,    // ✅ HTTP API: POST /ingest/votes
-  stream: true,    // ✅ Redpanda stream for real-time processing
-  table: false     // ❌ Skip storage for raw votes
+// Create a ClickHouse table
+export const clickhouseTable = new OlapTable<DataModel>("TableName");
+ 
+// Create a Redpanda streaming topic
+export const redpandaTopic = new Stream<DataModel>("TopicName", {
+  destination: clickhouseTable,
 });
-```
-
-#### Real-time Stream Processing
-```ts filename="Process Events in Real-Time" copy
-// Define processed vote model
-interface ProcessedVote extends Vote {
-  score: number;
-  hour: Date;
-}
-
-// Create destination stream + table for processed votes
-export const processedVotes = new IngestPipeline<ProcessedVote>("processed_votes", {
-  ingest: false,   // ❌ No direct ingestion
-  stream: true,    // ✅ Stream for further processing
-  table: true      // ✅ Store processed votes
+ 
+// Create an ingest API endpoint
+export const ingestApi = new IngestApi<DataModel>("post-api-route", {
+  destination: redpandaTopic,
 });
-
-// Transform raw votes into scored votes
-votes.stream!.addTransform(processedVotes.stream!, (vote: Vote) => ({
-  ...vote,
-  score: vote.voteType === 'up' ? 1 : -1,
-  hour: new Date(vote.timestamp.getFullYear(), vote.timestamp.getMonth(), 
-                 vote.timestamp.getDate(), vote.timestamp.getHours())
-}));
-```
-
-#### In-Database Aggregation
-```ts filename="Create Real-Time Leaderboard" copy
-// Define leaderboard entry model
-interface LeaderboardEntry {
-  postId: string;
-  totalScore: number;
-  totalVotes: number;
-  hour: Date;
-}
-
-// Create materialized view for real-time aggregation
-export const leaderboard = new MaterializedView<LeaderboardEntry>({
-  selectStatement: sql`
-    SELECT 
-      postId, 
-      sum(score) as totalScore,
-      count() as totalVotes,
-      toStartOfHour(timestamp) as hour
-    FROM ${processedVotes.table!} 
-    GROUP BY postId, hour
-    ORDER BY totalScore DESC
-  `,
-  selectTables: [processedVotes.table!],
-  tableName: "post_leaderboard_table",
-  materializedViewName: "post_leaderboard_mv"
-});
-```
-
-#### Analytics API
-```ts filename="Query Aggregated Data" copy
-// Define API parameters
-interface LeaderboardParams {
+ 
+// Create consumption API endpoint
+interface QueryParams {
   limit?: number;
-  minScore?: number;
 }
-
-// Create consumption API
-export const getLeaderboard = new ConsumptionApi<
-  LeaderboardParams, 
-  LeaderboardEntry[]
->("leaderboard", async (params, { client }) => {
-  const limit = params.limit || 10;
-  const minScore = params.minScore || 0;
-  
-  return await client.query(`
-    SELECT postId, totalScore, totalVotes, hour
-    FROM post_leaderboard_table 
-    WHERE totalScore >= ${minScore}
-    ORDER BY totalScore DESC 
-    LIMIT ${limit}
-  `);
+export const consumptionApi = new ConsumptionApi<QueryParams, DataModel>("get-api-route", {
+  async handler({limit = 10}: QueryParams, {client, sql}): {
+    const result = await client.query.execute(sql`SELECT * FROM ${clickhouseTable} LIMIT ${limit}`);
+    return await result.json();
+  }
 });
 ```
 </Tabs.Tab>
-
 <Tabs.Tab>
-#### Data Ingestion
-```python filename="Receive & Validate Events from Data Source" copy
-# Define your data model
-class Vote(BaseModel):
-    postId: Key[str]
-    userId: str
-    voteType: Literal["up", "down"]
-    timestamp: datetime
-
-# Create pipeline with HTTP API + Stream (no table yet)
-votes = IngestPipeline[Vote]("votes", IngestPipelineConfig(
-    ingest=True,    # ✅ HTTP API: POST /ingest/votes
-    stream=True,    # ✅ Redpanda stream for real-time processing
-    table=False     # ❌ Skip storage for raw votes
+```python filename="Complete Analytical Backend in 1 Python file" copy
+from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi
+from pydantic import BaseModel
+ 
+class DataModel(BaseModel):
+    primary_key: Key[str]
+    name: str
+ 
+# Create a ClickHouse table
+clickhouse_table = OlapTable[DataModel]("TableName")
+ 
+# Create a Redpanda streaming topic
+redpanda_topic = Stream[DataModel]("TopicName", StreamConfig(
+    destination=clickhouse_table,
 ))
-```
-
-#### Real-time Stream Processing
-```python filename="Process Events in Real-Time" copy
-# Define processed vote model
-class ProcessedVote(Vote):
-    score: int
-    hour: datetime
-
-# Create destination stream + table for processed votes
-processed_votes = IngestPipeline[ProcessedVote]("processed_votes", IngestPipelineConfig(
-    ingest=False,   # ❌ No direct ingestion
-    stream=True,    # ✅ Stream for further processing
-    table=True      # ✅ Store processed votes
+ 
+# Create an ingest API endpoint
+ingest_api = IngestApi[DataModel]("post-api-route", IngestApiConfig(
+    destination=redpanda_topic,
 ))
-
-# Transform raw votes into scored votes
-def transform_vote(vote: Vote) -> ProcessedVote:
-    return ProcessedVote(
-        **vote.model_dump(),
-        score=1 if vote.voteType == "up" else -1,
-        hour=vote.timestamp.replace(minute=0, second=0, microsecond=0)
-    )
-
-votes.get_stream().add_transform(processed_votes.get_stream(), transform_vote)
-```
-
-#### In-Database Aggregation
-```python filename="Create Real-Time Leaderboard" copy
-# Define leaderboard entry model
-class LeaderboardEntry(BaseModel):
-    postId: str
-    totalScore: int
-    totalVotes: int
-    hour: datetime
-
-# Create materialized view for real-time aggregation
-leaderboard = MaterializedView[LeaderboardEntry](MaterializedViewOptions(
-    select_statement="""
-        SELECT 
-          postId, 
-          sum(score) as totalScore,
-          count() as totalVotes,
-          toStartOfHour(timestamp) as hour
-        FROM processed_votes_table 
-        GROUP BY postId, hour
-        ORDER BY totalScore DESC
-    """,
-    select_tables=[processed_votes.get_table()],
-    table_name="post_leaderboard_table",
-    materialized_view_name="post_leaderboard_mv"
-))
-```
-
-#### Analytics API
-```python filename="Query Aggregated Data" copy
-# Define API parameters
-class LeaderboardParams(BaseModel):
-    limit: int = Field(default=10)
-    minScore: int = Field(default=0)
-
-# Create consumption API
-def get_leaderboard(params: LeaderboardParams, client: MooseClient):
-    return client.query(f"""
-        SELECT postId, totalScore, totalVotes, hour
-        FROM post_leaderboard_table 
-        WHERE totalScore >= {params.minScore}
-        ORDER BY totalScore DESC 
-        LIMIT {params.limit}
-    """)
-
-leaderboard_api = ConsumptionApi[LeaderboardParams, list[LeaderboardEntry]](
-    "leaderboard", 
-    get_leaderboard
-)
-```
+ 
+# Create a consumption API endpoint
+class QueryParams(BaseModel):
+    limit: int = 10
+ 
+def handler(client, params: QueryParams):
+    return client.query.execute("SELECT * FROM {table: Identifier} LIMIT {limit: Int32}", {
+        "table": clickhouse_table.name,
+        "limit": params.limit,
+    })
+ 
+consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", query_function=handler)
+``` 
 </Tabs.Tab>
 </Tabs>
 
-**Result:** Complete analytics pipeline
 
-```bash
-# Your analytics backend is now live:
-POST /ingest/votes          # ← Ingest vote events
-GET /consumption/leaderboard # ← Query real-time leaderboard
+## Why Moose Exists & Who It's For
 
-# Data flows automatically:
-# Vote → Stream Transform → Aggregation → API
-```
+Moose is for developers who want to move fast and treat analytics as real software—not a patchwork of YAML, SQL, and fragile connectors. 
 
->**Result:** 1 week, 1 engineer, minimal maintenance
-
-### Local Development with Hot Reload
-
-**Get a complete analytics stack running locally in seconds:**
-
-```bash filename="Start your development environment" copy
-moose dev
-# ✅ ClickHouse database running locally
-# ✅ Redpanda streaming infrastructure  
-# ✅ HTTP APIs auto-generated from your models
-# ✅ Hot-reload enabled for instant feedback
-```
-
-**Every code change automatically updates your entire stack:**
-
-**Change your data model:**
-```ts filename="models/Vote.ts"
-interface Vote {
-  postId: Key<string>;
-  userId: string;
-  voteType: 'up' | 'down';
-  timestamp: Date;
-  // Add new field ↓
-  deviceType: string;
-}
-```
-
-**Everything updates instantly:**
-```bash
-🔄 Schema updated in ClickHouse
-🔄 HTTP API updated: POST /ingest/votes
-🔄 Stream processing updated
-🔄 TypeScript types regenerated
-✅ Ready in 2 seconds
-```
-
-**Test your APIs immediately:**
-
-```bash filename="Your analytics backend is live" copy
-# Ingest data
-curl -X POST http://localhost:4000/ingest/votes \
-  -H "Content-Type: application/json" \
-  -d '{"postId": "123", "userId": "user1", "voteType": "up", "timestamp": "2024-01-01T12:00:00Z", "deviceType": "mobile"}'
-
-# Query aggregated data  
-curl http://localhost:4000/consumption/leaderboard?limit=10
-```
-
-## Use Cases
-
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
   <BulletPointsCard
-    title="User Facing Analytics"
-    bulletStyle="default"
-    divider={false}
+    title="Web DX: Fast & Integrated"
+    bulletStyle="check"
     compact={true}
     bullets={[
-      "Embed dashboards in your product UI",
-      "Provide self-service analytics to customers",
-      "Build user-facing metrics and KPIs",
-      "Create interactive data visualizations"
+      { title: "Frameworks out of the box", description: "Next, Django, Rails" },
+      { title: "Integrated database", description: "Postgres/MySQL built-in" },
+      { title: "Built-in HTTP APIs", description: "Routing & endpoints included" },
+      { title: "Type-safe data models", description: "ORMs and dev time validation" },
+      { title: "Hot-reload local development", description: "Instant feedback on changes" },
+      { title: "One codebase, one deployment", description: "Get to production in minutes" }
     ]}
   />
-  
   <BulletPointsCard
-    title="Data Warehouse"
-    bulletStyle="default"
-    divider={false}
+    title="Analytics DX: Slow & Fragmented"
+    bulletStyle="x"
     compact={true}
     bullets={[
-      "Centralize data from multiple sources",
-      "Run complex analytical queries",
-      "Build business intelligence reports",
-      "Create data pipelines between systems"
-    ]}
-  />
-  
-  <BulletPointsCard
-    title="Observability"
-    bulletStyle="default"
-    divider={false}
-    compact={true}
-    bullets={[
-      "Monitor application performance",
-      "Track high-cardinality metrics",
-      "Process and query logs at scale",
-      "Create real-time alerts and dashboards"
+      { title: "No frameworks", description: "Manual tool integration" },
+      { title: "Separate database setup", description: "Manual ClickHouse configuration" },
+      { title: "Custom API boilerplate", description: "FastAPI/Express from scratch" },
+      { title: "Manual schema management", description: "Write DDL scripts by hand, YAML configs everywhere" },
+      { title: "No hot-reload dev", description: "Wait for deploys to see errors" },
+      { title: "Multiple codebases and deployments", description: "5+ separate systems to manage" }
     ]}
   />
 </div>
 
-## Next Steps
+### Without Moose vs. With Moose
+Moose gives you a unified, code-first experience to build, test, and ship analytics features with the same speed and confidence as web apps.
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div>
+    ```txt filename="Without Moose: Manual config & integration" 
+    Kafka Config     (300 lines of YAML)
+    + ClickHouse     (Manual schema management)  
+    + dbt            (SQL-only transformations)
+    + Airflow        (Workflow orchestration)
+    + Custom APIs    (Boilerplate code)
+    + ...
+    ```
+  </div>
+  <div>
+    ```ts filename="With Moose: One codebase for everything" copy
+    new IngestPipeline<DataModel>("pipeline", {
+      ingest: true, // HTTP API w/ validation
+      stream: true, // Redpanda/Kafka topic
+      table: true, // ClickHouse table
+    });
+    // Auto-generated & auto-wired together
+    ```
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+  <div>
+    <BulletPointsCard
+      title="Constant context switching"
+      bulletStyle="x"
+      compact={true}
+      bullets={[
+        "Does my Database table use snake_case or camelCase?",
+        "Did I add the new field to both the model AND the table?",
+        "Which database field was nullable again?",
+      ]}
+    />
+  </div>
+  <div>
+    <BulletPointsCard
+      title="Similar Web DX, but for analytics"
+      bulletStyle="check"
+      compact={true}
+      bullets={[
+        "Zero glue code",
+        "Type-safe, code-first",
+        "Integrated HTTP, Redpanda, ClickHouse",
+        "Hot-reload development",
+      ]}
+    />
+  </div>
+</div>
+
+
+## Core Capabilities
+
+<div className="space-y-8 my-8">
+  {/* Type-Safe Data Models */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### Type-Safe Data Models
+      Define your schema once, get validation everywhere—catch errors at dev time, not in production.
+      <Button asChild variant="link">
+        <a href={paths.dataModels}>Learn about data models →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      interface Event {
+        id: Key<string>;
+        name: string;
+        createdAt: Date;
+      }
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+
+  {/* HTTP APIs */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### HTTP APIs
+      Expose data ingestion and analytics endpoints automatically—no boilerplate code needed.
+      <Button asChild variant="link">
+        <a href={paths.ingestion}>Explore ingest APIs →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      const postApi = new IngestApi<Event>("post-event", {
+        destination: stream,
+      });
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+
+  {/* Real-Time Streaming */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### Real-Time Streaming
+      Process events as they arrive with built-in Kafka/Redpanda—no separate streaming infrastructure to manage.
+      <Button asChild variant="link">
+        <a href={paths.streams}>Explore streaming →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      const stream = new Stream<Event>("events", {
+        destination: table,
+      });
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+
+  {/* Analytical Database */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### Analytical Database
+      Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics.
+      <Button asChild variant="link">
+        <a href={paths.olapTables}>Learn about OLAP tables →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      const table = new OlapTable<Event>("events");
+
+      const sql = sql`SELECT count(*) FROM ${table} GROUP BY name`;
+
+      const matView = new MaterializedView<Event>("aggregated-events", {
+        selectStatement: sql,
+        selectTables: [table],
+        //...
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+
+  {/* Consumption APIs */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### Consumption APIs
+      Expose analytical data via HTTP endpoints, with type safety and schema validation.
+      <Button asChild variant="link">
+        <a href={paths.consumptionApis}>Explore consumption APIs →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      const getEvents = new ConsumptionApi<Params, Event>("get-events", {
+        async handler({ limit = 10 }, { client, sql }) {
+          const result = await client.query.execute(
+            sql`SELECT * FROM ${table} LIMIT ${limit}`
+          );
+          return await result.json();
+        }
+      });
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+
+  {/* Data Movement Workflows */}
+  <StaggeredCard>
+    <StaggeredContent>
+      ### Data Movement Workflows
+      Orchestrate background jobs and scheduled tasks to move data between your analytical database and other systems.
+      <Button asChild variant="link">
+        <a href={paths.workflows}>Learn about workflows →</a>
+      </Button>
+    </StaggeredContent>
+    <StaggeredCode>
+      ```ts
+      const extractData = new Task<null, boolean>("extract-data", {
+        run: async () => {
+          const data = await fetch(
+            "https://api.example.com/data"
+          ).then(res => res.json());
+          await table.insert(data);
+          return true;
+        },
+      });
+
+      const workflow = new Workflow("hourly-etl", {
+        schedule: "0 * * * *",
+        firstTask: extractData,
+      });
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+</div>
+
+## Start Developing in Seconds
+
+<BulletPointsCard
+  title="Local-First Development"
+  bulletStyle="check"
+  compact={true}
+  bullets={[
+    "1 command to spin up entire backend infrastructure",
+    "Zero configuration required",
+    "Exact replication of production infrastructure and logic",
+    "See your changes reflected instantly throughout the stack",
+  ]}
+/>
+
+Moose comes with a pre-configured and fully integrated data stack that runs entirely on your laptop. Spin it up with one command:
+
+```bash filename="Terminal" copy
+moose dev
+```
+
+All the infrastructure is automatically spun up:
+```txt
+⡏ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+```
+
+<BulletPointsCard
+  title="Common workflow scenarios"
+  bulletStyle="check"
+  compact={true}
+  bullets={[
+    { title: "Need to add or change a model?", description: "Moose hot reloads it to your local infrastructure when you save" },
+    { title: "Added a new field?", description: "It's instantly available in your API, streams, and database" },
+    { title: "Need to test your pipeline?", description: "Send sample data to your local ingest API and see the data flow through" },
+  ]}
+/>
+
+Learn more in the [5-minute tutorial](/moose/getting-started/quickstart).
+
+### Common Use Cases
 
 <CTACards columns={3}>
-  <CTACard
-    title="5-minute tutorial"
-    description="Build your first analytics backend"
-    ctaLink={paths.quickstart}
-    ctaLabel="Start Tutorial →"
-    Icon={TrendingUp}
-    variant="default"
-  />
-  <CTACard
-    title="Explore Core Concepts"
-    description="Learn how Moose works"
-    ctaLink="/moose/building/overview"
-    ctaLabel="View Architecture"
-    Icon={Code}
-    variant="default"
-  />
-  <CTACard
-    title="Add to existing ClickHouse"
-    description="Works with your current data"
-    ctaLink="/moose/getting-started/from-clickhouse"
-    ctaLabel="Add Moose Layer"
-    Icon={Database}
-    variant="default"
-  />
+<CTACard
+  title="User-Facing Analytics"
+  description="Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend."
+  ctaLink={`${paths.architecture}#user-facing-analytics`}
+  ctaLabel="Learn More →"
+  Icon={MapPin}
+/>
+<CTACard
+  title="Operational Data Warehouse"
+  description="Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools."
+  ctaLink={`${paths.architecture}#operational-data-warehouse`}
+  ctaLabel="Learn More →"
+  Icon={MapPin}
+/>
+<CTACard
+  title="Observability"
+  description="Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms."
+  ctaLink={`${paths.architecture}#observability`}
+  ctaLabel="Learn More →"
+  Icon={MapPin}
+/>
 </CTACards>
+
+<Callout type="info" title="Ready to build?">
+  Head to the [5-minute tutorial](/moose/getting-started/quickstart) to try Moose yourself!
+</Callout>

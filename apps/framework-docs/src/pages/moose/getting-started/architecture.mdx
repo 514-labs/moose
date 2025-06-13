@@ -1,226 +1,155 @@
 ---
-title: Architecture & Design Patterns
-description: High-level system design and integration patterns for Moose applications.
+title: Moose Core Concepts
+description: Essential primitives, patterns, and architecture for building with Moose.
 ---
 
 import { Callout, ZoomImg, BulletPointsCard } from "@/components";
 import { MapPin } from "lucide-react";
+import { Steps } from "nextra/components";
 
-# Architecture & Design Patterns
+# Moose Core Concepts
 
 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
   <MapPin size={16} />
-  <span>You are here: <strong>Architecture</strong> — Understand how Moose fits into your stack</span>
+  <span>You are here: <strong>Core Concepts</strong> — Learn the building blocks of Moose</span>
 </div>
 
-<Callout type="info" title="Who should read this?">
-This page is for developers and architects who want a high-level understanding of how Moose fits into their stack and how its core components interact. For hands-on setup, see the <a href="/moose/getting-started">Getting Started</a> guide.
-</Callout>
+---
+
+## How Moose Fits in Your Stack
+
+<ZoomImg light="/architecture-figjam.jpg" dark="/architecture-figjam.jpg" alt="Moose Data Flow" />
+
+Moose sits between your data sources and your analytics consumers, orchestrating ingestion, processing, storage, and API access.
 
 ---
 
-## Moose System Overview
+## Moose Components: The Building Blocks
 
-<ZoomImg light="/moose-dataflow-light.svg" dark="/moose-dataflow-dark.svg" alt="Moose Data Flow" />
-
-**Moose sits between your data sources and your analytics consumers, orchestrating ingestion, processing, storage and API access.**
-
----
-
-## What's Included with Moose
-
-Moose provides a complete analytics backend and developer toolkit out-of-the-box:
-
-- **Moose Core (Orchestrator):** The engine that manages all infrastructure, APIs, and hot reloading. You don't interact with Moose Core directly—instead, you write code using the Moose libraries.
-- **Moose Libraries:**  
-  - [`py-moose-lib`](../../packages/py-moose-lib): Python SDK for defining pipelines, schemas, workflows, and APIs.
-  - [`ts-moose-lib`](../../packages/ts-moose-lib): TypeScript SDK for the same, with type safety.
-- **ClickHouse:** High-performance, columnar analytical database for storage and fast queries.
-- **Redpanda/Kafka:** Built-in event streaming for real-time data pipelines.
-- **Temporal:** Workflow engine for background jobs and orchestration.
-- **Built-in HTTP APIs:** For data ingestion and consumption, auto-generated from your code.
-- **Hot reload & local dev:** All infrastructure runs locally with a single command (`moose dev`).
-- **Monitoring & Metrics:** Built-in metrics endpoints for observability.
-- **Dead Letter Queues:** Automatic handling of failed events.
-
-> **How it fits together:**  
-> You write code using the Moose libraries (`py-moose-lib` or `ts-moose-lib`). Moose Core reads your code, manages the infrastructure, and hot-reloads changes as you develop. You interact with Moose by writing code—not by manually configuring servers or services.
-
-## Moose Core Layer
-
-Moose Core is the engine that powers all Moose analytics infrastructure. It provides:
-
-- **Rust HTTP Endpoints for Ingest:** High-performance endpoints with schema validation, routing incoming data into streaming topics.
-- **Streaming Consumer:** Continuously loads data from streaming topics into ClickHouse for durable, queryable storage.
-- **Streaming Functions:** Orchestrates Python/Node.js lambda functions that consume from topics and transform data in-flight as it streams through the system.
-- **Consumption APIs:** Type-safe HTTP endpoints that connect to ClickHouse and expose analytical data to consumers and applications.
-- **Process Management & State Tracking:** Moose Core manages all these processes, tracks the internal state of tables, topics, and APIs, and computes diffs between your code and the current infrastructure. This enables hot reloading of pipelines, schemas, functions, and queries as you develop—no manual migrations or restarts required.
-
----
-
-## Core Primitives
-
-You define Moose primitives in your code using the Moose libraries. Moose Core turns these definitions into real infrastructure and APIs.
+Moose provides a set of core primitives you use to define how you want to ingest, transform, store, and expose data for your backend.  
+Here's a quick glossary:
 
 <BulletPointsCard
   title="Moose Primitives"
   bulletStyle="default"
   divider={true}
   bullets={[
-    { 
-      title: "IngestPipeline", 
-      description: "Define an IngestPipeline in Python/TypeScript to create an HTTP endpoint, streaming topic, and ClickHouse table for event ingestion.",
+    {
+      title: "IngestPipeline",
+      description: "HTTP endpoint + streaming + storage for event ingestion. Use for collecting frontend events via HTTP.",
       link: { text: "Learn more", href: "/moose/building/ingestion" }
     },
-    { 
-      title: "Stream", 
-      description: "Define a Stream to process events in real time as they flow through your system. Moose Core manages the consumer and scaling.",
+    {
+      title: "Stream",
+      description: "Real-time processing of events as they flow. Use for transforming or filtering data in motion.",
       link: { text: "Learn more", href: "/moose/building/streams" }
     },
-    { 
-      title: "OlapTable", 
-      description: "Define an OlapTable for analytical storage. You can write to it directly or use it as a target for transformed data.",
+    {
+      title: "OlapTable",
+      description: "Analytical storage, batch or streaming writes. Use for storing large volumes of analytical data.",
       link: { text: "Learn more", href: "/moose/building/olap-table" }
     },
-    { 
-      title: "MaterializedView", 
-      description: "Define a MaterializedView to create real-time aggregations in ClickHouse, updated automatically as new data arrives.",
+    {
+      title: "MaterializedView",
+      description: "Real-time aggregations, auto-updated. Use for pre-computed metrics and dashboards.",
       link: { text: "Learn more", href: "/moose/building/materialized-views" }
     },
-    { 
-      title: "Workflow", 
-      description: "Define a Workflow for background jobs or scheduled tasks, orchestrated by Temporal and Moose Core.",
+    {
+      title: "Workflow",
+      description: "Background jobs or scheduled tasks. Use for ETL jobs, periodic syncs, or automation.",
       link: { text: "Learn more", href: "/moose/building/workflows" }
     },
-    { 
-      title: "ConsumptionApi", 
-      description: "Define a ConsumptionApi to expose analytical data via HTTP endpoints, with type safety and schema validation.",
+    {
+      title: "ConsumptionApi",
+      description: "Type-safe HTTP APIs for analytics. Use for exposing data to your frontend or external services.",
       link: { text: "Learn more", href: "/moose/building/consumption-apis" }
     },
-    { 
-      title: "DeadLetterQueue", 
-      description: "Define a DeadLetterQueue to handle failed events and ensure reliability in your pipelines.",
+    {
+      title: "DeadLetterQueue",
+      description: "Handles failed events for reliability. Use for capturing and inspecting problematic data.",
       link: { text: "Learn more", href: "/moose/building/dead-letter-queues" }
     }
   ]}
 />
 
-> **Example:**  
-> ```python
-> # Python
-> from moose_lib import IngestPipeline
-> events = IngestPipeline("events", schema=EventModel)
-> ```
-> ```typescript
-> // TypeScript
-> export const events = new IngestPipeline<Event>("events");
-> ```
-> Moose Core will create the endpoint, stream, and table for you.
+## When to Use Each Component
+
+| If you need…                              | Use…             |
+|-------------------------------------------|------------------|
+| Collect data via HTTP endpoints           | IngestPipeline   |
+| Batch write from workflows                | OlapTable        |
+| Pre-computed aggregations                 | MaterializedView |
+| Expose data via REST                      | ConsumptionApi   |
+| Real-time event processing                | Stream           |
+| Scheduled/background jobs                 | Workflow         |
+| Handle failed events                      | DeadLetterQueue  |
+
 
 ---
 
-## Integration Patterns
+## How Moose Works: Step by Step
 
-<BulletPointsCard
-  title="Common Integration Patterns"
-  bulletStyle="check"
-  divider={false}
-  bullets={[
-    "Add Moose to an existing app: Your app sends events to Moose APIs, Moose processes and stores analytics data, your app queries Moose for insights.",
-    "Enhance an existing ClickHouse deployment: Point Moose to your ClickHouse cluster, add streaming and real-time processing, get type-safe APIs automatically.",
-    "Connect to external data sources: Use Workflows to ingest from SaaS APIs, databases, or IoT devices."
-  ]}
-/>
-<p className="mt-2">
-  For step-by-step integration scenarios, see the <a href="/moose/integration-guide">Integration Guide</a>.
-</p>
+Here's how your code becomes a running, production-grade data system with Moose:
+
+<Steps>
+### Write Code
+
+Use Moose libraries (`py-moose-lib` for Python, `ts-moose-lib` for TypeScript) to define pipelines, tables, and APIs in code.
+
+### Moose Core Reads Your Code
+
+Moose Core hot-reloads your definitions, computes infrastructure diffs, and keeps everything in sync.
+
+### Infrastructure Managed for You
+Moose provisions and manages ClickHouse (analytics DB), Redpanda/Kafka (streaming), Temporal (workflows), and HTTP APIs—no manual setup required.
+
+### Data Flows Automatically
+Ingest, process, store, and expose data—all orchestrated by Moose.
+
+</Steps>
+---
 
 ## Reference Architectures
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">User-Facing Analytics</h3>
-    <ZoomImg light="/Real-time-analytics.svg" dark="/ref_arch_user_facing.png" alt="User-Facing Analytics Architecture" />
-    <p className="text-sm mt-2">Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend.</p>
-    <p className="text-xs text-muted-foreground mt-1">Pattern: Application → Moose → Frontend Dashboard</p>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Data Warehouse</h3>
-    <ZoomImg light="/Data-warehouse.svg" dark="/ref_arch_op_data_warehouse.png" alt="Data Warehouse Architecture" />
-    <p className="text-sm mt-2">Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools.</p>
-    <p className="text-xs text-muted-foreground mt-1">Pattern: External APIs → Moose → BI Tools</p>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Observability</h3>
-    <ZoomImg light="/Observability.svg" dark="/ref_arch_observability.png" alt="Observability Architecture" />
-    <p className="text-sm mt-2">Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms.</p>
-    <p className="text-xs text-muted-foreground mt-1">Pattern: Applications → OTEL Collector → Moose → Monitoring Tools</p>
-  </div>
-</div>
+See how Moose is used in real-world analytics and data engineering scenarios.
+
+### User-Facing Analytics
+
+<ZoomImg light="/Real-time-analytics.svg" dark="/ref_arch_user_facing.png" alt="User-Facing Analytics Architecture" />
+
+Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend.
+
+> Pattern: Application → Moose → Frontend Dashboard
 
 ---
 
-## Component Decision Guide
+### Operational Data Warehouse
 
-<div className="grid md:grid-cols-2 gap-4 my-6">
-  <BulletPointsCard
-    title="Use IngestPipeline when"
-    bulletStyle="check"
-    divider={false}
-    compact={true}
-    bullets={[
-      "You need to collect data via HTTP endpoints (e.g., tracking events from frontend)",
-      "You want both streaming processing and storage for the same data",
-      "You need automatic schema validation for incoming data"
-    ]}
-  />
-  <BulletPointsCard
-    title="Use OlapTable when"
-    bulletStyle="check"
-    divider={false}
-    compact={true}
-    bullets={[
-      "You're writing data in batches from workflows or background jobs",
-      "You are using an external service to write data to ClickHouse, and you want to use Moose to manage the schema and downstream transformations and APIs on top of it",
-    ]}
-  />
-</div>
-<div className="grid md:grid-cols-2 gap-4 my-6">
-  <BulletPointsCard
-    title="Use MaterializedView when"
-    bulletStyle="check"
-    divider={false}
-    compact={true}
-    bullets={[
-      "You need pre-computed aggregations that update automatically",
-      "The same aggregation query is used in multiple places",
-      "You want to optimize query performance for frequently accessed metrics"
-    ]}
-  />
-  <BulletPointsCard
-    title="Use ConsumptionApi when"
-    bulletStyle="check"
-    divider={false}
-    compact={true}
-    bullets={[
-      "You need to expose data to frontend or external services via REST",
-      "Your queries require dynamic parameters or complex filtering logic",
-      "You need to transform or combine data from multiple sources before returning"
-    ]}
-  />
-</div>
+<ZoomImg light="/Data-warehouse.svg" dark="/ref_arch_op_data_warehouse.png" alt="Data Warehouse Architecture" />
+
+Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools.
+
+> Pattern: External APIs → Moose → BI Tools
 
 ---
 
-## Learn More
+### Observability
+
+<ZoomImg light="/Observability.svg" dark="/ref_arch_observability.png" alt="Observability Architecture" />
+
+Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms.
+
+> Pattern: Applications → OTEL Collector → Moose → Monitoring Tools
+
+---
+
+## Next Steps
 
 - [5-Minute Quickstart](/moose/getting-started/quickstart) — Build your first Moose pipeline
-- [Building with Moose](/moose/building/) — Define pipelines, models, and APIs in code
 - [Project Structure](/moose/getting-started/project-structure) — Organize your Moose project for scale
-- [Deploying Moose](/moose/deploying/planning) — Run Moose in production
 
 ---
 
-<Callout type="success" title="Next: Try it yourself!">
-Ready to build your first Moose pipeline? Head to the <a href="/moose/getting-started/quickstart">5-Minute Quickstart</a>.
+<Callout type="success" title="Ready to build?">
+  Head to the <a href="/moose/getting-started/quickstart">5-Minute Quickstart</a> to try Moose yourself!
 </Callout>

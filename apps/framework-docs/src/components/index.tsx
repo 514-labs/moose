@@ -16,3 +16,5 @@ export * from "./value-prop-cards";
 export * from "./inline-props";
 export * from "./icons";
 export * from "./contact";
+export * from "./timeline-steps";
+export * from "./staggered-card";

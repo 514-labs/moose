@@ -1,691 +1,234 @@
 ---
-title: Project Structure
-description: Project Structure for Moose
+title: Project Organization
 ---
 
-import { FileTree, Steps } from "nextra/components";
-import { LanguageSwitcher, Python, TypeScript, BulletPointsCard, Callout } from "@/components";
-import { paths } from "@/lib/paths";
-import { MapPin, FileCode, Sparkles, Lightbulb } from "lucide-react";
+import { Callout, LanguageSwitcher, Python, TypeScript } from "@/components";
+import { FileTree } from "nextra/components";
 
-# Project Structure
+# Project Organization
 
-<div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
-  <MapPin size={16} />
-  <span>You are here: <strong>Step 3</strong> of your Moose journey - Organizing your project</span>
-</div>
-
-<Callout type="info" title="Why This Structure?">
-Moose projects are organized for hot reload, clear mapping to infrastructure, and easy maintainability. Exporting from your root file ensures only what you want gets deployed.
+<Callout type="info" title="Moose Project Structure: Only What You Need">
+Moose is designed to be flexible. There are only a few hard requirements for how your project must be structured. Everything else is up to you!
 </Callout>
 
 <LanguageSwitcher />
 
-## Visual Project Tree
+## The Only Hard Requirements
+
+Here are some hypothetical examples of valid Moose project structures:
 
 <TypeScript>
+**TypeScript Project Example:**
 <FileTree>
-  <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="records.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views" defaultOpen>
-      <FileTree.File name="aggregations.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="metrics-api.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="utils" defaultOpen>
-      <FileTree.File name="helpers.ts" />
-    </FileTree.Folder>
+    <FileTree.File name="myIngest.ts" />
+    <FileTree.File name="myViews.ts" />
+    <FileTree.File name="myApis.ts" />
   </FileTree.Folder>
-  <FileTree.File name="package.json" />
   <FileTree.File name="moose.config.toml" />
 </FileTree>
 </TypeScript>
 
 <Python>
+**Python Project Example:**
 <FileTree>
-  <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="main.py" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="records.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views" defaultOpen>
-      <FileTree.File name="aggregations.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="metrics_api.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="utils" defaultOpen>
-      <FileTree.File name="helpers.py" />
-    </FileTree.Folder>
+    <FileTree.File name="my_ingest.py" />
+    <FileTree.File name="my_views.py" />
+    <FileTree.File name="my_apis.py" />
   </FileTree.Folder>
   <FileTree.File name="moose.config.toml" />
 </FileTree>
 </Python>
 
-## Overview
-A Moose project has two main levels of organization:
-
-### Project Root
-Contains configuration and generated artifacts
-   | File/Directory | Description |
-   | -------------- | ----------- |
-   | `app/` | Where all your application code lives |
-   | `.moose/` | Generated artifacts and infrastructure mappings |
-   | `moose.config.toml` | Project configuration |
-   | `package.json` or `setup.py`|  Package management files |
-
-### Application Code
-All your code lives in the `app` directory, where Moose provides a flexible yet opinionated structure. The key principle is that **only objects exported from your root <TypeScript inline>index.ts</TypeScript> or <Python inline>main.py</Python> file are mapped to infrastructure**, giving you freedom in how you organize your implementation details.
-
-<BulletPointsCard
-  title="How to Organize Your App Code"
-  bullets={[
-    {
-      title: "Required: Export Infrastructure Objects from Root",
-      description: "All infrastructure components (data models, pipelines, views, APIs) MUST be exported from index.ts/main.py to be deployed. Internal implementation details can live anywhere.",
-    },
-    {
-      title: "Recommended: Use Standard Directory Structure",
-      description: "Organize your code into models/, ingest/, views/, and apis/ directories. Each component type has its dedicated location for better maintainability.",
-    },
-    {
-      title: "Optional: Group Related Components",
-      description: "Within each directory, you can group related components into subdirectories or single files based on your domain (e.g., analytics/, monitoring/).",
-    },
-    {
-      title: "Best Practice: Clear Component Dependencies",
-      description: "Keep clear import paths between components: models → ingest → views → apis. This makes data flow and dependencies easy to understand.",
-    }
-  ]}
-/>
-
-<div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Lightbulb size={16} className="text-amber-600" />
-    <strong>Common Mistakes to Avoid:</strong>
-  </div>
-  <ul className="text-sm space-y-2">
-    <li>❌ <strong>Forgetting to export</strong> components from index.ts/main.py</li>
-    <li>❌ <strong>Circular dependencies</strong> between components</li>
-    <li>❌ <strong>Deep nesting</strong> of directories (keep it flat and focused)</li>
-    <li>❌ <strong>Mixing unrelated domains</strong> in the same files</li>
-  </ul>
-</div>
-
-## Core Concept: Infrastructure Mapping
-
-<TypeScript>
-The most important file in your project is the root `index.ts`. This file acts as the single source of truth for what gets deployed to your infrastructure:
-
-```ts filename="app/index.ts" copy
-export { RawRecords, ProcessedRecords } from './ingest/records';
-export { RecordMetricsView } from './views/aggregations';
-export { MetricsAPI } from './apis/metrics-api';
-```
-</TypeScript>
-
-<Python>
-The most important file in your project is the root `main.py`. This file acts as the single source of truth for what gets deployed to your infrastructure:
-
-```py filename="app/main.py" copy
-# app/main.py
-import app.ingest
-import app.views
-import app.apis
-```
-</Python>
-
-<div className="bg-muted/30 p-4 rounded-md my-4">
-  <div className="flex items-center gap-2 mb-2">
-    <Sparkles size={16} className="text-green-600" />
-    <strong>Why This Matters:</strong>
-  </div>
-  <p className="text-sm">This export-based approach gives you complete control over what gets deployed. You can have test components, experimental features, or utility functions that don't create infrastructure until you're ready to export them.</p>
-</div>
-
-## Recommended Project Structure
-
-While you have complete flexibility in organizing your implementation, here's a simplified structure that clearly separates ingestion from transformations:
-
-<TypeScript>
+**Minimal Project Example:**
 <FileTree>
-  <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="records.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views" defaultOpen>
-      <FileTree.File name="aggregations.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="metrics-api.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="utils" defaultOpen>
-      <FileTree.File name="helpers.ts" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-  <FileTree.File name="package.json" />
-  <FileTree.File name="moose.config.toml" />
-</FileTree>
-</TypeScript>
-
-<Python>
-<FileTree>
-  <FileTree.Folder name=".moose" />
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="main.py" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="records.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views" defaultOpen>
-      <FileTree.File name="aggregations.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis" defaultOpen>
-      <FileTree.File name="metrics_api.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="utils" defaultOpen>
-      <FileTree.File name="helpers.py" />
-    </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="moose.config.toml" />
 </FileTree>
-</Python>
 
-## Directory Purposes
+Each example above includes:
+- An `app/` directory (required)
+- A root export file (`index.ts` for TypeScript, `main.py` for Python)
+- A `moose.config.toml` at the project root
 
-<TypeScript>
-|                |                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| app/index.ts   | The critical file that exports all resources to be mapped to infrastructure |
-| ingest         | Create [IngestPipeline](/moose/building/ingestion) data models and objects that combine ingest APIs, streams, and tables |
-| views          | Define in-database transformations using [Materialized Views](/moose/building/materialized-views) |
-| apis           | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
-| utils          | Helper functions and utilities |
-</TypeScript>
+You can add as many files as you want inside `app/`—just make sure to export/import what you want Moose to deploy from your root file.
 
-<Python>
-|                |                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| app/main.py    | The critical file that exports all resources to be mapped to infrastructure |
-| ingest         | Create [IngestPipeline](/moose/building/ingestion) data models and objects that combine ingest APIs, streams, and tables |
-| views          | Define in-database transformations using [Materialized Views](/moose/building/materialized-views) |
-| apis    | Build [Consumption APIs](/moose/building/consumption-apis) to expose your data to clients |
-| scripts    | Create [Workflows](/moose/building/workflows) to run ad-hoc tasks |
-| utils          | Helper functions and utilities |
-</Python>
-
-## Real-World Project Examples
-
-### E-commerce Analytics Project
-
-<TypeScript>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="index.ts" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="events.ts" />
-      <FileTree.File name="products.ts" />
-      <FileTree.File name="users.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views">
-      <FileTree.File name="conversion_funnels.ts" />
-      <FileTree.File name="product_performance.ts" />
-      <FileTree.File name="user_cohorts.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis">
-      <FileTree.File name="dashboard_api.ts" />
-      <FileTree.File name="recommendations_api.ts" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-</FileTree>
-</TypeScript>
-
-<Python>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="main.py" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.File name="events.py" />
-      <FileTree.File name="products.py" />
-      <FileTree.File name="users.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="views">
-      <FileTree.File name="conversion_funnels.py" />
-      <FileTree.File name="product_performance.py" />
-      <FileTree.File name="user_cohorts.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis">
-      <FileTree.File name="dashboard_api.py" />
-      <FileTree.File name="recommendations_api.py" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-</FileTree>
-</Python>
-
-### IoT Monitoring Project
-
-<TypeScript>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="index.ts" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.Folder name="sensors">
-        <FileTree.File name="temperature.ts" />
-        <FileTree.File name="humidity.ts" />
-        <FileTree.File name="pressure.ts" />
-      </FileTree.Folder>
-      <FileTree.Folder name="devices">
-        <FileTree.File name="status.ts" />
-        <FileTree.File name="telemetry.ts" />
-      </FileTree.Folder>
-    </FileTree.Folder>
-    <FileTree.Folder name="views">
-      <FileTree.File name="anomaly_detection.ts" />
-      <FileTree.File name="device_health.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis">
-      <FileTree.File name="alerts_api.ts" />
-      <FileTree.File name="monitoring_api.ts" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-</FileTree>
-</TypeScript>
-
-<Python>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="main.py" />
-    <FileTree.Folder name="ingest" defaultOpen>
-      <FileTree.Folder name="sensors">
-        <FileTree.File name="temperature.py" />
-        <FileTree.File name="humidity.py" />
-        <FileTree.File name="pressure.py" />
-      </FileTree.Folder>
-      <FileTree.Folder name="devices">
-        <FileTree.File name="status.py" />
-        <FileTree.File name="telemetry.py" />
-      </FileTree.Folder>
-    </FileTree.Folder>
-    <FileTree.Folder name="views">
-      <FileTree.File name="anomaly_detection.py" />
-      <FileTree.File name="device_health.py" />
-    </FileTree.Folder>
-    <FileTree.Folder name="apis">
-      <FileTree.File name="alerts_api.py" />
-      <FileTree.File name="monitoring_api.py" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-</FileTree>
-</Python>
-
-## Common Organization Patterns
-
-### By Data Flow
-
-<div className="grid md:grid-cols-2 gap-4 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Vertical Slices (Domain-Driven)</h3>
-    <p className="text-sm text-muted-foreground mb-3">Group by business domain</p>
-    <pre className="text-xs bg-muted p-2 rounded">
-{`app/
-  index.ts
-  users/
-    ingest.ts
-    views.ts
-    apis.ts
-  products/
-    ingest.ts
-    views.ts
-    apis.ts`}
-    </pre>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Horizontal Layers (Component-Driven)</h3>
-    <p className="text-sm text-muted-foreground mb-3">Group by component type</p>
-    <pre className="text-xs bg-muted p-2 rounded">
-{`app/
-  index.ts
-  ingest/
-    users.ts
-    products.ts
-  views/
-    users.ts
-    products.ts
-  apis/
-    users.ts
-    products.ts`}
-    </pre>
-  </div>
-</div>
-
-### By Scale
-
-<div className="grid md:grid-cols-2 gap-4 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Small Projects (Single File)</h3>
-    <p className="text-sm text-muted-foreground mb-3">Everything in one file</p>
-    <pre className="text-xs bg-muted p-2 rounded">
-{`app/
-  index.ts  # All components defined here`}
-    </pre>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Large Projects (Nested Structure)</h3>
-    <p className="text-sm text-muted-foreground mb-3">Deep organization by domain and type</p>
-    <pre className="text-xs bg-muted p-2 rounded">
-{`app/
-  index.ts
-  domains/
-    analytics/
-      ingest/
-      views/
-      apis/
-    monitoring/
-      ingest/
-      views/
-      apis/`}
-    </pre>
-  </div>
-</div>
-
-## Example Data Flow
-
-Here's how you might organize a typical data flow:
-
-<Steps>
-#### Create Ingestion Pipelines in `app/ingest`
-
-<TypeScript>
-```ts filename="app/ingest/records.ts" copy
-import { IngestPipeline, Key } from "@514labs/moose-lib";
-
-export interface RawRecord {
-  id: Key<string>;
-  sourceId: string;
-  timestamp: Date;
-  status: string;
-}
-
-export interface ProcessedRecord extends RawRecord {
-  processedAt: Date;
-  metadata: {
-    version: string;
-    processingTime: number;
-  };
-}
-
-
-export const RawRecords = new IngestPipeline<RawRecord>("raw_records", {
-  ingest: true,    // Creates a REST API endpoint 
-  stream: true,    // Creates Kafka/Redpanda topic
-  table: true      // Creates a table to store records
-});
-
-export const ProcessedRecords = new IngestPipeline<ProcessedRecord>("processed_records", {
-  ingest: false,   
-  stream: true,    
-  table: true      
-});
-
-RawRecords.stream!.addTransform(ProcessedRecords.stream!, (record) => {
-  return {
-    ...record,
-    processedAt: new Date(),
-    metadata: {
-      version: "1.0",
-      processingTime: Date.now() - record.timestamp.getTime()
-    }
-  };
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="app/ingest/records.py" copy
-from pydantic import BaseModel
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig
-from datetime import datetime
-from typing import Dict, Any
-
-class RawRecord(BaseModel):
-    id: Key[str]
-    source_id: str
-    timestamp: datetime
-    status: str
-
-class Metadata(BaseModel):
-    version: str
-    processing_time: float
-
-class ProcessedRecord(RawRecord):
-    processed_at: datetime
-    metadata: Metadata
-
-RawRecords = IngestPipeline[RawRecord]("raw_records", IngestPipelineConfig(
-    ingest=True,    // Creates a REST API endpoint 
-    stream=True,    // Creates Kafka/Redpanda topic
-    table=True      // Creates a table to store records
-))
-
-ProcessedRecords = IngestPipeline[ProcessedRecord]("processed_records", IngestPipelineConfig(
-    ingest=False,
-    stream=True,
-    table=True
-))
-
-def transform_record(record: RawRecord) -> ProcessedRecord:
-    now = datetime.now()
-    return ProcessedRecord(
-        **record.dict(),
-        processed_at=now,
-        metadata={
-            "version": "1.0",
-            "processing_time": (now - record.timestamp).total_seconds()
-        }
-    )
-
-RawRecords.get_stream().add_transform(destination=ProcessedRecords.get_stream(), transformation=transform_record)
-```
-</Python>
-
-#### Define Materialized Views in `app/views`
-
-<TypeScript>
-```ts filename="app/views/aggregations.ts" copy
-import { ProcessedRecords } from '../ingest/records';
-import { sql, MaterializedView } from "@514labs/moose-lib";
-
-interface RecordMetricsSchema {
-  sourceId: string;
-  recordCount: number;
-  avgProcessingTime: number;
-  lastProcessed: Date;
-}
-
-export const RecordMetricsView = new MaterializedView<RecordMetricsSchema>({
-  selectStatement: sql`
-    SELECT 
-      sourceId, 
-      COUNT(*) as recordCount,
-      AVG(metadata.processingTime) as avgProcessingTime,
-      MAX(processedAt) as lastProcessed
-    FROM ${ProcessedRecords.table}
-    GROUP BY sourceId
-  `,
-  tableName: "record_metrics",
-  materializedViewName: "record_metrics_mv"
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="app/views/aggregations.py" copy
-from app.ingest.records import ProcessedRecords
-from moose_lib import MaterializedView, sql
-from pydantic import BaseModel
-from datetime import datetime
-
-class RecordMetricsSchema(BaseModel):
-    source_id: str
-    record_count: int
-    avg_processing_time: float
-    last_processed: datetime
-
-RecordMetricsView = MaterializedView[RecordMetricsSchema](
-    select_statement=sql(f"""
-        SELECT 
-            source_id, 
-            COUNT(*) as record_count,
-            AVG(metadata->>'processing_time') as avg_processing_time,
-            MAX(processed_at) as last_processed
-        FROM {ProcessedRecords.table}
-        GROUP BY source_id
-    """),
-    table_name="record_metrics",
-    materialized_view_name="record_metrics_mv"
-)
-```
-</Python>
-  
-#### Define Consumption APIs in `app/apis`
-
-<TypeScript>
-```ts filename="app/apis/metrics-api.ts" copy
-import { RecordMetricsView } from '../views/aggregations';
-import { ConsumptionApi } from "@514labs/moose-lib";
-
-interface QueryParams {
-  sourceId: string;
-}
-
-interface ResponseBody {
-  sourceId: string;
-  recordCount: number;
-  avgProcessingTime: number;
-  lastProcessed: Date;
-}
-
-export const MetricsAPI = new ConsumptionApi<QueryParams, ResponseBody>(
-  "metrics",
-  async ({ sourceId }, { client, sql }) => {
-    const query = sql`
-      SELECT * FROM ${RecordMetricsView}
-      WHERE sourceId = ${sourceId}
-    `;
-    return client.query.execute(query);
-  }
-);
-```
-</TypeScript>
-
-<Python>
-```py filename="app/apis/metrics_api.py" copy
-from app.views.aggregations import RecordMetricsView
-from moose_lib import ConsumptionApi
-from pydantic import BaseModel
-from datetime import datetime
-
-class QueryParams(BaseModel):
-    source_id: str
-
-class ResponseBody(BaseModel):
-    source_id: str
-    record_count: int
-    avg_processing_time: float
-    last_processed: datetime
-
-def handler(params: QueryParams, client):
-    query = f"""
-        SELECT * FROM {RecordMetricsView}
-        WHERE source_id = {source_id}
-    """
-    return client.query.execute(query, {"source_id": params.source_id})
-
-MetricsAPI = ConsumptionApi[QueryParams, ResponseBody](
-    "metrics",
-    handler
-)
-```
-</Python>
-
-#### Export everything from the root file
-
-<TypeScript>
-```ts filename="app/index.ts" copy
-export { RawRecords, ProcessedRecords } from './ingest/records';
-export { RecordMetricsView } from './views/aggregations';
-export { MetricsAPI } from './apis/metrics-api';
-```
-</TypeScript>
-
-<Python>
-```py filename="app/main.py" copy
-from app.ingest.records import RawRecords, ProcessedRecords
-from app.views.aggregations import RecordMetricsView
-from app.apis.metrics_api import MetricsAPI
-```
-</Python>
-</Steps>
-
-## Alternative: Simpler Structure for Small Projects
-
-For smaller projects, you might prefer an even simpler structure:
-
-<TypeScript>
-```
-app/
-  index.ts
-  ingestion.ts     # All ingestion pipelines
-  views.ts         # All materialized views
-  apis.ts          # All consumption APIs
-```
-</TypeScript>
-
-<Python>
-```
-app/
-  main.py
-  ingestion.py     # All ingestion pipelines
-  views.py         # All materialized views
-  apis.py          # All consumption APIs
-```
-</Python>
-
-## Next Steps
-
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Learn About Data Models</h3>
-    <p className="text-sm text-muted-foreground mb-3">Define schemas for your analytics data</p>
-    <a href="/moose/building/data-models" className="text-sm text-blue-600 hover:underline">Explore Data Models →</a>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Build Ingestion Pipelines</h3>
-    <p className="text-sm text-muted-foreground mb-3">Create APIs for data collection</p>
-    <a href="/moose/building/ingestion" className="text-sm text-blue-600 hover:underline">Learn About Ingestion →</a>
-  </div>
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Create Analytics APIs</h3>
-    <p className="text-sm text-muted-foreground mb-3">Expose insights to applications</p>
-    <a href="/moose/building/consumption-apis" className="text-sm text-blue-600 hover:underline">Build APIs →</a>
-  </div>
-</div>
-
-<Callout type="success" title="Ready to connect to existing ClickHouse?">
-If you already have ClickHouse data, learn how to add Moose as a layer on top → [Use with Existing ClickHouse](./from-clickhouse)
+<Callout type="info" title="What is the .moose folder?">
+The `.moose/` folder is where Moose maintains some files it needs for its internals. The most relevant file for you as a developer is the generated `openapi.yaml` spec, which describes your ingest and consumption APIs. You can use this file to explore or integrate your APIs with tools like Swagger UI or Postman.
 </Callout>
 
 ---
 
-<Callout type="success" title="What's Next?">
-- [Data Modeling](/moose/building/data-modeling): Define your schemas and types
-- [Ingestion](/moose/building/ingestion): Set up APIs and pipelines to get data in
+## Minimal Example
+
+<TypeScript>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+    <FileTree.File name="myIngest.ts" />
+    <FileTree.File name="myViews.ts" />
+    <FileTree.File name="myApis.ts" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+
+```ts filename="app/index.ts"
+export { MyIngest } from './myIngest';
+export { MyView } from './myViews';
+export { MyApi } from './myApis';
+```
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="main.py" />
+    <FileTree.File name="my_ingest.py" />
+    <FileTree.File name="my_views.py" />
+    <FileTree.File name="my_apis.py" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+
+```python filename="app/main.py"
+from app.my_ingest import MyIngest
+from app.my_views import MyView
+from app.my_apis import MyApi
+```
+</Python>
+
+---
+
+## Example Project Structures for Common Use Cases
+
+Here are a few recommended project structures for typical Moose use cases, each using a different organizational pattern:
+
+**User-Facing Analytics (Vertical Slice / Domain-Driven Pattern)**
+<small>Group by business domain, with each domain containing its own ingest, views, and apis files.</small>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+    <FileTree.Folder name="users" defaultOpen>
+      <FileTree.File name="ingest.ts" />
+      <FileTree.File name="views.ts" />
+      <FileTree.File name="apis.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="products" defaultOpen>
+      <FileTree.File name="ingest.ts" />
+      <FileTree.File name="views.ts" />
+      <FileTree.File name="apis.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+
+**Operational Data Warehouse (Flat Structure for Small Project)**
+<small>All core files live directly under <code>app/</code> for simplicity.</small>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+    <FileTree.File name="ingest.ts" />
+    <FileTree.File name="views.ts" />
+    <FileTree.File name="apis.ts" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+
+**Observability/Monitoring (Hybrid/Feature+Type Pattern)**
+<small>Group by domain for large features, but use component folders for shared logic.</small>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+    <FileTree.Folder name="domains" defaultOpen>
+      <FileTree.Folder name="monitoring" defaultOpen>
+        <FileTree.File name="ingest.ts" />
+        <FileTree.File name="views.ts" />
+        <FileTree.File name="apis.ts" />
+      </FileTree.Folder>
+      <FileTree.Folder name="logs" defaultOpen>
+        <FileTree.File name="ingest.ts" />
+        <FileTree.File name="views.ts" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+    <FileTree.Folder name="shared" defaultOpen>
+      <FileTree.File name="utils.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+
+## Everything Else is Flexible
+
+- **Directory Names:** Use the recommended `ingest/`, `views/`, `apis/`, etc., or create your own folders and groupings.
+- **File Layout:** Organize by domain, by component type, or any pattern that fits your team/project.
+- **Depth:** Keep it flat or nest as needed—just avoid deep, confusing hierarchies.
+
+---
+
+## How to Apply Your Own Patterns
+
+- **Group by domain:**  
+  `app/users/ingest.py`, `app/products/views.py`, etc.
+- **Group by type:**  
+  `app/ingest/users.py`, `app/views/products.py`, etc.
+- **Single file for small projects:**  
+  Just put everything in <TypeScript inline>index.ts</TypeScript>/<Python inline>main.py</Python>.
+
+<Callout type="success" title="As long as you export/import the right objects from the root file, Moose will work!">
+</Callout>
+
+---
+
+## Strategies for Organizing Your Project
+
+Here are a few high-level strategies you might consider:
+
+- **By Domain (Vertical Slices):**
+  - Group files by business domain or feature area.
+  - Example: `app/users/ingest.ts`, `app/products/views.ts`
+- **By Component Type (Horizontal Layers):**
+  - Group files by their role in the pipeline (ingest, views, apis, etc.).
+  - Example: `app/ingest/users.ts`, `app/views/products.ts`
+- **By Feature:**
+  - Each feature or product area gets its own folder with all related files inside.
+  - Example: `app/analytics/`, `app/monitoring/`
+- **Flat Structure for Small Projects:**
+  - Keep everything in a few files in the `app/` directory.
+  - Example: `app/index.ts`, `app/ingest.ts`, `app/views.ts`, `app/apis.ts`
+
+You can mix and match these strategies as your project grows. The key is to keep things clear and maintainable for your team.
+
+<Callout type="warning" title="Common Mistakes to Avoid">
+- Forgetting to export/import components from your root file (`index.ts`/`main.py`)
+- Deeply nested or overly complex directory structures
+- Mixing unrelated domains or features in the same files
+- Creating circular dependencies between components
+</Callout>
+
+---
+
+## Summary Table
+
+| Must Have                | Flexible/Optional                |
+|--------------------------|----------------------------------|
+| `app/index.ts` or `main.py` | Any subdirectory structure      |
+| `app/` directory         | File naming conventions          |
+| `moose.config.toml`      | Grouping by domain/type/feature  |
+
+---
+
+**In short:**  
+You have total freedom in how you organize your Moose project, as long as you:
+- Put your code in `app/`
+- Export/import everything you want deployed from the root file
+- Have a `moose.config.toml` at the root
+
+<Callout type="info" title="Ready to build?">
+Now you can apply your own structure and patterns with confidence. Moose will handle the rest!
 </Callout>
 

@@ -1,68 +1,64 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, ValuePropCards, InlineProps, Contact } from "@/components";
-import { Database, FileCode, Download, Zap, CheckCircle, Clock, Star, Laptop, Code, MapPin, ArrowRight, Calculator } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, InlineProps, Contact } from "@/components";
+import { Database, FileCode, Zap, CheckCircle, Clock, Star, Laptop, Code, MapPin, ArrowRight, Calculator, Layers, HardDriveDownload } from "lucide-react";
+import { paths } from "@/lib/paths";
 
 # Add Moose to Your Existing ClickHouse
 
 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
   <MapPin size={16} />
-  <span>You are here: <strong>Step 4</strong> of your Moose journey - Connecting to existing ClickHouse</span>
+  <span>You are here: <strong>Augment ClickHouse</strong> — Add Moose to your existing ClickHouse to build apps on top of your data and manage your table schemas in code</span>
 </div>
-
-<Callout type="info" title="Who is this for?">
-This page is for users who already have ClickHouse running and want to build APIs and user-facing applications on top of their existing data, or migrate workloads to Moose.
-</Callout>
-
-**Already have ClickHouse running?** Keep everything exactly as it is. Moose lets you build APIs and user facing applications on top of your existing data.
 
 <InlineProps
   items={[
     {
-      icon: Clock,
-      text: "5 minute setup",
+      Icon: Clock,
+      text: "5 minute setup"
     },
     {
-      icon: CheckCircle,
-      text: "Your ClickHouse stays untouched",
+      Icon: CheckCircle,
+      text: "Zero disruption to prod"
     },
     {
-      icon: Star,
-      text: "Build apps on top of your data",
+      Icon: Laptop,
+      text: "Code-first, local dev"
     }
   ]}
 />
 
+
 <LanguageSwitcher />
 
-<Callout type="info" title="Early Access Feature">
-We're actively developing this feature and would love your feedback. While it's ready for most use cases, check out [Known Limitations](#known-limitations) for details on what's still in progress.
-</Callout>
+## What Moose Adds to ClickHouse
 
-## Before & After: What Moose Adds to ClickHouse
+<FeatureGrid columns={2}>
+<FeatureCard
+  title="Code-first schema management"
+  description="Manage ClickHouse schemas in code, with Git versioning"
+  Icon={Code}
+  size="compact"
+/>
+<FeatureCard
+  title="Hot-reload dev environment"
+  description="Iterate instantly without touching production"
+  Icon={Zap}
+  size="compact"
+/>
+<FeatureCard
+  title="Build APIs and user-facing apps"
+  description="Surface your analytics to your users with type-safe APIs"
+  Icon={Layers}
+  size="compact"
+/>
+<FeatureCard
+  title="Streaming & ETL without config"
+  description="Add streaming ingestion and custom workflows, no YAML"
+  Icon={HardDriveDownload}
+  size="compact"
+/>
+</FeatureGrid>
 
-<div className="grid md:grid-cols-2 gap-6 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">ClickHouse Alone</h3>
-    <ul className="space-y-2 text-sm">
-      <li>❌ <strong>Manual SQL queries</strong> for everything</li>
-      <li>❌ <strong>Custom API layer</strong> needed for applications</li>
-      <li>❌ <strong>No type safety</strong> between app and database</li>
-      <li>❌ <strong>Manual schema management</strong> with SQL scripts</li>
-      <li>❌ <strong>Separate streaming setup</strong> needed for real-time</li>
-    </ul>
-  </div>
-  
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">ClickHouse + Moose</h3>
-    <ul className="space-y-2 text-sm">
-      <li>✅ <strong>Type-safe models</strong> auto-generated from tables</li>
-      <li>✅ <strong>HTTP APIs</strong> generated automatically</li>
-      <li>✅ <strong>Real-time streaming</strong> with Kafka/Redpanda</li>
-      <li>✅ <strong>Hot-reload development</strong> with local environment</li>
-      <li>✅ <strong>Code-first schema changes</strong> with version control</li>
-    </ul>
-  </div>
-</div>
 
 ## Prerequisites
 
@@ -225,13 +221,7 @@ pip install -r requirements.txt
 
 </Python>
 
-<Callout type="success" title="Success indicator">
 You should see: `Successfully generated X models from ClickHouse tables`
-</Callout>
-
-<Callout type="info" title="Your ClickHouse is untouched">
-This only reads your table schemas to generate TypeScript/Python models. No data is moved or modified.
-</Callout>
 
 ### Start Your Local Development Layer
 
@@ -252,134 +242,56 @@ Moose creates a local development copy of your ClickHouse structure. Your produc
 
 ### Explore Your Generated Models
 
-Check what Moose created from your tables:
-
 <Python>
+Check what Moose created from your tables in the `app/main.py` file:
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="main.py" />
-<FileTree.Folder name="tables" defaultOpen>
-<FileTree.File name="users.py" />
-<FileTree.File name="events.py" />
-<FileTree.File name="..." />
-</FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </Python>
 
 <TypeScript>
+Check what Moose created from your tables in the `app/index.ts` file:
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
 <FileTree.File name="index.ts" />
-<FileTree.Folder name="tables" defaultOpen>
-<FileTree.File name="users.ts" />
-<FileTree.File name="events.ts" />
-<FileTree.File name="..." />
-</FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </TypeScript>
 
 </Steps>
 
-## ROI Calculator: Time Saved with Moose
 
-<div className="border rounded-lg p-6 my-8 bg-muted/20">
-  <div className="flex items-center gap-2 mb-4">
-    <Calculator className="w-5 h-5 text-primary" />
-    <h3 className="font-medium">Developer Time Savings</h3>
-  </div>
-  
-  <div className="grid md:grid-cols-2 gap-6">
-    <div>
-      <h4 className="text-sm font-medium mb-2">Without Moose</h4>
-      <ul className="space-y-2 text-sm">
-        <li>• API Layer: 2-4 weeks</li>
-        <li>• Schema Management: 1-2 weeks</li>
-        <li>• Streaming Setup: 1-3 weeks</li>
-        <li>• Type Safety: 1-2 weeks</li>
-        <li><strong>Total: 5-11 weeks</strong></li>
-      </ul>
-    </div>
-    
-    <div>
-      <h4 className="text-sm font-medium mb-2">With Moose</h4>
-      <ul className="space-y-2 text-sm">
-        <li>• API Layer: 5 minutes</li>
-        <li>• Schema Management: Automatic</li>
-        <li>• Streaming Setup: 5 minutes</li>
-        <li>• Type Safety: Automatic</li>
-        <li><strong>Total: 1 day</strong></li>
-      </ul>
-    </div>
-  </div>
-  
-  <div className="mt-4 text-sm text-muted-foreground">
-    <p>Typical time savings for a medium-sized project with 10-20 tables and basic API needs.</p>
-  </div>
-</div>
 
-## Migration vs. Augmentation
+## Gradual Adoption Path
 
-<div className="grid md:grid-cols-2 gap-6 my-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Augmentation Approach</h3>
-    <p className="text-sm text-muted-foreground mb-3">Keep your existing ClickHouse as-is and add Moose capabilities</p>
-    <ul className="text-sm space-y-2">
-      <li>✅ Zero risk to existing systems</li>
-      <li>✅ Add APIs and streaming incrementally</li>
-      <li>✅ Use with any ClickHouse setup</li>
-      <li>✅ Keep all existing queries working</li>
-    </ul>
-  </div>
-  
-  <div className="border rounded-lg p-4">
-    <h3 className="font-medium mb-2">Migration Approach</h3>
-    <p className="text-sm text-muted-foreground mb-3">Gradually move workloads to Moose-managed pipelines</p>
-    <ul className="text-sm space-y-2">
-      <li>✅ Full type safety and code-first workflow</li>
-      <li>✅ Automatic schema migrations</li>
-      <li>✅ Hot-reload development</li>
-      <li>✅ Unified development experience</li>
-    </ul>
-  </div>
-</div>
+Moose is designed to be additive to your existing ClickHouse setup. You can start with just a few tables and gradually add more as you see value.
 
-## Gradual Migration Path
+A gradual adoption path might look like this:
 
-<div className="relative my-8">
-  <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-muted-foreground/20"></div>
-  
-  <div className="relative pl-12 pb-8">
-    <div className="absolute left-4 w-4 h-4 -mt-2 rounded-full bg-primary"></div>
-    <h3 className="font-medium mb-2">Phase 1: Connect & Explore</h3>
-    <p className="text-sm text-muted-foreground">Connect Moose to your ClickHouse and generate models. Explore your data through the typed interfaces.</p>
-  </div>
-  
-  <div className="relative pl-12 pb-8">
-    <div className="absolute left-4 w-4 h-4 -mt-2 rounded-full bg-primary/80"></div>
-    <h3 className="font-medium mb-2">Phase 2: Add APIs</h3>
-    <p className="text-sm text-muted-foreground">Create consumption APIs on top of your existing tables. Start exposing data to applications through type-safe endpoints.</p>
-  </div>
-  
-  <div className="relative pl-12 pb-8">
-    <div className="absolute left-4 w-4 h-4 -mt-2 rounded-full bg-primary/60"></div>
-    <h3 className="font-medium mb-2">Phase 3: Add Streaming for New Data</h3>
-    <p className="text-sm text-muted-foreground">For new data sources, use Moose's streaming capabilities while keeping existing data flows intact.</p>
-  </div>
-  
-  <div className="relative pl-12 pb-8">
-    <div className="absolute left-4 w-4 h-4 -mt-2 rounded-full bg-primary/40"></div>
-    <h3 className="font-medium mb-2">Phase 4: Migrate High-Value Tables</h3>
-    <p className="text-sm text-muted-foreground">Identify high-value tables that would benefit from Moose's full capabilities and migrate them to Moose-managed tables.</p>
-  </div>
-  
-  <div className="relative pl-12">
-    <div className="absolute left-4 w-4 h-4 -mt-2 rounded-full bg-primary/20"></div>
-    <h3 className="font-medium mb-2">Phase 5: Full Migration (Optional)</h3>
-    <p className="text-sm text-muted-foreground">If desired, gradually migrate all tables to be Moose-managed for a unified development experience.</p>
-  </div>
-</div>
+<Steps>
+### Phase 1: Connect & Explore
+
+Plug Moose into your existing ClickHouse—no changes required. Explore your data in your Moose local dev environment.
+
+### Phase 2: Add APIs
+
+Expose your data to your user-facing apps through new Consumption APIs, without touching your current pipelines.
+
+### Phase 3: Add New Data Sources
+
+For new data sources, use Moose's IngestPipelines to stream new data into your ClickHouse—while your legacy flows keep running. You can also use Workflows to run custom ETL pipelines if you have batch workloads.
+
+### Phase 4: Migrate What Matters
+
+Move high-impact tables and workloads to Moose as you see value, for a more unified experience.
+
+### Phase 5: Go All-In (Optional)
+
+If you want, fully migrate to Moose-managed pipelines—at your own pace.
+
+</Steps>
 
 ## Known Limitations
 
@@ -389,52 +301,16 @@ This feature is in early access. Some advanced ClickHouse features may not be fu
 
 ### Currently Unsupported Types:
 - **`Map(K, V)` types**
-- **`Tuple(T1, T2, ...)` types**  
 - **`Geo` types** (Point, Ring, Polygon, etc.)
 - **`Enum` types with empty string keys**
 
 ### Partial Support:
-- **`JSON` types** - <TypeScript inline>Maps to `Record<string, any>`</TypeScript><Python inline>Maps to `any`</Python>
 - **`LowCardinality(T)`** - Maps to base type `T` (optimization annotations available)
 
 ### What we're working on:
 - **Selective table import** (currently imports all tables)
 - **Default value annotations** 
 - **Advanced ClickHouse type support**
-
-## Success Stories
-
-<BulletPointsCard
-  title="Teams using Moose on top of existing ClickHouse:"
-  bullets={[
-    { title: "Kept all existing data and queries working", description: "Zero disruption to production systems" },
-    { title: "Added modern development workflow", description: "Git-based schema management without touching production" },
-    { title: "10x faster API development", description: "From weeks of backend work to minutes of code" },
-    { title: "Gradual adoption across teams", description: "Started with one table, expanded as needed" }
-  ]}
-/>
-
-<div className="border rounded-lg p-4 my-6">
-  <h3 className="font-medium mb-2">Case Study: E-commerce Analytics Platform</h3>
-  <p className="text-sm text-muted-foreground mb-3">A mid-size e-commerce company with 50+ ClickHouse tables of customer and product data</p>
-  
-  <div className="grid md:grid-cols-3 gap-4 mb-4">
-    <div>
-      <h4 className="text-sm font-medium">Before Moose</h4>
-      <p className="text-xs text-muted-foreground">Custom FastAPI layer with manual SQL queries and no type safety</p>
-    </div>
-    <div>
-      <h4 className="text-sm font-medium">Migration Approach</h4>
-      <p className="text-xs text-muted-foreground">Connected Moose to existing ClickHouse and built new APIs incrementally</p>
-    </div>
-    <div>
-      <h4 className="text-sm font-medium">Results</h4>
-      <p className="text-xs text-muted-foreground">85% reduction in API development time, zero disruption to existing systems</p>
-    </div>
-  </div>
-</div>
-
-<Contact />
 
 ---
 

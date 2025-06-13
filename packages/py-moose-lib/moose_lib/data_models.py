@@ -87,7 +87,12 @@ class NamedTupleType(BaseModel):
     fields: list[tuple[str, "DataType"]]
 
 
-type DataType = str | DataEnum | ArrayType | Nested | NamedTupleType
+class MapType(BaseModel):
+    key_type: "DataType"
+    value_type: "DataType"
+
+
+type DataType = str | DataEnum | ArrayType | Nested | NamedTupleType | MapType
 
 
 def handle_jwt(field_type: type) -> Tuple[bool, type]:
@@ -185,6 +190,15 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
     elif get_origin(t) is list:
         inner_optional, _, inner_type = py_type_to_column_type(get_args(t)[0], [])
         data_type = ArrayType(element_type=inner_type, element_nullable=inner_optional)
+    elif get_origin(t) is dict:
+        args = get_args(t)
+        if len(args) == 2:
+            key_optional, _, key_type = py_type_to_column_type(args[0], [])
+            value_optional, _, value_type = py_type_to_column_type(args[1], [])
+            # For dict types, we assume keys are required and values match their type
+            data_type = MapType(key_type=key_type, value_type=value_type)
+        else:
+            raise ValueError(f"Dict type must have exactly 2 type arguments, got {len(args)}")
     elif t is UUID:
         data_type = "UUID"
     elif t is Any:

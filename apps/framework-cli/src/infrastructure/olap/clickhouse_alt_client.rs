@@ -22,7 +22,7 @@ use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
-use itertools::Either;
+use itertools::{Either, Itertools};
 use log::{info, warn};
 use serde::Serialize;
 use serde::__private::from_utf8_lossy;
@@ -146,9 +146,26 @@ fn value_to_json(
         ValueRef::Uuid(_) => json!(value_ref.to_string()),
         ValueRef::Enum16(_mapping, i) => convert_enum(i.internal(), enum_mapping),
         ValueRef::Enum8(_mapping, i) => convert_enum(i.internal(), enum_mapping),
-        ValueRef::Ipv4(_) => todo!(),
-        ValueRef::Ipv6(_) => todo!(),
-        ValueRef::Map(_, _, _) => todo!(),
+        ValueRef::Ipv4(ip) => {
+            let ip_str = format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]);
+            json!(ip_str)
+        }
+        ValueRef::Ipv6(ip) => {
+            json!(ip
+                .chunks(2)
+                .map(|chunk| { format!("{:02x}{:02x}", chunk[0], chunk[1]) })
+                .join(":"))
+        }
+        ValueRef::Map(_, _, m) => Value::Object(
+            m.iter()
+                .map(|(k, v)| {
+                    Ok::<_, clickhouse_rs::errors::Error>((
+                        k.to_string(),
+                        value_to_json(v, enum_mapping)?,
+                    ))
+                })
+                .collect::<Result<_, _>>()?,
+        ),
     };
     Ok(result)
 }
@@ -226,6 +243,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::DateTime
         | ClickHouseColumnType::Date32
         | ClickHouseColumnType::Date
+        | ClickHouseColumnType::Map(_, _)
         | ClickHouseColumnType::DateTime64 { .. }
         | ClickHouseColumnType::IpV4
         | ClickHouseColumnType::IpV6

@@ -67,6 +67,14 @@ fn map_column_type_to_typescript(
             }
             format!("{{ {} }} & ClickHouseNamedTuple", field_types.join("; "))
         }
+        ColumnType::Map {
+            key_type,
+            value_type,
+        } => {
+            let key_type_str = map_column_type_to_typescript(key_type, enums, nested);
+            let value_type_str = map_column_type_to_typescript(value_type, enums, nested);
+            format!("Record<{}, {}>", key_type_str, value_type_str)
+        }
     }
 }
 

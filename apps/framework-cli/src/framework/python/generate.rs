@@ -72,6 +72,14 @@ fn map_column_type_to_python(
             let inner_type = map_column_type_to_python(inner, enums, nested, named_tuples);
             format!("Optional[{}]", inner_type)
         }
+        ColumnType::Map {
+            key_type,
+            value_type,
+        } => {
+            let key_type_str = map_column_type_to_python(key_type, enums, nested, named_tuples);
+            let value_type_str = map_column_type_to_python(value_type, enums, nested, named_tuples);
+            format!("dict[{}, {}]", key_type_str, value_type_str)
+        }
     }
 }
 

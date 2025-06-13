@@ -7,12 +7,14 @@ export type DataEnum = { name: string; values: EnumValues };
 export type Nested = { name: string; columns: Column[]; jwt: boolean };
 export type ArrayType = { elementType: DataType; elementNullable: boolean };
 export type NamedTupleType = { fields: Array<[string, DataType]> };
+export type MapType = { keyType: DataType; valueType: DataType };
 export type DataType =
   | string
   | DataEnum
   | ArrayType
   | Nested
   | NamedTupleType
+  | MapType
   | { nullable: DataType };
 export interface Column {
   name: string;

@@ -82,6 +82,9 @@ pub async fn import_csv_file(
                             | ColumnType::Bytes => {
                                 bail!("CSV importing does not support complex types");
                             }
+                            ColumnType::Map { .. } => {
+                                bail!("CSV importing does not support Map types");
+                            }
                             ColumnType::Nullable(_) => {
                                 bail!("Encountered twice-nested Nullable");
                             }

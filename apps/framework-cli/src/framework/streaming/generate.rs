@@ -180,6 +180,22 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
                 SupportedLanguages::Python => format!("{{ {} }}", field_defaults.join(", ")),
             }
         }
+        (
+            ColumnType::Map {
+                key_type,
+                value_type,
+            },
+            lang,
+        ) => {
+            let key_default = get_default_value_for_type(key_type, lang);
+            let value_default = get_default_value_for_type(value_type, lang);
+            match lang {
+                SupportedLanguages::Typescript => {
+                    format!("{{ [{}]: {} }}", key_default, value_default)
+                }
+                SupportedLanguages::Python => format!("{{ {}: {} }}", key_default, value_default),
+            }
+        }
     }
 }
 fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> String {

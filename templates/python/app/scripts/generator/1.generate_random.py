@@ -1,7 +1,7 @@
 from moose_lib import task  
 from datetime import datetime
 from faker import Faker
-from app.ingest.models import Foo
+from app.ingest.models import Foo, Baz
 import requests
 
 @task
@@ -16,6 +16,7 @@ def generate_random():  # The name of your script
         foo = Foo(
             primary_key=fake.uuid4(),
             timestamp=fake.date_time_between(start_date='-1y', end_date='now').timestamp(),
+            baz=fake.random_element(Baz),
             optional_text=fake.text() if fake.boolean() else None
         )
  

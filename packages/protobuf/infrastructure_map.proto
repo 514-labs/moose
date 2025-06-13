@@ -202,6 +202,11 @@ message Tuple {
   repeated ColumnType types = 2;
 }
 
+message Map {
+  ColumnType key_type = 1;
+  ColumnType value_type = 2;
+}
+
 // TODO: nullable not being a type, relying on `bool required`
 // is causing some mess e.g. the special case array_of_nullable
 message ColumnType {
@@ -214,6 +219,7 @@ message ColumnType {
     ColumnType array_of_nullable = 5;
     Tuple tuple = 6;
     ColumnType nullable = 7;
+    Map map = 8;
 
     DateType date_time = 12;
     Decimal decimal = 13;

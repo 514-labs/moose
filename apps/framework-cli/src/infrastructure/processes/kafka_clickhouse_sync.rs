@@ -852,6 +852,58 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
+        ColumnType::Map {
+            key_type,
+            value_type,
+        } => {
+            if let Some(obj) = value.as_object() {
+                let mut map_pairs = Vec::new();
+                for (key_str, value_json) in obj {
+                    // Convert the key string to the appropriate ClickHouse value
+                    // JSON object keys are always strings, but ClickHouse Map keys can be numeric
+                    let key_clickhouse_value =
+                        match key_type.as_ref() {
+                            ColumnType::Int(_) => {
+                                let key_int = key_str.parse::<i64>().map_err(|_| {
+                                    MappingError::TypeMismatch {
+                                        column_type: Box::new(key_type.as_ref().clone()),
+                                        value: serde_json::Value::String(key_str.clone()),
+                                    }
+                                })?;
+                                ClickHouseValue::new_int_64(key_int)
+                            }
+                            ColumnType::Float(_) => {
+                                let key_float = key_str.parse::<f64>().map_err(|_| {
+                                    MappingError::TypeMismatch {
+                                        column_type: Box::new(key_type.as_ref().clone()),
+                                        value: serde_json::Value::String(key_str.clone()),
+                                    }
+                                })?;
+                                ClickHouseValue::new_float_64(key_float)
+                            }
+                            // For string types, use the key as-is
+                            ColumnType::String => ClickHouseValue::new_string(key_str.clone()),
+                            // For other types, convert via JSON value
+                            _ => {
+                                let key_json_value = serde_json::Value::String(key_str.clone());
+                                map_json_value_to_clickhouse_value(key_type, &key_json_value)?
+                            }
+                        };
+
+                    // Convert the value to the appropriate ClickHouse value
+                    let value_clickhouse_value =
+                        map_json_value_to_clickhouse_value(value_type, value_json)?;
+
+                    map_pairs.push((key_clickhouse_value, value_clickhouse_value));
+                }
+                Ok(ClickHouseValue::new_map(map_pairs))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(column_type.clone()),
+                    value: value.clone(),
+                })
+            }
+        }
     }
 }
 
@@ -1000,5 +1052,104 @@ mod tests {
         // where TimLiveTest is the table name and contains our nested object and a order by Key
 
         assert_eq!(values.unwrap().clickhouse_to_string(), values_string);
+    }
+
+    #[test]
+    fn test_map_json_value_to_clickhouse_value_for_map_with_string_keys() {
+        // Test Map with string keys
+        let map_column_type = ColumnType::Map {
+            key_type: Box::new(ColumnType::String),
+            value_type: Box::new(ColumnType::Int(IntType::Int32)),
+        };
+
+        let json_value = serde_json::json!({
+            "key1": 10,
+            "key2": 20
+        });
+
+        let result = map_json_value_to_clickhouse_value(&map_column_type, &json_value);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ClickHouseValue::Map(pairs) => {
+                assert_eq!(pairs.len(), 2);
+                // Check that we have the expected keys (order might vary)
+                let mut found_keys = std::collections::HashSet::new();
+                for (key, _value) in pairs {
+                    match key {
+                        ClickHouseValue::String(s) => {
+                            found_keys.insert(s);
+                        }
+                        _ => panic!("Expected string key"),
+                    }
+                }
+                assert!(found_keys.contains("key1"));
+                assert!(found_keys.contains("key2"));
+            }
+            _ => panic!("Expected map value"),
+        }
+    }
+
+    #[test]
+    fn test_map_json_value_to_clickhouse_value_for_map_with_numeric_keys() {
+        // Test Map with numeric keys (Int32)
+        let map_column_type = ColumnType::Map {
+            key_type: Box::new(ColumnType::Int(IntType::Int32)),
+            value_type: Box::new(ColumnType::String),
+        };
+
+        let json_value = serde_json::json!({
+            "123": "value1",
+            "456": "value2"
+        });
+
+        let result = map_json_value_to_clickhouse_value(&map_column_type, &json_value);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ClickHouseValue::Map(pairs) => {
+                assert_eq!(pairs.len(), 2);
+                // Check that numeric keys were parsed correctly
+                for (key, value) in pairs {
+                    match key {
+                        ClickHouseValue::ClickhouseInt(_) => {
+                            // This is expected for numeric keys
+                        }
+                        _ => panic!("Expected numeric key, got {:?}", key),
+                    }
+                    match value {
+                        ClickHouseValue::String(_) => {
+                            // This is expected for string values
+                        }
+                        _ => panic!("Expected string value"),
+                    }
+                }
+            }
+            _ => panic!("Expected map value"),
+        }
+    }
+
+    #[test]
+    fn test_map_json_value_to_clickhouse_value_for_map_with_invalid_numeric_keys() {
+        // Test Map with invalid numeric keys
+        let map_column_type = ColumnType::Map {
+            key_type: Box::new(ColumnType::Int(IntType::Int32)),
+            value_type: Box::new(ColumnType::String),
+        };
+
+        let json_value = serde_json::json!({
+            "not_a_number": "value1",
+            "456": "value2"
+        });
+
+        let result = map_json_value_to_clickhouse_value(&map_column_type, &json_value);
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            MappingError::TypeMismatch { .. } => {
+                // This is expected for invalid numeric keys
+            }
+            _ => panic!("Expected TypeMismatch error"),
+        }
     }
 }

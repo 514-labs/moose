@@ -165,6 +165,17 @@ pub fn std_field_type_to_clickhouse_type_mapper(
                 })
                 .collect::<Result<_, _>>()?,
         )),
+        ColumnType::Map {
+            key_type,
+            value_type,
+        } => {
+            let clickhouse_key_type = std_field_type_to_clickhouse_type_mapper(*key_type, &[])?;
+            let clickhouse_value_type = std_field_type_to_clickhouse_type_mapper(*value_type, &[])?;
+            Ok(ClickHouseColumnType::Map(
+                Box::new(clickhouse_key_type),
+                Box::new(clickhouse_value_type),
+            ))
+        }
     }
 }
 

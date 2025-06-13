@@ -17,6 +17,7 @@ import {
   NullType,
   UnknownType,
   UnsupportedFeature,
+  MapType,
 } from "./dataModelTypes";
 import { ClickHouseNamedTuple, DecimalRegex } from "./types";
 
@@ -265,6 +266,54 @@ const isStringAnyRecord = (t: ts.Type, checker: ts.TypeChecker): boolean => {
 };
 
 /**
+ * Check if a type is a Record<K, V> type (generic map/dictionary type)
+ */
+const isRecordType = (t: ts.Type, checker: ts.TypeChecker): boolean => {
+  const indexInfos = checker.getIndexInfosOfType(t);
+  return indexInfos && indexInfos.length === 1;
+};
+
+/**
+ * Handle Record<K, V> types and convert them to Map types
+ */
+const handleRecordType = (
+  t: ts.Type,
+  checker: ts.TypeChecker,
+  fieldName: string,
+  typeName: string,
+  isJwt: boolean,
+): MapType => {
+  const indexInfos = checker.getIndexInfosOfType(t);
+  if (indexInfos && indexInfos.length !== 1) {
+    throw new UnsupportedFeature("Multiple index type");
+  }
+  const indexInfo = indexInfos[0];
+
+  // Convert key type
+  const [, , keyType] = tsTypeToDataType(
+    indexInfo.keyType,
+    checker,
+    `${fieldName}_key`,
+    typeName,
+    isJwt,
+  );
+
+  // Convert value type
+  const [, , valueType] = tsTypeToDataType(
+    indexInfo.type,
+    checker,
+    `${fieldName}_value`,
+    typeName,
+    isJwt,
+  );
+
+  return {
+    keyType,
+    valueType,
+  };
+};
+
+/**
  * see {@link ClickHouseNamedTuple}
  */
 const isNamedTuple = (t: ts.Type, checker: ts.TypeChecker) => {
@@ -324,6 +373,8 @@ const tsTypeToDataType = (
         ),
       )
     : isNamedTuple(nonNull, checker) ? handleNamedTuple(nonNull, checker)
+    : isRecordType(nonNull, checker) ?
+      handleRecordType(nonNull, checker, fieldName, typeName, isJwt)
     : nonNull.isClassOrInterface() || (nonNull.flags & TypeFlags.Object) !== 0 ?
       {
         name: getNestedName(nonNull, fieldName),

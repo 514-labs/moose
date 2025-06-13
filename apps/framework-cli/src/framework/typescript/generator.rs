@@ -259,6 +259,16 @@ fn std_field_type_to_typescript_field_mapper(
                 fields: interface_fields,
             })))
         }
+        ColumnType::Map {
+            key_type: _,
+            value_type: _,
+        } => {
+            // For Map types, we'll use a simple Object type for now
+            // TypeScript's Record<K, V> is not directly representable in InterfaceFieldType
+            Err(TypescriptGeneratorError::UnsupportedDataTypeError {
+                type_name: "Map".to_string(),
+            })
+        }
     }
 }
 

@@ -754,7 +754,9 @@ fn map_json_value_to_clickhouse_value(
                     };
                 }
 
-                Ok(ClickHouseValue::new_tuple(values))
+                Ok(ClickHouseValue::new_array(vec![
+                    ClickHouseValue::new_tuple(values),
+                ]))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: Box::new(column_type.clone()),
@@ -814,6 +816,38 @@ fn map_json_value_to_clickhouse_value(
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: Box::new(ColumnType::IpV6),
+                    value: value.clone(),
+                })
+            }
+        }
+        ColumnType::Nullable(inner) => {
+            if value.is_null() {
+                Ok(ClickHouseValue::new_null())
+            } else {
+                map_json_value_to_clickhouse_value(inner, value)
+            }
+        }
+        ColumnType::NamedTuple(fields) => {
+            if let Some(obj) = value.as_object() {
+                let mut values = Vec::new();
+                for (name, field_type) in fields {
+                    let val = obj.get(name);
+                    match val {
+                        Some(Value::Null) => {
+                            values.push(ClickHouseValue::new_null());
+                        }
+                        Some(val) => {
+                            values.push(map_json_value_to_clickhouse_value(field_type, val)?);
+                        }
+                        None => {
+                            values.push(ClickHouseValue::new_null());
+                        }
+                    }
+                }
+                Ok(ClickHouseValue::new_tuple(values))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(column_type.clone()),
                     value: value.clone(),
                 })
             }

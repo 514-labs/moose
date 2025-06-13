@@ -89,7 +89,12 @@ export function CTACard({
       </CardContent>
       <CardFooter>
         <Link href={ctaLink}>
-          <Button className="font-normal">{ctaLabel}</Button>
+          <Button
+            variant="secondary"
+            className="font-normal border hover:bg-secondary/20"
+          >
+            {ctaLabel}
+          </Button>
         </Link>
       </CardFooter>
     </Card>

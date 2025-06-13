@@ -864,35 +864,7 @@ fn map_json_value_to_clickhouse_value(
                     // JSON object keys are always strings, but ClickHouse Map keys can be numeric
                     let key_clickhouse_value =
                         match key_type.as_ref() {
-                            // Handle numeric key types - parse the string as the appropriate number
-                            ColumnType::Int(IntType::Int8) => {
-                                let key_int = key_str.parse::<i8>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::Int16) => {
-                                let key_int = key_str.parse::<i16>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::Int32) => {
-                                let key_int = key_str.parse::<i32>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::Int64) => {
+                            ColumnType::Int(_) => {
                                 let key_int = key_str.parse::<i64>().map_err(|_| {
                                     MappingError::TypeMismatch {
                                         column_type: Box::new(key_type.as_ref().clone()),
@@ -901,53 +873,7 @@ fn map_json_value_to_clickhouse_value(
                                 })?;
                                 ClickHouseValue::new_int_64(key_int)
                             }
-                            ColumnType::Int(IntType::UInt8) => {
-                                let key_int = key_str.parse::<u8>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::UInt16) => {
-                                let key_int = key_str.parse::<u16>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::UInt32) => {
-                                let key_int = key_str.parse::<u32>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Int(IntType::UInt64) => {
-                                let key_int = key_str.parse::<u64>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                // Note: This might overflow for very large u64 values
-                                ClickHouseValue::new_int_64(key_int as i64)
-                            }
-                            ColumnType::Float(FloatType::Float32) => {
-                                let key_float = key_str.parse::<f32>().map_err(|_| {
-                                    MappingError::TypeMismatch {
-                                        column_type: Box::new(key_type.as_ref().clone()),
-                                        value: serde_json::Value::String(key_str.clone()),
-                                    }
-                                })?;
-                                ClickHouseValue::new_float_64(key_float as f64)
-                            }
-                            ColumnType::Float(FloatType::Float64) => {
+                            ColumnType::Float(_) => {
                                 let key_float = key_str.parse::<f64>().map_err(|_| {
                                     MappingError::TypeMismatch {
                                         column_type: Box::new(key_type.as_ref().clone()),

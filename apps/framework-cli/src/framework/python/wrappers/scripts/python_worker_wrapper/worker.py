@@ -8,7 +8,7 @@ from .logging import log
 import asyncio
 import signal
 from .utils.temporal import create_temporal_connection
-from moose_lib.dmv2 import _get_workflows, Workflow
+from moose_lib.dmv2 import get_workflows, Workflow
 from moose_lib.internal import load_models
 
 # Maintain a global set of activity names we've already created
@@ -68,7 +68,7 @@ def load_dmv2_workflows() -> dict[str, Workflow]:
     """
     try:
         load_models()
-        return _get_workflows()
+        return get_workflows()
     except Exception as e:
         log.error(f"Failed to load DMV2 workflows: {e}")
         return {}

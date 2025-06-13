@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from moose_lib.dmv2 import _get_workflow, Workflow, Task
+from moose_lib.dmv2 import get_workflow, Workflow, Task
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from typing import Any, Dict, List, Optional
@@ -171,7 +171,7 @@ class ScriptWorkflow:
 
             if task.config.on_complete:
                 for child_task in task.config.on_complete:
-                    child_result = await self._handle_dmv2_workflow(dmv2wf, child_task, result)
+                    child_result = await self._execute_dmv2_activity_with_state(dmv2wf, child_task, result)
                     results.extend(child_result)
 
             return results
@@ -199,7 +199,7 @@ class ScriptWorkflow:
                 log.error(f"Failed to decode input data: {e}")
                 raise
         
-        dmv2wf = _get_workflow(path)
+        dmv2wf = get_workflow(path)
         if dmv2wf:
             return await self._execute_dmv2_activity_with_state(dmv2wf, dmv2wf.config.starting_task, current_data)
         else:

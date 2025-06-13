@@ -22,7 +22,6 @@ use tokio::task::JoinHandle;
 
 use crate::framework::core::infrastructure::table::Column;
 use crate::framework::core::infrastructure::table::ColumnType;
-use crate::framework::core::infrastructure::table::{FloatType, IntType};
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::errors::ClickhouseError;

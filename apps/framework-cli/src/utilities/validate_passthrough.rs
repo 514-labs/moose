@@ -448,11 +448,11 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                             validate_map_key::<S::Error>(&key, self.key_type, self.parent_context)?;
                             inner.serialize_key(&key)?;
                             let mut value_visitor = ValueVisitor {
-                                t: &self.value_type,
+                                t: self.value_type,
                                 required: true,
                                 write_to: &mut inner,
                                 context: ParentContext {
-                                    parent: Some(&self.parent_context),
+                                    parent: Some(self.parent_context),
                                     field_name: Either::Left(&key),
                                 },
                                 jwt_claims: None,
@@ -466,8 +466,8 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                 }
                 let map = MapPassThrough {
                     parent_context: &self.context,
-                    key_type: &key_type,
-                    value_type: &value_type,
+                    key_type,
+                    value_type,
                     map: RefCell::new(map),
                     _phantom_data: &PhantomData,
                 };

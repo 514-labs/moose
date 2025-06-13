@@ -1484,6 +1484,7 @@ pub fn convert_clickhouse_type_to_column_type(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::framework::core::infrastructure::table::IntType::UInt32;
 
     #[test]
     fn test_tokenizer() {
@@ -1724,11 +1725,27 @@ mod tests {
             reparsed
         );
 
-        // Conversion of complex types with NamedTuple should work but complex nested Array(Nullable(Map(...))) might fail
-        let conversion = convert_ast_to_column_type(&node);
-        assert!(
-            conversion.is_ok(),
-            "Complex type conversion should work since Map and NamedTuple are now supported"
+        assert_eq!(
+            convert_ast_to_column_type(&node).unwrap(),
+            (
+                ColumnType::Array {
+                    element_type: Box::new(ColumnType::Map {
+                        key_type: Box::new(ColumnType::String),
+                        value_type: Box::new(ColumnType::NamedTuple(vec![
+                            ("x".to_string(), ColumnType::Int(UInt32)),
+                            (
+                                "y".to_string(),
+                                ColumnType::Array {
+                                    element_type: Box::new(ColumnType::String),
+                                    element_nullable: true,
+                                }
+                            )
+                        ]))
+                    }),
+                    element_nullable: true,
+                },
+                false
+            )
         );
     }
 
@@ -1844,8 +1861,8 @@ mod tests {
         let invalid_syntax_result = convert_clickhouse_type_to_column_type("NotValid(");
         assert!(invalid_syntax_result.is_err(), "Invalid syntax should fail");
 
-        if let Err(ClickHouseTypeError::Parse { .. }) = invalid_syntax_result {
-            // This is expected
+        if let Err(ClickHouseTypeError::Parse { input, source: _ }) = invalid_syntax_result {
+            assert_eq!(input, "NotValid(");
         } else {
             panic!("Expected Parse error for invalid syntax");
         }

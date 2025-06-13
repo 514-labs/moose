@@ -476,11 +476,11 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 fields = Some(map.next_value::<Vec<(String, ColumnType)>>()?)
             } else if key == "nullable" {
                 nullable_inner = Some(map.next_value::<ColumnType>()?)
-            } else if key == "keyType" {
+            } else if key == "keyType" || key == "key_type" {
                 key_type = Some(map.next_value::<ColumnType>().map_err(|e| {
                     A::Error::custom(format!("Map key type deserialization error {}.", e))
                 })?)
-            } else if key == "valueType" {
+            } else if key == "valueType" || key == "value_type" {
                 value_type = Some(map.next_value::<ColumnType>().map_err(|e| {
                     A::Error::custom(format!("Map value type deserialization error {}.", e))
                 })?)

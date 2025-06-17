@@ -1,3 +1,5 @@
+import { readProjectConfig } from "./configFile";
+
 interface RuntimeClickHouseConfig {
   host: string;
   port: string;
@@ -28,7 +30,6 @@ class ConfigurationRegistry {
     }
 
     // Fallback to reading from config file for backward compatibility
-    const { readProjectConfig } = require("./configFile");
     const projectConfig = readProjectConfig();
     return {
       host: projectConfig.clickhouse_config.host,

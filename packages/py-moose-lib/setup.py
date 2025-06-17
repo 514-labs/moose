@@ -16,6 +16,7 @@ if '--version' in sys.argv:
 setup(
     name='moose_lib',
     version=version,
+    python_requires='>=3.12',
     packages=find_packages(),
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -30,5 +31,6 @@ setup(
         "kafka-python-ng==2.2.2",
         "redis==6.2.0",
         "humanfriendly==10.0",
+        "clickhouse_connect==0.7.16",
     ],
 )

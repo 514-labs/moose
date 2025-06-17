@@ -62,7 +62,7 @@ use rdkafka::producer::{DeliveryFuture, FutureProducer, FutureRecord};
 use reqwest::Client;
 use serde::Serialize;
 use serde::{Deserialize, Deserializer};
-use serde_json::{Deserializer as JsonDeserializer, Value};
+use serde_json::{json, Deserializer as JsonDeserializer, Value};
 use tokio::spawn;
 
 use crate::framework::data_model::model::DataModel;
@@ -669,14 +669,13 @@ async fn handle_json_array_body(
         if let Some(dlq) = dead_letter_queue {
             let objects = match serde_json::from_slice::<Value>(&body) {
                 Ok(Value::Array(values)) => values
-                    .iter()
-                    .filter_map(|v| v.as_object())
-                    .map(serde_json::to_vec)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
-                Ok(Value::Object(value)) => {
-                    vec![serde_json::to_vec(&value).unwrap()]
-                }
+                    .into_iter()
+                    .filter_map(|v| match v {
+                        Value::Object(o) => Some(o),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+                Ok(Value::Object(value)) => vec![value],
                 _ => {
                     info!(
                         "Received payload for {} is not valid JSON objects or arrays. Not sending them to DLQ.",
@@ -685,7 +684,21 @@ async fn handle_json_array_body(
                     vec![]
                 }
             };
-            send_to_kafka(&configured_producer.producer, dlq, objects.into_iter()).await;
+            send_to_kafka(
+                &configured_producer.producer,
+                dlq,
+                objects.into_iter().map(|original_record| {
+                    serde_json::to_vec(&json!({
+                        "originalRecord": original_record,
+                        "errorMessage": e.to_string(),
+                        "errorType": "ValidationError",
+                        "failedAt": chrono::Utc::now().to_rfc3339(),
+                        "source": "api",
+                    }))
+                    .unwrap()
+                }),
+            )
+            .await;
         }
         return bad_json_response(e);
     }

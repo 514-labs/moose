@@ -73,7 +73,11 @@ export const cliLog: (log: CliLogData) => void = (log) => {
     port: 5001,
     method: "POST",
     path: "/logs",
-  }); // no callback, fire and forget
+  });
+
+  req.on("error", (err: Error) => {
+    console.log(`Error ${err.name} sending CLI log.`, err.message);
+  });
 
   req.write(JSON.stringify({ message_type: "Info", ...log }));
   req.end();

@@ -152,7 +152,7 @@ impl ClickHouseClient {
 
         let body = Self::build_body(columns, records);
 
-        debug!("Inserting into clickhouse with values: {}", body);
+        log::trace!("Inserting into clickhouse with values: {}", body);
 
         let bytes = Bytes::from(body);
 

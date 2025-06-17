@@ -440,7 +440,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
             "date_time_input_format": "best_effort",
             "max_insert_block_size": 100000 if is_stream else min(len(validated_data), 100000),
             "max_block_size": 65536,
-            "async_insert": 1 if (is_stream or len(validated_data) > 1000) else 0,
+            "async_insert": 1 if len(validated_data) > 1000 else 0,
             "wait_for_async_insert": 1,
         }
         if (strategy == "discard" and options and
@@ -633,7 +633,8 @@ class OlapTable(TypedMooseResource, Generic[T]):
         client: Client,
         table_name: str,
         data: Iterator[T],
-        strategy: str
+        strategy: str,
+        options: Optional[InsertOptions]
     ) -> InsertResult[T]:
         """Insert data from an iterator into the table.
 
@@ -649,7 +650,15 @@ class OlapTable(TypedMooseResource, Generic[T]):
         try:
             batch = []
             total_inserted = 0
-            settings = {"date_time_input_format": "best_effort"}
+
+            _, _, settings = self._prepare_insert_options(
+                table_name,
+                data,
+                [],
+                True,
+                strategy,
+                options
+            )
 
             for record in data:
                 # Convert record to dict using model_dump if available
@@ -710,14 +719,14 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 {'id': 2, 'name': 'Jane', 'email': 'jane@example.com'}
             ])
 
-            # Insert with a generator
+            # Insert with a generator (validation not available for streams)
             def user_stream():
                 for i in range(10):
-                    yield {
-                        'id': i,
-                        'name': f'User {i}',
-                        'email': f'user{i}@example.com'
-                    }
+                    yield User(
+                        id=i,
+                        name=f'User {i}',
+                        email=f'user{i}@example.com'
+                    )
 
             result2 = user_table.insert(user_stream(), options=InsertOptions(strategy='fail-fast'))
 
@@ -726,7 +735,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
 
             # Insert with error handling strategies
             result4 = user_table.insert(mixed_data, options=InsertOptions(
-                strategy='isolate',
+                strategy='discard',
                 allow_errors_ratio=0.1,
                 validate=True
             ))
@@ -744,7 +753,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         table_name = self._generate_table_name()
 
         if is_stream:
-            return self._insert_stream(client, table_name, data, strategy)
+            return self._insert_stream(client, table_name, data, strategy, options)
         else:
             return self._insert_array_data(
                 client,

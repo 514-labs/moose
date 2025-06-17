@@ -30,7 +30,7 @@ const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 500;
 /**
  * Data structure for metrics logging containing counts and metadata
  */
-type CliLogData = {
+type MetricsData = {
   count_in: number;
   count_out: number;
   bytes: number;
@@ -137,12 +137,19 @@ const buildSaslConfig = (
 /**
  * Logs metrics data to HTTP endpoint
  */
-export const metricsLog: (log: CliLogData) => void = (log) => {
+export const metricsLog: (log: MetricsData) => void = (log) => {
   const req = http.request({
     port: 5001,
     method: "POST",
     path: "/metrics-logs",
-  }); // no callback, fire and forget
+  });
+
+  req.on("error", (err: Error) => {
+    console.log(
+      `Error ${err.name} sending metrics to management port.`,
+      err.message,
+    );
+  });
 
   req.write(JSON.stringify({ ...log }));
   req.end();

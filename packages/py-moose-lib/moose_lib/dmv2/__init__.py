@@ -18,6 +18,7 @@ from .types import (
 from .olap_table import (
     OlapConfig,
     OlapTable,
+    InsertOptions,
 )
 
 from .stream import (
@@ -94,6 +95,7 @@ __all__ = [
     # OLAP Tables
     'OlapConfig',
     'OlapTable',
+    'InsertOptions',
 
     # Streams
     'StreamConfig',

@@ -23,6 +23,7 @@ import {
   StaggeredCard,
   StaggeredContent,
   StaggeredCode,
+  CompareBulletPointsCard,
 } from "@/components";
 import { Button } from "@/components/ui";
 import { SmallTextEmbed } from "@/components/typography";
@@ -49,6 +50,7 @@ import {
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
 import { paths } from "@/lib/paths";
+import { Card, CardContent } from "@/components/ui/card";
 
 # Welcome to Moose
 
@@ -105,7 +107,7 @@ Open source TypeScript/Python framework for building analytical backends—strea
 
 <BulletPointsCard
   title="Why Devs Choose Moose"
-  bulletStyle="check"
+  bulletStyle="none"
   compact={true}
   bullets={[
     { title: "Define everything in code", description: "Data models, pipelines, and endpoints." },
@@ -185,46 +187,48 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
 </Tabs.Tab>
 </Tabs>
 
+---
 
 ## Why Moose Exists & Who It's For
 
 Moose is for developers who want to move fast and treat analytics as real software—not a patchwork of YAML, SQL, and fragile connectors. 
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <BulletPointsCard
-    title="Web DX: Fast & Integrated"
-    bulletStyle="check"
+  <CompareBulletPointsCard
+    title="Current State: Web DX vs. Analytics DX"
     compact={true}
-    bullets={[
+    rightColumn={{
+      title: "Web DX: Fast & Integrated",
+      bulletStyle: "check",
+      bullets: [
       { title: "Frameworks out of the box", description: "Next, Django, Rails" },
       { title: "Integrated database", description: "Postgres/MySQL built-in" },
       { title: "Built-in HTTP APIs", description: "Routing & endpoints included" },
       { title: "Type-safe data models", description: "ORMs and dev time validation" },
       { title: "Hot-reload local development", description: "Instant feedback on changes" },
       { title: "One codebase, one deployment", description: "Get to production in minutes" }
-    ]}
-  />
-  <BulletPointsCard
-    title="Analytics DX: Slow & Fragmented"
-    bulletStyle="x"
-    compact={true}
-    bullets={[
+      ]
+    }}
+    leftColumn={{
+      title: "Analytics DX: Slow & Fragmented",
+      bulletStyle: "x",
+      compact: true,
+      bullets: [
       { title: "No frameworks", description: "Manual tool integration" },
       { title: "Separate database setup", description: "Manual ClickHouse configuration" },
       { title: "Custom API boilerplate", description: "FastAPI/Express from scratch" },
-      { title: "Manual schema management", description: "Write DDL scripts by hand, YAML configs everywhere" },
+      { title: "Manual schema management", description: "Write DDL scripts by hand" },
       { title: "No hot-reload dev", description: "Wait for deploys to see errors" },
       { title: "Multiple codebases and deployments", description: "5+ separate systems to manage" }
-    ]}
+      ]
+    }}
   />
-</div>
 
 ### Without Moose vs. With Moose
 Moose gives you a unified, code-first experience to build, test, and ship analytics features with the same speed and confidence as web apps.
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <div>
-    ```txt filename="Without Moose: Manual config & integration" 
+<Tabs items={["Without Moose", "With Moose"]}>
+<Tabs.Tab>
+    ```txt
     Kafka Config     (300 lines of YAML)
     + ClickHouse     (Manual schema management)  
     + dbt            (SQL-only transformations)
@@ -232,23 +236,8 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
     + Custom APIs    (Boilerplate code)
     + ...
     ```
-  </div>
-  <div>
-    ```ts filename="With Moose: One codebase for everything" copy
-    new IngestPipeline<DataModel>("pipeline", {
-      ingest: true, // HTTP API w/ validation
-      stream: true, // Redpanda/Kafka topic
-      table: true, // ClickHouse table
-    });
-    // Auto-generated & auto-wired together
-    ```
-  </div>
-</div>
-
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-  <div>
-    <BulletPointsCard
-      title="Constant context switching"
+   <BulletPointsCard
+      title="Manual config & integration = constant context switching"
       bulletStyle="x"
       compact={true}
       bullets={[
@@ -257,10 +246,18 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
         "Which database field was nullable again?",
       ]}
     />
-  </div>
-  <div>
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```ts
+    const pipeline = new IngestPipeline<DataModel>("pipeline", {
+      ingest: true, // HTTP API w/ validation
+      stream: true, // Redpanda/Kafka topic
+      table: true, // ClickHouse table
+    });
+    // Auto-generated & auto-wired together
+    ```
     <BulletPointsCard
-      title="Similar Web DX, but for analytics"
+      title="One codebase for everything. Like web DX, but for analytics"
       bulletStyle="check"
       compact={true}
       bullets={[
@@ -270,22 +267,26 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
         "Hot-reload development",
       ]}
     />
-  </div>
-</div>
+</Tabs.Tab>
+</Tabs>
+
+---
 
 
 ## Core Capabilities
 
-<div className="space-y-8 my-8">
+<Card className="space-y-8 my-8">
   {/* Type-Safe Data Models */}
   <StaggeredCard>
-    <StaggeredContent>
-      ### Type-Safe Data Models
-      Define your schema once, get validation everywhere—catch errors at dev time, not in production.
-      <Button asChild variant="link">
-        <a href={paths.dataModels}>Learn about data models →</a>
-      </Button>
-    </StaggeredContent>
+    <StaggeredContent
+      title="Type-Safe Data Models"
+      description="Define your schema once, get validation everywhere—catch errors at dev time, not in production."
+      cta={{
+        label: "Learn more",
+        href: paths.dataModels,
+        variant: "outline",
+      }}
+    />
     <StaggeredCode>
       ```ts
       interface Event {
@@ -293,144 +294,139 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
         name: string;
         createdAt: Date;
       }
+
+      interface AggregatedEvent {
+        count: number;
+        name: string;
+      }
       ```
     </StaggeredCode>
   </StaggeredCard>
 
   {/* HTTP APIs */}
-  <StaggeredCard>
-    <StaggeredContent>
-      ### HTTP APIs
-      Expose data ingestion and analytics endpoints automatically—no boilerplate code needed.
-      <Button asChild variant="link">
-        <a href={paths.ingestion}>Explore ingest APIs →</a>
-      </Button>
-    </StaggeredContent>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      title="HTTP APIs"
+      description="Expose data ingestion and analytics endpoints-get type-safe validation and auto-generated docs for free."
+      cta={{
+        label: "Explore ingest APIs →",
+        href: paths.ingestion,
+        variant: "outline",
+      }}
+    />
     <StaggeredCode>
       ```ts
-      const postApi = new IngestApi<Event>("post-event", {
+      const postEvent = new IngestApi<Event>("post-event", {
         destination: stream,
       });
+     
+     const getEvents = new ConsumptionApi<Params, Event>("get-events", {
+      async handler({limit = 10}, {client, sql}) {
+        // query database and return results
+      }
+     });
       ```
     </StaggeredCode>
   </StaggeredCard>
 
   {/* Real-Time Streaming */}
-  <StaggeredCard>
-    <StaggeredContent>
-      ### Real-Time Streaming
-      Process events as they arrive with built-in Kafka/Redpanda—no separate streaming infrastructure to manage.
-      <Button asChild variant="link">
-        <a href={paths.streams}>Explore streaming →</a>
-      </Button>
-    </StaggeredContent>
-    <StaggeredCode>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      title="Real-Time Streaming"
+      description="Process events as they arrive with built-in Kafka/Redpanda—no separate streaming infrastructure to manage."
+      cta={{
+        label: "Explore streaming →",
+        href: paths.streams,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode className="border-t">
       ```ts
       const stream = new Stream<Event>("events", {
         destination: table,
+      });
+
+      stream.addConsumer((event) => {
+        console.log(event);
       });
       ```
     </StaggeredCode>
   </StaggeredCard>
 
   {/* Analytical Database */}
-  <StaggeredCard>
-    <StaggeredContent>
-      ### Analytical Database
-      Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics.
-      <Button asChild variant="link">
-        <a href={paths.olapTables}>Learn about OLAP tables →</a>
-      </Button>
-    </StaggeredContent>
-    <StaggeredCode>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      title="Analytical Database"
+      description="Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics."
+      cta={{
+        label: "Learn about OLAP tables →",
+        href: paths.olapTables,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode className="border-t">
       ```ts
-      const table = new OlapTable<Event>("events");
+    const table = new OlapTable<Event>("events");
 
-      const sql = sql`SELECT count(*) FROM ${table} GROUP BY name`;
-
-      const matView = new MaterializedView<Event>("aggregated-events", {
-        selectStatement: sql,
+     const mv = new MaterializedView<AggregatedEvent>({
+        selectStatement: sql`
+          SELECT count(*) as count, name
+          FROM ${table}
+          GROUP BY name
+        `,
         selectTables: [table],
         //...
-      ```
-    </StaggeredCode>
-  </StaggeredCard>
-
-  {/* Consumption APIs */}
-  <StaggeredCard>
-    <StaggeredContent>
-      ### Consumption APIs
-      Expose analytical data via HTTP endpoints, with type safety and schema validation.
-      <Button asChild variant="link">
-        <a href={paths.consumptionApis}>Explore consumption APIs →</a>
-      </Button>
-    </StaggeredContent>
-    <StaggeredCode>
-      ```ts
-      const getEvents = new ConsumptionApi<Params, Event>("get-events", {
-        async handler({ limit = 10 }, { client, sql }) {
-          const result = await client.query.execute(
-            sql`SELECT * FROM ${table} LIMIT ${limit}`
-          );
-          return await result.json();
-        }
       });
       ```
     </StaggeredCode>
   </StaggeredCard>
 
   {/* Data Movement Workflows */}
-  <StaggeredCard>
-    <StaggeredContent>
-      ### Data Movement Workflows
-      Orchestrate background jobs and scheduled tasks to move data between your analytical database and other systems.
-      <Button asChild variant="link">
-        <a href={paths.workflows}>Learn about workflows →</a>
-      </Button>
-    </StaggeredContent>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      title="Workflow Orchestration"
+      description="Schedule or trigger background jobs to move data between your analytical database and other source or destination systems."
+      cta={{
+        label: "Learn about workflows →",
+        href: paths.workflows,
+        variant: "outline",
+      }}
+    />
     <StaggeredCode>
       ```ts
-      const extractData = new Task<null, boolean>("extract-data", {
-        run: async () => {
-          const data = await fetch(
-            "https://api.example.com/data"
-          ).then(res => res.json());
-          await table.insert(data);
-          return true;
+      const etl = new EtlPipeline("etl", {
+        extract: async (context) => {
+          return await fetch("some-source-url").json();
         },
-      });
-
-      const workflow = new Workflow("hourly-etl", {
-        schedule: "0 * * * *",
-        firstTask: extractData,
+        transform: async (data) => {
+          return data.map((item) => ({
+            ...item,
+            processed: true,
+          }));
+        },
+        load: async (data) => {
+          await table.insert(data);
+        },
       });
       ```
     </StaggeredCode>
   </StaggeredCard>
-</div>
+</Card>
+
+---
 
 ## Start Developing in Seconds
 
-<BulletPointsCard
-  title="Local-First Development"
-  bulletStyle="check"
-  compact={true}
-  bullets={[
-    "1 command to spin up entire backend infrastructure",
-    "Zero configuration required",
-    "Exact replication of production infrastructure and logic",
-    "See your changes reflected instantly throughout the stack",
-  ]}
-/>
+<Card className="space-y-8 my-8 p-4">
 
-Moose comes with a pre-configured and fully integrated data stack that runs entirely on your laptop. Spin it up with one command:
+### Zero-Config Local Dev Environment
 
-```bash filename="Terminal" copy
-moose dev
-```
+Spin up an exact replica of your production stack on your laptop with one command (you don't need to configure anything, it's all pre-configured):
 
-All the infrastructure is automatically spun up:
-```txt
+```bash copy
+$ moose dev
+
+
 ⡏ Starting local infrastructure
   Successfully started containers
      Validated clickhousedb-1 docker container
@@ -439,21 +435,31 @@ All the infrastructure is automatically spun up:
      Validated temporal docker container
   Successfully ran local infrastructure
 ```
+---
+### Hot-Reload
 
-<BulletPointsCard
-  title="Common workflow scenarios"
-  bulletStyle="check"
-  compact={true}
-  bullets={[
-    { title: "Need to add or change a model?", description: "Moose hot reloads it to your local infrastructure when you save" },
-    { title: "Added a new field?", description: "It's instantly available in your API, streams, and database" },
-    { title: "Need to test your pipeline?", description: "Send sample data to your local ingest API and see the data flow through" },
-  ]}
-/>
+Moose automatically reloads your application on save, just like web frameworks. Add a field to your data model, and all dependent components update instantly:
+
+```ts {5} copy
+interface Event {
+  id: Key<string>;
+  name: string;
+  createdAt: Date;
+  status: string; // New field
+}
+```
+```txt {3}
+⢹ Processing Infrastructure changes from file watcher
+             ~ Topic: events - Version: 0.0 - Retention Period: 604800s - Partition Count: 1
+             ~ Table events with column changes: [Added(Column { name: "status", data_type: String, required: true, unique: false, primary_key: false, default: None })] and order by changes: OrderByChange { before: [], after: [] }
+             ~ Topic to Table Sync Process: events_0_0 -> events
+             ~ API Endpoint: events - Version: 0.0 - Path: ingest/events - Method: POST - Format: Some(Json)
+```
+</Card>
 
 Learn more in the [5-minute tutorial](/moose/getting-started/quickstart).
 
-### Common Use Cases
+## Common Use Cases
 
 <CTACards columns={3}>
 <CTACard

@@ -322,9 +322,10 @@ async fn sync_kafka_to_kafka(
             Ok(message) => match message.payload() {
                 Some(payload) => match std::str::from_utf8(payload) {
                     Ok(payload_str) => {
-                        debug!(
+                        log::trace!(
                             "Received message from {}: {}",
-                            source_topic_name, payload_str
+                            source_topic_name,
+                            payload_str
                         );
                         metrics
                             .send_metric_event(MetricEvent::TopicToOLAPEvent {
@@ -449,7 +450,7 @@ async fn sync_kafka_to_clickhouse(
                 Ok(message) => match message.payload() {
                     Some(payload) => match std::str::from_utf8(payload) {
                         Ok(payload_str) => {
-                            debug!(
+                            log::trace!(
                                 "Received message from {}: {}",
                                 source_topic_name, payload_str
                             );
@@ -515,12 +516,12 @@ fn mapper_json_to_clickhouse_record(
                 let key = column.name.clone();
                 let value = map.get(&key);
 
-                log::debug!(
+                log::trace!(
                     "Looking to map column {:?} to values in map: {:?}",
                     column,
                     map
                 );
-                log::debug!("Value found for key {}: {:?}", key, value);
+                log::trace!("Value found for key {}: {:?}", key, value);
 
                 match value {
                     Some(Value::Null) => {

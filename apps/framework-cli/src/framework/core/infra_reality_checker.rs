@@ -109,7 +109,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
 
         // Get actual tables from OLAP database
         debug!("Fetching actual tables from OLAP database");
-        let (actual_tables, _) = self
+        let (actual_tables, tables_cannot_be_mapped_back) = self
             .olap_client
             .list_tables(&project.clickhouse_config.db_name, project)
             .await?;
@@ -159,7 +159,12 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
         // Find missing tables (in map but don't exist)
         let missing_tables: Vec<String> = mapped_table_map
             .keys()
-            .filter(|name| !actual_table_map.contains_key(*name))
+            .filter(|name| {
+                !actual_table_map.contains_key(*name)
+                    && !tables_cannot_be_mapped_back
+                        .iter()
+                        .any(|t| &&t.name == name)
+            })
             .cloned()
             .collect();
         debug!(

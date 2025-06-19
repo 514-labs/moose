@@ -9,10 +9,6 @@ const meta = {
   workflows: "Workflows & Tasks",
   "consumption-apis": "Consumption APIs",
   "dead-letter-queues": "Error Handling",
-  "workflows-2": {
-    title: "Workflows V2 (Legacy)",
-    display: "hidden",
-  },
 };
 
 export default render(meta);

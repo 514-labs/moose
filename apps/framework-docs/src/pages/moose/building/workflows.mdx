@@ -6,7 +6,7 @@ description: Workflows for Moose
 import { FileTree } from "nextra/components";
 import { Python, TypeScript, Callout, LanguageSwitcher } from "@/components";
 
-# Workflow Orchestration
+# Workflow Orchestration 2.0
 
 <LanguageSwitcher />
 
@@ -95,67 +95,6 @@ export const myworkflow = new Workflow("myworkflow", {
 });
 ```
 </TypeScript>
-
-<Python>
-
-### Dynamic Task Composition
-
-The new API enables dynamic task composition where tasks can be chained programmatically:
-
-```python filename="app/main.py" copy
-from moose_lib import Task, Workflow, TaskConfig, WorkflowConfig
-from pydantic import BaseModel
-from datetime import datetime
-
-class TaskAOutput(BaseModel):
-    user_id: int
-    user_name: str
-
-class TaskBInput(BaseModel):
-    user_id: int
-    user_name: str
-
-class TaskBOutput(BaseModel):
-    user_id: int
-    user_name: str
-    processed_at: str
-
-async def task_a_handler() -> TaskAOutput:
-    return TaskAOutput(
-        user_id=123,
-        user_name="john_doe"
-    )
-
-async def task_b_handler(input: TaskBInput) -> TaskBOutput:
-    # input automatically has the correct type from TaskA's output
-    return TaskBOutput(
-        user_id=input.user_id,
-        user_name=input.user_name,
-        processed_at=datetime.now().isoformat()
-    )
-
-task_a = Task[dict, TaskAOutput](
-    name="taskA",
-    config=TaskConfig(run=task_a_handler)
-)
-
-task_b = Task[TaskBInput, TaskBOutput](
-    name="taskB", 
-    config=TaskConfig(run=task_b_handler)
-)
-
-# Dynamic task chaining - can be conditional or computed
-task_a.config.on_complete = [task_b]
-
-workflow = Workflow(
-    name="dataFlow",
-    config=WorkflowConfig(starting_task=task_a)
-)
-```
-
-Pydantic ensures type safety between task inputs and outputs, catching mismatches at runtime.
-
-</Python>
 
 ## Running Workflows
 
@@ -314,7 +253,6 @@ const triggerApi = new ConsumptionAPI<WorkflowParams>("trigger-workflow", ({inpu
 
 
 ## Error Detection and Handling
-
 Moose provides multiple layers of error protection, both at the workflow and task level:
 
 ### Workflow-Level Retries and Timeouts

@@ -18,18 +18,18 @@ export function Contact() {
 
       <ContactCards columns={3}>
         <ContactCard
+          title="Contribute"
+          description="Check out the code, contribute to Moose, and report issues"
+          ctaLink={paths.github}
+          ctaLabel="Contribute"
+          Icon={Icons.github}
+        />
+        <ContactCard
           title="Join Our Community"
           description="Connect with developers and get help with your projects"
           ctaLink={paths.slack}
           ctaLabel="Join Slack"
           Icon={Icons.slack}
-        />
-        <ContactCard
-          title="Learn & Watch"
-          description="Video tutorials, demos, and deep-dives into Moose features"
-          ctaLink={paths.youtube}
-          ctaLabel="Watch Tutorials"
-          Icon={Icons.youtube}
         />
         <ContactCard
           title="Talk to Us"
@@ -39,12 +39,13 @@ export function Contact() {
           Icon={Icons.contact}
         />
         <ContactCard
-          title="Contribute"
-          description="Check out the code, contribute to Moose, and report issues"
-          ctaLink={paths.github}
-          ctaLabel="Contribute"
-          Icon={Icons.github}
+          title="Learn & Watch"
+          description="Video tutorials, demos, and deep-dives into Moose features"
+          ctaLink={paths.youtube}
+          ctaLabel="Watch Tutorials"
+          Icon={Icons.youtube}
         />
+
         <ContactCard
           title="Follow Us on X"
           description="Follow us on X for the latest news and updates"

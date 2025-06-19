@@ -248,9 +248,7 @@ const handleMessage = async (
 
   try {
     const parsedData = JSON.parse(message.value.toString(), jsonDateReviver);
-    let transformedData;
-
-    transformedData = await Promise.all(
+    const transformedData = await Promise.all(
       streamingFunctionWithConfigList.map(async ([fn, config]) => {
         try {
           return await fn(parsedData);
@@ -299,7 +297,9 @@ const handleMessage = async (
 
     if (transformedData) {
       if (Array.isArray(transformedData)) {
-        return transformedData.map((item) => ({ value: JSON.stringify(item) }));
+        return transformedData
+          .filter((item) => item !== undefined && item !== null)
+          .map((item) => ({ value: JSON.stringify(item) }));
       } else {
         return [{ value: JSON.stringify(transformedData) }];
       }

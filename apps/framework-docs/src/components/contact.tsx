@@ -3,18 +3,24 @@ import { ContactCards, ContactCard } from "./contact-card";
 import { paths } from "@/lib/paths";
 import { Heading, HeadingLevel } from "./typography";
 
-export function Contact() {
+interface ContactProps {
+  showHeading?: boolean;
+}
+
+export function Contact({ showHeading = true }: ContactProps) {
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Heading level={HeadingLevel.l3} className="text-primary">
-          Learning & Community Resources
-        </Heading>
-        <p className="text-muted-foreground text-sm">
-          Get help, learn, contribute, and stay connected with the Moose
-          community
-        </p>
-      </div>
+      {showHeading && (
+        <div className="space-y-2">
+          <Heading level={HeadingLevel.l3} className="text-primary">
+            Learning & Community Resources
+          </Heading>
+          <p className="text-muted-foreground text-sm">
+            Get help, learn, contribute, and stay connected with the Moose
+            community
+          </p>
+        </div>
+      )}
 
       <ContactCards columns={3}>
         <ContactCard

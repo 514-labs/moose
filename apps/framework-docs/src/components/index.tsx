@@ -8,7 +8,7 @@ export * from "./language-switcher";
 export * from "./language-wrappers";
 export * from "./feature-cards";
 export * from "./MuxVideo";
-export * from "./product-badge";
+export * from "./badges";
 export * from "./meta-renderer";
 export * from "./bullet-points-card";
 export * from "./q-and-a-bullets";

@@ -1,0 +1,136 @@
+---
+title: Core Concepts
+description: Essential primitives, patterns, and architecture for building with Moose.
+---
+
+import { Callout, ZoomImg, CTACard } from "@/components";
+import { Steps } from "nextra/components";
+import { paths } from "@/lib/paths";
+
+# Core Concepts
+
+## How Moose Fits in Your Stack
+
+<ZoomImg light="/architecture-figjam.jpg" dark="/architecture-figjam.jpg" alt="Moose Data Flow" />
+
+Moose sits between your data sources and your analytics consumers, orchestrating ingestion, processing, storage, and API access.
+
+---
+
+## Moose Components: The Building Blocks
+
+Moose provides a set of core primitives you use to define how you want to ingest, transform, store, and expose data for your backend.  
+Here's a quick glossary:
+
+
+### `IngestPipeline`
+
+HTTP endpoint + streaming + storage for event ingestion. 
+
+<Callout type="info" title="When to use" href={paths.ingestion}>
+  Use when you need to collect data from your frontend or external services via HTTP.
+</Callout>
+
+### `Stream`
+
+Real-time processing of events as they flow. Use for transforming or filtering data in motion.
+
+Declaring a `Stream` object in your Moose code will spin up a Redpanda/Kafka topic. The event schema for that topic will be inferred from the Data Model you provide as the type parameter.
+
+
+<Callout type="info" title="When to use" href={paths.streams}>
+ Standalone streams are useful when you want to implement cascading streaming transformations. In this pattern, the standalone streams are useful for having an audit trail of events for the intermediate transformation steps in your streaming pipeline.
+</Callout>
+
+#### Streaming Transformations
+Streaming transformations configure a process to consume events from a stream, pass the events as input to a TypeScript/Python function you define for processing the events, and then write them to another stream.
+
+<Callout type="info" title="When to use" href={paths.streams}>
+Transforming data between types, filtering out events, or enriching events with additional data.
+</Callout>
+
+#### Read-only Consumers
+
+Read-only consumers are processes that read events from a stream, but do not write them back to the stream. These are useful when you want to integrate with some external system that depends on your event data, like an alerting tool.
+
+
+<Callout type="info" title="When to use" href={paths.streams}>
+    Use when you want to consume events from a stream for a downstream process.
+</Callout>
+
+
+#### Streaming Destinations
+
+Streaming destinations automatically consume events from a stream and write them to an `OlapTable` in your analytics database.
+
+<Callout type="info" title="When to use" href={paths.streams}>
+    Use when you want to persist events from your stream to a table in your analytics database.
+</Callout>
+
+
+### OlapTable
+
+
+
+### MaterializedView
+
+Real-time aggregations, auto-updated. Use for pre-computed metrics and dashboards.
+
+
+### Workflows & Tasks
+
+Background jobs or scheduled tasks. Use for ETL jobs, periodic syncs, or automation.
+
+### ConsumptionApi
+
+Type-safe HTTP APIs for analytics. Use for exposing data to your frontend or external services.
+
+### DeadLetterQueue
+
+Handles failed events for reliability. Use for capturing and inspecting problematic data.
+
+### ConsumptionApi
+
+Type-safe HTTP APIs for analytics. Use for exposing data to your frontend or external services.
+
+### DeadLetterQueue
+
+Handles failed events for reliability. Use for capturing and inspecting problematic data.
+
+
+## When to Use Each Component
+
+| If you need…                              | Use…             |
+|-------------------------------------------|------------------|
+| Collect data via HTTP endpoints           | IngestPipeline   |
+| Batch write from workflows                | OlapTable        |
+| Pre-computed aggregations                 | MaterializedView |
+| Expose data via REST                      | ConsumptionApi   |
+| Real-time event processing                | Stream           |
+| Scheduled/background jobs                 | Workflow         |
+| Handle failed events                      | DeadLetterQueue  |
+
+
+---
+
+## How Moose Works: Step by Step
+
+Here's how your code becomes a running, production-grade data system with Moose:
+
+<Steps>
+### Write Code
+
+Use Moose libraries (`py-moose-lib` for Python, `ts-moose-lib` for TypeScript) to define pipelines, tables, and APIs in code.
+
+### Moose Core Reads Your Code
+
+Moose Core hot-reloads your definitions, computes infrastructure diffs, and keeps everything in sync.
+
+### Infrastructure Managed for You
+Moose provisions and manages ClickHouse (analytics DB), Redpanda/Kafka (streaming), Temporal (workflows), and HTTP APIs—no manual setup required.
+
+### Data Flows Automatically
+Ingest, process, store, and expose data—all orchestrated by Moose.
+
+</Steps>
+---

@@ -217,9 +217,10 @@
   font-family: monospace;
 }
 
-.docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
+/* Remove background color override for code blocks */
+/* .docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
   background-color: hsl(var(--background)) !important;
-}
+} */
 
 .docs :is(html[class~="dark"] body) {
   background-color: hsl(var(--background)) !important;

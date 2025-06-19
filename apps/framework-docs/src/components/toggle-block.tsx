@@ -15,6 +15,7 @@ interface ToggleBlockProps {
   closeText: string;
   children: React.ReactNode;
   open?: boolean;
+  className?: string;
 }
 
 export function ToggleBlock({
@@ -22,6 +23,7 @@ export function ToggleBlock({
   closeText,
   children,
   open,
+  className,
 }: ToggleBlockProps) {
   const [isOpen, setIsOpen] = useState(open);
 
@@ -29,7 +31,7 @@ export function ToggleBlock({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="w-full space-y-2 mt-4"
+      className={cn("w-full space-y-2 mt-4", className)}
     >
       <CollapsibleTrigger asChild>
         <Button

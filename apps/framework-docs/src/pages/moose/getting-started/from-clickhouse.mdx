@@ -1,64 +1,35 @@
-import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, InlineProps, Contact } from "@/components";
+import { Tabs, Steps, FileTree } from "nextra/components";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, Contact } from "@/components";
 import { Database, FileCode, Zap, CheckCircle, Clock, Star, Laptop, Code, MapPin, ArrowRight, Calculator, Layers, HardDriveDownload } from "lucide-react";
 import { paths } from "@/lib/paths";
+import { Card } from "@/components/ui/card";
 
 # Add Moose to Your Existing ClickHouse
-
-<div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
-  <MapPin size={16} />
-  <span>You are here: <strong>Augment ClickHouse</strong> — Add Moose to your existing ClickHouse to build apps on top of your data and manage your table schemas in code</span>
-</div>
-
-<InlineProps
-  items={[
-    {
-      Icon: Clock,
-      text: "5 minute setup"
-    },
-    {
-      Icon: CheckCircle,
-      text: "Zero disruption to prod"
-    },
-    {
-      Icon: Laptop,
-      text: "Code-first, local dev"
-    }
-  ]}
-/>
-
-
 <LanguageSwitcher />
 
-## What Moose Adds to ClickHouse
+<div className="flex items-center gap-4 my-8">
+<IconBadge Icon={Clock} label="5 minute setup" variant="moose" />
+<IconBadge Icon={CheckCircle} label="Zero disruption to prod" variant="moose" />
+<IconBadge Icon={Laptop} label="Code-first, local dev" variant="moose" />
+</div>
 
-<FeatureGrid columns={2}>
-<FeatureCard
-  title="Code-first schema management"
-  description="Manage ClickHouse schemas in code, with Git versioning"
-  Icon={Code}
-  size="compact"
-/>
-<FeatureCard
-  title="Hot-reload dev environment"
-  description="Iterate instantly without touching production"
-  Icon={Zap}
-  size="compact"
-/>
-<FeatureCard
-  title="Build APIs and user-facing apps"
-  description="Surface your analytics to your users with type-safe APIs"
-  Icon={Layers}
-  size="compact"
-/>
-<FeatureCard
-  title="Streaming & ETL without config"
-  description="Add streaming ingestion and custom workflows, no YAML"
-  Icon={HardDriveDownload}
-  size="compact"
-/>
-</FeatureGrid>
 
+## Why Use Moose with Your Existing ClickHouse?
+
+Moose augments your existing ClickHouse to build apps on top of your data and manage your table schemas in code.
+
+
+<BulletPointsCard
+  title="Moose Adds to ClickHouse"
+  bulletStyle="none"
+  compact={true}
+  bullets={[
+    { title: "Code-first schema management", description: "Manage ClickHouse schemas in code, with Git versioning" },
+    { title: "Hot-reload dev environment", description: "Iterate instantly without touching production" },
+    { title: "Build APIs and user-facing apps", description: "Surface your analytics to your users with type-safe APIs" },
+    { title: "Streaming & ETL without config", description: "Add streaming ingestion and custom workflows, no YAML" },
+  ]}
+/>
 
 ## Prerequisites
 
@@ -120,29 +91,62 @@ import { paths } from "@/lib/paths";
 />
 </Python>
 
-<Callout type="info" title="No ClickHouse yet?">
-Try the [ClickHouse Playground](https://sql.clickhouse.com) to test Moose, or start fresh with our [5-minute quickstart](/moose/getting-started/quickstart).
+## Step 1: Install Moose
+Install the Moose CLI globally to your system:
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+## Step 2: Set Up Your Project
+
+<Callout type="info" title="Don't have ClickHouse?">
+Use the ClickHouse Playground tab to try it out!
 </Callout>
 
-## Quick Setup (5 minutes)
+<Tabs items={["Your own ClickHouse", "ClickHouse Playground"]}>
+<Tabs.Tab>
 
-<Steps>
+<TypeScript>
+```bash filename="Initialize new project" copy
+# Generate code models from your existing ClickHouse tables
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+```
+</TypeScript>
+<Python>
+```bash filename="Initialize new project" copy
+# Generate code models from your existing ClickHouse tables
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
+```
+</Python>
 
-### Get Your ClickHouse Connection String
-
-You need a ClickHouse connection URL in this format:
-
+`YOUR_CLICKHOUSE_CONNECTION_STRING` is your ClickHouse connection URL in this format:
 ```
 https://username:password@host:port/?database=database_name
 ```
+<ToggleBlock className="mb-4" openText="Troubleshooting" closeText="Hide troubleshooting">
+- Make sure you are using the `HTTPS` connection string, not the `HTTP` connection string.
+- Make sure the port is correct. For `HTTPS` the default is `8443`
+- The default username is `default`
+</ToggleBlock>
 
-<ToggleBlock openText="Need help finding your connection details?" closeText="Hide credential help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker", "Playground"]}>
+
+<ToggleBlock className="mb-4" openText="Need help finding your connection details?" closeText="Hide credential help">
+<Tabs items={["ClickHouse Cloud", "Docker"]}>
 <Tabs.Tab>
 1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
 2. Go to your service details page
-3. Find "Connect" or "Connection Details" section
-4. Copy the HTTPS endpoint and your username/password
+3. Find "Connect" button in the sidebar
+<div className="flex justify-center p-10">
+<ZoomImg light="/ch-cloud-sidebar.png" dark="/ch-cloud-sidebar.png" alt="ClickHouse Cloud Connect Button" />
+</div>
+4. Locate the details within the `HTTPS` selection:
+<div className="flex justify-center p-10">
+<ZoomImg light="/ch-cloud-creds.png" dark="/ch-cloud-creds.png" alt="ClickHouse Cloud HTTPS Connection Details" />
+</div>
+5. Copy the host, port (`usually 8443`), username (`usually default`), and password.
+
+
 </Tabs.Tab>
 <Tabs.Tab>
 - Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
@@ -155,93 +159,48 @@ https://username:password@host:port/?database=database_name
 - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
 - Default is usually `http://default:@localhost:8123/?database=default`
 </Tabs.Tab>
-<Tabs.Tab>
-Want to test without your own ClickHouse? Use the [ClickHouse Playground](https://clickhouse.com/docs/getting-started/playground):
-
-```txt copy
-https://explorer:@play.clickhouse.com:443/?database=default
-```
-</Tabs.Tab>
 </Tabs>
 </ToggleBlock>
 
-### Install Moose (30 seconds)
-
-```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
-```
-
-### Project Setup (1 minute)
-<Callout type="info" title="Don't have ClickHouse?">
-Use the ClickHouse Playground tab to try it out!
-</Callout>
-<TypeScript>
-<Tabs items={["Your own ClickHouse", "ClickHouse Playground"]}>
-<Tabs.Tab>
-```bash filename="Initialize new project" copy
-# Generate code models from your existing ClickHouse tables
-moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
-```
 </Tabs.Tab>
 <Tabs.Tab>
+
+<TypeScript>
 ```bash filename="Try using the ClickHouse Playground!" copy
 moose init my-project --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language typescript
 ```
+</TypeScript>
+
+<Python>
+```bash filename="Initialize new project" copy
+# Generate code models from your existing ClickHouse tables
+moose init my-project --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language python
+```
+</Python>
 </Tabs.Tab>
 </Tabs>
 
+<br />
+
+<TypeScript>
 ```bash filename="Install dependencies" copy
-# Set up dependencies
 cd my-project
 npm install
 ```
 </TypeScript>
 
 <Python>
-<Tabs items={["From your own ClickHouse", "From the ClickHouse Playground"]}>
-<Tabs.Tab>
-```bash filename="Initialize new project from your own ClickHouse" copy
-# Generate code models from your existing ClickHouse tables
-moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
-```
-</Tabs.Tab>
-<Tabs.Tab>
-```bash filename="Try using the ClickHouse Playground!" copy
-moose init my-project --from-remote https://explorer:@play.clickhouse.com:443/?database=default --language python
-```
-</Tabs.Tab>
-</Tabs>
-
 ```bash filename="Install dependencies" copy
 cd my-project
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
 </Python>
 
 You should see: `Successfully generated X models from ClickHouse tables`
 
-### Start Your Local Development Layer
-
-```bash filename="Terminal" copy
-moose dev
-```
-
-You should see:
-```txt
-✅ Generated typed models from ClickHouse
-✅ Local development environment ready
-🚀 Moose dev server running on http://localhost:4000
-```
-
-<Callout type="info" title="What's running locally">
-Moose creates a local development copy of your ClickHouse structure. Your production ClickHouse remains completely untouched.
-</Callout>
-
 ### Explore Your Generated Models
-
 <Python>
 Check what Moose created from your tables in the `app/main.py` file:
 <FileTree>
@@ -260,67 +219,161 @@ Check what Moose created from your tables in the `app/index.ts` file:
 </FileTree>
 </TypeScript>
 
-</Steps>
+## Step 3: Start Development
+
+Start your dev server to spin up a local ClickHouse instance with all your production tables automatically reproduced from your code definitions. 
+
+```bash filename="Start your dev server" copy
+moose dev
+```
+
+<Callout type="info" title="Don't worry, your production ClickHouse remains untouched">
+</Callout>
+
+<ToggleBlock openText="Show expected output" closeText="Hide output">
+```txt
+       Created docker compose file
+⡗ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+      Node Id: my-analytics-app::b15efaca-0c23-42b2-9b0c-642105f9c437
+      Starting development mode
+      Watching "/path/to/my-analytics-app/app"
+       Started Webserver.
 
 
+  Next Steps   
 
-## Gradual Adoption Path
+💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure
 
-Moose is designed to be additive to your existing ClickHouse setup. You can start with just a few tables and gradually add more as you see value.
+📥 Send Data to Moose
+	Your local development server is running at: http://localhost:4000/ingest
+```
 
-A gradual adoption path might look like this:
+Don't see this output? [Check out the troubleshooting section](#troubleshooting)
+</ToggleBlock>
+
+### Seed Your Local Database
+You can seed your data into your local ClickHouse instance by running the following command:
+
+<Tabs items={["From your own ClickHouse", "From the ClickHouse Playground"]}>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+moose seed --connection-string <YOUR_CLICKHOUSE_CONNECTION_STRING> --limit 100
+```
+</Tabs.Tab>
+<Tabs.Tab>
+```bash filename="Terminal" copy
+moose seed --connection-string https://explorer:@play.clickhouse.com:443/?database=default --limit 100
+```
+</Tabs.Tab>
+</Tabs>
+
+## Step 4: Adopt Moose Gradually
+Now that you have your Tables defined in code, you get the same benefits as ORM data models in web apps - type safety and autocomplete when building APIs and Materialized Views on top of your analytical data.
 
 <Steps>
-### Phase 1: Connect & Explore
+### Add APIs
 
-Plug Moose into your existing ClickHouse—no changes required. Explore your data in your Moose local dev environment.
+Build REST APIs on top of your existing tables to expose your data to your user-facing apps. This is a great way to get started with Moose without changing any of your existing pipelines.
 
-### Phase 2: Add APIs
+<TypeScript>
+```ts copy
+import { TargetSchema, materializedView } from "./myMaterializedView";
 
-Expose your data to your user-facing apps through new Consumption APIs, without touching your current pipelines.
 
-### Phase 3: Add New Data Sources
+export interface QueryParams {
+  date: Date;
+  limit?: number;
+}
 
+const api = new ConsumptionApi<QueryParams, TargetSchema>("get-aggregated-data",
+  async ({ date, limit = 10 }: QueryParams, { client, sql }) => {
+    const query = sql`
+        SELECT * FROM ${materializedView.targetTable} 
+        WHERE date = ${date} 
+        LIMIT ${limit}`;
+
+    const result = await client.query.execute<TargetSchema>(query); // Type-safe query execution
+    return result.json();
+  }
+);
+```
+</TypeScript>
+
+**Learn more:**
+- [Consumption APIs documentation](/moose/building/consumption-apis)
+
+
+### Build Materialized Views 
+Build materialized views on top of your existing tables to improve query performance. If you have Materialized Views in your ClickHouse, you can use Moose to build new Materialized Views on top of your existing tables, or to migrate your existing Materialized Views to Moose.
+
+<TypeScript>
+```ts copy
+// Data Model for your Materialized View- use type throughout your codebase
+export interface TargetSchema {
+  date: Date;
+  count: number;
+}
+// Creates both the target table and the materialized view
+export const materializedView = new MaterializedView<TargetSchema>({
+  // Raw SQL with type-safe table references
+  selectStatement: sql`SELECT count(*) as count, date FROM ${myTable} GROUP BY date`,
+  selectTables: [myTable], // Automatic dependency resolution for cascading materialized views
+  engine: ClickHouseEngines.MergeTree, // Can use which ever engine you want
+  orderByFields: ["date"],
+  tableName: "myAggregation",
+  materializedViewName: "myAggregation_MV",
+});
+```
+
+</TypeScript>
+
+**Learn more:**
+- [Blog post on Materialized Views](https://www.fiveonefour.com/blog/Moose-SQL-Getting-DDL-Dependencies-in-Order)
+- [Official Materialized Views documentation](/moose/building/materialized-views)
+
+### Add New Data Sources
 For new data sources, use Moose's IngestPipelines to stream new data into your ClickHouse—while your legacy flows keep running. You can also use Workflows to run custom ETL pipelines if you have batch workloads.
-
-### Phase 4: Migrate What Matters
-
-Move high-impact tables and workloads to Moose as you see value, for a more unified experience.
-
-### Phase 5: Go All-In (Optional)
-
-If you want, fully migrate to Moose-managed pipelines—at your own pace.
 
 </Steps>
 
+---
 ## Known Limitations
 
 <Callout type="warning" title="Known Limitations">
 This feature is in early access. Some advanced ClickHouse features may not be fully supported yet. See the [GitHub issues](https://github.com/514-labs/moose/issues) for the latest status.
 </Callout>
 
-### Currently Unsupported Types:
-- **`Map(K, V)` types**
+**Currently Unsupported Types:**
 - **`Geo` types** (Point, Ring, Polygon, etc.)
 - **`Enum` types with empty string keys**
 
-### Partial Support:
+**Partial Support:**
 - **`LowCardinality(T)`** - Maps to base type `T` (optimization annotations available)
 
-### What we're working on:
+**What we're working on:**
 - **Selective table import** (currently imports all tables)
 - **Default value annotations** 
-- **Advanced ClickHouse type support**
 
 ---
 
-<Callout type="success" title="Next Steps">
-- [OLAP Tables](/moose/building/olap-table): Learn how to work with your ClickHouse tables in Moose
-- [Consumption APIs](/moose/building/consumption-apis): Expose your data via APIs
-</Callout>
+## Troubleshooting
 
-<Callout type="warning" title="Troubleshooting">
-- Connection string problems? Double-check your credentials and network access.
-- Permissions errors? Make sure your ClickHouse user has read access to the relevant tables.
-- Need help? [Join the Moose Discord](https://discord.gg/moose)
-</Callout>
+<h5 className="text-primary mt-2">**Don't see your tables in <TypeScript inline>index.ts</TypeScript><Python inline>main.py</Python>?**</h5>
+
+- Double check the name of the database in your connection string. Make sure it matches the database you're trying to connect to.
+
+<h5 className="text-primary mt-2">**Dev server not starting?**</h5>
+- Make sure you have Docker Desktop installed and running.
+- Make sure your <Python inline>Python version is at least 3.12</Python><TypeScript inline>Node.js version is at least 20</TypeScript>
+- Make sure all of your dependencies are installed.
+
+<h5 className="text-primary mt-2">**Can't connect to your ClickHouse?**</h5>
+- Make sure your connection string is correct.
+- Make sure you are using the `HTTPS` connection string, not the `HTTP` connection string.
+- Make sure the port is correct. For `HTTPS` the default is `8443`

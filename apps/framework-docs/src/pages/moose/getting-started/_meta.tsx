@@ -3,7 +3,8 @@ import { render } from "@/components";
 const meta = {
   quickstart: "5-Minute Quickstart",
   "from-clickhouse": "Use with Existing ClickHouse",
-  architecture: "Core Concepts",
+  architecture: "Reference Architectures",
+  "core-concepts": "Core Concepts",
   "project-structure": "Project Organization",
 };
 

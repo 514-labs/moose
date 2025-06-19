@@ -7,8 +7,16 @@ interface ZoomImageProps {
   light: string;
   dark: string;
   alt: string;
+  width?: number;
+  height?: number;
 }
-export function ZoomImg({ light, dark, alt }: ZoomImageProps) {
+export function ZoomImg({
+  light,
+  dark,
+  alt,
+  width = 1000,
+  height = 1000,
+}: ZoomImageProps) {
   const [isZoomed, setIsZoomed] = useState(false);
 
   const toggleZoom = () => {
@@ -20,8 +28,8 @@ export function ZoomImg({ light, dark, alt }: ZoomImageProps) {
       <Image
         src={light}
         alt={alt || "default alt"}
-        width={1000}
-        height={1000}
+        width={width}
+        height={height}
         className={`w-full h-auto transition-all duration-300 dark:hidden ${
           isZoomed ?
             "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-background"
@@ -35,8 +43,8 @@ export function ZoomImg({ light, dark, alt }: ZoomImageProps) {
       <Image
         src={dark}
         alt={alt || "default alt"}
-        width={1000}
-        height={1000}
+        width={width}
+        height={height}
         className={`w-full h-auto transition-all duration-300 hidden dark:block ${
           isZoomed ?
             "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-background"

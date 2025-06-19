@@ -7,18 +7,28 @@ import { FileTree } from "nextra/components";
 
 # Project Organization
 
-<Callout type="info" title="Moose Project Structure: Only What You Need">
-Moose is designed to be flexible. There are only a few hard requirements for how your project must be structured. Everything else is up to you!
-</Callout>
-
 <LanguageSwitcher />
 
-## The Only Hard Requirements
+## Key Requirements (Must Have)
 
-Here are some hypothetical examples of valid Moose project structures:
+Moose is flexible, but there are **3 essential requirements**:
+
+1. **`app/` directory** - All your code goes here
+2. **Root export file** - `index.ts` (TypeScript) or `main.py` (Python)
+3. **`moose.config.toml`** - Configuration file at project root
+
+<Callout type="info" title="What is the .moose folder?">
+The `.moose/` folder is where Moose maintains internal files. The most useful file for you is the generated `openapi.yaml` spec, which describes your APIs for tools like Swagger UI or Postman.
+</Callout>
+
+---
+
+## Basic Project Structure
+
+Here are the minimal valid project structures:
 
 <TypeScript>
-**TypeScript Project Example:**
+**TypeScript:**
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
@@ -31,7 +41,7 @@ Here are some hypothetical examples of valid Moose project structures:
 </TypeScript>
 
 <Python>
-**Python Project Example:**
+**Python:**
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="main.py" />
@@ -43,40 +53,21 @@ Here are some hypothetical examples of valid Moose project structures:
 </FileTree>
 </Python>
 
-**Minimal Project Example:**
+**Minimal (Single File):**
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
   </FileTree.Folder>
   <FileTree.File name="moose.config.toml" />
 </FileTree>
-
-Each example above includes:
-- An `app/` directory (required)
-- A root export file (`index.ts` for TypeScript, `main.py` for Python)
-- A `moose.config.toml` at the project root
-
-You can add as many files as you want inside `app/`—just make sure to export/import what you want Moose to deploy from your root file.
-
-<Callout type="info" title="What is the .moose folder?">
-The `.moose/` folder is where Moose maintains some files it needs for its internals. The most relevant file for you as a developer is the generated `openapi.yaml` spec, which describes your ingest and consumption APIs. You can use this file to explore or integrate your APIs with tools like Swagger UI or Postman.
-</Callout>
 
 ---
 
-## Minimal Example
+## How to Export Your Components
+
+**Critical:** You must export/import everything you want Moose to deploy from your root file.
 
 <TypeScript>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="index.ts" />
-    <FileTree.File name="myIngest.ts" />
-    <FileTree.File name="myViews.ts" />
-    <FileTree.File name="myApis.ts" />
-  </FileTree.Folder>
-  <FileTree.File name="moose.config.toml" />
-</FileTree>
-
 ```ts filename="app/index.ts"
 export { MyIngest } from './myIngest';
 export { MyView } from './myViews';
@@ -85,16 +76,6 @@ export { MyApi } from './myApis';
 </TypeScript>
 
 <Python>
-<FileTree>
-  <FileTree.Folder name="app" defaultOpen>
-    <FileTree.File name="main.py" />
-    <FileTree.File name="my_ingest.py" />
-    <FileTree.File name="my_views.py" />
-    <FileTree.File name="my_apis.py" />
-  </FileTree.Folder>
-  <FileTree.File name="moose.config.toml" />
-</FileTree>
-
 ```python filename="app/main.py"
 from app.my_ingest import MyIngest
 from app.my_views import MyView
@@ -102,14 +83,28 @@ from app.my_apis import MyApi
 ```
 </Python>
 
+<Callout type="warning" title="Common Mistake">
+Forgetting to export/import components from your root file is the #1 cause of "missing components" errors!
+</Callout>
+
 ---
 
-## Example Project Structures for Common Use Cases
+## Project Structure Examples
 
-Here are a few recommended project structures for typical Moose use cases, each using a different organizational pattern:
+### 1. **Flat Structure** (For Small Projects)
+<small>All files directly under `app/` - simple and straightforward</small>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+    <FileTree.File name="ingest.ts" />
+    <FileTree.File name="views.ts" />
+    <FileTree.File name="apis.ts" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
 
-**User-Facing Analytics (Vertical Slice / Domain-Driven Pattern)**
-<small>Group by business domain, with each domain containing its own ingest, views, and apis files.</small>
+### 2. **Domain-Driven** (For a Data Warehouse with Multiple Domains) 
+Group by business domain - each domain has its own ingest, views, and apis
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
@@ -127,20 +122,29 @@ Here are a few recommended project structures for typical Moose use cases, each 
   <FileTree.File name="moose.config.toml" />
 </FileTree>
 
-**Operational Data Warehouse (Flat Structure for Small Project)**
-<small>All core files live directly under <code>app/</code> for simplicity.</small>
+### 3. **Component-Type** (For a Larger Project with a Single Domain)
+Group by component type - all ingests together, all views together
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
-    <FileTree.File name="ingest.ts" />
-    <FileTree.File name="views.ts" />
-    <FileTree.File name="apis.ts" />
+    <FileTree.Folder name="ingest" defaultOpen>
+      <FileTree.File name="users.ts" />
+      <FileTree.File name="products.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="views" defaultOpen>
+      <FileTree.File name="users.ts" />
+      <FileTree.File name="products.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="apis" defaultOpen>
+      <FileTree.File name="users.ts" />
+      <FileTree.File name="products.ts" />
+    </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="moose.config.toml" />
 </FileTree>
 
-**Observability/Monitoring (Hybrid/Feature+Type Pattern)**
-<small>Group by domain for large features, but use component folders for shared logic.</small>
+### 4. **Hybrid** (For Complex Projects)
+Mix domain and component organization as needed
 <FileTree>
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.File name="index.ts" />
@@ -162,73 +166,41 @@ Here are a few recommended project structures for typical Moose use cases, each 
   <FileTree.File name="moose.config.toml" />
 </FileTree>
 
-## Everything Else is Flexible
-
-- **Directory Names:** Use the recommended `ingest/`, `views/`, `apis/`, etc., or create your own folders and groupings.
-- **File Layout:** Organize by domain, by component type, or any pattern that fits your team/project.
-- **Depth:** Keep it flat or nest as needed—just avoid deep, confusing hierarchies.
-
 ---
 
-## How to Apply Your Own Patterns
+## Quick Reference
 
-- **Group by domain:**  
-  `app/users/ingest.py`, `app/products/views.py`, etc.
-- **Group by type:**  
-  `app/ingest/users.py`, `app/views/products.py`, etc.
-- **Single file for small projects:**  
-  Just put everything in <TypeScript inline>index.ts</TypeScript>/<Python inline>main.py</Python>.
+| Requirement | Description | Example |
+|-------------|-------------|---------|
+| `app/` directory | All code must be inside this folder | `app/index.ts` |
+| Root export file | Export all components from main file | `index.ts` or `main.py` |
+| `moose.config.toml` | Configuration at project root | `moose.config.toml` |
 
-<Callout type="success" title="As long as you export/import the right objects from the root file, Moose will work!">
-</Callout>
+| Organization Pattern | When to Use | Example |
+|---------------------|-------------|---------|
+| **Flat** | Small projects, quick prototypes | `app/index.ts`, `app/ingest.ts` |
+| **Domain-Driven** | Large applications, multiple domains | `app/users/ingest.ts` |
+| **Component-Type** | Large applications, single domain | `app/ingest/users.ts` |
+| **Hybrid** | Complex projects, mixed requirements | Mix of above patterns |
 
 ---
-
-## Strategies for Organizing Your Project
-
-Here are a few high-level strategies you might consider:
-
-- **By Domain (Vertical Slices):**
-  - Group files by business domain or feature area.
-  - Example: `app/users/ingest.ts`, `app/products/views.ts`
-- **By Component Type (Horizontal Layers):**
-  - Group files by their role in the pipeline (ingest, views, apis, etc.).
-  - Example: `app/ingest/users.ts`, `app/views/products.ts`
-- **By Feature:**
-  - Each feature or product area gets its own folder with all related files inside.
-  - Example: `app/analytics/`, `app/monitoring/`
-- **Flat Structure for Small Projects:**
-  - Keep everything in a few files in the `app/` directory.
-  - Example: `app/index.ts`, `app/ingest.ts`, `app/views.ts`, `app/apis.ts`
-
-You can mix and match these strategies as your project grows. The key is to keep things clear and maintainable for your team.
 
 <Callout type="warning" title="Common Mistakes to Avoid">
-- Forgetting to export/import components from your root file (`index.ts`/`main.py`)
-- Deeply nested or overly complex directory structures
-- Mixing unrelated domains or features in the same files
-- Creating circular dependencies between components
+
+- ❌ **Forgetting to export** components from your root file
+- ❌ **Circular dependencies** between components
+
 </Callout>
 
 ---
 
-## Summary Table
+## Getting Started
 
-| Must Have                | Flexible/Optional                |
-|--------------------------|----------------------------------|
-| `app/index.ts` or `main.py` | Any subdirectory structure      |
-| `app/` directory         | File naming conventions          |
-| `moose.config.toml`      | Grouping by domain/type/feature  |
+**For beginners:** Start with the flat structure. You can always reorganize later!
 
----
+**Remember:** As long as you export/import the right objects from your root file, Moose will work with any organization pattern you choose.
 
-**In short:**  
-You have total freedom in how you organize your Moose project, as long as you:
-- Put your code in `app/`
-- Export/import everything you want deployed from the root file
-- Have a `moose.config.toml` at the root
-
-<Callout type="info" title="Ready to build?">
-Now you can apply your own structure and patterns with confidence. Moose will handle the rest!
+<Callout type="success" title="Ready to build?">
+Choose your structure, export your components, and Moose will handle the rest!
 </Callout>
 

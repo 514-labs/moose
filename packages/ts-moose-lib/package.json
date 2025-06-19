@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build": "tsup"
+    "build": "tsup",
+    "test": "mocha -r ts-node/register 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@clickhouse/client": "1.8.1",
@@ -36,10 +37,14 @@
   },
   "devDependencies": {
     "@repo/ts-config": "workspace:*",
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
     "@types/node": "20.12.13",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "chai": "^4.3.7",
     "eslint": "^8.46.0",
+    "mocha": "^10.2.0",
     "tsup": "^8.4.0"
   },
   "peerDependencies": {

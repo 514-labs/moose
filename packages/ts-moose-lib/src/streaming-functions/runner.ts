@@ -6,7 +6,7 @@ import http from "http";
 import { cliLog } from "../commons";
 import { Cluster } from "../cluster-utils";
 import { getStreamingFunctions } from "../dmv2/internal";
-import { ConsumerConfig, TransformConfig } from "../dmv2";
+import { ConsumerConfig, TransformConfig } from "../dmv2/sdk/stream";
 
 const HOSTNAME = process.env.HOSTNAME;
 const AUTO_COMMIT_INTERVAL_MS = 5000;

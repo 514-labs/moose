@@ -7,3 +7,4 @@ clickhouse-connect==0.7.16
 requests>=2.31.0
 moose-cli
 moose-lib
+bleak>=0.22.3

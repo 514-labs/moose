@@ -74,9 +74,8 @@ def run(client: MooseClient, params: LeaderboardQueryParams) -> LeaderboardRespo
                 round(countIf(hr_value >= 160 AND hr_value < 180) / count() * 100, 1) as zone4_percentage,
                 round(countIf(hr_value >= 180) / count() * 100, 1) as zone5_percentage
             FROM unified_hr_packet
-            WHERE hr_timestamp_seconds >= (
-                SELECT MAX(hr_timestamp_seconds) - toInt32({time_window_seconds})
-                FROM unified_hr_packet
+            WHERE processed_timestamp >= (
+                toDateTime64(now(), 3) - toIntervalSecond(toInt32({time_window_seconds}))
             )
             GROUP BY user_name
         )

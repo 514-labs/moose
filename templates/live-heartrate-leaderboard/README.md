@@ -13,7 +13,7 @@ source .venv/bin/activate```
 4. Run Moose
 ```moose dev```
 
-5. Start workflows
+5. Generate mock ANT+ Data
 In another terminal run:
 ```moose workflow run generate_data```
 
@@ -26,6 +26,16 @@ In another terminal run:
 In another terminal:
 ```streamlit run app/streamlit_app.py```
 
-## SOS 
+## Additional - Connect your own Heart Rate Device (Apple Watch)
 
-```docker stop $(docker ps -aq)```
+Connect your own Apple Watch to the system. This has only been tested on the AppleWatch SE! Please feel free to add your device, following the example in `app/scripts/apple_watch_hr_client` 
+
+1. Download the Echo App on your IPhone/Android device since the Apple Watch doesn't nativley support broadcasting HR data over BLE
+2. Update the name in the code to match your device name (or a substring)  `app/scripts/apple_watch_hr_client/apple_heart_rate_client` 
+3. Update the "user table" in the `mock-user-db.json` to match your details. 
+4. Run your `moose dev` server and then run `moose workflow run apple_watch_hr_client`
+
+
+To terminate the (temporal) workflow, run:
+
+`moose workflow terminate apple_watch_hr_client`

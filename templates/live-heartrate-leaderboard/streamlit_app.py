@@ -4,7 +4,12 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timezone
 
-from app.main import get_leaderboard_api, get_user_live_heart_rate_stats, LeaderboardQueryParams, LiveHeartRateParams, HeartRateStats
+from moose_lib import set_moose_base_url
+
+from app.main import get_leaderboard_api, get_user_live_heart_rate_stats, LeaderboardQueryParams, LiveHeartRateParams, \
+    HeartRateStats
+
+set_moose_base_url("http://localhost:4000")
 
 # Page config
 st.set_page_config(
@@ -84,38 +89,38 @@ def update_live_graph():
     try:
         if st.session_state.selected_user:
             response = get_user_live_heart_rate_stats.call(
-                "http://localhost:4000/",
                 LiveHeartRateParams(user_name=st.session_state.selected_user,
                                     window_seconds=60))
             data: list[HeartRateStats] = response.entries
-            if data:
-                # Convert data to DataFrame
-                new_data = pd.DataFrame([{
-                    'timestamp': d.processed_timestamp.replace(tzinfo=timezone.utc),
-                    'heart_rate': d.heart_rate,
-                    'hr_zone': d.hr_zone,
-                    'estimated_power': d.estimated_power,
-                    'cumulative_calories_burned': d.cumulative_calories_burned
-                } for d in data])
-                # print(new_data)
+            if True:
+                if data:
+                    # Convert data to DataFrame
+                    new_data = pd.DataFrame([{
+                        'timestamp': d.processed_timestamp.replace(tzinfo=timezone.utc),
+                        'heart_rate': d.heart_rate,
+                        'hr_zone': d.hr_zone,
+                        'estimated_power': d.estimated_power,
+                        'cumulative_calories_burned': d.cumulative_calories_burned
+                    } for d in data])
+                    # print(new_data)
 
-                # Update session state data
-                if st.session_state.hr_data.empty:
-                    st.session_state.hr_data = new_data
-                else:
-                    st.session_state.hr_data = pd.concat([st.session_state.hr_data, new_data], ignore_index=True)
+                    # Update session state data
+                    if st.session_state.hr_data.empty:
+                        st.session_state.hr_data = new_data
+                    else:
+                        st.session_state.hr_data = pd.concat([st.session_state.hr_data, new_data], ignore_index=True)
 
-                # Drop duplicates and sort by timestamp
-                st.session_state.hr_data = st.session_state.hr_data.drop_duplicates(subset=['timestamp'])
-                st.session_state.hr_data = st.session_state.hr_data.sort_values('timestamp')
+                    # Drop duplicates and sort by timestamp
+                    st.session_state.hr_data = st.session_state.hr_data.drop_duplicates(subset=['timestamp'])
+                    st.session_state.hr_data = st.session_state.hr_data.sort_values('timestamp')
 
-                # Keep only last 60 seconds of data
-                cutoff_time = datetime.now(timezone.utc) - pd.Timedelta(seconds=60)
-                st.session_state.hr_data = st.session_state.hr_data[
-                    st.session_state.hr_data['timestamp'] > cutoff_time]
+                    # Keep only last 60 seconds of data
+                    cutoff_time = datetime.now(timezone.utc) - pd.Timedelta(seconds=60)
+                    st.session_state.hr_data = st.session_state.hr_data[
+                        st.session_state.hr_data['timestamp'] > cutoff_time]
 
-                # Return the most recent data point
-                return st.session_state.hr_data.iloc[-1] if not st.session_state.hr_data.empty else None
+                    # Return the most recent data point
+                    return st.session_state.hr_data.iloc[-1] if not st.session_state.hr_data.empty else None
     except Exception as e:
         st.error(f"Failed to update graph: {str(e)}")
     return None
@@ -125,24 +130,24 @@ def update_live_graph():
 def update_leaderboard():
     try:
         data = get_leaderboard_api.call(
-            "http://localhost:4000/",
             LeaderboardQueryParams(time_window_seconds=LEADERBOARD_TIME_WINDOW,
                                    limit=10)
-        ).model_dump()["entries"]
-        df = pd.DataFrame(data)
+        ).model_dump()["entries"] # convert to dicts to load into pandas
+        if True:
+            df = pd.DataFrame(data)
 
-        # Display only relevant columns
-        display_cols = ['rank', 'user_name', 'avg_heart_rate', 'avg_power', 'total_calories']
-        df_display = df[display_cols].copy()
+            # Display only relevant columns
+            display_cols = ['rank', 'user_name', 'avg_heart_rate', 'avg_power', 'total_calories']
+            df_display = df[display_cols].copy()
 
-        # Add styling to highlight selected user
-        def highlight_selected_user(row):
-            if row['user_name'] == st.session_state.selected_user:
-                return ['background-color: #FF4B4B30'] * len(row)
-            return [''] * len(row)
+            # Add styling to highlight selected user
+            def highlight_selected_user(row):
+                if row['user_name'] == st.session_state.selected_user:
+                    return ['background-color: #FF4B4B30'] * len(row)
+                return [''] * len(row)
 
-        styled_df = df_display.style.apply(highlight_selected_user, axis=1)
-        return styled_df
+            styled_df = df_display.style.apply(highlight_selected_user, axis=1)
+            return styled_df
     except Exception as e:
         st.error(f"Failed to update leaderboard: {str(e)}")
     return None
@@ -156,22 +161,22 @@ with title_col:
 with select_col:
     try:
         leaderboard_result = get_leaderboard_api.call(
-            "http://localhost:4000/",
             LeaderboardQueryParams(time_window_seconds=LEADERBOARD_TIME_WINDOW,
                                    limit=100)
         )
-        users = [user.user_name for user in leaderboard_result.entries]
-        st.write("")
-        selected_user = st.selectbox("Select User", users, label_visibility="collapsed")
-        if selected_user != st.session_state.selected_user:
-            st.session_state.selected_user = selected_user
-            st.session_state.hr_data = pd.DataFrame({
-                'timestamp': pd.Series(dtype='datetime64[ns, UTC]'),
-                'heart_rate': pd.Series(dtype='float64'),
-                'hr_zone': pd.Series(dtype='int64'),
-                'estimated_power': pd.Series(dtype='float64'),
-                'cumulative_calories_burned': pd.Series(dtype='float64')
-            })
+        if True:
+            users = [user.user_name for user in leaderboard_result.entries]
+            st.write("")
+            selected_user = st.selectbox("Select User", users, label_visibility="collapsed")
+            if selected_user != st.session_state.selected_user:
+                st.session_state.selected_user = selected_user
+                st.session_state.hr_data = pd.DataFrame({
+                    'timestamp': pd.Series(dtype='datetime64[ns, UTC]'),
+                    'heart_rate': pd.Series(dtype='float64'),
+                    'hr_zone': pd.Series(dtype='int64'),
+                    'estimated_power': pd.Series(dtype='float64'),
+                    'cumulative_calories_burned': pd.Series(dtype='float64')
+                })
     except Exception as e:
         st.error(f"Failed to fetch users: {str(e)}")
         users = []

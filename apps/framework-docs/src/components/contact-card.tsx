@@ -10,7 +10,7 @@ interface ContactCardProps {
   ctaLabel: string;
   Icon?: React.ElementType;
   className?: string;
-  variant?: "default" | "gradient" | "aurora";
+  variant?: "moose" | "aurora";
 }
 
 export function ContactCard({
@@ -20,7 +20,7 @@ export function ContactCard({
   ctaLabel,
   Icon,
   className = "",
-  variant = "default",
+  variant = "moose",
 }: ContactCardProps) {
   return (
     <Card

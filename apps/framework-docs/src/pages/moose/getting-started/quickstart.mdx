@@ -4,9 +4,8 @@ description: Build your first analytical backend with Moose in 5 minutes
 ---
 
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, Contact } from "@/components";
-import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play, CheckCircle, Clock, MapPin, Laptop, Lightbulb, FolderTree, Sparkles } from "lucide-react";
-import { paths } from "@/lib/paths";
+import { Callout, ToggleBlock, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, CTACards, CTACard, PathConfig } from "@/components";
+import { CheckCircle, Clock, Laptop, Terminal } from "lucide-react";
 
 # 5-Minute Quickstart
 
@@ -90,9 +89,11 @@ import { paths } from "@/lib/paths";
 />
 </Python>
 
-<Callout type="info" title="Already have ClickHouse running?">
-Skip the tutorial and add Moose as a layer on top of your existing database → [Add to ClickHouse](/moose/getting-started/from-clickhouse)
+<Callout type="info" title="Already have ClickHouse running?" href={PathConfig.fromClickhouse.path} icon={PathConfig.fromClickhouse.icon} ctaLabel="Add to ClickHouse">
+Skip the tutorial and add Moose as a layer on top of your existing database
 </Callout>
+
+<br />
 
 ## Step 1: Install Moose (30 seconds)
 
@@ -100,10 +101,11 @@ Skip the tutorial and add Moose as a layer on top of your existing database → 
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
 
-<Callout type="success">
-You should see: `✅ Moose vX.X.X installed successfully!`
+<Callout type="info" title="You should see:" compact={true} icon={CheckCircle}>
+`Moose vX.X.X installed successfully!`
 </Callout>
-_You now have the Moose CLI to manage your analytics backend._
+
+<br />
 
 ## Step 2: Create Your Project (1 minute)
 
@@ -162,8 +164,8 @@ moose dev
 	Your local development server is running at: http://localhost:4000/ingest
 ```
 
-<Callout type="success">
-Your local analytics stack is running. You can now send data to Moose and query it.
+<Callout type="success" title="Your local analytics stack is running">
+You can now send data to Moose and query it.
 </Callout>
 </ToggleBlock>
 
@@ -210,16 +212,18 @@ Your project includes a complete example pipeline:
 </FileTree>
 </TypeScript>
 
-<Callout type="info" title="Browse your project files">
-to see how data flows from ingestion to analytics APIs. Open `app/ingest/models.ts` or `models.py` to see how data models are defined.
+<Callout type="info" title="Browse your project files" >
+Review the files located within your `/app` directory to see start understanding how data flows from ingestion to analytics APIs.
 </Callout>
+
+<br />
 
 ## Step 4: Test Your Pipeline (2 minutes)
 
+<Steps>
 ### Send test data
 
-<Callout type="info" title="Open a new terminal window">
-to run these commands.
+<Callout type="info" title="Open a new terminal window to run these commands" icon={Terminal} compact={true}>
 </Callout>
 
 <TypeScript>
@@ -259,10 +263,6 @@ curl "http://localhost:4000/consumption/bar"
 You should see JSON data with your processed events.
 
 
-<Callout type="success">
-You now have a complete data pipeline working end-to-end
-</Callout>
-
 ```bash filename="Try adding a query parameter!" copy
 curl "http://localhost:4000/consumption/bar?limit=5"
 ```
@@ -283,6 +283,11 @@ curl "http://localhost:4000/consumption/bar?limit=5"
   muted={true}
   loop={true}
 />
+</Steps>
+
+
+<br />
+
 
 ## Step 5: Hot Reload Schema Changes (1 minute)
 
@@ -321,12 +326,12 @@ You should see Moose automatically update your infrastructure:
 
 Schema changes are automatically applied across your stack.
 
-<Callout type="success" title="That's it!">
+<Callout type="info" title="That's it!" icon={CheckCircle} compact={true}>
 Your API, database schema, and streaming topic all updated automatically. Try adding another field with a different data type.
 </Callout>
 
 
-## Congratulations!
+## Recap
 
 You've built a complete analytical backend with:
 
@@ -344,26 +349,29 @@ You've built a complete analytical backend with:
   
 ## Where to Go Next?
 
-<FeatureGrid columns={3}>
-<FeatureCard
+<CTACards rows={3} columns={1}>
+<CTACard
   title="Core Concepts"
   description="Learn the core concepts of Moose"
-  href={paths.coreConcepts}
-  Icon={FolderTree}
+  ctaLink={PathConfig.coreConcepts.path}
+  Icon={PathConfig.coreConcepts.icon}
+  orientation="horizontal"
 />
-<FeatureCard
+<CTACard
   title="Deep Dive: Data Modeling"
   description="Learn how to model the data you want to flow through your pipeline"
-  href={paths.dataModels}
-  Icon={Database}
+  ctaLink={PathConfig.dataModels.path}
+  Icon={PathConfig.dataModels.icon}
+  orientation="horizontal"
 />
-<FeatureCard
+<CTACard
   title="Review the Architecture"
   description="Understand how Moose fits into your stack"
-  href={paths.architecture}
-  Icon={Square}
+  ctaLink={PathConfig.architecture.path}
+  Icon={PathConfig.architecture.icon}
+  orientation="horizontal"
 />
-</FeatureGrid>
+</CTACards>
 
 ## Need Help?
 

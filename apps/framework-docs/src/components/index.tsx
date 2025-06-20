@@ -12,6 +12,6 @@ export * from "./badges";
 export * from "./meta-renderer";
 export * from "./bullet-points-card";
 export * from "./q-and-a-bullets";
-export * from "./icons";
+export * from "./ctas";
 export * from "./contact";
 export * from "./staggered-card";

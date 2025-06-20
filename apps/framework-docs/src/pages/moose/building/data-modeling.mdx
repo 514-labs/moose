@@ -3,10 +3,9 @@ title: Data Modeling
 description: Data Modeling for Moose
 ---
 
-import { Callout, LanguageSwitcher, TypeScript, Python, FeatureCard, FeatureGrid, CheckmarkBullets, BulletPointsCard } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, CTACards, CTACard, CheckmarkBullets, BulletPointsCard } from "@/components";
 import { FileTree, Tabs } from "nextra/components";
-import { paths } from "@/lib/paths";
-
+import { PathConfig } from "@/components/ctas";
 
 # Data Modeling
 <LanguageSwitcher />
@@ -588,20 +587,29 @@ Validation at runtime takes place at the following points:
 
 ## Next Steps
 
-<FeatureGrid columns={3}>
-  <FeatureCard
-    href={paths.streams}
+<CTACards rows={3}>
+  <CTACard
+    ctaLink={PathConfig.streams.path}
+    ctaLabel="Learn More"
+    icon={PathConfig.streams.icon}
     title="Streaming Deep Dive"
     description="Learn how to process, transform, and manage data streams in real-time."
+    orientation="horizontal"
   />
-  <FeatureCard
-    href={paths.olapTables}
+  <CTACard
+    ctaLink={PathConfig.olapTables.path}
+    ctaLabel="Learn More"
+    icon={PathConfig.olapTables.icon}
     title="Working with Tables"
     description="Discover how to optimize storage, querying, and analytics with OLAP tables."
+    orientation="horizontal"
   />
-  <FeatureCard
-    href={paths.ingestion}
+  <CTACard
+    ctaLink={PathConfig.ingestion.path}
+    ctaLabel="Learn More"
+    icon={PathConfig.ingestion.icon}
     title="Ingesting Data"
     description="Explore how to efficiently ingest data with automatic schema validation."
+    orientation="horizontal"
   />
-</FeatureGrid>
+</CTACards>

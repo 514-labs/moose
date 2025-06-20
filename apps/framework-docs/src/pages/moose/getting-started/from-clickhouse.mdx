@@ -1,13 +1,12 @@
 import { Tabs, Steps, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, Contact } from "@/components";
-import { Database, FileCode, Zap, CheckCircle, Clock, Star, Laptop, Code, MapPin, ArrowRight, Calculator, Layers, HardDriveDownload } from "lucide-react";
-import { paths } from "@/lib/paths";
-import { Card } from "@/components/ui/card";
+import { Callout, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, Contact, CTACards, CTACard } from "@/components";
+import { CheckCircle, Clock, Laptop } from "lucide-react";
+import { PathConfig, Icons } from "@/components";
 
 # Use Moose with Existing ClickHouse
 
-<div className="flex items-center gap-4 my-4">
-<IconBadge Icon={Clock} label="5 minute setup" variant="moose" />
+<div className="flex flex-wrap md:flex-nowrap gap-4 my-4">
+<IconBadge Icon={Icons.workflows} label="5 min setup" variant="moose" />
 <IconBadge Icon={CheckCircle} label="Zero disruption to prod" variant="moose" />
 <IconBadge Icon={Laptop} label="Code-first, local dev" variant="moose" />
 </div>
@@ -18,7 +17,6 @@ import { Card } from "@/components/ui/card";
 ## Why Use Moose with Your Existing ClickHouse?
 
 Moose augments your existing ClickHouse to build apps on top of your data and manage your table schemas in code.
-
 
 <BulletPointsCard
   title="Moose Adds to ClickHouse"
@@ -92,16 +90,19 @@ Moose augments your existing ClickHouse to build apps on top of your data and ma
 />
 </Python>
 
+<br />
+
 ## Step 1: Install Moose
 Install the Moose CLI globally to your system:
 
 ```bash filename="Terminal" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
+<br />
 
 ## Step 2: Set Up Your Project
 
-<Callout type="info" title="Don't have ClickHouse?">
+<Callout type="warning" title="Don't have ClickHouse?" icon={PathConfig.fromClickhouse.icon}>
 Use the ClickHouse Playground tab to try it out!
 </Callout>
 
@@ -220,6 +221,8 @@ Check what Moose created from your tables in the `app/index.ts` file:
 </FileTree>
 </TypeScript>
 
+<br />
+
 ## Step 3: Start Development
 
 Start your dev server to spin up a local ClickHouse instance with all your production tables automatically reproduced from your code definitions. 
@@ -228,8 +231,7 @@ Start your dev server to spin up a local ClickHouse instance with all your produ
 moose dev
 ```
 
-<Callout type="info" title="Don't worry, your production ClickHouse remains untouched">
-</Callout>
+_Your production ClickHouse will remain untouched._
 
 <ToggleBlock openText="Show expected output" closeText="Hide output">
 ```txt
@@ -273,6 +275,8 @@ moose seed --connection-string https://explorer:@play.clickhouse.com:443/?databa
 ```
 </Tabs.Tab>
 </Tabs>
+
+<br />
 
 ## Step 4: Adopt Moose Gradually
 Now that you have your Tables defined in code, you get the same benefits as ORM data models in web apps - type safety and autocomplete when building APIs and Materialized Views on top of your analytical data.
@@ -343,11 +347,12 @@ For new data sources, use Moose's IngestPipelines to stream new data into your C
 
 </Steps>
 
----
+<br />
+
 ## Known Limitations
 
-<Callout type="warning" title="Known Limitations">
-This feature is in early access. Some advanced ClickHouse features may not be fully supported yet. [Let us know in the Moose Slack](https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA) if you have any issues, feedback, or requests.
+<Callout type="warning" title="Early Access Feature" ctaLabel="Join Slack" href="https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA">
+Some advanced ClickHouse features may not be fully supported yet. Join the Moose Slack and let us know if you have any issues, feedback, or requests.
 </Callout>
 
 **Currently Unsupported Types:**
@@ -361,10 +366,41 @@ This feature is in early access. Some advanced ClickHouse features may not be fu
 - **Selective table import** (currently imports all tables)
 - **Default value annotations** 
 
----
+<br />
 
-## Troubleshooting
+## What's Next?
 
+
+<CTACards rows={3} columns={1}>
+<CTACard
+  title="Learn the Core Concepts"
+  description="Learn the core concepts of Moose"
+  ctaLink={PathConfig.coreConcepts.path}
+  Icon={PathConfig.coreConcepts.icon}
+  orientation="horizontal"
+/> 
+
+<CTACard
+  title="Learn More About APIs "
+  description="Learn more about Moose APIs and how to use them with your existing ClickHouse."
+  ctaLink={PathConfig.consumptionApis.path}
+  Icon={PathConfig.consumptionApis.icon}
+  orientation="horizontal"
+/> 
+<CTACard
+  title="Learn More About Materialized Views"
+  description="Learn how to add Materialized Views to your ClickHouse with Moose"
+  ctaLink={PathConfig.materializedViews.path}
+  Icon={PathConfig.materializedViews.icon}
+  orientation="horizontal"
+/> 
+</CTACards>
+
+<br />
+
+## Need Help?
+
+<ToggleBlock openText="Show troubleshooting" closeText="Hide troubleshooting">
 <h5 className="text-primary mt-2">**Don't see your tables in <TypeScript inline>index.ts</TypeScript><Python inline>main.py</Python>?**</h5>
 
 - Double check the name of the database in your connection string. Make sure it matches the database you're trying to connect to.
@@ -378,3 +414,4 @@ This feature is in early access. Some advanced ClickHouse features may not be fu
 - Make sure your connection string is correct.
 - Make sure you are using the `HTTPS` connection string, not the `HTTP` connection string.
 - Make sure the port is correct. For `HTTPS` the default is `8443`
+</ToggleBlock>

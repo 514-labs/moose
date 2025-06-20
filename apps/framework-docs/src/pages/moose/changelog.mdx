@@ -1,5 +1,4 @@
 import { BulletPointsCard } from "@/components/bullet-points-card";
-import { Callout } from "@/components";
 import { 
   ReleaseHighlights, 
   Added, 
@@ -15,42 +14,33 @@ import {
 ## What is this page?
 This changelog tracks all meaningful changes to Moose. Each entry includes the PR link and contributor credit, organized by date (newest first). Use this page to stay informed about new features, fixes, and breaking changes that might affect your projects.
 
-<BulletPointsCard
-  title="How to read this changelog"
-  bullets={[
-    {
-      title: "Release highlights",
-      description: "Key features, enhancements, or fixes for each release."
-    },
-    {
-      title: "Added",
-      description: "New features or capabilities."
-    },
-    {
-      title: "Changed",
-      description: "Updates to existing functionality or improvements."
-    },
-    {
-      title: "Deprecated",
-      description: "Features that are no longer recommended for use and may be removed in the future."
-    },
-    {
-      title: "Fixed",
-      description: "Bug fixes and reliability improvements."
-    },
-    {
-      title: "Security",
-      description: "Security-related updates or vulnerability fixes."
-    },
-    {
-      title: "Breaking changes",
-      description: "Changes that require user action or may break existing usage."
-    }
-  ]}
-  divider={true}
-  bulletStyle="check"
-/>
+## How to read this changelog:
+<div className="grid grid-cols-2 gap-2">
 
+<ReleaseHighlights>
+Key features, enhancements, or fixes for each release.
+</ReleaseHighlights>
+
+<Added>
+New features and capabilities.
+</Added>
+
+<Changed>
+Updates to existing functionality or improvements.
+</Changed>
+
+<Deprecated>
+Features that are no longer recommended for use and may be removed in the future.
+</Deprecated>
+
+<Fixed>
+Bug fixes and reliability improvements.
+</Fixed>
+
+<BreakingChanges>
+Changes that require user action or may break existing usage.
+</BreakingChanges>
+</div>
 ---
 
 ## 2025-06-12

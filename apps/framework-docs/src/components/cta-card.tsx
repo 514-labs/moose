@@ -49,9 +49,7 @@ export function CTACard({
   return orientation == "horizontal" ?
       <Link href={ctaLink} className={cn("w-full", className)}>
         <Card
-          className={cn(
-            "h-full flex items-center hover:bg-muted rounded-lg transition",
-          )}
+          className={cn("h-full flex items-center hover:bg-muted transition")}
         >
           {badge ?
             <IconBadge variant={badge.variant} label={badge.text} />

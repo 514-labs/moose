@@ -3,9 +3,7 @@ title: Core Concepts
 description: Essential primitives, patterns, and architecture for building with Moose.
 ---
 
-import { Callout, ZoomImg, CTACard } from "@/components";
-import { Steps } from "nextra/components";
-import { paths } from "@/lib/paths";
+import { Callout, ZoomImg, CTACards, CTACard, PathConfig } from "@/components";
 
 # Core Concepts
 
@@ -52,11 +50,11 @@ The most common way to get data into Moose is with an `IngestPipeline`. It autom
 2.  **Streaming:** Placing the validated event onto a stream for real-time processing.
 3.  **Storage:** Persisting the raw event into an `OlapTable` for durable storage.
 
-<Callout type="info" title="When to use">
-  Use an `IngestPipeline` to collect event data from your own applications, like user activity from a web frontend or service logs from a backend.
+<Callout type="info" title="Using Ingest Pipelines" href={PathConfig.ingestion.path} ctaLabel="Learn more" compact={true}>
+Use an `IngestPipeline` to collect event data from your own applications, like user activity from a web frontend or service logs from a backend.
 </Callout>
 
-- [Learn more about ingestion pipelines](/moose/building/ingestion)
+
 
 #### Pull-Based Ingestion: `Workflows`
 
@@ -68,11 +66,10 @@ For data that isn't pushed to you in real-time, you can use `Workflows`. A workf
 
 The data fetched by the workflow can then be inserted directly into a Moose `OlapTable`.
 
-<Callout type="info" title="When to use">
-  Use `Workflows` for periodic ETL/ELT jobs to sync data from external systems into your analytical backend.
+<Callout type="info" title="Using Workflows for ETL/ELT" href={PathConfig.workflows.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Workflows` for periodic ETL/ELT jobs to sync data from external systems into your analytical backend.
 </Callout>
 
-- [Learn more about workflows](/moose/building/workflows)
 
 ### 2. Processing and Transforming Data
 
@@ -82,11 +79,9 @@ Once data is ingested, you can transform, aggregate, and enrich it in real-time.
 
 A `MaterializedView` sits on top of an `OlapTable` to pre-compute aggregations as new data arrives. Think of it as a self-updating, materialized query for your key metrics. When you query the view, the results are near-instant because the work has already been done incrementally.
 
-<Callout type="info" title="When to use">
-  Use a `MaterializedView` to power fast-loading dashboards and real-time analytics where query latency is critical.
+<Callout type="info" title="Using Materialized Views" href={PathConfig.materializedViews.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `MaterializedViews` to power fast-loading dashboards and real-time analytics where query latency is critical.
 </Callout>
-
-- [Learn more about materialized views](/moose/building/materialized-views)
 
 
 #### Real-time Processing: `Stream`
@@ -99,7 +94,11 @@ While some data can be stored directly after ingestion, you often need to transf
 
 `IngestPipelines` create and use streams automatically, but you can also define them standalone for more complex, multi-step streaming pipelines.
 
-- [Learn more about streams](/moose/building/stream-processing)
+<Callout type="info" title="Using Streams" href={PathConfig.streams.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Streams` to process data in real-time.
+</Callout>
+
+<br />
 
 ### 3. Consuming Data from your OlapTables
 
@@ -111,7 +110,9 @@ A `ConsumptionApi` is a type-safe HTTP endpoint that exposes your analytical dat
 
 Moose turns this function into a production-ready REST API endpoint that your frontend, mobile app, or external services can call.
 
-- [Learn more about consumption APIs](/moose/building/consumption-apis)
+<Callout type="info" title="Using Consumption APIs" href={PathConfig.consumptionApis.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `ConsumptionApis` to expose your analytical data to your frontend, mobile app, or external services.
+</Callout>
 
 #### Reports & Exports: `Workflows`
 
@@ -121,7 +122,10 @@ Workflows aren't just for ingestion; they're also a powerful tool for exporting 
 -   Send the results to a Slack channel or an email address.
 -   Export data to an external system.
 
-- [Learn more about workflows](/moose/building/workflows)
+<Callout type="info" title="Using Workflows for Reports & Exports" href={PathConfig.workflows.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Workflows` to generate scheduled reports and exports.
+</Callout>
+
 
 ### 4. Reliability
 
@@ -129,7 +133,9 @@ Workflows aren't just for ingestion; they're also a powerful tool for exporting 
 
 In a real-world system, data can be malformed and processes can fail. A `DeadLetterQueue` (DLQ) provides a safety net. You can configure your `IngestPipeline`s and `Stream` transformations to automatically send failed events to a DLQ. This allows you to inspect problematic data, fix the issue, and re-process the events without losing data.
 
-- [Learn more about Dead Letter Queues](/moose/building/dead-letter-queues)
+<Callout type="info" title="Using Dead Letter Queues" href={PathConfig.deadLetterQueues.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `DeadLetterQueue`s to handle and inspect failed events.
+</Callout>
 
 ## When to Use Each Component
 

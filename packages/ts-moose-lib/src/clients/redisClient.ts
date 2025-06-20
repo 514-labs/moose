@@ -1,7 +1,8 @@
 import { createClient, RedisClientType } from "redis";
 
-// Module-level singleton instance
+// Module-level singleton instance and initialization promise
 let instance: MooseCache | null = null;
+let initPromise: Promise<MooseCache> | null = null;
 
 type SupportedTypes = string | object;
 
@@ -11,6 +12,7 @@ export class MooseCache {
   private readonly keyPrefix: string;
   private disconnectTimer: NodeJS.Timeout | null = null;
   private readonly idleTimeout: number;
+  private connectPromise: Promise<void> | null = null;
 
   private constructor() {
     const redisUrl =
@@ -70,10 +72,31 @@ export class MooseCache {
   }
 
   private async connect(): Promise<void> {
-    if (!this.isConnected) {
-      await this.client.connect();
-      this.resetDisconnectTimer();
+    // If already connected, return immediately
+    if (this.isConnected) {
+      return;
     }
+
+    // If connection is in progress, wait for it
+    // This prevents race conditions when multiple callers try to reconnect
+    // simultaneously after a disconnection
+    if (this.connectPromise) {
+      return this.connectPromise;
+    }
+
+    // Start connection
+    this.connectPromise = (async () => {
+      try {
+        await this.client.connect();
+        this.resetDisconnectTimer();
+      } catch (error) {
+        // Reset the promise on error so retries can work
+        this.connectPromise = null;
+        throw error;
+      }
+    })();
+
+    return this.connectPromise;
   }
 
   private async gracefulShutdown(): Promise<void> {
@@ -96,11 +119,40 @@ export class MooseCache {
    * const cache = await MooseCache.get();
    */
   public static async get(): Promise<MooseCache> {
-    if (!instance) {
-      instance = new MooseCache();
-      await instance.connect();
+    // If we already have an instance, return it immediately
+    if (instance) {
+      return instance;
     }
-    return instance;
+
+    // If initialization is already in progress, wait for it
+    // This prevents race conditions where multiple concurrent calls to get()
+    // would each create their own instance and connection
+    //
+    // A simple singleton pattern (just checking if instance exists) isn't enough
+    // because multiple async calls can check "if (!instance)" simultaneously,
+    // find it's null, and each try to create their own instance before any
+    // of them finish setting the instance variable
+    if (initPromise) {
+      return initPromise;
+    }
+
+    // Start initialization
+    // We store the promise immediately so that any concurrent calls
+    // will wait for this same initialization instead of starting their own
+    initPromise = (async () => {
+      try {
+        const newInstance = new MooseCache();
+        await newInstance.connect();
+        instance = newInstance;
+        return newInstance;
+      } catch (error) {
+        // Reset the promise on error so retries can work
+        initPromise = null;
+        throw error;
+      }
+    })();
+
+    return initPromise;
   }
 
   /**
@@ -256,6 +308,7 @@ export class MooseCache {
    */
   public async disconnect(): Promise<void> {
     this.clearDisconnectTimer();
+    this.connectPromise = null;
     if (this.isConnected) {
       await this.client.quit();
     }

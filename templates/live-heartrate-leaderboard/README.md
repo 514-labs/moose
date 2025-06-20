@@ -26,7 +26,7 @@
 
 7. Running Streamlit:\
    In another terminal:\
-   `streamlit run app/streamlit_app.py`
+   `streamlit run streamlit_app.py`
 
 ## SOS
 

@@ -389,20 +389,11 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
     />
     <StaggeredCode>
       ```ts
-      const etl = new EtlPipeline("etl", {
-        extract: async (context) => {
-          return await fetch("some-source-url").json();
-        },
-        transform: async (data) => {
-          return data.map((item) => ({
-            ...item,
-            processed: true,
-          }));
-        },
-        load: async (data) => {
-          await table.insert(data);
-        },
-      });
+      const etl = new Workflow("my_etl", {
+        startingTask: startEtl,
+        schedule: "@every 1h",
+        retries: 3,
+      })
       ```
     </StaggeredCode>
   </StaggeredCard>

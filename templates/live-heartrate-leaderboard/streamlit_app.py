@@ -102,7 +102,6 @@ def update_live_graph():
                         'estimated_power': d.estimated_power,
                         'cumulative_calories_burned': d.cumulative_calories_burned
                     } for d in data])
-                    # print(new_data)
 
                     # Update session state data
                     if st.session_state.hr_data.empty:

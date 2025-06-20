@@ -158,6 +158,7 @@ export class S3Source<T> implements AsyncIterable<T> {
         continuationToken = response.NextContinuationToken;
       } while (continuationToken);
 
+      console.log(`Found ${files.length} files in S3 bucket`);
       return files;
     } catch (error) {
       console.error(
@@ -175,8 +176,13 @@ export class S3Source<T> implements AsyncIterable<T> {
     stream: Readable,
   ): Promise<void> {
     try {
+      const totalFiles = files.length;
+      let processedFile = 1;
+
       for (const file of files) {
-        console.log(`Processing S3 file: ${file}`);
+        console.log(
+          `Processing S3 file: ${file} (${processedFile++}/${totalFiles})`,
+        );
 
         const content = await this.getFileContent(file);
 

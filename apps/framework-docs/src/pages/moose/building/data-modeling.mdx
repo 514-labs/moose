@@ -292,6 +292,9 @@ class Order(BaseModel):
 | `Enum` | Enum | Enumerated values |
 | `any` | JSON | JSON object (discouraged, see below) |
 | `Optional<T>` | Nullable | Optional/nullable fields |
+| `object & ClickHouseNamedTuple` | NamedTuple | Named tuple structures |
+| `Record<K, V>` | Map | Map of key-value pairs |
+| `string & LowCardinality` | LowCardinality(String) | Low cardinality string |
 </TypeScript>
 
 <Python>

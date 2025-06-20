@@ -1,16 +1,10 @@
-import {
-  Heading,
-  HeadingLevel,
-  SmallText,
-  Text,
-} from "@/components/typography";
+import { Heading, HeadingLevel } from "@/components/typography";
 
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { Python, TypeScript } from "./src/components/language-wrappers";
-import { LanguageSwitcher } from "./src/components/language-switcher";
 import { ImageZoom } from "nextra/components";
 import {
   Breadcrumb,
@@ -22,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
-import { Contact } from "./src/components/contact";
 import { paths } from "./src/lib/paths";
 import { Slack } from "lucide-react";
 
@@ -192,12 +185,6 @@ export default {
             Star
           </a>
         </div>
-        <Link href={paths.slack}>
-          <Button variant="default">
-            <Slack />
-            Join Slack
-          </Button>
-        </Link>
       </div>
     ),
   },
@@ -280,7 +267,7 @@ export default {
     ),
     // Link styling
     a: ({ children, href, className }) => (
-      <a
+      <Link
         href={href}
         className={cn(
           "text-moose-purple hover:text-moose-purple/90 transition-colors",
@@ -288,7 +275,7 @@ export default {
         )}
       >
         {children}
-      </a>
+      </Link>
     ),
   },
   color: {
@@ -306,19 +293,19 @@ export default {
         <div className="flex flex-row justify-between w-full">
           <p className={baseTextStyles.small}>
             MIT | {year} ©{" "}
-            <a
+            <Link
               href="https://fiveonefour.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-moose-purple hover:text-moose-purple/90 transition-colors"
             >
               Fiveonefour Labs Inc
-            </a>
+            </Link>
           </p>
           <div className="flex flex-wrap items-center gap-4">
             <span className={baseTextStyles.small}>Follow us:</span>
             <div className="flex items-center gap-3">
-              <a
+              <Link
                 href={paths.github}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -326,8 +313,8 @@ export default {
                 aria-label="GitHub"
               >
                 GitHub
-              </a>
-              <a
+              </Link>
+              <Link
                 href={paths.twitter}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -335,8 +322,8 @@ export default {
                 aria-label="X (Twitter)"
               >
                 Twitter
-              </a>
-              <a
+              </Link>
+              <Link
                 href={paths.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -344,8 +331,8 @@ export default {
                 aria-label="LinkedIn"
               >
                 LinkedIn
-              </a>
-              <a
+              </Link>
+              <Link
                 href={paths.youtube}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -353,8 +340,8 @@ export default {
                 aria-label="YouTube"
               >
                 YouTube
-              </a>
-              <a
+              </Link>
+              <Link
                 href={paths.slack}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -362,7 +349,7 @@ export default {
                 aria-label="Slack Community"
               >
                 Slack
-              </a>
+              </Link>
             </div>
           </div>
         </div>

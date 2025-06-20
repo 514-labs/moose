@@ -161,13 +161,13 @@ main > p {
   line-height: 1.5rem;
 }
 
-:is(html[class~="dark"] .dark\:_bg-dark) {
+/* :is(html[class~="dark"] .dark\:_bg-dark) {
   background-color: hsl(var(--background)) !important;
-}
+} */
 
-:is(html[class~="dark"] body) {
+/* :is(html[class~="dark"] body) {
   background-color: hsl(var(--background)) !important;
-}
+} */
 
 ._shadow-\[0_12px_16px_rgb\(var\(--nextra-bg\)\)\] {
   box-shadow: none;
@@ -355,10 +355,10 @@ li.my-2 {
   height: 1.5rem !important;
 } */
 
-.nx-truncate {
+/* .nx-truncate {
   background-color: transparent !important;
   color: hsl(var(--muted-foreground)) !important;
-}
+} */
 
 .nextra-steps h3:before {
   display: flex;
@@ -375,7 +375,7 @@ footer {
   background-color: transparent !important;
 }
 
-:is(html[class~="dark"] .nextra-sidebar-container) {
+/* :is(html[class~="dark"] .nextra-sidebar-container) {
   background-color: hsl(var(--background)) !important;
 }
 
@@ -389,7 +389,7 @@ footer {
   color: var(--primary-foreground) !important;
   border-color: rgba(38, 38, 38, var(--tw-bg-opacity));
   padding: 0 20px;
-}
+} */
 
 @layer base {
   * {
@@ -403,4 +403,41 @@ footer {
 html,
 body {
   scroll-padding-top: 72px; /* 64px sticky bar + 8px extra for spacing */
+}
+
+/* Override Nextra code block base styles */
+.nextra-code {
+  border: 0 !important;
+  background: transparent !important;
+  --tw-ring-offset-width: 0px !important;
+  --tw-ring-width: 0px !important;
+}
+
+/* Remove ring from pre element */
+pre.nextra-focus {
+  background-color: hsl(var(--muted)) !important;
+  --tw-ring-width: 0 !important;
+  --tw-ring-offset-width: 0 !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-color: transparent !important;
+}
+
+code.nextra-code {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Target the filename bar above code blocks */
+.nextra-code > div._flex._items-center._h-12 {
+  /* Example overrides: */
+  border: 0px !important;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  --tw-ring-width: 0 !important;
+  --tw-ring-offset-width: 0 !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-color: transparent !important;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
+    monospace !important;
+  font-size: 0.875rem !important;
 }

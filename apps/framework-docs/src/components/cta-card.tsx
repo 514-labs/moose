@@ -15,7 +15,8 @@ import {
   Text,
 } from "@/components/typography";
 import { cn } from "@/lib/utils";
-import { ProductBadge } from "@/components/product-badge";
+import { IconBadge } from "@/components/badges";
+import { ArrowRight } from "lucide-react";
 
 interface CTACardProps {
   title: string;
@@ -45,68 +46,75 @@ export function CTACard({
   variant = "default",
   orientation = "vertical",
 }: CTACardProps) {
-  return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader>
-        <div className="flex gap-2 items-center">
+  return orientation == "horizontal" ?
+      <Link href={ctaLink} className={cn("w-full", className)}>
+        <Card
+          className={cn(
+            "h-full flex items-center hover:bg-muted rounded-lg transition",
+          )}
+        >
           {badge ?
-            <ProductBadge variant={badge.variant}>{badge.text}</ProductBadge>
-          : orientation === "vertical" && Icon ?
-            <Icon
-              className={cn(
-                "h-[20px] w-[20px]",
-                variant === "aurora" ? "text-aurora-teal" : "text-moose-purple",
-              )}
-            />
-          : null}
-          <SmallText className="text-primary my-0">{cardName}</SmallText>
-        </div>
-        {orientation === "horizontal" && (
-          <div className="flex gap-2 items-center mt-2">
-            {!badge && Icon && (
+            <IconBadge variant={badge.variant} label={badge.text} />
+          : Icon ?
+            <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-center justify-center">
               <Icon
                 className={cn(
-                  "h-[20px] w-[20px]",
-                  variant === "aurora" ? "text-aurora-teal" : (
-                    "text-moose-purple"
-                  ),
+                  "h-6 w-6",
+                  variant === "aurora" ? "text-aurora-teal" : "text-primary",
                 )}
               />
-            )}
-            <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+            </div>
+          : null}
+          <CardContent className="flex-1 min-w-0 pl-6">
+            <Heading className="text-primary mb-0" level={HeadingLevel.l5}>
               {title}
             </Heading>
+            <CardDescription className="mt-2">{description}</CardDescription>
+          </CardContent>
+          <div className="mr-6 rounded-lg p-4 shrink-0 flex items-center justify-center">
+            <ArrowRight className="h-6 w-6" />
+            <span className="sr-only">{ctaLabel}</span>
           </div>
-        )}
-      </CardHeader>
-      <CardContent className="flex-grow">
-        {orientation === "vertical" && (
-          <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+        </Card>
+      </Link>
+    : <Card className={cn("h-full flex flex-col", className)}>
+        <CardHeader>
+          <div className="flex gap-2 items-center">
+            {badge ?
+              <IconBadge variant={badge.variant} label={badge.text} />
+            : orientation === "vertical" && Icon ?
+              <div className="bg-muted rounded-lg p-4">
+                <Icon
+                  className={cn(
+                    "h-6 w-6",
+                    variant === "aurora" ? "text-aurora-teal" : "text-primary",
+                  )}
+                />
+              </div>
+            : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Heading className="text-primary mb-0" level={HeadingLevel.l5}>
             {title}
           </Heading>
-        )}
-        <CardDescription className="mt-2">{description}</CardDescription>
-      </CardContent>
-      <CardFooter>
-        <Link href={ctaLink}>
-          <Button
-            variant="secondary"
-            className="font-normal border hover:bg-secondary/20"
-          >
-            {ctaLabel}
-          </Button>
-        </Link>
-      </CardFooter>
-    </Card>
-  );
+          <CardDescription className="mt-2">{description}</CardDescription>
+        </CardContent>
+        <CardFooter>
+          <Link href={ctaLink}>
+            <Button className="font-normal">{ctaLabel}</Button>
+          </Link>
+        </CardFooter>
+      </Card>;
 }
 
 interface CTACardsProps {
   children: React.ReactNode;
   columns?: number;
+  rows?: number;
 }
 
-export function CTACards({ children, columns = 2 }: CTACardsProps) {
+export function CTACards({ children, columns = 2, rows = 1 }: CTACardsProps) {
   const gridColumns = {
     1: "grid-cols-1",
     2: "grid-cols-1 md:grid-cols-2",
@@ -118,6 +126,7 @@ export function CTACards({ children, columns = 2 }: CTACardsProps) {
       className={cn(
         "grid gap-5 mt-5",
         gridColumns[columns as keyof typeof gridColumns],
+        `grid-rows-${rows}`,
       )}
     >
       {children}

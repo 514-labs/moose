@@ -19,6 +19,7 @@
     "test": "mocha -r ts-node/register 'src/**/*.test.ts'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.832.0",
     "@clickhouse/client": "1.8.1",
     "@clickhouse/client-web": "1.5.0",
     "@temporalio/activity": "^1.11.7",
@@ -27,6 +28,7 @@
     "@temporalio/worker": "^1.11.7",
     "@temporalio/workflow": "^1.11.7",
     "commander": "^13.1.0",
+    "csv-parse": "^5.5.5",
     "fastq": "1.17.1",
     "jose": "5.9.2",
     "kafkajs": "2.2.4",

@@ -8,8 +8,8 @@ const meta = {
   "materialized-views": "Transforming Data in-Database",
   "consumption-apis": "Exposing Analytics via API",
   workflows: "Scheduling & Triggering Workflows",
-  "workflows-2": {
-    title: "Scheduling & Triggering Workflows 2.0",
+  "workflows-1": {
+    title: "Scheduling & Triggering Workflows (old)",
     display: "hidden",
   },
   "dead-letter-queues": "Error Handling With Dead Letter Queues",

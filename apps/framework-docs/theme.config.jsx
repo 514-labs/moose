@@ -161,10 +161,7 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
-        <Script
-          src="https://buttons.github.io/buttons.js"
-          strategy="lazyOnload"
-        />
+        <script async defer src="https://buttons.github.io/buttons.js"></script>
         <link rel="canonical" href={url} />
       </>
     );

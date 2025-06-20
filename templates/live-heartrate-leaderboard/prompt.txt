@@ -5,7 +5,7 @@ Commands to run:
 
 `moose workflow run generate_data`
 
-`streamlit run app/streamlit_app.py`
+`streamlit run streamlit_app.py`
 
 
 Set cursor to 3.7-sonnet

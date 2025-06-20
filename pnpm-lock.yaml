@@ -489,11 +489,54 @@ importers:
 
   packages/ts-config: {}
 
-  packages/ts-moose-lib:
+  packages/ts-moose-connectors:
     dependencies:
+      '@514labs/moose-lib':
+        specifier: '*'
+        version: 0.4.231(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.12.13)(ts-patch@3.3.0)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3))
       '@aws-sdk/client-s3':
         specifier: ^3.832.0
         version: 3.832.0
+      csv-parse:
+        specifier: ^5.5.5
+        version: 5.6.0
+    devDependencies:
+      '@repo/ts-config':
+        specifier: workspace:*
+        version: link:../ts-config
+      '@types/chai':
+        specifier: ^4.3.5
+        version: 4.3.20
+      '@types/mocha':
+        specifier: ^10.0.1
+        version: 10.0.10
+      '@types/node':
+        specifier: 20.12.13
+        version: 20.12.13
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^5.62.0
+        version: 5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint@8.57.1)(typescript@5.7.3)
+      '@typescript-eslint/parser':
+        specifier: ^5.62.0
+        version: 5.62.0(eslint@8.57.1)(typescript@5.7.3)
+      chai:
+        specifier: ^4.3.7
+        version: 4.5.0
+      eslint:
+        specifier: ^8.46.0
+        version: 8.57.1
+      mocha:
+        specifier: ^10.2.0
+        version: 10.8.2
+      tsup:
+        specifier: ^8.4.0
+        version: 8.4.0(@swc/core@1.11.18(@swc/helpers@0.5.15))(jiti@1.21.7)(postcss@8.5.3)(typescript@5.7.3)(yaml@2.7.1)
+      typescript:
+        specifier: ~5.7.3
+        version: 5.7.3
+
+  packages/ts-moose-lib:
+    dependencies:
       '@clickhouse/client':
         specifier: 1.8.1
         version: 1.8.1
@@ -518,9 +561,6 @@ importers:
       commander:
         specifier: ^13.1.0
         version: 13.1.0
-      csv-parse:
-        specifier: ^5.5.5
-        version: 5.6.0
       fastq:
         specifier: 1.17.1
         version: 1.17.1
@@ -657,6 +697,13 @@ packages:
 
   '@514labs/moose-lib@0.4.227':
     resolution: {integrity: sha512-mbjhSN/qvL+o0clXfiFpTdjQRe6bQvjfj2bZRacjYarDnvIpF88mc8Pf9sbw7huToQjHZ+gSNax7CVEVOcq3ng==}
+    hasBin: true
+    peerDependencies:
+      ts-patch: ^3.3.0
+      typia: ^7.6.0
+
+  '@514labs/moose-lib@0.4.231':
+    resolution: {integrity: sha512-ZsZilQpVKjUaQRzuL0qH2kjI3BYyIlGoLFyu1F031ADKgYuz/aGKlQoxCfI2IGfQHWMfprPa4Zh4IVHwNVSirw==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -7742,6 +7789,34 @@ snapshots:
       ts-patch: 3.2.1
       typescript: 5.7.3
       typia: 7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5)
+    transitivePeerDependencies:
+      - '@swc/core'
+      - '@swc/helpers'
+      - '@swc/wasm'
+      - '@types/node'
+      - esbuild
+      - uglify-js
+      - webpack-cli
+
+  '@514labs/moose-lib@0.4.231(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.12.13)(ts-patch@3.3.0)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3))':
+    dependencies:
+      '@clickhouse/client': 1.8.1
+      '@clickhouse/client-web': 1.5.0
+      '@temporalio/activity': 1.11.7
+      '@temporalio/client': 1.11.7
+      '@temporalio/common': 1.11.7
+      '@temporalio/worker': 1.11.7(@swc/helpers@0.5.15)
+      '@temporalio/workflow': 1.11.7
+      commander: 13.1.0
+      fastq: 1.17.1
+      jose: 5.9.2
+      kafkajs: 2.2.4
+      redis: 4.7.1
+      toml: 3.0.0
+      ts-node: 10.9.2(@swc/core@1.11.18(@swc/helpers@0.5.15))(@types/node@20.12.13)(typescript@5.7.3)
+      ts-patch: 3.3.0
+      typescript: 5.7.3
+      typia: 7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/helpers'

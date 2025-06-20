@@ -1,0 +1,37 @@
+{
+  "name": "@514labs/moose-connectors",
+  "version": "0.0.2",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "tsup",
+    "test": "mocha -r ts-node/register 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.832.0",
+    "csv-parse": "^5.5.5"
+  },
+  "devDependencies": {
+    "@repo/ts-config": "workspace:*",
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "20.12.13",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "chai": "^4.3.7",
+    "eslint": "^8.46.0",
+    "mocha": "^10.2.0",
+    "tsup": "^8.4.0",
+    "typescript": "~5.7.3"
+  },
+  "peerDependencies": {
+    "@514labs/moose-lib": "*"
+  }
+}

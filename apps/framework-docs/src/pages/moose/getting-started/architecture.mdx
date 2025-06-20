@@ -40,6 +40,37 @@ Monitor application and infrastructure metrics/logs at scale. Moose ingests tele
 
 ---
 
+## Configuring Infrastructure
+Certain use cases may not warrant the need for all of the infrastructure that Moose provisions by default. In these cases, you can configure the infrastructure that Moose provisions by editing the `moose.config.toml` file:
+
+### Disabling the Streaming Engine
+
+To disable streaming, set the `streaming_engine` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+
+[features]
+streaming_engine = false
+```
+
+<Callout type="warning" title="Streams won't work">
+Make sure you don't have any `Stream` objects defined in your codebase if you disable the streaming engine.
+</Callout>
+
+### Disabling the Temporal Workflows
+
+To disable Temporal workflows, set the `workflows` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+[features]
+workflows = false
+```
+
+<Callout type="warning" title="Workflows won't work">
+Make sure you don't have any `Workflow` objects defined in your codebase if you disable the Temporal workflows.
+</Callout>
+
+
 ## Next Steps
 
 - [5-Minute Quickstart](/moose/getting-started/quickstart) — Build your first Moose pipeline

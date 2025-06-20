@@ -4,33 +4,17 @@ description: Build your first analytical backend with Moose in 5 minutes
 ---
 
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, InlineProps, Contact } from "@/components";
-import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play, CheckCircle, Clock, MapPin, Sparkles, Lightbulb } from "lucide-react";
+import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, Contact } from "@/components";
+import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play, CheckCircle, Clock, MapPin, Laptop, Lightbulb, FolderTree } from "lucide-react";
 import { paths } from "@/lib/paths";
 
 # 5-Minute Quickstart
 
-<div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-muted/50 p-2 rounded-md">
-  <MapPin size={16} />
-  <span>You are here: <strong>Quickstart</strong> — Build your first analytical backend in 5 minutes with ClickHouse, Redpanda, and APIs</span>
+<div className="flex items-center gap-4 my-4">
+<IconBadge Icon={Clock} label="5 minute setup" variant="moose" />
+<IconBadge Icon={CheckCircle} label="Zero config" variant="moose" />
+<IconBadge Icon={Laptop} label="Local ClickHouse, Redpanda, and APIs" variant="moose" />
 </div>
-
-<InlineProps
-  items={[
-    {
-      Icon: Clock,
-      text: "5 minutes"
-    },
-    {
-      Icon: CheckCircle,
-      text: "Zero config"
-    },
-    {
-      Icon: Sparkles,
-      text: "Local ClickHouse, Redpanda, and APIs"
-    }
-  ]}
-/>
 
 <LanguageSwitcher />
 
@@ -361,10 +345,10 @@ You've built a complete analytical backend with:
 
 <FeatureGrid columns={3}>
 <FeatureCard
-  title="Project Structure"
-  description="Learn how to organize your Moose project"
-  href={paths.projectStructure}
-  Icon={FileTree}
+  title="Core Concepts"
+  description="Learn the core concepts of Moose"
+  href={paths.coreConcepts}
+  Icon={FolderTree}
 />
 <FeatureCard
   title="Deep Dive: Data Modeling"

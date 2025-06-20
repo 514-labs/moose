@@ -11,6 +11,7 @@ export const paths = {
   projectStructure: `${basePaths.start}/project-structure`,
   architecture: `${basePaths.start}/architecture`,
   fromClickhouse: `${basePaths.start}/from-clickhouse`,
+  coreConcepts: `${basePaths.start}/core-concepts`,
   // Building
   dataModels: `${basePaths.build}/data-modeling`,
   ingestion: `${basePaths.build}/ingestion`,

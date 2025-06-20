@@ -46,7 +46,8 @@ import {
   TrendingUp,
   Sparkles,
   ShieldCheck,
-  MapPin
+  Warehouse,
+  Rocket,
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, Tab } from "nextra/components";
@@ -456,7 +457,7 @@ Learn more in the [5-minute tutorial](/moose/getting-started/quickstart).
   description="Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend."
   ctaLink={`${paths.architecture}#user-facing-analytics`}
   ctaLabel="Learn More →"
-  Icon={MapPin}
+  Icon={Code}
   className="col-span-2"
 />
 <CTACard
@@ -464,14 +465,14 @@ Learn more in the [5-minute tutorial](/moose/getting-started/quickstart).
   description="Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools."
   ctaLink={`${paths.architecture}#operational-data-warehouse`}
   ctaLabel="Learn More →"
-  Icon={MapPin}
+  Icon={Warehouse}
 />
 <CTACard
   title="Observability"
   description="Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms."
   ctaLink={`${paths.architecture}#observability`}
   ctaLabel="Learn More →"
-  Icon={MapPin}
+  Icon={Rocket}
 />
 </CTACards>
 

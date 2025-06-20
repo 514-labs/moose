@@ -1,6 +1,5 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { SmallTextEmbed } from "@/components/typography";
 import { Lightbulb, StopCircle, FileWarning, PartyPopper } from "lucide-react";
 import { Card, CardContent } from "@/components/ui";
 import Link from "next/link";

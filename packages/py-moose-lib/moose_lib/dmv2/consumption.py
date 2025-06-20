@@ -4,12 +4,15 @@ Consumption (Egress) API definitions for Moose Data Model v2 (dmv2).
 This module provides classes for defining and configuring consumption APIs
 that allow querying data through user-defined functions.
 """
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, Generic
+
+import requests
 from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaValue
 
 from .types import BaseTypedResource, T, U
 from ._registry import _egress_apis
+
 
 class EgressConfig(BaseModel):
     """Configuration for Consumption (Egress) APIs.
@@ -21,7 +24,8 @@ class EgressConfig(BaseModel):
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
-class ConsumptionApi(BaseTypedResource):
+
+class ConsumptionApi(BaseTypedResource, Generic[U]):
     """Represents a Consumption (Egress) API endpoint.
 
     Allows querying data, typically powered by a user-defined function.
@@ -99,3 +103,37 @@ class ConsumptionApi(BaseTypedResource):
         return TypeAdapter(self.return_type).json_schema(
             ref_template='#/components/schemas/{model}'
         )
+
+    def call(self, base_url: str, params: T) -> U:
+        """Call the consumption API with the given parameters.
+        
+        Args:
+            base_url: The base URL of the API server
+            params: Parameters matching the input model T
+            
+        Returns:
+            Response data matching the output model U
+        """
+        # Construct the API endpoint URL
+        url = f"{base_url.rstrip('/')}/consumption/{self.name}"
+
+        # Convert Pydantic model to dictionary
+        params_dict = params.model_dump()
+
+        # Build query parameters, handling lists as repeated params
+        query_params = []
+        for key, value in params_dict.items():
+            if isinstance(value, list):
+                # For list values, add each item as a separate query param
+                for item in value:
+                    query_params.append((key, str(item)))
+            elif value is not None:
+                query_params.append((key, str(value)))
+
+        # Make the HTTP request
+        response = requests.get(url, params=query_params)
+        response.raise_for_status()  # Raise an exception for bad status codes
+
+        # Parse JSON response and return as the expected type
+        response_data = response.json()
+        return self._u.model_validate(response_data)

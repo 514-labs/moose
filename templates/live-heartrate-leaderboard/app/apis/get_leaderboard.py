@@ -3,20 +3,22 @@ from moose_lib import MooseClient
 from pydantic import BaseModel, Field
 from typing import List
 
+
 # Define the query parameters
 class LeaderboardQueryParams(BaseModel):
     time_window_seconds: int = Field(
-        default=300, 
-        gt=0, 
+        default=300,
+        gt=0,
         le=86400,  # Max 24 hours
         description="Time window in seconds to calculate stats (default 5 minutes)"
     )
     limit: int = Field(
-        default=10, 
-        gt=0, 
+        default=10,
+        gt=0,
         le=100,  # Max 100 users
         description="Number of users to return (default 10)"
     )
+
 
 # Define the response body
 class LeaderboardEntry(BaseModel):
@@ -33,9 +35,11 @@ class LeaderboardEntry(BaseModel):
     zone4_percentage: float
     zone5_percentage: float
 
+
 # Define the response wrapper
 class LeaderboardResponse(BaseModel):
     entries: List[LeaderboardEntry]
+
 
 # Define the route handler function
 def run(client: MooseClient, params: LeaderboardQueryParams) -> LeaderboardResponse:
@@ -97,16 +101,17 @@ def run(client: MooseClient, params: LeaderboardQueryParams) -> LeaderboardRespo
     ORDER BY rank ASC
     LIMIT toInt32({limit})
     """
-    
+
     # Execute the query with parameterized values
     result = client.query.execute(query, {
         "time_window_seconds": params.time_window_seconds,
         "limit": params.limit
     })
-    
+
     # Convert the result to our response model
     entries = [LeaderboardEntry(**row) for row in result]
     return LeaderboardResponse(entries=entries)
+
 
 # Create the API endpoint
 get_leaderboard_api = ConsumptionApi[LeaderboardQueryParams, LeaderboardResponse](

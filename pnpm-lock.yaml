@@ -491,9 +491,6 @@ importers:
 
   packages/ts-moose-connectors:
     dependencies:
-      '@514labs/moose-lib':
-        specifier: '*'
-        version: 0.4.231(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.12.13)(ts-patch@3.3.0)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3))
       '@aws-sdk/client-s3':
         specifier: ^3.832.0
         version: 3.832.0
@@ -530,7 +527,7 @@ importers:
         version: 10.8.2
       tsup:
         specifier: ^8.4.0
-        version: 8.4.0(@swc/core@1.11.18(@swc/helpers@0.5.15))(jiti@1.21.7)(postcss@8.5.3)(typescript@5.7.3)(yaml@2.7.1)
+        version: 8.4.0(@swc/core@1.11.18(@swc/helpers@0.5.17))(jiti@1.21.7)(postcss@8.5.3)(typescript@5.7.3)(yaml@2.7.1)
       typescript:
         specifier: ~5.7.3
         version: 5.7.3
@@ -697,13 +694,6 @@ packages:
 
   '@514labs/moose-lib@0.4.227':
     resolution: {integrity: sha512-mbjhSN/qvL+o0clXfiFpTdjQRe6bQvjfj2bZRacjYarDnvIpF88mc8Pf9sbw7huToQjHZ+gSNax7CVEVOcq3ng==}
-    hasBin: true
-    peerDependencies:
-      ts-patch: ^3.3.0
-      typia: ^7.6.0
-
-  '@514labs/moose-lib@0.4.231':
-    resolution: {integrity: sha512-ZsZilQpVKjUaQRzuL0qH2kjI3BYyIlGoLFyu1F031ADKgYuz/aGKlQoxCfI2IGfQHWMfprPa4Zh4IVHwNVSirw==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -7798,34 +7788,6 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@514labs/moose-lib@0.4.231(@swc/core@1.11.18(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@types/node@20.12.13)(ts-patch@3.3.0)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3))':
-    dependencies:
-      '@clickhouse/client': 1.8.1
-      '@clickhouse/client-web': 1.5.0
-      '@temporalio/activity': 1.11.7
-      '@temporalio/client': 1.11.7
-      '@temporalio/common': 1.11.7
-      '@temporalio/worker': 1.11.7(@swc/helpers@0.5.15)
-      '@temporalio/workflow': 1.11.7
-      commander: 13.1.0
-      fastq: 1.17.1
-      jose: 5.9.2
-      kafkajs: 2.2.4
-      redis: 4.7.1
-      toml: 3.0.0
-      ts-node: 10.9.2(@swc/core@1.11.18(@swc/helpers@0.5.15))(@types/node@20.12.13)(typescript@5.7.3)
-      ts-patch: 3.3.0
-      typescript: 5.7.3
-      typia: 7.6.4(@samchon/openapi@2.5.3)(typescript@5.7.3)
-    transitivePeerDependencies:
-      - '@swc/core'
-      - '@swc/helpers'
-      - '@swc/wasm'
-      - '@types/node'
-      - esbuild
-      - uglify-js
-      - webpack-cli
-
   '@adobe/css-tools@4.4.2': {}
 
   '@alloc/quick-lru@5.2.0': {}
@@ -12306,7 +12268,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -12366,7 +12328,7 @@ snapshots:
       tinyglobby: 0.2.12
       unrs-resolver: 1.4.1
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -12407,7 +12369,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0)(eslint@8.57.1):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.0(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8

@@ -6,7 +6,7 @@ export function Contact() {
   return (
     <div className="space-y-6">
       Get help, learn, contribute, and stay connected with the Moose community
-      <CTACards columns={2}>
+      <CTACards columns={1}>
         <CTACard
           title="Join Slack"
           description="Connect with developers and get help with your projects"

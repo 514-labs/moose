@@ -4,8 +4,13 @@ import {
   HeadBucketCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { parse } from "csv-parse";
 import { Readable } from "node:stream";
+import {
+  parseCSV,
+  parseJSON,
+  DEFAULT_CSV_CONFIG,
+  DEFAULT_JSON_CONFIG,
+} from "./utilities/dataParser";
 
 /**
  * Configuration for S3 data source.
@@ -177,7 +182,7 @@ export class S3Source<T> implements AsyncIterable<T> {
 
         if (this.config.format === "json") {
           try {
-            const parsedData = JSON.parse(content) as T[];
+            const parsedData = parseJSON<T>(content, DEFAULT_JSON_CONFIG);
 
             for (const item of parsedData) {
               stream.push(item);
@@ -189,7 +194,11 @@ export class S3Source<T> implements AsyncIterable<T> {
           }
         } else if (this.config.format === "csv") {
           try {
-            const csvData = await this.parseCSV(content);
+            const csvConfig = this.config as S3ConfigCSV;
+            const csvData = await parseCSV<T>(content, {
+              ...DEFAULT_CSV_CONFIG,
+              delimiter: csvConfig.csv.delimiter,
+            });
 
             for (const item of csvData) {
               stream.push(item);
@@ -206,33 +215,6 @@ export class S3Source<T> implements AsyncIterable<T> {
     } catch (error) {
       stream.destroy(error instanceof Error ? error : new Error(String(error)));
     }
-  }
-
-  /**
-   * Parses CSV content using the csv-parse library.
-   */
-  private parseCSV(content: string): Promise<T[]> {
-    const csvConfig = this.config as S3ConfigCSV;
-
-    return new Promise((resolve, reject) => {
-      const results: T[] = [];
-
-      parse(content, {
-        delimiter: csvConfig.csv.delimiter,
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      })
-        .on("data", (row) => {
-          results.push(row as T);
-        })
-        .on("end", () => {
-          resolve(results);
-        })
-        .on("error", (error) => {
-          reject(error);
-        });
-    });
   }
 
   /**

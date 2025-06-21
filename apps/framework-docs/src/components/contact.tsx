@@ -1,58 +1,53 @@
-import { Icons } from "./icons";
-import { ContactCards, ContactCard } from "./contact-card";
-import { paths } from "@/lib/paths";
+import { Icons, PathConfig } from "./ctas";
+import { CTACards, CTACard } from "./cta-card";
 import { Heading, HeadingLevel } from "./typography";
 
 export function Contact() {
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Heading level={HeadingLevel.l3} className="text-primary">
-          Learning & Community Resources
-        </Heading>
-        <p className="text-muted-foreground text-sm">
-          Get help, learn, contribute, and stay connected with the Moose
-          community
-        </p>
-      </div>
-
-      <ContactCards columns={3}>
-        <ContactCard
-          title="Join Our Community"
+      Get help, learn, contribute, and stay connected with the Moose community
+      <CTACards columns={1}>
+        <CTACard
+          title="Join Slack"
           description="Connect with developers and get help with your projects"
-          ctaLink={paths.slack}
+          ctaLink={PathConfig.slack.path}
           ctaLabel="Join Slack"
           Icon={Icons.slack}
+          orientation="horizontal"
         />
-        <ContactCard
-          title="Learn & Watch"
+        <CTACard
+          title="Watch Tutorials"
           description="Video tutorials, demos, and deep-dives into Moose features"
-          ctaLink={paths.youtube}
+          ctaLink={PathConfig.youtube.path}
           ctaLabel="Watch Tutorials"
           Icon={Icons.youtube}
+          orientation="horizontal"
         />
-        <ContactCard
+        <CTACard
           title="Talk to Us"
           description="Contact the Moose maintainers for support and feedback"
-          ctaLink={paths.calendly}
+          ctaLink={PathConfig.calendly.path}
           ctaLabel="Schedule a Call"
           Icon={Icons.contact}
+          orientation="horizontal"
         />
-        <ContactCard
-          title="Contribute"
+        <CTACard
+          title="View GitHub"
           description="Check out the code, contribute to Moose, and report issues"
-          ctaLink={paths.github}
+          ctaLink={PathConfig.github.path}
           ctaLabel="Contribute"
           Icon={Icons.github}
+          orientation="horizontal"
         />
-        <ContactCard
-          title="Follow Us on X"
+        <CTACard
+          title="Follow on X"
           description="Follow us on X for the latest news and updates"
-          ctaLink={paths.twitter}
+          ctaLink={PathConfig.twitter.path}
           ctaLabel="Follow Us"
           Icon={Icons.twitter}
+          orientation="horizontal"
         />
-      </ContactCards>
+      </CTACards>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { BulletPointsCard } from "@/components/bullet-points-card";
-import { Callout } from "@/components";
 import { 
   ReleaseHighlights, 
   Added, 
@@ -15,41 +14,89 @@ import {
 ## What is this page?
 This changelog tracks all meaningful changes to Moose. Each entry includes the PR link and contributor credit, organized by date (newest first). Use this page to stay informed about new features, fixes, and breaking changes that might affect your projects.
 
-<BulletPointsCard
-  title="How to read this changelog"
-  bullets={[
-    {
-      title: "Release highlights",
-      description: "Key features, enhancements, or fixes for each release."
-    },
-    {
-      title: "Added",
-      description: "New features or capabilities."
-    },
-    {
-      title: "Changed",
-      description: "Updates to existing functionality or improvements."
-    },
-    {
-      title: "Deprecated",
-      description: "Features that are no longer recommended for use and may be removed in the future."
-    },
-    {
-      title: "Fixed",
-      description: "Bug fixes and reliability improvements."
-    },
-    {
-      title: "Security",
-      description: "Security-related updates or vulnerability fixes."
-    },
-    {
-      title: "Breaking changes",
-      description: "Changes that require user action or may break existing usage."
-    }
-  ]}
-  divider={true}
-  bulletStyle="check"
-/>
+## How to read this changelog:
+<div className="grid grid-cols-2 gap-2">
+
+<ReleaseHighlights>
+Key features, enhancements, or fixes for each release.
+</ReleaseHighlights>
+
+<Added>
+New features and capabilities.
+</Added>
+
+<Changed>
+Updates to existing functionality or improvements.
+</Changed>
+
+<Deprecated>
+Features that are no longer recommended for use and may be removed in the future.
+</Deprecated>
+
+<Fixed>
+Bug fixes and reliability improvements.
+</Fixed>
+
+<BreakingChanges>
+Changes that require user action or may break existing usage.
+</BreakingChanges>
+</div>
+---
+
+## 2025-06-12
+
+<ReleaseHighlights>
+  - **Enhanced TypeScript Workflow Types** — Improved type safety for Tasks with optional input/output parameters, supporting `null` types for better flexibility.
+</ReleaseHighlights>
+
+<Fixed>
+  - TypeScript workflow Task types now properly support optional input/output with `null` types, enabling more flexible task definitions like `Task<Foo, null>` and `Task<null, Bar>`.  
+    *[#2442](https://github.com/514-labs/moose/pull/2442) by [DatGuyJonathan](https://github.com/DatGuyJonathan)*
+</Fixed>
+
+<BreakingChanges>
+  None
+</BreakingChanges>
+
+---
+
+## 2025-06-10
+
+<ReleaseHighlights>
+  - **OlapTable Direct Insert API** — New comprehensive insert API with advanced error handling, typia validation, and multiple failure strategies. Enables direct data insertion into ClickHouse tables with production-ready reliability features.
+  - **Python Workflows V2** — Replaces static file-based routing with explicit `Task` and `Workflow` classes, enabling dynamic task composition and programmatic workflow orchestration. No more reliance on `@task` decorators or file naming conventions.
+</ReleaseHighlights>
+
+<Added>
+  - OlapTable direct insert API with `insert()` method supporting arrays and Node.js streams. Features comprehensive typia-based validation, three error handling strategies (`fail-fast`, `discard`, `isolate`), configurable error thresholds, memoized ClickHouse connections, and detailed insertion results with failed record tracking.  
+    *[#2437](https://github.com/514-labs/moose/pull/2437) by [callicles](https://github.com/callicles)*
+  - Enhanced typia validation integration for OlapTable and IngestPipeline with `validateRecord()`, `isValidRecord()`, and `assertValidRecord()` methods providing compile-time type safety and runtime validation.  
+    *[#2437](https://github.com/514-labs/moose/pull/2437) by [callicles](https://github.com/callicles)*
+  - Python Workflows V2 with `Task[InputType, OutputType]` and `Workflow` classes for dynamic workflow orchestration. Replaces the legacy `@task` decorator approach with explicit task definitions, enabling flexible task composition, type-safe chaining via `on_complete`, retries, timeouts, and scheduling with cron expressions.  
+    *[#2439](https://github.com/514-labs/moose/pull/2439) by [DatGuyJonathan](https://github.com/DatGuyJonathan)*
+
+</Added>
+
+<BreakingChanges>
+  None
+</BreakingChanges>
+
+---
+
+## 2025-06-06
+
+<ReleaseHighlights>
+  - **TypeScript Workflows V2** — Replaces static file-based routing with explicit `Task` and `Workflow` classes, enabling dynamic task composition and programmatic workflow orchestration. No more reliance on file naming conventions for task execution order.
+</ReleaseHighlights>
+
+<Added>
+  - TypeScript Workflows V2 with `Task<InputType, OutputType>` and `Workflow` classes for dynamic workflow orchestration. Replaces the legacy file-based routing approach with explicit task definitions, enabling flexible task composition, type-safe chaining via `onComplete`, configurable retries and timeouts, and flexible scheduling with cron expressions.  
+    *[#2421](https://github.com/514-labs/moose/pull/2421) by [DatGuyJonathan](https://github.com/DatGuyJonathan)*
+</Added>
+
+<BreakingChanges>
+  None
+</BreakingChanges>
 
 ---
 
@@ -117,6 +164,25 @@ This changelog tracks all meaningful changes to Moose. Each entry includes the P
     *[#2357](https://github.com/514-labs/moose/pull/2357) by [georgevanderson](https://github.com/georgevanderson)*
 </Fixed>
 
+
+<BreakingChanges>
+  None
+</BreakingChanges>
+
+---
+
+## 2025-05-27
+
+<ReleaseHighlights>
+  - **IPv4 and IPv6 Type Support** — Added native support for IP address types in ClickHouse data models, enabling efficient storage and querying of network data.
+</ReleaseHighlights>
+
+<Added>
+  - IPv4 and IPv6 data types for ClickHouse integration, supporting native IP address storage and operations.  
+    *[#2373](https://github.com/514-labs/moose/pull/2373) by [phiSgr](https://github.com/phiSgr)*
+  - Enhanced type parser to handle IP address types across the Moose ecosystem.  
+    *[#2374](https://github.com/514-labs/moose/pull/2374) by [phiSgr](https://github.com/phiSgr)*
+</Added>
 
 <BreakingChanges>
   None

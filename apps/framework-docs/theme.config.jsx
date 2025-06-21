@@ -1,16 +1,9 @@
-import {
-  Heading,
-  HeadingLevel,
-  SmallText,
-  Text,
-} from "@/components/typography";
+import { Heading, HeadingLevel } from "@/components/typography";
 
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import Script from "next/script";
 import { Python, TypeScript } from "./src/components/language-wrappers";
-import { LanguageSwitcher } from "./src/components/language-switcher";
 import { ImageZoom } from "nextra/components";
 import {
   Breadcrumb,
@@ -19,12 +12,9 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
-import { Contact } from "./src/components/contact";
-import { paths } from "./src/lib/paths";
-import { Slack } from "lucide-react";
+import { PathConfig } from "./src/components/ctas";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -168,10 +158,7 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
-        <Script
-          src="https://buttons.github.io/buttons.js"
-          strategy="lazyOnload"
-        />
+        <script async defer src="https://buttons.github.io/buttons.js"></script>
         <link rel="canonical" href={url} />
       </>
     );
@@ -192,12 +179,6 @@ export default {
             Star
           </a>
         </div>
-        <Link href={paths.slack}>
-          <Button variant="default">
-            <Slack />
-            Join Slack
-          </Button>
-        </Link>
       </div>
     ),
   },
@@ -239,7 +220,7 @@ export default {
     ),
     // Text components with direct styling
     p: ({ children, className, ...props }) => (
-      <p className={cn("my-5", baseTextStyles.small, className)} {...props}>
+      <p className={cn("my-2", baseTextStyles.small, className)} {...props}>
         {children}
       </p>
     ),
@@ -280,7 +261,7 @@ export default {
     ),
     // Link styling
     a: ({ children, href, className }) => (
-      <a
+      <Link
         href={href}
         className={cn(
           "text-moose-purple hover:text-moose-purple/90 transition-colors",
@@ -288,7 +269,7 @@ export default {
         )}
       >
         {children}
-      </a>
+      </Link>
     ),
   },
   color: {
@@ -306,63 +287,63 @@ export default {
         <div className="flex flex-row justify-between w-full">
           <p className={baseTextStyles.small}>
             MIT | {year} ©{" "}
-            <a
+            <Link
               href="https://fiveonefour.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-moose-purple hover:text-moose-purple/90 transition-colors"
             >
               Fiveonefour Labs Inc
-            </a>
+            </Link>
           </p>
           <div className="flex flex-wrap items-center gap-4">
             <span className={baseTextStyles.small}>Follow us:</span>
             <div className="flex items-center gap-3">
-              <a
-                href={paths.github}
+              <Link
+                href={PathConfig.github.path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-moose-purple hover:text-moose-purple/90 transition-colors"
                 aria-label="GitHub"
               >
                 GitHub
-              </a>
-              <a
-                href={paths.twitter}
+              </Link>
+              <Link
+                href={PathConfig.twitter.path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-moose-purple hover:text-moose-purple/90 transition-colors"
                 aria-label="X (Twitter)"
               >
                 Twitter
-              </a>
-              <a
-                href={paths.linkedin}
+              </Link>
+              <Link
+                href={PathConfig.linkedin.path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-moose-purple hover:text-moose-purple/90 transition-colors"
                 aria-label="LinkedIn"
               >
                 LinkedIn
-              </a>
-              <a
-                href={paths.youtube}
+              </Link>
+              <Link
+                href={PathConfig.youtube.path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-moose-purple hover:text-moose-purple/90 transition-colors"
                 aria-label="YouTube"
               >
                 YouTube
-              </a>
-              <a
-                href={paths.slack}
+              </Link>
+              <Link
+                href={PathConfig.slack.path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-moose-purple hover:text-moose-purple/90 transition-colors"
                 aria-label="Slack Community"
               >
                 Slack
-              </a>
+              </Link>
             </div>
           </div>
         </div>

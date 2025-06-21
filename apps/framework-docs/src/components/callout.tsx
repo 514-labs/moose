@@ -1,43 +1,52 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { SmallTextEmbed } from "@/components/typography";
-import { Lightbulb, StopCircle, FileWarning, PartyPopper } from "lucide-react";
-import { Card, CardContent } from "@/components/ui";
+import { Heading, HeadingLevel } from "@/components/typography";
+import {
+  Card,
+  CardContent,
+  CardTitle,
+  CardFooter,
+  CardDescription,
+} from "@/components/ui";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Lightbulb, PartyPopper, StopCircle } from "lucide-react";
 
 interface CalloutProps {
   type: CalloutType;
   title?: string;
   href?: string;
-  icon?: React.ReactNode;
+  icon?: React.ElementType | boolean;
+  ctaLabel?: string;
   children: React.ReactNode;
+  compact?: boolean;
 }
 
 const calloutVariants = {
   success: {
-    icon: <PartyPopper className="text-moose-green" />,
-    color: "bg-muted/20",
-    border: "border-moose-green/20",
+    icon: PartyPopper,
+    color: "bg-muted/50",
+    border: "border-boreal-green/10",
     title: "Congrats!",
-    titleColor: "text-moose-green",
+    titleColor: "text-boreal-green/90",
   },
   info: {
-    icon: <Lightbulb className="text-muted-foreground" />,
-    color: "bg-card",
+    icon: Lightbulb,
+    color: "bg-muted/50",
     border: "border",
     title: "MooseTip:",
-    titleColor: "text-muted-foreground",
+    titleColor: "text-primary",
   },
   warning: {
-    icon: <StopCircle className="text-yellow" />,
-    color: "bg-muted/20",
+    icon: StopCircle,
+    color: "bg-muted/50",
     border: "border-moose-yellow/20",
     title: "Warning:",
-    titleColor: "text-muted-foreground",
+    titleColor: "text-primary",
   },
   danger: {
-    icon: <FileWarning className="text-descructive" />,
-    color: "bg-muted/20",
+    icon: StopCircle,
+    color: "bg-muted/50",
     border: "border-destructive/20",
     title: "Error:",
     titleColor: "text-muted-foreground",
@@ -46,40 +55,92 @@ const calloutVariants = {
 
 type CalloutType = keyof typeof calloutVariants;
 
-export function Callout({ type, title, href, icon, children }: CalloutProps) {
+export function Callout({
+  type,
+  title,
+  href,
+  icon = false,
+  ctaLabel = "Learn more",
+  children,
+  compact = false,
+}: CalloutProps) {
   const variantProps = calloutVariants[type];
 
-  const TitleContent = () => (
-    <p
-      className={cn(
-        "font-semibold my-0 inline-block mr-2",
-        variantProps.titleColor,
-        href && "text-moose-purple hover:underline cursor-pointer",
-      )}
-    >
-      {title || variantProps.title}
-    </p>
-  );
+  const Icon =
+    typeof icon === "boolean" && icon ?
+      variantProps.icon
+    : (icon as React.ElementType);
+
+  if (compact) {
+    return (
+      <Card
+        className={cn(
+          "flex items-start my-2 p-3",
+          variantProps.color,
+          variantProps.border,
+        )}
+      >
+        {icon && (
+          <div className="mr-3 bg-muted rounded-md p-2 shrink-0 flex items-center justify-center">
+            <Icon className={cn("h-4 w-4", variantProps.titleColor)} />
+          </div>
+        )}
+        <CardContent className="flex-1 min-w-0 p-0">
+          <div>
+            <span
+              className={cn(
+                "text-sm font-medium mr-1.5",
+                variantProps.titleColor,
+              )}
+            >
+              {title || variantProps.title}
+            </span>
+            <span className="text-sm text-muted-foreground">{children}</span>
+          </div>
+        </CardContent>
+        {href && (
+          <CardFooter className="p-0 ml-2 self-center">
+            <Link href={href}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 px-2 text-xs"
+              >
+                {ctaLabel}
+              </Button>
+            </Link>
+          </CardFooter>
+        )}
+      </Card>
+    );
+  }
 
   return (
     <Card
       className={cn(
-        "callout border b-[1px] my-5 flex items-start w-full p-4 space-x-2",
+        "flex items-center my-4 py-0",
         variantProps.color,
         variantProps.border,
       )}
     >
-      <CardContent className="flex items-start space-x-2 p-0">
-        <div className="flex-shrink-0 mt-1">{icon || variantProps.icon}</div>
-        <div className="flex-1">
-          {href ?
-            <Link href={href}>
-              <TitleContent />
-            </Link>
-          : <TitleContent />}
-          {children}
+      {icon && (
+        <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-start justify-center">
+          <Icon className={cn("h-6 w-6", variantProps.titleColor)} />
         </div>
+      )}
+      <CardContent className="flex-1 min-w-0 pl-6 items-start">
+        <p className={cn("pt-4 mb-0 text-md", variantProps.titleColor)}>
+          {title || variantProps.title}
+        </p>
+        <CardDescription className="mt-2">{children}</CardDescription>
       </CardContent>
+      {href && (
+        <CardFooter className="items-start">
+          <Link href={href}>
+            <Button variant="secondary">{ctaLabel}</Button>
+          </Link>
+        </CardFooter>
+      )}
     </Card>
   );
 }

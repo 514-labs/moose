@@ -51,6 +51,8 @@ pub enum AtomicOlapOperation {
         table: Table,
         /// Column to add
         column: Column,
+        /// The column after which to add this column (None means adding as first column)
+        after_column: Option<String>,
         /// Dependency information
         dependency_info: DependencyInfo,
     },
@@ -424,11 +426,16 @@ fn handle_table_update(
     }
 }
 
-/// Process a column addition
-fn process_column_addition(after: &Table, column: &Column) -> AtomicOlapOperation {
+/// Process a column addition with position information
+fn process_column_addition(
+    after: &Table,
+    column: &Column,
+    after_column: Option<&str>,
+) -> AtomicOlapOperation {
     AtomicOlapOperation::AddTableColumn {
         table: after.clone(),
         column: column.clone(),
+        after_column: after_column.map(ToOwned::to_owned),
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -472,8 +479,15 @@ fn process_column_changes(
 
     for change in column_changes {
         match change {
-            ColumnChange::Added(column) => {
-                plan.setup_ops.push(process_column_addition(after, column));
+            ColumnChange::Added {
+                column,
+                position_after,
+            } => {
+                plan.setup_ops.push(process_column_addition(
+                    after,
+                    column,
+                    position_after.as_deref(),
+                ));
             }
             ColumnChange::Removed(column) => {
                 plan.teardown_ops
@@ -683,13 +697,29 @@ fn order_operations_by_dependencies(
     let mut nodes = Vec::new();
     let mut op_indices = Vec::new(); // Track valid operation indices
 
+    let mut previous_idx: Option<NodeIndex> = None;
     // First pass: Create nodes for all operations
     for (i, op) in operations.iter().enumerate() {
         let signature = op.resource_signature();
+
         let node_idx = graph.add_node(i);
+
+        let previous_signature = if i == 0 {
+            None
+        } else {
+            Some(operations[i - 1].resource_signature())
+        };
+        if previous_signature.as_ref() == Some(&signature) {
+            // retain stable ordering within the same signature
+            if let Some(previous_idx) = previous_idx {
+                graph.add_edge(previous_idx, node_idx, ());
+            }
+        }
+
         signature_to_node.insert(signature, node_idx);
         nodes.push(node_idx);
         op_indices.push(i); // Keep track of valid operation indices
+        previous_idx = Some(node_idx);
     }
 
     // Get all edges for all operations first
@@ -841,6 +871,7 @@ mod tests {
                 default: None,
                 annotations: vec![],
             },
+            after_column: None,
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -1138,6 +1169,7 @@ mod tests {
         let op_add_column = AtomicOlapOperation::AddTableColumn {
             table: table.clone(),
             column: column.clone(),
+            after_column: None,
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: table.name.clone(),
@@ -2077,6 +2109,7 @@ mod tests {
         let op_add_column = AtomicOlapOperation::AddTableColumn {
             table: table.clone(),
             column: column.clone(),
+            after_column: None,
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: table.name.clone(),

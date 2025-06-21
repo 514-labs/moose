@@ -162,8 +162,13 @@ async fn execute_atomic_operation(
         AtomicOlapOperation::DropTable { table, .. } => {
             execute_drop_table(db_name, table, client).await?;
         }
-        AtomicOlapOperation::AddTableColumn { table, column, .. } => {
-            execute_add_table_column(db_name, table, column, client).await?;
+        AtomicOlapOperation::AddTableColumn {
+            table,
+            column,
+            after_column,
+            dependency_info: _,
+        } => {
+            execute_add_table_column(db_name, table, column, after_column, client).await?;
         }
         AtomicOlapOperation::DropTableColumn {
             table, column_name, ..
@@ -245,18 +250,28 @@ async fn execute_add_table_column(
     db_name: &str,
     table: &Table,
     column: &Column,
+    after_column: &Option<String>,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
-        "Executing AddTableColumn for table: {}, column: {}",
+        "Executing AddTableColumn for table: {}, column: {}, after: {:?}",
         table.id(),
-        column.name
+        column.name,
+        after_column
     );
     let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
     let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
+
     let add_column_query = format!(
-        "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
-        db_name, table.name, clickhouse_column.name, column_type_string
+        "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {} {}",
+        db_name,
+        table.name,
+        clickhouse_column.name,
+        column_type_string,
+        match after_column {
+            None => "FIRST".to_string(),
+            Some(after_col) => format!("AFTER `{}`", after_col),
+        }
     );
     log::debug!("Adding column: {}", add_column_query);
     run_query(&add_column_query, client).await?;

@@ -188,7 +188,10 @@ impl PrimitiveTypes {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ColumnChange {
     /// A new column has been added
-    Added(Column),
+    Added {
+        column: Column,
+        position_after: Option<String>,
+    },
     /// An existing column has been removed
     Removed(Column),
     /// An existing column has been modified
@@ -1693,7 +1696,7 @@ fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange
         after.columns.iter().map(|col| (&col.name, col)).collect();
 
     // Process additions and updates: O(n)
-    for after_col in &after.columns {
+    for (i, after_col) in after.columns.iter().enumerate() {
         if let Some(&before_col) = before_columns.get(&after_col.name) {
             if before_col != after_col {
                 log::debug!(
@@ -1710,7 +1713,14 @@ fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange
                 log::debug!("Column '{}' unchanged", after_col.name);
             }
         } else {
-            diff.push(ColumnChange::Added(after_col.clone()));
+            diff.push(ColumnChange::Added {
+                column: after_col.clone(),
+                position_after: if i == 0 {
+                    None
+                } else {
+                    Some(after.columns[i - 1].name.clone())
+                },
+            });
         }
     }
 
@@ -1855,7 +1865,9 @@ mod tests {
         assert!(
             matches!(&diff[0], ColumnChange::Updated { before, after } if before.name == "id" && matches!(after.data_type, ColumnType::BigInt))
         );
-        assert!(matches!(&diff[1], ColumnChange::Added(col) if col.name == "age"));
+        assert!(
+            matches!(&diff[1], ColumnChange::Added{column, position_after: Some(pos) } if column.name == "age" && pos == "name")
+        );
         assert!(matches!(&diff[2], ColumnChange::Removed(col) if col.name == "to_be_removed"));
     }
 }
@@ -1913,7 +1925,10 @@ mod diff_tests {
         let diff = compute_table_columns_diff(&before, &after);
         assert_eq!(diff.len(), 1, "Expected one change");
         match &diff[0] {
-            ColumnChange::Added(col) => {
+            ColumnChange::Added {
+                column: col,
+                position_after: None,
+            } => {
                 assert_eq!(col.name, "new_column");
                 assert_eq!(col.data_type, ColumnType::Int(IntType::Int64));
             }
@@ -2064,8 +2079,12 @@ mod diff_tests {
 
         for change in diff {
             match change {
-                ColumnChange::Added(col) => {
+                ColumnChange::Added {
+                    column: col,
+                    position_after,
+                } => {
                     assert_eq!(col.name, "new_column");
+                    assert_eq!(position_after.as_deref(), Some("to_modify"));
                     added += 1;
                 }
                 ColumnChange::Removed(col) => {

@@ -16,6 +16,12 @@ const withNextra = nextra({
         { whiteList: ["table", "thead", "tbody", "tr", "th", "td"] },
       ],
     ],
+    rehypePrettyCodeOptions: {
+      theme: {
+        dark: "github-dark",
+        light: "min-light",
+      },
+    },
   },
 });
 

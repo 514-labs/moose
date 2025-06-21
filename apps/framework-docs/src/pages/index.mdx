@@ -4,12 +4,16 @@ description: Documentation hub for Moose and Aurora, open source tools for build
 ---
 
 import { CTACards, CTACard, Contact } from "@/components";
+import { Card } from "@/components/ui/card";
 
 # Docs
 
+<Card className="pt-2 px-6 pb-6">
+
+## Overview & Our Products
 This is the home of the documentation for the 514 products:
 
-```bash filename=Terminal copy
+```bash filename="Installation" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
@@ -40,12 +44,13 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 
 <CTACards>
   <CTACard
-    title="Example Projects to Start From"
+    title="Clone a Template"
     description="See example projects built with Moose and Aurora and use them as a starting point for your own project"
     ctaLink="/templates"
     ctaLabel="Start Now"
     badge={{
-      text: "Templates"
+      text: "Templates",
+      variant: "default"
     }}
   />
   <CTACard
@@ -54,10 +59,18 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
     ctaLink="/moose/getting-started/from-clickhouse"
     ctaLabel="Import from ClickHouse"
     badge={{
-      variant: "moose",
+      variant: "default",
       text: "Moose"
     }}
   />
 </CTACards>
+</Card>
+
+
+<br />
+
+<Card className="pt-2 px-6 pb-6">
+## Get Involved in the Community
 
 <Contact />
+</Card>

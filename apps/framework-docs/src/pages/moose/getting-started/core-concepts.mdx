@@ -1,0 +1,152 @@
+---
+title: Core Concepts
+description: Essential primitives, patterns, and architecture for building with Moose.
+---
+
+import { Callout, ZoomImg, CTACards, CTACard, PathConfig } from "@/components";
+
+# Core Concepts
+
+An analytical backend connects your data sources (like applications and services) to your data consumers (like frontends and dashboards). Moose helps you build one by defining the entire system in code using TypeScript or Python.
+
+You declare the high-level components you need—ingestion endpoints, data transformations, and APIs—and Moose handles the rest. It automatically provisions the underlying infrastructure (databases, streaming platforms, API gateways) and orchestrates the flow of data through your system.
+
+This "infrastructure-from-code" approach lets you focus on your business logic, not on gluing together complex systems.
+
+<ZoomImg light="/figjam-arch.jpg" dark="/figjam-arch.jpg" alt="Moose Data Flow" />
+
+## The Analytical Database
+
+At the core of every Moose project is a real-time analytical database (powered by ClickHouse). All your data pipelines, transformations, and APIs are built around this central component.
+
+### OlapTable
+
+An `OlapTable` represents a table in this database. It's where your data is ultimately stored and made available for querying. Unlike a traditional transactional (OLTP) database designed for single-row operations, these tables are columnar, making them exceptionally fast for the analytical queries that power dashboards and data applications.
+
+### Data Modeling
+
+In Moose, you define the structure of your data using familiar language constructs: TypeScript interfaces or Python Pydantic models. These models are then used across the stack to provide end-to-end type safety:
+
+-   **Storage:** Defining the columns and data types for an `OlapTable`.
+-   **Ingestion:** Validating incoming data.
+-   **Streaming:** Ensuring events on a `Stream` conform to a specific schema.
+-   **APIs:** Typing the request and response payloads of a `ConsumptionApi`.
+
+This unified approach to data modeling eliminates schema drift between components and improves developer productivity.
+
+## The Building Blocks: From Ingestion to Consumption
+
+Building with Moose involves combining a set of core primitives to get data into, process, and get data out of your analytical database.
+
+### 1. Ingesting Data into your OlapTables
+
+First, you need to get data into your tables. Moose supports two primary patterns: pushing data from your applications or pulling data from external sources.
+
+#### Push-Based Ingestion: `IngestPipeline`
+
+The most common way to get data into Moose is with an `IngestPipeline`. It automatically provisions a type-safe HTTP endpoint for you. When your application sends data to this endpoint, Moose handles:
+
+1.  **Validation:** Checking if the incoming data matches the schema you defined.
+2.  **Streaming:** Placing the validated event onto a stream for real-time processing.
+3.  **Storage:** Persisting the raw event into an `OlapTable` for durable storage.
+
+<Callout type="info" title="Using Ingest Pipelines" href={PathConfig.ingestion.path} ctaLabel="Learn more" compact={true}>
+Use an `IngestPipeline` to collect event data from your own applications, like user activity from a web frontend or service logs from a backend.
+</Callout>
+
+
+
+#### Pull-Based Ingestion: `Workflows`
+
+For data that isn't pushed to you in real-time, you can use `Workflows`. A workflow is a TypeScript or Python function that runs on a schedule or can be triggered manually. You can write a workflow to:
+
+-   Fetch data from a third-party API (e.g., Stripe, Hubspot).
+-   Connect to a production database and run a query.
+-   Load data from a file in cloud storage.
+
+The data fetched by the workflow can then be inserted directly into a Moose `OlapTable`.
+
+<Callout type="info" title="Using Workflows for ETL/ELT" href={PathConfig.workflows.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Workflows` for periodic ETL/ELT jobs to sync data from external systems into your analytical backend.
+</Callout>
+
+
+### 2. Processing and Transforming Data
+
+Once data is ingested, you can transform, aggregate, and enrich it in real-time.
+
+#### Real-time Aggregation: `MaterializedView`
+
+A `MaterializedView` sits on top of an `OlapTable` to pre-compute aggregations as new data arrives. Think of it as a self-updating, materialized query for your key metrics. When you query the view, the results are near-instant because the work has already been done incrementally.
+
+<Callout type="info" title="Using Materialized Views" href={PathConfig.materializedViews.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `MaterializedViews` to power fast-loading dashboards and real-time analytics where query latency is critical.
+</Callout>
+
+
+#### Real-time Processing: `Stream`
+
+While some data can be stored directly after ingestion, you often need to transform it first. A `Stream` represents a real-time flow of events (backed by a Redpanda/Kafka topic) that lets you process data *before* it lands in its final `OlapTable`. You can define functions that consume from one stream, transform the events, and publish them to another. This is perfect for:
+
+-   Filtering out irrelevant events.
+-   Enriching events with data from another source.
+-   Anonymizing or cleaning data before storage.
+
+`IngestPipelines` create and use streams automatically, but you can also define them standalone for more complex, multi-step streaming pipelines.
+
+<Callout type="info" title="Using Streams" href={PathConfig.streams.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Streams` to process data in real-time.
+</Callout>
+
+<br />
+
+### 3. Consuming Data from your OlapTables
+
+Once your data is processed and stored, you need a way to get it out.
+
+#### Data APIs: `ConsumptionApi`
+
+A `ConsumptionApi` is a type-safe HTTP endpoint that exposes your analytical data. You write a function that takes in request parameters (like a date range or user ID), queries one or more of your `OlapTable`s or `MaterializedView`s, and returns the result.
+
+Moose turns this function into a production-ready REST API endpoint that your frontend, mobile app, or external services can call.
+
+<Callout type="info" title="Using Consumption APIs" href={PathConfig.consumptionApis.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `ConsumptionApis` to expose your analytical data to your frontend, mobile app, or external services.
+</Callout>
+
+#### Reports & Exports: `Workflows`
+
+Workflows aren't just for ingestion; they're also a powerful tool for exporting data. You can write a workflow that runs on a schedule to:
+
+-   Query a table and generate a daily report.
+-   Send the results to a Slack channel or an email address.
+-   Export data to an external system.
+
+<Callout type="info" title="Using Workflows for Reports & Exports" href={PathConfig.workflows.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `Workflows` to generate scheduled reports and exports.
+</Callout>
+
+
+### 4. Reliability
+
+#### Handling Failures: `DeadLetterQueue`
+
+In a real-world system, data can be malformed and processes can fail. A `DeadLetterQueue` (DLQ) provides a safety net. You can configure your `IngestPipeline`s and `Stream` transformations to automatically send failed events to a DLQ. This allows you to inspect problematic data, fix the issue, and re-process the events without losing data.
+
+<Callout type="info" title="Using Dead Letter Queues" href={PathConfig.deadLetterQueues.path} ctaLabel="Learn more" compact={true}>
+  Learn about patterns for using `DeadLetterQueue`s to handle and inspect failed events.
+</Callout>
+
+## When to Use Each Component
+
+| If you need to…                                | Use this Moose Primitive… |
+| ---------------------------------------------- | ------------------------- |
+| Collect real-time events via an HTTP endpoint  | `IngestPipeline`          |
+| Pull data from an external source on a schedule | `Workflow`                |
+| Store and query large volumes of event data    | `OlapTable`               |
+| Pre-compute aggregations for fast dashboards   | `MaterializedView`        |
+| Expose analytical data via a REST API          | `ConsumptionApi`          |
+| Process events in real-time                    | `Stream`                  |
+| Run scheduled jobs, reports, or exports        | `Workflow`                |
+| Handle and inspect failed events               | `DeadLetterQueue`         |
+

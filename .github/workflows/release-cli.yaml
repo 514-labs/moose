@@ -146,13 +146,21 @@ jobs:
         shell: bash
         run: ./scripts/wait-for-npm-package.sh @514labs/moose-lib ${{ needs.version.outputs.version }}
 
-      - name: Publish the NPM Moose Connectors package
+      - name: Publish the NPM Moose Connector API package
         shell: bash
-        run: ./packages/ts-moose-connectors/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+        run: ./packages/ts-connector-api/scripts/release-lib.sh ${{ needs.version.outputs.version }}
 
-      - name: Wait for @514labs/ts-moose-connectors to be available
+      - name: Wait for @514labs/moose-connector-api to be available
         shell: bash
-        run: ./scripts/wait-for-npm-package.sh @514labs/moose-connectors ${{ needs.version.outputs.version }}
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-connector-api ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose Connector S3 package
+        shell: bash
+        run: ./packages/ts-connector-s3/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-connector-s3 to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-connector-s3 ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM Moose design-system package
         shell: bash

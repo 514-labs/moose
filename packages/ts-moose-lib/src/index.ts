@@ -52,3 +52,6 @@ export {
 export { MooseCache } from "./clients/redisClient";
 
 export { ConsumptionUtil } from "./consumption-apis/helpers";
+
+export * from "./utilities";
+export * from "./connectors/dataSource";

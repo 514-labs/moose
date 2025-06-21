@@ -10,7 +10,7 @@ import {
   parseJSON,
   DEFAULT_CSV_CONFIG,
   DEFAULT_JSON_CONFIG,
-} from "./utilities/dataParser";
+} from "@514labs/moose-lib";
 
 /**
  * Configuration for S3 data source.

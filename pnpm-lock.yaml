@@ -489,15 +489,11 @@ importers:
 
   packages/ts-config: {}
 
-  packages/ts-moose-connectors:
-    dependencies:
-      '@aws-sdk/client-s3':
-        specifier: ^3.832.0
-        version: 3.832.0
-      csv-parse:
-        specifier: ^5.5.5
-        version: 5.6.0
+  packages/ts-connector-api:
     devDependencies:
+      '@514labs/moose-lib':
+        specifier: workspace:*
+        version: link:../ts-moose-lib
       '@repo/ts-config':
         specifier: workspace:*
         version: link:../ts-config
@@ -532,6 +528,37 @@ importers:
         specifier: ~5.7.3
         version: 5.7.3
 
+  packages/ts-connector-s3:
+    dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.832.0
+        version: 3.832.0
+    devDependencies:
+      '@514labs/moose-lib':
+        specifier: workspace:*
+        version: link:../ts-moose-lib
+      '@repo/ts-config':
+        specifier: workspace:*
+        version: link:../ts-config
+      '@types/node':
+        specifier: 20.12.13
+        version: 20.12.13
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^5.62.0
+        version: 5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.7.3))(eslint@8.57.1)(typescript@5.7.3)
+      '@typescript-eslint/parser':
+        specifier: ^5.62.0
+        version: 5.62.0(eslint@8.57.1)(typescript@5.7.3)
+      eslint:
+        specifier: ^8.46.0
+        version: 8.57.1
+      tsup:
+        specifier: ^8.4.0
+        version: 8.4.0(@swc/core@1.11.18(@swc/helpers@0.5.17))(jiti@1.21.7)(postcss@8.5.3)(typescript@5.7.3)(yaml@2.7.1)
+      typescript:
+        specifier: ~5.7.3
+        version: 5.7.3
+
   packages/ts-moose-lib:
     dependencies:
       '@clickhouse/client':
@@ -558,6 +585,9 @@ importers:
       commander:
         specifier: ^13.1.0
         version: 13.1.0
+      csv-parse:
+        specifier: ^5.5.5
+        version: 5.6.0
       fastq:
         specifier: 1.17.1
         version: 1.17.1

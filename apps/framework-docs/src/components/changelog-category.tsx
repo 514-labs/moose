@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Sparkles,
 } from "lucide-react";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 
 type ChangelogCategoryType =
   | "highlights"
@@ -29,43 +30,43 @@ interface ChangelogCategoryProps {
 const categoryConfig = {
   highlights: {
     calloutType: "success" as const,
-    icon: <Sparkles className="text-moose-green" />,
+    Icon: Sparkles,
     defaultTitle: "Release Highlights",
     color: "primary",
   },
   added: {
     calloutType: "info" as const,
-    icon: <PlusCircle className="text-primary" />,
+    Icon: PlusCircle,
     defaultTitle: "Added",
     color: "primary",
   },
   changed: {
     calloutType: "info" as const,
-    icon: <RefreshCw className="text-primary" />,
+    Icon: RefreshCw,
     defaultTitle: "Changed",
     color: "primary",
   },
   deprecated: {
     calloutType: "warning" as const,
-    icon: <Trash2 className="text-warning" />,
+    Icon: Trash2,
     defaultTitle: "Deprecated",
     color: "warning",
   },
   fixed: {
     calloutType: "info" as const,
-    icon: <Wrench className="text-primary" />,
+    Icon: Wrench,
     defaultTitle: "Fixed",
     color: "primary",
   },
   security: {
     calloutType: "info" as const,
-    icon: <Shield className="text-primary" />,
+    Icon: Shield,
     defaultTitle: "Security",
     color: "primary",
   },
   "breaking-changes": {
     calloutType: "danger" as const,
-    icon: <AlertTriangle className="text-destructive" />,
+    Icon: AlertTriangle,
     defaultTitle: "Breaking Changes",
     color: "destructive",
   },
@@ -73,7 +74,7 @@ const categoryConfig = {
 
 interface TitleWithIconProps {
   title: string;
-  icon: React.ReactNode;
+  Icon: React.ElementType;
   children: React.ReactNode;
   className?: string;
   color?: string;
@@ -81,26 +82,26 @@ interface TitleWithIconProps {
 
 export function TitleWithIcon({
   title,
-  icon,
+  Icon,
   children,
   className,
   color,
 }: TitleWithIconProps) {
   return (
-    <div
+    <Card
       className={cn(
-        `flex items-start w-full my-5 p-4 space-x-2 border-b-2 rounded-md`,
+        `bg-transparent flex items-center my-4 py-0 border-x-0`,
         className,
       )}
     >
-      <div className="flex-shrink-0 mt-1">{icon}</div>
-      <div className="flex-1 mb-2">
-        <p className={`font-semibold my-0 inline-block mr-2 text-${color}`}>
-          {title}
-        </p>
-        {children}
+      <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-start justify-center">
+        <Icon className={cn("h-6 w-6", `text-muted-foreground`)} />
       </div>
-    </div>
+      <CardContent className="flex-1 mb-2">
+        <p className={cn("pt-4 mb-0 text-md", `text-${color}`)}>{title}</p>
+        <CardDescription className="mt-2">{children}</CardDescription>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -116,7 +117,7 @@ export function ChangelogCategory({
       <Callout
         type={config.calloutType}
         title={title || config.defaultTitle}
-        icon={config.icon}
+        icon={config.Icon}
       >
         {children}
       </Callout>
@@ -125,7 +126,7 @@ export function ChangelogCategory({
   return (
     <TitleWithIcon
       title={title || config.defaultTitle}
-      icon={config.icon}
+      Icon={config.Icon}
       color={config.color}
     >
       {children}

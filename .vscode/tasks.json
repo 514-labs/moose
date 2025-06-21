@@ -18,8 +18,31 @@
       }
     },
     {
+      "label": "TS moose connector api build",
+      "type": "shell",
+      "command": "pnpm --filter=@514labs/moose-connector-api run build",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "dependsOn": "TS moose lib build"
+    },
+    {
+      "label": "TS moose connector s3 build",
+      "type": "shell",
+      "command": "pnpm --filter=@514labs/moose-connector-s3 run build",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "dependsOn": "TS moose lib build"
+    },
+    {
       "label": "Build all",
-      "dependsOn": ["CLI build", "TS moose lib build"]
+      "dependsOn": [
+        "CLI build",
+        "TS moose lib build",
+        "TS moose connector api build",
+        "TS moose connector s3 build"
+      ]
     }
   ]
 }

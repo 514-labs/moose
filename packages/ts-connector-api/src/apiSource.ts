@@ -1,4 +1,4 @@
-import { DataSource, DataSourceConfig } from "./dataSource";
+import { DataSource, DataSourceConfig } from "@514labs/moose-lib";
 import { Readable } from "node:stream";
 
 /**

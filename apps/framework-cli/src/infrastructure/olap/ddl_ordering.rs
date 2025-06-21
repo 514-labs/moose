@@ -1192,7 +1192,7 @@ mod tests {
         // Test each combination to identify the issue
 
         // Test 1: Just table and column - should work
-        let operations1 = vec![op_add_column.clone(), op_create_table.clone()];
+        let operations1 = vec![op_create_table.clone(), op_add_column.clone()];
         let result1 = order_operations_by_dependencies(&operations1, false);
         assert!(
             result1.is_ok(),
@@ -1210,8 +1210,8 @@ mod tests {
         // Test 3: All three operations
         let operations3 = vec![
             op_create_view.clone(),
-            op_add_column.clone(),
             op_create_table.clone(),
+            op_add_column.clone(),
         ];
         let result3 = order_operations_by_dependencies(&operations3, false);
 

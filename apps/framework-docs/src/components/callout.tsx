@@ -118,24 +118,24 @@ export function Callout({
   return (
     <Card
       className={cn(
-        "flex items-center my-4 py-0",
+        "flex flex-col md:flex-row items-start md:items-center my-4 p-4 gap-4",
         variantProps.color,
         variantProps.border,
       )}
     >
       {icon && (
-        <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-start justify-center">
+        <div className="bg-muted rounded-lg p-4 shrink-0 flex items-start justify-center">
           <Icon className={cn("h-6 w-6", variantProps.titleColor)} />
         </div>
       )}
-      <CardContent className="flex-1 min-w-0 pl-6 items-start">
-        <p className={cn("pt-4 mb-0 text-md", variantProps.titleColor)}>
+      <CardContent className="flex-1 min-w-0 p-0 items-start">
+        <p className={cn("mb-0 text-md", variantProps.titleColor)}>
           {title || variantProps.title}
         </p>
         <CardDescription className="mt-2">{children}</CardDescription>
       </CardContent>
       {href && (
-        <CardFooter className="items-start">
+        <CardFooter className="items-start p-0">
           <Link href={href}>
             <Button variant="secondary">{ctaLabel}</Button>
           </Link>

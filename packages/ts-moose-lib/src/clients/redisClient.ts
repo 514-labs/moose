@@ -168,12 +168,21 @@ export class MooseCache {
    *
    * // Store an object with custom TTL
    * await cache.set("foo:config", { baz: 123, qux: true }, 60); // expires in 1 minute
+   *
+   * // This is essentially a get-set, which returns the previous value if it exists.
+   * // You can create logic to only do work for the first time.
+   * const value = await cache.set("testSessionId", "true");
+   * if (value) {
+   *   // Cache was set before, return
+   * } else {
+   *   // Cache was set for first time, do work
+   * }
    */
   public async set(
     key: string,
     value: string | object,
     ttlSeconds?: number,
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
       // Validate TTL
       if (ttlSeconds !== undefined && ttlSeconds < 0) {
@@ -187,7 +196,10 @@ export class MooseCache {
 
       // Use provided TTL or default to 1 hour
       const ttl = ttlSeconds ?? 3600;
-      await this.client.setEx(prefixedKey, ttl, stringValue);
+      return await this.client.set(prefixedKey, stringValue, {
+        EX: ttl,
+        GET: true,
+      });
     } catch (error) {
       console.error(`Error setting cache key ${key}:`, error);
       throw error;

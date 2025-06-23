@@ -173,7 +173,7 @@ export class MooseCache {
     key: string,
     value: string | object,
     ttlSeconds?: number,
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
       // Validate TTL
       if (ttlSeconds !== undefined && ttlSeconds < 0) {
@@ -187,7 +187,9 @@ export class MooseCache {
 
       // Use provided TTL or default to 1 hour
       const ttl = ttlSeconds ?? 3600;
-      await this.client.setEx(prefixedKey, ttl, stringValue);
+      const previousValue = await this.client.getSet(prefixedKey, stringValue);
+      await this.client.expire(prefixedKey, ttl);
+      return previousValue;
     } catch (error) {
       console.error(`Error setting cache key ${key}:`, error);
       throw error;

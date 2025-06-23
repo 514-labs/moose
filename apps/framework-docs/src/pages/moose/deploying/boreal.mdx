@@ -25,41 +25,12 @@ For TypeScript projects, Boreal determines the Moose version using the following
 2. **package-lock.json** 
 3. **package.json** (fallback)
 
-The version detection process looks for the `@514labs/moose-lib` package version in these files. Here's how the logic works:
+The version detection process looks for the `@514labs/moose-lib` package version in these files. The logic works as follows:
 
-```js
-async function getMooseVersionForTypescript() {
-  // Try pnpm-lock.yaml first
-  const pnpmVersion = await getMooseVersionFromPnpm(repoRootDir, mooseProjectDirectory);
-  if (pnpmVersion) {
-    return pnpmVersion;
-  }
-
-  // Fall back to package-lock.json or package.json
-  let packageFile = `${mooseProjectDirectory}/package-lock.json`;
-  if (!fs.existsSync(packageFile)) {
-    console.log(
-      `Could not find package-lock.json, package.json will be used to determine the moose-cli version requirement`
-    );
-    packageFile = `${mooseProjectDirectory}/package.json`;
-  }
-
-  let mooseVerRequirement;
-  const packageJson = JSON.parse(fs.readFileSync(packageFile, "utf-8"));
-  if (packageFile.endsWith("package-lock.json")) {
-    // For package-lock.json, version is under packages['node_modules/@514labs/moose-cli']
-    mooseVerRequirement = packageJson.packages[""].dependencies[MOOSE_LIB_TS_PACKAGE];
-  } else {
-    // For package.json, version is under dependencies directly
-    mooseVerRequirement = packageJson.dependencies[MOOSE_LIB_TS_PACKAGE];
-  }
-  if (mooseVerRequirement === "latest") {
-    mooseVerRequirement = "*";
-  }
-
-  return mooseVerRequirement;
-}
-```
+1. **First attempt**: Check pnpm-lock.yaml for the exact resolved version
+2. **Second attempt**: Look for package-lock.json and parse the dependencies section
+3. **Final fallback**: Use package.json and read from the dependencies object
+4. **Version normalization**: Convert "latest" specifications to "*" (any version)
 
 **Key Points:**
 - Boreal looks for the `@514labs/moose-lib` package version
@@ -73,59 +44,13 @@ For Python projects, Boreal searches for version information in:
 1. **setup.py** (preferred)
 2. **requirements.txt** (fallback)
 
-The search includes subdirectories if files aren't found in the project root. Here's how the logic works:
+The search includes subdirectories if files aren't found in the project root. The logic works as follows:
 
-```js
-async function getMooseVersionForPython() {
-  let content;
-  let setupPyPath = `${mooseProjectDirectory}/setup.py`;
-  let requirementsTxtPath = `${mooseProjectDirectory}/requirements.txt`;
-
-  // Try to find setup.py or requirements.txt, including in subdirectories
-  if (!fs.existsSync(setupPyPath)) {
-    // Search for setup.py in subdirectories
-    const files = fs.readdirSync(mooseProjectDirectory, { recursive: true });
-    const setupPyFile = files.find((file) => file.endsWith("setup.py"));
-    if (setupPyFile) {
-      setupPyPath = `${mooseProjectDirectory}/${setupPyFile}`;
-    }
-  }
-
-  if (!fs.existsSync(requirementsTxtPath)) {
-    // Search for requirements.txt in subdirectories
-    const files = fs.readdirSync(mooseProjectDirectory, { recursive: true });
-    const requirementsTxtFile = files.find((file) => file.endsWith("requirements.txt"));
-    if (requirementsTxtFile) {
-      requirementsTxtPath = `${mooseProjectDirectory}/${requirementsTxtFile}`;
-    }
-  }
-
-  let mooseVerRequirement = "*";
-  // Try setup.py first
-  if (fs.existsSync(setupPyPath)) {
-    console.log(`Attempting to get moose-cli version requirement for Python from setup.py`);
-    content = fs.readFileSync(setupPyPath, "utf8");
-    const lines = content.split("\n");
-    const mooseLibLine = lines.find((line) => line.includes(`"${MOOSE_LIB_PY_PACKAGE}`));
-    const match = mooseLibLine?.match(/==([0-9.]+)/)?.[1];
-    if (match) mooseVerRequirement = match;
-  }
-
-  // If version is still *, try requirements.txt
-  if (mooseVerRequirement === "*" && fs.existsSync(requirementsTxtPath)) {
-    console.log(`Attempting to get moose-cli version requirement for Python from requirements.txt`);
-    content = fs.readFileSync(requirementsTxtPath, "utf8");
-    const lines = content.split("\n");
-    const mooseLibLine = lines.find((line) => line.includes(MOOSE_LIB_PY_PACKAGE));
-    const match = mooseLibLine?.match(/==([0-9.]+)/)?.[1];
-    if (match) mooseVerRequirement = match;
-  }
-
-  console.log(`moose-cli version requirement for Python: ${mooseVerRequirement}`);
-
-  return mooseVerRequirement;
-}
-```
+1. **File discovery**: Search for setup.py or requirements.txt in both the project root and subdirectories
+2. **Primary source (setup.py)**: Parse setup.py files looking for `moose_lib` dependency with exact version syntax (==version)
+3. **Fallback source (requirements.txt)**: If no version found in setup.py, scan requirements.txt files for the same pattern
+4. **Version extraction**: Use regex matching to extract version numbers from dependency specifications
+5. **Default handling**: Fall back to "*" (any version) if no specific version constraint is found
 
 **Key Points:**
 - Boreal looks for the `moose_lib` package version

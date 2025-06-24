@@ -28,6 +28,8 @@ export {
   DeadLetterModel,
   DeadLetter,
   DeadLetterQueue,
+  ConsumerConfig,
+  TransformConfig,
 } from "./sdk/stream";
 
 export { Workflow, Task } from "./sdk/workflow";

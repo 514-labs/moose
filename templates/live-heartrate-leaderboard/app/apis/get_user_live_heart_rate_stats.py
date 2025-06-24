@@ -1,17 +1,21 @@
+import datetime
+
 from moose_lib.dmv2 import ConsumptionApi
 from moose_lib import MooseClient
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 # Define the query parameters
 class QueryParams(BaseModel):
     user_name: str = Field(..., description="The name of the user to get stats for")
     window_seconds: int = Field(
-        default=60, 
-        gt=0, 
+        default=60,
+        gt=0,
         le=3600,  # Max 1 hour of data
         description="The number of seconds of history to return (default 60, max 3600)"
     )
+
 
 # Define the response body
 class HeartRateStats(BaseModel):
@@ -20,10 +24,15 @@ class HeartRateStats(BaseModel):
     hr_zone: int
     estimated_power: float
     cumulative_calories_burned: float
-    timestamp: int
-    processed_timestamp: str
+    timestamp: float
+    processed_timestamp: datetime.datetime
 
-def run(client: MooseClient, params: QueryParams) -> HeartRateStats:
+
+class HeartRateStatsResponse(BaseModel):
+    entries: list[HeartRateStats]
+
+
+def run(client: MooseClient, params: QueryParams) -> HeartRateStatsResponse:
     """
     Retrieves a user's live heart rate data including heart rate, heart rate zone,
     estimated power output, and calories burned.
@@ -78,15 +87,18 @@ def run(client: MooseClient, params: QueryParams) -> HeartRateStats:
     FROM user_stats
     ORDER BY hr_timestamp_seconds DESC
     """
-    
+
     # Execute the query with parameterized values to prevent SQL injection
-    return client.query.execute(query, {
+    result = client.query.execute(query, {
         "user_name": params.user_name,
         "window_seconds": params.window_seconds
     })
+    # print(result)
+    return HeartRateStatsResponse(entries=result)
+
 
 # Create the API endpoint
-get_user_live_heart_rate_stats = ConsumptionApi[QueryParams, HeartRateStats](
+get_user_live_heart_rate_stats = ConsumptionApi[QueryParams, HeartRateStatsResponse](
     name="getUserLiveHeartRateStats",
     query_function=run
 )

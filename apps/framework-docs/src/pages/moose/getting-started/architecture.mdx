@@ -1,71 +1,83 @@
 ---
-title: Architecture
-description: Architecture of Moose
+title: Moose Core Concepts
+description: Essential primitives, patterns, and architecture for building with Moose.
 ---
 
-import { ZoomImg, Callout } from "@/components";
-import { ArrowDownToLine, Database, Workflow, Layers, BarChart } from "lucide-react";
+import { Callout, ZoomImg, BulletPointsCard } from "@/components";
+import { MapPin } from "lucide-react";
+import { Steps } from "nextra/components";
 
-# Moose Architecture
+# Reference Architectures
+See how Moose is used in real-world analytics and data engineering scenarios.
 
-<ZoomImg light="/architecture-light.svg" dark="/architecture-dark.svg" alt="Moose Architecture" />
+### User-Facing Analytics
 
-## Infrastructure
+<ZoomImg light="/ref_arch_user_facing_analytics_light.png" dark="/ref_arch_user_facing_analytics.png" alt="User-Facing Analytics Architecture" />
 
-Moose supports all the core infrastructure needed to power an analytical backend. Moose translates your native Typescript/Python/SQL into components in this underlying infrastructure.
+Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend.
 
-| Infrastructure<br />Category | Supported<br />Software         | What You<br />Write                            | What Moose<br />Generates        |
-|:-----------------------------|:--------------------------------|:-----------------------------------------------|:---------------------------------|
-| Realtime analytical database | ClickHouse                      | Data models as TS interfaces / Pydantic models | Tables                           |
-|                              |                                 | SQL statements in TS/Py functions              | Views                            |
-| Streaming engine             | Redpanda                        | Data models as TS interfaces / Pydantic models | Topics                           |
-| Processing engine            | TS/Py (built into Moose binary) | TS/Py functions                                | Orchestrated streaming functions |
-| Orchestration engine         | Temporal                        | TS/Py scripts                                  | Orchestrated workflows           |
-| Webservers                   | Rust (built into Moose binary)  | Data models as TS interfaces / Pydantic models | Ingest APIs                      |
-|                              |                                 | Parameterized SQL queries in TS/Py functions   | Egress APIs                      |
+> Pattern: Application → Moose → Frontend Dashboard
 
-## Dev vs Production
+---
 
-When you run `moose dev`, Moose creates a local copy of your production analytical backend, and hot swaps in changes as you code.
-This dev environment automatically includes containerized versions of each piece of core infrastructure.
+### Operational Data Warehouse
 
-When you want to deploy your Moose application into production, you'll need to provide and manage the underlying infrastructure, and point your Moose application at that production infra.
-Alternatively, you can deploy your Moose application on managed infrastructure with one-click (including Bring Your Own Cloud/Infra) with Fiveonefour's [Boreal](https://www.fiveonefour.com/boreal) hosting service.
+<ZoomImg light="/ref_arch_op_dw_light.png" dark="/ref_arch_op_dw.png" alt="Data Warehouse Architecture" />
 
-## Customizing Your Infrastructure
+Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools.
 
-Moose is designed to be highly customizable. You can control which infrastructure is included in your deployment using `moose.config.toml`:
+> Pattern: External APIs → Moose → BI Tools
 
-### Default Configuration
-```toml filename="moose.config.toml"
+---
+
+### Observability
+
+<ZoomImg light="/ref_arch_observability_light.png" dark="/ref_arch_observability.png" alt="Observability Architecture" />
+
+Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms.
+
+> Pattern: Applications → OTEL Collector → Moose → Monitoring Tools
+
+---
+
+## Configuring Infrastructure
+Certain use cases may not warrant the need for all of the infrastructure that Moose provisions by default. In these cases, you can configure the infrastructure that Moose provisions by editing the `moose.config.toml` file:
+
+### Disabling the Streaming Engine
+
+To disable streaming, set the `streaming_engine` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+
 [features]
-streaming_engine = true  # Include Redpanda for streaming
-workflows = true        # Enable Temporal for orchestration
+streaming_engine = false
 ```
-<Callout type="warning">
-By default, both `streaming_engine` and `workflows` are enabled. You must set the respective features to `false` to disable them.
+
+<Callout type="warning" title="Streams won't work">
+Make sure you don't have any `Stream` objects defined in your codebase if you disable the streaming engine.
 </Callout>
 
-### Disabling Streaming
-```toml filename="moose.config.toml"
+### Disabling the Temporal Workflows
+
+To disable Temporal workflows, set the `workflows` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
 [features]
-streaming_engine = false  # Disable Redpanda for streaming
+workflows = false
 ```
 
-### Disabling Orchestration
-```toml filename="moose.config.toml"
-[features]
-workflows = false        # Disable Temporal for orchestration
-```
+<Callout type="warning" title="Workflows won't work">
+Make sure you don't have any `Workflow` objects defined in your codebase if you disable the Temporal workflows.
+</Callout>
 
-## Development Environment Details
 
-| Component | Purpose | Access |
-|-----------|---------|--------|
-| Web Server | Handles HTTP requests for data ingestion and APIs | localhost:4000 |
-| ClickHouse | Analytical database for data storage and querying | localhost:18123 |
-| Redpanda | Kafka-compatible message broker for streaming | localhost:19092 |
-| Temporal | Workflow orchestration engine | localhost:7233 (Server) / localhost:8080 (UI) |
-| Redis | Caching and temporary storage | Internal only |
+## Next Steps
 
-All these components are automatically configured to work together, creating a complete development environment that mirrors a production deployment.
+- [5-Minute Quickstart](/moose/getting-started/quickstart) — Build your first Moose pipeline
+- [Project Structure](/moose/getting-started/project-structure) — Organize your Moose project for scale
+
+---
+
+<Callout type="success" title="Ready to build?">
+  Head to the <a href="/moose/getting-started/quickstart">5-Minute Quickstart</a> to try Moose yourself!
+</Callout>

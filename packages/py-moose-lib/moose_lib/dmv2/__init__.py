@@ -44,6 +44,8 @@ from .ingest_pipeline import (
 from .consumption import (
     EgressConfig,
     ConsumptionApi,
+    get_moose_base_url,
+    set_moose_base_url,
 )
 
 from .sql_resource import (
@@ -115,6 +117,8 @@ __all__ = [
     # Consumption
     'EgressConfig',
     'ConsumptionApi',
+    'get_moose_base_url',
+    'set_moose_base_url',
 
     # SQL
     'SqlResource',

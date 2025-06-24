@@ -4,12 +4,41 @@ Consumption (Egress) API definitions for Moose Data Model v2 (dmv2).
 This module provides classes for defining and configuring consumption APIs
 that allow querying data through user-defined functions.
 """
-from typing import Any, Callable, Optional, Tuple
+import os
+from typing import Any, Callable, Optional, Tuple, Generic
+
+import requests
 from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaValue
 
 from .types import BaseTypedResource, T, U
 from ._registry import _egress_apis
+
+# Global base URL configuration
+_global_base_url: Optional[str] = None
+
+
+def set_moose_base_url(url: str) -> None:
+    """Set the global base URL for consumption API calls.
+    
+    Args:
+        url: The base URL to use for API calls
+    """
+    global _global_base_url
+    _global_base_url = url
+
+
+def get_moose_base_url() -> Optional[str]:
+    """Get the configured base URL from global setting or environment variable.
+    
+    Returns:
+        The base URL if configured, None otherwise
+    """
+    # Priority: programmatically set > environment variable
+    if _global_base_url:
+        return _global_base_url
+    return os.getenv('MOOSE_BASE_URL')
+
 
 class EgressConfig(BaseModel):
     """Configuration for Consumption (Egress) APIs.
@@ -21,7 +50,8 @@ class EgressConfig(BaseModel):
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
-class ConsumptionApi(BaseTypedResource):
+
+class ConsumptionApi(BaseTypedResource, Generic[U]):
     """Represents a Consumption (Egress) API endpoint.
 
     Allows querying data, typically powered by a user-defined function.
@@ -99,3 +129,49 @@ class ConsumptionApi(BaseTypedResource):
         return TypeAdapter(self.return_type).json_schema(
             ref_template='#/components/schemas/{model}'
         )
+
+    def call(self, params: T, base_url: Optional[str] = None) -> U:
+        """Call the consumption API with the given parameters.
+        
+        Args:
+            params: Parameters matching the input model T
+            base_url: Optional base URL override. If not provided, uses the global
+                     base URL set via set_base_url() or MOOSE_BASE_URL environment variable.
+            
+        Returns:
+            Response data matching the output model U
+            
+        Raises:
+            ValueError: If no base URL is configured
+        """
+        # Determine which base URL to use
+        effective_base_url = base_url or get_moose_base_url()
+        if not effective_base_url:
+            raise ValueError(
+                "No base URL configured. Set it via set_base_url(), "
+                "MOOSE_BASE_URL environment variable, or pass base_url parameter."
+            )
+
+        # Construct the API endpoint URL
+        url = f"{effective_base_url.rstrip('/')}/consumption/{self.name}"
+
+        # Convert Pydantic model to dictionary
+        params_dict = params.model_dump()
+
+        # Build query parameters, handling lists as repeated params
+        query_params = []
+        for key, value in params_dict.items():
+            if isinstance(value, list):
+                # For list values, add each item as a separate query param
+                for item in value:
+                    query_params.append((key, str(item)))
+            elif value is not None:
+                query_params.append((key, str(value)))
+
+        # Make the HTTP request
+        response = requests.get(url, params=query_params)
+        response.raise_for_status()  # Raise an exception for bad status codes
+
+        # Parse JSON response and return as the expected type
+        response_data = response.json()
+        return self._u.model_validate(response_data)

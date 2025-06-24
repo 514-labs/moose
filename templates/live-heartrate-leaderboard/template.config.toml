@@ -16,6 +16,6 @@ post_install_print = """
 
 
 🚀 Run streamlit:
-	$ streamlit run app/streamlit_app.py
+    $ streamlit run streamlit_app.py
 """
 default_aurora_telemetry="comprehensive"

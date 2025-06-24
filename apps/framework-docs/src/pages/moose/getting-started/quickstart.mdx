@@ -1,14 +1,19 @@
 ---
-title: Quickstart
-description: Quickstart for Moose
+title: 5-Minute Quickstart
+description: Build your first analytical backend with Moose in 5 minutes
 ---
 
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, FeatureCard, FeatureGrid, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, Contact } from "@/components";
-import { RectangleEllipsis, Square, Workflow, Database, FileCode, Play } from "lucide-react";
-import { paths } from "@/lib/paths";
+import { Callout, ToggleBlock, Python, TypeScript, LanguageSwitcher, MuxVideo, BulletPointsCard, IconBadge, CTACards, CTACard, PathConfig } from "@/components";
+import { CheckCircle, Clock, Laptop, Terminal } from "lucide-react";
 
-# Moose Quickstart Guide
+# 5-Minute Quickstart
+
+<div className="flex items-center gap-4 my-4">
+<IconBadge Icon={Clock} label="5 minute setup" variant="moose" />
+<IconBadge Icon={CheckCircle} label="Zero config" variant="moose" />
+<IconBadge Icon={Laptop} label="Local ClickHouse, Redpanda, and APIs" variant="moose" />
+</div>
 
 <LanguageSwitcher />
 
@@ -16,8 +21,8 @@ import { paths } from "@/lib/paths";
 <MuxVideo 
   playbackId="ayaB9Q00q9RIePJLfErDyRnCIOpGpHmVNSX7xy02SBGN8"
   title="Moose Quickstart Video"
-  width="50%"
-  height="50%"
+  width="100%"
+  height="auto"
   poster="https://image.mux.com/ayaB9Q00q9RIePJLfErDyRnCIOpGpHmVNSX7xy02SBGN8/thumbnail.png?width=214&height=121&time=28"
 />
 </TypeScript>
@@ -26,445 +31,451 @@ import { paths } from "@/lib/paths";
 <MuxVideo 
   playbackId="7b6BmW9005WdBQnBrA1l2dHKNvLKyKIrlz9700k9NV71o"
   title="Moose Quickstart Video"
-  width="50%"
-  height="50%"
+  width="100%"
+  height="auto"
   poster="https://image.mux.com/7b6BmW9005WdBQnBrA1l2dHKNvLKyKIrlz9700k9NV71o/thumbnail.png?width=214&height=121&time=29"
 />
 </Python>
 
-<Callout type="info" title="Prerequisites">
-<TypeScript>
-- **Node.js**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
-</TypeScript>
-
-<Python>
-- **Python**: [version 3.12+](https://www.python.org/downloads/) 
-</Python>
-
-- **OS**: macOS or Linux (WSL supported for Windows)
-- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
-</Callout>
-
-<Callout type="info" title="Already have data in ClickHouse?">
-You can bootstrap a Moose project directly from your existing ClickHouse database instead of starting from scratch. → [Start from ClickHouse](/moose/getting-started/from-clickhouse)
-</Callout>
-
-## Install Moose
-The easiest way to install Moose is to use the one-liner below:
-
-```bash copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
-```
-<Callout type="info" title="Moose CLI Version Manager">
-The Moose CLI has a built in version manager that will automatically install the correct version of Moose for your project.
-</Callout>
-
-## Create Your Project
-
-<Steps>
-### Initialize Project
-First, create a new Moose project:
+## Prerequisites
 
 <TypeScript>
-```bash copy
-moose init my-moose-app typescript
-cd my-moose-app
-```
-</TypeScript>
-
-<Python>
-```bash copy
-moose init my-moose-app python
-cd my-moose-app
-```
-</Python>
-
-
-### Install Project Dependencies
-
-<TypeScript>
-```bash copy
-npm install
-```
-</TypeScript>
-
-<Python>
-<Callout type="info" title="Recommended: Create a virtual environment">
-We recommend creating a virtual environment to avoid dependency conflicts.
-</Callout>
-
-```bash copy
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-```bash copy
-pip install -r requirements.txt
-``` 
-</Python>
-
-### Start Development Server
-Start your local development environment:
-
-```bash copy
-moose dev
-```
-
-<ToggleBlock openText="Need Help?" closeText="Hide Troubleshooting">
-Common issues and solutions:
-<Tabs items={["Incompatible version", "Missing dependencies", "Docker not running", "Port conflicts"]}>
-<Tabs.Tab>
-<TypeScript>
-<Callout type="info" title="You must have at least Node.js version 20 installed." href="https://nodejs.org/en/download/package-manager">
-</Callout>
-
-Check your Node.js version:
-```bash filename="Terminal" copy
-node -v
-```
-If you don't have Node.js version 20 installed, use `nvm` or `n` to install it: 
-<Tabs items={["nvm", "n"]}>
-<Tabs.Tab>
-```bash filename="Terminal" copy
-nvm install 20
-nvm use 20
-```
-<Callout type="info" title="Don't have nvm installed?">
-[Follow the installation instructions in the nvm README](https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script) for more information.
-</Callout>
-
-</Tabs.Tab>
-<Tabs.Tab>
-```bash filename="Terminal" copy
-n latest
-```
-
-<Callout type="info" title="Don't have n installed?">
-[Follow the installation instructions in the n README](https://github.com/tj/n?tab=readme-ov-file#installation) for more information. Or, you can install via npm:
-
-```bash filename="Terminal" copy
-npm install -g n
-```
-</Callout>
-
-</Tabs.Tab>
-</Tabs>
-</TypeScript>
-
-<Python>
-<Callout type="info" title="You must have at least Python version 3.12 installed." href="https://www.python.org/downloads/">
-</Callout>
-
-Check your Python version:
-```bash filename="Terminal" copy
-python3 --version
-```
-If you don't have Python version 3.12 installed, use `pyenv` to install it and set it as the local version:
-
-```bash filename="Terminal" copy
-pyenv install 3.12
-pyenv local 3.12
-```
-
-<Callout type="info" title="Don't have pyenv installed?">
-[Follow the installation instructions in the pyenv README](https://github.com/pyenv/pyenv?tab=readme-ov-file#installation) for more information.
-</Callout>
-</Python>
-</Tabs.Tab>
-<Tabs.Tab>
-
-<TypeScript>
-Make sure you have `@514labs/moose-lib` installed. To check, run:
-```bash filename="Terminal" copy
-npm list
-```
-If its missing from the terminal output, run:
-
-```bash filename="Terminal" copy
-npm install
-```
-</TypeScript>
-<Python>
-Make sure you have `moose_lib` installed. To check, run:
-```bash filename="Terminal" copy
-pip list
-```
-If its missing from the terminal output, run:
-
-```bash filename="Terminal" copy
-pip install -r requirements.txt
-```
-</Python>
-</Tabs.Tab>
-
-
-<Tabs.Tab>
-Launch Docker Desktop and then re-run `moose dev`:
-```bash filename="Terminal" copy
-open -a Docker
-moose dev
-```
-</Tabs.Tab>
-<Tabs.Tab>
-```bash filename="Terminal" copy
-lsof -i :4000,18123,19092
-```
-</Tabs.Tab>
-</Tabs>
-</ToggleBlock>
-
-### Understand Project Structure
-Your project contains:
-
-<Python>
-```text
-app/
-├── main.py            # Entrypoint for your Moose app
-├── ingest/            # Raw data ingestion and streaming
-│   ├── models.py     
-│   └── transform.py  
-├── views/             # Materialized views and aggregations
-│   └── bar_aggregated.py
-├── apis/              # Analytics APIs
-│   └── bar.py
-├── scripts/          
-│   └── generator/    # Random data generator for testing
-└── moose.config.toml  # Project config
-```
-</Python>
-
-<TypeScript>
-```text
-app/
-├── index.ts            # Entrypoint for your Moose app
-├── ingest/             # Raw data ingestion and streaming
-│   ├── models.ts     
-│   └── transform.ts  
-│
-├── views/            # Materialized views and aggregations
-│   └── barAggregated.ts
-│
-└── apis/            # Analytics APIs
-    └── bar.ts      
-├── scripts/
-│   └── generator/   # Random data generator for testing
-│
-└── moose.config.toml    # Project config
-```
-</TypeScript>
-</Steps>
-
-## Test Your Pipeline
-
 <BulletPointsCard
-  title="How Data Flows"
-  bulletStyle="number"
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
   bullets={[
-    {
-      title: "Data Ingestion",
-      description: "Raw data enters through HTTP endpoints into your Foo stream"
+    { 
+      title: "Node.js 20+", 
+      description: "Required for TypeScript development",
+      link: { text: "Download →", href: "https://nodejs.org/en/download", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
     },
     {
-      title: "Stream Processing",
-      description: "Data is transformed on the fly into your Bar stream before landing in ClickHouse"
-    },
-    {
-      title: "Live Aggregations",
-      description: "Materialized views continuously update aggregated data tables in real-time"
-    },
-    {
-      title: "Analytics APIs",
-      description: "Query your aggregated data through type-safe REST endpoints with filtering and sorting"
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
     }
   ]}
 />
+</TypeScript>
 
-### Setting up the OpenAPI UI
-Moose auto-generates an OpenAPI spec for your APIs, enabling direct testing from your editor. To set up:
+<Python>
+<BulletPointsCard
+  title="Before you start"
+  bulletStyle="check"
+  compact={true}
+  divider={false}
+  bullets={[
+    { 
+      title: "Python 3.12+", 
+      description: "Required for Python development",
+      link: { text: "Download →", href: "https://www.python.org/downloads/", external: true }
+    },
+    { 
+      title: "Docker Desktop", 
+      description: "For local development environment",
+      link: { text: "Download →", href: "https://docs.docker.com/get-started/get-docker/", external: true }
+    },
+    {
+      title: "macOS/Linux",
+      description: "Windows works via WSL2"
+    }
+  ]}
+/>
+</Python>
+
+<Callout type="info" title="Already have ClickHouse running?" href={PathConfig.fromClickhouse.path} icon={PathConfig.fromClickhouse.icon} ctaLabel="Add to ClickHouse">
+Skip the tutorial and add Moose as a layer on top of your existing database
+</Callout>
+
+<br />
+
+## Step 1: Install Moose (30 seconds)
+
+```bash filename="One-line install" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+<Callout type="info" title="You should see:" compact={true} icon={CheckCircle}>
+`Moose vX.X.X installed successfully!`
+</Callout>
+
+<br />
+
+## Step 2: Create Your Project (1 minute)
+
+<Steps>
+### Initialize your project
+
+<TypeScript>
+```bash filename="Terminal" copy
+moose init my-analytics-app typescript
+cd my-analytics-app
+npm install
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose init my-analytics-app python
+cd my-analytics-app
+
+# Create virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+</Python>
+
+### Start your development environment
+
+```bash filename="Terminal" copy
+moose dev
+```
+
+<ToggleBlock openText="Show expected output" closeText="Hide output">
+```txt
+       Created docker compose file
+⡗ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+      Node Id: my-analytics-app::b15efaca-0c23-42b2-9b0c-642105f9c437
+      Starting development mode
+      Watching "/path/to/my-analytics-app/app"
+       Started Webserver.
+
+
+  Next Steps   
+
+💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure
+
+📥 Send Data to Moose
+	Your local development server is running at: http://localhost:4000/ingest
+```
+
+<Callout type="success" title="Your local analytics stack is running">
+You can now send data to Moose and query it.
+</Callout>
+</ToggleBlock>
+
+
+</Steps>
+
+## Step 3: Understand Your Project (1 minute)
+
+Your project includes a complete example pipeline:
+
+<Python>
+<FileTree>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.File name="main.py" />
+<FileTree.Folder name="ingest" defaultOpen>
+<FileTree.File name="models.py" />
+<FileTree.File name="transform.py" />
+</FileTree.Folder>
+<FileTree.Folder name="views">
+<FileTree.File name="bar_aggregated.py" />
+</FileTree.Folder>
+<FileTree.Folder name="apis">
+<FileTree.File name="bar.py" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
+</Python>
+
+<TypeScript>
+<FileTree>
+<FileTree.Folder name="app" defaultOpen>
+<FileTree.File name="index.ts" />
+<FileTree.Folder name="ingest" defaultOpen>
+<FileTree.File name="models.ts" />
+<FileTree.File name="transform.ts" />
+</FileTree.Folder>
+<FileTree.Folder name="views">
+<FileTree.File name="barAggregated.ts" />
+</FileTree.Folder>
+<FileTree.Folder name="apis">
+<FileTree.File name="bar.ts" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+<Callout type="info" title="Browse your project files" >
+Review the files located within your `/app` directory to see start understanding how data flows from ingestion to analytics APIs.
+</Callout>
+
+<br />
+
+## Step 4: Test Your Pipeline (2 minutes)
+
+<Steps>
+### Send test data
+
+<Callout type="info" title="Open a new terminal window to run these commands" icon={Terminal} compact={true}>
+</Callout>
+
+<TypeScript>
+```bash filename="Open a new terminal window" copy
+moose workflow run generator
+```
+</TypeScript>
+
+<Python>
+```bash filename="Open a new terminal window" copy
+moose workflow run generator
+```
+</Python>
+
+You should see logs like:
+```txt
+POST ingest/Foo
+[POST] Data received at ingest API sink for Foo
+Received Foo_0_0 -> Bar_0_0 1 message(s)
+[DB] 17 row(s) successfully written to DB table (Bar)
+```
+
+<ToggleBlock openText="(Bonus) Peek at your data" closeText="Hide details">
+Run this helper command to peek at your data in ClickHouse:
+
+```bash filename="Terminal" copy
+moose peek Bar --limit 5
+```
+
+</ToggleBlock>
+
+### Query your data
+
+```bash filename="Terminal" copy
+curl "http://localhost:4000/consumption/bar"
+```
+You should see JSON data with your processed events.
+
+
+```bash filename="Try adding a query parameter!" copy
+curl "http://localhost:4000/consumption/bar?limit=5"
+```
+
+### Explore with OpenAPI UI
 
 1. Install the [OpenAPI (Swagger) Viewer extension](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) in your IDE
-2. Open `.moose/openapi.yaml` in your IDE
-3. Click the "Preview" icon (magnifying glass) in the top-right corner to launch the OpenAPI UI
+2. Open `.moose/openapi.yaml` in your IDE  
+3. Click the "Preview" icon to launch the interactive API explorer
+4. Test the `POST /ingest/Foo` and `GET /consumption/bar` endpoints
 
 <MuxVideo 
   playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"
   title="Using the OpenAPI Swagger UI for Moose APIs"
-  width="50%"
-  height="50%"
+  width="100%"
+  height="auto"
   autoPlay={true}
   muted={true}
   loop={true}
 />
+</Steps>
 
-### Send Test Data
-<Tabs items={["Using OpenAPI UI", "Using Data Generator Script"]}>
-<Tabs.Tab>
-<Callout type="info" title="Make sure you followed the OpenAPI UI setup steps above" href="#setting-up-the-openapi-ui">
-</Callout>
 
-1. Navigate to the `POST /ingest/Foo` endpoint in the OpenAPI UI
-2. Click "Try it out"
-3. Use the sample request body provided or modify it
-4. Click "Execute" to send the request
+<br />
 
-You should see output like this in your terminal:
 
-```txt
-          POST ingest/Foo
-        [POST] Data received at ingest API sink for Foo
-      Received Foo_0_0 -> Bar_0_0 1 message(s)
-          [DB] 1 row(s) successfully written to DB table (Bar)
-```
-</Tabs.Tab>
+## Step 5: Hot Reload Schema Changes (1 minute)
 
-<Tabs.Tab>
-Your project includes a script to generate sample data (powered by <TypeScript inline>[Faker](https://fakerjs.dev/)</TypeScript><Python inline>[Faker](https://github.com/joke2k/faker)</Python>) to test your pipeline:
+1. Open <TypeScript inline>`app/ingest/models.ts`</TypeScript><Python inline>`app/ingest/models.py`</Python>
+2. Add a new field to your data model:
 
 <TypeScript>
-```bash filename="Terminal" copy
-moose workflow run generator
+```ts filename="app/ingest/models.ts" {5} copy
+export interface Foo {
+  id: Key<string>;
+  timestamp: Date;
+  data: string;
+  newField: string; // Add this line
+}
 ```
 </TypeScript>
 
 <Python>
-```bash filename="Terminal" copy
-moose workflow run generator
+```python filename="app/ingest/models.py" {6} copy
+class Foo(BaseModel):
+    id: Key[str]
+    timestamp: datetime
+    data: str
+    new_field: str  // Add this line
 ```
 </Python>
 
+3. Save the file and watch your terminal
 
-You should see a bunch of logs printed to the terminal like the following:
-
+You should see Moose automatically update your infrastructure:
 ```txt
-          POST ingest/Foo
-        [POST] Data received at ingest API sink for Foo
-      Received Foo_0_0 -> Bar_0_0 1 message(s)
-          [DB] 17 row(s) successfully written to DB table (Bar)
-          POST ingest/Foo
-        [POST] Data received at ingest API sink for Foo
-      Received Foo_0_0 -> Bar_0_0 1 message(s)
-          [DB] 8 row(s) successfully written to DB table (Bar)
+~ Table Foo with column changes: [Added(Column { name: "newField", data_type: String })]
+~ API Endpoint: Foo - Updated validation schema
+~ Topic: Foo - Schema updated
+```
 
-          ...
+Schema changes are automatically applied across your stack.
+
+<Callout type="info" title="That's it!" icon={CheckCircle} compact={true}>
+Your API, database schema, and streaming topic all updated automatically. Try adding another field with a different data type.
+</Callout>
+
+
+## Recap
+
+You've built a complete analytical backend with:
+
+<BulletPointsCard
+  bulletStyle="check"
+  title="What's Working"
+  bullets={[
+    { title: "Type-safe data ingestion API" },
+    { title: "Real-time stream processing" },
+    { title: "ClickHouse database with auto-schema" },
+    { title: "Analytics API with filtering" },
+    { title: "Hot-reload development" }
+  ]}
+/>
+  
+## Where to Go Next?
+
+<CTACards rows={3} columns={1}>
+<CTACard
+  title="Core Concepts"
+  description="Learn the core concepts of Moose"
+  ctaLink={PathConfig.coreConcepts.path}
+  Icon={PathConfig.coreConcepts.icon}
+  orientation="horizontal"
+/>
+<CTACard
+  title="Deep Dive: Data Modeling"
+  description="Learn how to model the data you want to flow through your pipeline"
+  ctaLink={PathConfig.dataModels.path}
+  Icon={PathConfig.dataModels.icon}
+  orientation="horizontal"
+/>
+<CTACard
+  title="Review the Architecture"
+  description="Understand how Moose fits into your stack"
+  ctaLink={PathConfig.architecture.path}
+  Icon={PathConfig.architecture.icon}
+  orientation="horizontal"
+/>
+</CTACards>
+
+## Need Help?
+
+<ToggleBlock openText="Common Issues & Solutions" closeText="Hide troubleshooting">
+<Tabs items={["Docker Issues", "Version Issues", "Port Conflicts", "Permission Issues"]}>
+<Tabs.Tab>
+**Docker not running:**
+```bash filename="Terminal" copy
+# macOS
+open -a Docker
+
+# Linux
+sudo systemctl start docker
+
+# Verify Docker is running
+docker ps
+```
+
+**Docker out of space:**
+```bash filename="Terminal" copy
+docker system prune -a
 ```
 </Tabs.Tab>
-</Tabs>
-
-<Callout type="success" title="Data landed in ClickHouse!">
-- You sent raw data via HTTP `POST` to the `/ingest/Foo` endpoint
-- Data is validated and written to the `Foo` stream
-- Moose transformed the data into the `Bar` stream
-- Transformed data is automatically synced to the `Bar` ClickHouse table
-</Callout>
-
-<ToggleBlock openText="(Bonus) Peek at your ClickHouse tables" closeText="Hide instructions">
-Take a look at the data you just landed into ClickHouse:
-```bash filename="Terminal" copy
-moose peek Bar --limit 10
-```
-<Callout type="info" title="Learn more">
-  Run `moose peek --help` to see all the options available.
-</Callout>
-</ToggleBlock>
-
-### Query Your Data
-Test your analytics API:
-
-<Tabs items={["Using OpenAPI UI", "Using curl"]}>
-<Tabs.Tab>
-<Callout type="info" title="Make sure you followed the OpenAPI UI setup steps above" href="#setting-up-the-openapi-ui">
-</Callout>
-
-1. Locate the `GET /consumption/bar` endpoint
-2. Click "Try it out"
-3. Experiment with query parameters:
-   <TypeScript>
-   - `orderBy`: Try "rowsWithText"
-   - `startDay`: Enter a number (e.g., 1)
-   - `endDay`: Enter a number (e.g., 10)
-   </TypeScript>
-   <Python>
-   - `order_by`: Try "rows_with_text"
-   - `start_day`: Enter a number (e.g., 1)
-   - `end_day`: Enter a number (e.g., 10)
-   </Python>
-4. Click "Execute" to see the results
-
-The UI will show both the request URL and the response data in a formatted view.
-</Tabs.Tab>
 
 <Tabs.Tab>
-```bash filename="Terminal" copy
-# Get default results
-curl "http://localhost:4000/consumption/bar"
-```
-
-Try different query parameters:
 <TypeScript>
+**Node.js version too old:**
 ```bash filename="Terminal" copy
-# Change the order by column  
-curl "http://localhost:4000/consumption/bar?orderBy=rowsWithText"
+# Check version
+node -v
 
-# Filter by date range
-curl "http://localhost:4000/consumption/bar?startDay=1&endDay=10"
+# Install Node 20+ with nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 20
+nvm use 20
 ```
-</TypeScript> 
+</TypeScript>
 
 <Python>
+**Python version too old:**
 ```bash filename="Terminal" copy
-# Change the order by column  
-curl "http://localhost:4000/consumption/bar?order_by=rows_with_text"
+# Check version  
+python3 --version
 
-# Filter by date range
-curl "http://localhost:4000/consumption/bar?start_day=1&end_day=10"
+# Install Python 3.12+ with pyenv
+curl https://pyenv.run | bash
+pyenv install 3.12
+pyenv local 3.12
 ```
 </Python>
 </Tabs.Tab>
-</Tabs>
 
-## Next Steps
-Take a deeper dive into core Moose concepts:
-
-<FeatureGrid columns={3}>
-<FeatureCard
-  title="Define Data Models"
-  description="Learn basics of schema design in Moose"
-  href={paths.dataModels}
-  Icon={Database}
-/>
-<FeatureCard
-  title="Streaming Transformations"
-  description="Transform data on the fly"
-  href={paths.streams}
-  Icon={Square}
-/>
-<FeatureCard 
-  title="Create APIs"
-  description="Design your analytics endpoints"
-  href={paths.consumptionApis}
-  Icon={FileCode}
-/>
-</FeatureGrid>
-
-<ToggleBlock openText="Need Help?" closeText="Hide">
-<Tabs items={["Common Issues", "Database Connection"]}>
 <Tabs.Tab>
-- **Docker**: Run `open -a Docker` on macOS
-- **Port conflicts**: Check `lsof -i :4000`
-- **Installation**: Clear cache and reinstall
+**Port 4000 already in use:**
+```bash filename="Terminal" copy
+# Find what's using port 4000
+lsof -i :4000
+
+# Kill the process (replace PID)
+kill -9 <PID>
+
+# Or use a different port
+moose dev --port 4001
+```
 </Tabs.Tab>
 
 <Tabs.Tab>
-```toml filename="moose.config.toml"
-[clickhouse_config]
-db_name = "local"
-user = "panda"
-password = "pandapass"
-host = "localhost"
-host_port = 18123
+**Permission denied:**
+```bash filename="Terminal" copy
+# Fix Docker permissions (Linux)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Fix file permissions
+chmod +x ~/.moose/bin/moose
+```
+</Tabs.Tab>
+
+<Tabs.Tab>
+**Port 4000 already in use:**
+```bash filename="Terminal" copy
+# Find what's using port 4000
+lsof -i :4000
+
+# Kill the process (replace PID)
+kill -9 <PID>
+
+# Or use a different port
+moose dev --port 4001
+```
+</Tabs.Tab>
+
+<Tabs.Tab>
+**Permission denied:**
+```bash filename="Terminal" copy
+# Fix Docker permissions (Linux)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Fix file permissions
+chmod +x ~/.moose/bin/moose
 ```
 </Tabs.Tab>
 </Tabs>
-</ToggleBlock>
 
-<Contact />
+**Still stuck?** Join our [Slack community](https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA) or [open an issue](https://github.com/514-labs/moose/issues).
+</ToggleBlock>

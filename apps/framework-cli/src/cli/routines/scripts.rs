@@ -457,6 +457,162 @@ pub async fn unpause_workflow(
     }))
 }
 
+// Helper function to parse failure information from JSON messages
+fn parse_failure_json(
+    message: &str,
+) -> (
+    Option<serde_json::Value>,
+    Option<serde_json::Value>,
+    Option<serde_json::Value>,
+) {
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(message) {
+        (
+            json.get("details").cloned(),
+            json.get("stack").cloned(),
+            json.get("error").cloned(),
+        )
+    } else {
+        (None, None, None)
+    }
+}
+
+// Helper function to process failure attributes into structured data
+fn process_failure_attributes(
+    failure: &temporal_sdk_core_protos::temporal::api::failure::v1::Failure,
+    event_data: &mut serde_json::Value,
+) -> serde_json::Map<String, serde_json::Value> {
+    event_data["error"] = serde_json::json!(failure.message);
+
+    let mut summary = serde_json::Map::new();
+    summary.insert("error".to_string(), serde_json::json!(failure.message));
+
+    // Process main failure message
+    let (details, stack, error_type) = parse_failure_json(&failure.message);
+    if let Some(details) = details {
+        event_data["details"] = details.clone();
+        summary.insert("details".to_string(), details);
+    }
+    if let Some(stack) = stack {
+        event_data["stack"] = stack.clone();
+        summary.insert("stack".to_string(), stack);
+    }
+    if let Some(error_type) = error_type {
+        event_data["error_type"] = error_type.clone();
+        summary.insert("error_type".to_string(), error_type);
+    }
+
+    // Process cause if present
+    if let Some(cause) = &failure.cause {
+        let (cause_details, cause_stack, cause_error_type) = parse_failure_json(&cause.message);
+        if let Some(details) = cause_details {
+            event_data["details"] = details.clone();
+            summary.insert("details".to_string(), details);
+        }
+        if let Some(stack) = cause_stack {
+            event_data["stack"] = stack.clone();
+            summary.insert("stack".to_string(), stack);
+        }
+        if let Some(error_type) = cause_error_type {
+            event_data["error_type"] = error_type.clone();
+            summary.insert("error_type".to_string(), error_type);
+        }
+    }
+
+    summary
+}
+
+// Helper function to format failure information for text output
+fn format_failure_text(
+    failure: &temporal_sdk_core_protos::temporal::api::failure::v1::Failure,
+) -> String {
+    let mut text = format!("\n    Error: {}", failure.message);
+
+    let (details, stack, error_type) = parse_failure_json(&failure.message);
+    if let Some(details) = details {
+        text.push_str(&format!("\n    Details: {}", details));
+    }
+    if let Some(stack) = stack {
+        text.push_str(&format!("\n    Stack: {}", stack));
+    }
+    if let Some(error_type) = error_type {
+        text.push_str(&format!("\n    Error Type: {}", error_type));
+    }
+
+    // Process cause if present
+    if let Some(cause) = &failure.cause {
+        let (cause_details, cause_stack, cause_error_type) = parse_failure_json(&cause.message);
+        if let Some(details) = cause_details {
+            text.push_str(&format!("\n    Details: {}", details));
+        }
+        if let Some(stack) = cause_stack {
+            text.push_str(&format!("\n    Stack: {}", stack));
+        }
+        if let Some(error_type) = cause_error_type {
+            text.push_str(&format!("\n    Error Type: {}", error_type));
+        }
+    }
+
+    text
+}
+
+// Helper function to process activity task result
+fn process_activity_result(
+    result: &temporal_sdk_core_protos::temporal::api::common::v1::Payloads,
+) -> Option<serde_json::Value> {
+    for payload in &result.payloads {
+        if let Ok(data_str) = String::from_utf8(payload.data.clone()) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&data_str) {
+                return Some(json);
+            } else if let Ok(decoded) = decode_base64_to_json(&data_str) {
+                return Some(decoded);
+            }
+        }
+    }
+    None
+}
+
+// Helper function to format activity result for text output
+fn format_activity_result_text(
+    result: &temporal_sdk_core_protos::temporal::api::common::v1::Payloads,
+) -> String {
+    let mut text = String::from("\n    Result: ");
+
+    for payload in &result.payloads {
+        match String::from_utf8(payload.data.clone()) {
+            Ok(data_str) => match serde_json::from_str::<serde_json::Value>(&data_str) {
+                Ok(json) => {
+                    let json_str = serde_json::to_string_pretty(&json).unwrap_or_default();
+                    let indented = json_str
+                        .lines()
+                        .map(|line| format!("      {}", line))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    text.push_str(&format!("\n{}", indented));
+                }
+                Err(_) => match decode_base64_to_json(&data_str) {
+                    Ok(decoded) => {
+                        let json_str = serde_json::to_string_pretty(&decoded).unwrap_or_default();
+                        let indented = json_str
+                            .lines()
+                            .map(|line| format!("      {}", line))
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        text.push_str(&format!("\n{}", indented));
+                    }
+                    Err(e) => {
+                        text.push_str(&format!("Failed to parse payload: {}", e));
+                    }
+                },
+            },
+            Err(_) => {
+                text.push_str(&format!("Invalid UTF-8 in payload: {:?}", payload));
+            }
+        }
+    }
+
+    text
+}
+
 pub async fn get_workflow_status(
     project: &Project,
     name: &str,
@@ -570,8 +726,8 @@ pub async fn get_workflow_status(
     if verbose {
         let mut events = Vec::new();
         let mut next_page_token = Vec::new();
-        // For summary
         let mut failure_summary: Option<serde_json::Value> = None;
+
         loop {
             let history_request = GetWorkflowExecutionHistoryRequest {
                 namespace: namespace.clone(),
@@ -632,130 +788,24 @@ pub async fn get_workflow_status(
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {
                                     if let Some(result) = &attr.result {
-                                        for payload in &result.payloads {
-                                            if let Ok(data_str) = String::from_utf8(payload.data.clone()) {
-                                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&data_str) {
-                                                    event_data["result"] = json;
-                                                } else if let Ok(decoded) = decode_base64_to_json(&data_str) {
-                                                    event_data["result"] = decoded;
-                                                }
-                                            }
+                                        if let Some(result_data) = process_activity_result(result) {
+                                            event_data["result"] = result_data;
                                         }
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        event_data["error"] = serde_json::json!(failure.message);
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details) = json.get("details") {
-                                                event_data["details"] = details.clone();
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                event_data["stack"] = stack.clone();
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                event_data["error_type"] = error.clone();
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details) = json.get("details") {
-                                                    event_data["details"] = details.clone();
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    event_data["stack"] = stack.clone();
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    event_data["error_type"] = error.clone();
-                                                }
-                                            }
-                                        }
+                                        process_failure_attributes(failure, &mut event_data);
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ChildWorkflowExecutionFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        event_data["error"] = serde_json::json!(failure.message);
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details) = json.get("details") {
-                                                event_data["details"] = details.clone();
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                event_data["stack"] = stack.clone();
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                event_data["error_type"] = error.clone();
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details) = json.get("details") {
-                                                    event_data["details"] = details.clone();
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    event_data["stack"] = stack.clone();
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    event_data["error_type"] = error.clone();
-                                                }
-                                            }
-                                        }
+                                        process_failure_attributes(failure, &mut event_data);
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        event_data["error"] = serde_json::json!(failure.message);
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details) = json.get("details") {
-                                                event_data["details"] = details.clone();
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                event_data["stack"] = stack.clone();
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                event_data["error_type"] = error.clone();
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details) = json.get("details") {
-                                                    event_data["details"] = details.clone();
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    event_data["stack"] = stack.clone();
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    event_data["error_type"] = error.clone();
-                                                }
-                                            }
-                                        }
-                                        // For summary: always update to the latest WorkflowExecutionFailed
-                                        let mut summary = serde_json::Map::new();
-                                        summary.insert("error".to_string(), serde_json::json!(failure.message));
-                                        // Try to parse for details/stack
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details) = json.get("details") {
-                                                summary.insert("details".to_string(), details.clone());
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                summary.insert("stack".to_string(), stack.clone());
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                summary.insert("error_type".to_string(), error.clone());
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details) = json.get("details") {
-                                                    summary.insert("details".to_string(), details.clone());
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    summary.insert("stack".to_string(), stack.clone());
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    summary.insert("error_type".to_string(), error.clone());
-                                                }
-                                            }
-                                        }
+                                        let summary = process_failure_attributes(failure, &mut event_data);
                                         failure_summary = Some(serde_json::Value::Object(summary));
                                     }
                                 },
@@ -878,134 +928,22 @@ pub async fn get_workflow_status(
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {
                                     if let Some(result) = &attr.result {
-                                        details.push_str("\n    Result: ");
-                                        for payload in &result.payloads {
-                                            match String::from_utf8(payload.data.clone()) {
-                                                Ok(data_str) => {
-                                                    // Try parsing as JSON first
-                                                    match serde_json::from_str::<serde_json::Value>(&data_str) {
-                                                        Ok(json) => {
-                                                            // Pretty print JSON and indent each line
-                                                            let json_str = serde_json::to_string_pretty(&json).unwrap_or_default();
-                                                            let indented = json_str
-                                                                .lines()
-                                                                .map(|line| format!("      {}", line))
-                                                                .collect::<Vec<_>>()
-                                                                .join("\n");
-                                                            details.push_str(&format!("\n{}", indented));
-                                                        },
-                                                        Err(_) => {
-                                                            // If not valid JSON, try base64 decoding
-                                                            match decode_base64_to_json(&data_str) {
-                                                                Ok(decoded) => {
-                                                                    // Pretty print decoded JSON and indent each line
-                                                                    let json_str = serde_json::to_string_pretty(&decoded).unwrap_or_default();
-                                                                    let indented = json_str
-                                                                        .lines()
-                                                                        .map(|line| format!("      {}", line))
-                                                                        .collect::<Vec<_>>()
-                                                                        .join("\n");
-                                                                    details.push_str(&format!("\n{}", indented));
-                                                                },
-                                                                Err(e) => {
-                                                                    details.push_str(&format!("Failed to parse payload: {}", e));
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                Err(_) => {
-                                                    details.push_str(&format!("Invalid UTF-8 in payload: {:?}", payload));
-                                                }
-                                            }
-                                        }
+                                        details.push_str(&format_activity_result_text(result));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        details.push_str(&format!("\n    Error: {}", failure.message));
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details_val) = json.get("details") {
-                                                details.push_str(&format!("\n    Details: {}", details_val));
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                details.push_str(&format!("\n    Stack: {}", stack));
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                details.push_str(&format!("\n    Error Type: {}", error));
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details_val) = json.get("details") {
-                                                    details.push_str(&format!("\n    Details: {}", details_val));
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    details.push_str(&format!("\n    Stack: {}", stack));
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    details.push_str(&format!("\n    Error Type: {}", error));
-                                                }
-                                            }
-                                        }
+                                        details.push_str(&format_failure_text(failure));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ChildWorkflowExecutionFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        details.push_str(&format!("\n    Error: {}", failure.message));
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details_val) = json.get("details") {
-                                                details.push_str(&format!("\n    Details: {}", details_val));
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                details.push_str(&format!("\n    Stack: {}", stack));
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                details.push_str(&format!("\n    Error Type: {}", error));
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details_val) = json.get("details") {
-                                                    details.push_str(&format!("\n    Details: {}", details_val));
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    details.push_str(&format!("\n    Stack: {}", stack));
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    details.push_str(&format!("\n    Error Type: {}", error));
-                                                }
-                                            }
-                                        }
+                                        details.push_str(&format_failure_text(failure));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        details.push_str(&format!("\n    Error: {}", failure.message));
-                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&failure.message) {
-                                            if let Some(details_val) = json.get("details") {
-                                                details.push_str(&format!("\n    Details: {}", details_val));
-                                            }
-                                            if let Some(stack) = json.get("stack") {
-                                                details.push_str(&format!("\n    Stack: {}", stack));
-                                            }
-                                            if let Some(error) = json.get("error") {
-                                                details.push_str(&format!("\n    Error Type: {}", error));
-                                            }
-                                        }
-                                        if let Some(cause) = &failure.cause {
-                                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cause.message) {
-                                                if let Some(details_val) = json.get("details") {
-                                                    details.push_str(&format!("\n    Details: {}", details_val));
-                                                }
-                                                if let Some(stack) = json.get("stack") {
-                                                    details.push_str(&format!("\n    Stack: {}", stack));
-                                                }
-                                                if let Some(error) = json.get("error") {
-                                                    details.push_str(&format!("\n    Error Type: {}", error));
-                                                }
-                                            }
-                                        }
+                                        details.push_str(&format_failure_text(failure));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionCompletedEventAttributes(_) => {

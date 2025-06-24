@@ -1,10 +1,6 @@
 import { render } from "@/components";
 
 const meta = {
-  index: {
-    title: "Getting Started with Aurora",
-    display: "hidden",
-  },
   "aurora-cli": "MCP configuration with Aurora CLI",
   "mcp-json": "MCP configuration with MCP.JSON",
   "client-reference": "Client Reference",

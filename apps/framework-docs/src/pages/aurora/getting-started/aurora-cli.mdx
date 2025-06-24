@@ -57,17 +57,6 @@ Aurora uses the macOS Keychain to store your API keys. You will be prompted to a
 
 ### Start a new project with Aurora MCP
 
-Want to start by [chatting with your data that's already in ClickHouse](../aurora/quickstart/clickhouse-chat)?
-```bash filename="Terminal" copy
-aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp claude-desktop
-```
-
-Want to start by [creating a Moose project from data that's already in ClickHouse](../aurora/quickstart/clickhouse-proj)?
-
-```bash filename="Terminal" copy
-aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp windsurf-global
-```
-
 Want to get started by [creating a new Moose project from a template](../aurora/quickstart/from-template)?
 
 ```bash filename="Terminal" copy
@@ -76,13 +65,9 @@ aurora init my_project_name ADS-B --mcp cursor-project
 
 For a full list of templates, run `moose template`.
 
-Want to get started by creating a new Moose project from scratch?
+For other quickstart options, see [Quickstart Guides](/aurora/quickstart).
 
-```bash filename="Terminal" copy
-aurora init my_project_name typescript-empty --mcp cursor-project
-```
-
-Start a new typescript project with `typescript-empty` or a python project with `python-empty`.
+### Add Aurora MCP to an existing Moose project
 
 Want to add Aurora MCP to your existing Moose project? Navigate to your Moose project directory and run:
 

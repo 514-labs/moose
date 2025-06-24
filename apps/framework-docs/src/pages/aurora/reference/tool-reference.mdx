@@ -16,13 +16,13 @@ Tools are grouped by their purpose. Enable the tools you want to use by running 
 The fewer tools you enable, the higher performance the agent using the tool set will have, especially with respect to tool selection.
 
 Toolsets:
-- [Read tools](#read-tools)
-- [Moose tools](#moose-tools)
-- [Experimental: Context management tools](#experimental-context-management-tools)
-- [Experimental: Remote ClickHouse Tools](#experimental-remote-clickhouse-tools)
-- [Experimental: External tools](#experimental-external-tools)
+- [Read Only Moose tools](#read-only-moose-tools) (Enabled by default)
+- [Write Moose tools](#write-moose-tools) (Enabled by default)
+- [Experimental: Context management tools](#experimental-context-management-tools) (Not enabled by default)
+- [Experimental: Remote ClickHouse Tools](#experimental-remote-clickhouse-tools) (Not enabled by default)
+- [Experimental: External tools](#experimental-external-tools) (Not enabled by default)
 
-## Read tools
+## Read Only Moose tools
 Tools needed to read the Moose project and its associated infrastructure.
 
 <Heading level={HeadingLevel.l4}>Activate this toolset</Heading>
@@ -69,7 +69,7 @@ Checks the status of the Moose project. Useful for debugging.
 When is this useful?
 1. When you are want to check the status of your Moose development server, usually whilst debugging new primitive creation: *"Is my Moose development server running?", "Is my Moose development server healthy?", "Did my new workflow kill my local dev server?"*
 
-## Moose tools 
+## Write Moose tools 
 
 Tools needed to create and test Moose primitives. These are used to ingest data, transform data and create egress patterns for data in your project.
 

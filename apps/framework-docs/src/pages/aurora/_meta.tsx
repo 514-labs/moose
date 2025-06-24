@@ -1,5 +1,5 @@
 import { render } from "@/components";
-import { HandMetal, BookMarked, History } from "lucide-react";
+import { HandMetal, BookMarked, History, Rocket } from "lucide-react";
 
 const meta = {
   index: {
@@ -7,6 +7,10 @@ const meta = {
     theme: {
       breadcrumb: false,
     },
+  },
+  "getting-started": {
+    title: "Getting Started",
+    Icon: Rocket,
   },
   quickstart: {
     title: "Quickstart Guides",

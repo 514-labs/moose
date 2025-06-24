@@ -21,7 +21,7 @@ import {
 } from "@/components";
 import { ArgTable } from "@/components/ArgTable";
 
-# Configuring Aurora MCP with MCP.JSON
+## Configuring Aurora MCP with MCP.JSON
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -33,7 +33,7 @@ import { ArgTable } from "@/components/ArgTable";
 
 <Steps>
 
-## Installing Moose CLI
+### Installing Moose CLI
 
 <Callout type="warning" title="Moose CLI requirement">
 Note, even if you don't use the Aurora CLI to configure your Aurora MCP, the Moose CLI is still required if you want to use Moose toolsets (e.g. everything but `remote-clickhouse` and experimental external tools)
@@ -43,7 +43,7 @@ Note, even if you don't use the Aurora CLI to configure your Aurora MCP, the Moo
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
 
-## Where is your MCP.JSON file?
+### Where is your MCP.JSON file?
 
 Your MCP.JSON file is located in a different location depending on your client of choice. The below is a list of default locations for the MCP.JSON file for our supported clients.
 
@@ -54,7 +54,7 @@ Your MCP.JSON file is located in a different location depending on your client o
 
 For other clients, look to their documentation for where their MCP.JSON file is located.
 
-## Adding Aurora MCP to your MCP.JSON file
+### Adding Aurora MCP to your MCP.JSON file
 
 Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. To add Aurora MCP to your MCP.JSON file, you need to add the following to the mcpServers array:
 
@@ -123,7 +123,7 @@ Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. T
   ]}
 />
 
-## Adding tool sets to your MCP.JSON file
+### Adding tool sets to your MCP.JSON file
 
 <Callout type="warning" title="Recommended tools">
 In general, we recommend using read-only tool-sets (`moose-read-tools` and `remote-clickhouse`) with chat type clients (like Claude Desktop)
@@ -174,7 +174,7 @@ For information about toolsets, see [tools reference](../aurora/reference/tool-r
 [Contact us!](mailto:aurora@fiveonefour.com)
 </Steps>
 
-# Other Getting Started Guides
+## Other Getting Started Guides
 
 <FeatureGrid columns={2}>
   <FeatureCard

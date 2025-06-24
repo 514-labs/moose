@@ -5,8 +5,8 @@ const meta = {
     title: "Getting Started with Aurora",
     display: "hidden",
   },
-  "aurora-cli": "Aurora CLI",
-  "mcp-json": "MCP JSON Configuration",
+  "aurora-cli": "MCP configuration with Aurora CLI",
+  "mcp-json": "MCP configuration with MCP.JSON",
   "client-reference": "Client Reference",
 };
 

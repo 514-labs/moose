@@ -22,7 +22,7 @@ import {
 import { ArgTable } from "@/components/ArgTable";
 
 
-# Client Reference
+## Client Reference
 
 In general, we recommend:
 1. only use "read" tool-sets (e.g. `moose-read-tools`, `remote-clickhouse`) with chat type clients (e.g. Claude Desktop, Librechat, etc.)
@@ -58,14 +58,14 @@ In general, we recommend:
 
 </FeatureGrid>
 
-## Claude Desktop
+### Claude Desktop
 
 <Steps>
 
-### Install 
+#### Install 
 [Install the Claude Desktop application here](https://claude.ai/download). Note, the Pro version appears to work much more stably with MCPs.
 
-### Configure Aurora MCP
+#### Configure Aurora MCP
 
 From an existing Moose project: 
 ```
@@ -105,39 +105,39 @@ Using MCP.JSON
 }
 ```
 
-### Adding other toolsets
+#### Adding other toolsets
 
 **Recommended toolsets**
 
 * [Moose Read Tools](../aurora/reference/tool-reference#moose-read-tools): gives you chat access to your Moose project and the data within it (enabled by default)
 * [Remote ClickHouse Tools](../aurora/reference/tool-reference#remote-clickhouse) (read only): gives you chat access to your remote ClickHouse data
 
-### Using the MCP
+#### Using the MCP
 
 1. Open the Claude Desktop application (note, you often have to reload the application after adding a new MCP)
 2. If you are using Moose tools, you will need to run your moose dev server
 
 </Steps>
 
-### Warnings / Peculiarities
+#### Warnings / Peculiarities
 
 * You shouldn't use "write"/genetaive tools with Claude Desktop.
 * Every time you add an MCP or change its configuration, you will need to reload the application.
 * If you want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
 
-### Common issues / troubleshooting
+#### Common issues / troubleshooting
 
 * The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
 * The MCP is not running. Check your configuration and then restart the application.
 
-## Cursor
+### Cursor
 
 <Steps>
 
-### Install 
+#### Install 
 [Install Cursor here](https://www.cursor.com/).
 
-### Configure Aurora MCP
+#### Configure Aurora MCP
 
 From an existing Moose project: 
 ```
@@ -183,11 +183,11 @@ Using MCP.JSON
 }
 ```
 
-### Adding other toolsets
+#### Adding other toolsets
 
 All toolsets are available to Cursor MCPs. See [tools reference](../aurora/reference/tool-reference) for more information.
 
-### Using the MCP
+#### Using the MCP
 
 1. Open Cursor
 2. You will see a popup saying that an MCP is detected, and can be enabled. Our experience is that this is not always reliable, and the MCP is more stably launched if you go to `cursor > settings > cursor settings > tools and integrations` and enable the MCP there.
@@ -195,24 +195,24 @@ All toolsets are available to Cursor MCPs. See [tools reference](../aurora/refer
 
 </Steps>
 
-### Warnings / Peculiarities
+#### Warnings / Peculiarities
 
 * Every time you add an MCP or change its configuration, you will need to reload the MCP. You can do this by going to `cursor > settings > cursor settings > tools and integrations` and toggling the MCP off and on. If this doesn't work, you can also restart the Cursor application.
 * If you have configured the MCP globally, and want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
 
-### Common issues / troubleshooting
+#### Common issues / troubleshooting
 
 * The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
 * The MCP is not running. Check your configuration and then restart the application.  
 
-## Windsurf
+### Windsurf
 
 <Steps>
 
-### Install 
+#### Install 
 [Install Windsurf here](https://windsurf.com/).
 
-### Configure Aurora MCP
+#### Configure Aurora MCP
 
 From an existing Moose project: 
 ```
@@ -252,11 +252,11 @@ Using MCP.JSON
 }
 ```
 
-### Adding other toolsets
+#### Adding other toolsets
 
 All toolsets are available to Cursor MCPs. See [tools reference](../aurora/reference/tool-reference) for more information.
 
-### Using the MCP
+#### Using the MCP
 
 1. Open Windsurf
 2. Run the MCP by going to `windsurf > settings > windsurf settings > cascade > Model Context Protocol (MCP) Servers` and enable the MCP there.
@@ -264,17 +264,17 @@ All toolsets are available to Cursor MCPs. See [tools reference](../aurora/refer
 
 </Steps>
 
-### Warnings / Peculiarities
+#### Warnings / Peculiarities
 
 * Every time you add an MCP or change its configuration, you will need to reload the MCP. You can do this by going to `windsurf > settings > windsurf settings > cascade > Model Context Protocol (MCP) Servers` and toggling the MCP off and on or refreshing the server. If this doesn't work, you can also restart the Windsurf application.
 * If you have configured the MCP globally, and want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
 
-### Common issues / troubleshooting
+#### Common issues / troubleshooting
 
 * The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
 * The MCP is not running. Check your configuration and then restart the application.
 
-## Other clients
+### Other clients
 
 We are working on adding MCP support for other clients. If you are interested in using other clients, please [contact us](mailto:aurora@fiveonefour.com).
 

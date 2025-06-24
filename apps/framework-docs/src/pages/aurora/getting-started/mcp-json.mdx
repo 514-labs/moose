@@ -1,0 +1,195 @@
+---
+title: Getting Started
+description: Getting started guide for Aurora
+---
+
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
+import { ArgTable } from "@/components/ArgTable";
+
+# Configuring Aurora MCP with MCP.JSON
+
+<Callout type="info" title="Prerequisites">
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
+- **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Aurora's generative MCP tools.
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/). This is required for using Aurora with a local Moose project.
+</Callout>
+
+<Steps>
+
+## Installing Moose CLI
+
+<Callout type="warning" title="Moose CLI requirement">
+Note, even if you don't use the Aurora CLI to configure your Aurora MCP, the Moose CLI is still required if you want to use Moose toolsets (e.g. everything but `remote-clickhouse` and experimental external tools)
+</Callout>
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+## Where is your MCP.JSON file?
+
+Your MCP.JSON file is located in a different location depending on your client of choice. The below is a list of default locations for the MCP.JSON file for our supported clients.
+
+* [Claude Desktop](https://modelcontextprotocol.io/quickstart/user): `~/Library/Application Support/Claude/claude_desktop_config.json` (note, you can create this by going to `claude > settings > Developer > Edit Config`)
+* [Cursor (global MCP)](https://docs.cursor.com/context/model-context-protocol#configuration-locations): `~/.cursor/settings/mcp.json`
+* [Cursor (project MCP)](https://docs.cursor.com/context/model-context-protocol#configuration-locations): `/path/to/your/project/.cursor/mcp.json`
+* [Windsurf](https://docs.windsurf.com/windsurf/cascade/mcp#configuring-mcp-tools): `~/.codeium/windsurf/mcp_config.json`
+
+For other clients, look to their documentation for where their MCP.JSON file is located.
+
+## Adding Aurora MCP to your MCP.JSON file
+
+Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. To add Aurora MCP to your MCP.JSON file, you need to add the following to the mcpServers array:
+
+```json filename="MCP.JSON" copy
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "--moose-write-tools"
+        ...other tool-sets,
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
+      }
+    }
+  }
+}
+```
+
+### Arguments / Environment Variables
+
+<ArgTable
+  args={[
+    {
+      name: "npx path",
+      required: true,
+      description: "NPX path to aurora; should be `@514labs/aurora-mcp@latest`"
+    },
+    {
+      name: "tool flags",
+      required: true,
+      description: "Selected tool flags; see [Tool Reference](/aurora/reference/tool-reference) for available flags (e.g. `--read-only`, `--moose-write-tools`, `--remote-clickhouse`)"
+    },
+    {
+      name: "Moose Path",
+      required: false,
+      description: "Path to your moose project. Not required if you are only using the `remote-clickhouse` tool."
+    },
+    {
+      name: "Anthropic API Key",
+      required: false,
+      description: "Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup. This is required for using Aurora's generative MCP tools."
+    },
+    {
+        name: "Moose Path",
+        required: false,
+        description: "Path to your moose installation. Not required if you are only using the `remote-clickhouse` tool."
+    },
+    {
+      name: "Node Path",
+      required: false,
+      description: "Path to your node installation. Not required if you are only using the `remote-clickhouse` tool. Not required if you are using other tools within Python projects."
+    },
+    {
+      name: "Python Path",
+      required: false,
+      description: "Path to your python installation. Not required if you are only using the `remote-clickhouse` tool. Not required if you are using other tools within Python projects."
+    }
+  ]}
+/>
+
+## Adding tool sets to your MCP.JSON file
+
+<Callout type="warning" title="Recommended tools">
+In general, we recommend using read-only tool-sets (`moose-read-tools` and `remote-clickhouse`) with chat type clients (like Claude Desktop)
+</Callout>
+
+For information about toolsets, see [tools reference](../aurora/reference/tool-reference).
+
+**[Read only Moose tools](../aurora/reference/tool-reference#moose-read-tools)**
+
+```json 
+"args": [
+    ...
+    "--moose-read-tools",
+]
+--
+```
+
+**[Moose write tools](../aurora/reference/tool-reference#moose-write-tools)** 
+
+```json 
+"args": [
+    ...
+    "--moose-read-tools",
+    "--moose-write-tools",
+]
+```
+
+**[Remote Clickhouse read tools](../aurora/reference/tool-reference#remote-clickhouse)**
+
+```json
+"args": [
+  ...
+  "--remote-clickhouse", 
+  ...
+]
+"env": {
+  ...
+  "BOREAL_CLICKHOUSE_HOST": "...",
+  "BOREAL_CLICKHOUSE_PORT": "...",
+  "BOREAL_CLICKHOUSE_USER": "...",
+  "BOREAL_CLICKHOUSE_PASSWORD": "...",
+  "BOREAL_CLICKHOUSE_DATABASE": "...",
+}
+```
+
+**Other experimental tools**
+
+[Contact us!](mailto:aurora@fiveonefour.com)
+</Steps>
+
+# Other Getting Started Guides
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    href="/aurora/getting-started#setting-up-aurora-mcp-with-aurora-cli"
+    Icon={Icons.cli}
+    title="Setting up Aurora MCP with Aurora CLI"
+    variant="aurora"
+  />
+    
+  <FeatureCard
+    href="/aurora/getting-started#client-reference"
+    Icon={Icons.computer}
+    title="Client Reference"
+    description="Claude, Cursor, Windsurf, and other clients"
+    variant="aurora"
+  />
+
+</FeatureGrid>

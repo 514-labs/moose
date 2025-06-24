@@ -1,0 +1,116 @@
+---
+title: Getting Started
+description: Getting started guide for Aurora
+---
+
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
+import { ArgTable } from "@/components/ArgTable";
+
+# Setting up Aurora MCP with Aurora CLI
+
+<Steps>
+
+### Installing Aurora and Moose CLIs
+
+<Callout type="info" title="Prerequisites">
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
+- **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Aurora's generative MCP tools.
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/). This is required for using Aurora with a local Moose project.
+</Callout>
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+```
+
+### Add your Anthropic API key when prompted
+
+<Callout type="info" title="Prerequisites">
+- **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup)
+</Callout>
+
+
+If you don't add the API key on install, you will still be able to use the [read-only MCP tools](/aurora/reference/tool-reference#read-tools). If you want to later add your API key, you can do so with 
+
+```bash filename="Terminal" copy
+aurora config keys <"your-api-key">
+```
+
+### Allow Aurora Keychain Access 
+Aurora uses the macOS Keychain to store your API keys. You will be prompted to allow access to the Keychain when installing the CLI. To prevent it from asking several times, select "Always Allow" when prompted.
+
+### Start a new project with Aurora MCP
+
+Want to start by [chatting with your data that's already in ClickHouse](../aurora/quickstart/clickhouse-chat)?
+```bash filename="Terminal" copy
+aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp claude-desktop
+```
+
+Want to start by [creating a Moose project from data that's already in ClickHouse](../aurora/quickstart/clickhouse-proj)?
+
+```bash filename="Terminal" copy
+aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp windsurf-global
+```
+
+Want to get started by [creating a new Moose project from a template](../aurora/quickstart/from-template)?
+
+```bash filename="Terminal" copy
+aurora init my_project_name ADS-B --mcp cursor-project
+```
+
+For a full list of templates, run `moose template`.
+
+Want to get started by creating a new Moose project from scratch?
+
+```bash filename="Terminal" copy
+aurora init my_project_name typescript-empty --mcp cursor-project
+```
+
+Start a new typescript project with `typescript-empty` or a python project with `python-empty`.
+
+Want to add Aurora MCP to your existing Moose project? Navigate to your Moose project directory and run:
+
+```bash filename="Terminal" copy
+aurora setup --mcp cursor-project
+```
+
+</Steps>
+
+# Other Getting Started Guides
+
+<FeatureGrid columns={2}>
+    
+  <FeatureCard
+    href="/aurora/getting-started#configuring-aurora-mcp-with-mcpjson"
+    Icon={Icons.json}
+    title="Configuring Aurora MCP with MCP.JSON"
+    description="
+    "
+    variant="aurora"
+  />
+  
+  <FeatureCard
+    href="/aurora/getting-started#client-reference"
+    Icon={Icons.computer}
+    title="Client Reference"
+    description="Claude, Cursor, Windsurf, and other clients"
+    variant="aurora"
+  />
+
+</FeatureGrid>

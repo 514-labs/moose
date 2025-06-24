@@ -1,0 +1,53 @@
+---
+title: Getting Started
+description: Getting started guide for Aurora
+---
+
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
+import { ArgTable } from "@/components/ArgTable";
+
+# Getting Started
+
+This guide will walk you through setting up Aurora MCP with your client of choice, using the CLI and using the MCP.JSON configuration file.
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    href="/aurora/getting-started#setting-up-aurora-mcp-with-aurora-cli"
+    Icon={Icons.cli}
+    title="Setting up Aurora MCP with Aurora CLI"
+    variant="aurora"
+  />
+    
+  <FeatureCard
+    href="/aurora/getting-started#configuring-aurora-mcp-with-mcpjson"
+    Icon={Icons.json}
+    title="Configuring Aurora MCP with MCP.JSON"
+    description="
+    "
+    variant="aurora"
+  />
+  
+  <FeatureCard
+    href="/aurora/getting-started#client-reference"
+    Icon={Icons.computer}
+    title="Client Reference"
+    description="Claude, Cursor, Windsurf, and other clients"
+    variant="aurora"
+  />
+
+</FeatureGrid>

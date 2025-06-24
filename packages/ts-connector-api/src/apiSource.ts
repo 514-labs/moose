@@ -16,11 +16,31 @@ export function isSingleResult<T>(result: T | Readable): result is T {
 }
 
 /**
+ * Context object passed to user defined functions
+ */
+export interface APIContext<T = any> {
+  response: T;
+  responseHeaders: Headers;
+  requestUrl: string;
+}
+
+/**
  * Configuration for pagination behavior
  */
 export interface PaginationConfig<T = any> {
-  /** Function to extract the next URL from the response */
-  getNextUrl: (response: T, headers: Headers) => string | null;
+  /** Function to extract the next URL from the response
+   *
+   * @param context - The context object containing the response, response headers, and request URL
+   * @returns The next URL to fetch, or null if there are no more pages
+   *
+   * @example
+   * ```typescript
+   * getNextUrl: (context: APIContext<Foo>) => {
+   *   const page = parseInt(context.responseHeaders.get("pagination-page") ?? "0") + 1;
+   *   return `${context.requestUrl}&page=${page}`;
+   * },
+   */
+  getNextUrl: (context: APIContext<T>) => string | null;
 
   /** Maximum number of pages to fetch (safety limit) */
   maxPages?: number;
@@ -45,7 +65,7 @@ export interface APISourceConfig<T = any, ItemType = any>
   /** Custom headers to include in all requests */
   headers?: Record<string, string>;
   /** Function to extract the data items from the response */
-  extractItems: (response: T, headers: Headers) => ItemType;
+  extractItems: (context: APIContext<T>) => ItemType;
   pagination?: PaginationConfig<T>;
 }
 
@@ -58,7 +78,7 @@ export class APISource<T = any, ItemType = any>
   private endpoint: string;
   private auth?: { token: string };
   private headers?: Record<string, string>;
-  private extractItems: (response: T, headers: Headers) => ItemType;
+  private extractItems: (context: APIContext<T>) => ItemType;
   private pagination?: PaginationConfig<T>;
 
   constructor(config: APISourceConfig<T, ItemType>) {
@@ -216,7 +236,11 @@ export class APISource<T = any, ItemType = any>
     try {
       const url = `${this.baseUrl}${this.endpoint}`;
       const { data, headers } = await this.makeRequest(url);
-      return this.extractItems(data, headers);
+      return this.extractItems({
+        response: data,
+        responseHeaders: headers,
+        requestUrl: url,
+      });
     } catch (error) {
       throw new Error(
         `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -240,7 +264,11 @@ export class APISource<T = any, ItemType = any>
       while (currentUrl && pageCount <= maxPages) {
         console.log(`Fetching page ${pageCount} from ${currentUrl}`);
         const { data: response, headers } = await this.makeRequest(currentUrl);
-        const items = this.extractItems(response, headers);
+        const items = this.extractItems({
+          response,
+          responseHeaders: headers,
+          requestUrl: currentUrl,
+        });
 
         // Handle different types of items
         if (Array.isArray(items)) {
@@ -254,7 +282,11 @@ export class APISource<T = any, ItemType = any>
         }
 
         // Get next URL
-        const nextUrl = getNextUrl(response, headers);
+        const nextUrl = getNextUrl({
+          response,
+          responseHeaders: headers,
+          requestUrl: currentUrl,
+        });
         currentUrl = nextUrl || "";
         pageCount++;
 

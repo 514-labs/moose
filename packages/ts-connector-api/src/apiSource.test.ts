@@ -1,4 +1,9 @@
-import { APISource, isStreamResult, isSingleResult } from "./apiSource";
+import {
+  APISource,
+  isStreamResult,
+  isSingleResult,
+  APIContext,
+} from "./apiSource";
 import { expect } from "chai";
 
 interface PokemonResource {
@@ -21,7 +26,8 @@ describe("APISource", function () {
       name: "single-test",
       baseUrl: "https://pokeapi.co/api/v2",
       endpoint: "/pokemon",
-      extractItems: (response, headers) => response.results,
+      extractItems: (context: APIContext<PokemonResponse>) =>
+        context.response.results,
     });
     const connectionTest = await singleSource.testConnection();
     expect(connectionTest.success).to.be.true;
@@ -39,9 +45,11 @@ describe("APISource", function () {
       name: "pokemon-test",
       baseUrl: "https://pokeapi.co/api/v2",
       endpoint: "/pokemon",
-      extractItems: (response, headers) => response.results,
+      extractItems: (context: APIContext<PokemonResponse>) =>
+        context.response.results,
       pagination: {
-        getNextUrl: (response, headers) => response.next,
+        getNextUrl: (context: APIContext<PokemonResponse>) =>
+          context.response.next,
         maxPages: 2,
         delayBetweenRequests: 100,
         retryConfig: { maxRetries: 2, backoffMs: 500 },
@@ -69,9 +77,11 @@ describe("APISource", function () {
       name: "pokemon-stream-test",
       baseUrl: "https://pokeapi.co/api/v2",
       endpoint: "/pokemon",
-      extractItems: (response, headers) => response.results,
+      extractItems: (context: APIContext<PokemonResponse>) =>
+        context.response.results,
       pagination: {
-        getNextUrl: (response, headers) => response.next,
+        getNextUrl: (context: APIContext<PokemonResponse>) =>
+          context.response.next,
         maxPages: 2,
         delayBetweenRequests: 100,
       },

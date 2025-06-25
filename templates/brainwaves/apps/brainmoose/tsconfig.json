@@ -4,7 +4,7 @@
     "esModuleInterop": true,
     "plugins": [
       {
-        "transform": "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
+        "transform": "./node_modules/@514labs/moose-lib/dist/compilerPlugin.js",
         "transformProgram": true
       },
       {

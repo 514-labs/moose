@@ -3,59 +3,204 @@ title: Tool Reference
 description: MCP tools and external tools for Aurora
 ---
 
+import { ArgTable } from "@/components/ArgTable";
+import { Heading, HeadingLevel } from "@/components/typography";
+import { Callout } from "@/components/callout";
+
 # Tool Reference
 
 Aurora CLI can allow you to use various Aurora MCP tool-sets, as well as install and configure certain external tools. The command `aurora config tools` allows you to configure the tools you want to use. These tools are additive, select the tools you wish to use (if certain tools have dependencies, they will be enabled automatically).
 
-## Read tools
-Tools needed to read the Moose project and its associated infrastructure. These are enabled by default. Toggle `read-only` in `aurora config tools` to enable manually.
+Tools are grouped by their purpose. Enable the tools you want to use by running `aurora config tools` and enabling the tools you want to use. You can also enable tools by adding them to your `mcp.json` file. 
 
-- `read_moose_project`
-    - Reads `moose.config.toml` to get configuration details about Moose project and infrastructure.
-- `read_file`
-    - Gives access to moose primitives in the moose project directory (Workflows, Data Models, Streaming Functions, APIs).
-- `read_clickhouse_tables`
-    - Read queries from ClickHouse.
-- `read_redpanda_topic`
-    - Read from Redpanda.
+The fewer tools you enable, the higher performance the agent using the tool set will have, especially with respect to tool selection.
 
-## Egress tools
-Tools needed to create and test egress APIs. Toggle `egress-tools` in `aurora config tools` to enable.
+Toolsets:
+- [Read Only Moose tools](#read-only-moose-tools) (Enabled by default)
+- [Write Moose tools](#write-moose-tools) (Enabled by default)
+- [Experimental: Context management tools](#experimental-context-management-tools) (Not enabled by default)
+- [Experimental: Remote ClickHouse Tools](#experimental-remote-clickhouse-tools) (Not enabled by default)
+- [Experimental: External tools](#experimental-external-tools) (Not enabled by default)
 
-- `create_egress_api`
-    - Creates an egress API from Moose ClickHouse. Can utilize type safe parameters.
-- `test_egress_api`
-    - Tests the specified APIs.
+## Read Only Moose tools
+Tools needed to read the Moose project and its associated infrastructure.
 
-## Experimental: Moose Metadata tools [coming soon]
-Tools for creating metadata in Moose primitives, based on Moose code and available data. Toggle `experimental-moose-metadata-tools` in `aurora config tools` to enable.
+<Heading level={HeadingLevel.l4}>Activate this toolset</Heading>
 
-- `write_metadata`
-    - Writes metadata to a Moose primitive.
+These tools are enabled by default.
+To enable them explicitly, run `aurora config tools` and enable `read-only`.
 
-## Experimental: Moose tools 
-Tools for creating and testing Moose data pipelines. Toggle `experimental-moose-tools` in `aurora config tools` to enable.
+If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
 
-- `write_spec`
-    - Generate or update a specification for a data-intensive feature.
-- `write_workflow`
-    - Write a script for use in Moose Workflows.
-- `write_data_model`
-    - Generate a Moose data model file and write it to the project's datamodels directory.
-- `run_workflow`
-    - Runs said scripts.
-- `write_stream_function`
-    - Generate a Moose stream processing function using an LLM and write it to the project's functions directory.
-- `write_and_run_temp_script`
-    - Creates and runs a temporary script, usually for sampling purposes.
+```json filename="MCP.json" copy
+"args": [
+    ...
+  "--read-only", 
+  ...
+]
+```
 
-## Experimental: Remote ClickHouse Tools `remote-clickhouse`
-Tools for reading data in your external ClickHouse database. Set this up with the `aurora connect clickhouse` command or by configuring your toolset to include `remote-clickhouse` with `aurora config tools`.
+### `read_moose_project`
+Retrieves an infrastructure map from the local Moose development server. Retrieves a list of all primitives in the project (e.g. Data Models, Workflows, Streaming Functions, Materialized Views, APIs), as well as their associated infrastructure (e.g. ClickHouse tables, Redpanda topics, etc.).
 
-- `read_remote_clickhouse`
-    - Read your Boreal ClickHouse database. In this iteration, requires manually inputting certain fields into `mcp.json`: `BOREAL_CLICKHOUSE_HOST`, `BOREAL_CLICKHOUSE_PORT`, `BOREAL_CLICKHOUSE_USER`, `BOREAL_CLICKHOUSE_PASSWORD`, `BOREAL_CLICKHOUSE_DATABASE`. Whilst the tool is read only, we suggest furnishing the MCP with read-only credentials in an abundance of caution.
+When is this useful?
 
-## External tools
-Tools for interacting with external data systems. Toggle `external-duck-db-mcp` in `aurora config tools` to enable DuckDB, more coming soon.
+1. When you are exploring data in your Moose project: *"Tell me about my Moose project", "tell me about the data in my Moose project", "Tell me about my data models / egress APIs / ..."*
+2. When you are expanding, modifying or debugging your Moose project: *"Ingest data from the following API source: ..." (read_moose_project is used to understand the state of the project before and after the new primitives are created)*
 
-- `external-duck-db-mcp` allows you to use and configure the official DuckDB MCP. This requires the path to your DuckDB file.
+### `read_clickhouse_tables`
+Queries local ClickHouse.
+
+When is this useful?
+
+1. When you are exploring data in your Moose project: *"Tell me about the data in my Moose project", "Tell me about the data in my `consumption` table"*
+2. When you are expanding, modifying or debugging your Moose project: *"Did data land in my `consumption` table?", "Did the data in my `consumption` table change?", "Did my materialized view update?"*
+
+### `read_redpanda_topic`
+Reads from local Redpanda. 
+
+When is this useful?
+1. you are exploring data in your Moose project (in active topics and in Dead Letter Queues): *"Tell me about the data streams in my Moose project", "Describe my DLQ topic", "Tell me about the data in my `enrichment` data stream"*
+2. you are expanding, modifying or debugging your Moose project
+
+### `check_moose_status`
+Checks the status of the Moose project. Useful for debugging.
+
+When is this useful?
+1. When you are want to check the status of your Moose development server, usually whilst debugging new primitive creation: *"Is my Moose development server running?", "Is my Moose development server healthy?", "Did my new workflow kill my local dev server?"*
+
+## Write Moose tools 
+
+Tools needed to create and test Moose primitives. These are used to ingest data, transform data and create egress patterns for data in your project.
+
+<Heading level={HeadingLevel.l4}>Activate this toolset</Heading>
+
+These tools are enabled by default.
+To enable them explicitly, run `aurora config tools` and enable `moose-tools`.
+
+If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+
+```json filename="MCP.json" copy
+"args": [
+    ...
+  "--moose-tools", 
+  ...
+]
+```
+
+### `write_spec`
+Generates a plan for an end to end Moose project (from ingest, through transformation and egress).
+
+When is this useful?
+
+1. When you are starting a new Moose project: *"I want to create a new Moose project that ingests data from the following API sources: ..., enriches them in stream from the following API: ..., creates a materialized view that ..., and creates egress APIs that allow the following visualizations to be built: ..."*
+
+### `write_workflow`
+Creates a Moose Workflow, typically run on a schedule, typically used to ingest data. [Moose documentation](../../moose/building/workflows.mdx).
+
+For best performance:
+
+* Sample data from the API (either with your Agent's tools, or with the `write_and_run_temp_script` tool)
+* Create a data model for the data
+* Then, create a workflow to ingest the data
+
+When is this useful?
+
+1. When you want to ingest data from an API source: *"I want to ingest data from the following API source: ...; documented here: ..."*
+
+### `run_workflow`
+Runs a Moose workflow. Used as part of the `write_workflow` flow. [Moose documentation](../../moose/building/workflows.mdx)
+
+### `write_and_run_temp_script`
+Creates and runs a temporary script, usually for sampling purposes. 
+
+When is this useful?
+
+1. When creating a data model: *"I want to create a data model for the following API source: ...; documented here: ..." (`write_and_run_temp_script` is used to sample the data)*
+2. When creating a workflow: *"I want to create a workflow to ingest data from the following API source: ...; documented here: ..." (`write_and_run_temp_script` is used to sample the data)*
+
+### `write_data_model`
+Creates a Moose data model, typically used to define the schema of the data in your Moose project. [Moose documentation](../../moose/building/data-models.mdx).
+
+When is this useful?
+
+1. When you want to land data from a workflow: *"Get data periodically from this API" (the `write_data_model` tool is used to instantiate the infrastructure that the workflow will send data to)*
+2. Or from a streaming function: *"I want to create a streaming function to enrich the data from this data stream with the following API source: ...; documented here: ..."* (the `write_data_model` tool is used to instantiate the infrastructure that the streaming function will send data to)*
+3. Or you want to instantiate certain data infrastructure (e.g. an ingest server, a Redpanda topic, a ClickHouse table) by itself: *"I want to create a Clickhouse table in the following form" "I want to create an ingest API and a streaming topic that conforms with the following schema"*
+
+### `write_stream_function`
+Creates a Moose stream processing function. Runs on a per row basis as data is ingested into the stream. [Moose documentation](../../moose/building/streaming-functions.mdx).
+
+When is this useful?
+
+1. When you want to enrich data in a stream: *"I want to enrich the data from this data stream with the following API source: ...; documented here: ...", "I want to enrich data in this stream by joining it with the following table: ..."*
+2. When you want external side-effects to be triggered by the stream: *"I want to trigger an email addressed to the `email` in the stream every time a `status` changes to `completed`"*
+
+### `write_materialized_view`
+Creates a Moose materialized view. [Moose documentation](../../moose/building/materialized-views.mdx).
+
+When is this useful?
+
+1. When you want to create a materialized view (usually to improve the performance of your database queries or API responses): *"Look at the consumption patterns of the queries in my ClickHouse database, create a materialized view that will allow me to query the data in a more performant way", "Create a materialized view that will increase the performance of the `aircraft` API"*
+
+### `create_egress_api`
+Creates an egress API from Moose ClickHouse. Can utilize type safe parameters. [Moose documentation](../../moose/building/egress-apis.mdx).
+
+When is this useful?
+
+1. When you want to create an API that exposes data in your Moose project externally: *"Create an API that returns every aircraft within X miles from Y,Z coordinates"*
+2. Including from a materialized view: *"Create an API that returns every aircraft within X miles from Y,Z coordinates, using the `aircraft` materialized view"*
+
+### `test_egress_api`
+Tests the specified APIs. Used as part of the `create_egress_api` flow.
+
+## Experimental: Remote ClickHouse Tools  (Alpha)
+
+Tools for reading data in your external ClickHouse database (e.g. those hosted in Boreal or ClickHouse Cloud). These are useful for iterating off a production project, for debugging production issues or for local testing of changes to production data.
+
+<Callout type="warning" title="Read-only credentials">
+  For an abundance of caution, we suggest using read-only credentials for this toolset. [ClickHouse documentation](https://clickhouse.com/docs/operations/access-rights). If you want to modify your ClickHouse database, we suggest using Moose to do so.
+</Callout>
+
+<Heading level={HeadingLevel.l4}>Activate this toolset</Heading>
+
+These tools are **not** enabled by default.
+To enable them explicitly, run `aurora config tools` and enable `remote-clickhouse`. If you use `aurora config tools` to enable this toolset, you will still need to manually add the environment variables to your `mcp.json` file.
+
+If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+
+```json filename="MCP.json" copy
+"args": [
+    ...
+  "--remote-clickhouse", 
+  ...
+]
+"env": {
+    ...
+  "BOREAL_CLICKHOUSE_HOST": "...",
+  "BOREAL_CLICKHOUSE_PORT": "...",
+  "BOREAL_CLICKHOUSE_USER": "...",
+  "BOREAL_CLICKHOUSE_PASSWORD": "...",
+  "BOREAL_CLICKHOUSE_DATABASE": "...",
+}
+```
+
+## Experimental: Context management tools (Research Preview)
+Tools for managing context related to your Moose project. 
+
+Useful for:
+
+- testing your data infrastructure against policy (e.g. data quality, data security, data governance)
+- ensuring metrics definition standardization for ad hoc queries of your data
+
+If you are interested in using these tools, please contact us at [support@moose.ai](mailto:aurora@fiveonefour.com).
+
+## Experimental: External tools (Research Preview)
+Tools for interacting with external data systems.
+
+Current supported external data systems:
+
+- DuckDB
+- Databricks
+
+If you are interested in using these tools, or any other external data tools, please contact us at [support@moose.ai](mailto:aurora@fiveonefour.com).

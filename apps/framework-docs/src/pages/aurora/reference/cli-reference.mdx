@@ -135,7 +135,7 @@ Configure Aurora settings
 
 #### config focus
 
-List Aurora configured projects, allows selection of project globally configured hosts are "focused" on. No more than one Moose Project may be run at a time.
+Aurora allows you to configure project level MCPs (e.g. for Cursor) and global MCPs (e.g. for Claude Desktop). To configure which Aurora project is being used with the Global MCPS, use `aurora config focus`.
 
 ```bash filename="Terminal" copy
 aurora config focus
@@ -162,39 +162,10 @@ aurora config keys <KEY>
 
 #### config tools
 
-Toggles availability of experimental MCP tools. See Tools documentation for which tools are in `standard` and which are added in the `experimental` sets.
+Toggles availability of experimental MCP tools. See [Tools Reference](/aurora/reference/tool-reference).
 
 ```bash filename="Terminal" copy
 aurora config tools
 ```
 
-Note, if you select `boreal-experimental`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.
-
-### Coming soon
-
-#### config models
-
-[Coming Soon]. Allows you to configure which models Aurora agents use.
-
-```bash filename="Terminal" copy
-aurora config models <model-name>
-```
-
-<ArgTable
-  heading="Arguments / Flags"
-  args={[
-    {
-      name: "<model-name>",
-      description: "Model of your choice to use for agentic tool calls",
-      examples: ["claude-3-5-sonnet-20240620", "gemini-2.0-flash-exp"]
-    }
-  ]}
-/>
-
-#### login
-
-[Coming soon]. Allows you to log in to Aurora with your Boreal account. Will provide secure authentication and LLM provision.
-
-```bash filename="Terminal" copy
-aurora login
-```
+Note: if you select `remote-clickhouse`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.

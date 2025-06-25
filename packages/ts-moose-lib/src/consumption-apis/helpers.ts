@@ -296,7 +296,7 @@ export class WorkflowClient {
 
       return {
         status: 200,
-        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${name}/${handle.firstExecutionRunId}/history`,
+        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${workflowId}/${handle.firstExecutionRunId}/history`,
       };
     } catch (error) {
       return {

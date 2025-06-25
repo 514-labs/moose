@@ -138,11 +138,11 @@ class WorkflowClient:
     # Test workflow executor in rust if this changes significantly
     def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
         try:
-            run_id = asyncio.run(self._start_workflow_async(name, input_data))
+            workflow_id, run_id = asyncio.run(self._start_workflow_async(name, input_data))
             print(f"WorkflowClient - started workflow: {name}")
             return {
                 "status": 200,
-                "body": f"Workflow started: {name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/{name}/{run_id}/history"
+                "body": f"Workflow started: {name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/{workflow_id}/{run_id}/history"
             }
         except Exception as e:
             print(f"WorkflowClient - error while starting workflow: {e}")
@@ -178,7 +178,7 @@ class WorkflowClient:
             run_timeout=run_timeout
         )
 
-        return workflow_handle.result_run_id
+        return workflow_id, workflow_handle.result_run_id
 
     def _get_workflow_config(self, name: str) -> Dict[str, Any]:
         """Extract workflow configuration from DMv2 or legacy config."""

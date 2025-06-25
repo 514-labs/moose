@@ -20,7 +20,7 @@ from typing import Optional, Dict, Any, Type
 from urllib.parse import urlparse, parse_qs
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
-from moose_lib.dmv2 import get_consumption_api
+from moose_lib.dmv2 import get_consumption_api, get_workflow
 from pydantic import BaseModel, ValidationError
 
 import jwt
@@ -150,44 +150,26 @@ class WorkflowClient:
                 "status": 400,
                 "body": str(e)
             }
-    
+
     async def _start_workflow_async(self, name: str, input_data: Any):
-        if 'retries' not in self.configs.get(name, {}):
-            raise ValueError(f"Missing 'retries' configuration for workflow: {name}")
-        retry_count = self.configs[name]['retries']
-        retry_policy = RetryPolicy(
-            maximum_attempts=retry_count
-        )
+        # Extract configuration based on workflow type
+        config = self._get_workflow_config(name)
 
-        if 'timeout' not in self.configs.get(name, {}):
-            raise ValueError(f"Missing 'timeout' configuration for workflow: {name}")
-        timeout_str = self.configs[name]['timeout']
-        run_timeout = self.parse_timeout_to_timedelta(timeout_str)
+        # Process input data and generate workflow ID (common logic)
+        processed_input, workflow_id = self._process_input_data(name, input_data)
 
-        print(f"WorkflowClient - starting workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
-        
-        # We should parse and encode the input_data here
-        workflow_id = name
-        if input_data:
-            try:
-                # First decode the JSON string if it's a string
-                if isinstance(input_data, str):
-                    input_data = json.loads(input_data)
-                
-                # Then encode with our custom encoder
-                input_data = json.loads(
-                    json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
-                )
+        # Create retry policy and timeout (common logic)
+        retry_policy = RetryPolicy(maximum_attempts=config['retry_count'])
+        run_timeout = self.parse_timeout_to_timedelta(config['timeout_str'])
 
-                params_str = json.dumps(input_data, sort_keys=True)
-                params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
-                workflow_id = f"{name}-{params_hash}"
-            except Exception as e:
-                raise ValueError(f"Invalid JSON input data: {e}")
+        print(f"WorkflowClient - starting {'DMv2 ' if config['is_dmv2'] else ''}workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
+
+        # Start workflow with appropriate args
+        workflow_args = self._build_workflow_args(name, processed_input, config['is_dmv2'])
 
         workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
-            args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
+            args=workflow_args,
             id=workflow_id,
             task_queue="python-script-queue",
             id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
@@ -197,6 +179,54 @@ class WorkflowClient:
         )
 
         return workflow_handle.result_run_id
+
+    def _get_workflow_config(self, name: str) -> Dict[str, Any]:
+        """Extract workflow configuration from DMv2 or legacy config."""
+        dmv2_workflow = get_workflow(name)
+        if dmv2_workflow is not None:
+            return {
+                'retry_count': dmv2_workflow.config.retries or 3,
+                'timeout_str': dmv2_workflow.config.timeout or "1h",
+                'is_dmv2': True
+            }
+        else:
+            config = self.configs.get(name, {})
+            return {
+                'retry_count': config.get('retries', 3),
+                'timeout_str': config.get('timeout', "1h"),
+                'is_dmv2': False
+            }
+
+    def _process_input_data(self, name: str, input_data: Any) -> tuple[Any, str]:
+        """Process input data and generate workflow ID."""
+        workflow_id = name
+        if input_data:
+            try:
+                # Handle Pydantic model input for DMv2
+                if isinstance(input_data, BaseModel):
+                    input_data = input_data.model_dump()
+                elif isinstance(input_data, str):
+                    input_data = json.loads(input_data)
+
+                # Encode with custom encoder
+                input_data = json.loads(
+                    json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
+                )
+
+                params_str = json.dumps(input_data, sort_keys=True)
+                params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+                workflow_id = f"{name}-{params_hash}"
+            except Exception as e:
+                raise ValueError(f"Invalid input data: {e}")
+
+        return input_data, workflow_id
+
+    def _build_workflow_args(self, name: str, input_data: Any, is_dmv2: bool) -> list:
+        """Build workflow arguments based on workflow type."""
+        if is_dmv2:
+            return [f"{name}", input_data]
+        else:
+            return [f"{os.getcwd()}/app/scripts/{name}", input_data]
 
     def load_consolidated_configs(self):
         try:

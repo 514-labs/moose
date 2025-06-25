@@ -11,6 +11,7 @@ import * as fs from "fs";
 import { Column } from "../dataModels/dataModelTypes";
 import { AggregationFunction } from "../dataModels/typeConvert";
 import { OlapTable } from "../dmv2";
+import { getWorkflows } from "../dmv2/internal";
 import { JWTPayload } from "jose";
 
 export interface ConsumptionUtil {
@@ -261,20 +262,41 @@ export class WorkflowClient {
         };
       }
 
-      const configs = await this.loadConsolidatedConfigs();
-      const config = configs[name];
-      if (!config) {
-        return {
-          status: 404,
-          body: `Workflow config not found for ${name}`,
-        };
-      }
+      // Get workflow configuration (DMv2 or legacy)
+      const config = await this.getWorkflowConfig(name);
 
-      const runId = await this.startWorkflowAsync(name, config, input_data);
+      // Process input data and generate workflow ID
+      const [processedInput, workflowId] = this.processInputData(
+        name,
+        input_data,
+      );
+
+      console.log(
+        `WorkflowClient - starting ${config.is_dmv2 ? "DMv2 " : ""}workflow: ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(processedInput)}`,
+      );
+
+      // Start workflow with appropriate args
+      const workflowArgs = this.buildWorkflowArgs(
+        name,
+        processedInput,
+        config.is_dmv2,
+      );
+
+      const handle = await this.client.workflow.start("ScriptWorkflow", {
+        args: workflowArgs,
+        taskQueue: "typescript-script-queue",
+        workflowId,
+        workflowIdConflictPolicy: "FAIL",
+        workflowIdReusePolicy: "ALLOW_DUPLICATE",
+        retry: {
+          maximumAttempts: config.retries,
+        },
+        workflowRunTimeout: config.timeout as StringValue,
+      });
 
       return {
         status: 200,
-        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${name}/${runId}/history`,
+        body: `Workflow started: ${name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/${name}/${handle.firstExecutionRunId}/history`,
       };
     } catch (error) {
       return {
@@ -284,36 +306,60 @@ export class WorkflowClient {
     }
   }
 
-  private async startWorkflowAsync(
+  private async getWorkflowConfig(
     name: string,
-    config: WorkflowConfig,
+  ): Promise<{ retries: number; timeout: string; is_dmv2: boolean }> {
+    // Check for DMv2 workflow first
+    try {
+      const workflows = await getWorkflows();
+      const dmv2Workflow = workflows.get(name);
+      if (dmv2Workflow) {
+        return {
+          retries: dmv2Workflow.config.retries || 3,
+          timeout: dmv2Workflow.config.timeout || "1h",
+          is_dmv2: true,
+        };
+      }
+    } catch (error) {
+      // Fall through to legacy config
+    }
+
+    // Fall back to legacy configuration
+    const configs = await this.loadConsolidatedConfigs();
+    const config = configs[name];
+    if (!config) {
+      throw new Error(`Workflow config not found for ${name}`);
+    }
+
+    return {
+      retries: config.retries || 3,
+      timeout: config.timeout || "1h",
+      is_dmv2: false,
+    };
+  }
+
+  private processInputData(name: string, input_data: any): [any, string] {
+    let workflowId = name;
+    if (input_data) {
+      const hash = createHash("sha256")
+        .update(JSON.stringify(input_data))
+        .digest("hex")
+        .slice(0, 16);
+      workflowId = `${name}-${hash}`;
+    }
+    return [input_data, workflowId];
+  }
+
+  private buildWorkflowArgs(
+    name: string,
     input_data: any,
-  ) {
-    console.log(
-      `API starting workflow ${name} with config ${JSON.stringify(config)} and input_data ${JSON.stringify(input_data)}`,
-    );
-
-    const workflowId =
-      input_data ?
-        `${name}-${createHash("sha256")
-          .update(JSON.stringify(input_data))
-          .digest("hex")
-          .slice(0, 16)}`
-      : name;
-
-    const handle = await this.client!.workflow.start("ScriptWorkflow", {
-      args: [`${process.cwd()}/app/scripts/${name}`, input_data],
-      taskQueue: "typescript-script-queue",
-      workflowId,
-      workflowIdConflictPolicy: "FAIL",
-      workflowIdReusePolicy: "ALLOW_DUPLICATE",
-      retry: {
-        maximumAttempts: config.retries,
-      },
-      workflowRunTimeout: config.timeout as StringValue,
-    });
-
-    return handle.firstExecutionRunId;
+    is_dmv2: boolean,
+  ): any[] {
+    if (is_dmv2) {
+      return [name, input_data];
+    } else {
+      return [`${process.cwd()}/app/scripts/${name}`, input_data];
+    }
   }
 
   private async loadConsolidatedConfigs(): Promise<

@@ -317,12 +317,6 @@ Files created:
 export interface AircraftTrackingData {
   hex: string;           // Unique aircraft identifier
   flight: string;        // Flight number
-  lat: number;          // Latitude
-  lon: number;          // Longitude
-  alt_baro: number;     // Barometric altitude
-  gs: number;           // Ground speed
-  track: number;        // Heading
-  timestamp: Date;      // Observation time
   // ... other fields
 }
 
@@ -393,19 +387,7 @@ interface AircraftTrackingProcessed_NearbySFSchema {
 
 // SQL query to find aircraft within 50 miles of San Francisco
 const query = sql`
-  SELECT 
-    hex, 
-    maxState(timestamp) as last_seen, 
-    countState() as count, 
-    avgState(lat) as avg_lat, 
-    avgState(lon) as avg_lon 
-  FROM ${AircraftTrackingProcessedPipeline.table!} 
-  WHERE ((3959 * 2) * ASIN(SQRT(
-    POWER(SIN(RADIANS(37.7749 - lat) / 2), 2) + 
-    (COS(RADIANS(lat)) * COS(RADIANS(37.7749)) * 
-     POWER(SIN(RADIANS(-122.4194 - lon) / 2), 2))
-  ))) <= 50 
-  GROUP BY hex
+  // SQL Query Here
 `;
 
 // Create materialized view for efficient querying
@@ -447,11 +429,7 @@ export const getAircraftWithinRadius = new ConsumptionApi<AircraftRadiusParams>(
   async (params, { client, sql }) => {
     // Execute the query using the Haversine formula to calculate distances
     const result = await client.query.execute(sql`
-      SELECT * 
-      FROM AircraftTrackingProcessed 
-      WHERE (3959 * 2 * ASIN(SQRT(POWER(SIN(RADIANS(${params.lat} - lat) / 2), 2) + 
-            COS(RADIANS(lat)) * COS(RADIANS(${params.lat})) * 
-            POWER(SIN(RADIANS(${params.lon} - lon) / 2), 2)))) <= ${params.radius}
+      // SQL Query Here
     `);
     
     return result;

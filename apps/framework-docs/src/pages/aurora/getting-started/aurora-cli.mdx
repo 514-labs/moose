@@ -23,9 +23,60 @@ import { ArgTable } from "@/components/ArgTable";
 
 ## Setting up Aurora MCP with Aurora CLI
 
-<Steps>
+The Aurora CLI is a tool we created to facilitate the easy setup of Aurora MCPs. It is not required, and we hope that LLM clients will eventually support all these features natively, so that we can remove the CLI.
 
-### Installing Aurora and Moose CLIs
+It allows you to:
+- set up your Aurora MCP with a variety of clients
+- manage multiple projects
+- manage multiple toolsets
+- update multiple MCP configurations at once
+
+Other getting started guides:
+
+<FeatureGrid columns={3}>
+    
+  <FeatureCard
+    href="/aurora/getting-started/mcp-json"
+    title="Configure MCP.JSON"
+    description="
+    "
+    variant="aurora"
+  />
+  
+  <FeatureCard
+    href="/aurora/getting-started/claude"
+    title="Claude Desktop"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/cursor"
+    title="Cursor"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/windsurf"
+    title="Windsurf"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/other-clients"
+    title="Other Clients"
+    description="
+    "
+    variant="aurora"
+  />
+
+</FeatureGrid>
+
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -34,6 +85,10 @@ import { ArgTable } from "@/components/ArgTable";
 - **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Aurora's generative MCP tools.
 - **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/). This is required for using Aurora with a local Moose project.
 </Callout>
+
+<Steps>
+
+### Installing Aurora and Moose CLIs
 
 ```bash filename="Terminal" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
@@ -76,26 +131,3 @@ aurora setup --mcp cursor-project
 ```
 
 </Steps>
-
-## Other Getting Started Guides
-
-<FeatureGrid columns={2}>
-    
-  <FeatureCard
-    href="/aurora/getting-started/mcp-json"
-    Icon={Icons.json}
-    title="Configuring Aurora MCP with MCP.JSON"
-    description="
-    "
-    variant="aurora"
-  />
-  
-  <FeatureCard
-    href="/aurora/getting-startedclient-reference"
-    Icon={Icons.computer}
-    title="Client Reference"
-    description="Claude, Cursor, Windsurf, and other clients"
-    variant="aurora"
-  />
-
-</FeatureGrid>

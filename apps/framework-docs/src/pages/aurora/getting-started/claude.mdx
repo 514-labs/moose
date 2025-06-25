@@ -1,0 +1,125 @@
+---
+title: Getting Started
+description: Getting started guide for Aurora
+---
+
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
+import { ArgTable } from "@/components/ArgTable";
+
+
+## Claude Desktop
+
+<Steps>
+
+### Install 
+[Install the Claude Desktop application here](https://claude.ai/download). Note, the Pro version appears to work much more stably with MCPs.
+
+### Configure Aurora MCP
+
+From an existing Moose project: 
+```
+aurora setup --mcp claude-desktop
+```
+
+From an existing Clickhouse project (chat only): 
+```
+aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp claude-desktop
+```
+
+Create a new project with Claude Desktop MCP preconfigured: 
+```
+aurora init <project-name> <template-name> --mcp claude-desktop
+```
+
+Using MCP.JSON
+
+```json filename="~/Library/Application Support/Claude/claude_desktop_config.json" copy
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
+      }
+    }
+  }
+}
+```
+
+### Adding other toolsets
+
+**Recommended toolsets**
+
+* [Moose Read Tools](../aurora/reference/tool-reference#moose-read-tools): gives you chat access to your Moose project and the data within it (enabled by default)
+* [Remote ClickHouse Tools](../aurora/reference/tool-reference#remote-clickhouse) (read only): gives you chat access to your remote ClickHouse data
+
+### Using the MCP
+
+1. Open the Claude Desktop application (note, you often have to reload the application after adding a new MCP)
+2. If you are using Moose tools, you will need to run your moose dev server
+
+</Steps>
+
+### Warnings / Peculiarities
+
+* You shouldn't use "write"/genetaive tools with Claude Desktop.
+* Every time you add an MCP or change its configuration, you will need to reload the application.
+* If you want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
+
+### Common issues / troubleshooting
+
+* The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
+* The MCP is not running. Check your configuration and then restart the application.
+
+## Other Clients
+
+<FeatureGrid columns={3}>
+    
+    <FeatureCard
+    href="/aurora/getting-started/cursor"
+    title="Cursor"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/windsurf"
+    title="Windsurf"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/other-clients"
+    title="Other Clients"
+    description="
+    "
+    variant="aurora"
+  />
+
+</FeatureGrid>

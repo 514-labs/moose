@@ -1,0 +1,127 @@
+---
+title: Getting Started
+description: Getting started guide for Aurora
+---
+
+import { Callout } from "@/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipButton,
+  Columns,
+  Column,
+  FeatureCard,
+  FeatureGrid,
+  BulletPointsCard,
+  QnABullets,
+  CheckmarkBullets,
+  Icons,
+} from "@/components";
+import { ArgTable } from "@/components/ArgTable";
+
+
+## Cursor
+
+<Steps>
+
+### Install 
+[Install Cursor here](https://www.cursor.com/).
+
+### Configure Aurora MCP
+
+From an existing Moose project: 
+```
+aurora setup --mcp cursor-project
+```
+
+or (if you want to use the MCP globally, which we do not recommend)
+
+```
+aurora setup --mcp cursor-global
+```
+
+From an existing Clickhouse project (chat only): 
+```
+aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp cursor-project
+```
+
+Create a new project with Claude Desktop MCP preconfigured: 
+```
+aurora init <project-name> <template-name> --mcp cursor-project
+```
+
+Using MCP.JSON
+
+```json filename="~/.codeium/windsurf/mcp_config.json" copy
+{
+  "mcpServers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
+      }
+    }
+  }
+}
+```
+
+### Adding other toolsets
+
+All toolsets are available to Cursor MCPs. See [tools reference](../aurora/reference/tool-reference) for more information.
+
+### Using the MCP
+
+1. Open Cursor
+2. You will see a popup saying that an MCP is detected, and can be enabled. Our experience is that this is not always reliable, and the MCP is more stably launched if you go to `cursor > settings > cursor settings > tools and integrations` and enable the MCP there.
+3. If you are using Moose tools, you will need to run your moose dev server with `moose dev`.
+
+</Steps>
+
+### Warnings / Peculiarities
+
+* Every time you add an MCP or change its configuration, you will need to reload the MCP. You can do this by going to `cursor > settings > cursor settings > tools and integrations` and toggling the MCP off and on. If this doesn't work, you can also restart the Cursor application.
+* If you have configured the MCP globally, and want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
+
+### Common issues / troubleshooting
+
+* The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
+* The MCP is not running. Check your configuration and then restart the application.  
+
+## Other Clients
+<FeatureGrid columns={3}>
+  
+  <FeatureCard
+    href="/aurora/getting-started/claude"
+    title="Claude Desktop"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/windsurf"
+    title="Windsurf"
+    description="
+    "
+    variant="aurora"
+  />
+
+    <FeatureCard
+    href="/aurora/getting-started/other-clients"
+    title="Other Clients"
+    description="
+    "
+    variant="aurora"
+  />
+
+</FeatureGrid>

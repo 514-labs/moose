@@ -165,7 +165,7 @@ Generates a plan for an end to end Moose project (from ingest, through transform
 Files created:
 * *Creates a .md file in the current directory with the plan.*
 
-```txt filename="/project/specification.md" copy
+```txt filename="/project/app/specs/specification.md" copy
 # Technical Specification: ASD-B Aircraft Data Ingestion and Visualization
 
 ## 1. Overview
@@ -262,7 +262,7 @@ Creates a Moose Workflow, typically run on a schedule, typically used to ingest 
 Files created:
 * *Creates a script in the project directory with the workflow, and imports it into `index.ts` or `main.py`.*
 
-```ts filename="/project/script.ts" copy
+```ts filename="/project/app/scripts/script.ts" copy
 import { Task, Workflow } from "@514labs/moose-lib";
 
 /**
@@ -296,7 +296,7 @@ export default function() {
 }
 ```
 
-```ts filename="/project/index.ts" copy
+```ts filename="/project/app/index.ts" copy
 export { ingestAircraftTransponderWorkflow } from "./scripts/IngestAircraftTransponder/IngestAircraftTransponder";
 ```
 
@@ -312,7 +312,7 @@ Creates a Moose data model, typically used to define the schema of the data in y
 Files created:
 * *Creates a data model in the project directory, and imports it into `index.ts` or `main.py`.*
 
-```ts filename="/project/<data-model-name>.ts" copy
+```ts filename="/project/app/datamodels/<data-model-name>.ts" copy
 // Define aircraft tracking data interface
 export interface AircraftTrackingData {
   hex: string;           // Unique aircraft identifier
@@ -333,7 +333,7 @@ export const AircraftTrackingDataPipeline = new IngestPipeline<AircraftTrackingD
 );
 ```
 
-```ts filename="/project/index.ts" copy
+```ts filename="/project/app/index.ts" copy
 export * from "./datamodels/models";
 ```
 
@@ -346,7 +346,7 @@ Creates a Moose stream processing function. Runs on a per row basis as data is i
 Files created:
 * *Creates a stream function in the project directory, and imports it into `index.ts` or `main.py`.*
 
-```ts filename="/project/<stream-function-name>.ts" copy
+```ts filename="/project/app/functions/<stream-function-name>.ts" copy
 
 // Transform raw aircraft data to processed format
 function transformAircraft(record: AircraftTrackingData): AircraftTrackingProcessed {
@@ -368,7 +368,7 @@ AircraftTrackingDataPipeline.stream!.addTransform(
 );
 ```
 
-```ts filename="/project/index.ts" copy
+```ts filename="/project/app/index.ts" copy
 export * from "./functions/process_aircraft";
 ```
 
@@ -381,7 +381,7 @@ Creates a Moose materialized view. [Moose documentation](../../moose/building/ma
 Files created:
 * *Creates a materialized view in the project directory, and imports it into `index.ts` or `main.py`.*
 
-```ts filename="/project/<materialized-view-name>.ts" copy
+```ts filename="/project/app/views/<materialized-view-name>.ts" copy
 // Define schema for aggregated aircraft data near San Francisco
 interface AircraftTrackingProcessed_NearbySFSchema {
   hex: string;
@@ -419,7 +419,7 @@ export const AircraftTrackingProcessed_NearbySF = new MaterializedView<AircraftT
 });
 ```
 
-```ts filename="/project/index.ts" copy
+```ts filename="/project/app/index.ts" copy
 export * from './views/AircraftTrackingProcessed_NearbySF';
 ```
 
@@ -432,7 +432,7 @@ Creates an egress API from Moose ClickHouse. Can utilize type safe parameters. [
 Files created:
 * *Creates an egress API in the project directory, and imports it into `index.ts` or `main.py`.*  
 
-```ts filename="/project/<egress-api-name>.ts" copy
+```ts filename="/project/app/apis/<egress-api-name>.ts" copy
 import { ConsumptionApi } from "@514labs/moose-lib";
 import { tags } from "typia";
 
@@ -464,7 +464,7 @@ export const getAircraftWithinRadius = new ConsumptionApi<AircraftRadiusParams>(
 );
 ```
 
-```ts filename="/project/index.ts" copy
+```ts filename="/project/app/index.ts" copy
 export * from './apis/getAircraftWithinRadius';
 ```
 

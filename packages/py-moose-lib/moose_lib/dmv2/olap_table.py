@@ -15,6 +15,7 @@ from moose_lib import ClickHouseEngines
 from ..config.runtime import RuntimeClickHouseConfig
 from .types import TypedMooseResource, T
 from ._registry import _tables
+from ..data_models import Column, is_array_nested_type, is_nested_type, _to_columns
 
 @dataclass
 class InsertOptions:
@@ -458,9 +459,11 @@ class OlapTable(TypedMooseResource, Generic[T]):
         dict_data = []
         for record in validated_data:
             if hasattr(record, 'model_dump'):
-                dict_data.append(record.model_dump())
+                record_dict = record.model_dump()
             else:
-                dict_data.append(record)
+                record_dict = record
+            preprocessed_record = self._map_to_clickhouse_record(record_dict)
+            dict_data.append(preprocessed_record)
         if not dict_data:
             return table_name, b"", settings
         json_lines = self._to_json_each_row(dict_data)
@@ -527,9 +530,11 @@ class OlapTable(TypedMooseResource, Generic[T]):
         records_dict = []
         for record in records:
             if hasattr(record, 'model_dump'):
-                records_dict.append(record.model_dump())
+                record_dict = record.model_dump()
             else:
-                records_dict.append(record)
+                record_dict = record
+            preprocessed_record = self._map_to_clickhouse_record(record_dict)
+            records_dict.append(preprocessed_record)
 
         RETRY_BATCH_SIZE = 10
         for i in range(0, len(records_dict), RETRY_BATCH_SIZE):
@@ -763,3 +768,47 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 strategy,
                 options
             )
+
+    def _map_to_clickhouse_record(self, record: dict, columns: Optional[List[Column]] = None) -> dict:
+        """
+        Recursively transforms a record to match ClickHouse's JSONEachRow requirements.
+
+        - For every Array(Nested(...)) field at any depth, each item is wrapped in its own array and recursively processed.
+        - For every Nested struct (not array), it recurses into the struct.
+        - This ensures compatibility with kafka_clickhouse_sync
+
+        Args:
+            record: The input record to transform (may be deeply nested)
+            columns: The schema columns for this level (defaults to model columns at the top level)
+
+        Returns:
+            The transformed record, ready for ClickHouse JSONEachRow insertion
+        """
+        if columns is None:
+            columns = _to_columns(self._t)
+
+        result = record.copy()
+
+        for col in columns:
+            if col.name not in record:
+                continue
+
+            value = record[col.name]
+            data_type = col.data_type
+
+            if is_array_nested_type(data_type):
+                # For Array(Nested(...)), wrap each item in its own array and recurse
+                if (isinstance(value, list) and
+                    (len(value) == 0 or isinstance(value[0], dict))):
+                    nested_columns = data_type.element_type.columns
+                    result[col.name] = [
+                        [self._map_to_clickhouse_record(item, nested_columns)]
+                        for item in value
+                    ]
+            elif is_nested_type(data_type):
+                # For Nested struct (not array), recurse into it
+                if value and isinstance(value, dict):
+                    result[col.name] = self._map_to_clickhouse_record(value, data_type.columns)
+            # All other types: leave as is
+
+        return result

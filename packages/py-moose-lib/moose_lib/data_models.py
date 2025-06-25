@@ -280,3 +280,16 @@ class StringToEnumMixin:
             return cls(value)  # fallback to default enum validation
 
         return core_schema.with_info_before_validator_function(validate, core_schema.enum_schema(cls, list(cls)))
+
+
+def is_array_nested_type(data_type: DataType) -> bool:
+    """Type guard to check if a data type is Array(Nested(...))."""
+    return (
+        isinstance(data_type, ArrayType) and
+        isinstance(data_type.element_type, Nested)
+    )
+
+
+def is_nested_type(data_type: DataType) -> bool:
+    """Type guard to check if a data type is Nested (not Array)."""
+    return isinstance(data_type, Nested)

@@ -30,24 +30,24 @@ export function ProductBadge({
 
 const variantColors = {
   moose: {
-    background: "purple-950",
-    foreground: "purple-400",
-    stroke: "purple-900",
+    background: "bg-purple-200 dark:bg-purple-950",
+    foreground: "text-purple-800 dark:text-purple-400",
+    stroke: "border-purple-300 dark:border-purple-900",
   },
   boreal: {
-    background: "green-950",
-    foreground: "green-400",
-    stroke: "green-900",
+    background: "bg-green-200 dark:bg-green-950",
+    foreground: "text-green-800 dark:text-green-400",
+    stroke: "border-green-300 dark:border-green-900",
   },
   aurora: {
-    background: "teal-950",
-    foreground: "teal-400",
-    stroke: "teal-900",
+    background: "bg-teal-200 dark:bg-teal-950",
+    foreground: "text-teal-800 dark:text-teal-400",
+    stroke: "border-teal-300 dark:border-teal-900",
   },
   default: {
-    background: "muted",
-    foreground: "muted-foreground",
-    stroke: "border",
+    background: "bg-muted",
+    foreground: "text-muted-foreground",
+    stroke: "border-border",
   },
 };
 
@@ -61,10 +61,10 @@ export function IconBadge({ Icon, label, variant = "moose" }: IconBadgeProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 w-fit",
-        `bg-${variantColors[variant].background}`,
-        `border-${variantColors[variant].stroke}`,
-        `text-${variantColors[variant].foreground}`,
+        "flex items-center gap-3 w-fit border",
+        variantColors[variant].background,
+        variantColors[variant].stroke,
+        variantColors[variant].foreground,
         Icon ? "rounded-full px-4 py-2" : "rounded-lg px-2 py-1",
       )}
     >

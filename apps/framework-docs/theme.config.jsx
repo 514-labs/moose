@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
 import { PathConfig } from "./src/components/ctas";
+import Script from "next/script";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -158,8 +159,11 @@ export default {
           type="image/x-icon"
           sizes="16x16"
         />
-        <script async defer src="https://buttons.github.io/buttons.js"></script>
         <link rel="canonical" href={url} />
+        <Script
+          src="https://buttons.github.io/buttons.js"
+          strategy="afterInteractive"
+        />
       </>
     );
   },
@@ -284,7 +288,7 @@ export default {
     content: () => {
       const year = new Date().getFullYear();
       return (
-        <div className="flex flex-row justify-between w-full">
+        <div className="flex flex-col gap-4 w-full">
           <p className={baseTextStyles.small}>
             MIT | {year} ©{" "}
             <Link

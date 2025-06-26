@@ -1,5 +1,5 @@
 use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
-use crate::infrastructure::processes::kafka_clickhouse_sync::{IPV4_PATTERN, IPV6_PATTERN};
+use crate::infrastructure::processes::kafka_clickhouse_sync::IPV4_PATTERN;
 use itertools::Either;
 use regex::Regex;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
@@ -11,6 +11,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
 use std::marker::PhantomData;
+use std::str::FromStr;
 use std::sync::LazyLock;
 
 struct State {
@@ -271,7 +272,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                 }
             }
             ColumnType::IpV6 => {
-                if IPV6_PATTERN.is_match(v) {
+                if std::net::Ipv6Addr::from_str(v).is_ok() {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {
                     Err(E::custom(format!(
@@ -554,7 +555,7 @@ where
             }
         }
         ColumnType::IpV6 => {
-            if IPV6_PATTERN.is_match(key_str) {
+            if std::net::Ipv6Addr::from_str(key_str).is_ok() {
                 Ok(())
             } else {
                 Err(E::custom(format!(

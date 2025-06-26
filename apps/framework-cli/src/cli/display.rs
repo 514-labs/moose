@@ -305,7 +305,7 @@ pub fn show_table(title: String, headers: Vec<String>, rows: Vec<Vec<String>>) {
         table.add_row(row);
     }
 
-    println!("{}\n{}", title, table);
+    println!("{title}\n{table}");
 }
 
 /// Wrapper for the show_message macro to allow calling from non-macro contexts.
@@ -360,8 +360,7 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
                 infra_added(&after.expanded_display());
             } else {
                 infra_updated(&format!(
-                    "Table {} with column changes: {:?} and order by changes: {:?}",
-                    name, column_changes, order_by_change
+                    "Table {name} with column changes: {column_changes:?} and order by changes: {order_by_change:?}"
                 ));
             }
         }

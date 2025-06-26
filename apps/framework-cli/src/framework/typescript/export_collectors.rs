@@ -60,8 +60,7 @@ async fn collect_exports(
     if !raw_string_stderr.is_empty() {
         Err(ExportCollectorError::Other {
             message: format!(
-                "Error collecting exports in the file {:?}: \n{}",
-                file, raw_string_stderr
+                "Error collecting exports in the file {file:?}: \n{raw_string_stderr}"
             ),
         })
     } else {

@@ -270,7 +270,7 @@ async fn execute_add_table_column(
         column_type_string,
         match after_column {
             None => "FIRST".to_string(),
-            Some(after_col) => format!("AFTER `{}`", after_col),
+            Some(after_col) => format!("AFTER `{after_col}`"),
         }
     );
     log::debug!("Adding column: {}", add_column_query);
@@ -349,7 +349,7 @@ async fn execute_create_view(
             let create_view_query = create_view_query(
                 db_name,
                 &view.id(),
-                &format!("SELECT * FROM `{}`.`{}`", db_name, source_table_name),
+                &format!("SELECT * FROM `{db_name}`.`{source_table_name}`"),
             )?;
             run_query(&create_view_query, client).await?;
         }
@@ -754,13 +754,12 @@ impl OlapOperations for ConfiguredDBClient {
                 engine,
                 create_table_query
             FROM system.tables 
-            WHERE database = '{}' 
+            WHERE database = '{db_name}' 
             AND engine != 'View' 
             AND engine != 'MaterializedView'
             AND NOT name LIKE '.%'
             ORDER BY name
-            "#,
-            db_name
+            "#
         );
         debug!("Executing table query: {}", query);
 
@@ -798,11 +797,10 @@ impl OlapOperations for ConfiguredDBClient {
                     is_in_primary_key,
                     is_in_sorting_key
                 FROM system.columns
-                WHERE database = '{}'
-                AND table = '{}'
+                WHERE database = '{db_name}'
+                AND table = '{table_name}'
                 ORDER BY position
-                "#,
-                db_name, table_name
+                "#
             );
             debug!(
                 "Executing columns query for table {}: {}",
@@ -991,16 +989,16 @@ mod tests {
         // Test invalid formats - should use default version
         let (base_name, version) = extract_version_from_table_name("TableWithoutVersion");
         assert_eq!(base_name, "TableWithoutVersion");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
 
         let (base_name, version) = extract_version_from_table_name("Table_WithoutNumericVersion");
         assert_eq!(base_name, "Table_WithoutNumericVersion");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
 
         // Test edge cases
         let (base_name, version) = extract_version_from_table_name("");
         assert_eq!(base_name, "");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
 
         let (base_name, version) = extract_version_from_table_name("_0_0");
         assert_eq!(base_name, "");
@@ -1022,16 +1020,16 @@ mod tests {
         // Test materialized views
         let (base_name, version) = extract_version_from_table_name("BarAggregated_MV");
         assert_eq!(base_name, "BarAggregated_MV");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
 
         // Test non-versioned tables
         let (base_name, version) = extract_version_from_table_name("Foo");
         assert_eq!(base_name, "Foo");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
 
         let (base_name, version) = extract_version_from_table_name("Bar");
         assert_eq!(base_name, "Bar");
-        assert_eq!(version.is_none(), true);
+        assert!(version.is_none());
     }
 
     #[test]

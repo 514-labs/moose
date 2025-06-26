@@ -92,7 +92,7 @@ mod tests {
         config.save(config_path.clone()).unwrap();
 
         let content = std::fs::read_to_string(config_path).unwrap();
-        println!("Generated TOML content:\n{}", content); // Debug output
+        println!("Generated TOML content:\n{content}"); // Debug output
 
         // Check the raw content first
         assert!(!content.is_empty(), "Config file should not be empty");
@@ -107,8 +107,7 @@ mod tests {
         // Now check the string content with single quotes
         assert!(
             content.contains("name = 'daily-etl'"),
-            "Expected name = 'daily-etl' in content:\n{}",
-            content
+            "Expected name = 'daily-etl' in content:\n{content}"
         );
     }
 

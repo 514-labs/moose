@@ -307,7 +307,7 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
                 component_schemas.insert(
                     name.clone(),
                     serde_json::from_value(schema_def.clone())
-                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {name}")),
                 );
             }
         }
@@ -328,7 +328,7 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
                 component_schemas.insert(
                     name.clone(),
                     serde_json::from_value(schema_def.clone())
-                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {}", name)),
+                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {name}")),
                 );
             }
         }
@@ -371,7 +371,7 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
                 build_schema(&fields.columns, component_name.clone(), schemas);
                 Property {
                     property_type: None,
-                    ref_: Some(format!("#/components/schemas/{}", component_name)),
+                    ref_: Some(format!("#/components/schemas/{component_name}")),
                     example: None,
                     items: None,
                 }
@@ -385,7 +385,7 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
                     build_schema(&fields.columns, component_name.clone(), schemas);
                     PropertyItem {
                         type_: None,
-                        ref_: Some(format!("#/components/schemas/{}", component_name)),
+                        ref_: Some(format!("#/components/schemas/{component_name}")),
                     }
                 } else {
                     let (property_type, _) = map_column_type(column_type);

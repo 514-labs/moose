@@ -142,7 +142,7 @@ fn test_workflow_init_basic() {
         .output()
         .unwrap();
 
-    println!("Output: {:?}", output);
+    println!("Output: {output:?}");
 
     // Initialize the workflow
     let mut workflow_command = Command::cargo_bin("moose-cli").unwrap();
@@ -154,7 +154,7 @@ fn test_workflow_init_basic() {
         .output()
         .unwrap();
 
-    println!("Output: {:?}", output);
+    println!("Output: {output:?}");
 
     // Check for success and workflow directory creation
     assert!(output.status.success(), "Workflow init failed");
@@ -236,14 +236,13 @@ fn test_workflow_init_with_steps() {
 
     for step_file in step_files.iter() {
         let file_path = workflow_dir.join(step_file);
-        assert!(file_path.exists(), "Step file {} should exist", step_file);
+        assert!(file_path.exists(), "Step file {step_file} should exist");
 
         // Check file content includes basic template
         let content = std::fs::read_to_string(&file_path).unwrap();
         assert!(
             content.contains("@task()"),
-            "Step file {} should contain @task() decorator",
-            step_file
+            "Step file {step_file} should contain @task() decorator"
         );
     }
 
@@ -435,13 +434,12 @@ fn test_workflow_init_with_multiple_step_flags() {
     let step_files = ["1.extract.py", "2.transform.py", "3.load.py"];
     for step_file in step_files.iter() {
         let file_path = workflow_dir.join(step_file);
-        assert!(file_path.exists(), "Step file {} should exist", step_file);
+        assert!(file_path.exists(), "Step file {step_file} should exist");
 
         let content = std::fs::read_to_string(&file_path).unwrap();
         assert!(
             content.contains("@task()"),
-            "Step file {} should contain @task() decorator",
-            step_file
+            "Step file {step_file} should contain @task() decorator"
         );
     }
 

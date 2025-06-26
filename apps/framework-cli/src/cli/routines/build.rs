@@ -427,7 +427,7 @@ fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
     info!("Running moose check with --write-infra-map");
 
     let mut cmd = Command::new(std::env::current_exe().map_err(|e| {
-        BuildError::MooseCheckFailed(format!("Failed to get current executable path: {}", e))
+        BuildError::MooseCheckFailed(format!("Failed to get current executable path: {e}"))
     })?);
 
     cmd.current_dir(package_dir);
@@ -515,7 +515,7 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
 
     let project_name = project.name();
     let date = Local::now().format("%Y-%m-%d");
-    let archive_name = format!("{}-{}.zip", project_name, date);
+    let archive_name = format!("{project_name}-{date}.zip");
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         BuildError::ProjectFile(err)

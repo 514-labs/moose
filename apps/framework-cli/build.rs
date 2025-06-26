@@ -5,7 +5,7 @@ fn main() -> Result<()> {
 
     // Pass PostHog API key from environment variable at build time
     if let Ok(posthog_api_key) = std::env::var("POSTHOG_API_KEY") {
-        println!("cargo:rustc-env=POSTHOG_API_KEY={}", posthog_api_key);
+        println!("cargo:rustc-env=POSTHOG_API_KEY={posthog_api_key}");
     }
     println!("cargo:rerun-if-env-changed=POSTHOG_API_KEY");
 

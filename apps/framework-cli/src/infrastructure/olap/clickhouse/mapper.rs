@@ -207,7 +207,7 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
     let clickhouse_engine = match &table.engine {
         Some(engine) => ClickhouseEngine::try_from(engine.as_str()).map_err(|e| {
             ClickhouseError::InvalidParameters {
-                message: format!("engine: {}", e),
+                message: format!("engine: {e}"),
             }
         })?,
         None if table.deduplicate => ClickhouseEngine::ReplacingMergeTree,

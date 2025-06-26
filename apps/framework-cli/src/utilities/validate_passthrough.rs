@@ -98,7 +98,7 @@ where
     {
         write_to.serialize_value(&v).map_err(E::custom)
     } else {
-        Err(E::custom(format!("Invalid enum value: {}", v)))
+        Err(E::custom(format!("Invalid enum value: {v}")))
     }
 }
 
@@ -164,7 +164,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             | ColumnType::Bytes => formatter.write_str("a value matching the column type"),
             ColumnType::Uuid => formatter.write_str("a UUID"),
             ColumnType::Nullable(inner) => {
-                write!(formatter, "a nullable value of type {}", inner)
+                write!(formatter, "a nullable value of type {inner}")
             }
             ColumnType::NamedTuple(fields) => {
                 write!(formatter, "an object with fields: ")?;
@@ -172,7 +172,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     if i > 0 {
                         write!(formatter, ", ")?;
                     }
-                    write!(formatter, "{}: {}", name, field_type)?;
+                    write!(formatter, "{name}: {field_type}")?;
                 }
                 Ok(())
             }
@@ -182,8 +182,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             } => {
                 write!(
                     formatter,
-                    "a map with key type {} and value type {}",
-                    key_type, value_type
+                    "a map with key type {key_type} and value type {value_type}"
                 )
             }
         }?;
@@ -817,7 +816,7 @@ fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> Stri
             path.push_str(field_name);
         }
         Either::Right(index) => {
-            write!(path, "{}", index).unwrap();
+            write!(path, "{index}").unwrap();
         }
     }
 
@@ -928,7 +927,7 @@ mod tests {
         let result = serde_json::Deserializer::from_str(json)
             .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
-        println!("{:?}", result);
+        println!("{result:?}");
         assert!(result
             .err()
             .unwrap()
@@ -1106,7 +1105,7 @@ mod tests {
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
             .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
-        println!("{:?}", invalid_result);
+        println!("{invalid_result:?}");
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()
@@ -1228,10 +1227,8 @@ mod tests {
             .unwrap();
 
         // Visitor should've injected the jwt claims
-        let expected_valid = format!(
-            r#"{{"top_level_string":"hello","jwt_object":{}}}"#,
-            jwt_claims.to_string()
-        );
+        let expected_valid =
+            format!(r#"{{"top_level_string":"hello","jwt_object":{jwt_claims}}}"#,);
 
         assert_eq!(
             String::from_utf8(valid_result),
@@ -1290,7 +1287,7 @@ mod tests {
 
         assert!(invalid_result.is_err());
         let error = invalid_result.unwrap_err();
-        println!("{}", error);
+        println!("{error}");
         assert!(error.to_string().contains(r#"invalid type: string "not_a_number", expected an integer value at user_scores.alice at line"#));
     }
 

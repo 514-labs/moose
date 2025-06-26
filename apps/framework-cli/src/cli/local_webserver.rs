@@ -150,7 +150,7 @@ impl LocalWebserverConfig {
             if trimmed.is_empty() {
                 prefix.to_string()
             } else {
-                format!("/{}", trimmed)
+                format!("/{trimmed}")
             }
         })
     }
@@ -194,7 +194,7 @@ async fn get_consumption_api_res(
         req.uri().path().strip_prefix("/consumption").unwrap_or(""),
         req.uri()
             .query()
-            .map_or("".to_string(), |q| format!("?{}", q))
+            .map_or("".to_string(), |q| format!("?{q}"))
     );
 
     debug!("Creating client for route: {:?}", url);
@@ -431,8 +431,7 @@ async fn admin_reality_check_route(
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from(format!(
-                    "Failed to get infrastructure map: {}",
-                    e
+                    "Failed to get infrastructure map: {e}"
                 ))))
         }
     };
@@ -453,8 +452,7 @@ async fn admin_reality_check_route(
         Err(e) => Ok(Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(Full::new(Bytes::from(format!(
-                "{{\"status\": \"error\", \"message\": \"{}\"}}",
-                e
+                "{{\"status\": \"error\", \"message\": \"{e}\"}}"
             ))))?),
     }
 }
@@ -470,7 +468,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
             };
             show_message!(cli_message.message_type, message);
         }
-        Err(e) => println!("Received unknown message: {:?}", e),
+        Err(e) => println!("Received unknown message: {e:?}"),
     }
 
     Response::builder()
@@ -560,13 +558,13 @@ fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
         MessageType::Error,
         Message {
             action: "ERROR".to_string(),
-            details: format!("Invalid JSON: {:?}", e),
+            details: format!("Invalid JSON: {e:?}"),
         }
     );
 
     Response::builder()
         .status(StatusCode::BAD_REQUEST)
-        .body(Full::new(Bytes::from(format!("Invalid JSON: {}", e))))
+        .body(Full::new(Bytes::from(format!("Invalid JSON: {e}"))))
         .unwrap()
 }
 
@@ -724,7 +722,7 @@ fn get_env_var(s: &str) -> Option<String> {
     match env::var(s) {
         Ok(env_var) => Some(env_var),
         Err(VarError::NotPresent) => None,
-        Err(VarError::NotUnicode(_)) => panic!("Invalid key for {}, NotUnicode", s),
+        Err(VarError::NotUnicode(_)) => panic!("Invalid key for {s}, NotUnicode"),
     }
 }
 
@@ -1193,7 +1191,7 @@ impl Webserver {
                                 // This is not namespaced
                                 let topic =
                                     infra_map.find_topic_by_id(&target_topic_id).unwrap_or_else(
-                                        || panic!("Topic not found: {}", target_topic_id),
+                                        || panic!("Topic not found: {target_topic_id}"),
                                     );
 
                                 // This is now a namespaced topic
@@ -1416,10 +1414,10 @@ impl Webserver {
 fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
     match e.kind() {
         ErrorKind::AddrInUse => {
-            eprintln!("Port {} already in use.", port);
+            eprintln!("Port {port} already in use.");
             std::process::exit(1)
         }
-        _ => panic!("Failed to listen to port {}: {:?}", port, e),
+        _ => panic!("Failed to listen to port {port}: {e:?}"),
     }
 }
 async fn shutdown(
@@ -1460,7 +1458,7 @@ async fn shutdown(
                 MessageType::Error,
                 Message {
                     action: "Shutdown".to_string(),
-                    details: format!("Failed to stop all processes: {}", e),
+                    details: format!("Failed to stop all processes: {e}"),
                 },
             );
         }
@@ -1779,8 +1777,7 @@ async fn store_updated_inframap(
     if let Err(e) = infra_map.store_in_redis(&redis_client).await {
         debug!("Failed to store inframap in Redis: {}", e);
         return Err(IntegrationError::InternalError(format!(
-            "Failed to store updated inframap in Redis: {}",
-            e
+            "Failed to store updated inframap in Redis: {e}"
         )));
     }
     debug!("Successfully stored inframap in Redis");
@@ -1832,7 +1829,7 @@ async fn admin_integrate_changes_route(
             }
             Err(e) => {
                 debug!("Failed to parse request body: {}", e);
-                return IntegrationError::BadRequest(format!("Invalid request body: {}", e))
+                return IntegrationError::BadRequest(format!("Invalid request body: {e}"))
                     .to_response();
             }
         };
@@ -1848,8 +1845,7 @@ async fn admin_integrate_changes_route(
         Ok(None) => InfrastructureMap::default(),
         Err(e) => {
             return IntegrationError::InternalError(format!(
-                "Failed to load infrastructure map: {}",
-                e
+                "Failed to load infrastructure map: {e}"
             ))
             .to_response();
         }
@@ -1858,7 +1854,7 @@ async fn admin_integrate_changes_route(
     let discrepancies = match reality_checker.check_reality(project, &infra_map).await {
         Ok(d) => d,
         Err(e) => {
-            return IntegrationError::InternalError(format!("Failed to check reality: {}", e))
+            return IntegrationError::InternalError(format!("Failed to check reality: {e}"))
                 .to_response();
         }
     };
@@ -1879,8 +1875,7 @@ async fn admin_integrate_changes_route(
         Ok(_) => (),
         Err(e) => {
             return IntegrationError::InternalError(format!(
-                "Failed to store updated inframap: {}",
-                e
+                "Failed to store updated inframap: {e}"
             ))
             .to_response();
         }
@@ -1899,7 +1894,7 @@ async fn admin_integrate_changes_route(
             .status(StatusCode::OK)
             .header("Content-Type", "application/json")
             .body(Full::new(Bytes::from(json))),
-        Err(e) => IntegrationError::InternalError(format!("Failed to serialize response: {}", e))
+        Err(e) => IntegrationError::InternalError(format!("Failed to serialize response: {e}"))
             .to_response(),
     }
 }
@@ -1952,8 +1947,7 @@ async fn admin_plan_route(
             return Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .body(Full::new(Bytes::from(format!(
-                    "Invalid request format: {}",
-                    e
+                    "Invalid request format: {e}"
                 ))))
                 .unwrap());
         }

@@ -1118,7 +1118,7 @@ mod tests {
                         ClickHouseValue::ClickhouseInt(_) => {
                             // This is expected for numeric keys
                         }
-                        _ => panic!("Expected numeric key, got {:?}", key),
+                        _ => panic!("Expected numeric key, got {key:?}"),
                     }
                     match value {
                         ClickHouseValue::String(_) => {

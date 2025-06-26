@@ -229,7 +229,7 @@ is_moose_developer=false
                     MessageType::Error,
                     Message {
                         action: "Init".to_string(),
-                        details: format!("Error parsing config file: {:?}", e),
+                        details: format!("Error parsing config file: {e:?}"),
                     }
                 );
             }

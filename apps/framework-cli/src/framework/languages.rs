@@ -32,7 +32,7 @@ impl SupportedLanguages {
         match language.as_str() {
             "ts" => SupportedLanguages::Typescript,
             "python" => SupportedLanguages::Python,
-            _ => panic!("Unsupported language: {}", language),
+            _ => panic!("Unsupported language: {language}"),
         }
     }
 }
@@ -55,7 +55,7 @@ impl std::str::FromStr for SupportedLanguages {
         match s {
             "ts" => Ok(SupportedLanguages::Typescript),
             "python" => Ok(SupportedLanguages::Python),
-            _ => Err(format!("{} is not a supported language", s)),
+            _ => Err(format!("{s} is not a supported language")),
         }
     }
 }

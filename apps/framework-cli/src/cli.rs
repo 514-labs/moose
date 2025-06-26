@@ -75,7 +75,7 @@ fn load_project() -> Result<Project, RoutineFailure> {
         }),
         _ => RoutineFailure::error(Message {
             action: "Loading".to_string(),
-            details: format!("Please validate the project's configs: {:?}", e),
+            details: format!("Please validate the project's configs: {e:?}"),
         }),
     })
 }
@@ -87,8 +87,7 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
         return Err(RoutineFailure::error(Message {
             action: "Init".to_string(),
             details: format!(
-                "Project name should match the following: {}",
-                PROJECT_NAME_ALLOW_PATTERN
+                "Project name should match the following: {PROJECT_NAME_ALLOW_PATTERN}"
             ),
         }));
     }
@@ -123,7 +122,7 @@ pub async fn top_command_handler(
                     Some(lang) => {
                         return Err(RoutineFailure::error(Message::new(
                             "Unknown".to_string(),
-                            format!("language {}", lang),
+                            format!("language {lang}"),
                         )))
                     }
                 },
@@ -153,7 +152,7 @@ pub async fn top_command_handler(
 
             Ok(RoutineSuccess::highlight(Message::new(
                 "Get Started".to_string(),
-                format!("\n\n{}", post_install_message),
+                format!("\n\n{post_install_message}"),
             )))
         }
         // This command is used to check the project for errors that are not related to runtime
@@ -180,7 +179,7 @@ pub async fn top_command_handler(
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "System".to_string(),
-                        details: format!("Failed to validate system requirements: {:?}", e),
+                        details: format!("Failed to validate system requirements: {e:?}"),
                     })
                 })?;
 
@@ -191,7 +190,7 @@ pub async fn top_command_handler(
                     .map_err(|e| {
                         RoutineFailure::error(Message {
                             action: "Build".to_string(),
-                            details: format!("Failed to load InfrastructureMap: {:?}", e),
+                            details: format!("Failed to load InfrastructureMap: {e:?}"),
                         })
                     })?
             } else {
@@ -199,7 +198,7 @@ pub async fn top_command_handler(
                 let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Build".to_string(),
-                        details: format!("Failed to load Primitives: {:?}", e),
+                        details: format!("Failed to load Primitives: {e:?}"),
                     })
                 })?;
 
@@ -283,7 +282,7 @@ pub async fn top_command_handler(
                         build_package(&project_arc).map_err(|e| {
                             RoutineFailure::error(Message {
                                 action: "Build".to_string(),
-                                details: format!("Failed to build package: {:?}", e),
+                                details: format!("Failed to build package: {e:?}"),
                             })
                         })
                     },
@@ -320,7 +319,7 @@ pub async fn top_command_handler(
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Dev".to_string(),
-                    details: format!("Failed to setup redis client: {:?}", e),
+                    details: format!("Failed to setup redis client: {e:?}"),
                 })
             })?;
 
@@ -350,7 +349,7 @@ pub async fn top_command_handler(
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Dev".to_string(),
-                        details: format!("Failed to start development mode: {:?}", e),
+                        details: format!("Failed to start development mode: {e:?}"),
                     })
                 })?;
 
@@ -403,7 +402,7 @@ pub async fn top_command_handler(
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Prod".to_string(),
-                    details: format!("Failed to setup redis client: {:?}", e),
+                    details: format!("Failed to setup redis client: {e:?}"),
                 })
             })?;
 
@@ -440,7 +439,7 @@ pub async fn top_command_handler(
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Prod".to_string(),
-                        details: format!("Failed to start production mode: {:?}", e),
+                        details: format!("Failed to start production mode: {e:?}"),
                     })
                 })?;
 
@@ -469,7 +468,7 @@ pub async fn top_command_handler(
             result.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Plan".to_string(),
-                    details: format!("Failed to plan changes: {:?}", e),
+                    details: format!("Failed to plan changes: {e:?}"),
                 })
             })?;
 

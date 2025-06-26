@@ -64,7 +64,7 @@ impl DataModel {
     }
 
     pub fn model_id(name: &str, version: &str) -> String {
-        format!("{}_{}", name, version)
+        format!("{name}_{version}")
     }
 }
 

@@ -208,17 +208,17 @@ impl fmt::Display for ColumnType {
             ColumnType::BigInt => write!(f, "BigInt"),
             ColumnType::Float(float_type) => float_type.fmt(f),
             ColumnType::Decimal { precision, scale } => {
-                write!(f, "Decimal({}, {})", precision, scale)
+                write!(f, "Decimal({precision}, {scale})")
             }
             ColumnType::DateTime { precision: None } => write!(f, "DateTime"),
             ColumnType::DateTime {
                 precision: Some(precision),
-            } => write!(f, "DateTime({})", precision),
+            } => write!(f, "DateTime({precision})"),
             ColumnType::Enum(e) => write!(f, "Enum<{}>", e.name),
             ColumnType::Array {
                 element_type: inner,
                 element_nullable: _,
-            } => write!(f, "Array<{}>", inner),
+            } => write!(f, "Array<{inner}>"),
             ColumnType::Nested(n) => write!(f, "Nested<{}>", n.name),
             ColumnType::Json => write!(f, "Json"),
             ColumnType::Bytes => write!(f, "Bytes"),
@@ -227,18 +227,18 @@ impl fmt::Display for ColumnType {
             ColumnType::Date16 => write!(f, "Date16"),
             ColumnType::IpV4 => write!(f, "IPv4"),
             ColumnType::IpV6 => write!(f, "IPv6"),
-            ColumnType::Nullable(inner) => write!(f, "Nullable<{}>", inner),
+            ColumnType::Nullable(inner) => write!(f, "Nullable<{inner}>"),
             ColumnType::NamedTuple(fields) => {
                 write!(f, "NamedTuple<")?;
                 fields
                     .iter()
-                    .try_for_each(|(name, t)| write!(f, "{}: {}", name, t))?;
+                    .try_for_each(|(name, t)| write!(f, "{name}: {t}"))?;
                 write!(f, ">")
             }
             ColumnType::Map {
                 key_type,
                 value_type,
-            } => write!(f, "Map<{}, {}>", key_type, value_type),
+            } => write!(f, "Map<{key_type}, {value_type}>"),
         }
     }
 }
@@ -248,16 +248,16 @@ impl Serialize for ColumnType {
         match self {
             ColumnType::String => serializer.serialize_str("String"),
             ColumnType::Boolean => serializer.serialize_str("Boolean"),
-            ColumnType::Int(int_type) => serializer.serialize_str(&format!("{:?}", int_type)),
+            ColumnType::Int(int_type) => serializer.serialize_str(&format!("{int_type:?}")),
             ColumnType::BigInt => serializer.serialize_str("BigInt"),
-            ColumnType::Float(float_type) => serializer.serialize_str(&format!("{:?}", float_type)),
+            ColumnType::Float(float_type) => serializer.serialize_str(&format!("{float_type:?}")),
             ColumnType::Decimal { precision, scale } => {
-                serializer.serialize_str(&format!("Decimal({}, {})", precision, scale))
+                serializer.serialize_str(&format!("Decimal({precision}, {scale})"))
             }
             ColumnType::DateTime { precision: None } => serializer.serialize_str("DateTime"),
             ColumnType::DateTime {
                 precision: Some(precision),
-            } => serializer.serialize_str(&format!("DateTime({})", precision)),
+            } => serializer.serialize_str(&format!("DateTime({precision})")),
             ColumnType::Enum(data_enum) => {
                 let mut state = serializer.serialize_struct("Enum", 2)?;
                 state.serialize_field("name", &data_enum.name)?;
@@ -418,7 +418,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 .unwrap()
                 .strip_suffix(")")
                 .and_then(|p| p.trim().parse::<u8>().ok())
-                .ok_or_else(|| E::custom(format!("Invalid DateTime precision: {}", v)))?;
+                .ok_or_else(|| E::custom(format!("Invalid DateTime precision: {v}")))?;
             ColumnType::DateTime {
                 precision: Some(precision),
             }
@@ -437,7 +437,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         } else if v == "IPv6" {
             ColumnType::IpV6
         } else {
-            return Err(E::custom(format!("Unknown column type {}.", v)));
+            return Err(E::custom(format!("Unknown column type {v}.")));
         };
         Ok(t)
     }
@@ -460,7 +460,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" || key == "element_type" {
                 element_type = Some(map.next_value::<ColumnType>().map_err(|e| {
-                    A::Error::custom(format!("Array inner type deserialization error {}.", e))
+                    A::Error::custom(format!("Array inner type deserialization error {e}."))
                 })?)
             } else if key == "elementNullable" || key == "element_nullable" {
                 element_nullable = Some(map.next_value::<bool>()?)
@@ -478,11 +478,11 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 nullable_inner = Some(map.next_value::<ColumnType>()?)
             } else if key == "keyType" || key == "key_type" {
                 key_type = Some(map.next_value::<ColumnType>().map_err(|e| {
-                    A::Error::custom(format!("Map key type deserialization error {}.", e))
+                    A::Error::custom(format!("Map key type deserialization error {e}."))
                 })?)
             } else if key == "valueType" || key == "value_type" {
                 value_type = Some(map.next_value::<ColumnType>().map_err(|e| {
-                    A::Error::custom(format!("Map value type deserialization error {}.", e))
+                    A::Error::custom(format!("Map value type deserialization error {e}."))
                 })?)
             } else {
                 map.next_value::<IgnoredAny>()?;
@@ -866,7 +866,7 @@ mod tests {
 
     fn serialize_and_deserialize(t: &ColumnType) {
         let json = serde_json::to_string(t).unwrap();
-        println!("JSON for {} is {}", t, json);
+        println!("JSON for {t} is {json}");
         let read: ColumnType = serde_json::from_str(&json).unwrap();
         assert_eq!(&read, t);
     }
@@ -934,7 +934,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();
-        println!("Serialized JSON: {}", json);
+        println!("Serialized JSON: {json}");
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
     }

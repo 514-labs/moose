@@ -629,7 +629,7 @@ impl RedisClient {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                let key = format!("{}::{}::presence", key_prefix, instance_id);
+                let key = format!("{key_prefix}::{instance_id}::presence");
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())

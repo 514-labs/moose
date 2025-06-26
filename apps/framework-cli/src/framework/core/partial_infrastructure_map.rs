@@ -288,13 +288,11 @@ impl PartialInfrastructureMap {
                     "pip install ."
                 } else {
                     return Err(DmV2LoadingError::Other {
-                        message: format!("Unsupported file extension in: {}", user_code_file_name),
+                        message: format!("Unsupported file extension in: {user_code_file_name}"),
                     });
                 };
 
-                format!("Missing dependencies detected. Please run '{}' and try again.\nOriginal error: {}", 
-                    install_command,
-                    raw_string_stderr
+                format!("Missing dependencies detected. Please run '{install_command}' and try again.\nOriginal error: {raw_string_stderr}"
                 )
             } else {
                 raw_string_stderr
@@ -463,7 +461,7 @@ impl PartialInfrastructureMap {
                 WriteToKind::Stream => partial_api.write_to.name.clone(),
             };
 
-            let not_found = &format!("Target topic '{}' not found", target_topic_name);
+            let not_found = &format!("Target topic '{target_topic_name}' not found");
             let target_topic = topics
                 .values()
                 .find(|topic| topic.name == target_topic_name)
@@ -577,7 +575,7 @@ impl PartialInfrastructureMap {
 
         for (topic_name, partial_topic) in &self.topics {
             if let Some(target_table_name) = &partial_topic.target_table {
-                let topic_not_found = &format!("Source topic '{}' not found", topic_name);
+                let topic_not_found = &format!("Source topic '{topic_name}' not found");
                 let source_topic = topics
                     .values()
                     .find(|topic| &topic.name == topic_name)
@@ -589,8 +587,7 @@ impl PartialInfrastructureMap {
                     .map(|v_str| Version::from_string(v_str.clone()));
 
                 let table_not_found = &format!(
-                    "Target table '{}' version '{:?}' not found",
-                    target_table_name, target_table_version
+                    "Target table '{target_table_name}' version '{target_table_version:?}' not found"
                 );
 
                 let target_table = tables
@@ -638,7 +635,7 @@ impl PartialInfrastructureMap {
                 source_partial_topic, topic_name
             );
 
-            let not_found = &format!("Source topic '{}' not found", topic_name);
+            let not_found = &format!("Source topic '{topic_name}' not found");
             let source_topic = topics
                 .values()
                 .find(|topic| &topic.name == topic_name)

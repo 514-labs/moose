@@ -106,7 +106,7 @@ pub async fn import_csv_file(
         if status != 200 {
             let body = match res.bytes().await {
                 Ok(bytes) => from_utf8_lossy(&bytes).to_string(),
-                Err(e) => format!("Getting body failed: {}", e),
+                Err(e) => format!("Getting body failed: {e}"),
             };
             bail!("Import failure with status {}: {}", status, body)
         }

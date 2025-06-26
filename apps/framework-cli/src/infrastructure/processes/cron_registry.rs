@@ -234,7 +234,7 @@ impl CronRegistry {
 
                     // Calculate next run using the cron expression
                     let schedule = Schedule::from_str(&cron_spec_clone)
-                        .map_err(|e| format!("Invalid cron expression: {}", e))?;
+                        .map_err(|e| format!("Invalid cron expression: {e}"))?;
                     let next_run =
                         schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
 

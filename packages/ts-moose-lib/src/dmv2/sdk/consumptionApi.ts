@@ -36,7 +36,6 @@ export interface EgressConfig<T> {
  * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
  */
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
-  metadata?: { description?: string };
   /** @internal The handler function that processes requests and generates responses. */
   _handler: ConsumptionHandler<T, R>;
   /** @internal The JSON schema definition for the response type R. */
@@ -46,7 +45,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
    * Creates a new ConsumptionApi instance.
    * @param name The name of the consumption API endpoint.
    * @param handler The function to execute when the endpoint is called. It receives validated query parameters and utility functions.
-   * @param config Optional configuration for the consumption API.
+   * @param config Optional configuration for the consumption API. The metadata property is always present and includes stackTrace.
    */
   constructor(name: string, handler: ConsumptionHandler<T, R>, config?: {});
 
@@ -69,7 +68,6 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
     responseSchema?: IJsonSchemaCollection.IV3_1,
   ) {
     super(name, config ?? {}, schema, columns);
-    this.metadata = config?.metadata;
     this._handler = handler;
     this.responseSchema = responseSchema ?? {
       version: "3.1",

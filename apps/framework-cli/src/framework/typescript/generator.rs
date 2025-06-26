@@ -148,7 +148,7 @@ impl fmt::Display for InterfaceFieldType {
             InterfaceFieldType::Number => write!(f, "number"),
             InterfaceFieldType::Boolean => write!(f, "boolean"),
             InterfaceFieldType::Date => write!(f, "Date"),
-            InterfaceFieldType::Array(inner_type) => write!(f, "{}[]", inner_type),
+            InterfaceFieldType::Array(inner_type) => write!(f, "{inner_type}[]"),
             InterfaceFieldType::Object(inner_type) => write!(f, "{}", inner_type.name),
             InterfaceFieldType::Enum(e) => write!(f, "{}", e.name),
         }

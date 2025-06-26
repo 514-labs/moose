@@ -91,7 +91,7 @@ impl FunctionProcess {
         };
 
         match &self.version {
-            Some(version) => format!("{}_{}", base, version),
+            Some(version) => format!("{base}_{version}"),
             None => base,
         }
     }

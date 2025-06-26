@@ -132,11 +132,11 @@ async fn watch(
     let receiver_ack = tx.clone();
 
     let mut watcher = RecommendedWatcher::new(EventListener { tx }, notify::Config::default())
-        .map_err(|e| Error::other(format!("Failed to create file watcher: {}", e)))?;
+        .map_err(|e| Error::other(format!("Failed to create file watcher: {e}")))?;
 
     watcher
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
-        .map_err(|e| Error::other(format!("Failed to watch file: {}", e)))?;
+        .map_err(|e| Error::other(format!("Failed to watch file: {e}")))?;
 
     log::debug!("Watcher setup complete, entering main loop");
 
@@ -197,8 +197,7 @@ async fn watch(
                                                 Message {
                                                     action: "\nFailed".to_string(),
                                                     details: format!(
-                                                        "Executing changes to the infrastructure failed:\n{:?}",
-                                                        error
+                                                        "Executing changes to the infrastructure failed:\n{error:?}"
                                                     ),
                                                 }
                                             });
@@ -211,8 +210,7 @@ async fn watch(
                                         Message {
                                             action: "\nFailed".to_string(),
                                             details: format!(
-                                                "Planning changes to the infrastructure failed:\n{:?}",
-                                                error
+                                                "Planning changes to the infrastructure failed:\n{error:?}"
                                             ),
                                         }
                                     });
@@ -227,7 +225,7 @@ async fn watch(
                         show_message!(MessageType::Error, {
                             Message {
                                 action: "Failed".to_string(),
-                                details: format!("Processing Infrastructure changes failed:\n{:?}", e),
+                                details: format!("Processing Infrastructure changes failed:\n{e:?}"),
                             }
                         });
                     });

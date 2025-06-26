@@ -52,7 +52,7 @@ fn templates_download_dir() -> PathBuf {
 fn template_file_archive(template_name: &str, template_version: &str) -> PathBuf {
     let mut path = templates_download_dir();
     path.push(template_version);
-    path.push(format!("{}.tgz", template_name));
+    path.push(format!("{template_name}.tgz"));
     path
 }
 
@@ -66,7 +66,7 @@ async fn download_from_local(template_name: &str) -> anyhow::Result<()> {
         .parent()
         .unwrap()
         .join(LOCAL_TEMPLATE_DIR)
-        .join(format!("{}.tgz", template_name));
+        .join(format!("{template_name}.tgz"));
 
     if !local_template_path.exists() {
         anyhow::bail!("Local template not found. Did you run scripts/package-templates.js?")
@@ -80,7 +80,7 @@ async fn download_from_local(template_name: &str) -> anyhow::Result<()> {
         std::fs::create_dir_all(&dest)?;
     }
 
-    dest.push(format!("{}.tgz", template_name));
+    dest.push(format!("{template_name}.tgz"));
     std::fs::copy(local_template_path, dest)?;
 
     Ok(())
@@ -93,8 +93,7 @@ async fn download(template_name: &str, template_version: &str) -> anyhow::Result
     }
 
     let res = reqwest::get(format!(
-        "{}/{}/{}.tgz",
-        TEMPLATE_REGISTRY_URL, template_version, template_name
+        "{TEMPLATE_REGISTRY_URL}/{template_version}/{template_name}.tgz"
     ))
     .await?;
 
@@ -112,7 +111,7 @@ async fn download(template_name: &str, template_version: &str) -> anyhow::Result
         std::fs::create_dir_all(&dest)?;
     }
 
-    dest.push(format!("{}.tgz", template_name));
+    dest.push(format!("{template_name}.tgz"));
 
     let mut stream = res.bytes_stream();
     let mut out = File::create(dest)?;
@@ -175,7 +174,7 @@ pub async fn generate_template(
         }
         Err(e) => Err(RoutineFailure::error(Message {
             action: "Template".to_string(),
-            details: format!("Failed to generate template: {:?}", e),
+            details: format!("Failed to generate template: {e:?}"),
         })),
     }
 }
@@ -205,8 +204,7 @@ pub async fn get_template_manifest(template_version: &str) -> anyhow::Result<Val
         Ok(manifest)
     } else {
         let res = reqwest::get(format!(
-            "{}/{}/manifest.toml",
-            TEMPLATE_REGISTRY_URL, template_version
+            "{TEMPLATE_REGISTRY_URL}/{template_version}/manifest.toml"
         ))
         .await?
         .error_for_status()?;
@@ -224,7 +222,7 @@ pub async fn get_template_config(
     let manifest = get_template_manifest(template_version).await.map_err(|e| {
         RoutineFailure::error(Message {
             action: "Template".to_string(),
-            details: format!("Failed to load template manifest: {:?}", e),
+            details: format!("Failed to load template manifest: {e:?}"),
         })
     })?;
 
@@ -268,7 +266,7 @@ pub async fn get_template_config(
         .ok_or_else(|| {
             RoutineFailure::error(Message {
                 action: "Template".to_string(),
-                details: format!("Invalid configuration for template '{}'", template_name),
+                details: format!("Invalid configuration for template '{template_name}'"),
             })
         })?;
 
@@ -281,7 +279,7 @@ pub async fn list_available_templates(
     let manifest = get_template_manifest(template_version).await.map_err(|e| {
         RoutineFailure::error(Message {
             action: "Templates".to_string(),
-            details: format!("Failed to load template manifest: {:?}", e),
+            details: format!("Failed to load template manifest: {e:?}"),
         })
     })?;
 
@@ -372,14 +370,14 @@ pub async fn create_project_from_template(
                     &std::fs::read_to_string(&package_json_path).map_err(|e| {
                         RoutineFailure::error(Message {
                             action: "Init".to_string(),
-                            details: format!("Failed to read package.json: {}", e),
+                            details: format!("Failed to read package.json: {e}"),
                         })
                     })?,
                 )
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Init".to_string(),
-                        details: format!("Failed to parse package.json: {}", e),
+                        details: format!("Failed to parse package.json: {e}"),
                     })
                 })?;
 
@@ -393,14 +391,14 @@ pub async fn create_project_from_template(
                         serde_json::to_string_pretty(&package_json).map_err(|e| {
                             RoutineFailure::error(Message {
                                 action: "Init".to_string(),
-                                details: format!("Failed to serialize package.json: {}", e),
+                                details: format!("Failed to serialize package.json: {e}"),
                             })
                         })?,
                     )
                     .map_err(|e| {
                         RoutineFailure::error(Message {
                             action: "Init".to_string(),
-                            details: format!("Failed to write package.json: {}", e),
+                            details: format!("Failed to write package.json: {e}"),
                         })
                     })?;
                 }
@@ -412,7 +410,7 @@ pub async fn create_project_from_template(
                 let setup_py_content = std::fs::read_to_string(&setup_py_path).map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Init".to_string(),
-                        details: format!("Failed to read setup.py: {}", e),
+                        details: format!("Failed to read setup.py: {e}"),
                     })
                 })?;
 
@@ -420,16 +418,16 @@ pub async fn create_project_from_template(
                 let name_pattern = Regex::new(r"name='[^']*'").map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Init".to_string(),
-                        details: format!("Failed to create regex pattern: {}", e),
+                        details: format!("Failed to create regex pattern: {e}"),
                     })
                 })?;
                 let new_setup_py =
-                    name_pattern.replace(&setup_py_content, &format!("name='{}'", name));
+                    name_pattern.replace(&setup_py_content, &format!("name='{name}'"));
 
                 std::fs::write(&setup_py_path, new_setup_py.as_bytes()).map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Init".to_string(),
-                        details: format!("Failed to write setup.py: {}", e),
+                        details: format!("Failed to write setup.py: {e}"),
                     })
                 })?;
             }

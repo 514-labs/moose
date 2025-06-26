@@ -41,11 +41,11 @@ pub fn parse_schedule(schedule: &str) -> String {
         // Convert simple duration to cron (e.g., "5m" -> "*/5 * * * *")
         s if s.ends_with('m') => {
             let mins = s.trim_end_matches('m');
-            format!("*/{} * * * *", mins)
+            format!("*/{mins} * * * *")
         }
         s if s.ends_with('h') => {
             let hours = s.trim_end_matches('h');
-            format!("0 */{} * * *", hours)
+            format!("0 */{hours} * * *")
         }
         // Default to original string if format is unrecognized
         s => s.to_string(),

@@ -64,18 +64,18 @@ impl Default for PythonProject {
     ///
     /// Includes common dependencies required for the framework
     fn default() -> Self {
-        let python_requires = format!(">={}", PYTHON_MINIMUM_VERSION);
-        let python_version = format!("python_version >= \"{}\"", PYTHON_MINIMUM_VERSION);
+        let python_requires = format!(">={PYTHON_MINIMUM_VERSION}");
+        let python_version = format!("python_version >= \"{PYTHON_MINIMUM_VERSION}\"");
         let moose_cli_requirement = if CLI_VERSION.contains("dev") || CLI_VERSION == "0.0.1" {
-            format!("moose-cli; {}", python_version)
+            format!("moose-cli; {python_version}")
         } else {
-            format!("moose-cli=={}; {}", CLI_VERSION, python_version)
+            format!("moose-cli=={CLI_VERSION}; {python_version}")
         };
 
         let moose_lib_requirement = if CLI_VERSION.contains("dev") || CLI_VERSION == "0.0.1" {
-            format!("moose-lib; {}", python_version)
+            format!("moose-lib; {python_version}")
         } else {
-            format!("moose-lib=={}; {}", CLI_VERSION, python_version)
+            format!("moose-lib=={CLI_VERSION}; {python_version}")
         };
 
         Self {
@@ -83,8 +83,8 @@ impl Default for PythonProject {
             version: Version::from_string("0.0".to_string()),
             python_requires,
             dependencies: vec![
-                format!("clickhouse_connect==0.7.16; {}", python_version).to_string(),
-                format!("requests==2.32.3; {}", python_version).to_string(),
+                format!("clickhouse_connect==0.7.16; {python_version}").to_string(),
+                format!("requests==2.32.3; {python_version}").to_string(),
                 moose_cli_requirement,
                 moose_lib_requirement,
             ],
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_python_load() {
         let test_project_dir = get_test_project_abs_dir_path();
-        println!("Test Project Dir: {:?}", test_project_dir);
+        println!("Test Project Dir: {test_project_dir:?}");
         let project = PythonProject::load(&test_project_dir).unwrap();
 
         assert_eq!(project.name, "test_project");

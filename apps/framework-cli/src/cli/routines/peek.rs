@@ -60,7 +60,7 @@ pub async fn peek(
     let redis_client = setup_redis_client(project.clone()).await.map_err(|e| {
         RoutineFailure::error(Message {
             action: "Prod".to_string(),
-            details: format!("Failed to setup redis client: {:?}", e),
+            details: format!("Failed to setup redis client: {e:?}"),
         })
     })?;
 
@@ -91,7 +91,7 @@ pub async fn peek(
         let consumer = &consumer_ref;
         // in dmv2 we still have version as the suffix for topics
         // but not so for tables. we might want to change that
-        let topic_versioned = format!("{}_{}", name, version_suffix);
+        let topic_versioned = format!("{name}_{version_suffix}");
 
         let topic = infra
             .topics
@@ -148,7 +148,7 @@ pub async fn peek(
             name.to_string()
         } else {
             // ¯\_(ツ)_/¯
-            format!("{}_{}_{}", name, version_suffix, version_suffix)
+            format!("{name}_{version_suffix}_{version_suffix}")
         };
 
         let table = infra
@@ -205,7 +205,7 @@ pub async fn peek(
                     ))
                 })?),
                 Box::new(move |success_count| {
-                    format!("{} rows written to {:?}", success_count, file_path)
+                    format!("{success_count} rows written to {file_path:?}")
                 }),
             )
         } else {
@@ -214,7 +214,7 @@ pub async fn peek(
                 Box::new(|success_count| {
                     // Just a newline for output cleanliness
                     println!();
-                    format!("{} rows", success_count)
+                    format!("{success_count} rows")
                 }),
             )
         };
@@ -225,11 +225,11 @@ pub async fn peek(
                 let json = serde_json::to_string(&value).unwrap();
                 match &mut file {
                     None => {
-                        println!("{}", json);
+                        println!("{json}");
                         info!("{}", json);
                     }
                     Some(ref mut file) => {
-                        file.write_all(format!("{}\n", json).as_bytes())
+                        file.write_all(format!("{json}\n").as_bytes())
                             .await
                             .map_err(|_| {
                                 RoutineFailure::error(Message::new(

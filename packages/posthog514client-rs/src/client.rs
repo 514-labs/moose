@@ -166,7 +166,7 @@ impl PostHogClient {
                     .unwrap_or_else(|_| "Unknown error".into());
                 error!("Unexpected response from PostHog: {}", error_msg);
                 Err(PostHogError::send_event(
-                    format!("Unexpected response: {}", status),
+                    format!("Unexpected response: {status}"),
                     Some(SendEventErrorKind::Network(error_msg)),
                 ))
             }

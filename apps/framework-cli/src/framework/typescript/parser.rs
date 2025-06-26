@@ -75,7 +75,7 @@ pub fn extract_data_model_from_file(
 
     let ts_return_code = Command::new("tspc")
         .arg("--project")
-        .arg(format!(".moose/{}", TSCONFIG_JSON))
+        .arg(format!(".moose/{TSCONFIG_JSON}"))
         .env("PATH", bin_path)
         .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .current_dir(&project.project_location)
@@ -105,7 +105,7 @@ pub fn extract_data_model_from_file(
         ),
     )
     .map_err(|e| TypescriptParsingError::OtherError {
-        message: format!("Unable to read output of compiler: {}", e),
+        message: format!("Unable to read output of compiler: {e}"),
     })?;
 
     let mut output_json = serde_json::from_slice::<Value>(&output)
@@ -139,7 +139,7 @@ pub fn extract_data_model_from_file(
                     .unwrap_or("")
                     .to_string();
                 return Err(TypescriptParsingError::OtherError {
-                    message: format!("Unsupported feature: {}", feature),
+                    message: format!("Unsupported feature: {feature}"),
                 });
             }
         }
@@ -330,7 +330,7 @@ mod tests {
         if let TypescriptParsingError::OtherError { message } = error {
             assert_eq!(message, "Unsupported feature: index type");
         } else {
-            assert!(false)
+            panic!()
         };
     }
 }

@@ -28,7 +28,7 @@ fn find_container(
         .ok_or_else(|| {
             RoutineFailure::error(Message::new(
                 "Failed".to_string(),
-                format!("to find {} docker container", container_name),
+                format!("to find {container_name} docker container"),
             ))
         })
 }
@@ -59,7 +59,7 @@ fn validate_container_run(
 
     Ok(RoutineSuccess::success(Message::new(
         "Validated".to_string(),
-        format!("{} docker container", container_name),
+        format!("{container_name} docker container"),
     )))
 }
 
@@ -104,7 +104,7 @@ pub fn validate_redpanda_cluster(
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
-                    format!("to validate red panda cluster, {}", err),
+                    format!("to validate red panda cluster, {err}"),
                 ),
                 err,
             )

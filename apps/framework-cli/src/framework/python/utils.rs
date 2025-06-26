@@ -59,8 +59,7 @@ pub async fn check_python_version(required_version: &str) -> Result<(), CheckerE
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(CheckerError::NotSupported(format!(
-            "Failed to get Python version: {}",
-            stderr
+            "Failed to get Python version: {stderr}"
         )));
     }
 
@@ -68,8 +67,7 @@ pub async fn check_python_version(required_version: &str) -> Result<(), CheckerE
     let version_parts: Vec<&str> = version_str.split_whitespace().collect();
     if version_parts.len() < 2 {
         return Err(CheckerError::NotSupported(format!(
-            "Failed to get Python version. Found version: {}",
-            version_str
+            "Failed to get Python version. Found version: {version_str}"
         )));
     }
 
@@ -79,8 +77,7 @@ pub async fn check_python_version(required_version: &str) -> Result<(), CheckerE
 
     if current_version_parts < required_version_parts {
         return Err(CheckerError::NotSupported(format!(
-            "Python version {} is not supported. Required version is {}+",
-            current_version, required_version
+            "Python version {current_version} is not supported. Required version is {required_version}+"
         )));
     }
 

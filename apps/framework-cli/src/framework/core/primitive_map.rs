@@ -253,14 +253,13 @@ impl PrimitiveMap {
                     } else {
                         return Err(DataModelError::Other {
                             message: format!(
-                                "Config with name `{}` does not match any data model. Please make sure that the config variable name matches the pattern: <dataModelName>Config",
-                                config_variable_name
+                                "Config with name `{config_variable_name}` does not match any data model. Please make sure that the config variable name matches the pattern: <dataModelName>Config"
                             ),
                         });
                     }
                 }
                 None => {
-                    return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper data model. \n {} is not respecting this pattern", config_variable_name) })
+                    return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper data model. \n {config_variable_name} is not respecting this pattern") })
                 }
             }
         }
@@ -309,7 +308,7 @@ mod tests {
             SupportedLanguages::Typescript,
         );
         let primitive_map = PrimitiveMap::load(&project).await;
-        println!("{:?}", primitive_map);
+        println!("{primitive_map:?}");
         assert!(primitive_map.is_ok());
     }
 }

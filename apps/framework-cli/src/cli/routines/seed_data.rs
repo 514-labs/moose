@@ -73,14 +73,14 @@ pub async fn handle_seed_command(
                     .map_err(|e| {
                         RoutineFailure::error(Message {
                             action: "SeedClickhouse".to_string(),
-                            details: format!("Failed to load InfrastructureMap: {:?}", e),
+                            details: format!("Failed to load InfrastructureMap: {e:?}"),
                         })
                     })?
             } else {
                 let primitive_map = PrimitiveMap::load(project).await.map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "SeedClickhouse".to_string(),
-                        details: format!("Failed to load Primitives: {:?}", e),
+                        details: format!("Failed to load Primitives: {e:?}"),
                     })
                 })?;
                 InfrastructureMap::new(project, primitive_map)
@@ -90,7 +90,7 @@ pub async fn handle_seed_command(
                 parse_clickhouse_connection_string(connection_string).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
-                        format!("Invalid connection string: {}", e),
+                        format!("Invalid connection string: {e}"),
                     ))
                 })?;
 
@@ -99,7 +99,7 @@ pub async fn handle_seed_command(
                 let url = convert_http_to_clickhouse(connection_string).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
-                        format!("Failed to parse connection string: {}", e),
+                        format!("Failed to parse connection string: {e}"),
                     ))
                 })?;
 
@@ -117,7 +117,7 @@ pub async fn handle_seed_command(
                     .map_err(|e| {
                         RoutineFailure::error(Message::new(
                             "SeedClickhouse".to_string(),
-                            format!("Failed to query remote database: {}", e),
+                            format!("Failed to query remote database: {e}"),
                         ))
                     })?;
 
@@ -137,7 +137,7 @@ pub async fn handle_seed_command(
                 ClickHouseClient::new(&project.clickhouse_config).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
-                        format!("Failed to create local ClickHouseClient: {}", e),
+                        format!("Failed to create local ClickHouseClient: {e}"),
                     ))
                 })?;
 
@@ -195,29 +195,21 @@ pub async fn seed_clickhouse_tables(
         table_list
     };
 
-    let remote_host_and_port = format!("{}:{}", remote_host, remote_port);
+    let remote_host_and_port = format!("{remote_host}:{remote_port}");
 
     for table_name in tables {
         let sql = format!(
-            "INSERT INTO `{db}`.`{table}` SELECT * FROM remoteSecure('{}', '{}', '{}', '{}', '{}') LIMIT {limit}",
-            remote_host_and_port,
-            remote_db,
-            table_name,
-            remote_user,
-            remote_password,
-            db = local_db,
-            table = table_name,
-            limit = limit
+            "INSERT INTO `{local_db}`.`{table_name}` SELECT * FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT {limit}"
         );
 
         debug!("Executing SQL: {}", sql);
 
         match local_clickhouse.execute_sql(&sql).await {
             Ok(_) => {
-                summary.push(format!("✓ {}: copied from remote", table_name));
+                summary.push(format!("✓ {table_name}: copied from remote"));
             }
             Err(e) => {
-                summary.push(format!("✗ {}: failed to copy - {}", table_name, e));
+                summary.push(format!("✗ {table_name}: failed to copy - {e}"));
             }
         }
     }

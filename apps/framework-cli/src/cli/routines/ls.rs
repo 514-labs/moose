@@ -52,7 +52,7 @@ pub async fn list_db(
     let redis_client = setup_redis_client(project.clone()).await.map_err(|e| {
         RoutineFailure::error(Message {
             action: "Prod".to_string(),
-            details: format!("Failed to setup redis client: {:?}", e),
+            details: format!("Failed to setup redis client: {e:?}"),
         })
     })?;
 

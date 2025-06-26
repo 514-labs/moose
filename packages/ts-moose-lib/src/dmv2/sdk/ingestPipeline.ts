@@ -126,12 +126,6 @@ export type IngestPipelineConfig<T> = {
  */
 export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
   /**
-   * Optional metadata associated with the pipeline.
-   * Contains descriptive information about the pipeline's purpose and configuration.
-   */
-  metadata?: { description?: string };
-
-  /**
    * The OLAP table component of the pipeline, if configured.
    * Provides analytical query capabilities for the ingested data.
    * Only present when `config.table` is not `false`.
@@ -160,7 +154,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
    * Based on the configuration, it automatically creates and links the IngestApi, Stream, and OlapTable components.
    *
    * @param name The base name for the pipeline components (e.g., "userData" could create "userData" table, "userData" stream, "userData" ingest API).
-   * @param config Configuration specifying which components (table, stream, ingest) to create and their settings.
+   * @param config Optional configuration for the ingestion pipeline.
    *
    * @throws {Error} When ingest API is enabled but no stream is configured, since the API requires a stream destination.
    *
@@ -200,7 +194,6 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     validators?: TypiaValidators<T>,
   ) {
     super(name, config, schema, columns, validators);
-    this.metadata = config?.metadata;
 
     // Create OLAP table if configured
     if (config.table) {

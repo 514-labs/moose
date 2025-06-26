@@ -14,10 +14,14 @@ export interface TypiaValidators<T> {
 }
 
 /**
- * Utility to extract the first file path outside node_modules from a stack trace.
+ * Utility to extract the first file path and line outside node_modules from a stack trace.
+ * Returns an object with file and line (file: /path/to/file.ts, line: /path/to/file.ts:123:45)
  */
-function getInstantiationFilePath(stack?: string): string | undefined {
-  if (!stack) return undefined;
+function getInstantiationFileInfo(stack?: string): {
+  file?: string;
+  line?: string;
+} {
+  if (!stack) return {};
   const lines = stack.split("\n");
   for (const line of lines) {
     // Skip lines from node_modules and internal loaders
@@ -27,14 +31,17 @@ function getInstantiationFilePath(stack?: string): string | undefined {
       line.includes("ts-node")
     )
       continue;
-    // Extract file path from the line
+    // Extract file path and line/column from the line
     const match =
       line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
     if (match && match[1]) {
-      return match[1];
+      return {
+        file: match[1],
+        line: match[0]?.match(/(\/.*\.\w+):(\d+):(\d+)/)?.[0],
+      };
     }
   }
-  return undefined;
+  return {};
 }
 
 /**
@@ -106,10 +113,11 @@ export class TypedBase<T, C> {
       (config as any)?.metadata ? { ...(config as any).metadata } : {};
     const stack = new Error().stack;
     if (stack) {
-      // Add instantiation file path
-      this.metadata.instantiationFile = getInstantiationFilePath(stack);
+      // Add source object with file and line
+      const info = getInstantiationFileInfo(stack);
+      this.metadata.source = { file: info.file, line: info.line };
     } else {
-      this.metadata.instantiationFile = undefined;
+      this.metadata.source = undefined;
     }
   }
 }

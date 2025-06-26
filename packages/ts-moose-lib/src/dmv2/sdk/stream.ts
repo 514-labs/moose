@@ -176,7 +176,7 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   /**
    * Creates a new Stream instance.
    * @param name The name of the stream. This name is used for the underlying Redpanda topic.
-   * @param config Optional configuration for the stream. The metadata property is always present and includes stackTrace.
+   * @param config Optional configuration for the stream.
    */
   constructor(name: string, config?: StreamConfig<T>);
 

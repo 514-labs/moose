@@ -37,7 +37,7 @@ function getInstantiationFileInfo(stack?: string): {
     if (match && match[1]) {
       return {
         file: match[1],
-        line: match[0]?.match(/(\/.*\.\w+):(\d+):(\d+)/)?.[0],
+        line: match[2], // Only the line number
       };
     }
   }

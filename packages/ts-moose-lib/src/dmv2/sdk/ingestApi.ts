@@ -31,7 +31,7 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
   /**
    * Creates a new IngestApi instance.
    * @param name The name of the ingest API endpoint.
-   * @param config Configuration for the ingest API, including the destination stream. The metadata property is always present and includes stackTrace.
+   * @param config Optional configuration for the ingest API.
    */
   constructor(name: string, config?: IngestConfig<T>);
 

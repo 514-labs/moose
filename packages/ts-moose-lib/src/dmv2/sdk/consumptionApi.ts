@@ -45,7 +45,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
    * Creates a new ConsumptionApi instance.
    * @param name The name of the consumption API endpoint.
    * @param handler The function to execute when the endpoint is called. It receives validated query parameters and utility functions.
-   * @param config Optional configuration for the consumption API. The metadata property is always present and includes stackTrace.
+   * @param config Optional configuration for the consumption API.
    */
   constructor(name: string, handler: ConsumptionHandler<T, R>, config?: {});
 

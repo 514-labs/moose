@@ -26,52 +26,54 @@ import { ArgTable } from "@/components/ArgTable";
 
 <Steps>
 
-### Install 
+### Install Claude Desktop
 [Install the Claude Desktop application here](https://claude.ai/download). Note, the Pro version appears to work much more stably with MCPs.
+
+### Install Moose and Aurora
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+```
 
 ### Configure Aurora MCP
 
-From an existing Moose project: 
-```
-aurora setup --mcp claude-desktop
-```
+<Tabs items={['Aurora CLI', 'MCP.json']}>
+  <Tabs.Tab>
+    Create a new project with Claude Desktop MCP preconfigured: 
 
-From an existing Clickhouse project (chat only): 
-```
-aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp claude-desktop
-```
+    ```bash filename="Terminal" copy
+    aurora init <project-name> <template-name> --mcp claude-desktop
+    ```
 
-Create a new project with Claude Desktop MCP preconfigured: 
-```
-aurora init <project-name> <template-name> --mcp claude-desktop
-```
-
-Using MCP.JSON
-
-```json filename="~/Library/Application Support/Claude/claude_desktop_config.json" copy
-{
-  "mcpServers": {
-    "aurora": {
-      "args": [
-        "@514labs/aurora-mcp@latest",
-        "--moose-read-tools",
-        "path/to/your/moose/project"
-      ],
-      "command": "npx",
-      "env": {
-        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
-        "MOOSE_PATH": "path/to/your/moose/installation",
-        "NODE_PATH": "path/to/your/node/installation",
-        "PYTHON_PATH": "path/to/your/python/installation"
+    For other options, see [Aurora CLI docs](/aurora/getting-started/aurora-cli).
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```json filename="~/Library/Application Support/Claude/claude_desktop_config.json" copy
+    {
+      "mcpServers": {
+        "aurora": {
+          "args": [
+            "@514labs/aurora-mcp@latest",
+            "--moose-read-tools",
+            "path/to/your/moose/project"
+          ],
+          "command": "npx",
+          "env": {
+            "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+            "MOOSE_PATH": "path/to/your/moose/installation",
+            "NODE_PATH": "path/to/your/node/installation",
+            "PYTHON_PATH": "path/to/your/python/installation"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
+  </Tabs.Tab>
+</Tabs>
 
 ### Adding other toolsets
 
-**Recommended toolsets**
+For more information on available toolsets, see [Aurora MCP toolsets](/aurora/reference/tool-reference). For Claude Desktop, we recommend the following toolsets:
 
 * [Moose Read Tools](../aurora/reference/tool-reference#moose-read-tools): gives you chat access to your Moose project and the data within it (enabled by default)
 * [Remote ClickHouse Tools](../aurora/reference/tool-reference#remote-clickhouse) (read only): gives you chat access to your remote ClickHouse data

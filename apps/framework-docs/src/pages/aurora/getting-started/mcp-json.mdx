@@ -93,7 +93,7 @@ Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. T
     {
       name: "tool flags",
       required: true,
-      description: "Selected tool flags; see [Tool Reference](/aurora/reference/tool-reference) for available flags (e.g. `--read-only`, `--moose-write-tools`, `--remote-clickhouse`)"
+      description: "Selected tool flags; see Tools Reference for available flags (e.g. `--moose-read-tools`, `--moose-write-tools`, `--remote-clickhouse`)"
     },
     {
       name: "Moose Path",
@@ -131,47 +131,50 @@ In general, we recommend using read-only tool-sets (`moose-read-tools` and `remo
 
 For information about toolsets, see [tools reference](../aurora/reference/tool-reference).
 
-**[Read only Moose tools](../aurora/reference/tool-reference#moose-read-tools)**
+<Tabs items={['Moose read tools', 'Moose write tools', 'Remote ClickHouse tools']}>
+  <Tabs.Tab>
+    ```json filename="MCP.JSON" copy
+    "args": [
+        ...
+        "--moose-read-tools",
+    ]
+    ```
+    [Moose read tools documentation](../aurora/reference/tool-reference#moose-read-tools)
 
-```json 
-"args": [
-    ...
-    "--moose-read-tools",
-]
---
-```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```json filename="MCP.JSON" copy
+    "args": [
+        ...
+        "--moose-read-tools",
+        "--moose-write-tools",
+    ]
+    ```
+    [Moose write tools documentation](../aurora/reference/tool-reference#moose-write-tools)
+  </Tabs.Tab>
+  <Tabs.Tab>
 
-**[Moose write tools](../aurora/reference/tool-reference#moose-write-tools)** 
+    ```json filename="MCP.JSON" copy
+    "args": [
+      ...
+      "--remote-clickhouse", 
+      ...
+    ]
+    "env": {
+      ...
+      "BOREAL_CLICKHOUSE_HOST": "...",
+      "BOREAL_CLICKHOUSE_PORT": "...",
+      "BOREAL_CLICKHOUSE_USER": "...",
+      "BOREAL_CLICKHOUSE_PASSWORD": "...",
+      "BOREAL_CLICKHOUSE_DATABASE": "...",
+    }
+    ```
 
-```json 
-"args": [
-    ...
-    "--moose-read-tools",
-    "--moose-write-tools",
-]
-```
+    [Remote Clickhouse read tools documentation](../aurora/reference/tool-reference#remote-clickhouse)
 
-**[Remote Clickhouse read tools](../aurora/reference/tool-reference#remote-clickhouse)**
+  </Tabs.Tab>
+</Tabs>
 
-```json
-"args": [
-  ...
-  "--remote-clickhouse", 
-  ...
-]
-"env": {
-  ...
-  "BOREAL_CLICKHOUSE_HOST": "...",
-  "BOREAL_CLICKHOUSE_PORT": "...",
-  "BOREAL_CLICKHOUSE_USER": "...",
-  "BOREAL_CLICKHOUSE_PASSWORD": "...",
-  "BOREAL_CLICKHOUSE_DATABASE": "...",
-}
-```
-
-**Other experimental tools**
-
-[Contact us!](mailto:aurora@fiveonefour.com)
 </Steps>
 
 ## Other Getting Started Guides

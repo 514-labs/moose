@@ -36,15 +36,14 @@ use crate::metrics::{MetricEvent, Metrics};
 use crate::utilities::validate_passthrough::DECIMAL_REGEX;
 use regex;
 use regex::Regex;
+use std::str::FromStr;
 use tokio::select;
 use uuid::Uuid;
 
 const IPV4_REGEX: &str =
     r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
-const IPV6_REGEX: &str = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,7}:|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$|^:((:[0-9a-fA-F]{1,4}){1,7}|:)$";
 
 pub static IPV4_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(IPV4_REGEX).unwrap());
-pub static IPV6_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(IPV6_REGEX).unwrap());
 
 /// Consumer group ID for table synchronization
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
@@ -812,7 +811,10 @@ fn map_json_value_to_clickhouse_value(
             }
         }
         ColumnType::IpV6 => {
-            if let Some(value_str) = value.as_str().filter(|s| IPV6_PATTERN.is_match(s)) {
+            if let Some(value_str) = value
+                .as_str()
+                .filter(|s| std::net::Ipv6Addr::from_str(s).is_ok())
+            {
                 Ok(ClickHouseValue::new_string(value_str.to_string()))
             } else {
                 Err(MappingError::TypeMismatch {
@@ -1116,7 +1118,7 @@ mod tests {
                         ClickHouseValue::ClickhouseInt(_) => {
                             // This is expected for numeric keys
                         }
-                        _ => panic!("Expected numeric key, got {:?}", key),
+                        _ => panic!("Expected numeric key, got {key:?}"),
                     }
                     match value {
                         ClickHouseValue::String(_) => {

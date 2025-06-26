@@ -164,7 +164,7 @@ pub fn create_table_query(
             "()".to_string()
         },
         "order_by_string": if !table.order_by.is_empty() {
-            Some(table.order_by.iter().map(|item| {format!("`{}`", item)}).collect::<Vec<String>>().join(", "))
+            Some(table.order_by.iter().map(|item| {format!("`{item}`")}).collect::<Vec<String>>().join(", "))
         } else {
             None
         },
@@ -216,7 +216,7 @@ pub fn basic_field_type_to_string(
             ClickHouseFloat::Float64 => Ok(float.to_string()),
         },
         ClickHouseColumnType::Decimal { precision, scale } => {
-            Ok(format!("Decimal({}, {})", precision, scale))
+            Ok(format!("Decimal({precision}, {scale})"))
         }
         ClickHouseColumnType::DateTime => Ok("DateTime('UTC')".to_string()),
         ClickHouseColumnType::Enum(data_enum) => {
@@ -226,12 +226,12 @@ pub fn basic_field_type_to_string(
                 .map(|enum_member| match &enum_member.value {
                     EnumValue::Int(int) => format!("'{}' = {}", enum_member.name, int),
                     // "Numbers are assigned starting from 1 by default."
-                    EnumValue::String(string) => format!("'{}'", string),
+                    EnumValue::String(string) => format!("'{string}'"),
                 })
                 .collect::<Vec<String>>()
                 .join(",");
 
-            Ok(format!("Enum({})", enum_statement))
+            Ok(format!("Enum({enum_statement})"))
         }
         ClickHouseColumnType::Nested(cols) => {
             let nested_fields = cols
@@ -246,7 +246,7 @@ pub fn basic_field_type_to_string(
                 .collect::<Result<Vec<String>, ClickhouseError>>()?
                 .join(", ");
 
-            Ok(format!("Nested({})", nested_fields))
+            Ok(format!("Nested({nested_fields})"))
         }
         ClickHouseColumnType::Json => Ok("JSON".to_string()),
         ClickHouseColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
@@ -254,12 +254,12 @@ pub fn basic_field_type_to_string(
         }),
         ClickHouseColumnType::Array(inner_type) => {
             let inner_type_string = basic_field_type_to_string(inner_type)?;
-            Ok(format!("Array({})", inner_type_string))
+            Ok(format!("Array({inner_type_string})"))
         }
         ClickHouseColumnType::Nullable(inner_type) => {
             let inner_type_string = basic_field_type_to_string(inner_type)?;
             // <column_name> String NULL is equivalent to <column_name> Nullable(String)
-            Ok(format!("Nullable({})", inner_type_string))
+            Ok(format!("Nullable({inner_type_string})"))
         }
         ClickHouseColumnType::AggregateFunction(
             AggregationFunction {
@@ -274,14 +274,13 @@ pub fn basic_field_type_to_string(
                 .collect::<Result<Vec<String>, _>>()?
                 .join(", ");
             Ok(format!(
-                "AggregateFunction({}, {})",
-                function_name, inner_type_string
+                "AggregateFunction({function_name}, {inner_type_string})"
             ))
         }
         ClickHouseColumnType::Uuid => Ok("UUID".to_string()),
         ClickHouseColumnType::Date32 => Ok("Date32".to_string()),
         ClickHouseColumnType::Date => Ok("Date".to_string()),
-        ClickHouseColumnType::DateTime64 { precision } => Ok(format!("DateTime64({})", precision)),
+        ClickHouseColumnType::DateTime64 { precision } => Ok(format!("DateTime64({precision})")),
         ClickHouseColumnType::LowCardinality(inner_type) => Ok(format!(
             "LowCardinality({})",
             basic_field_type_to_string(inner_type)?
@@ -296,7 +295,7 @@ pub fn basic_field_type_to_string(
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .join(", ");
-            Ok(format!("Tuple({})", pairs))
+            Ok(format!("Tuple({pairs})"))
         }
         ClickHouseColumnType::Map(key_type, value_type) => Ok(format!(
             "Map({}, {})",

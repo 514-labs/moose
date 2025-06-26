@@ -28,11 +28,10 @@ export interface IngestConfig<T> {
  * @template T The data type of the records that this API endpoint accepts. The structure of T defines the expected request body schema.
  */
 export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
-  metadata?: { description?: string };
   /**
    * Creates a new IngestApi instance.
    * @param name The name of the ingest API endpoint.
-   * @param config Configuration for the ingest API, including the destination stream.
+   * @param config Optional configuration for the ingest API.
    */
   constructor(name: string, config?: IngestConfig<T>);
 
@@ -51,7 +50,6 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
-    this.metadata = config?.metadata;
     getMooseInternal().ingestApis.set(name, this);
   }
 }

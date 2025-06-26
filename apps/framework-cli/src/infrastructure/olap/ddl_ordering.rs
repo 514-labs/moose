@@ -1091,7 +1091,7 @@ mod tests {
                 _ => "other".to_string(),
             })
             .collect::<Vec<_>>();
-        println!("Actual teardown order: {:?}", actual_order);
+        println!("Actual teardown order: {actual_order:?}");
 
         // Check that the order is correct: C, B, A (reverse of setup)
         assert_eq!(ordered.len(), 3);
@@ -1242,7 +1242,7 @@ mod tests {
                 assert!(has_create_view, "Expected CreateView operation in result");
             }
             Err(err) => {
-                panic!("Failed to order mixed operations: {:?}", err);
+                panic!("Failed to order mixed operations: {err:?}");
             }
         }
     }
@@ -1346,15 +1346,12 @@ mod tests {
 
         // Try to perform a topological sort - should fail
         let result = petgraph::algo::toposort(&graph, None);
-        println!("Direct toposort result: {:?}", result);
+        println!("Direct toposort result: {result:?}");
         assert!(result.is_err(), "Expected toposort to detect cycle");
 
         // Try to order the operations using our function - should also fail
         let order_result = order_operations_by_dependencies(&operations, false);
-        println!(
-            "order_operations_by_dependencies result: {:?}",
-            order_result
-        );
+        println!("order_operations_by_dependencies result: {order_result:?}");
         assert!(
             order_result.is_err(),
             "Expected ordering to fail with cycle detection"

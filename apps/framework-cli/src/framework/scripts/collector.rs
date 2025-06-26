@@ -160,11 +160,6 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn it_works() {
-        assert!(true);
-    }
-
-    #[test]
     fn test_script_from_file() {
         let script = Script::from_file(PathBuf::from("1.extract.py")).unwrap();
         assert_eq!(script.order, Some(1));

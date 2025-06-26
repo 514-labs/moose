@@ -22,8 +22,7 @@ fn main() {
             Message {
                 action: "Init".to_string(),
                 details: format!(
-                    "Failed to initialize ~/.moose, please check your permissions: {:?}",
-                    e
+                    "Failed to initialize ~/.moose, please check your permissions: {e:?}"
                 ),
             }
         );
@@ -45,7 +44,7 @@ fn main() {
             if e.kind() == clap::error::ErrorKind::MissingRequiredArgument
                 && e.to_string().contains("<TEMPLATE>")
             {
-                eprintln!("{}", e);
+                eprintln!("{e}");
                 eprintln!("To view available templates, run:");
                 eprintln!("\n  moose template list");
                 std::process::exit(1)
@@ -79,7 +78,7 @@ fn main() {
         Err(e) => {
             show_message!(e.message_type, e.message);
             if let Some(err) = e.error {
-                eprintln!("{:?}", err);
+                eprintln!("{err:?}");
             }
             std::process::exit(1);
         }

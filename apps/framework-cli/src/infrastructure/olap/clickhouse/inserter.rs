@@ -106,7 +106,7 @@ impl Batch {
     fn offsets_to_string(&self) -> String {
         self.partition_offsets
             .iter()
-            .map(|(partition, offset)| format!("Partition {}: {}", partition, offset))
+            .map(|(partition, offset)| format!("Partition {partition}: {offset}"))
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -119,7 +119,7 @@ impl Batch {
     fn messages_sizes_to_string(&self) -> String {
         self.messages_sizes
             .iter()
-            .map(|(partition, size)| format!("Partition {}: {}", partition, size))
+            .map(|(partition, size)| format!("Partition {partition}: {size}"))
             .collect::<Vec<String>>()
             .join(", ")
     }

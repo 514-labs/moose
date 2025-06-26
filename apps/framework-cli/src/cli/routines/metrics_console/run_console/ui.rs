@@ -1144,6 +1144,6 @@ fn format_bytes(bytes: f64) -> String {
     } else if (bytes / 1000.0) > 1.0 {
         format!("{:.3} KB/s", (bytes / 1000.0)).trim().to_string()
     } else {
-        format!("{:3} B/s", bytes).trim().to_string()
+        format!("{bytes:3} B/s").trim().to_string()
     }
 }

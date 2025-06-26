@@ -81,12 +81,7 @@ fn get_redpanda_process(project: &Arc<Project>) -> Option<MooseProcess> {
     };
 
     let config_string = serde_json::to_string_pretty(&project.redpanda_config).unwrap();
-    get_process_by_port(
-        port,
-        "redpanda",
-        Some(format!("*:{}", port)),
-        &config_string,
-    )
+    get_process_by_port(port, "redpanda", Some(format!("*:{port}")), &config_string)
 }
 
 fn get_clickhouse_process(project: &Arc<Project>) -> Option<MooseProcess> {
@@ -107,7 +102,7 @@ fn get_process_by_port(
 ) -> Option<MooseProcess> {
     let output = Command::new("lsof")
         .arg("-i")
-        .arg(format!(":{}", port))
+        .arg(format!(":{port}"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

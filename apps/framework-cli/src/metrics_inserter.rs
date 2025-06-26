@@ -156,7 +156,7 @@ async fn flush(
             {
                 Some(route) => route,
                 None => {
-                    eprintln!("Error: No endpoint found for event type: {}", event_type);
+                    eprintln!("Error: No endpoint found for event type: {event_type}");
                     continue;
                 }
             };

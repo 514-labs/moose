@@ -207,7 +207,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Red
         MessageType::Info,
         Message {
             action: "Node Id:".to_string(),
-            details: format!("{}::{}", service_name, instance_id),
+            details: format!("{service_name}::{instance_id}"),
         },
     );
 
@@ -562,10 +562,7 @@ pub async fn remote_plan(
         MessageType::Info,
         Message {
             action: "Remote Plan".to_string(),
-            details: format!(
-                "Comparing local project code with remote instance at {}",
-                target_url
-            ),
+            details: format!("Comparing local project code with remote instance at {target_url}"),
         },
     );
 
@@ -587,7 +584,7 @@ pub async fn remote_plan(
         .json(&request_body);
 
     // Add authorization header if token is available
-    request_builder = request_builder.header("Authorization", format!("Bearer {}", auth_token));
+    request_builder = request_builder.header("Authorization", format!("Bearer {auth_token}"));
 
     // Send request
     let response = request_builder.send().await?;
@@ -665,13 +662,13 @@ pub async fn remote_refresh(
         MessageType::Info,
         Message {
             action: "Remote State".to_string(),
-            details: format!("Checking database state at {}", reality_check_url),
+            details: format!("Checking database state at {reality_check_url}"),
         },
     );
 
     let response = client
         .get(&reality_check_url)
-        .header("Authorization", format!("Bearer {}", auth_token))
+        .header("Authorization", format!("Bearer {auth_token}"))
         .send()
         .await?;
 
@@ -701,8 +698,7 @@ pub async fn remote_refresh(
             Message {
                 action: "Table".to_string(),
                 details: format!(
-                    "Table {} in remote DB differs from local definition. It will not be integrated.",
-                    table_name,
+                    "Table {table_name} in remote DB differs from local definition. It will not be integrated.",
                 ),
             },
         );
@@ -762,7 +758,7 @@ pub async fn remote_refresh(
         .json(&IntegrateChangesRequest {
             tables: tables_to_integrate,
         })
-        .header("Authorization", format!("Bearer {}", auth_token))
+        .header("Authorization", format!("Bearer {auth_token}"))
         .send()
         .await?;
 

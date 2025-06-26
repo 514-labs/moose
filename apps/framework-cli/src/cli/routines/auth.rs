@@ -17,7 +17,7 @@ pub fn generate_hash_token() {
     let salt_hex = hex::encode(salt);
 
     // Concatenate token and salt with a '.' delimiter
-    let concatenated = format!("{}.{}", token_hex, salt_hex);
+    let concatenated = format!("{token_hex}.{salt_hex}");
 
     // set timer to c
 
@@ -42,7 +42,7 @@ pub fn generate_hash_token() {
             MessageType::Info,
             Message {
                 action: "Bearer Token".to_string(),
-                details: format!("{} \n Authentication bearer token", concatenated),
+                details: format!("{concatenated} \n Authentication bearer token"),
             }
         );
     }

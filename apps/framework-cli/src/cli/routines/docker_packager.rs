@@ -157,7 +157,7 @@ pub fn create_dockerfile(
                 // and respect lock files
                 .replace("INSTALL_COMMAND", "RUN npm install");
 
-            format!("{}{}", TS_BASE_DOCKER_FILE, install)
+            format!("{TS_BASE_DOCKER_FILE}{install}")
         }
         SupportedLanguages::Python => {
             let install = DOCKER_FILE_COMMON
@@ -168,7 +168,7 @@ COPY --chown=moose:moose ./requirements.txt ./requirements.txt"#,
                 )
                 .replace("INSTALL_COMMAND", "RUN pip install -r requirements.txt");
 
-            format!("{}{}", PY_BASE_DOCKER_FILE, install)
+            format!("{PY_BASE_DOCKER_FILE}{install}")
         }
     };
 
@@ -252,7 +252,7 @@ pub fn build_dockerfile(
                 return Err(RoutineFailure::new(
                     Message::new(
                         "Failed".to_string(),
-                        format!("to copy {} to packager directory", item),
+                        format!("to copy {item} to packager directory"),
                     ),
                     err,
                 ));

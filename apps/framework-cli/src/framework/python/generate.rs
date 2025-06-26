@@ -37,12 +37,12 @@ fn map_column_type_to_python(
             FloatType::Float64 => "float".to_string(),
         },
         ColumnType::Decimal { precision, scale } => {
-            format!("clickhouse_decimal({}, {})", precision, scale)
+            format!("clickhouse_decimal({precision}, {scale})")
         }
         ColumnType::DateTime { precision: None } => "datetime.datetime".to_string(),
         ColumnType::DateTime {
             precision: Some(precision),
-        } => format!("clickhouse_datetime64({})", precision),
+        } => format!("clickhouse_datetime64({precision})"),
         ColumnType::Date => "datetime.date".to_string(),
         ColumnType::Date16 => "Annotated[datetime.date, ClickhouseSize(2)]".to_string(),
         ColumnType::Enum(data_enum) => enums.get(data_enum).unwrap().to_string(),
@@ -52,16 +52,16 @@ fn map_column_type_to_python(
         } => {
             let inner_type = map_column_type_to_python(element_type, enums, nested, named_tuples);
             let inner_type = if *element_nullable {
-                format!("Optional[{}]", inner_type)
+                format!("Optional[{inner_type}]")
             } else {
                 inner_type
             };
-            format!("list[{}]", inner_type)
+            format!("list[{inner_type}]")
         }
         ColumnType::Nested(nested_type) => nested.get(nested_type).unwrap().to_string(),
         ColumnType::NamedTuple(fields) => {
             let class_name = named_tuples.get(fields).unwrap();
-            format!("Annotated[{}, \"ClickHouseNamedTuple\"]", class_name)
+            format!("Annotated[{class_name}, \"ClickHouseNamedTuple\"]")
         }
         ColumnType::Json => "Any".to_string(),
         ColumnType::Bytes => "bytes".to_string(),
@@ -70,7 +70,7 @@ fn map_column_type_to_python(
         ColumnType::IpV6 => "ipaddress.IPv6Address".to_string(),
         ColumnType::Nullable(inner) => {
             let inner_type = map_column_type_to_python(inner, enums, nested, named_tuples);
-            format!("Optional[{}]", inner_type)
+            format!("Optional[{inner_type}]")
         }
         ColumnType::Map {
             key_type,
@@ -78,7 +78,7 @@ fn map_column_type_to_python(
         } => {
             let key_type_str = map_column_type_to_python(key_type, enums, nested, named_tuples);
             let value_type_str = map_column_type_to_python(value_type, enums, nested, named_tuples);
-            format!("dict[{}, {}]", key_type_str, value_type_str)
+            format!("dict[{key_type_str}, {value_type_str}]")
         }
     }
 }
@@ -132,20 +132,20 @@ fn generate_nested_model(
     named_tuples: &HashMap<&Vec<(String, ColumnType)>, String>,
 ) -> String {
     let mut model = String::new();
-    writeln!(model, "class {}(BaseModel):", name).unwrap();
+    writeln!(model, "class {name}(BaseModel):").unwrap();
 
     for column in &nested.columns {
         let type_str =
             map_column_type_to_python(&column.data_type, enums, nested_models, named_tuples);
 
         let (type_str, default) = if !column.required {
-            (format!("Optional[{}]", type_str), " = None")
+            (format!("Optional[{type_str}]"), " = None")
         } else {
             (type_str, "")
         };
 
         let type_str = if column.primary_key {
-            format!("Key[{}]", type_str)
+            format!("Key[{type_str}]")
         } else {
             type_str
         };
@@ -163,7 +163,7 @@ fn generate_nested_model(
             (column.name.clone(), default.to_string())
         };
 
-        writeln!(model, "    {}: {}{}", mapped_name, type_str, mapped_default).unwrap();
+        writeln!(model, "    {mapped_name}: {type_str}{mapped_default}").unwrap();
     }
     writeln!(model).unwrap();
     model
@@ -177,11 +177,11 @@ fn generate_named_tuple_model(
     named_tuples: &HashMap<&Vec<(String, ColumnType)>, String>,
 ) -> String {
     let mut model = String::new();
-    writeln!(model, "class {}(BaseModel):", name).unwrap();
+    writeln!(model, "class {name}(BaseModel):").unwrap();
 
     for (field_name, field_type) in fields {
         let type_str = map_column_type_to_python(field_type, enums, nested_models, named_tuples);
-        writeln!(model, "    {}: {}", field_name, type_str).unwrap();
+        writeln!(model, "    {field_name}: {type_str}").unwrap();
     }
     writeln!(model).unwrap();
     model
@@ -303,13 +303,13 @@ pub fn tables_to_python(tables: &[Table]) -> String {
                 map_column_type_to_python(&column.data_type, &enums, &nested_models, &named_tuples);
 
             let (type_str, default) = if !column.required {
-                (format!("Optional[{}]", type_str), " = None")
+                (format!("Optional[{type_str}]"), " = None")
             } else {
                 (type_str, "")
             };
 
             let type_str = if column.primary_key {
-                format!("Key[{}]", type_str)
+                format!("Key[{type_str}]")
             } else {
                 type_str
             };
@@ -327,12 +327,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
                 (column.name.clone(), default.to_string())
             };
 
-            writeln!(
-                output,
-                "    {}: {}{}",
-                mapped_name, type_str, mapped_default
-            )
-            .unwrap();
+            writeln!(output, "    {mapped_name}: {type_str}{mapped_default}").unwrap();
         }
         writeln!(output).unwrap();
     }
@@ -409,7 +404,7 @@ mod tests {
 
         let result = tables_to_python(&tables);
 
-        println!("{}", result);
+        println!("{result}");
         assert!(result.contains(
             r#"from pydantic import BaseModel, Field
 from typing import Optional, Any, Annotated
@@ -486,7 +481,7 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
         }];
 
         let result = tables_to_python(&tables);
-        println!("{}", result);
+        println!("{result}");
         assert!(result.contains(
             r#"class NestedArray(BaseModel):
     id: Key[str]
@@ -583,7 +578,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
         }];
 
         let result = tables_to_python(&tables);
-        println!("{}", result);
+        println!("{result}");
         assert!(result.contains(
             r#"class Address(BaseModel):
     street: str
@@ -654,7 +649,7 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
         }];
 
         let result = tables_to_python(&tables);
-        println!("{}", result);
+        println!("{result}");
 
         // Check that TypedDict is not in the imports
         assert!(!result.contains("TypedDict"));

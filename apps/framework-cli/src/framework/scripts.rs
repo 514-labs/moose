@@ -376,7 +376,7 @@ mod tests {
             "extract",
             Some(1),
             SupportedLanguages::Python,
-            &temp_dir.path(),
+            temp_dir.path(),
         )
         .unwrap();
         assert!(temp_dir.path().join("1.extract.py").exists());

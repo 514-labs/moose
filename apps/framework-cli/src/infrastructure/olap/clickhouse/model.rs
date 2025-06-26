@@ -21,7 +21,7 @@ pub enum ClickHouseTableType {
 
 impl fmt::Display for ClickHouseTableType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -76,7 +76,7 @@ pub enum ClickHouseColumnType {
 
 impl fmt::Display for ClickHouseColumnType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -313,7 +313,7 @@ impl ClickHouseColumnType {
                     } else {
                         // Unnamed tuple element, use index as name
                         if let Some(field_type) = Self::from_type_str(part) {
-                            fields.push((format!("field_{}", i), field_type));
+                            fields.push((format!("field_{i}"), field_type));
                         } else {
                             return None;
                         }
@@ -393,7 +393,7 @@ pub enum ClickHouseInt {
 
 impl fmt::Display for ClickHouseInt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -405,7 +405,7 @@ pub enum ClickHouseFloat {
 
 impl fmt::Display for ClickHouseFloat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -469,15 +469,15 @@ impl ClickHouseValue {
     }
 
     pub fn new_boolean(value: bool) -> ClickHouseValue {
-        ClickHouseValue::Boolean(format!("{}", value))
+        ClickHouseValue::Boolean(format!("{value}"))
     }
 
     pub fn new_int_64(value: i64) -> ClickHouseValue {
-        ClickHouseValue::ClickhouseInt(format!("{}", value))
+        ClickHouseValue::ClickhouseInt(format!("{value}"))
     }
 
     pub fn new_float_64(value: f64) -> ClickHouseValue {
-        ClickHouseValue::ClickhouseFloat(format!("{}", value))
+        ClickHouseValue::ClickhouseFloat(format!("{value}"))
     }
 
     pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
@@ -490,8 +490,8 @@ impl ClickHouseValue {
 
     pub fn new_enum(value: ClickHouseRuntimeEnum) -> ClickHouseValue {
         match value {
-            ClickHouseRuntimeEnum::ClickHouseInt(v) => ClickHouseValue::Enum(format!("{}", v)),
-            ClickHouseRuntimeEnum::ClickHouseString(v) => ClickHouseValue::Enum(format!("'{}'", v)),
+            ClickHouseRuntimeEnum::ClickHouseInt(v) => ClickHouseValue::Enum(format!("{v}")),
+            ClickHouseRuntimeEnum::ClickHouseString(v) => ClickHouseValue::Enum(format!("'{v}'")),
         }
     }
 
@@ -514,7 +514,7 @@ impl ClickHouseValue {
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
-            ClickHouseValue::DateTime(v) => format!("'{}'", v),
+            ClickHouseValue::DateTime(v) => format!("'{v}'"),
             ClickHouseValue::Array(v) => format!(
                 "[{}]",
                 v.iter()

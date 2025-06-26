@@ -17,7 +17,7 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
     let mut url = Url::parse(remote_url).map_err(|e| {
         RoutineFailure::error(Message::new(
             "Invalid URL".to_string(),
-            format!("Failed to parse remote_url '{}': {}", remote_url, e),
+            format!("Failed to parse remote_url '{remote_url}': {e}"),
         ))
     })?;
 
@@ -56,10 +56,7 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
             MessageType::Highlight,
             Message {
                 action: "Protocol".to_string(),
-                details: format!(
-                    "native protocol detected. Converting to HTTP(s): {}",
-                    display_url
-                ),
+                details: format!("native protocol detected. Converting to HTTP(s): {display_url}"),
             }
         );
     }
@@ -140,35 +137,32 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
             let table_definitions = tables_to_typescript(&tables);
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open(format!("{}/{}", APP_DIR, TYPESCRIPT_MAIN_FILE))
+                .open(format!("{APP_DIR}/{TYPESCRIPT_MAIN_FILE}"))
                 .map_err(|e| {
                     RoutineFailure::new(
                         Message::new(
                             "Failure".to_string(),
-                            format!("opening {}", TYPESCRIPT_MAIN_FILE),
+                            format!("opening {TYPESCRIPT_MAIN_FILE}"),
                         ),
                         e,
                     )
                 })?;
 
-            writeln!(file, "\n\n{}", table_definitions)
+            writeln!(file, "\n\n{table_definitions}")
         }
         SupportedLanguages::Python => {
             let table_definitions = tables_to_python(&tables);
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open(format!("{}/{}", APP_DIR, PYTHON_MAIN_FILE))
+                .open(format!("{APP_DIR}/{PYTHON_MAIN_FILE}"))
                 .map_err(|e| {
                     RoutineFailure::new(
-                        Message::new(
-                            "Failure".to_string(),
-                            format!("opening {}", PYTHON_MAIN_FILE),
-                        ),
+                        Message::new("Failure".to_string(), format!("opening {PYTHON_MAIN_FILE}")),
                         e,
                     )
                 })?;
 
-            writeln!(file, "\n\n{}", table_definitions)
+            writeln!(file, "\n\n{table_definitions}")
         }
     }
     .map_err(|e| {

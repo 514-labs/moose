@@ -14,11 +14,11 @@ fn import_line(lang: SupportedLanguages, path: &str, names: &[&str]) -> String {
     match lang {
         SupportedLanguages::Typescript => {
             let names = names.join(", ");
-            format!("import {{ {} }} from \"{}\";", names, path)
+            format!("import {{ {names} }} from \"{path}\";")
         }
         SupportedLanguages::Python => {
             let names = names.join(", ");
-            format!("from {} import {}", path, names)
+            format!("from {path} import {names}")
         }
     }
 }
@@ -69,7 +69,7 @@ pub fn generate(
         source_type.to_string()
     } else {
         // funny enough, same in ts and python
-        format!("{} as {}", destination_type, source_type)
+        format!("{destination_type} as {source_type}")
     };
 
     let (source_import, destination_import) = if source_path == destination_path {
@@ -173,7 +173,7 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
             let mut field_defaults = Vec::new();
             for (name, field_type) in fields {
                 let default = get_default_value_for_type(field_type, lang);
-                field_defaults.push(format!("{}: {}", name, default));
+                field_defaults.push(format!("{name}: {default}"));
             }
             match lang {
                 SupportedLanguages::Typescript => format!("{{ {} }}", field_defaults.join(", ")),
@@ -191,9 +191,9 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
             let value_default = get_default_value_for_type(value_type, lang);
             match lang {
                 SupportedLanguages::Typescript => {
-                    format!("{{ [{}]: {} }}", key_default, value_default)
+                    format!("{{ [{key_default}]: {value_default} }}")
                 }
-                SupportedLanguages::Python => format!("{{ {}: {} }}", key_default, value_default),
+                SupportedLanguages::Python => format!("{{ {key_default}: {value_default} }}"),
             }
         }
     }
@@ -290,7 +290,7 @@ mod tests {
     fn test_generate_no_data_model() {
         let result = generate(&PROJECT, Either::Right("Foo"), Either::Right("Bar"));
 
-        println!("{}", result);
+        println!("{result}");
         assert_eq!(
             result,
             r#"
@@ -338,7 +338,7 @@ export default function run(source: Foo): Bar | null {
             }),
         );
 
-        println!("{}", result);
+        println!("{result}");
         assert_eq!(
             result,
             r#"
@@ -403,7 +403,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
             }),
         );
 
-        println!("{}", result);
+        println!("{result}");
         assert_eq!(
             result,
             r#"
@@ -464,7 +464,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
             }),
         );
 
-        println!("{}", result);
+        println!("{result}");
         assert_eq!(
             result,
             r#"

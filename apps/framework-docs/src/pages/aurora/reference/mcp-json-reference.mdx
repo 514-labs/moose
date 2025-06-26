@@ -24,24 +24,10 @@ import { ArgTable } from "@/components/ArgTable";
 ## Configuring Aurora MCP with MCP.JSON
 
 <Callout type="info" title="Prerequisites">
-- **OS**: macOS or Linux (WSL supported for Windows)
 - **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
-- **Client**: [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download) or [Windsurf](https://windsurf.ai/download). For this particular use-case, we recommend Claude Desktop.
 - **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Aurora's generative MCP tools.
-- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/). This is required for using Aurora with a local Moose project.
+- **Moose CLI** and Moose Project required for "write" tools. 
 </Callout>
-
-<Steps>
-
-### Installing Moose CLI
-
-<Callout type="warning" title="Moose CLI requirement">
-Note, even if you don't use the Aurora CLI to configure your Aurora MCP, the Moose CLI is still required if you want to use Moose toolsets (e.g. everything but `remote-clickhouse` and experimental external tools)
-</Callout>
-
-```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
-```
 
 ### Where is your MCP.JSON file?
 
@@ -174,48 +160,3 @@ For information about toolsets, see [tools reference](../aurora/reference/tool-r
 
   </Tabs.Tab>
 </Tabs>
-
-</Steps>
-
-## Other Getting Started Guides
-<FeatureGrid columns={3}>
-    
-  <FeatureCard
-    href="/aurora/getting-started/aurora-cli"
-    title="Setting up Aurora MCP with Aurora CLI"
-    variant="aurora"
-  />
-  
-  <FeatureCard
-    href="/aurora/getting-started/claude"
-    title="Claude Desktop"
-    description="
-    "
-    variant="aurora"
-  />
-
-    <FeatureCard
-    href="/aurora/getting-started/cursor"
-    title="Cursor"
-    description="
-    "
-    variant="aurora"
-  />
-
-    <FeatureCard
-    href="/aurora/getting-started/windsurf"
-    title="Windsurf"
-    description="
-    "
-    variant="aurora"
-  />
-
-    <FeatureCard
-    href="/aurora/getting-started/other-clients"
-    title="Other Clients"
-    description="
-    "
-    variant="aurora"
-  />
-
-</FeatureGrid>

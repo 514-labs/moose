@@ -8,13 +8,13 @@ const meta = {
       breadcrumb: false,
     },
   },
-  quickstart: {
-    title: "Quickstart Guides",
-    Icon: HandMetal,
-  },
   "getting-started": {
     title: "Getting Started",
     Icon: Rocket,
+  },
+  guides: {
+    title: "Guides",
+    Icon: HandMetal,
   },
   reference: {
     title: "Reference",

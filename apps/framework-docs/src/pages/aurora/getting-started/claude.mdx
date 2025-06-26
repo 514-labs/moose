@@ -29,7 +29,7 @@ import { ArgTable } from "@/components/ArgTable";
 ### Install Claude Desktop
 [Install the Claude Desktop application here](https://claude.ai/download). Note, the Pro version appears to work much more stably with MCPs.
 
-### Install Moose and Aurora
+### Install Moose and Aurora CLI
 
 ```bash filename="Terminal" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
@@ -96,29 +96,28 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 * The MCP is running, but you aren't able to get your data? Look at the tool call response, it will tell you if your Moose dev server is running. If it is not, run `moose dev` in your Moose project directory.
 * The MCP is not running. Check your configuration and then restart the application.
 
-## Other Clients
-
+## Reference
 <FeatureGrid columns={3}>
-    
-    <FeatureCard
-    href="/aurora/getting-started/cursor"
-    title="Cursor"
+  
+  <FeatureCard
+    href="/aurora/reference/cli-reference"
+    title="CLI reference"
     description="
     "
     variant="aurora"
   />
 
     <FeatureCard
-    href="/aurora/getting-started/windsurf"
-    title="Windsurf"
+    href="/aurora/reference/mcp-json-reference"
+    title="MCP.json reference"
     description="
     "
     variant="aurora"
   />
 
     <FeatureCard
-    href="/aurora/getting-started/other-clients"
-    title="Other Clients"
+    href="/aurora/reference/tool-reference"
+    title="Tools reference"
     description="
     "
     variant="aurora"

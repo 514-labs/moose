@@ -77,14 +77,12 @@ To enable them explicitly:
     ```bash filename="Terminal" copy
     aurora config tools
     ```
-    and enable `read-only-moose-tools`. e.g.:
+    and enable `moose-read-tools`. e.g.:
     ```txt filename="Terminal" copy
-    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
-      [x] read-only - Enable read-only tools for data inspection
-      [ ] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
-      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
-      [ ] remote-clickhouse - Enable Remote Clickhouse integration
-      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ? Select tools to enable (no selection defaults to moose-read-tools):  
+      [x] moose-read-tools - Enable moose read tools for data inspection
+      [ ] moose-write-tools - Enable moose write tools for full functionality (requires API key, auto-enables read tools)
+      [ ] remote-clickhouse-tools - Enable Remote Clickhouse integration
     ```
   </Tabs.Tab>
   <Tabs.Tab>
@@ -93,7 +91,7 @@ To enable them explicitly:
     ```json filename="MCP.json" copy
     "args": [
       ...
-      "--read-only", 
+      "--moose-read-tools", 
       ...
     ]
     ```
@@ -177,14 +175,12 @@ To enable them explicitly:
     ```bash filename="Terminal" copy
     aurora config tools
     ```
-    and enable `egress-tools`. e.g.:
+    and enable `moose-write-tools`. e.g.:
     ```txt filename="Terminal" copy
-    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
-      [x] read-only - Enable read-only tools for data inspection
-      [x] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
-      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
-      [ ] remote-clickhouse - Enable Remote Clickhouse integration
-      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ? Select tools to enable (no selection defaults to moose-read-tools):  
+      [ ] moose-read-tools - Enable moose read tools for data inspection
+      [x] moose-write-tools - Enable moose write tools for full functionality (requires API key, auto-enables read tools)
+      [ ] remote-clickhouse-tools - Enable Remote Clickhouse integration
     ```
   </Tabs.Tab>
   <Tabs.Tab>
@@ -193,7 +189,7 @@ To enable them explicitly:
     ```json filename="MCP.json" copy
     "args": [
       ...
-      "--moose-tools", 
+      "--moose-write-tools", 
       ...
     ]
     ```
@@ -226,7 +222,7 @@ When you need to build the core components of your data infrastructure.
 - *"Create a streaming function to enrich data from my user_events stream with user profile data"*
 - *"Create a materialized view that will improve the performance of the aircraft API"*
 
-**Tools used:** `write_data_model`, `write_workflow`, `write_stream_function`, `write_materialized_view`
+**Tools used:** `write_ingestion_pipeline`, `write_workflow`, `write_stream_function`, `write_materialized_view`
 
 </ToggleBlock>
 
@@ -239,7 +235,7 @@ When you want to build a complete data product from ingestion to consumption.
 - *"Build a real-time analytics system for aircraft tracking data with location-based queries"*
 - *"Create a data pipeline that processes IoT sensor data and provides aggregated insights via REST APIs"*
 
-**Tools used:** `write_spec`, `write_data_model`, `write_workflow`, `write_stream_function`, `write_materialized_view`, `create_egress_api`
+**Tools used:** `write_spec`, `write_ingestion_pipeline`, `write_workflow`, `write_stream_function`, `write_materialized_view`, `create_egress_api`
 
 </ToggleBlock>
 
@@ -443,7 +439,7 @@ export { ingestAircraftTransponderWorkflow } from "./scripts/IngestAircraftTrans
 #### `run_workflow`
 Runs a Moose workflow. Used as part of the `write_workflow` flow. [Moose documentation](../../moose/building/workflows.mdx).
 
-#### `write_data_model`
+#### `write_ingestion_pipeline`
 Creates a Moose data model, typically used to define the schema of the data in your Moose project. [Moose documentation](../../moose/building/data-models.mdx). 
 
 Files created:
@@ -627,14 +623,12 @@ To enable them explicitly:
     ```bash filename="Terminal" copy
     aurora config tools
     ```
-    and enable `remote-clickhouse`. e.g.:
+    and enable `remote-clickhouse-tools`. e.g.:
     ```txt filename="Terminal" copy
-    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
-      [x] read-only - Enable read-only tools for data inspection
-      [ ] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
-      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
-      [x] remote-clickhouse - Enable Remote Clickhouse integration
-      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ? Select tools to enable (no selection defaults to moose-read-tools):  
+      [ ] moose-read-tools - Enable moose read tools for data inspection
+      [ ] moose-write-tools - Enable moose write tools for full functionality (requires API key, auto-enables read tools)
+      [x] remote-clickhouse-tools - Enable Remote Clickhouse integration
     ```
   </Tabs.Tab>
   <Tabs.Tab>
@@ -643,7 +637,7 @@ To enable them explicitly:
     ```json filename="MCP.json" copy
     "args": [
       ...
-      "--remote-clickhouse", 
+      "--remote-clickhouse-tools", 
       ...
     ]
     "env": {

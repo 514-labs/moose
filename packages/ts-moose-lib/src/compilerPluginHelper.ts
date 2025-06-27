@@ -65,13 +65,14 @@ export const replaceProgram =
       .map(tsInstance.server.toNormalizedPath);
 
     const transformedSource = tsInstance.transform(
-      program
-        .getSourceFiles()
-        .filter(
-          (sourceFile) =>
-            !sourceFile.fileName.startsWith("/") ||
-            sourceFile.fileName.startsWith(`${process.cwd()}`),
-        ),
+      program.getSourceFiles().filter(
+        (sourceFile) =>
+          // relative path, or
+          !sourceFile.fileName.startsWith("/") ||
+          // current directory but not in node_modules
+          (sourceFile.fileName.startsWith(`${process.cwd()}`) &&
+            !sourceFile.fileName.startsWith(`${process.cwd()}/node_modules`)),
+      ),
       [transformFunction],
       compilerOptions,
     ).transformed;

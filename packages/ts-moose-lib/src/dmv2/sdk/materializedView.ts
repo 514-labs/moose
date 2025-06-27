@@ -4,7 +4,7 @@ import {
   dropView,
   populateTable,
 } from "../../blocks/helpers";
-import { Sql, toStaticQuery } from "../../consumption-apis/helpers";
+import { Sql, toStaticQuery } from "../../sqlHelpers";
 import { OlapTable } from "./olapTable";
 import { SqlResource } from "./sqlResource";
 import { View } from "./view";

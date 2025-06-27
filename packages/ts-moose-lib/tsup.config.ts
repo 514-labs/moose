@@ -3,6 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: [
     "src/index.ts",
+    "src/browserCompatible.ts",
     "src/dataModels/toDataModels.ts",
     "src/scripts/workflow.ts",
     "src/compilerPlugin.ts",

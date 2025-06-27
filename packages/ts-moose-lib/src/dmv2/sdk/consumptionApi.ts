@@ -2,7 +2,7 @@ import { IJsonSchemaCollection } from "typia";
 import { TypedBase } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
-import { ConsumptionUtil } from "../../consumption-apis/helpers";
+import type { ConsumptionUtil } from "../../consumption-apis/helpers";
 
 /**
  * Defines the signature for a handler function used by a Consumption API.

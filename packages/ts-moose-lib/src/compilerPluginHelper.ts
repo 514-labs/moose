@@ -69,8 +69,8 @@ export const replaceProgram =
         .getSourceFiles()
         .filter(
           (sourceFile) =>
-            sourceFile.fileName.startsWith("app/") ||
-            sourceFile.fileName.startsWith(`${process.cwd()}/app/`),
+            !sourceFile.fileName.startsWith("/") ||
+            sourceFile.fileName.startsWith(`${process.cwd()}`),
         ),
       [transformFunction],
       compilerOptions,

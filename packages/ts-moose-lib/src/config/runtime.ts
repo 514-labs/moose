@@ -24,13 +24,13 @@ class ConfigurationRegistry {
     this.clickhouseConfig = config;
   }
 
-  getClickHouseConfig(): RuntimeClickHouseConfig {
+  async getClickHouseConfig(): RuntimeClickHouseConfig {
     if (this.clickhouseConfig) {
       return this.clickhouseConfig;
     }
 
     // Fallback to reading from config file for backward compatibility
-    const projectConfig = readProjectConfig();
+    const projectConfig = await readProjectConfig();
     return {
       host: projectConfig.clickhouse_config.host,
       port: projectConfig.clickhouse_config.host_port.toString(),
@@ -46,5 +46,5 @@ class ConfigurationRegistry {
   }
 }
 
-export const configRegistry = ConfigurationRegistry.getInstance();
-export type { RuntimeClickHouseConfig };
+(globalThis as any)._mooseConfigRegistry = ConfigurationRegistry.getInstance();
+export type { ConfigurationRegistry, RuntimeClickHouseConfig };

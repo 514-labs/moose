@@ -118,7 +118,7 @@ export class Task<T = null, R = null> extends TypedBase<T, TaskConfig<T, R>> {
  */
 export interface WorkflowConfig {
   /** The initial task that begins the workflow execution */
-  startingTask: Task<any, any> | Task<null, void>;
+  startingTask: Task<any, any> | Task<null, any>;
 
   /** Optional number of retry attempts if the entire workflow fails */
   retries?: number;

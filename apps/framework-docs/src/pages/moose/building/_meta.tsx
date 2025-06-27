@@ -2,13 +2,13 @@ import { render } from "@/components";
 
 const meta = {
   "data-modeling": "Data Modeling",
-  ingestion: "Ingesting Data into Analytics Storage",
+  ingestion: "Ingest Pipelines & APIs",
   streams: "Stream Processing",
-  "olap-table": "Working with OLAP Tables",
-  "materialized-views": "Transforming Data in-Database",
-  "consumption-apis": "Exposing Analytics via API",
-  workflows: "Scheduling & Triggering Workflows",
-  "dead-letter-queues": "Error Handling With Dead Letter Queues",
+  "olap-table": "OLAP Tables",
+  "materialized-views": "Materialized Views",
+  "consumption-apis": "Consumption APIs",
+  workflows: "Workflows",
+  "dead-letter-queues": "Dead Letter Queues",
 };
 
 export default render(meta);

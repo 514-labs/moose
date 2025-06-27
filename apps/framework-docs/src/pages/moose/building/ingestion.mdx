@@ -3,43 +3,165 @@ title: Ingestion APIs
 description: Ingestion APIs for Moose
 ---
 
-import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, CheckmarkBullets, ZoomImg } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, CheckmarkBullets, ZoomImg, CompareBulletPointsCard, CTACard, CTACards, PathConfig } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Ingestion APIs
 <LanguageSwitcher />
 
 ## Overview
-Ingestion APIs are the entry point for data flowing into your Moose application. 
+Moose Ingestion APIs are the entry point for getting data into your Moose application. They provide a fast, reliable, and type-safe way to move data from your sources into streams and tables for analytics and processing.
 
-<BulletPointsCard
-  title="Working with Ingestion APIs"
-  bullets={[
-    {
-      title: "Model data for API validation",
-      description: "Create a type definition that validates incoming data"
-    },
-    {
-      title: "Set up ingestion endpoints",
-      description: "Configure HTTP REST APIs based on your data models"
-    },
-    {
-      title: "Connect to destination streams",
-      description: "Direct validated data to streams for buffering and processing"
-    }
-  ]}
-/>
+## When to Use Ingestion APIs
+Ingestion APIs are most useful when you want to implement a push-based pattern for getting data from your data sources into your streams and tables. Common use cases include:
+- Instrumenting external client applications
+- Receiving webhooks from third-party services
+- Integrating with ETL or data pipeline tools that push data
+
+## Why Use Moose's APIs Over Your Own?
+Moose's ingestion APIs are purpose-built for high-throughput data pipelines, offering key advantages over other more general-purpose frameworks:
+- **Built-in schema validation:** Ensures only valid data enters your pipeline.
+- **Direct connection to streams/tables:** Instantly link HTTP endpoints to Moose data infrastructure to route incoming data to your streams and tables without any glue code.
+- **Dead Letter Queue (DLQ) support:** Invalid records are automatically captured for review and recovery.
+- **OpenAPI auto-generation:** Instantly generate client SDKs and docs for all endpoints, including example data.
+- **Rust-powered performance:** Far higher throughput and lower latency than typical Node.js or Python APIs.
+
+
+## How Moose Handles Data Integrity
+Moose validates all incoming data against your TypeScript interface or Python model, ensuring only well-formed, expected data enters your pipeline. If a record fails validation, Moose can automatically route it to a Dead Letter Queue (DLQ) for later inspection and recovery.
+
+<TypeScript>
+```typescript filename="ValidationExample.ts" copy
+interface UserEvent {
+  id: string;
+  userId: string;
+  timestamp: Date;
+  properties?: {
+    device?: string;
+    version?: number;
+  }
+}
+
+const api = new IngestApi<UserEvent>("user-events", {
+  destination: new Stream<UserEvent>("user-events"),
+  deadLetterQueue: new DeadLetterQueue<UserEvent>("user-events-dlq")
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="ValidationExample.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
+from pydantic import BaseModel
+
+class Properties(BaseModel):
+    device: Optional[str]
+    version: Optional[int]
+
+class UserEvent(BaseModel):
+    id: str
+    userId: str
+    timestamp: datetime
+    properties: Properties
+
+api = IngestApi[UserEvent]("user-events", IngestConfig(
+    destination=Stream[UserEvent]("user-events"),
+    dead_letter_queue=DeadLetterQueue[UserEvent]("user-events-dlq")
+))
+```
+</Python>
+
+<Tabs items={["Valid Event", "Invalid: Missing Field", "Invalid: Bad Date"]}>
+<Tabs.Tab>
+Send a valid event - routed to the destination stream
+<TypeScript>
+```typescript filename="ValidEvent.ts" copy
+fetch("http://localhost:4000/ingest/user-events", {
+  method: "POST",
+  body: JSON.stringify({
+    id: "event1",
+    userId: "user1",
+    timestamp: "2023-05-10T15:30:00Z"
+  })
+})
+// ✅ Accepted and routed to the destination stream
+// API returns 200 and { success: true }
+```
+</TypeScript>
+<Python>
+```python filename="ValidEvent.py" copy
+requests.post("http://localhost:4000/ingest/user-events", json={
+    "id": "event1",
+    "userId": "user1",
+    "timestamp": "2023-05-10T15:30:00Z"
+  })
+# ✅ Accepted and routed to the destination stream
+# API returns 200 and { success: true }
+```
+</Python>
+
+
+</Tabs.Tab>
+<Tabs.Tab>
+Send an invalid event (missing required field) - routed to the DLQ
+<TypeScript>
+```typescript filename="InvalidEventMissingField.ts" copy
+fetch("http://localhost:4000/ingest/user-events", {
+  method: "POST",
+  body: JSON.stringify({
+    id: "event1"
+  })
+})
+// ❌ Routed to DLQ, because it's missing a required field
+// API returns 400 response
+```
+</TypeScript>
+<Python>
+```python filename="InvalidEventMissingField.py" copy
+requests.post("http://localhost:4000/ingest/user-events", json={
+    "id": "event1",
+  })
+# ❌ Routed to DLQ, because it's missing a required field
+# API returns 400 response
+```
+</Python>
+</Tabs.Tab>
+<Tabs.Tab>
+Send an invalid event (bad date format) - routed to the DLQ
+<TypeScript>
+```typescript filename="InvalidEventBadDate.ts" copy
+fetch("http://localhost:4000/ingest/user-events", {
+  method: "POST",
+  body: JSON.stringify({
+    id: "event1",
+    userId: "user1",
+    timestamp: "not-a-date"
+  })
+})
+// ❌ Routed to DLQ, because the timestamp is not a valid date
+// API returns 400 response
+```
+</TypeScript>
+<Python>
+```python filename="InvalidEventBadDate.py" copy
+requests.post("http://localhost:4000/ingest/user-events", json={
+    "id": "event1",
+    "userId": "user1",
+    "timestamp": "not-a-date"
+  })
+# ❌ Routed to DLQ, because the timestamp is not a valid date
+# API returns 400 response
+```
+</Python>
+</Tabs.Tab>
+</Tabs>
 
 ## Creating Ingestion APIs
-
 You can create ingestion APIs in two ways:
-- High-level: Using the `IngestPipeline` class (recommended)
-- Low-level: Manually configuring the `IngestApi` component for more granular control
+- **High-level:** Using the `IngestPipeline` class (recommended for most use cases)
+- **Low-level:** Manually configuring the `IngestApi` component for more granular control
 
-### Basic Ingestion Pipeline
-
-<Tabs items={["IngestPipeline (Recommended)", "Standalone IngestAPI"]}>
-<Tabs.Tab>
+### High-level: IngestPipeline (Recommended)
 The `IngestPipeline` class provides a convenient way to set up ingestion endpoints, streams, and tables with a single declaration:
 
 <TypeScript>
@@ -60,7 +182,6 @@ const examplePipeline = new IngestPipeline<ExampleSchema>("example", {
 });
 ```
 </TypeScript>
-
 <Python>
 ```python filename="IngestPipeline.py" copy
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig
@@ -82,10 +203,11 @@ example_pipeline = IngestPipeline[ExampleSchema](
 )
 ```
 </Python>
-</Tabs.Tab>
 
-<Tabs.Tab>
+### Low-level: Standalone IngestApi
 For more granular control, you can manually configure the `IngestApi` component:
+
+<TypeScript>
 ```typescript filename="AnalyticsPipelineManual.ts" copy
 interface ExampleRecord {
   id: string;
@@ -107,323 +229,121 @@ const exampleApi = new IngestApi<ExampleRecord>("example", {
   destination: exampleStream,  // Connect API to stream
 });
 ```
+</TypeScript>
+
 <Callout type="warning">
 The types of the destination `Stream` and `Table` must match the type of the `IngestApi`.
 </Callout>
+
+<CompareBulletPointsCard
+  leftColumn={{
+    title: "Ingestion Pipeline",
+    bullets: [
+      "You want to create a new ingestion endpoint, stream, and table",
+      "You want to simplify configuration and reduce boilerplate",
+    ],
+    bulletStyle: "none",
+  }}
+  rightColumn={{
+    title: "IngestApi",
+    bullets: [
+      "You have an existing Stream object that you want to connect to",
+      "You want to manually configure the ingestion API",
+    ],
+    bulletStyle: "none",
+  }}
+/>
+
+## Configuration Reference
+Configuration options for both high-level and low-level ingestion APIs are provided below.
+
+<Tabs items={["IngestPipeline", "IngestApi"]}>
+<Tabs.Tab>
+<TypeScript>
+```typescript filename="IngestPipelineConfig.ts" copy
+interface IngestPipelineConfig<T> {
+  table?: boolean | OlapConfig<T>;
+  stream?: boolean | Omit<StreamConfig<T>, "destination">;
+  ingest?: boolean | Omit<IngestConfig<T>, "destination">;
+  deadLetterQueue?: boolean | Omit<StreamConfig<T>, "destination">;
+  version?: string;
+  metadata?: {
+    description?: string;
+  };
+}
+```
+</TypeScript>
+<Python>
+```python filename="IngestPipelineConfig.py" copy
+class IngestPipelineConfig(BaseModel):
+    table: bool | OlapConfig = True
+    stream: bool | StreamConfig = True
+    ingest: bool | IngestConfig = True
+    dead_letter_queue: bool | StreamConfig = True
+    version: Optional[str] = None
+    metadata: Optional[dict] = None
+```
+</Python>
+</Tabs.Tab>
+<Tabs.Tab>
+<TypeScript>
+```typescript filename="IngestConfig.ts" copy
+interface IngestConfig<T> {
+  destination: Stream<T>;
+  deadLetterQueue?: DeadLetterQueue<T>;
+  version?: string;
+  metadata?: {
+    description?: string;
+  };
+}
+```
+</TypeScript>
+<Python>
+```python filename="IngestConfig.py" copy
+@dataclass
+class IngestConfigWithDestination[T: BaseModel]:
+    destination: Stream[T]
+    dead_letter_queue: Optional[DeadLetterQueue[T]] = None
+    version: Optional[str] = None
+    metadata: Optional[dict] = None
+```
+</Python>
 </Tabs.Tab>
 </Tabs>
 
-<Callout type="info" title="Single Record vs Batch Ingestion">
-Ingestion APIs automatically support ingesting a single `JSON` record at a time OR a batched array of JSON objects.
-</Callout>
+---
 
-<BulletPointsCard
-  divider={false}
-  bulletStyle="check"
-  title="Ingest Pipeline Data Flow:"
-  bullets={[
-    {
-      title: "Received data is validated against your data model type",
-    },
-    {
-      title: "Moose writes validated data to the associated stream (if configured)",
-    },
-    {
-      title: "Moose automatically syncs buffered data to the configured table (if enabled)",
-    },
-  ]}
+## Next Steps
+
+<CTACards columns={1}>
+<CTACard
+  title="API Reference"
+  description="Explore the full API reference for ingestion pipelines and APIs"
+  ctaLink={PathConfig.mooseLibrary.path}
+  Icon={PathConfig.mooseLibrary.icon}
+  orientation="horizontal"
 />
-
-
-## Using Ingestion APIs
-
-Moose operates a webserver on port 4000 by default. All ingestion endpoints are available at `POST localhost:4000/ingest/<name>`:
-
-<Callout type="info" title="Ingestion API Endpoint">
-The ingestion API endpoint is `POST localhost:4000/ingest/<name>`, where `<name>` is the string value you provided as the first argument ("name") to the `IngestPipeline` or `IngestApi` constructor.
-</Callout>
-
-<TypeScript>
-```typescript filename="Record.ts" copy
-import { IngestPipeline } from "@514labs/moose-lib";
-
-interface Record {
-  id: string;
-  name: string;
-  value: number;
-  timestamp: Date;
-}
-
-const simplePipeline = new IngestPipeline<Record>("example", {
-  ingest: true, // Creates a REST API endpoint at POST localhost:4000/ingest/example
-  stream: true,
-  table: true
-});
-```
-</TypeScript>
-
-<Python>
-```python filename="Record.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
-from pydantic import BaseModel
-
-class Record(BaseModel):
-    id: Key[str]
-    name: str
-    value: int
-    timestamp: datetime
-
-simple_pipeline = IngestPipeline[Record](
-    name="example", # Ingestion API endpoint is POST localhost:4000/ingest/example
-    config=IngestPipelineConfig(
-        ingest=True,
-        stream=True,
-        table=True    
-    )
-)
-```
-</Python>
-
-```bash
-# Single record ingestion
-curl -X POST http://localhost:4000/ingest/example \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "pv_123",
-    "name": "John Doe",
-    "value": 100,
-    "timestamp": "2024-03-24T10:30:00Z"
-  }'
-
-# Batch ingestion
-curl -X POST http://localhost:4000/ingest/example \
-  -H "Content-Type: application/json" \
-  -d '[
-    {
-      "id": "123",
-      "name": "John Doe",
-      "value": 100,
-      "timestamp": "2024-03-24T10:30:00Z"
-    },
-    {
-      "id": "456",
-      "name": "Jane Doe",
-      "value": 200,
-      "timestamp": "2024-03-24T10:30:00Z"
-    }
-  ]'
-```
-
-### Creating Ingestion Workflows
-If you do not need to push data into your ingestion pipeline from an external source, you can create an ingestion workflow to push data into your pipeline.
-
-<TypeScript>
-In your TypeScript workflow, you can use the `fetch` function to hit the ingestion API:
-
-```typescript filename="IngestionWorkflow.ts" copy
-
-await fetch("http://localhost:4000/ingest/example", {
-  method: "POST",
-  body: JSON.stringify({
-    id: "pv_123",
-    name: "John Doe",
-    value: 100,
-    timestamp: "2024-03-24T10:30:00Z" 
-  })
-});
-```
-</TypeScript>
-
-<Python>
-In your Python task function, you can use the `requests` library to hit the ingestion API:
-
-```python filename="IngestionWorkflow.py" copy
-
-requests.post("http://localhost:4000/ingest/example", json={
-    "id": "pv_123",
-    "name": "John Doe",
-    "value": 100,
-    "timestamp": "2024-03-24T10:30:00Z"
-})
-```
-</Python>
-
-View the [Workflows](/moose/building/workflows) page for more information.
-
-### Response Codes
-
-Moose automatically provides standard HTTP responses:
-
-| Status Code | Meaning                 | Response Body                    |
-|-------------|-------------------------|---------------------------------|
-| 200         | Success                 | `{ "success": true }`           |
-| 400         | Validation error        | `{ "error": "Detailed message"}`|
-
-### Client Generation with OpenAPI
-
-Moose automatically generates OpenAPI documentation for all ingestion endpoints:
-
-<BulletPointsCard
-  divider={false}
-  title="Locating OpenAPI Spec"
-  bullets={[
-    {
-      title: "Development",
-      description: "http://localhost:5001/openapi.yaml"
-    },
-    {
-      title: "Production",
-      description: "https://your-domain.com/openapi.yaml"
-    },
-    {
-      title: "Project file",
-      description: ".moose/openapi.yaml"
-    }
-  ]}
+<CTACard
+  title="Dead Letter Queues"
+  description="Learn how to configure and use dead letter queues to handle failed records"
+  ctaLink={PathConfig.deadLetterQueues.path}
+  Icon={PathConfig.deadLetterQueues.icon}
+  orientation="horizontal"
 />
-
-### Using OpenAPI UI Client
-
-<Callout type="info" title="Use OpenAPI Viewer IDE Extension:">
-We recommend the [OpenAPI Viewer](https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi) extension for VSCode.
-</Callout>
-
-<ZoomImg dark="/openapi-try.png" light="/openapi-try-dark.png" />
-
-The OpenAPI spec includes example data for each Data Model schema, which can be used to construct requests. If using the Swagger UI, you can use the example data to construct requests by clicking the `Try it out` button.
-
-
-### Generate SDKs with OpenAPI Generator
-
-<Callout type="info" title="Install the OpenAPI Generator:">
-```bash
-npm install -g @openapitools/openapi-generator-cli
-```
-</Callout>
-
-```bash
-# Generate TypeScript client
-openapi-generator-cli generate \
-  -i .moose/openapi.yaml \
-  -g typescript-fetch \
-  -o ./sdk
-
-# Generate Python client
-openapi-generator-cli generate \
-  -i .moose/openapi.yaml \
-  -g python-requests \
-  -o ./sdk
-```
-
-## Configuration Options
-
-### IngestPipeline Options
-```typescript filename="PipelineConfig.ts" copy
-interface PipelineConfig<T> {
-  ingest?: boolean;
-  stream?: boolean | {
-    parallelism?: number;      // Default: 1
-    retentionPeriod?: number;  // In seconds, default: 24h
-  };
-  table?: boolean | {
-    orderByFields?: (keyof T)[];
-    deduplicate?: boolean;
-  };
-}
-```
-
-## Using `IngestPipeline` vs. `IngestApi`
-
-<BulletPointsCard
-  uppercase={false}
-  bulletStyle="check"
-  divider={false}
-  title="Use IngestPipeline when:"
-  bullets={[
-    "You want to create a new ingestion endpoint, stream, and table",
-    "You want to simplify configuration and reduce boilerplate",
-  ]}
+<CTACard
+  title="Streams"
+  description="Learn how to configure streams for ingestion"
+  ctaLink={PathConfig.streams.path}
+  Icon={PathConfig.streams.icon}
+  orientation="horizontal"
 />
-
-<BulletPointsCard
-  uppercase={false}
-  bulletStyle="check"
-  divider={false}
-  title="Use IngestApi when:"
-  bullets={[
-    "You have an existing Stream object that you want to connect to",
-  ]}
+<CTACard
+  title="OLAP Tables"
+  description="Learn how to use OLAP tables for ingestion"
+  ctaLink={PathConfig.olapTables.path}
+  Icon={PathConfig.olapTables.icon}
+  orientation="horizontal"
 />
-
-## Validation Layer
-Moose's ingestion APIs automatically validate all incoming data against your TypeScript interface:
-
-<TypeScript>
-```typescript filename="ValidationExample.ts" copy
-interface UserEvent {
-  id: string;             // Required string
-  userId: string;         // Required string
-  timestamp: Date;        // Required date (ISO format)
-  properties?: {          // Optional object
-    device?: string;      // Optional string
-    version?: number;     // Optional number
-  }
-}
-
-// This will be validated against the interface:
-// ✅ Valid: { "id": "event1", "userId": "user1", "timestamp": "2023-05-10T15:30:00Z" }
-// ❌ Invalid: { "id": "event1" } // Missing required fields
-// ❌ Invalid: { "id": "event1", "userId": "user1", "timestamp": "not-a-date" } // Invalid date format
-```
-</TypeScript>
-
-<Python>
-```python filename="ValidationExample.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, IngestConfig
-from pydantic import BaseModel
-
-class Properties(BaseModel):
-    device: Optional[str] 
-    version: Optional[int]
-
-class UserEvent(BaseModel):
-    id: str
-    userId: str
-    timestamp: datetime
-    properties: Properties
-
-# This will be validated against the interface:
-# ✅ Valid: { "id": "event1", "userId": "user1", "timestamp": "2023-05-10T15:30:00Z" }
-# ❌ Invalid: { "id": "event1" } # Missing required fields
-# ❌ Invalid: { "id": "event1", "userId": "user1", "timestamp": "not-a-date" } # Invalid date format
-```
-</Python>
-
-## Best Practices
-
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  title="API Usage"
-  bullets={[
-    "Use batch ingestion for high-volume data",
-    "Implement client-side retry logic",
-    "Consider rate limiting implications",
-    "Handle validation errors gracefully",
-  ]}
-/>
-
-<BulletPointsCard
-  bulletStyle="check"
-  divider={false}
-  title="Performance Considerations"
-  bullets={[
-    "Configure proper stream parallelism based on load",
-    "Use batch ingestion for high-throughput scenarios",
-    "Monitor API response times",
-    "Set appropriate retention periods",
-  ]}
-/>
+</CTACards>
 
 
-See the [API Reference](./api-reference#ingestpipeline) for complete configuration options.

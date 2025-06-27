@@ -241,7 +241,8 @@ example_materialized_view = MaterializedView[TargetTableSchema](MaterializedView
 ```
 </Python>
 
-<Callout type="info" title="Note">
+### State and Merge Suffixes
+
 When using the `AggregatingMergeTree` engine, you need to use the [`State` suffix](https://clickhouse.com/docs/sql-reference/aggregate-functions/combinators#-state) at the end of your aggregate function in your SQL query:
 
 ```sql
@@ -254,7 +255,14 @@ When querying the materialized view, you need to use the `Merge` suffix at the e
 ```sql
 SELECT avgMerge(average_rating), countMerge(num_reviews) FROM my_table
 ```
-</Callout>
+
+If you use the `Aggregated` type in your schema, you don't need to use the `Merge` suffix if you reference the field in your query using the `sql` function.
+
+```ts filename="Aggregated.ts" copy
+const cols = exampleMaterializedView.targetTable.columns;
+const query = sql`SELECT ${cols.average_rating}, ${cols.num_reviews} FROM my_table`;
+```
+
 
 ### Best Practices for Aggregations
 

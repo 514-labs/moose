@@ -236,9 +236,9 @@ interface MyTableSchema {
 }
 
 const myTable = new OlapTable<MyTableSchema>("my_table");
-
+const cols = myTable.columns;
 const query = sql`
-  SELECT ${myTable.columns["id"]}, ${myTable.columns["name"]}, ${myTable.columns["value"]} FROM ${myTable.name}
+  SELECT ${cols.id}, ${cols.name}, ${cols.value} FROM ${myTable}
 `;
 
 // When Moose runs this query, it will automatically convert the interpolated values into the correct SQL syntax for your database:

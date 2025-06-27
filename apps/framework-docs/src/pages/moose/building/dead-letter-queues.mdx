@@ -517,4 +517,55 @@ Dead letter queues add overhead to stream processing. Use them judiciously and m
 
 <Callout type="info" title="Monitoring Integration">
 Dead letter queue events can be integrated with monitoring systems like Prometheus, DataDog, or CloudWatch for alerting and dashboards. Consider tracking metrics like DLQ message rate, error types, and recovery success rates.
-</Callout> 
+</Callout>
+
+## Using Dead Letter Queues in Ingestion Pipelines
+
+Dead Letter Queues (DLQs) can be directly integrated with your ingestion pipelines to capture records that fail validation or processing at the API entry point. This ensures that no data is lost, even if it cannot be immediately processed.
+
+<TypeScript>
+```typescript filename="IngestPipelineWithDLQ.ts" copy
+import { IngestPipeline, DeadLetterQueue } from "@514labs/moose-lib";
+
+interface ExampleSchema {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: Date;
+}
+
+const pipeline = new IngestPipeline<ExampleSchema>("example", {
+  ingest: true,
+  stream: true,
+  table: true,
+  deadLetterQueue: true, // Route failed ingestions to DLQ
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="IngestPipelineWithDLQ.py" copy
+from moose_lib import IngestPipeline, DeadLetterQueue, IngestPipelineConfig
+from pydantic import BaseModel
+
+class ExampleSchema(BaseModel):
+    id: str
+    name: str
+    value: int
+    timestamp: datetime
+
+example_dlq = DeadLetterQueue[ExampleSchema](name="exampleDLQ")
+
+pipeline = IngestPipeline[ExampleSchema](
+    name="example",
+    config=IngestPipelineConfig(
+        ingest=True,
+        stream=True,
+        table=True,
+        dead_letter_queue=True  # Route failed ingestions to DLQ
+    )
+)
+```
+</Python>
+
+See the [Ingestion API documentation](./ingestion#handling-ingestion-failures-with-dead-letter-queues) for more details and best practices on configuring DLQs for ingestion. 

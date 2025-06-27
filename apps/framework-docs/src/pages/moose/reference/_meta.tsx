@@ -7,6 +7,7 @@ const meta = {
   "minimum-requirements": "Minimum Requirements",
   troubleshooting: "Troubleshooting",
   "metrics-console": "Metrics Console",
+  configuration: "Configuration",
 };
 
 export default render(meta);

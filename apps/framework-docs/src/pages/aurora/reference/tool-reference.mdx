@@ -11,6 +11,7 @@ import {
   FeatureGrid,
   Icons,
 } from "@/components";
+import { Tabs } from "nextra/components";
 
 # Tool Reference
 
@@ -66,29 +67,37 @@ Tools needed to read the Moose project and its associated infrastructure.
 
 These tools are enabled by default.
 
-To enable them explicitly, run 
-```bash filename="Terminal" copy
-aurora config tools
-```
-and enable `read-only-moose-tools`.
-```txt filename="Terminal" copy
-? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
-  [x] read-only - Enable read-only tools for data inspection
-  [ ] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
-  [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
-  [ ] remote-clickhouse - Enable Remote Clickhouse integration
-  [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
-```
+To enable them explicitly:
 
-If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+<Tabs items={["Aurora CLI", "MCP.json"]}>
+  <Tabs.Tab>
+    Run the following command:
+    
+    ```bash filename="Terminal" copy
+    aurora config tools
+    ```
+    and enable `read-only-moose-tools`. e.g.:
+    ```txt filename="Terminal" copy
+    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
+      [x] read-only - Enable read-only tools for data inspection
+      [ ] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
+      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
+      [ ] remote-clickhouse - Enable Remote Clickhouse integration
+      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
 
-```json filename="MCP.json" copy
-"args": [
-  ...
-  "--read-only", 
-  ...
-]
-```
+    ```json filename="MCP.json" copy
+    "args": [
+      ...
+      "--read-only", 
+      ...
+    ]
+    ```
+  </Tabs.Tab>
+</Tabs>
 
 ### When is this toolset useful?
 * When you are exploring data in your Moose project: *"Tell me about the data in my Moose project", "Tell me about the data in my `consumption` table"*,  *"Tell me about the data streams in my Moose project"*, *"Describe my DLQ topic"*, *"Tell me about the data in my `enrichment` data stream"*
@@ -118,30 +127,38 @@ Tools needed to create and test Moose primitives. These are used to ingest data,
 These tools are enabled by default (except for in Claude Desktop, where these tools aren't recommended).
 These tools require that the `read-only-moose-tools` toolset is enabled.
 
-To enable them explicitly, run 
-```bash filename="Terminal" copy
-aurora config tools
-```
-and enable `read-only-moose-tools`.
-```txt filename="Terminal" copy
-? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
-  [x] read-only - Enable read-only tools for data inspection
-  [x] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
-  [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
-  [ ] remote-clickhouse - Enable Remote Clickhouse integration
-  [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
-```
+To enable them explicitly:
 
+<Tabs items={["Aurora CLI", "MCP.json"]}>
+  <Tabs.Tab>
+    Run the following command:
 
-If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+    ```bash filename="Terminal" copy
+    aurora config tools
+    ```
+    and enable `egress-tools`. e.g.:
+    ```txt filename="Terminal" copy
+    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
+      [x] read-only - Enable read-only tools for data inspection
+      [x] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
+      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
+      [ ] remote-clickhouse - Enable Remote Clickhouse integration
+      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
 
-```json filename="MCP.json" copy
-"args": [
-  ...
-  "--moose-tools", 
-  ...
-]
-```
+    ```json filename="MCP.json" copy
+    "args": [
+      ...
+      "--moose-tools", 
+      ...
+    ]
+    ```
+  </Tabs.Tab>
+</Tabs>
+
 ### When is this toolset useful?
 
 * When you are creating new Moose primitives: *"I want to create a new data model for the following API source: ...; documented here: ..."*, *"I want to create a new workflow to ingest data from the following API source: ...; documented here: ..."*, *"I want to create a new streaming function to enrich the data from this data stream with the following API source: ...; documented here: ..."*, *"I want to create a new materialized view that will improve the performance of the `aircraft` API"*
@@ -463,25 +480,47 @@ Tools for reading data in your external ClickHouse database (e.g. those hosted i
 ### Activate this toolset
 
 These tools are **not** enabled by default.
-To enable them explicitly, run `aurora config tools` and enable `remote-clickhouse`. If you use `aurora config tools` to enable this toolset, you will still need to manually add the environment variables to your `mcp.json` file.
 
-If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+To enable them explicitly:
 
-```json filename="MCP.json" copy
-"args": [
-  ...
-  "--remote-clickhouse", 
-  ...
-]
-"env": {
-  ...
-  "BOREAL_CLICKHOUSE_HOST": "...",
-  "BOREAL_CLICKHOUSE_PORT": "...",
-  "BOREAL_CLICKHOUSE_USER": "...",
-  "BOREAL_CLICKHOUSE_PASSWORD": "...",
-  "BOREAL_CLICKHOUSE_DATABASE": "...",
-}
-```
+<Tabs items={["Aurora CLI", "MCP.json"]}>
+  <Tabs.Tab>
+    Run the following command:
+
+    ```bash filename="Terminal" copy
+    aurora config tools
+    ```
+    and enable `remote-clickhouse`. e.g.:
+    ```txt filename="Terminal" copy
+    ? Select experimental tools to enable (no selection defaults to read-only and egress-tools):  
+      [x] read-only - Enable read-only tools for data inspection
+      [ ] egress-tools - Enable egress-tools for exposing data (requires read only tools: auto enables)
+      [ ] experimental-moose-tools - Enable experimental moose tools (requires read only tools: auto enables)
+      [x] remote-clickhouse - Enable Remote Clickhouse integration
+      [ ] external-duck-db-mcp - Enable External DuckDB MCP integration
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+
+    ```json filename="MCP.json" copy
+    "args": [
+      ...
+      "--remote-clickhouse", 
+      ...
+    ]
+    "env": {
+      ...
+      "BOREAL_CLICKHOUSE_HOST": "...",
+      "BOREAL_CLICKHOUSE_PORT": "...", 
+      "BOREAL_CLICKHOUSE_USER": "...",
+      "BOREAL_CLICKHOUSE_PASSWORD": "...",
+      "BOREAL_CLICKHOUSE_DATABASE": "...",
+    }
+    ```
+  </Tabs.Tab>
+</Tabs>
+
 ## Other Experimental Tools
 
 These tools are in research preview, [let us know if you are interested in using them](mailto:aurora@fiveonefour.com).

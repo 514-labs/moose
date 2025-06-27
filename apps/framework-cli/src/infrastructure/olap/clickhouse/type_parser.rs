@@ -312,28 +312,28 @@ pub enum TupleElement {
 impl fmt::Display for ClickHouseTypeNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClickHouseTypeNode::Simple(name) => write!(f, "{}", name),
-            ClickHouseTypeNode::Nullable(inner) => write!(f, "Nullable({})", inner),
-            ClickHouseTypeNode::Array(inner) => write!(f, "Array({})", inner),
-            ClickHouseTypeNode::LowCardinality(inner) => write!(f, "LowCardinality({})", inner),
+            ClickHouseTypeNode::Simple(name) => write!(f, "{name}"),
+            ClickHouseTypeNode::Nullable(inner) => write!(f, "Nullable({inner})"),
+            ClickHouseTypeNode::Array(inner) => write!(f, "Array({inner})"),
+            ClickHouseTypeNode::LowCardinality(inner) => write!(f, "LowCardinality({inner})"),
             ClickHouseTypeNode::Decimal { precision, scale } => {
-                write!(f, "Decimal({}, {})", precision, scale)
+                write!(f, "Decimal({precision}, {scale})")
             }
             ClickHouseTypeNode::DecimalSized { bits, precision } => {
-                write!(f, "Decimal{}({})", bits, precision)
+                write!(f, "Decimal{bits}({precision})")
             }
             ClickHouseTypeNode::DateTime { timezone } => match timezone {
-                Some(tz) => write!(f, "DateTime('{}')", tz),
+                Some(tz) => write!(f, "DateTime('{tz}')"),
                 None => write!(f, "DateTime"),
             },
             ClickHouseTypeNode::DateTime64 {
                 precision,
                 timezone,
             } => match timezone {
-                Some(tz) => write!(f, "DateTime64({}, '{}')", precision, tz),
-                None => write!(f, "DateTime64({})", precision),
+                Some(tz) => write!(f, "DateTime64({precision}, '{tz}')"),
+                None => write!(f, "DateTime64({precision})"),
             },
-            ClickHouseTypeNode::FixedString(length) => write!(f, "FixedString({})", length),
+            ClickHouseTypeNode::FixedString(length) => write!(f, "FixedString({length})"),
             ClickHouseTypeNode::Nothing => write!(f, "Nothing"),
             ClickHouseTypeNode::BFloat16 => write!(f, "BFloat16"),
             ClickHouseTypeNode::IPv4 => write!(f, "IPv4"),
@@ -341,7 +341,7 @@ impl fmt::Display for ClickHouseTypeNode {
             ClickHouseTypeNode::JSON => write!(f, "JSON"),
             ClickHouseTypeNode::Dynamic => write!(f, "Dynamic"),
             ClickHouseTypeNode::Object(params) => match params {
-                Some(p) => write!(f, "Object({})", p),
+                Some(p) => write!(f, "Object({p})"),
                 None => write!(f, "Object"),
             },
             ClickHouseTypeNode::Variant(types) => {
@@ -350,19 +350,19 @@ impl fmt::Display for ClickHouseTypeNode {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", t)?;
+                    write!(f, "{t}")?;
                 }
                 write!(f, ")")
             }
-            ClickHouseTypeNode::Interval(interval_type) => write!(f, "Interval{}", interval_type),
-            ClickHouseTypeNode::Geo(geo_type) => write!(f, "{}", geo_type),
+            ClickHouseTypeNode::Interval(interval_type) => write!(f, "Interval{interval_type}"),
+            ClickHouseTypeNode::Geo(geo_type) => write!(f, "{geo_type}"),
             ClickHouseTypeNode::Enum { bits, members } => {
-                write!(f, "Enum{}(", bits)?;
+                write!(f, "Enum{bits}(")?;
                 for (i, (name, value)) in members.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "'{}' = {}", name, value)?;
+                    write!(f, "'{name}' = {value}")?;
                 }
                 write!(f, ")")
             }
@@ -374,10 +374,10 @@ impl fmt::Display for ClickHouseTypeNode {
                     }
                     match element {
                         TupleElement::Named { name, type_node } => {
-                            write!(f, "{} {}", name, type_node)?;
+                            write!(f, "{name} {type_node}")?;
                         }
                         TupleElement::Unnamed(type_node) => {
-                            write!(f, "{}", type_node)?;
+                            write!(f, "{type_node}")?;
                         }
                     }
                 }
@@ -391,7 +391,7 @@ impl fmt::Display for ClickHouseTypeNode {
                     }
                     match element {
                         TupleElement::Named { name, type_node } => {
-                            write!(f, "{} {}", name, type_node)?;
+                            write!(f, "{name} {type_node}")?;
                         }
                         TupleElement::Unnamed(_) => {
                             // Nested elements should always be named
@@ -405,15 +405,15 @@ impl fmt::Display for ClickHouseTypeNode {
                 key_type,
                 value_type,
             } => {
-                write!(f, "Map({}, {})", key_type, value_type)
+                write!(f, "Map({key_type}, {value_type})")
             }
             ClickHouseTypeNode::AggregateFunction {
                 function_name,
                 argument_types,
             } => {
-                write!(f, "AggregateFunction({}", function_name)?;
+                write!(f, "AggregateFunction({function_name}")?;
                 for arg_type in argument_types {
-                    write!(f, ", {}", arg_type)?;
+                    write!(f, ", {arg_type}")?;
                 }
                 write!(f, ")")
             }
@@ -423,8 +423,7 @@ impl fmt::Display for ClickHouseTypeNode {
             } => {
                 write!(
                     f,
-                    "SimpleAggregateFunction({}, {})",
-                    function_name, argument_type
+                    "SimpleAggregateFunction({function_name}, {argument_type})"
                 )
             }
         }
@@ -534,9 +533,9 @@ impl Parser {
 
     fn token_to_string(&self, token: &Token) -> String {
         match token {
-            Token::Identifier(s) => format!("identifier '{}'", s),
-            Token::StringLiteral(s) => format!("string '{}'", s),
-            Token::NumberLiteral(n) => format!("number {}", n),
+            Token::Identifier(s) => format!("identifier '{s}'"),
+            Token::StringLiteral(s) => format!("string '{s}'"),
+            Token::NumberLiteral(n) => format!("number {n}"),
             Token::LeftParen => "(".to_string(),
             Token::RightParen => ")".to_string(),
             Token::Comma => ",".to_string(),
@@ -687,7 +686,7 @@ impl Parser {
             "Decimal256" => 256,
             _ => {
                 return Err(ParseError::SyntaxError {
-                    message: format!("Invalid decimal type name: {}", type_name),
+                    message: format!("Invalid decimal type name: {type_name}"),
                 });
             }
         };
@@ -817,7 +816,7 @@ impl Parser {
             "Enum16" => 16,
             _ => {
                 return Err(ParseError::SyntaxError {
-                    message: format!("Invalid enum type name: {}", type_name),
+                    message: format!("Invalid enum type name: {type_name}"),
                 });
             }
         };
@@ -1264,18 +1263,17 @@ pub fn convert_ast_to_column_type(
                 256 => 76,
                 _ => {
                     return Err(ConversionError::InvalidParameters {
-                        type_name: format!("Decimal{}", bits),
-                        message: format!("Invalid bit size: {}", bits),
+                        type_name: format!("Decimal{bits}"),
+                        message: format!("Invalid bit size: {bits}"),
                     });
                 }
             };
 
             if *precision > max_precision {
                 return Err(ConversionError::InvalidParameters {
-                    type_name: format!("Decimal{}", bits),
+                    type_name: format!("Decimal{bits}"),
                     message: format!(
-                        "Precision {} exceeds maximum {} for Decimal{}",
-                        precision, max_precision, bits
+                        "Precision {precision} exceeds maximum {max_precision} for Decimal{bits}"
                     ),
                 });
             }
@@ -1339,7 +1337,7 @@ pub fn convert_ast_to_column_type(
         }),
 
         ClickHouseTypeNode::Interval(interval_type) => Err(ConversionError::UnsupportedType {
-            type_name: format!("Interval{}", interval_type),
+            type_name: format!("Interval{interval_type}"),
         }),
 
         ClickHouseTypeNode::Geo(geo_type) => Err(ConversionError::UnsupportedType {
@@ -1357,7 +1355,7 @@ pub fn convert_ast_to_column_type(
 
             Ok((
                 ColumnType::Enum(DataEnum {
-                    name: format!("Enum{}", bits),
+                    name: format!("Enum{bits}"),
                     values: enum_members,
                 }),
                 false,
@@ -1510,7 +1508,7 @@ mod tests {
 
         for type_str in types {
             let result = parse_clickhouse_type(type_str);
-            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+            assert!(result.is_ok(), "Failed to parse {type_str}: {result:?}");
             assert_eq!(
                 result.unwrap(),
                 ClickHouseTypeNode::Simple(type_str.to_string())
@@ -1519,7 +1517,7 @@ mod tests {
 
         // Test DateTime specially since it's now a separate type
         let result = parse_clickhouse_type("DateTime");
-        assert!(result.is_ok(), "Failed to parse DateTime: {:?}", result);
+        assert!(result.is_ok(), "Failed to parse DateTime: {result:?}");
         assert_eq!(
             result.unwrap(),
             ClickHouseTypeNode::DateTime { timezone: None }
@@ -1713,7 +1711,7 @@ mod tests {
         let complex_type =
             "Array(Nullable(Map(String, Tuple(x UInt32, y Array(Nullable(String))))))";
         let result = parse_clickhouse_type(complex_type);
-        assert!(result.is_ok(), "Failed to parse complex type: {:?}", result);
+        assert!(result.is_ok(), "Failed to parse complex type: {result:?}");
 
         // Test serialization/deserialization idempotence
         let node = result.unwrap();
@@ -1721,8 +1719,7 @@ mod tests {
         let reparsed = parse_clickhouse_type(&serialized);
         assert!(
             reparsed.is_ok(),
-            "Failed to reparse serialized type: {:?}",
-            reparsed
+            "Failed to reparse serialized type: {reparsed:?}"
         );
 
         assert_eq!(
@@ -1901,12 +1898,7 @@ mod tests {
             let reparsed = parse_clickhouse_type(&serialized);
 
             // Compare the ASTs
-            assert_eq!(
-                parsed,
-                reparsed.unwrap(),
-                "Type not idempotent: {}",
-                type_str
-            );
+            assert_eq!(parsed, reparsed.unwrap(), "Type not idempotent: {type_str}");
         }
 
         // Test types for conversion to framework types (only those we support)
@@ -1953,11 +1945,10 @@ mod tests {
         for (ch_type, expected_type, expected_nullable) in types {
             let (actual_type, actual_nullable) =
                 convert_clickhouse_type_to_column_type(ch_type).unwrap();
-            assert_eq!(actual_type, expected_type, "Failed on type {}", ch_type);
+            assert_eq!(actual_type, expected_type, "Failed on type {ch_type}");
             assert_eq!(
                 actual_nullable, expected_nullable,
-                "Failed on nullable {}",
-                ch_type
+                "Failed on nullable {ch_type}"
             );
         }
     }
@@ -2217,7 +2208,7 @@ mod tests {
 
         for type_str in simple_special_types {
             let result = parse_clickhouse_type(type_str);
-            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+            assert!(result.is_ok(), "Failed to parse {type_str}: {result:?}");
 
             match type_str {
                 "Nothing" => assert_eq!(result.unwrap(), ClickHouseTypeNode::Nothing),
@@ -2226,7 +2217,7 @@ mod tests {
                 "IPv6" => assert_eq!(result.unwrap(), ClickHouseTypeNode::IPv6),
                 "JSON" => assert_eq!(result.unwrap(), ClickHouseTypeNode::JSON),
                 "Dynamic" => assert_eq!(result.unwrap(), ClickHouseTypeNode::Dynamic),
-                _ => panic!("Unexpected type: {}", type_str),
+                _ => panic!("Unexpected type: {type_str}"),
             }
         }
     }
@@ -2281,7 +2272,7 @@ mod tests {
 
         for type_str in interval_types {
             let result = parse_clickhouse_type(type_str);
-            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+            assert!(result.is_ok(), "Failed to parse {type_str}: {result:?}");
 
             let interval_suffix = type_str.strip_prefix("Interval").unwrap_or("");
             assert_eq!(
@@ -2304,7 +2295,7 @@ mod tests {
 
         for type_str in geo_types {
             let result = parse_clickhouse_type(type_str);
-            assert!(result.is_ok(), "Failed to parse {}: {:?}", type_str, result);
+            assert!(result.is_ok(), "Failed to parse {type_str}: {result:?}");
 
             assert_eq!(
                 result.unwrap(),
@@ -2336,22 +2327,15 @@ mod tests {
             let conversion = convert_ast_to_column_type(&parsed);
             assert!(
                 conversion.is_err(),
-                "Type {} should not be convertible",
-                type_str
+                "Type {type_str} should not be convertible"
             );
 
             match &conversion {
                 Err(ConversionError::UnsupportedType { type_name }) => {
-                    println!(
-                        "Correctly got UnsupportedType for {}: {}",
-                        type_str, type_name
-                    );
+                    println!("Correctly got UnsupportedType for {type_str}: {type_name}");
                 }
-                Err(e) => panic!(
-                    "Expected UnsupportedType error for {} but got: {:?}",
-                    type_str, e
-                ),
-                Ok(_) => panic!("Expected error for {}, but conversion succeeded", type_str),
+                Err(e) => panic!("Expected UnsupportedType error for {type_str} but got: {e:?}"),
+                Ok(_) => panic!("Expected error for {type_str}, but conversion succeeded"),
             }
         }
 

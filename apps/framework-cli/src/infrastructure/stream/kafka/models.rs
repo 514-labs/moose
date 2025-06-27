@@ -192,7 +192,7 @@ fn default_replication_factor() -> i32 {
 fn namespace_prefix(namespace: &Option<String>) -> String {
     namespace
         .as_ref()
-        .map(|ns| format!("{}{}", ns, NAMESPACE_SEPARATOR))
+        .map(|ns| format!("{ns}{NAMESPACE_SEPARATOR}"))
         .unwrap_or_default()
 }
 
@@ -289,7 +289,7 @@ pub fn extract_version_from_topic_name(topic_name: &str) -> Option<Version> {
 /// * A String containing the full topic name with version
 pub fn topic_name(namespace: &Option<String>, topic_id: String) -> String {
     if let Some(ns) = namespace {
-        format!("{}{}{}", ns, NAMESPACE_SEPARATOR, topic_id)
+        format!("{ns}{NAMESPACE_SEPARATOR}{topic_id}")
     } else {
         topic_id
     }

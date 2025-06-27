@@ -68,3 +68,31 @@ export class UnsupportedFeature extends Error {
     this.featureName = featureName;
   }
 }
+
+/**
+ * Type guard: is this DataType an Array(Nested(...))?
+ * Uses the ArrayType and Nested types for type safety.
+ */
+export function isArrayNestedType(
+  dt: DataType,
+): dt is ArrayType & { elementType: Nested } {
+  return (
+    typeof dt === "object" &&
+    dt !== null &&
+    (dt as ArrayType).elementType !== null &&
+    typeof (dt as ArrayType).elementType === "object" &&
+    (dt as ArrayType).elementType.hasOwnProperty("columns") &&
+    Array.isArray(((dt as ArrayType).elementType as Nested).columns)
+  );
+}
+
+/**
+ * Type guard: is this DataType a Nested struct (not array)?
+ */
+export function isNestedType(dt: DataType): dt is Nested {
+  return (
+    typeof dt === "object" &&
+    dt !== null &&
+    Array.isArray((dt as Nested).columns)
+  );
+}

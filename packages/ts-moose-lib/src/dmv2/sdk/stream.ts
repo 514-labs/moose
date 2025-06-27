@@ -174,11 +174,6 @@ export interface StreamConfig<T> {
  */
 export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   /**
-   * Optional metadata for documentation and tracking purposes.
-   */
-  metadata?: { description?: string };
-
-  /**
    * Creates a new Stream instance.
    * @param name The name of the stream. This name is used for the underlying Redpanda topic.
    * @param config Optional configuration for the stream.
@@ -200,7 +195,6 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config ?? {}, schema, columns);
-    this.metadata = config?.metadata;
     getMooseInternal().streams.set(name, this);
   }
 
@@ -385,7 +379,7 @@ export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
   /**
    * Creates a new DeadLetterQueue instance.
    * @param name The name of the dead letter queue stream
-   * @param config Optional configuration for the stream
+   * @param config Optional configuration for the stream. The metadata property is always present and includes stackTrace.
    */
   constructor(name: string, config?: StreamConfig<DeadLetterModel>);
 

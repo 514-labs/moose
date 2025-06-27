@@ -426,8 +426,7 @@ impl Project {
                 debug!("Internal dir exists as a file: {:?}", internal_dir);
                 return Err(ProjectFileError::Other {
                     message: format!(
-                        "The {} file exists but is not a directory",
-                        CLI_PROJECT_INTERNAL_DIR
+                        "The {CLI_PROJECT_INTERNAL_DIR} file exists but is not a directory"
                     ),
                 });
             } else {

@@ -36,7 +36,6 @@ export interface EgressConfig<T> {
  * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
  */
 export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
-  metadata?: { description?: string };
   /** @internal The handler function that processes requests and generates responses. */
   _handler: ConsumptionHandler<T, R>;
   /** @internal The JSON schema definition for the response type R. */
@@ -69,7 +68,6 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
     responseSchema?: IJsonSchemaCollection.IV3_1,
   ) {
     super(name, config ?? {}, schema, columns);
-    this.metadata = config?.metadata;
     this._handler = handler;
     this.responseSchema = responseSchema ?? {
       version: "3.1",

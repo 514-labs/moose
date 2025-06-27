@@ -345,7 +345,7 @@ pub async fn select_all_as_json<'a>(
     offset: i64,
 ) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
 {
-    select_as_json(db_name, table, client, &format!("offset {}", offset)).await
+    select_as_json(db_name, table, client, &format!("offset {offset}")).await
 }
 
 /// Executes a SELECT query with a LIMIT clause and returns the results as a stream of JSON objects.
@@ -365,7 +365,7 @@ pub async fn select_some_as_json<'a>(
     limit: i64,
 ) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
 {
-    select_as_json(db_name, table, client, &format!("limit {}", limit)).await
+    select_as_json(db_name, table, client, &format!("limit {limit}")).await
 }
 
 /// Checks the structure of tables in the database and compares them with the expected structure.
@@ -393,9 +393,8 @@ pub async fn check_table(
             type,
             is_in_primary_key
         FROM system.columns 
-        WHERE database = '{}'
-        "#,
-        db_name
+        WHERE database = '{db_name}'
+        "#
     );
 
     let block = client.query(&columns_query).fetch_all().await?;

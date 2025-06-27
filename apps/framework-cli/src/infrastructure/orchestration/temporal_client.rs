@@ -97,13 +97,12 @@ impl TemporalClientManager {
     async fn get_temporal_client(&self) -> Result<WorkflowServiceClient<Channel>> {
         let endpoint: Uri = self.temporal_url.parse().unwrap();
         WorkflowServiceClient::connect(endpoint).await.map_err(|e| {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             Error::msg(format!(
-                r#"Could not connect to Temporal: {}
+                r#"Could not connect to Temporal: {e}
 
 Please ensure the Temporal server is running.
-Is the Moose development server running? Start it with `moose dev`."#,
-                e
+Is the Moose development server running? Start it with `moose dev`."#
             ))
         })
     }

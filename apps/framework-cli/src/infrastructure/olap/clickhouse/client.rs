@@ -96,7 +96,7 @@ impl ClickHouseClient {
         // TODO properly encode basic auth
         let username_and_password = format!("{}:{}", self.config.user, self.config.password);
         let encoded = BASE64_STANDARD.encode(username_and_password);
-        format!("Basic {}", encoded)
+        format!("Basic {encoded}")
     }
 
     fn host(&self) -> String {
@@ -128,7 +128,7 @@ impl ClickHouseClient {
             .collect::<Vec<String>>()
             .join("),(");
 
-        format!("({})", value_list)
+        format!("({value_list})")
     }
 
     pub async fn insert(
@@ -148,7 +148,7 @@ impl ClickHouseClient {
         debug!("Inserting into clickhouse: {}", insert_query);
 
         let query: String = query_param(&insert_query)?;
-        let uri = self.uri(format!("/?{}", query))?;
+        let uri = self.uri(format!("/?{query}"))?;
 
         let body = Self::build_body(columns, records);
 
@@ -188,7 +188,7 @@ impl ClickHouseClient {
     /// Executes a SQL statement without a body (e.g., INSERT...SELECT, CREATE TABLE, etc.)
     pub async fn execute_sql(&self, sql: &str) -> anyhow::Result<String> {
         let query: String = query_param(sql)?;
-        let uri = self.uri(format!("/?{}", query))?;
+        let uri = self.uri(format!("/?{query}"))?;
         let req = Request::builder()
             .method("POST")
             .uri(uri)

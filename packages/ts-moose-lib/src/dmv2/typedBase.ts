@@ -14,6 +14,37 @@ export interface TypiaValidators<T> {
 }
 
 /**
+ * Utility to extract the first file path and line outside node_modules from a stack trace.
+ * Returns an object with file and line (file: /path/to/file.ts, line: /path/to/file.ts:123:45)
+ */
+function getInstantiationFileInfo(stack?: string): {
+  file?: string;
+  line?: string;
+} {
+  if (!stack) return {};
+  const lines = stack.split("\n");
+  for (const line of lines) {
+    // Skip lines from node_modules and internal loaders
+    if (
+      line.includes("node_modules") ||
+      line.includes("internal/modules") ||
+      line.includes("ts-node")
+    )
+      continue;
+    // Extract file path and line/column from the line
+    const match =
+      line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
+    if (match && match[1]) {
+      return {
+        file: match[1],
+        line: match[2], // Only the line number
+      };
+    }
+  }
+  return {};
+}
+
+/**
  * Base class for all typed Moose dmv2 resources (OlapTable, Stream, etc.).
  * Handles the storage and injection of schema information (JSON schema and Column array)
  * provided by the Moose compiler plugin.
@@ -39,6 +70,9 @@ export class TypedBase<T, C> {
 
   /** Typia validation functions for type T. Injected by the compiler plugin for OlapTable. */
   validators?: TypiaValidators<T>;
+
+  /** Optional metadata for the resource, always present as an object. */
+  metadata!: { [key: string]: any };
 
   /**
    * @internal Constructor intended for internal use by subclasses and the compiler plugin.
@@ -73,5 +107,17 @@ export class TypedBase<T, C> {
     this.name = name;
     this.config = config;
     this.validators = validators;
+
+    // Always ensure metadata is an object and attach stackTrace (last 10 lines only)
+    this.metadata =
+      (config as any)?.metadata ? { ...(config as any).metadata } : {};
+    const stack = new Error().stack;
+    if (stack) {
+      // Add source object with file and line
+      const info = getInstantiationFileInfo(stack);
+      this.metadata.source = { file: info.file, line: info.line };
+    } else {
+      this.metadata.source = undefined;
+    }
   }
 }

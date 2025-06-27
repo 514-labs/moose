@@ -15,22 +15,21 @@ fn map_column_type_to_typescript(
         ColumnType::String => "string".to_string(),
         ColumnType::Boolean => "boolean".to_string(),
         ColumnType::Int(int_type) => {
-            let lowercase_int_type = format!("{:?}", int_type).to_lowercase();
-            format!("number & ClickHouseInt<\"{}\">", lowercase_int_type)
+            let lowercase_int_type = format!("{int_type:?}").to_lowercase();
+            format!("number & ClickHouseInt<\"{lowercase_int_type}\">")
         }
         ColumnType::BigInt => "bigint".to_string(),
         ColumnType::Float(FloatType::Float64) => "number".to_string(),
         ColumnType::Float(FloatType::Float32) => "number & typia.tags.Type<\"float\">".to_string(),
         ColumnType::Decimal { precision, scale } => {
-            format!("string & ClickHouseDecimal<{}, {}>", precision, scale)
+            format!("string & ClickHouseDecimal<{precision}, {scale}>")
         }
         ColumnType::DateTime { precision: None } => "Date".to_string(),
         ColumnType::DateTime {
             precision: Some(precision),
-        } => format!(
-            "string & typia.tags.Format<\"date-time\"> & ClickHousePrecision<{}>",
-            precision
-        ),
+        } => {
+            format!("string & typia.tags.Format<\"date-time\"> & ClickHousePrecision<{precision}>")
+        }
         ColumnType::Date => "string & typia.tags.Format<\"date\">".to_string(),
         ColumnType::Date16 => {
             "string & typia.tags.Format<\"date\"> & ClickHouseByteSize<2>".to_string()
@@ -42,12 +41,12 @@ fn map_column_type_to_typescript(
         } => {
             let mut inner_type = map_column_type_to_typescript(element_type, enums, nested);
             if *element_nullable {
-                inner_type = format!("({} | undefined)", inner_type)
+                inner_type = format!("({inner_type} | undefined)")
             };
             if inner_type.contains(' ') {
-                inner_type = format!("({})", inner_type)
+                inner_type = format!("({inner_type})")
             }
-            format!("{}[]", inner_type)
+            format!("{inner_type}[]")
         }
         ColumnType::Nested(nested_type) => nested.get(nested_type).unwrap().to_string(),
         ColumnType::Json => "Record<string, any>".to_string(),
@@ -57,13 +56,13 @@ fn map_column_type_to_typescript(
         ColumnType::IpV6 => "string & typia.tags.Format<\"ipv6\">".to_string(),
         ColumnType::Nullable(inner) => {
             let inner_type = map_column_type_to_typescript(inner, enums, nested);
-            format!("{} | undefined", inner_type)
+            format!("{inner_type} | undefined")
         }
         ColumnType::NamedTuple(fields) => {
             let mut field_types = Vec::new();
             for (name, field_type) in fields {
                 let type_str = map_column_type_to_typescript(field_type, enums, nested);
-                field_types.push(format!("{}: {}", name, type_str));
+                field_types.push(format!("{name}: {type_str}"));
             }
             format!("{{ {} }} & ClickHouseNamedTuple", field_types.join("; "))
         }
@@ -73,14 +72,14 @@ fn map_column_type_to_typescript(
         } => {
             let key_type_str = map_column_type_to_typescript(key_type, enums, nested);
             let value_type_str = map_column_type_to_typescript(value_type, enums, nested);
-            format!("Record<{}, {}>", key_type_str, value_type_str)
+            format!("Record<{key_type_str}, {value_type_str}>")
         }
     }
 }
 
 fn generate_enum(data_enum: &DataEnum, name: &str) -> String {
     let mut enum_def = String::new();
-    writeln!(enum_def, "export enum {} {{", name).unwrap();
+    writeln!(enum_def, "export enum {name} {{").unwrap();
     for member in &data_enum.values {
         match &member.value {
             EnumValue::Int(i) => {
@@ -105,17 +104,17 @@ fn generate_interface(
     nested_models: &HashMap<&Nested, String>,
 ) -> String {
     let mut interface = String::new();
-    writeln!(interface, "export interface {} {{", name).unwrap();
+    writeln!(interface, "export interface {name} {{").unwrap();
 
     for column in &nested.columns {
         let type_str = map_column_type_to_typescript(&column.data_type, enums, nested_models);
         let type_str = if column.primary_key {
-            format!("Key<{}>", type_str)
+            format!("Key<{type_str}>")
         } else {
             type_str
         };
         let type_str = if !column.required {
-            format!("{} | undefined", type_str)
+            format!("{type_str} | undefined")
         } else {
             type_str
         };
@@ -207,12 +206,12 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
         for column in &table.columns {
             let type_str = map_column_type_to_typescript(&column.data_type, &enums, &nested_models);
             let type_str = if column.primary_key {
-                format!("Key<{}>", type_str)
+                format!("Key<{type_str}>")
             } else {
                 type_str
             };
             let type_str = if !column.required {
-                format!("{} | undefined", type_str)
+                format!("{type_str} | undefined")
             } else {
                 type_str
             };
@@ -336,7 +335,7 @@ mod tests {
         }];
 
         let result = tables_to_typescript(&tables);
-        println!("{}", result);
+        println!("{result}");
         assert!(result.contains(
             r#"export interface Address {
     street: string;
@@ -408,7 +407,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
         }];
 
         let result = tables_to_typescript(&tables);
-        println!("{}", result);
+        println!("{result}");
         assert!(result.contains(
             r#"export enum Status {
     OK = "ok",

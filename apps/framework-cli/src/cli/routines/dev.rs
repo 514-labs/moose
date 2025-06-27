@@ -39,10 +39,7 @@ pub fn run_local_infrastructure(
 lazy_static! {
     static ref FAILED_TO_CREATE_INTERNAL_DIR: Message = Message::new(
         "Failed".to_string(),
-        format!(
-            "to create {} directory. Check permissions or contact us`",
-            CLI_PROJECT_INTERNAL_DIR
-        ),
+        format!("to create {CLI_PROJECT_INTERNAL_DIR} directory. Check permissions or contact us`"),
     );
 }
 

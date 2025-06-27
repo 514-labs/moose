@@ -1,6 +1,10 @@
 import { IJsonSchemaCollection } from "typia";
 import { TypedBase, TypiaValidators } from "../typedBase";
-import { Column } from "../../dataModels/dataModelTypes";
+import {
+  Column,
+  isArrayNestedType,
+  isNestedType,
+} from "../../dataModels/dataModelTypes";
 import { ClickHouseEngines } from "../../blocks/helpers";
 import { getMooseInternal } from "../internal";
 import { Readable } from "node:stream";
@@ -348,16 +352,20 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       try {
         // Fast path: use typia's is() function first for type checking
         if (this.isValidRecord(record)) {
-          valid.push(record);
+          valid.push(this.mapToClickhouseRecord(record));
         } else {
           // Only use expensive validateRecord for detailed errors when needed
           const result = this.validateRecord(record);
-          invalid.push({
-            record,
-            error: result.errors?.join(", ") || "Validation failed",
-            index: i,
-            path: "root",
-          });
+          if (result.success) {
+            valid.push(this.mapToClickhouseRecord(record));
+          } else {
+            invalid.push({
+              record,
+              error: result.errors?.join(", ") || "Validation failed",
+              index: i,
+              path: "root",
+            });
+          }
         }
       } catch (error) {
         invalid.push({
@@ -832,6 +840,47 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
         `Failed record ratio too high: ${failedRatio.toFixed(3)} > ${options.allowErrorsRatio}. Failed records: ${failedRecords.map((f) => f.error).join(", ")}`,
       );
     }
+  }
+
+  /**
+   * Recursively transforms a record to match ClickHouse's JSONEachRow requirements
+   *
+   * - For every Array(Nested(...)) field at any depth, each item is wrapped in its own array and recursively processed.
+   * - For every Nested struct (not array), it recurses into the struct.
+   * - This ensures compatibility with kafka_clickhouse_sync
+   *
+   * @param record The input record to transform (may be deeply nested)
+   * @param columns The schema columns for this level (defaults to this.columnArray at the top level)
+   * @returns The transformed record, ready for ClickHouse JSONEachRow insertion
+   */
+  private mapToClickhouseRecord(
+    record: any,
+    columns: Column[] = this.columnArray,
+  ): any {
+    const result = { ...record };
+    for (const col of columns) {
+      const value = record[col.name];
+      const dt = col.data_type;
+
+      if (isArrayNestedType(dt)) {
+        // For Array(Nested(...)), wrap each item in its own array and recurse
+        if (
+          Array.isArray(value) &&
+          (value.length === 0 || typeof value[0] === "object")
+        ) {
+          result[col.name] = value.map((item) => [
+            this.mapToClickhouseRecord(item, dt.elementType.columns),
+          ]);
+        }
+      } else if (isNestedType(dt)) {
+        // For Nested struct (not array), recurse into it
+        if (value && typeof value === "object") {
+          result[col.name] = this.mapToClickhouseRecord(value, dt.columns);
+        }
+      }
+      // All other types: leave as is for now
+    }
+    return result;
   }
 
   /**

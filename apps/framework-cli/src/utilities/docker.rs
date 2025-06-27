@@ -274,7 +274,7 @@ impl DockerClient {
             .create_command()
             .arg("ps")
             .arg("-af")
-            .arg(format!("name={}", container_name))
+            .arg(format!("name={container_name}"))
             .arg("--format")
             .arg("json")
             .stdout(Stdio::piped())
@@ -434,7 +434,7 @@ impl DockerClient {
         let child = self
             .create_command()
             .arg("exec")
-            .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
+            .arg(format!("{project_name}-{REDPANDA_CONTAINER_NAME}"))
             .arg("rpk")
             .args(args)
             .stdout(Stdio::piped())
@@ -511,15 +511,14 @@ impl DockerClient {
             .arg("build")
             .arg("--build-arg")
             .arg(format!(
-                "DOWNLOAD_URL=https://github.com/514-labs/moose/releases/download/v{}/moose-cli-{}",
-                version, binarylabel
+                "DOWNLOAD_URL=https://github.com/514-labs/moose/releases/download/v{version}/moose-cli-{binarylabel}"
             ))
             .arg("--platform")
             .arg(architecture)
             .arg("--load")
             .arg("--no-cache")
             .arg("-t")
-            .arg(format!("moose-df-deployment-{}:latest", binarylabel))
+            .arg(format!("moose-df-deployment-{binarylabel}:latest"))
             .arg(".")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

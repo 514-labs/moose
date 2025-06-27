@@ -204,7 +204,7 @@ fn python_enum_to_framework_enum(
                         Constant::Str(s) => EnumValue::String(s.to_string()),
                         Constant::Int(i) => {
                             EnumValue::Int(i.to_u8().ok_or(PythonParserError::EnumParseError {
-                                message: format!("Enum value {} out of range", i),
+                                message: format!("Enum value {i} out of range"),
                             })?)
                         }
                         _ => {
@@ -520,7 +520,7 @@ fn body_node_to_column(
             Ok(column)
         }
         _ => {
-            println!("failed parsing {:?} ", body_node);
+            println!("failed parsing {body_node:?} ");
             Err(PythonParserError::UnsupportedDataTypeError {
                 field_name: "".to_string(),
                 type_name: "Unsupported data type".to_string(),
@@ -762,19 +762,19 @@ mod tests {
 
     fn get_simple_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Simple python file lookup current dir: {:?}", current_dir);
+        println!("Simple python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/models/simple.py")
     }
 
     fn get_jwt_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Jwt python file lookup current dir: {:?}", current_dir);
+        println!("Jwt python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/models/jwt.py")
     }
 
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Setup python file lookup current dir: {:?}", current_dir);
+        println!("Setup python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/project/setup.py")
     }
 
@@ -922,7 +922,7 @@ mod tests {
 
         let models = extract_data_model_from_file(&test_file, "").unwrap().models;
 
-        println!("{:?}", models);
+        println!("{models:?}");
         let model = models.iter().find(|m| m.name == "ComplexModel").unwrap();
 
         let list_sub_field = model.columns.iter().find(|c| c.name == "list_sub").unwrap();

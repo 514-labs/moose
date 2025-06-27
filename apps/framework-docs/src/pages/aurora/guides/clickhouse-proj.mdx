@@ -40,25 +40,25 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
-<Tabs.Tab>
-1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
-2. Go to your service details page
-3. Find "Connect" or "Connection Details" section
-4. Copy the HTTPS endpoint and your username/password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
-- Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
-- Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
-- Default user is often `default` with no password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your docker-compose.yml or docker run command for environment variables
-- Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
-- Default is usually `http://default:@localhost:8123/?database=default`
-</Tabs.Tab>
-</Tabs>
+  <Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
+    <Tabs.Tab>
+      1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+      2. Go to your service details page
+      3. Find "Connect" or "Connection Details" section
+      4. Copy the HTTPS endpoint and your username/password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
+      - Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
+      - Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
+      - Default user is often `default` with no password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your docker-compose.yml or docker run command for environment variables
+      - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+      - Default is usually `http://default:@localhost:8123/?database=default`
+    </Tabs.Tab>
+  </Tabs>
 </ToggleBlock>
 
 <ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
@@ -166,7 +166,7 @@ Try adding new [ingestion scripts, data models, or materialized views to your pr
 
 <FeatureGrid>
   <FeatureCard
-    href="/aurora/quickstart/clickhouse-chat"
+    href="/aurora/guides/clickhouse-chat"
     Icon={Icons.api}
     title="AI Chat with ClickHouse"
     description="
@@ -176,7 +176,7 @@ Try adding new [ingestion scripts, data models, or materialized views to your pr
   
   
   <FeatureCard
-    href="/aurora/quickstart/from-template#quickstart-new-complete-local-olap-project-from-template"
+    href="/aurora/guides/from-template"
     Icon={Icons.db}
     title="AI powered OLAP templates"
     description="

@@ -72,12 +72,12 @@ pub fn convert_http_to_clickhouse(conn_str: &str) -> anyhow::Result<Url> {
         .map(|(_, v)| v.to_string())
     {
         if !database.is_empty() {
-            url.set_path(&format!("/{}", database));
+            url.set_path(&format!("/{database}"));
             // Remove database from query parameters
             let new_query = url
                 .query_pairs()
                 .filter(|(k, _)| k != "database")
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
             url.set_query(if new_query.is_empty() {

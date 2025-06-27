@@ -20,6 +20,8 @@ import {
   Calendar,
   Linkedin,
   ListX,
+  FileJson,
+  Monitor,
 } from "lucide-react";
 
 const XIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -89,6 +91,11 @@ export const Icons = {
   db: Database,
   api: HardDriveUpload,
   contact: Contact,
+
+  // Aurora
+  cli: Terminal,
+  json: FileJson,
+  computer: Monitor,
 };
 
 // Combined paths with icons and metadata

@@ -49,8 +49,7 @@ pub async fn init_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Created".to_string(),
         details: format!(
-            "Workflow '{}' initialized successfully\n\nNext Steps:\n1. cd {}/{}/{}\n2. Edit your workflow tasks\n3. Run with: moose-cli workflow run {}",
-            name, APP_DIR, SCRIPTS_DIR, name, name
+            "Workflow '{name}' initialized successfully\n\nNext Steps:\n1. cd {APP_DIR}/{SCRIPTS_DIR}/{name}\n2. Edit your workflow tasks\n3. Run with: moose-cli workflow run {name}"
         ),
     }))
 }
@@ -115,7 +114,7 @@ pub async fn run_workflow(
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{}': {}\n", name, e),
+                    details: format!("Could not start workflow '{name}': {e}\n"),
                 },
                 e,
             )
@@ -126,22 +125,19 @@ pub async fn run_workflow(
         return Err(RoutineFailure::new(
             Message {
                 action: "Workflow".to_string(),
-                details: format!("'{}' failed to start: Invalid run ID\n", name),
+                details: format!("'{name}' failed to start: Invalid run ID\n"),
             },
             anyhow::anyhow!("Invalid run ID"),
         ));
     }
 
-    let dashboard_url = format!(
-        "http://localhost:8080/namespaces/{}/workflows/{}/{}/history",
-        namespace, name, run_id
-    );
+    let dashboard_url =
+        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history");
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "'{}' started successfully.\nView it in the Temporal dashboard: {}\n",
-            name, dashboard_url
+            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n"
         ),
     }))
 }
@@ -195,7 +191,7 @@ pub async fn list_workflows(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not list workflows: {}\n", e),
+                details: format!("Could not list workflows: {e}\n"),
             })
         })?;
 
@@ -271,20 +267,20 @@ pub async fn terminate_workflow(
                 .to_string()
                 .contains("workflow execution already completed")
             {
-                format!("Workflow '{}' has already completed", name)
+                format!("Workflow '{name}' has already completed")
             } else {
-                format!("Could not terminate workflow '{}': {}", name, e)
+                format!("Could not terminate workflow '{name}': {e}")
             };
 
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("{}\n", error_message),
+                details: format!("{error_message}\n"),
             })
         })?;
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-        details: format!("'{}' terminated successfully\n", name),
+        details: format!("'{name}' terminated successfully\n"),
     }))
 }
 
@@ -312,7 +308,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not list workflows: {}", e),
+                details: format!("Could not list workflows: {e}"),
             })
         })?;
 
@@ -359,7 +355,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
     let results = try_join_all(termination_futures).await.map_err(|e| {
         RoutineFailure::error(Message {
             action: "Workflow".to_string(),
-            details: format!("Failed to execute terminations: {}", e),
+            details: format!("Failed to execute terminations: {e}"),
         })
     })?;
 
@@ -405,13 +401,13 @@ pub async fn pause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not pause workflow '{}': {}\n", name, e),
+                details: format!("Could not pause workflow '{name}': {e}\n"),
             })
         })?;
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-        details: format!("'{}' paused successfully\n", name),
+        details: format!("'{name}' paused successfully\n"),
     }))
 }
 
@@ -447,13 +443,13 @@ pub async fn unpause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not unpause workflow '{}': {}\n", name, e),
+                details: format!("Could not unpause workflow '{name}': {e}\n"),
             })
         })?;
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-        details: format!("'{}' unpaused successfully\n", name),
+        details: format!("'{name}' unpaused successfully\n"),
     }))
 }
 
@@ -529,26 +525,26 @@ fn format_failure_text(
 
     let (details, stack, error_type) = parse_failure_json(&failure.message);
     if let Some(details) = details {
-        text.push_str(&format!("\n    Details: {}", details));
+        text.push_str(&format!("\n    Details: {details}"));
     }
     if let Some(stack) = stack {
-        text.push_str(&format!("\n    Stack: {}", stack));
+        text.push_str(&format!("\n    Stack: {stack}"));
     }
     if let Some(error_type) = error_type {
-        text.push_str(&format!("\n    Error Type: {}", error_type));
+        text.push_str(&format!("\n    Error Type: {error_type}"));
     }
 
     // Process cause if present
     if let Some(cause) = &failure.cause {
         let (cause_details, cause_stack, cause_error_type) = parse_failure_json(&cause.message);
         if let Some(details) = cause_details {
-            text.push_str(&format!("\n    Details: {}", details));
+            text.push_str(&format!("\n    Details: {details}"));
         }
         if let Some(stack) = cause_stack {
-            text.push_str(&format!("\n    Stack: {}", stack));
+            text.push_str(&format!("\n    Stack: {stack}"));
         }
         if let Some(error_type) = cause_error_type {
-            text.push_str(&format!("\n    Error Type: {}", error_type));
+            text.push_str(&format!("\n    Error Type: {error_type}"));
         }
     }
 
@@ -584,28 +580,28 @@ fn format_activity_result_text(
                     let json_str = serde_json::to_string_pretty(&json).unwrap_or_default();
                     let indented = json_str
                         .lines()
-                        .map(|line| format!("      {}", line))
+                        .map(|line| format!("      {line}"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    text.push_str(&format!("\n{}", indented));
+                    text.push_str(&format!("\n{indented}"));
                 }
                 Err(_) => match decode_base64_to_json(&data_str) {
                     Ok(decoded) => {
                         let json_str = serde_json::to_string_pretty(&decoded).unwrap_or_default();
                         let indented = json_str
                             .lines()
-                            .map(|line| format!("      {}", line))
+                            .map(|line| format!("      {line}"))
                             .collect::<Vec<_>>()
                             .join("\n");
-                        text.push_str(&format!("\n{}", indented));
+                        text.push_str(&format!("\n{indented}"));
                     }
                     Err(e) => {
-                        text.push_str(&format!("Failed to parse payload: {}", e));
+                        text.push_str(&format!("Failed to parse payload: {e}"));
                     }
                 },
             },
             Err(_) => {
-                text.push_str(&format!("Invalid UTF-8 in payload: {:?}", payload));
+                text.push_str(&format!("Invalid UTF-8 in payload: {payload:?}"));
             }
         }
     }
@@ -632,7 +628,7 @@ pub async fn get_workflow_status(
         let request = ListWorkflowExecutionsRequest {
             namespace: namespace.clone(),
             page_size: 1,
-            query: format!("WorkflowId = '{}'", name),
+            query: format!("WorkflowId = '{name}'"),
             ..Default::default()
         };
 
@@ -647,7 +643,7 @@ pub async fn get_workflow_status(
             .map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not find workflow '{}': {}\n", name, e),
+                    details: format!("Could not find workflow '{name}': {e}\n"),
                 })
             })?;
 
@@ -655,7 +651,7 @@ pub async fn get_workflow_status(
         if executions.is_empty() {
             return Err(RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("No executions found for workflow '{}'\n", name),
+                details: format!("No executions found for workflow '{name}'\n"),
             }));
         }
 
@@ -684,7 +680,7 @@ pub async fn get_workflow_status(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not get status for workflow '{}': {}\n", name, e),
+                details: format!("Could not get status for workflow '{name}': {e}\n"),
             })
         })?;
 
@@ -750,10 +746,7 @@ pub async fn get_workflow_status(
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Workflow".to_string(),
-                        details: format!(
-                            "Could not fetch history for workflow '{}': {}\n",
-                            name, e
-                        ),
+                        details: format!("Could not fetch history for workflow '{name}': {e}\n"),
                     })
                 })?;
 
@@ -845,16 +838,16 @@ pub async fn get_workflow_status(
         if let Some(summary) = failure_summary_for_text {
             details.push_str("--- Failure Summary ---\n");
             if let Some(error) = summary.get("error") {
-                details.push_str(&format!("Error: {}\n", error));
+                details.push_str(&format!("Error: {error}\n"));
             }
             if let Some(error_type) = summary.get("error_type") {
-                details.push_str(&format!("Error Type: {}\n", error_type));
+                details.push_str(&format!("Error Type: {error_type}\n"));
             }
             if let Some(details_val) = summary.get("details") {
-                details.push_str(&format!("Details: {}\n", details_val));
+                details.push_str(&format!("Details: {details_val}\n"));
             }
             if let Some(stack) = summary.get("stack") {
-                details.push_str(&format!("Stack Trace:\n{}\n", stack));
+                details.push_str(&format!("Stack Trace:\n{stack}\n"));
             }
             details.push_str("----------------------\n\n");
         }
@@ -877,7 +870,7 @@ pub async fn get_workflow_status(
                 ..Default::default()
             };
 
-            details.push_str(&format!("Request: {:?}\n", history_request));
+            details.push_str(&format!("Request: {history_request:?}\n"));
 
             let history_response = client_manager
                 .execute(|mut client| async move {
@@ -890,7 +883,7 @@ pub async fn get_workflow_status(
                 .map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Workflow".to_string(),
-                        details: format!("Could not fetch history for workflow: {}\n", e),
+                        details: format!("Could not fetch history for workflow: {e}\n"),
                     })
                 })?;
 
@@ -1028,16 +1021,15 @@ mod tests {
 
         for (i, task) in ["extract", "transform", "load"].iter().enumerate() {
             let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, task));
-            assert!(file_path.exists(), "Task file {} should exist", task);
+            assert!(file_path.exists(), "Task file {task} should exist");
 
             let content = fs::read_to_string(&file_path).unwrap();
             assert!(content.contains("@task()"));
 
-            let expected_string = format!(r#""task": "{}""#, task);
+            let expected_string = format!(r#""task": "{task}""#);
             assert!(
                 content.contains(&expected_string),
-                "Content should contain '{}'",
-                expected_string
+                "Content should contain '{expected_string}'"
             );
         }
     }
@@ -1081,7 +1073,7 @@ mod tests {
 
         // Run the workflow
         let result = run_workflow(&project, WORKFLOW_NAME, None).await;
-        println!("Result: {:?}", result);
+        println!("Result: {result:?}");
         assert!(result.is_ok(), "Workflow should run successfully");
 
         let success = result.unwrap();

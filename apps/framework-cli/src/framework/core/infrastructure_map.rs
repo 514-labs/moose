@@ -2268,7 +2268,7 @@ mod diff_tests {
         // Add 1000 columns to both tables
         for i in 0..1000 {
             let col = Column {
-                name: format!("col_{}", i),
+                name: format!("col_{i}"),
                 data_type: ColumnType::Int(IntType::Int64),
                 required: true,
                 unique: false,
@@ -2307,7 +2307,7 @@ mod diff_tests {
 
         for (i, col_type) in column_types.iter().enumerate() {
             before.columns.push(Column {
-                name: format!("col_{}", i),
+                name: format!("col_{i}"),
                 data_type: col_type.clone(),
                 required: true,
                 unique: false,
@@ -2337,13 +2337,10 @@ mod diff_tests {
                 }
             };
 
-            println!(
-                "Column {}: before={:?}, after={:?}",
-                i, col_type, after_type
-            );
+            println!("Column {i}: before={col_type:?}, after={after_type:?}");
 
             after.columns.push(Column {
-                name: format!("col_{}", i),
+                name: format!("col_{i}"),
                 data_type: after_type,
                 required: true,
                 unique: false,
@@ -2356,14 +2353,11 @@ mod diff_tests {
         let diff = compute_table_columns_diff(&before, &after);
         println!("Found {} changes", diff.len());
         for change in &diff {
-            match change {
-                ColumnChange::Updated { before, after } => {
-                    println!(
-                        "Column {} changed from {:?} to {:?}",
-                        before.name, before.data_type, after.data_type
-                    );
-                }
-                _ => {}
+            if let ColumnChange::Updated { before, after } = change {
+                println!(
+                    "Column {} changed from {:?} to {:?}",
+                    before.name, before.data_type, after.data_type
+                );
             }
         }
 
@@ -2711,7 +2705,7 @@ mod diff_topic_tests {
         Topic {
             name: name.to_string(),
             source_primitive: PrimitiveSignature {
-                name: format!("dm_{}", name),
+                name: format!("dm_{name}"),
                 primitive_type: PrimitiveTypes::DataModel,
             },
             retention_period: Duration::from_secs(86400), // Default duration
@@ -3342,7 +3336,7 @@ mod diff_function_process_tests {
             name: name.to_string(),
             source_topic_id: source_topic_id.to_string(),
             target_topic_id: target_topic_id.map(|s| s.to_string()),
-            executable: PathBuf::from(format!("path/to/{}.py", name)),
+            executable: PathBuf::from(format!("path/to/{name}.py")),
             parallel_process_count: 1,
             version: Some(version),               // Use Option<String>
             language: SupportedLanguages::Python, // Default language

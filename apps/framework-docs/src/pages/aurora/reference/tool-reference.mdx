@@ -30,32 +30,28 @@ The fewer tools you enable, the higher performance the agent using the tool set 
   <FeatureCard
     href="#read-only-moose-tools"
     title="Read Only Moose tools"
-    description="Default toolset.
-    "
+    description="Default toolset."
     variant="aurora"
   />
   
   <FeatureCard
     href="#write-moose-tools"
     title="Write Moose tools"
-    description="Default toolset.
-    "
+    description="Default toolset."
     variant="aurora"
   />
   
   <FeatureCard
     href="#experimental-remote-clickhouse-tools"
     title="Experimental: Remote ClickHouse Tools"
-    description="
-    "
+    description="Tools for interacting with remote ClickHouse instances."
     variant="aurora"
   />
 
   <FeatureCard
     href="#other-experimental-tools"
     title="Other experimental tools"
-    description="
-    "
+    description="Including DuckDB, Databricks and Context Management tools."
     variant="aurora"
   />
 
@@ -299,7 +295,7 @@ This specification outlines the implementation of a system to ...
 </ToggleBlock>
 
 #### `write_and_run_temp_script`
-Creates and runs a temporary script, usually for sampling purposes.
+Creates and runs a temporary script, usually either for sampling or for API inspection.
 
 Files created:
 * *Creates a temporary script in the /project/.moose/aurora directory, and runs it, usually creating a sample data file in the same directory.*
@@ -632,7 +628,7 @@ To enable them explicitly:
     ```
   </Tabs.Tab>
   <Tabs.Tab>
-    If you are managing the Aurora MCP with `mcp.json`, you can enable this toolset by adding the following to your `mcp.json`:
+    If you are managing the Aurora MCP with `mcp.json` file, you can enable this toolset by adding the following to your `mcp.json` file:
 
     ```json filename="MCP.json" copy
     "args": [

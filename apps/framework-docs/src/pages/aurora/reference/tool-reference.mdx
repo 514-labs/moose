@@ -200,6 +200,20 @@ To enable them explicitly:
   </Tabs.Tab>
 </Tabs>
 
+### Usage tips
+
+<Callout type="info" title="Consider Data Flow">
+Consider the flow of data through your Moose project when creating new primitives. For example, if you want to create a streaming function, the `write_stream_function` tool will have a much better chance of success if there is a data sample, a source and a destination data model in place. See [Moose Docs](../../moose) for best practices.
+</Callout>
+
+<Callout type="info" title="Use Testing Tools">
+Many of the tools have testing corollaries (and for the ones that don't, there are general purpose tools that can allow the agent to test the created primitive, like `read_moose_project`, `read_clickhouse_tables`, `read_redpanda_topic`). Use those testing tools to ensure that the agent is doing what you intend it to do.
+</Callout>
+
+<Callout type="info" title="Step-by-Step Approach">
+Step by step prompting (e.g. "Get sample data from X API", "Create an ingest data model", "Create a workflow to periodically grab data from the API", ...) has a higher success rate than trying to one-shot the entire project creation flow.
+</Callout>
+
 ### When is this toolset useful?
 
 <ToggleBlock openText="Creating Moose Primitives" closeText="Creating Moose Primitives">
@@ -267,12 +281,6 @@ When you want to improve the speed and efficiency of your data products.
 **Tools used:** `write_materialized_view`, `create_egress_api`, `test_egress_api`
 
 </ToggleBlock>
-
-### Usage tips
-
-* Consider the flow of data through your Moose project when creating new primitives. For example, if you want to create a streaming function, the `write_stream_function` tool will have a much better chance of success if there is a data sample, a source and a destination data model in place.
-* Many of the tools have testing corollaries (and for the ones that don't, there are general purpose tools that can allow the agent to test the created primitive, like `read_moose_project`, `read_clickhouse_tables`, `read_redpanda_topic`). Use those testing tools to ensure that the agent is doing what you intend it to do.
-* Step by step prompting (e.g. "Get sample data from X API", "Create an ingest data model", "Create a workflow to periodically grab data from the API", ...) has a higher success rate than trying to one-shot the entire project creation flow.
 
 ### Tools
 

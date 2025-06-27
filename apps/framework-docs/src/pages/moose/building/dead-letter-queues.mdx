@@ -534,13 +534,11 @@ interface ExampleSchema {
   timestamp: Date;
 }
 
-const exampleDLQ = new DeadLetterQueue<ExampleSchema>("exampleDLQ");
-
 const pipeline = new IngestPipeline<ExampleSchema>("example", {
   ingest: true,
   stream: true,
   table: true,
-  deadLetterQueue: exampleDLQ, // Route failed ingestions to DLQ
+  deadLetterQueue: true, // Route failed ingestions to DLQ
 });
 ```
 </TypeScript>
@@ -564,7 +562,7 @@ pipeline = IngestPipeline[ExampleSchema](
         ingest=True,
         stream=True,
         table=True,
-        dead_letter_queue=example_dlq  # Route failed ingestions to DLQ
+        dead_letter_queue=True  # Route failed ingestions to DLQ
     )
 )
 ```

@@ -387,6 +387,9 @@ Creates a Moose Workflow, typically run on a schedule, typically used to ingest 
 Files created:
 * *Creates a script in the project directory with the workflow, and imports it into `index.ts` or `main.py`.*
 
+Infrastructure created:
+* *Creates a Moose managed temporal script, orchestrating the workflow that was created.*
+
 <ToggleBlock openText="Show sample workflow code" closeText="Hide sample workflow code">
 
 ```ts filename="/project/app/scripts/script.ts" copy
@@ -429,9 +432,6 @@ export { ingestAircraftTransponderWorkflow } from "./scripts/IngestAircraftTrans
 
 </ToggleBlock>
 
-Infrastructure created:
-* *Creates a Moose managed temporal script, orchestrating the workflow that was created.*
-
 #### `run_workflow`
 Runs a Moose workflow. Used as part of the `write_workflow` flow. [Moose documentation](../../moose/building/workflows.mdx).
 
@@ -440,6 +440,9 @@ Creates a Moose data model, typically used to define the schema of the data in y
 
 Files created:
 * *Creates a data model in the project directory, and imports it into `index.ts` or `main.py`.*
+
+Infrastructure created:
+* *Depending on the configuration, creates a ClickHouse table, a Redpanda topic, and/or an ingest API.*
 
 <ToggleBlock openText="Show sample data model code" closeText="Hide sample data model code">
 
@@ -464,14 +467,14 @@ export * from "./datamodels/models";
 
 </ToggleBlock>
 
-Infrastructure created:
-* *Depending on the configuration, creates a ClickHouse table, a Redpanda topic, and/or an ingest API.*
-
 #### `write_stream_function`
 Creates a Moose stream processing function. Runs on a per row basis as data is ingested into the stream. [Moose documentation](../../moose/building/streaming-functions.mdx). 
 
 Files created:
 * *Creates a stream function in the project directory, and imports it into `index.ts` or `main.py`.*
+
+Infrastructure created:
+* *Creates a streaming function.*
 
 <ToggleBlock openText="Show sample stream function code" closeText="Hide sample stream function code">
 
@@ -503,14 +506,14 @@ export * from "./functions/process_aircraft";
 
 </ToggleBlock>
 
-Infrastructure created:
-* *Creates a streaming function.*
-
 #### `write_materialized_view`
 Creates a Moose materialized view. [Moose documentation](../../moose/building/materialized-views.mdx). 
 
 Files created:
 * *Creates a materialized view in the project directory, and imports it into `index.ts` or `main.py`.*
+
+Infrastructure created:
+* *Creates a materialized view in ClickHouse.*
 
 <ToggleBlock openText="Show sample materialized view code" closeText="Hide sample materialized view code">
 
@@ -546,14 +549,15 @@ export * from './views/AircraftTrackingProcessed_NearbySF';
 
 </ToggleBlock>
 
-Infrastructure created:
-* *Creates a materialized view in ClickHouse.*
 
 #### `create_egress_api`
 Creates an egress API from Moose ClickHouse. Can utilize type safe parameters. [Moose documentation](../../moose/building/egress-apis.mdx). 
 
 Files created:
 * *Creates an egress API in the project directory, and imports it into `index.ts` or `main.py`.*  
+
+Infrastructure created:
+* *Creates an egress API.*
 
 <ToggleBlock openText="Show sample egress API code" closeText="Hide sample egress API code">
 
@@ -590,9 +594,6 @@ export * from './apis/getAircraftWithinRadius';
 ```
 
 </ToggleBlock>
-
-Infrastructure created:
-* *Creates an egress API.*
 
 #### `test_egress_api`
 Tests the specified APIs. Used as part of the `create_egress_api` flow.

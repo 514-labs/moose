@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import * as toml from "toml";
 
@@ -37,7 +36,11 @@ export class ConfigError extends Error {
 /**
  * Walks up the directory tree to find moose.config.toml
  */
-function findConfigFile(startDir: string = process.cwd()): string | null {
+async function findConfigFile(
+  startDir: string = process.cwd(),
+): Promise<string | null> {
+  const fs = await import("node:fs");
+
   let currentDir = path.resolve(startDir);
 
   while (true) {
@@ -60,8 +63,9 @@ function findConfigFile(startDir: string = process.cwd()): string | null {
 /**
  * Reads and parses the project configuration from moose.config.toml
  */
-export function readProjectConfig(): ProjectConfig {
-  const configPath = findConfigFile();
+export async function readProjectConfig(): Promise<ProjectConfig> {
+  const fs = await import("node:fs");
+  const configPath = await findConfigFile();
   if (!configPath) {
     throw new ConfigError(
       "moose.config.toml not found in current directory or any parent directory",

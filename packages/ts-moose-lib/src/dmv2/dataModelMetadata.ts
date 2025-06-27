@@ -145,8 +145,7 @@ export const transformNewMooseResource = (
     : node.typeArguments![0];
 
   const internalArguments =
-    typeName === "DeadLetterQueue" ?
-      [typiaTypeGuard(node)]
+    typeName === "DeadLetterQueue" ? [typiaTypeGuard(node)]
     : typeName === "Task" ? taskInternalArgs(node, checker)
     : [
         typiaJsonSchemas(typeNode),

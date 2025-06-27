@@ -1,7 +1,23 @@
 import { ClickHouseClient } from "@clickhouse/client";
 import fastq, { queueAsPromised } from "fastq";
-import { cliLog, getClickhouseClient, walkDir } from "../commons";
+import { cliLog, getClickhouseClient } from "../commons";
 import { Blocks } from "./helpers";
+import fs from "node:fs";
+import path from "node:path";
+
+const walkDir = (dir: string, fileExtension: string, fileList: string[]) => {
+  const files = fs.readdirSync(dir);
+
+  files.forEach((file) => {
+    if (fs.statSync(path.join(dir, file)).isDirectory()) {
+      fileList = walkDir(path.join(dir, file), fileExtension, fileList);
+    } else if (file.endsWith(fileExtension)) {
+      fileList.push(path.join(dir, file));
+    }
+  });
+
+  return fileList;
+};
 
 interface BlocksQueueTask {
   chClient: ClickHouseClient;

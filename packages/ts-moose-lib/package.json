@@ -4,6 +4,18 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./browserCompatible": {
+      "types": "./dist/browserCompatible.d.ts",
+      "import": "./dist/browserCompatible.mjs",
+      "require": "./dist/browserCompatible.js"
+    }
+  },
   "files": [
     "dist"
   ],

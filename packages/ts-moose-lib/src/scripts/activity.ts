@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { Task, Workflow } from "../dmv2";
 import { getWorkflows, getTaskForWorkflow } from "../dmv2/internal";
 import { WorkflowTaskResult } from "./types";
+import { pathToFileURL } from "url";
 
 export interface ScriptExecutionInput {
   scriptPath: string;
@@ -19,7 +20,8 @@ export const activities = {
       logger.info(`Task received input: ${JSON.stringify(inputData)}`);
 
       const processedInput = (inputData || {})?.data || {};
-      const scriptModule = await require(scriptPath);
+      // Dynamically import the script so both CommonJS and pure-ESM user code work
+      const scriptModule = await import(pathToFileURL(scriptPath).href);
       const execResult = await scriptModule.default();
       const result = await execResult.task(processedInput);
 
@@ -121,7 +123,8 @@ export const activities = {
 
   async getActivityRetry(filePath: string): Promise<number> {
     try {
-      const scriptModule = await require(filePath);
+      // Use dynamic import here as well for ESM compatibility
+      const scriptModule = await import(pathToFileURL(filePath).href);
       const execResult = await scriptModule.default();
       const retriesConfig = execResult?.config?.retries;
       const retries = typeof retriesConfig === "number" ? retriesConfig : 3;

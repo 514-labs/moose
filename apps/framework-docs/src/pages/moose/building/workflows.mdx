@@ -31,7 +31,7 @@ export interface Foo {
   name: string;
 }
 
-export const task1 = new Task<Foo>("task1", {
+export const task1 = new Task<Foo, void>("task1", {
   run: async (input: Foo) => {
     const name = input.name ?? "world";
     const greeting = `hello, ${name}!`;
@@ -96,7 +96,7 @@ export interface Bar {
   counter: number;
 }
 
-export const task2 = new Task<Bar>("task2", {
+export const task2 = new Task<Bar, void>("task2", {
   run: async (input: Bar) => {
     console.log(`task2 input: ${JSON.stringify(input)}`);
   }
@@ -404,7 +404,7 @@ For more granular control over task-level errors and retries, you can configure 
 ```typescript filename="app/index.ts" {5-6} copy
 import { Task, Workflow } from "@514labs/moose-lib";
 
-export const task1 = new Task<Foo>("task1", {
+export const task1 = new Task<Foo, void>("task1", {
   run: async (input: Foo) => {},
   retries: 1,
   timeout: "5m"
@@ -448,7 +448,7 @@ When configuring retries, it's important to understand how workflow-level and ta
 ```typescript filename="app/index.ts" {5,10} copy
 import { Task, Workflow } from "@514labs/moose-lib";
 
-export const task1 = new Task<Foo>("task1", {
+export const task1 = new Task<Foo, void>("task1", {
   run: async (input: Foo) => {},
   retries: 3,
 });

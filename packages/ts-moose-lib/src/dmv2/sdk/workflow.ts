@@ -75,7 +75,7 @@ export interface TaskConfig<T, R> {
  * });
  * ```
  */
-export class Task<T = null, R = null> extends TypedBase<T, TaskConfig<T, R>> {
+export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
   /**
    * Creates a new Task instance.
    *

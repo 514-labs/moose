@@ -79,11 +79,11 @@ export const transformNewMooseResource = (
 ): ts.Node => {
   const typeName = checker.getSymbolAtLocation(node.expression)!.name;
 
-  // For Task, handle case where typeArguments is undefined
   const typeNode = node.typeArguments![0];
 
   const internalArguments =
-    typeName === "DeadLetterQueue" ? [typiaTypeGuard(node)]
+    typeName === "DeadLetterQueue" ?
+      [typiaTypeGuard(node)]
     : [
         typiaJsonSchemas(typeNode),
         parseAsAny(

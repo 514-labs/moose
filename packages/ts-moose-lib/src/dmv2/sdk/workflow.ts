@@ -1,3 +1,6 @@
+import { IJsonSchemaCollection } from "typia";
+import { TypedBase } from "../typedBase";
+import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
 
 /**
@@ -72,22 +75,38 @@ export interface TaskConfig<T, R> {
  * });
  * ```
  */
-export class Task<T = null, R = null> {
-  /** The name assigned to this task instance. */
-  readonly name: string;
-
-  /** The configuration object specific to this task. */
-  readonly config: TaskConfig<T, R>;
-
+export class Task<T = null, R = null> extends TypedBase<T, TaskConfig<T, R>> {
   /**
    * Creates a new Task instance.
    *
    * @param name - Unique identifier for the task
    * @param config - Configuration object defining the task behavior
    */
-  constructor(name: string, config: TaskConfig<T, R>) {
-    this.name = name;
-    this.config = config;
+  constructor(name: string, config: TaskConfig<T, R>);
+
+  /**
+   * Internal constructor with additional schema and column parameters.
+   *
+   * @internal
+   * @param name - Unique identifier for the task
+   * @param config - Configuration object defining the task behavior
+   * @param schema - JSON schema collection for type validation
+   * @param columns - Column definitions for data structure
+   */
+  constructor(
+    name: string,
+    config: TaskConfig<T, R>,
+    schema: IJsonSchemaCollection.IV3_1,
+    columns: Column[],
+  );
+
+  constructor(
+    name: string,
+    config: TaskConfig<T, R>,
+    schema?: IJsonSchemaCollection.IV3_1,
+    columns?: Column[],
+  ) {
+    super(name, config, schema, columns);
   }
 }
 

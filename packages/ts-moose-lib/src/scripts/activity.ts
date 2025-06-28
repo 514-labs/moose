@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { Task, Workflow } from "../dmv2";
 import { getWorkflows, getTaskForWorkflow } from "../dmv2/internal";
 import { WorkflowTaskResult } from "./types";
+import { pathToFileURL } from "url";
 
 export interface ScriptExecutionInput {
   scriptPath: string;
@@ -13,21 +14,31 @@ export const activities = {
   async executeScript(
     input: ScriptExecutionInput,
   ): Promise<WorkflowTaskResult> {
+    const { scriptPath, inputData } = input;
     try {
-      const { scriptPath, inputData } = input;
-
       logger.info(`Task received input: ${JSON.stringify(inputData)}`);
 
       const processedInput = (inputData || {})?.data || {};
-      const scriptModule = await require(scriptPath);
+      // Dynamically import the script so both CommonJS and pure-ESM user code work
+      const scriptModule = await import(pathToFileURL(scriptPath).href);
       const execResult = await scriptModule.default();
       const result = await execResult.task(processedInput);
 
       return result;
     } catch (error) {
+      const rawDetails = error instanceof Error ? error.message : String(error);
+      let hint: string | undefined;
+      if (rawDetails.includes("ERR_REQUIRE_ESM")) {
+        hint =
+          "The script or one of its dependencies is published as an ESM-only module. Moose now loads scripts with dynamic import, but make sure you are using proper export syntax (e.g. `export default`). If you are importing a CommonJS-only file, add `.cjs` extension or convert it.";
+      } else if (rawDetails.includes("Cannot find module")) {
+        hint = `Could not resolve module. Verify that the path ${scriptPath} exists and that dependencies are installed.`;
+      }
+
       const errorData = {
         error: "Script execution failed",
-        details: error instanceof Error ? error.message : String(error),
+        details: rawDetails,
+        hint,
         stack: error instanceof Error ? error.stack : undefined,
       };
       const errorMsg = JSON.stringify(errorData);
@@ -121,14 +132,24 @@ export const activities = {
 
   async getActivityRetry(filePath: string): Promise<number> {
     try {
-      const scriptModule = await require(filePath);
+      // Use dynamic import here as well for ESM compatibility
+      const scriptModule = await import(pathToFileURL(filePath).href);
       const execResult = await scriptModule.default();
       const retriesConfig = execResult?.config?.retries;
       const retries = typeof retriesConfig === "number" ? retriesConfig : 3;
       logger.info(`Using retries in ${filePath}: ${retries}`);
       return retries;
     } catch (error) {
-      const errorMsg = `Failed to get task retry for ${filePath}: ${error}`;
+      let hint: string | undefined;
+      const details = error instanceof Error ? error.message : String(error);
+      if (details.includes("ERR_REQUIRE_ESM")) {
+        hint =
+          "The task file or its dependencies are ESM-only. Ensure it uses `export default` and that Moose supports dynamic imports for it.";
+      } else if (details.includes("Cannot find module")) {
+        hint = `Cannot locate file ${filePath}. Confirm the path is correct and the file exists.`;
+      }
+
+      const errorMsg = `Failed to get task retry for ${filePath}: ${details}. ${hint ?? ""}`;
       logger.error(errorMsg);
       throw new Error(errorMsg);
     }

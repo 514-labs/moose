@@ -432,7 +432,7 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
         with:
-          install_components: "gsutil"
+          install_components: "gsutil,gcloud"
 
       - name: Determine channel
         id: channel
@@ -469,6 +469,7 @@ jobs:
       - name: Upload updated index file
         run: |
           gsutil cp index.json.tmp gs://downloads.fiveonefour.com/${{ steps.channel.outputs.channel }}/index.json
+          gcloud compute url-maps invalidate-cdn-cache bins-distribution-url-map --path="/${{ steps.channel.outputs.channel }}/index.json" --async
 
   release-python:
     name: Release Python Wheels

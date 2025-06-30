@@ -12,8 +12,7 @@ import { getMooseInternal } from "../internal";
  * @returns A promise that resolves to the processed result or void
  */
 type TaskHandler<T, R> =
-  T extends null ? () => Promise<R extends null ? void : R>
-  : (input: T) => Promise<R extends null ? void : R>;
+  T extends null ? () => Promise<R> : (input: T) => Promise<R>;
 
 /**
  * Configuration options for defining a task within a workflow.
@@ -25,8 +24,16 @@ export interface TaskConfig<T, R> {
   /** The main function that executes the task logic */
   run: TaskHandler<T, R>;
 
-  /** Optional array of tasks to execute after this task completes successfully */
-  onComplete?: Task<R, any>[];
+  /**
+   * Optional array of tasks to execute after this task completes successfully.
+   * Supports all combinations of input types (real type or null) and output types (real type or void).
+   * When this task returns void, onComplete tasks expect null as input.
+   * When this task returns a real type, onComplete tasks expect that type as input.
+   */
+  onComplete?: (
+    | Task<R extends void ? null : R, any>
+    | Task<R extends void ? null : R, void>
+  )[];
 
   /** Optional timeout duration for the task execution (e.g., "30s", "5m") */
   timeout?: string;
@@ -43,37 +50,6 @@ export interface TaskConfig<T, R> {
  *
  * @template T - The input type that this task expects
  * @template R - The return type that this task produces
- *
- * @example
- * ```typescript
- * // No input, no output
- * const task1 = new Task("task1", {
- *   run: async () => {
- *     console.log("No input/output");
- *   }
- * });
- *
- * // No input, but has output
- * const task2 = new Task<null, OutputType>("task2", {
- *   run: async () => {
- *     return someOutput;
- *   }
- * });
- *
- * // Has input, no output
- * const task3 = new Task<InputType, null>("task3", {
- *   run: async (input: InputType) => {
- *     // process input but return nothing
- *   }
- * });
- *
- * // Has both input and output
- * const task4 = new Task<InputType, OutputType>("task4", {
- *   run: async (input: InputType) => {
- *     return process(input);
- *   }
- * });
- * ```
  */
 export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
   /**
@@ -81,6 +57,37 @@ export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
    *
    * @param name - Unique identifier for the task
    * @param config - Configuration object defining the task behavior
+   *
+   * @example
+   * ```typescript
+   * // No input, no output
+   * const task1 = new Task<null, void>("task1", {
+   *   run: async () => {
+   *     console.log("No input/output");
+   *   }
+   * });
+   *
+   * // No input, but has output
+   * const task2 = new Task<null, OutputType>("task2", {
+   *   run: async () => {
+   *     return someOutput;
+   *   }
+   * });
+   *
+   * // Has input, no output
+   * const task3 = new Task<InputType, void>("task3", {
+   *   run: async (input: InputType) => {
+   *     // process input but return nothing
+   *   }
+   * });
+   *
+   * // Has both input and output
+   * const task4 = new Task<InputType, OutputType>("task4", {
+   *   run: async (input: InputType) => {
+   *     return process(input);
+   *   }
+   * });
+   * ```
    */
   constructor(name: string, config: TaskConfig<T, R>);
 
@@ -117,8 +124,19 @@ export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
  * or pattern, with support for scheduling, retries, and timeouts.
  */
 export interface WorkflowConfig {
-  /** The initial task that begins the workflow execution */
-  startingTask: Task<any, any> | Task<null, void>;
+  /**
+   * The initial task that begins the workflow execution.
+   * Supports all combinations of input types (real type or null) and output types (real type or void):
+   * - Task<null, OutputType>: No input, returns a type
+   * - Task<null, void>: No input, returns nothing
+   * - Task<InputType, OutputType>: Has input, returns a type
+   * - Task<InputType, void>: Has input, returns nothing
+   */
+  startingTask:
+    | Task<null, any>
+    | Task<null, void>
+    | Task<any, any>
+    | Task<any, void>;
 
   /** Optional number of retry attempts if the entire workflow fails */
   retries?: number;

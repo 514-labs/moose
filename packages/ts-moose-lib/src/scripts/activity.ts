@@ -108,10 +108,10 @@ export const activities = {
       const fullTask = await getTaskForWorkflow(workflow.name, task.name);
 
       // Revive any JSON serialized dates in the input data
-      const revivedInputData = JSON.parse(
-        JSON.stringify(inputData),
-        jsonDateReviver,
-      );
+      const revivedInputData =
+        inputData ?
+          JSON.parse(JSON.stringify(inputData), jsonDateReviver)
+        : inputData;
 
       return await fullTask.config.run(revivedInputData);
     } catch (error) {

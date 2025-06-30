@@ -23,6 +23,13 @@ export type RawValue = Value | Sql;
 const isColumn = (value: RawValue | Column | OlapTable<any>): value is Column =>
   typeof value === "object" && "name" in value && "annotations" in value;
 
+export function sql(
+  strings: readonly string[],
+  ...values: readonly (RawValue | Column | OlapTable<any>)[]
+) {
+  return new Sql(strings, values);
+}
+
 /**
  * A SQL instance can be nested within each other to build SQL strings.
  */

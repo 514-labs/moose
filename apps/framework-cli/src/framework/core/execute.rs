@@ -20,6 +20,7 @@ use super::{
     plan::InfraPlan,
 };
 use crate::{
+    cli::routines::scripts::terminate_all_workflows,
     framework::scripts::executor::execute_scheduled_workflows,
     infrastructure::{
         api,
@@ -188,6 +189,12 @@ pub async fn execute_online_change(
         metrics,
     )
     .await?;
+
+    match terminate_all_workflows(project).await {
+        Ok(success) => log::info!("Terminated running workflows: {:?}", success),
+        Err(e) => log::warn!("Failed to terminate running workflows: {:?}", e),
+    }
+    execute_scheduled_workflows(project, &plan.target_infra_map.workflows).await;
 
     Ok(())
 }

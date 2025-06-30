@@ -7,6 +7,7 @@ import { cliLog } from "../commons";
 import { Cluster } from "../cluster-utils";
 import { getStreamingFunctions } from "../dmv2/internal";
 import { ConsumerConfig, TransformConfig } from "../dmv2";
+import { jsonDateReviver } from "../utilities/json";
 
 const HOSTNAME = process.env.HOSTNAME;
 const AUTO_COMMIT_INTERVAL_MS = 5000;
@@ -153,20 +154,6 @@ export const metricsLog: (log: MetricsData) => void = (log) => {
 
   req.write(JSON.stringify({ ...log }));
   req.end();
-};
-
-/**
- * Revives ISO 8601 date strings into Date objects during JSON parsing
- */
-const jsonDateReviver = (key: string, value: unknown): unknown => {
-  const iso8601Format =
-    /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)$/;
-
-  if (typeof value === "string" && iso8601Format.test(value)) {
-    return new Date(value);
-  }
-
-  return value;
 };
 
 /**

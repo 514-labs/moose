@@ -18,15 +18,6 @@ export * from "./scripts/task";
 
 export { createConsumptionApi } from "./consumption-apis/runner";
 
-export {
-  ClickHousePrecision,
-  ClickHouseDecimal,
-  ClickHouseByteSize,
-  ClickHouseInt,
-  LowCardinality,
-  ClickHouseNamedTuple,
-} from "./dataModels/types";
-
 export { MooseCache } from "./clients/redisClient";
 
 export { ConsumptionUtil } from "./consumption-apis/helpers";

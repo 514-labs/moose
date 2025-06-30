@@ -8,11 +8,9 @@ import { StringValue } from "@temporalio/common";
 import { createHash, randomUUID } from "node:crypto";
 import * as path from "path";
 import * as fs from "fs";
-import { Column } from "../dataModels/dataModelTypes";
-import { OlapTable } from "../dmv2";
 import { getWorkflows } from "../dmv2/internal";
 import { JWTPayload } from "jose";
-import { Sql, Value, RawValue, toQuery } from "../sqlHelpers";
+import { Sql, sql, RawValue, toQuery } from "../sqlHelpers";
 
 export interface ConsumptionUtil {
   client: MooseClient;
@@ -20,13 +18,6 @@ export interface ConsumptionUtil {
   // SQL interpolator
   sql: typeof sql;
   jwt: JWTPayload | undefined;
-}
-
-export function sql(
-  strings: readonly string[],
-  ...values: readonly (RawValue | Column | OlapTable<any>)[]
-) {
-  return new Sql(strings, values);
 }
 
 export class MooseClient {

@@ -1,6 +1,5 @@
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 import { createOctokit, getMooseUrl } from "../../utils";
-import { IGhEvent } from "moose-objects";
 
 const octokit = createOctokit();
 const mooseUrl = getMooseUrl();
@@ -30,7 +29,7 @@ const load: TaskFunction = async (input?: any) => {
         repoUrl: event.repo.url,
         repoId: event.repo.id,
         createdAt: event.created_at ? new Date(event.created_at) : new Date(),
-      } as IGhEvent;
+      };
 
       await fetch(`${mooseUrl}/ingest/GhEvent`, {
         method: "POST",

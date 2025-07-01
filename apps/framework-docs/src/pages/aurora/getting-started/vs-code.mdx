@@ -22,12 +22,19 @@ import {
 import { ArgTable } from "@/components/ArgTable";
 
 
-## Cursor
+## VS Code
 
 <Steps>
 
-### Install 
-[Install Cursor here](https://www.cursor.com/).
+<Callout type="info" title="Additional requirements">
+- **VS Code**: [Install VS Code here](https://code.visualstudio.com/).
+- **Github Copilot in VS Code**: [See VS Code docs](https://code.visualstudio.com/docs/copilot/setup)
+</Callout>
+
+### Install VS Code and enable MCPs
+[Install VS Code here](https://code.visualstudio.com/). 
+
+[Enable MPCs](vscode://settings/chat.mcp.enabled) by toggling on the `chat.mcp.enabled` setting.
 
 ### Install Moose and Aurora CLI
 
@@ -39,13 +46,13 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 
 <Tabs items={['Aurora CLI', 'MCP.json']}>
   <Tabs.Tab>
-    Create a new project with Cursor MCP preconfigured: 
+    Create a new project with Claude Desktop MCP preconfigured: 
 
     ```bash filename="Terminal" copy
-    aurora init <project-name> <template-name> --mcp cursor-project
+    aurora init <project-name> <template-name> --mcp vscode-project
     ```
 
-    If you want to use this as a global Cursor MCP, use `cursor-global` instead of `cursor-project`.
+    If you want to use this as a global VS Code MCP, use `vscode-global` instead of `vscode-project`.
 
     For other options, see [Aurora CLI docs](/aurora/getting-started/aurora-cli).
   </Tabs.Tab>
@@ -79,16 +86,13 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 
 ### Using the MCP
 
-1. Open Cursor
-2. You will see a popup saying that an MCP is detected, and can be enabled. Our experience is that this is not always reliable, and the MCP is more stably launched if you go to `cursor > settings > cursor settings > tools and integrations` and enable the MCP there.
-3. If you are using Moose tools, you will need to run your moose dev server with `moose dev`.
+[ ] TODO: Add instructions for running the MCP server in VS Code
 
 </Steps>
 
 ### Warnings / Peculiarities
 
-* Every time you add an MCP or change its configuration, you will need to reload the MCP. You can do this by going to `cursor > settings > cursor settings > tools and integrations` and toggling the MCP off and on. If this doesn't work, you can also restart the Cursor application.
-* If you have configured the MCP globally, and want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
+[ ] TODO: What are the warnings / peculiarities for VS Code?
 
 ### Common issues / troubleshooting
 

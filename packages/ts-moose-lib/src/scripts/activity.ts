@@ -2,6 +2,7 @@ import { log as logger } from "@temporalio/activity";
 import * as fs from "fs";
 import { Task, Workflow } from "../dmv2";
 import { getWorkflows, getTaskForWorkflow } from "../dmv2/internal";
+import { jsonDateReviver } from "../utilities/json";
 import { WorkflowTaskResult } from "./types";
 import { pathToFileURL } from "url";
 
@@ -106,7 +107,13 @@ export const activities = {
       // have to get it again to access the user's run function
       const fullTask = await getTaskForWorkflow(workflow.name, task.name);
 
-      return await fullTask.config.run(inputData);
+      // Revive any JSON serialized dates in the input data
+      const revivedInputData =
+        inputData ?
+          JSON.parse(JSON.stringify(inputData), jsonDateReviver)
+        : inputData;
+
+      return await fullTask.config.run(revivedInputData);
     } catch (error) {
       const errorData = {
         error: "Task execution failed",

@@ -84,4 +84,38 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
   getHandler = (): ConsumptionHandler<T, R> => {
     return this._handler;
   };
+
+  async call(baseUrl: string, queryParams: T): Promise<R> {
+    // Construct the API endpoint URL
+    const url = new URL(
+      `${baseUrl.replace(/\/$/, "")}/consumption/${this.name}`,
+    );
+
+    const searchParams = url.searchParams;
+
+    for (const [key, value] of Object.entries(queryParams as any)) {
+      if (Array.isArray(value)) {
+        // For array values, add each item as a separate query param
+        for (const item of value) {
+          if (item !== null && item !== undefined) {
+            searchParams.append(key, String(item));
+          }
+        }
+      } else if (value !== null && value !== undefined) {
+        searchParams.append(key, String(value));
+      }
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data as R;
+  }
 }

@@ -23,4 +23,15 @@ export {
   Workflow,
 } from "./dmv2";
 
+export {
+  ClickHousePrecision,
+  ClickHouseDecimal,
+  ClickHouseByteSize,
+  ClickHouseInt,
+  LowCardinality,
+  ClickHouseNamedTuple,
+} from "./dataModels/types";
+
 export type { ConsumptionUtil } from "./consumption-apis/helpers";
+
+export * from "./sqlHelpers";

@@ -1,10 +1,11 @@
 import http from "http";
 import { getClickhouseClient } from "../commons";
-import { MooseClient, QueryClient, getTemporalClient, sql } from "./helpers";
+import { MooseClient, QueryClient, getTemporalClient } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
+import { sql } from "../sqlHelpers";
 import { Client as TemporalClient } from "@temporalio/client";
 import { getEgressApis } from "../dmv2/internal";
 

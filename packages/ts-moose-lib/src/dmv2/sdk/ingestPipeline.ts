@@ -1,7 +1,12 @@
 import { IJsonSchemaCollection } from "typia";
 import { TypedBase, TypiaValidators } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
-import { DeadLetterQueue, Stream, StreamConfig } from "./stream";
+import {
+  DeadLetterModel,
+  DeadLetterQueue,
+  Stream,
+  StreamConfig,
+} from "./stream";
 import { OlapConfig, OlapTable } from "./olapTable";
 import { IngestApi, IngestConfig } from "./ingestApi";
 
@@ -74,7 +79,7 @@ export type IngestPipelineConfig<T> = {
    * The API's destination will automatically be set to the pipeline's stream if one exists.
    * If `false` or `undefined`, no dead letter queue is created.
    */
-  deadLetterQueue?: boolean | Omit<StreamConfig<T>, "destination">;
+  deadLetterQueue?: boolean | StreamConfig<DeadLetterModel>;
 
   /**
    * An optional version string applying to all components (table, stream, ingest) created by this pipeline configuration.

@@ -12,7 +12,22 @@ As always, to get the latest:
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
-## Friday, 30th May 2025
+## Wednesday, 3 July 2025
+
+<Callout type="info" title="Highlights">
+* **Aurora users** can now use Aurora MCP with VS Code, bringing CLI based MCP configuration to VS Code, Cursor, Windsurf and Claude Desktop.
+</Callout>
+
+### Aurora
+
+If you want to add Aurora MCP to your existing Moose project in VS Code, try 
+```bash filename="Terminal" copy
+aurora setup --mcp vscode-project
+```
+
+See the [VS Code setup guide](/aurora/getting-started/vs-code) for more details.
+
+## Friday, 30 May 2025
 
 
 <Callout type="info" title="Highlights">
@@ -39,25 +54,25 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
-<Tabs.Tab>
-1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
-2. Go to your service details page
-3. Find "Connect" or "Connection Details" section
-4. Copy the HTTPS endpoint and your username/password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
-- Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
-- Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
-- Default user is often `default` with no password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your docker-compose.yml or docker run command for environment variables
-- Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
-- Default is usually `http://default:@localhost:8123/?database=default`
-</Tabs.Tab>
-</Tabs>
+  <Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
+    <Tabs.Tab>
+      1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+      2. Go to your service details page
+      3. Find "Connect" or "Connection Details" section
+      4. Copy the HTTPS endpoint and your username/password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
+      - Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
+      - Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
+      - Default user is often `default` with no password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your docker-compose.yml or docker run command for environment variables
+      - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+      - Default is usually `http://default:@localhost:8123/?database=default`
+    </Tabs.Tab>
+  </Tabs>
 </ToggleBlock>
 
 <ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
@@ -71,10 +86,7 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 </ToggleBlock>
 
-
-
-
-## Friday, 23rd May 2025
+## Friday, 23 May 2025
 
 <Callout type="info" title="Highlights">
 * **Moose users** can now handle stream processing failures with **Dead Letter Queues** — comprehensive error handling with type-safe recovery workflows in both TypeScript and Python.

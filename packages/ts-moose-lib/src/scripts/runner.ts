@@ -133,9 +133,30 @@ async function createTemporalConnection(
   logger.info(
     `<workflow> Connecting to Temporal at ${connectionOptions.address}`,
   );
-  const connection = await NativeConnection.connect(connectionOptions);
-  logger.info("<workflow> Connected to Temporal server");
-  return { connection, namespace };
+
+  const maxRetries = 5;
+  const baseDelay = 1000;
+  let attempt = 0;
+
+  while (true) {
+    try {
+      const connection = await NativeConnection.connect(connectionOptions);
+      logger.info("<workflow> Connected to Temporal server");
+      return { connection, namespace };
+    } catch (err) {
+      attempt++;
+      logger.error(`<workflow> Connection attempt ${attempt} failed: ${err}`);
+
+      if (attempt >= maxRetries) {
+        logger.error(`Failed to connect after ${attempt} attempts`);
+        throw err;
+      }
+
+      const backoff = baseDelay * Math.pow(2, attempt - 1);
+      logger.warn(`<workflow> Retrying connection in ${backoff}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, backoff));
+    }
+  }
 }
 
 async function registerWorkflows(

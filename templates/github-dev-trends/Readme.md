@@ -6,31 +6,43 @@ This template provides a real-time dashboard tracking trending repositories and 
 
 **Language:** TypeScript (Backend - Moose), JavaScript/TypeScript (Frontend - Next.js)
 **Stack:** Moose, Node.js, Kafka, ClickHouse, Next.js/React (Frontend)
+**Package Manager:** pnpm (Monorepo)
 
 **Documentation:** [Template Documentation](https://docs.fiveonefour.com/templates/github)
 
 ## Prerequisites
 
-*   Node.js (Minimum version 22+)
-*   npm (or yarn/pnpm)
+*   Node.js (Minimum version 18+)
+*   pnpm (Minimum version 8+)
 *   Moose CLI
 *   Docker Desktop (For underlying services like Kafka/ClickHouse if used by `moose dev`)
 
 ## Project Structure
 
+This is a pnpm monorepo with the following structure:
+
 ```
 .
-├── dashboard/        # Next.js dashboard application
-├── moose-backend/    # Moose backend service (TypeScript)
-├── Readme.md         # This file
-└── template.config.toml # Template specific configuration
+├── apps/
+│   ├── dashboard/        # Next.js dashboard application
+│   └── moose-backend/    # Moose backend service (TypeScript)
+├── packages/
+│   └── moose-objects/    # Pure Moose objects, imported by both apps
+├── package.json          # Root package.json with workspace scripts
+├── pnpm-workspace.yaml   # pnpm workspace configuration
+├── Readme.md             # This file
+└── template.config.toml  # Template specific configuration
 ```
 
 ## Setup
 
-If you haven't already, install the Moose CLI:
+If you haven't already, install the Moose CLI and pnpm:
 ```bash copy
+# Install Moose CLI
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+
+# Install pnpm if not already installed
+npm install -g pnpm
 ```
 
 ### 1. Initialize the Project
@@ -38,34 +50,42 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 moose init moose-github-dev-trends github-dev-trends
 ```
 
-### 2. Moose Backend Setup
+### 2. Install Dependencies
+```bash copy
+cd moose-github-dev-trends
+pnpm install
+```
 
-*   Navigate into the backend directory and install dependencies:
-    ```bash copy
-    cd moose-github-dev-trends/moose-backend && npm install
-    ```
+### 3. Moose Backend Setup
+
 *   Set the GitHub Personal Access Token:
     *   This project requires a [GitHub Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to access the GitHub API for fetching event data.
     *   Set the `GITHUB_TOKEN` environment variable in your `.env.example` file to your GitHub token.
 * Start your Moose local dev server:
     ```bash copy
-    moose dev
+    pnpm moose:dev
     ```
     *   This will start the Moose backend service containing the local infrastructure (Redpanda, ClickHouse, Temporal, Webserver) and the GitHub event poller.
     *   You can verify that it's running by checking the Moose logs in your terminal.
 
-### 2. Frontend Dashboard Setup
+### 4. Frontend Dashboard Setup
 
-*   Open a **new terminal** and navigate into the dashboard directory:
+*   Open a **new terminal** and start the frontend dashboard:
     ```bash copy
-    cd moose-github-dev-trends/dashboard && npm install
-    ```
-*   Start the frontend dashboard:
-    ```bash copy
-    npm run dev
+    pnpm dashboard:dev
     ```
     *   Navigate to the URL provided (usually `http://localhost:3000`) in your browser to view the dashboard.
 
+## Available Scripts
+
+From the root directory, you can run:
+
+- `pnpm dev` - Start both dashboard and moose-backend in development mode
+- `pnpm build` - Build both applications
+- `pnpm dashboard:dev` - Start only the dashboard in development mode
+- `pnpm dashboard:build` - Build only the dashboard
+- `pnpm moose:dev` - Start only the moose-backend in development mode
+- `pnpm moose:build` - Build only the moose-backend
 
 ## Deployment
 
@@ -79,11 +99,11 @@ Deploying this project involves deploying the Moose backend service and the fron
 
 ### 1. Deploying the Moose Backend (Boreal)
 
-*   **Push to GitHub:** Ensure your latest backend code (the contents of the `moose-backend` directory) is committed and pushed to your GitHub repository.
+*   **Push to GitHub:** Ensure your latest backend code (the contents of the `apps/moose-backend` directory) is committed and pushed to your GitHub repository.
 *   **Create Boreal Project:**
     *   Log in to your Boreal account and create a new project.
     *   Connect Boreal to your GitHub account and select the repository containing your project.
-    *   Configure the project settings, ensuring Boreal points to the `moose-backend` directory if your repository root contains both backend and frontend.
+    *   Configure the project settings, ensuring Boreal points to the `apps/moose-backend` directory if your repository root contains the monorepo structure.
 *   **Configure Environment Variables:**
     *   In the Boreal project settings, add the `GITHUB_TOKEN` environment variable with your GitHub Personal Access Token as the value.
 *   **Deploy:** Boreal should automatically build and deploy your Moose service based on your repository configuration. It will also typically start any polling sources (like the GitHub event poller) defined in your `moose.config.toml`.
@@ -91,16 +111,16 @@ Deploying this project involves deploying the Moose backend service and the fron
 
 ### 2. Deploying the Frontend Dashboard (Vercel)
 
-*   **Push to GitHub:** Ensure your latest frontend code (the contents of the `dashboard` directory) is committed and pushed to your GitHub repository.
+*   **Push to GitHub:** Ensure your latest frontend code (the contents of the `apps/dashboard` directory) is committed and pushed to your GitHub repository.
 *   **Create Vercel Project:**
     *   Log in to your Vercel account and create a new project.
     *   Connect Vercel to your GitHub account and select the repository containing your project.
 *   **Configure Project Settings:**
-    *   Set the **Root Directory** in Vercel to `dashboard` (or wherever your frontend code resides within the repository).
-    *   Vercel should automatically detect it's a Next.js project and configure the build command (`npm run build`) and output directory correctly. Adjust if necessary.
+    *   Set the **Root Directory** in Vercel to `apps/dashboard` (or wherever your frontend code resides within the repository).
+    *   Vercel should automatically detect it's a Next.js project and configure the build command (`pnpm build`) and output directory correctly. Adjust if necessary.
 *   **Configure Environment Variables:**
     *   This is crucial: The frontend needs to know where the deployed backend API is located.
-    *   Add an environment variable in Vercel to point to your Boreal API URL. The variable name depends on how the frontend code expects it (e.g., `NEXT_PUBLIC_MOOSE_URL`). Check the frontend code (`dashboard/`) for the exact variable name.
+    *   Add an environment variable in Vercel to point to your Boreal API URL. The variable name depends on how the frontend code expects it (e.g., `NEXT_PUBLIC_MOOSE_URL`). Check the frontend code (`apps/dashboard/`) for the exact variable name.
         ```
         # Example Vercel Environment Variable
         NEXT_PUBLIC_API_URL=https://your-boreal-project-url.boreal.cloud

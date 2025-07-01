@@ -16,7 +16,7 @@
     "@types/node": "^20"
   },
   "engines": {
-    "node": ">=18",
+    "node": ">=20",
     "pnpm": ">=8"
   }
 }

@@ -1,5 +1,0 @@
-name = 'generator'
-schedule = '@every 5s'
-retries = 3
-timeout = '1h'
-tasks=["1.generateRandom"]

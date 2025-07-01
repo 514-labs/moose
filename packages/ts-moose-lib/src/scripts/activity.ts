@@ -21,7 +21,13 @@ export const activities = {
 
       const processedInput = (inputData || {})?.data || {};
       // Dynamically import the script so both CommonJS and pure-ESM user code work
-      const scriptModule = await import(pathToFileURL(scriptPath).href);
+      let scriptModule: any;
+      try {
+        scriptModule = await require(scriptPath);
+      } catch (error) {
+        console.log("error with require, try import", error);
+        scriptModule = await import(pathToFileURL(scriptPath).href);
+      }
       const execResult = await scriptModule.default();
       const result = await execResult.task(processedInput);
 

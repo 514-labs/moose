@@ -110,7 +110,7 @@ jobs:
   test-macos:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test Suite (MacOS)
+    name: Test Suite (MacOS, Node ${{ matrix.node-version }})
     # Add explicit read-only permissions
     permissions:
       contents: read
@@ -119,6 +119,8 @@ jobs:
     runs-on: macos-latest
     strategy:
       fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -137,7 +139,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -160,7 +162,7 @@ jobs:
   test-ubuntu:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test Suite (Ubuntu)
+    name: Test Suite (Ubuntu, Node ${{ matrix.node-version }})
     runs-on: ubuntu-4
     # Add explicit read-only permissions
     permissions:
@@ -169,6 +171,8 @@ jobs:
       RUST_BACKTRACE: full
     strategy:
       fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -187,7 +191,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1

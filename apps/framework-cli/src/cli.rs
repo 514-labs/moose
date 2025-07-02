@@ -81,7 +81,15 @@ fn load_project() -> Result<Project, RoutineFailure> {
 }
 
 fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
-    let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).unwrap();
+    let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).map_err(|e| {
+        RoutineFailure::error(Message {
+            action: "Init".to_string(),
+            details: format!(
+                "Internal error: invalid project name pattern '{}': {e}",
+                PROJECT_NAME_ALLOW_PATTERN
+            ),
+        })
+    })?;
 
     if !project_name_regex.is_match(name) {
         return Err(RoutineFailure::error(Message {

@@ -17,6 +17,7 @@ import {
   NullType,
   UnknownType,
   UnsupportedFeature,
+  IndexTypeError,
   MapType,
 } from "./dataModelTypes";
 import { ClickHouseNamedTuple, DecimalRegex } from "./types";
@@ -41,6 +42,18 @@ const throwUnknownType = (
 
 const throwNullType = (fieldName: string, typeName: string): never => {
   throw new NullType(fieldName, typeName);
+};
+
+const throwIndexTypeError = (t: ts.Type, checker: TypeChecker): never => {
+  const interfaceName = t.symbol?.name || "unknown type";
+  const indexInfos = checker.getIndexInfosOfType(t);
+  const signatures = indexInfos.map((info) => {
+    const keyType = checker.typeToString(info.keyType);
+    const valueType = checker.typeToString(info.type);
+    return `[${keyType}]: ${valueType}`;
+  });
+
+  throw new IndexTypeError(interfaceName, signatures);
 };
 
 const toArrayType = ([elementNullable, _, elementType]: [
@@ -285,7 +298,7 @@ const handleRecordType = (
 ): MapType => {
   const indexInfos = checker.getIndexInfosOfType(t);
   if (indexInfos && indexInfos.length !== 1) {
-    throw new UnsupportedFeature("Multiple index type");
+    throwIndexTypeError(t, checker);
   }
   const indexInfo = indexInfos[0];
 
@@ -432,7 +445,7 @@ const hasJwtWrapping = (typeNode: ts.TypeNode | undefined) => {
 export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
   if (checker.getIndexInfosOfType(t).length !== 0) {
     console.log(checker.getIndexInfosOfType(t));
-    throw new UnsupportedFeature("index type");
+    throwIndexTypeError(t, checker);
   }
 
   return checker.getPropertiesOfType(t).map((prop) => {

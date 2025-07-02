@@ -10,64 +10,7 @@ import { OlapTable } from "./olapTable";
 import { SqlResource } from "./sqlResource";
 import { View } from "./view";
 import { IJsonSchemaCollection } from "typia";
-import {
-  Column,
-  DataType,
-  DataEnum,
-  ArrayType,
-  Nested,
-  NamedTupleType,
-  MapType,
-} from "../../dataModels/dataModelTypes";
-
-/**
- * Converts a DataType to its ClickHouse string representation.
- */
-function dataTypeToString(dataType: DataType): string {
-  if (typeof dataType === "string") {
-    return dataType;
-  }
-
-  if ("nullable" in dataType) {
-    return `Nullable(${dataTypeToString(dataType.nullable)})`;
-  }
-
-  if ("name" in dataType && "values" in dataType) {
-    // DataEnum
-    const enumType = dataType as DataEnum;
-    return `Enum('${enumType.name}')`;
-  }
-
-  if ("elementType" in dataType) {
-    // ArrayType
-    const arrayType = dataType as ArrayType;
-    const elementTypeStr = dataTypeToString(arrayType.elementType);
-    return arrayType.elementNullable ?
-        `Array(Nullable(${elementTypeStr}))`
-      : `Array(${elementTypeStr})`;
-  }
-
-  if ("columns" in dataType) {
-    // Nested
-    const nestedType = dataType as Nested;
-    return `Nested(${nestedType.columns.map((col) => `${col.name} ${dataTypeToString(col.data_type)}`).join(", ")})`;
-  }
-
-  if ("fields" in dataType) {
-    // NamedTupleType
-    const tupleType = dataType as NamedTupleType;
-    return `Tuple(${tupleType.fields.map(([name, type]) => `${name} ${dataTypeToString(type)}`).join(", ")})`;
-  }
-
-  if ("keyType" in dataType && "valueType" in dataType) {
-    // MapType
-    const mapType = dataType as MapType;
-    return `Map(${dataTypeToString(mapType.keyType)}, ${dataTypeToString(mapType.valueType)})`;
-  }
-
-  // Fallback to String for unknown types
-  return "String";
-}
+import { Column } from "../../dataModels/dataModelTypes";
 
 /**
  * Represents a time interval for refreshable materialized views.
@@ -280,16 +223,6 @@ export class RefreshableMaterializedView<TargetTable> extends SqlResource {
       targetColumns,
     );
 
-    // Generate column definitions from the target schema
-    const columns: Record<string, string> = {};
-    targetColumns.forEach((column) => {
-      columns[column.name] = dataTypeToString(column.data_type);
-    });
-
-    // Generate ORDER BY clause from orderByFields
-    const orderBy =
-      options.orderByFields ? options.orderByFields.join(", ") : undefined;
-
     super(
       options.materializedViewName,
       [
@@ -300,9 +233,6 @@ export class RefreshableMaterializedView<TargetTable> extends SqlResource {
           refreshInterval: options.refreshEvery,
           appendMode: options.appendMode,
           dependsOn: dependsOn.length > 0 ? dependsOn : undefined,
-          columns,
-          engine: options.engine,
-          orderBy,
         }),
       ],
       [dropView(options.materializedViewName)],

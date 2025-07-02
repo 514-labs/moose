@@ -15,16 +15,23 @@ interface MaterializedViewCreateOptions {
   select: string;
 }
 
-interface RefreshableMaterializedViewCreateOptions {
+interface RefreshableMaterializedViewToOptions {
   name: string;
   destinationTable: string;
   select: string;
   refreshInterval: RefreshInterval;
   appendMode?: boolean;
   dependsOn?: string[];
-  columns: Record<string, string>;
-  engine?: ClickHouseEngines;
-  orderBy?: string;
+}
+
+// New simplified interface for refreshable materialized views using TO syntax
+interface RefreshableMaterializedViewToOptions {
+  name: string;
+  destinationTable: string;
+  select: string;
+  refreshInterval: RefreshInterval;
+  appendMode?: boolean;
+  dependsOn?: string[];
 }
 
 interface PopulateTableOptions {
@@ -127,10 +134,10 @@ export function toClickHouseInterval(interval: RefreshInterval): string {
 }
 
 /**
- * Creates a refreshable materialized view with inline table definition.
+ * Creates a refreshable materialized view using TO syntax (same pattern as regular materialized views).
  */
 export function createRefreshableMaterializedView(
-  options: RefreshableMaterializedViewCreateOptions,
+  options: RefreshableMaterializedViewToOptions,
 ): string {
   const refreshClause = `REFRESH EVERY ${toClickHouseInterval(options.refreshInterval)}`;
   const appendClause = options.appendMode ? " APPEND" : "";
@@ -139,20 +146,9 @@ export function createRefreshableMaterializedView(
       ` DEPENDS ON ${options.dependsOn.join(", ")}`
     : "";
 
-  const columnDefinitions = Object.entries(options.columns)
-    .map(([name, type]) => `${name} ${type}`)
-    .join(",\n  ");
-
-  const engine = options.engine || ClickHouseEngines.MergeTree;
-  const orderByClause = options.orderBy ? `ORDER BY (${options.orderBy})` : "";
-
   return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name}
 ${refreshClause}${appendClause}${dependsOnClause}
-(
-  ${columnDefinitions}
-)
-ENGINE = ${engine}()
-${orderByClause}
+TO ${options.destinationTable}
 AS ${options.select}`.trim();
 }
 

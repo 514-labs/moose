@@ -65,22 +65,19 @@ Make sure to check your specific client's documentation for the correct naming c
 <Tabs.Tab>
 ```json filename="MCP configuration" copy
 {
-  "mcp": {
-    "Input": [],
-    "servers": {
-      "aurora": {
-        "args": [
-          "@514labs/aurora-mcp@latest",
-          "--moose-read-tools",
-          "path/to/your/moose/project"
-        ],
-        "command": "npx",
-        "env": {
-          "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
-          "MOOSE_PATH": "path/to/your/moose/installation",
-          "NODE_PATH": "path/to/your/node/installation",
-          "PYTHON_PATH": "path/to/your/python/installation"
-        }
+  "servers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
       }
     }
   }

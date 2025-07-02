@@ -59,19 +59,22 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
   <Tabs.Tab>
     ```json filename="/path/to/your/project/.cursor/settings.json" copy
     {
-      "servers": {
-        "aurora": {
-          "args": [
-            "@514labs/aurora-mcp@latest",
-            "--moose-read-tools",
-            "path/to/your/moose/project"
-          ],
-          "command": "npx",
-          "env": {
-            "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
-            "MOOSE_PATH": "path/to/your/moose/installation",
-            "NODE_PATH": "path/to/your/node/installation",
-            "PYTHON_PATH": "path/to/your/python/installation"
+      "mcp": {
+        "Input": [],
+        "servers": {
+          "aurora": {
+            "args": [
+              "@514labs/aurora-mcp@latest",
+              "--moose-read-tools",
+              "path/to/your/moose/project"
+            ],
+            "command": "npx",
+            "env": {
+              "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+              "MOOSE_PATH": "path/to/your/moose/installation",
+              "NODE_PATH": "path/to/your/node/installation",
+              "PYTHON_PATH": "path/to/your/python/installation"
+            }
           }
         }
       }

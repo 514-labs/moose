@@ -111,10 +111,11 @@ pub async fn run_workflow(
         .start(&project.temporal_config, input)
         .await
         .map_err(|e| {
+            let error_message = format_workflow_error(&e.to_string(), name);
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{name}': {e}\n"),
+                    details: error_message,
                 },
                 e,
             )
@@ -451,6 +452,69 @@ pub async fn unpause_workflow(
         action: "Workflow".to_string(),
         details: format!("'{name}' unpaused successfully\n"),
     }))
+}
+
+// Helper function to format workflow errors in a user-friendly way
+fn format_workflow_error(error_message: &str, workflow_name: &str) -> String {
+    let error_lower = error_message.to_lowercase();
+
+    if error_lower.contains("alreadyexists") || error_lower.contains("already running") {
+        format!(
+            "⚠️  Workflow '{workflow_name}' is already running!\n\n\
+            📍 What you can do:\n\
+            • Check running workflows: moose workflow list\n\
+            • View workflow status: moose workflow status {workflow_name}\n\
+            • Stop the running workflow: moose workflow terminate {workflow_name}\n\
+            • Or wait for it to complete naturally\n"
+        )
+    } else if error_lower.contains("connection") || error_lower.contains("connect") {
+        format!(
+            "🔌 Connection failed for workflow '{workflow_name}'\n\n\
+            📍 What you can do:\n\
+            • Check if Temporal is running: moose infrastructure up\n\
+            • Verify your Temporal configuration\n\
+            • Try again in a moment\n"
+        )
+    } else if error_lower.contains("timeout") {
+        format!(
+            "⏱️  Timeout starting workflow '{workflow_name}'\n\n\
+            📍 What you can do:\n\
+            • Check if Temporal is responding: moose infrastructure status\n\
+            • Try increasing the timeout in your workflow config\n\
+            • Try again in a moment\n"
+        )
+    } else {
+        // For other errors, provide a generic friendly message but still include some details
+        format!(
+            "❌ Could not start workflow '{workflow_name}'\n\n\
+            📋 Error details: {}\n\n\
+            📍 What you can do:\n\
+            • Check workflow configuration and syntax\n\
+            • Verify Temporal is running: moose infrastructure status\n\
+            • Check logs for more details\n\
+            • Try running: moose workflow list to see current workflows\n",
+            extract_main_error_message(error_message)
+        )
+    }
+}
+
+// Helper function to extract the main error message from Temporal's verbose error output
+fn extract_main_error_message(error_message: &str) -> String {
+    // Look for the main message in common Temporal error patterns
+    if let Some(start) = error_message.find("message: \"") {
+        let start = start + 10; // Skip 'message: "'
+        if let Some(end) = error_message[start..].find("\",") {
+            return error_message[start..start + end].to_string();
+        }
+    }
+
+    // If we can't extract a clean message, take the first line and clean it up
+    let first_line = error_message.lines().next().unwrap_or(error_message);
+    if first_line.len() > 100 {
+        format!("{}...", &first_line[..97])
+    } else {
+        first_line.to_string()
+    }
 }
 
 // Helper function to parse failure information from JSON messages

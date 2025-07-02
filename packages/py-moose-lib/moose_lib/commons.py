@@ -1,7 +1,11 @@
+import dataclasses
 import logging
+from datetime import datetime, timezone
+
 import requests
 import json
 from typing import Optional, Literal
+
 
 class CliLogData:
     INFO = "Info"
@@ -9,7 +13,8 @@ class CliLogData:
     ERROR = "Error"
     HIGHLIGHT = "Highlight"
 
-    def __init__(self, action: str, message: str, message_type: Optional[Literal[INFO, SUCCESS, ERROR, HIGHLIGHT]] = INFO):
+    def __init__(self, action: str, message: str,
+                 message_type: Optional[Literal[INFO, SUCCESS, ERROR, HIGHLIGHT]] = INFO):
         self.message_type = message_type
         self.action = action
         self.message = message
@@ -31,11 +36,11 @@ def cli_log(log: CliLogData) -> None:
 
 class Logger:
     default_action = "Custom"
-    
+
     def __init__(self, action: Optional[str] = None, is_moose_task: bool = False):
         self.action = action or Logger.default_action
         self._is_moose_task = is_moose_task
-    
+
     def _log(self, message: str, message_type: str) -> None:
         if self._is_moose_task:
             # We have a task decorator in the lib that initializes a logger
@@ -63,3 +68,31 @@ class Logger:
 
     def highlight(self, message: str) -> None:
         self._log(message, CliLogData.HIGHLIGHT)
+
+
+class EnhancedJSONEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder that handles:
+    - datetime objects (converts to ISO format with timezone)
+    - dataclass instances (converts to dict)
+    - Pydantic models (converts to dict)
+    """
+
+    def default(self, o):
+        if isinstance(o, datetime):
+            if o.tzinfo is None:
+                o = o.replace(tzinfo=timezone.utc)
+            return o.isoformat()
+        if hasattr(o, "model_dump"):  # Handle Pydantic v2 models
+            # Convert to dict and handle datetime fields
+            data = o.model_dump()
+            # Handle any datetime fields that might be present
+            for key, value in data.items():
+                if isinstance(value, datetime):
+                    if value.tzinfo is None:
+                        value = value.replace(tzinfo=timezone.utc)
+                    data[key] = value.isoformat()
+            return data
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)

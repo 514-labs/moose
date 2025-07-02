@@ -5,13 +5,23 @@ including configuration objects, clients for interacting with services (ClickHou
 and utilities for defining data models and SQL queries.
 """
 from clickhouse_connect.driver.client import Client as ClickhouseClient
-from temporalio.client import Client as TemporalClient
+from clickhouse_connect import get_client
+from pydantic import BaseModel
 from dataclasses import dataclass, asdict
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, TypeVar, overload
+from typing import Any, Callable, Dict, Optional, TypeVar, overload, Type, Union
 import sys
 import os
 import json
+import hashlib
+import asyncio
+from string import Formatter
+from temporalio.client import Client as TemporalClient, TLSConfig
+from temporalio.common import RetryPolicy, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
+from datetime import timedelta
+from .config.runtime import RuntimeClickHouseConfig
+
+from moose_lib.commons import EnhancedJSONEncoder
 
 
 @dataclass
@@ -22,7 +32,6 @@ class StreamingFunction:
         run: The callable function that performs the streaming logic.
     """
     run: Callable
-
 
 
 @dataclass
@@ -53,6 +62,7 @@ class DataModelConfig:
 
 class CustomEncoder(json.JSONEncoder):
     """Custom JSON encoder that handles Enum types by encoding their values."""
+
     def default(self, obj):
         if isinstance(obj, Enum):
             return obj.value
@@ -92,6 +102,7 @@ def moose_data_model(arg: Any = None) -> Any:
     Returns:
         A decorator function or the decorated class.
     """
+
     def get_file(t: type) -> Optional[str]:
         """Helper to get the file path of a type's definition."""
         module = sys.modules.get(t.__module__)
@@ -139,33 +150,197 @@ class ConsumptionApiResult:
 class QueryClient:
     """Client for executing queries, typically against ClickHouse.
 
-    (Note: Current implementation is a placeholder.)
-
     Args:
-        ch_client: An instance of the ClickHouse client.
+        ch_client_or_config: Either an instance of the ClickHouse client or a RuntimeClickHouseConfig.
     """
-    def __init__(self, ch_client: ClickhouseClient):
-        self.ch_client = ch_client
 
-    def execute(self, input, variables) -> Any:
-        # No impl for the interface
-        pass
+    def __init__(self, ch_client_or_config: Union[ClickhouseClient, RuntimeClickHouseConfig]):
+        if isinstance(ch_client_or_config, RuntimeClickHouseConfig):
+            # Create ClickHouse client from configuration
+            config = ch_client_or_config
+            interface = 'https' if config.use_ssl else 'http'
+            self.ch_client = get_client(
+                interface=interface,
+                host=config.host,
+                port=int(config.port),
+                username=config.username,
+                password=config.password,
+                database=config.database,
+            )
+        else:
+            # Use provided ClickHouse client directly
+            self.ch_client = ch_client_or_config
+
+    def __call__(self, input, variables):
+        return self.execute(input, variables)
+
+    def execute(self, input, variables, row_type: Type[BaseModel] = None):
+        params = {}
+        values = {}
+
+        for i, (_, variable_name, _, _) in enumerate(Formatter().parse(input)):
+            if variable_name:
+                value = variables[variable_name]
+                if isinstance(value, list) and len(value) == 1:
+                    # handling passing the value of the query string dict directly to variables
+                    value = value[0]
+
+                t = 'String' if isinstance(value, str) else \
+                    'Int64' if isinstance(value, int) else \
+                        'Float64' if isinstance(value, float) else "String"  # unknown type
+
+                params[variable_name] = f'{{p{i}: {t}}}'
+                values[f'p{i}'] = value
+        clickhouse_query = input.format_map(params)
+
+        # We are not using the result of the ping
+        # but this ensures that if the clickhouse cloud service is idle, we
+        # wake it up, before we send the query.
+        self.ch_client.ping()
+
+        val = self.ch_client.query(clickhouse_query, values)
+
+        if row_type is None:
+            return list(val.named_results())
+        else:
+            return list(row_type(**row) for row in val.named_results())
+
+    def close(self):
+        """Close the ClickHouse client connection."""
+        if self.ch_client:
+            try:
+                self.ch_client.close()
+            except Exception as e:
+                print(f"Error closing ClickHouse client: {e}")
 
 
 class WorkflowClient:
     """Client for interacting with Temporal workflows.
 
-    (Note: Current implementation is a placeholder.)
-
     Args:
         temporal_client: An instance of the Temporal client.
     """
+
     def __init__(self, temporal_client: TemporalClient):
         self.temporal_client = temporal_client
+        self.configs = self.load_consolidated_configs()
+        print(f"WorkflowClient - configs: {self.configs}")
 
+    # Test workflow executor in rust if this changes significantly
     def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
-        # No impl for the interface
-        pass
+        try:
+            workflow_id, run_id = asyncio.run(self._start_workflow_async(name, input_data))
+            print(f"WorkflowClient - started workflow: {name}")
+            return {
+                "status": 200,
+                "body": f"Workflow started: {name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/{workflow_id}/{run_id}/history"
+            }
+        except Exception as e:
+            print(f"WorkflowClient - error while starting workflow: {e}")
+            return {
+                "status": 400,
+                "body": str(e)
+            }
+
+    async def _start_workflow_async(self, name: str, input_data: Any):
+        # Extract configuration based on workflow type
+        config = self._get_workflow_config(name)
+
+        # Process input data and generate workflow ID (common logic)
+        processed_input, workflow_id = self._process_input_data(name, input_data)
+
+        # Create retry policy and timeout (common logic)
+        retry_policy = RetryPolicy(maximum_attempts=config['retry_count'])
+        run_timeout = self.parse_timeout_to_timedelta(config['timeout_str'])
+
+        print(
+            f"WorkflowClient - starting {'DMv2 ' if config['is_dmv2'] else ''}workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
+
+        # Start workflow with appropriate args
+        workflow_args = self._build_workflow_args(name, processed_input, config['is_dmv2'])
+
+        workflow_handle = await self.temporal_client.start_workflow(
+            "ScriptWorkflow",
+            args=workflow_args,
+            id=workflow_id,
+            task_queue="python-script-queue",
+            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+            retry_policy=retry_policy,
+            run_timeout=run_timeout
+        )
+
+        return workflow_id, workflow_handle.result_run_id
+
+    def _get_workflow_config(self, name: str) -> Dict[str, Any]:
+        """Extract workflow configuration from DMv2 or legacy config."""
+        from moose_lib.dmv2 import get_workflow
+
+        dmv2_workflow = get_workflow(name)
+        if dmv2_workflow is not None:
+            return {
+                'retry_count': dmv2_workflow.config.retries or 3,
+                'timeout_str': dmv2_workflow.config.timeout or "1h",
+                'is_dmv2': True
+            }
+        else:
+            config = self.configs.get(name, {})
+            return {
+                'retry_count': config.get('retries', 3),
+                'timeout_str': config.get('timeout', "1h"),
+                'is_dmv2': False
+            }
+
+    def _process_input_data(self, name: str, input_data: Any) -> tuple[Any, str]:
+        """Process input data and generate workflow ID."""
+        workflow_id = name
+        if input_data:
+            try:
+                # Handle Pydantic model input for DMv2
+                if isinstance(input_data, BaseModel):
+                    input_data = input_data.model_dump()
+                elif isinstance(input_data, str):
+                    input_data = json.loads(input_data)
+
+                # Encode with custom encoder
+                input_data = json.loads(
+                    json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
+                )
+
+                params_str = json.dumps(input_data, sort_keys=True)
+                params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+                workflow_id = f"{name}-{params_hash}"
+            except Exception as e:
+                raise ValueError(f"Invalid input data: {e}")
+
+        return input_data, workflow_id
+
+    def _build_workflow_args(self, name: str, input_data: Any, is_dmv2: bool) -> list:
+        """Build workflow arguments based on workflow type."""
+        if is_dmv2:
+            return [f"{name}", input_data]
+        else:
+            return [f"{os.getcwd()}/app/scripts/{name}", input_data]
+
+    def load_consolidated_configs(self):
+        try:
+            file_path = os.path.join(os.getcwd(), ".moose", "workflow_configs.json")
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+                config_map = {config['name']: config for config in data}
+                return config_map
+        except Exception as e:
+            raise ValueError(f"Error loading file {file_path}: {e}")
+
+    def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
+        if timeout_str.endswith('h'):
+            return timedelta(hours=int(timeout_str[:-1]))
+        elif timeout_str.endswith('m'):
+            return timedelta(minutes=int(timeout_str[:-1]))
+        elif timeout_str.endswith('s'):
+            return timedelta(seconds=int(timeout_str[:-1]))
+        else:
+            raise ValueError(f"Unsupported timeout format: {timeout_str}")
 
 
 class MooseClient:
@@ -182,12 +357,28 @@ class MooseClient:
         query (QueryClient): Client for executing queries.
         workflow (Optional[WorkflowClient]): Client for workflow operations (if configured).
     """
+
     def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
         self.query = QueryClient(ch_client)
+        self.temporal_client = temporal_client
         if temporal_client:
             self.workflow = WorkflowClient(temporal_client)
         else:
             self.workflow = None
+
+    async def cleanup(self):
+        """Cleanup resources before shutdown"""
+        if self.query:
+            try:
+                self.query.close()
+            except Exception as e:
+                print(f"Error closing Clickhouse client: {e}")
+
+        if self.temporal_client:
+            try:
+                await self.temporal_client.close()
+            except Exception as e:
+                print(f"Error closing Temporal client: {e}")
 
 
 class Sql:
@@ -211,6 +402,7 @@ class Sql:
         values (list[Any]): The flattened list of values corresponding to the gaps
                             between the strings.
     """
+
     def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):
         if len(raw_strings) - 1 != len(raw_values):
             if len(raw_strings) == 0:
@@ -251,4 +443,3 @@ def sigterm_handler():
     """Handles SIGTERM signals by printing a message and exiting gracefully."""
     print("SIGTERM received")
     sys.exit(0)
-

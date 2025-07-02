@@ -15,8 +15,6 @@ import ipaddress
 type Key[T: (str, int)] = T
 type JWT[T] = T
 
-type Aggregated[T, agg_func] = Annotated[T, agg_func]
-
 
 @dataclasses.dataclass  # a BaseModel in the annotations will confuse pydantic
 class ClickhousePrecision:
@@ -41,8 +39,16 @@ def clickhouse_datetime64(precision: int) -> Type[datetime]:
     return Annotated[datetime, ClickhousePrecision(precision=precision)]
 
 
-class AggregateFunction(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+def aggregated[T](
+        result_type: Type[T],
+        agg_func: str,
+        param_types: list[type | GenericAlias | _BaseGenericAlias]
+) -> Type[T]:
+    return Annotated[result_type, AggregateFunction(agg_func=agg_func, param_types=param_types)]
+
+
+@dataclasses.dataclass
+class AggregateFunction:
     agg_func: str
     param_types: list[type | GenericAlias | _BaseGenericAlias]
 
@@ -120,12 +126,6 @@ def handle_annotation(t: type, md: list[Any]) -> Tuple[type, list[Any]]:
         return handle_annotation(t.__value__, md)
     if get_origin(t) is Annotated:
         return handle_annotation(t.__origin__, md + list(t.__metadata__))  # type: ignore
-    if get_origin(t) is Aggregated:
-        args = get_args(t)
-        agg_func = args[1]
-        if not isinstance(agg_func, AggregateFunction):
-            raise ValueError("Pass an AggregateFunction to Aggregated")
-        return handle_annotation(args[0], md + [agg_func])
     return t, md
 
 
@@ -285,8 +285,8 @@ class StringToEnumMixin:
 def is_array_nested_type(data_type: DataType) -> bool:
     """Type guard to check if a data type is Array(Nested(...))."""
     return (
-        isinstance(data_type, ArrayType) and
-        isinstance(data_type.element_type, Nested)
+            isinstance(data_type, ArrayType) and
+            isinstance(data_type.element_type, Nested)
     )
 
 

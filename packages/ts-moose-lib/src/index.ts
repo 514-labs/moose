@@ -24,3 +24,4 @@ export { ConsumptionUtil } from "./consumption-apis/helpers";
 
 export * from "./utilities";
 export * from "./connectors/dataSource";
+export * from "./dmv2";

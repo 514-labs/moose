@@ -15,6 +15,18 @@ interface MaterializedViewCreateOptions {
   select: string;
 }
 
+interface RefreshableMaterializedViewCreateOptions {
+  name: string;
+  destinationTable: string;
+  select: string;
+  refreshInterval: RefreshInterval;
+  appendMode?: boolean;
+  dependsOn?: string[];
+  columns: Record<string, string>;
+  engine?: ClickHouseEngines;
+  orderBy?: string;
+}
+
 interface PopulateTableOptions {
   destinationTable: string;
   select: string;
@@ -25,6 +37,11 @@ interface TableCreateOptions {
   columns: Record<string, string>;
   engine?: ClickHouseEngines;
   orderBy?: string;
+}
+
+interface RefreshInterval {
+  value: number;
+  unit: "seconds" | "minutes" | "hours" | "days";
 }
 
 export interface Blocks {
@@ -90,6 +107,53 @@ export function createMaterializedView(
   return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
         TO ${options.destinationTable}
         AS ${options.select}`.trim();
+}
+
+/**
+ * Converts a RefreshInterval to ClickHouse INTERVAL syntax.
+ */
+export function toClickHouseInterval(interval: RefreshInterval): string {
+  const unitMap = {
+    seconds: "SECOND",
+    minutes: "MINUTE",
+    hours: "HOUR",
+    days: "DAY",
+  };
+  const unit =
+    interval.value === 1 ?
+      unitMap[interval.unit]
+    : unitMap[interval.unit] + "S";
+  return `${interval.value} ${unit}`;
+}
+
+/**
+ * Creates a refreshable materialized view with inline table definition.
+ */
+export function createRefreshableMaterializedView(
+  options: RefreshableMaterializedViewCreateOptions,
+): string {
+  const refreshClause = `REFRESH EVERY ${toClickHouseInterval(options.refreshInterval)}`;
+  const appendClause = options.appendMode ? " APPEND" : "";
+  const dependsOnClause =
+    options.dependsOn && options.dependsOn.length > 0 ?
+      ` DEPENDS ON ${options.dependsOn.join(", ")}`
+    : "";
+
+  const columnDefinitions = Object.entries(options.columns)
+    .map(([name, type]) => `${name} ${type}`)
+    .join(",\n  ");
+
+  const engine = options.engine || ClickHouseEngines.MergeTree;
+  const orderByClause = options.orderBy ? `ORDER BY (${options.orderBy})` : "";
+
+  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name}
+${refreshClause}${appendClause}${dependsOnClause}
+(
+  ${columnDefinitions}
+)
+ENGINE = ${engine}()
+${orderByClause}
+AS ${options.select}`.trim();
 }
 
 /**

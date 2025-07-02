@@ -41,6 +41,10 @@ export { IngestPipeline, IngestPipelineConfig } from "./sdk/ingestPipeline";
 export {
   MaterializedView,
   MaterializedViewConfig,
+  RefreshableMaterializedView,
+  RefreshableMaterializedViewConfig,
+  RefreshInterval,
+  duration,
 } from "./sdk/materializedView";
 export { SqlResource } from "./sdk/sqlResource";
 export { View } from "./sdk/view";

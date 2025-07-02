@@ -34,10 +34,12 @@ pub fn parse_data_model_file(
     project: &Project,
 ) -> Result<FileObjects, DataModelParsingError> {
     // TODO - Remove this if when we have deprecated v0.3 of the internal deployment
-    if !file_path
-        .file_name()
-        .is_some_and(|file_name| file_name.to_str().unwrap().contains("generated"))
-    {
+    if !file_path.file_name().is_some_and(|file_name| {
+        file_name
+            .to_str()
+            .map(|s| s.contains("generated"))
+            .unwrap_or(false)
+    }) {
         if let Some(ext) = file_path.extension() {
             match ext.to_str() {
                 Some(constants::TYPESCRIPT_FILE_EXTENSION) => Ok(

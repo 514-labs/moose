@@ -9,7 +9,7 @@ import { Callout } from "@/components"
 
 # Materialized Views
 
-## Create materialized views to pre-aggregate your data
+## Create materialized views to pre-aggregate your data, based on your egress API
 
 This demo will walk you through using Aurora tools to prompt your way to creating materialized views that pre-aggregate the aircraft telemetry data you've ingested.
 
@@ -134,7 +134,6 @@ export const getAircraftWithinRadius = new ConsumptionApi<AircraftRadiusParams>(
 
 </Tabs.Tab>
 </Tabs>
-
 
 ### Prompt the LLM to create a materialized view
 

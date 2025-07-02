@@ -12,7 +12,30 @@ As always, to get the latest:
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 ```
 
-## Friday, 30th May 2025
+## Wednesday, 3 July 2025
+
+<Callout type="info" title="Highlights">
+* **Aurora users** can now use Aurora MCP with VS Code, bringing CLI based MCP configuration to VS Code, Cursor, Windsurf and Claude Desktop.
+</Callout>
+
+### Aurora
+
+#### VS Code Support
+
+If you want to add Aurora MCP to your existing Moose project in VS Code, try 
+```bash filename="Terminal" copy
+aurora setup --mcp vscode-project
+```
+
+See the [VS Code setup guide](/aurora/getting-started/vs-code) for more details.
+
+#### Removal of `read_file` tool
+We originally created the `read_file` tool to allow non-code-editor clients to write and read files. From our work with users, we have seen that when people are creating and editing code, they are using code editors, and they primarily use chat based clients for consumption.
+
+#### Changing standard tools for each client
+Accordingly, Claude-Desktop now defaults to read tools, and code editors now default to read and write tools.
+
+## Friday, 30 May 2025
 
 
 <Callout type="info" title="Highlights">
@@ -39,25 +62,25 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 
 <ToggleBlock openText="Need help finding credentials?" closeText="Hide credential help">
-<Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
-<Tabs.Tab>
-1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
-2. Go to your service details page
-3. Find "Connect" or "Connection Details" section
-4. Copy the HTTPS endpoint and your username/password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
-- Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
-- Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
-- Default user is often `default` with no password
-</Tabs.Tab>
-<Tabs.Tab>
-- Check your docker-compose.yml or docker run command for environment variables
-- Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
-- Default is usually `http://default:@localhost:8123/?database=default`
-</Tabs.Tab>
-</Tabs>
+  <Tabs items={["ClickHouse Cloud", "Self-Hosted", "Docker"]}>
+    <Tabs.Tab>
+      1. Log into your [ClickHouse Cloud console](https://clickhouse.cloud/)
+      2. Go to your service details page
+      3. Find "Connect" or "Connection Details" section
+      4. Copy the HTTPS endpoint and your username/password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your ClickHouse config file (usually `/etc/clickhouse-server/config.xml`)
+      - Look for `<http_port>` (default: 8123) and `<https_port>` (default: 8443)
+      - Check users config in `/etc/clickhouse-server/users.xml` or users.d/ directory
+      - Default user is often `default` with no password
+    </Tabs.Tab>
+    <Tabs.Tab>
+      - Check your docker-compose.yml or docker run command for environment variables
+      - Look for `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+      - Default is usually `http://default:@localhost:8123/?database=default`
+    </Tabs.Tab>
+  </Tabs>
 </ToggleBlock>
 
 <ToggleBlock openText="Common Issues" closeText="Hide Common Issues">
@@ -71,10 +94,7 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 </ToggleBlock>
 
-
-
-
-## Friday, 23rd May 2025
+## Friday, 23 May 2025
 
 <Callout type="info" title="Highlights">
 * **Moose users** can now handle stream processing failures with **Dead Letter Queues** — comprehensive error handling with type-safe recovery workflows in both TypeScript and Python.
@@ -199,7 +219,7 @@ This means you can eliminate downtime from bad data, debug failures faster with 
 
 See [Dead Letter Queues documentation](../building/dead-letter-queues) for complete setup and recovery patterns.
 
-## Monday, 19th May 2025
+## Monday, 19 May 2025
 
 <Callout type="info" title="Highlights">
 * **Moose and Aurora users** can now embed metadata into their Moose primitives, for use by users, their agents, and their metadata tools.
@@ -235,7 +255,7 @@ const acPipeline = new IngestPipeline<AircraftTrackingProcessed>(
     * To be on a field level as well as a primitive level
     * To include any arbitrary key value pair, not just a description (use this for managing labels like PII!)
 
-## Friday, 16th May 2025
+## Friday, 16 May 2025
 
 <Callout type="info" title="Highlights">
 * **Aurora users** can now leverage **DuckDB** for local data wrangling.

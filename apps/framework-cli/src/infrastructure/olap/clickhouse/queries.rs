@@ -112,6 +112,7 @@ pub enum ClickhouseEngine {
     MergeTree,
     ReplacingMergeTree,
     AggregatingMergeTree,
+    SummingMergeTree,
 }
 
 impl<'a> TryFrom<&'a str> for ClickhouseEngine {
@@ -122,6 +123,7 @@ impl<'a> TryFrom<&'a str> for ClickhouseEngine {
             "MergeTree" => Ok(ClickhouseEngine::MergeTree),
             "ReplacingMergeTree" => Ok(ClickhouseEngine::ReplacingMergeTree),
             "AggregatingMergeTree" => Ok(ClickhouseEngine::AggregatingMergeTree),
+            "SummingMergeTree" => Ok(ClickhouseEngine::SummingMergeTree),
             _ => Err(value),
         }
     }
@@ -145,6 +147,7 @@ pub fn create_table_query(
             "ReplacingMergeTree"
         }
         ClickhouseEngine::AggregatingMergeTree => "AggregatingMergeTree",
+        ClickhouseEngine::SummingMergeTree => "SummingMergeTree",
     };
 
     let primary_key = table

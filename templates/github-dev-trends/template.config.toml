@@ -6,9 +6,9 @@ post_install_print = """
     $ cd {project_dir}
 
 📦 Install Dependencies:
-    $ npm install
+    $ pnpm install
 
-🛠️ Start dev server:
-    $ moose dev
+🛠️ Start dev servers:
+    $ pnpm run dev
 """
 default_aurora_telemetry="comprehensive"

@@ -30,6 +30,7 @@ from typing import Optional, Callable, Tuple, Any
 
 from moose_lib.dmv2 import get_streams, DeadLetterModel
 from moose_lib import cli_log, CliLogData, DeadLetterQueue
+from moose_lib.commons import EnhancedJSONEncoder
 
 # Force stdout to be unbuffered
 sys.stdout = io.TextIOWrapper(
@@ -80,34 +81,6 @@ class KafkaTopicConfig:
                 raise Exception(f"Namespace prefix {prefix} not found in topic name {name}")
 
         return name
-
-
-class EnhancedJSONEncoder(json.JSONEncoder):
-    """
-    Custom JSON encoder that handles:
-    - datetime objects (converts to ISO format with timezone)
-    - dataclass instances (converts to dict)
-    - Pydantic models (converts to dict)
-    """
-
-    def default(self, o):
-        if isinstance(o, datetime):
-            if o.tzinfo is None:
-                o = o.replace(tzinfo=timezone.utc)
-            return o.isoformat()
-        if hasattr(o, "model_dump"):  # Handle Pydantic v2 models
-            # Convert to dict and handle datetime fields
-            data = o.model_dump()
-            # Handle any datetime fields that might be present
-            for key, value in data.items():
-                if isinstance(value, datetime):
-                    if value.tzinfo is None:
-                        value = value.replace(tzinfo=timezone.utc)
-                    data[key] = value.isoformat()
-            return data
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
 
 
 def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str) -> Tuple[type, Callable]:

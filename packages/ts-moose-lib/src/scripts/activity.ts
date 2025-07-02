@@ -20,8 +20,14 @@ export const activities = {
       logger.info(`Task received input: ${JSON.stringify(inputData)}`);
 
       const processedInput = (inputData || {})?.data || {};
-      // Dynamically import the script so both CommonJS and pure-ESM user code work
-      const scriptModule = await import(pathToFileURL(scriptPath).href);
+      let scriptModule: any;
+      try {
+        scriptModule = await require(scriptPath);
+      } catch (error) {
+        // Dynamically import the script so both CommonJS and pure-ESM user code work
+        console.log("error with require, try import", error);
+        scriptModule = await import(pathToFileURL(scriptPath).href);
+      }
       const execResult = await scriptModule.default();
       const result = await execResult.task(processedInput);
 
@@ -139,8 +145,14 @@ export const activities = {
 
   async getActivityRetry(filePath: string): Promise<number> {
     try {
-      // Use dynamic import here as well for ESM compatibility
-      const scriptModule = await import(pathToFileURL(filePath).href);
+      let scriptModule: any;
+      try {
+        scriptModule = await require(filePath);
+      } catch (error) {
+        // Use dynamic import here as well for ESM compatibility
+        console.log("error with require, try import", error);
+        scriptModule = await import(pathToFileURL(filePath).href);
+      }
       const execResult = await scriptModule.default();
       const retriesConfig = execResult?.config?.retries;
       const retries = typeof retriesConfig === "number" ? retriesConfig : 3;

@@ -4,7 +4,7 @@ description: Getting started guide for Aurora
 ---
 
 import { Callout } from "@/components";
-import { Steps } from "nextra/components";
+import { Steps, Tabs } from "nextra/components";
 import {
   CTACard,
   CTACards,
@@ -31,7 +31,17 @@ To try set up your client with Aurora MCP, use the MCP.JSON file within your cli
 
 ### Configure Aurora MCP
 
-```json filename="~/Library/Application Support/Claude/claude_desktop_config.json" copy
+<Callout type="warning">
+**Configuration Object Naming**: Different MCP clients use different naming conventions for the server configuration object:
+- **Cursor, Windsurf**: Uses `"mcpServers"`
+- **Claude Desktop, VS Code**: Use `"servers"` instead
+
+Make sure to check your specific client's documentation for the correct naming convention.
+</Callout>
+
+<Tabs items={['Cursor, Windsurf', 'Claude Desktop, VS Code']}>
+<Tabs.Tab>
+```json filename="MCP configuration" copy
 {
   "mcpServers": {
     "aurora": {
@@ -51,6 +61,30 @@ To try set up your client with Aurora MCP, use the MCP.JSON file within your cli
   }
 }
 ```
+</Tabs.Tab>
+<Tabs.Tab>
+```json filename="MCP configuration" copy
+{
+  "servers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
+      }
+    }
+  }
+}
+```
+</Tabs.Tab>
+</Tabs>
 
 ### Adding other toolsets
 

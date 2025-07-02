@@ -69,7 +69,7 @@ export class UnsupportedFeature extends Error {
   }
 }
 
-export class IndexTypeError extends Error {
+export class IndexType extends Error {
   typeName: string;
   indexSignatures: string[];
 

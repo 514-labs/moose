@@ -17,7 +17,7 @@ import {
   NullType,
   UnknownType,
   UnsupportedFeature,
-  IndexTypeError,
+  IndexType,
   MapType,
 } from "./dataModelTypes";
 import { ClickHouseNamedTuple, DecimalRegex } from "./types";
@@ -53,7 +53,7 @@ const throwIndexTypeError = (t: ts.Type, checker: TypeChecker): never => {
     return `[${keyType}]: ${valueType}`;
   });
 
-  throw new IndexTypeError(interfaceName, signatures);
+  throw new IndexType(interfaceName, signatures);
 };
 
 const toArrayType = ([elementNullable, _, elementType]: [

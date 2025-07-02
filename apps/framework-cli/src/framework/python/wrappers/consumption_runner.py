@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import dataclasses
-import hashlib
 import json
 import os
 import subprocess
@@ -15,9 +14,9 @@ from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from importlib import import_module
-from string import Formatter
-from typing import Optional, Dict, Any, Type
+from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
+from moose_lib import MooseClient
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
 from moose_lib.dmv2 import get_consumption_api, get_workflow
@@ -25,10 +24,9 @@ from pydantic import BaseModel, ValidationError
 
 import jwt
 from clickhouse_connect import get_client
-from clickhouse_connect.driver.client import Client as ClickhouseClient
 
-from temporalio.client import Client as TemporalClient, TLSConfig
-from temporalio.common import RetryPolicy, WorkflowIDConflictPolicy, WorkflowIDReusePolicy
+from moose_lib.commons import EnhancedJSONEncoder
+
 from consumption_wrapper.utils import create_temporal_connection
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
@@ -75,202 +73,6 @@ is_dmv2 = args.is_dmv2.lower() == 'true'
 
 sys.path.append(consumption_dir_path)
 
-
-
-# TODO: move this to python moose lib
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            if o.tzinfo is None:
-                o = o.replace(tzinfo=timezone.utc)
-            return o.isoformat()
-        if isinstance(o, date):
-            return o.isoformat()
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
-class QueryClient:
-    def __init__(self, ch_client: ClickhouseClient):
-        self.ch_client = ch_client
-
-    def __call__(self, input, variables):
-        return self.execute(input, variables)
-
-    def execute(self, input, variables, row_type: Type[BaseModel] = None):
-        params = {}
-        values = {}
-
-        for i, (_, variable_name, _, _) in enumerate(Formatter().parse(input)):
-            if variable_name:
-                value = variables[variable_name]
-                if isinstance(value, list) and len(value) == 1:
-                    # handling passing the value of the query string dict directly to variables
-                    value = value[0]
-
-                t = 'String' if isinstance(value, str) else \
-                    'Int64' if isinstance(value, int) else \
-                    'Float64' if isinstance(value, float) else "String"  # unknown type
-
-                params[variable_name] = f'{{p{i}: {t}}}'
-                values[f'p{i}'] = value
-        clickhouse_query = input.format_map(params)
-       
-        # We are not using the result of the ping
-        # but this ensures that if the clickhouse cloud service is idle, we 
-        # wake it up, before we send the query.
-        self.ch_client.ping()
-
-        val = self.ch_client.query(clickhouse_query, values)
-
-        if row_type is None:
-            return list(val.named_results())
-        else:
-            return list(row_type(**row) for row in val.named_results())
-
-class WorkflowClient:
-    def __init__(self, temporal_client: TemporalClient):
-        self.temporal_client = temporal_client
-        self.configs = self.load_consolidated_configs()
-        print(f"WorkflowClient - configs: {self.configs}")
-
-    # Test workflow executor in rust if this changes significantly
-    def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
-        try:
-            workflow_id, run_id = asyncio.run(self._start_workflow_async(name, input_data))
-            print(f"WorkflowClient - started workflow: {name}")
-            return {
-                "status": 200,
-                "body": f"Workflow started: {name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/{workflow_id}/{run_id}/history"
-            }
-        except Exception as e:
-            print(f"WorkflowClient - error while starting workflow: {e}")
-            return {
-                "status": 400,
-                "body": str(e)
-            }
-
-    async def _start_workflow_async(self, name: str, input_data: Any):
-        # Extract configuration based on workflow type
-        config = self._get_workflow_config(name)
-
-        # Process input data and generate workflow ID (common logic)
-        processed_input, workflow_id = self._process_input_data(name, input_data)
-
-        # Create retry policy and timeout (common logic)
-        retry_policy = RetryPolicy(maximum_attempts=config['retry_count'])
-        run_timeout = self.parse_timeout_to_timedelta(config['timeout_str'])
-
-        print(f"WorkflowClient - starting {'DMv2 ' if config['is_dmv2'] else ''}workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
-
-        # Start workflow with appropriate args
-        workflow_args = self._build_workflow_args(name, processed_input, config['is_dmv2'])
-
-        workflow_handle = await self.temporal_client.start_workflow(
-            "ScriptWorkflow",
-            args=workflow_args,
-            id=workflow_id,
-            task_queue="python-script-queue",
-            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
-            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
-            retry_policy=retry_policy,
-            run_timeout=run_timeout
-        )
-
-        return workflow_id, workflow_handle.result_run_id
-
-    def _get_workflow_config(self, name: str) -> Dict[str, Any]:
-        """Extract workflow configuration from DMv2 or legacy config."""
-        dmv2_workflow = get_workflow(name)
-        if dmv2_workflow is not None:
-            return {
-                'retry_count': dmv2_workflow.config.retries or 3,
-                'timeout_str': dmv2_workflow.config.timeout or "1h",
-                'is_dmv2': True
-            }
-        else:
-            config = self.configs.get(name, {})
-            return {
-                'retry_count': config.get('retries', 3),
-                'timeout_str': config.get('timeout', "1h"),
-                'is_dmv2': False
-            }
-
-    def _process_input_data(self, name: str, input_data: Any) -> tuple[Any, str]:
-        """Process input data and generate workflow ID."""
-        workflow_id = name
-        if input_data:
-            try:
-                # Handle Pydantic model input for DMv2
-                if isinstance(input_data, BaseModel):
-                    input_data = input_data.model_dump()
-                elif isinstance(input_data, str):
-                    input_data = json.loads(input_data)
-
-                # Encode with custom encoder
-                input_data = json.loads(
-                    json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
-                )
-
-                params_str = json.dumps(input_data, sort_keys=True)
-                params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
-                workflow_id = f"{name}-{params_hash}"
-            except Exception as e:
-                raise ValueError(f"Invalid input data: {e}")
-
-        return input_data, workflow_id
-
-    def _build_workflow_args(self, name: str, input_data: Any, is_dmv2: bool) -> list:
-        """Build workflow arguments based on workflow type."""
-        if is_dmv2:
-            return [f"{name}", input_data]
-        else:
-            return [f"{os.getcwd()}/app/scripts/{name}", input_data]
-
-    def load_consolidated_configs(self):
-        try:
-            file_path = os.path.join(os.getcwd(), ".moose", "workflow_configs.json")
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                config_map = {config['name']: config for config in data}
-                return config_map
-        except Exception as e:
-            raise ValueError(f"Error loading file {file_path}: {e}")
-
-    def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
-        if timeout_str.endswith('h'):
-            return timedelta(hours=int(timeout_str[:-1]))
-        elif timeout_str.endswith('m'):
-            return timedelta(minutes=int(timeout_str[:-1]))
-        elif timeout_str.endswith('s'):
-            return timedelta(seconds=int(timeout_str[:-1]))
-        else:
-            raise ValueError(f"Unsupported timeout format: {timeout_str}")
-
-class MooseClient:
-    def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
-        self.query = QueryClient(ch_client)
-        self.ch_client = ch_client  # Store reference for cleanup
-        self.temporal_client = temporal_client
-        if temporal_client:
-            self.workflow = WorkflowClient(temporal_client)
-        else:
-            self.workflow = None
-
-    async def cleanup(self):
-        """Cleanup resources before shutdown"""
-        if self.ch_client:
-            try:
-                self.ch_client.close()
-            except Exception as e:
-                print(f"Error closing Clickhouse client: {e}")
-
-        if self.temporal_client:
-            try:
-                await self.temporal_client.close()
-            except Exception as e:
-                print(f"Error closing Temporal client: {e}")
 
 def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:

@@ -44,7 +44,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 
 ### Configure Aurora MCP
 
-<Tabs items={['Aurora CLI', 'MCP.json']}>
+<Tabs items={['Aurora CLI', 'MCP.json (settings.json)']}>
   <Tabs.Tab>
     Create a new project with Claude Desktop MCP preconfigured: 
 
@@ -57,7 +57,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
     For other options, see [Aurora CLI docs](/aurora/getting-started/aurora-cli).
   </Tabs.Tab>
   <Tabs.Tab>
-    ```json filename="/path/to/your/project/.cursor/mcp.json" copy
+    ```json filename="/path/to/your/project/.cursor/settings.json" copy
     {
       "servers": {
         "aurora": {
@@ -92,7 +92,9 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 
 ### Warnings / Peculiarities
 
-[ ] TODO: What are the warnings / peculiarities for VS Code?
+<Callout type="warning">
+**Recommended Configuration Method**: While VS Code has a feature that allows you to use MCPs from other clients (like Claude Desktop), we strongly recommend using either the **Aurora CLI** or the **settings.json file** method shown above instead. These methods provide better reliability and configuration control specifically for VS Code environments.
+</Callout>
 
 ### Common issues / troubleshooting
 

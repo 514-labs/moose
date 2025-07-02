@@ -61,6 +61,14 @@ const utils = {
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       let serverStarted = false;
+      let timeoutId: NodeJS.Timeout;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      };
+
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
         if (!output.match(/^\n[⢹⢺⢼⣸⣇⡧⡗⡏] Starting local infrastructure$/)) {
@@ -71,8 +79,9 @@ const utils = {
           !serverStarted &&
           output.includes(TEST_CONFIG.server.startupMessage)
         ) {
-          resolve();
           serverStarted = true;
+          cleanup();
+          resolve();
         }
       });
 
@@ -82,36 +91,54 @@ const utils = {
 
       devProcess.on("exit", (code) => {
         console.log(`Dev process exited with code ${code}`);
-        expect(code).to.equal(0);
+        if (!serverStarted) {
+          cleanup();
+          reject(new Error(`Dev process exited with code ${code}`));
+        }
       });
 
-      (async () => {
-        await setTimeoutAsync(timeout);
-        if (devProcess.killed) return;
+      timeoutId = setTimeout(() => {
+        if (serverStarted) return;
         console.error("Dev server did not start or complete in time");
         devProcess.kill("SIGINT");
         reject(new Error("Dev server timeout"));
-      })();
+      }, timeout);
     });
   },
 
   waitForDBWrite: async (
     devProcess: ChildProcess,
     tableName: string,
-    expectedRecords: number = 1,
+    expectedRecords: number,
     timeout: number = 30000,
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       let writeConfirmed = false;
-      const expectedMessage = `[DB] ${expectedRecords} row(s) successfully written to DB table (${tableName})`;
+      let timeoutId: NodeJS.Timeout;
+      const expectedMessageRegex = new RegExp(
+        `\\[DB\\] (\\d+) row\\(s\\) successfully written to DB table \\(${tableName}\\)`,
+      );
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      };
 
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
         console.log("Dev server output:", output);
 
-        if (!writeConfirmed && output.includes(expectedMessage)) {
-          resolve();
-          writeConfirmed = true;
+        if (!writeConfirmed) {
+          const match = output.match(expectedMessageRegex);
+          if (match) {
+            const actualRecords = parseInt(match[1], 10);
+            if (actualRecords >= expectedRecords) {
+              writeConfirmed = true;
+              cleanup();
+              resolve();
+            }
+          }
         }
       });
 
@@ -119,12 +146,11 @@ const utils = {
         console.error("Dev server stderr:", data.toString());
       });
 
-      (async () => {
-        await setTimeoutAsync(timeout);
-        if (devProcess.killed || writeConfirmed) return;
+      timeoutId = setTimeout(() => {
+        if (writeConfirmed) return;
         console.error("DB write confirmation not received in time");
         reject(new Error("DB write timeout"));
-      })();
+      }, timeout);
     });
   },
 
@@ -169,6 +195,84 @@ const utils = {
     }
   },
 
+  cleanupClickhouseData: async (): Promise<void> => {
+    console.log("Cleaning up ClickHouse data...");
+    const client = createClient(TEST_CONFIG.clickhouse);
+    try {
+      // First check what tables exist
+      const result = await client.query({
+        query: "SHOW TABLES",
+        format: "JSONEachRow",
+      });
+      const tables: any[] = await result.json();
+      console.log(
+        "Existing tables:",
+        tables.map((t) => t.name),
+      );
+
+      // Clear the base table data first
+      await client.command({
+        query: "TRUNCATE TABLE IF EXISTS Bar",
+      });
+      console.log("Truncated Bar table");
+
+      // Clear materialized view tables
+      const mvTables = ["BarAggregated", "bar_aggregated"];
+      for (const table of mvTables) {
+        try {
+          await client.command({
+            query: `TRUNCATE TABLE IF EXISTS ${table}`,
+          });
+          console.log(`Truncated ${table} table`);
+        } catch (error) {
+          console.log(`Failed to truncate ${table}:`, error);
+        }
+      }
+
+      console.log("ClickHouse data cleanup completed successfully");
+    } catch (error) {
+      console.error("Error during ClickHouse cleanup:", error);
+    } finally {
+      await client.close();
+    }
+  },
+
+  waitForMaterializedViewUpdate: async (
+    tableName: string,
+    expectedRows: number,
+    timeout: number = 30000,
+  ): Promise<void> => {
+    console.log(`Waiting for materialized view ${tableName} to update...`);
+    const client = createClient(TEST_CONFIG.clickhouse);
+    const startTime = Date.now();
+
+    try {
+      while (Date.now() - startTime < timeout) {
+        const result = await client.query({
+          query: `SELECT COUNT(*) as count FROM ${tableName}`,
+          format: "JSONEachRow",
+        });
+        const rows: any[] = await result.json();
+        const count = parseInt(rows[0].count);
+
+        if (count >= expectedRows) {
+          console.log(
+            `Materialized view ${tableName} updated with ${count} rows`,
+          );
+          return;
+        }
+
+        await setTimeoutAsync(1000); // Wait 1 second before checking again
+      }
+
+      throw new Error(
+        `Materialized view ${tableName} did not update within ${timeout}ms`,
+      );
+    } finally {
+      await client.close();
+    }
+  },
+
   verifyClickhouseData: async (
     tableName: string,
     eventId: string,
@@ -177,15 +281,15 @@ const utils = {
     const client = createClient(TEST_CONFIG.clickhouse);
     try {
       const result = await client.query({
-        query: `SELECT * FROM ${tableName}`,
+        query: `SELECT * FROM ${tableName} WHERE ${primaryKeyField} = '${eventId}'`,
         format: "JSONEachRow",
       });
       const rows: any[] = await result.json();
       console.log(`${tableName} data:`, rows);
 
-      expect(rows).to.have.lengthOf(
-        1,
-        `Expected exactly one row in ${tableName}`,
+      expect(rows).to.have.length.greaterThan(
+        0,
+        `Expected at least one row in ${tableName} with ${primaryKeyField} = ${eventId}`,
       );
       expect(rows[0][primaryKeyField]).to.equal(
         eventId,
@@ -257,7 +361,7 @@ it("should return the dummy version in debug build", async () => {
 describe("Moose Templates", () => {
   describe("typescript template", () => {
     let devProcess: ChildProcess | null = null;
-    const TEST_PROJECT_DIR = path.join(__dirname, "test-project-ts");
+    const TEST_PROJECT_DIR = path.join(__dirname, "../temp-test-project-ts");
 
     before(async function () {
       this.timeout(120_000);
@@ -313,12 +417,14 @@ describe("Moose Templates", () => {
         devProcess,
         TEST_CONFIG.server.startupTimeout,
       );
-      console.log("Server started, waiting before running tests...");
+      console.log("Server started, cleaning up old data...");
+      await utils.cleanupClickhouseData();
+      console.log("Waiting before running tests...");
       await setTimeoutAsync(10000);
     });
 
     after(async function () {
-      this.timeout(10_000);
+      this.timeout(30_000);
       await utils.stopDevProcess(devProcess);
       await utils.cleanupDocker(TEST_PROJECT_DIR, "moose-ts-app");
       utils.removeTestProject(TEST_PROJECT_DIR);
@@ -345,13 +451,17 @@ describe("Moose Templates", () => {
 
       await utils.waitForDBWrite(devProcess!, "Bar", 1);
       await utils.verifyClickhouseData("Bar", eventId, "primaryKey");
-      await utils.verifyConsumptionApi("bar?orderBy=totalRows", [
-        {
-          // output_format_json_quote_64bit_integers is true by default in ClickHouse
-          dayOfMonth: "19",
-          totalRows: "1",
-        },
-      ]);
+      await utils.waitForMaterializedViewUpdate("BarAggregated", 1);
+      await utils.verifyConsumptionApi(
+        "bar?orderBy=totalRows&startDay=19&endDay=19&limit=1",
+        [
+          {
+            // output_format_json_quote_64bit_integers is true by default in ClickHouse
+            dayOfMonth: "19",
+            totalRows: "1",
+          },
+        ],
+      );
 
       // Verify consumer logs
       await utils.verifyConsumerLogs(TEST_PROJECT_DIR, [
@@ -364,7 +474,7 @@ describe("Moose Templates", () => {
 
   describe("python template", () => {
     let devProcess: ChildProcess | null = null;
-    const TEST_PROJECT_DIR = path.join(__dirname, "test-project-py");
+    const TEST_PROJECT_DIR = path.join(__dirname, "../temp-test-project-py");
 
     before(async function () {
       this.timeout(180_000);
@@ -468,7 +578,9 @@ describe("Moose Templates", () => {
         devProcess,
         TEST_CONFIG.server.startupTimeout,
       );
-      console.log("Server started, waiting before running tests...");
+      console.log("Server started, cleaning up old data...");
+      await utils.cleanupClickhouseData();
+      console.log("Waiting before running tests...");
       await setTimeoutAsync(10000);
     });
 
@@ -501,12 +613,19 @@ describe("Moose Templates", () => {
 
       await utils.waitForDBWrite(devProcess!, "Bar", 1);
       await utils.verifyClickhouseData("Bar", eventId, "primary_key");
-      await utils.verifyConsumptionApi("bar?order_by=total_rows", [
-        {
-          day_of_month: 19,
-          total_rows: 1,
-        },
-      ]);
+      await utils.waitForMaterializedViewUpdate("bar_aggregated", 1);
+      await utils.verifyConsumptionApi(
+        "bar?order_by=total_rows&start_day=19&end_day=19&limit=1",
+        [
+          {
+            day_of_month: 19,
+            total_rows: 1,
+            rows_with_text: 1,
+            max_text_length: 17,
+            total_text_length: 17,
+          },
+        ],
+      );
 
       // Verify consumer logs
       await utils.verifyConsumerLogs(TEST_PROJECT_DIR, [

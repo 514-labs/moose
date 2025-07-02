@@ -3,33 +3,23 @@ import { render } from "@/components";
 const meta = {
   ingest: {
     title: "Ingest",
-    theme: {
-      breadcrumb: false,
-    },
+    display: "hidden",
   },
   "model-data": {
-    title: "Model Data Engineering",
-    theme: {
-      breadcrumb: false,
-    },
+    title: "Model Data",
+    display: "hidden",
   },
   mvs: {
-    title: "MVs",
-    theme: {
-      breadcrumb: false,
-    },
+    title: "Materialized Views",
+    display: "hidden",
   },
   dlqs: {
-    title: "DLQs",
-    theme: {
-      breadcrumb: false,
-    },
+    title: "Dead Letter Queues",
+    display: "hidden",
   },
   egress: {
     title: "Egress",
-    theme: {
-      breadcrumb: false,
-    },
+    display: "hidden",
   },
 };
 

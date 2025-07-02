@@ -26,9 +26,7 @@ const meta = {
   },
   demos: {
     title: "Demos",
-    theme: {
-      breadcrumb: false,
-    },
+    display: "hidden",
   },
 } as const;
 

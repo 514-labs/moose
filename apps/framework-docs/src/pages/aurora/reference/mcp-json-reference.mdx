@@ -42,17 +42,23 @@ For other clients, look to their documentation for where their MCP.JSON file is 
 
 ### Adding Aurora MCP to your MCP.JSON file
 
-Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. To add Aurora MCP to your MCP.JSON file, you need to add the following to the mcpServers array:
+<Callout type="warning">
+**Configuration Object Naming**: Different MCP clients use different naming conventions for the server configuration object:
+- **Cursor, Windsurf**: Uses `"mcpServers"`
+- **Claude Desktop, VS Code**: Use `"servers"` instead
 
-```json filename="MCP.JSON" copy
+Make sure to check your specific client's documentation for the correct naming convention.
+</Callout>
+
+<Tabs items={['Cursor, Windsurf', 'Claude Desktop, VS Code']}>
+<Tabs.Tab>
+```json filename="MCP configuration" copy
 {
   "mcpServers": {
     "aurora": {
       "args": [
         "@514labs/aurora-mcp@latest",
         "--moose-read-tools",
-        "--moose-write-tools"
-        ...other tool-sets,
         "path/to/your/moose/project"
       ],
       "command": "npx",
@@ -66,6 +72,30 @@ Your MCP.JSON contains an mcpServers object, which is an array of MCP servers. T
   }
 }
 ```
+</Tabs.Tab>
+<Tabs.Tab>
+```json filename="MCP configuration" copy
+{
+  "servers": {
+    "aurora": {
+      "args": [
+        "@514labs/aurora-mcp@latest",
+        "--moose-read-tools",
+        "path/to/your/moose/project"
+      ],
+      "command": "npx",
+      "env": {
+        "ANTHROPIC_API_KEY": "<your-anthropic-api-key>",
+        "MOOSE_PATH": "path/to/your/moose/installation",
+        "NODE_PATH": "path/to/your/node/installation",
+        "PYTHON_PATH": "path/to/your/python/installation"
+      }
+    }
+  }
+}
+```
+</Tabs.Tab>
+</Tabs>
 
 ### Arguments / Environment Variables
 

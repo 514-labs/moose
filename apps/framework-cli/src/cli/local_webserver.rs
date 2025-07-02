@@ -676,8 +676,8 @@ async fn handle_json_array_body(
                 Ok(Value::Object(value)) => vec![value],
                 _ => {
                     info!(
-                        "Received payload for {} is not valid JSON objects or arrays. Not sending them to DLQ.",
-                        topic_name
+                        "Received payload for {} is not valid JSON objects or arrays. Not sending them to DLQ. Body: {:?}",
+                        topic_name, body
                     );
                     vec![]
                 }
@@ -692,12 +692,18 @@ async fn handle_json_array_body(
                         "errorType": "ValidationError",
                         "failedAt": chrono::Utc::now().to_rfc3339(),
                         "source": "api",
+                        "requestBody": String::from_utf8_lossy(&body),
+                        "topic": topic_name,
                     }))
                     .unwrap()
                 }),
             )
             .await;
         }
+        error!(
+            "Bad JSON in request to topic {}: {}. Body: {:?}",
+            topic_name, e, body
+        );
         return bad_json_response(e);
     }
     let res_arr = send_to_kafka(
@@ -708,6 +714,10 @@ async fn handle_json_array_body(
     .await;
 
     if res_arr.iter().any(|res| res.is_err()) {
+        error!(
+            "Internal server error sending to topic {}. Body: {:?}",
+            topic_name, body
+        );
         return internal_server_error_response();
     }
 
@@ -1561,11 +1571,11 @@ pub struct IntegrateChangesRequest {
     pub tables: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
-struct IntegrateChangesResponse {
-    status: String,
-    message: String,
-    updated_tables: Vec<String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IntegrateChangesResponse {
+    pub status: String,
+    pub message: String,
+    pub updated_tables: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

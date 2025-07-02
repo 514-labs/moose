@@ -98,9 +98,13 @@ pub fn extract_data_model_from_file(
     let output = fs::read(
         output_dir.join(
             path.file_name()
-                .unwrap()
+                .ok_or_else(|| TypescriptParsingError::OtherError {
+                    message: "Missing file name in path".to_string(),
+                })?
                 .to_str()
-                .unwrap()
+                .ok_or_else(|| TypescriptParsingError::OtherError {
+                    message: "File name is not valid UTF-8".to_string(),
+                })?
                 .replace(".ts", ".json"),
         ),
     )
@@ -108,8 +112,11 @@ pub fn extract_data_model_from_file(
         message: format!("Unable to read output of compiler: {e}"),
     })?;
 
-    let mut output_json = serde_json::from_slice::<Value>(&output)
-        .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
+    let mut output_json = serde_json::from_slice::<Value>(&output).map_err(|e| {
+        TypescriptParsingError::OtherError {
+            message: format!("Unable to parse output JSON: {e}"),
+        }
+    })?;
 
     if let Some(error_type) = output_json.get("error_type") {
         if let Some(error_type) = error_type.as_str() {

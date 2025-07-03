@@ -147,6 +147,15 @@ pub fn extract_data_model_from_file(
                 return Err(TypescriptParsingError::OtherError {
                     message: format!("Unsupported feature: {feature}"),
                 });
+            } else if error_type == "index_type" {
+                let type_name = output_json
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Err(TypescriptParsingError::OtherError {
+                    message: format!("Unsupported index signature in {type_name}"),
+                });
             }
         }
     }
@@ -334,7 +343,7 @@ mod tests {
 
         assert_eq!(error.to_string(), "Failed to parse the typescript file");
         if let TypescriptParsingError::OtherError { message } = error {
-            assert_eq!(message, "Unsupported feature: index type");
+            assert_eq!(message, "Unsupported index signature in MyModel");
         } else {
             panic!()
         };

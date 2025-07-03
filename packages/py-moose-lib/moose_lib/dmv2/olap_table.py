@@ -439,7 +439,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         # Base settings for all inserts
         settings = {
             "date_time_input_format": "best_effort",
-            "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
+            "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
             "max_insert_block_size": 100000 if is_stream else min(len(validated_data), 100000),
             "max_block_size": 65536,
             "async_insert": 1 if len(validated_data) > 1000 else 0,
@@ -544,7 +544,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
                 settings = {
                     "date_time_input_format": "best_effort",
-                    "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
+                    "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
                     "max_insert_block_size": RETRY_BATCH_SIZE,
                     "max_block_size": RETRY_BATCH_SIZE,
                     "async_insert": 0
@@ -558,7 +558,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
                         sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
                         settings = {
                             "date_time_input_format": "best_effort",
-                            "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
+                            "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
                             "async_insert": 0
                         }
                         json_line = self._to_json_each_row([record_dict])

@@ -143,7 +143,19 @@ impl Default for LoggerSettings {
     }
 }
 
-// all errors are swallowed so that an error here does not break the app
+// House-keeping: delete log files older than 7 days.
+//
+// Rationale for WARN vs INFO
+// --------------------------------
+// 1.  Any failure here (e.g. cannot read directory or metadata) prevents log-rotation
+//     which can silently fill disks.
+// 2.  According to our logging guidelines INFO is "things working as expected", while
+//     WARN is for unexpected situations that *might* become a problem.
+// 3.  Therefore we upgraded the two failure branches (`warn!`) below to highlight
+//     these issues in production without terminating execution.
+//
+// Errors are still swallowed so that logging setup never aborts the CLI, but we emit
+// WARN to make operators aware of the problem.
 fn clean_old_logs() {
     let cut_off = SystemTime::now() - Duration::from_secs(7 * 24 * 60 * 60);
 
@@ -156,6 +168,8 @@ fn clean_old_logs() {
                         let _ = std::fs::remove_file(entry.path());
                     }
                     Ok(_) => {}
+                    // Escalated to WARN to surface unexpected FS errors encountered
+                    // during housekeeping.
                     Err(e) => {
                         // Escalated to warn! — inability to read file metadata may indicate FS issues
                         warn!(
@@ -169,6 +183,8 @@ fn clean_old_logs() {
         }
     } else {
         // Directory unreadable: surface as warn instead of info so users notice
+        // Emitting WARN instead of INFO: inability to read the log directory means
+        // housekeeping could not run at all, which can later cause disk-space issues.
         warn!("failed to read directory")
     }
 }

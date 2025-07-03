@@ -85,8 +85,7 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
         RoutineFailure::error(Message {
             action: "Init".to_string(),
             details: format!(
-                "Internal error: invalid project name pattern '{}': {e}",
-                PROJECT_NAME_ALLOW_PATTERN
+                "Internal error: invalid project name pattern '{PROJECT_NAME_ALLOW_PATTERN}': {e}"
             ),
         })
     })?;

@@ -1,8 +1,6 @@
 import { FooPipeline, BarPipeline, Foo, Bar } from "./models";
 import { DeadLetterQueue } from "@514labs/moose-lib";
 
-const fooDead = new DeadLetterQueue<Foo>("FooDead");
-
 // Transform Foo events to Bar events
 FooPipeline.stream!.addTransform(
   BarPipeline.stream!,
@@ -20,7 +18,7 @@ FooPipeline.stream!.addTransform(
     };
   },
   {
-    deadLetterQueue: fooDead,
+    deadLetterQueue: FooPipeline.deadLetterQueue,
   },
 );
 
@@ -33,10 +31,10 @@ const printFooEvent = (foo: Foo): void => {
   console.log("---");
 };
 
-FooPipeline.stream?.addConsumer(printFooEvent);
+FooPipeline.stream!.addConsumer(printFooEvent);
 
-FooPipeline.stream?.addConsumer(printFooEvent);
-fooDead.addConsumer((deadLetter) => {
+FooPipeline.stream!.addConsumer(printFooEvent);
+FooPipeline.deadLetterQueue!.addConsumer((deadLetter) => {
   console.log(deadLetter);
   const foo: Foo = deadLetter.asTyped();
   console.log(foo);

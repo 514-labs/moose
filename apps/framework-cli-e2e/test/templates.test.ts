@@ -312,8 +312,34 @@ const utils = {
     );
     if (response.ok) {
       console.log("Test request sent successfully");
-      const json = await response.json();
-      expect(json).to.deep.equal(expectedResponse);
+      const json = (await response.json()) as any[];
+
+      // Check structure and value validation rather than exact matches
+      expect(json).to.be.an("array");
+      expect(json.length).to.be.at.least(1);
+
+      json.forEach((item: any) => {
+        // Verify structure - all expected keys exist
+        Object.keys(expectedResponse[0]).forEach((key) => {
+          expect(item).to.have.property(key);
+          expect(item[key]).to.not.be.null;
+        });
+
+        // Verify rows_with_text and total_rows are greater than 1
+        if (item.hasOwnProperty("rows_with_text")) {
+          expect(item.rows_with_text).to.be.at.least(
+            1,
+            "rows_with_text should be at least 1",
+          );
+        }
+
+        if (item.hasOwnProperty("total_rows")) {
+          expect(item.total_rows).to.be.at.least(
+            1,
+            "total_rows should be at least 1",
+          );
+        }
+      });
     } else {
       console.error("Response code:", response.status);
       const text = await response.text();

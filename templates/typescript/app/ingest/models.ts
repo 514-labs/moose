@@ -1,4 +1,9 @@
-import { IngestPipeline, Key } from "@514labs/moose-lib";
+import {
+  IngestPipeline,
+  Key,
+  OlapTable,
+  DeadLetterModel,
+} from "@514labs/moose-lib";
 
 /**
  * Data Pipeline: Raw Record (Foo) → Processed Record (Bar)
@@ -24,11 +29,18 @@ export interface Bar {
 
 /** =======Pipeline Configuration========= */
 
+export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter", {
+  orderByFields: ["failedAt"],
+});
+
 /** Raw data ingestion */
 export const FooPipeline = new IngestPipeline<Foo>("Foo", {
   table: false, // No table; only stream raw records
   stream: true, // Buffer ingested records
   ingest: true, // POST /ingest/Foo
+  deadLetterQueue: {
+    destination: deadLetterTable,
+  },
 });
 
 /** Buffering and storing processed records (@see transforms.ts for transformation logic) */

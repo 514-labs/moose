@@ -212,7 +212,11 @@ impl ClickHouseClient {
 }
 
 fn query_param(query: &str) -> anyhow::Result<String> {
-    let params = &[("query", query), ("date_time_input_format", "best_effort")];
+    let params = &[
+        ("query", query),
+        ("date_time_input_format", "best_effort"),
+        ("wait_end_of_query", "1"),
+    ];
     let encoded = serde_urlencoded::to_string(params)?;
 
     Ok(encoded)

@@ -624,6 +624,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       format: "JSONEachRow",
       clickhouse_settings: {
         date_time_input_format: "best_effort",
+        wait_end_of_query: 1, // Ensure at least once delivery and DDL acknowledgment
         // Performance optimizations
         max_insert_block_size:
           isStream ? 100000 : Math.min(validatedData.length, 100000),

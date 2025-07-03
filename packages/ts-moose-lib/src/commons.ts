@@ -39,6 +39,9 @@ export const getClickhouseClient = ({
     password: password,
     database: database,
     application: "moose",
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
   });
 };
 

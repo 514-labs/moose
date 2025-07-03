@@ -439,6 +439,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         # Base settings for all inserts
         settings = {
             "date_time_input_format": "best_effort",
+            "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
             "max_insert_block_size": 100000 if is_stream else min(len(validated_data), 100000),
             "max_block_size": 65536,
             "async_insert": 1 if len(validated_data) > 1000 else 0,
@@ -543,6 +544,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
                 settings = {
                     "date_time_input_format": "best_effort",
+                    "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
                     "max_insert_block_size": RETRY_BATCH_SIZE,
                     "max_block_size": RETRY_BATCH_SIZE,
                     "async_insert": 0
@@ -556,6 +558,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
                         sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
                         settings = {
                             "date_time_input_format": "best_effort",
+                            "wait_end_of_query": 1,  # Ensure at least once delivery and DDL acknowledgment
                             "async_insert": 0
                         }
                         json_line = self._to_json_each_row([record_dict])
@@ -675,14 +678,18 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 if len(batch) >= 1000:  # Batch size
                     json_lines = self._to_json_each_row(batch)
                     sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                    client.command(sql, data=json_lines, settings=settings)
+                    # Add wait_end_of_query to batch settings
+                    batch_settings = {**settings, "wait_end_of_query": 1}
+                    client.command(sql, data=json_lines, settings=batch_settings)
                     total_inserted += len(batch)
                     batch = []
 
             if batch:  # Insert any remaining records
                 json_lines = self._to_json_each_row(batch)
                 sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                client.command(sql, data=json_lines, settings=settings)
+                # Add wait_end_of_query to final batch settings
+                final_settings = {**settings, "wait_end_of_query": 1}
+                client.command(sql, data=json_lines, settings=final_settings)
                 total_inserted += len(batch)
 
             return InsertResult(

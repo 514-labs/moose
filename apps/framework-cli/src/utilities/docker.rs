@@ -1,6 +1,6 @@
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
-use log::{debug, error, info};
+use log::{error, info, warn};
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_str;
@@ -93,9 +93,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!("Could not list containers");
-            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
-            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
+            warn!("Could not list containers");
+            warn!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            warn!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::other("Failed to list Docker containers"));
         }
 
@@ -169,9 +169,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!("Could not list containers");
-            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
-            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
+            warn!("Could not list containers");
+            warn!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            warn!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::other(
                 "Failed to list Docker container names",
             ));
@@ -480,7 +480,7 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!(
+            error!(
                 "Failed to get Docker info: stdout: {}, stderr: {}",
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)

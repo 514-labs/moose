@@ -21,6 +21,8 @@ export {
   MaterializedView,
   Task,
   Workflow,
+  ETLPipeline,
+  ETLPipelineConfig,
 } from "./dmv2";
 
 export {

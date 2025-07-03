@@ -315,7 +315,9 @@ async fn sync_kafka_to_kafka(
     loop {
         match subscriber.recv().await {
             Err(e) => {
-                debug!("Error receiving message from {}: {}", source_topic_name, e);
+                // Escalated from `debug!` to `warn!` so operators notice message-receive errors that
+                // cause potential data loss or stalled sync loops.
+                warn!("Error receiving message from {}: {}", source_topic_name, e);
             }
 
             Ok(message) => match message.payload() {
@@ -443,53 +445,56 @@ async fn sync_kafka_to_clickhouse(
             message = subscriber.recv() => {
                 match message {
                     Err(e) => {
-                    debug!("Error receiving message from {}: {}", source_topic_name, e);
-                }
+                        // Same escalation here for the table-sync path: failed consume means data
+                        // never reaches ClickHouse, so it deserves a `warn!`.
+                        warn!("Error receiving message from {}: {}", source_topic_name, e);
+                    }
 
-                Ok(message) => match message.payload() {
-                    Some(payload) => match std::str::from_utf8(payload) {
-                        Ok(payload_str) => {
-                            log::trace!(
-                                "Received message from {}: {}",
-                                source_topic_name, payload_str
-                            );
-                            metrics
-                                .send_metric_event(MetricEvent::TopicToOLAPEvent {
-                                    timestamp: chrono::Utc::now(),
-                                    count: 1,
-                                    bytes: payload.len() as u64,
-                                    consumer_group: "clickhouse sync".to_string(),
-                                    topic_name: source_topic_name.clone(),
-                                })
-                                .await;
+                    Ok(message) => match message.payload() {
+                        Some(payload) => match std::str::from_utf8(payload) {
+                            Ok(payload_str) => {
+                                log::trace!(
+                                    "Received message from {}: {}",
+                                    source_topic_name, payload_str
+                                );
+                                metrics
+                                    .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                        timestamp: chrono::Utc::now(),
+                                        count: 1,
+                                        bytes: payload.len() as u64,
+                                        consumer_group: "clickhouse sync".to_string(),
+                                        topic_name: source_topic_name.clone(),
+                                    })
+                                    .await;
 
-                            if let Ok(json_value) = serde_json::from_str(payload_str) {
-                                if let Ok(clickhouse_record) =
-                                    mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                                {
-                                    inserter.insert(
-                                        clickhouse_record,
-                                        message.partition(),
-                                        message.offset(),
-                                    );
+                                if let Ok(json_value) = serde_json::from_str(payload_str) {
+                                    if let Ok(clickhouse_record) =
+                                        mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                                    {
+                                        inserter.insert(
+                                            clickhouse_record,
+                                            message.partition(),
+                                            message.offset(),
+                                        );
+                                    }
                                 }
                             }
-                        }
-                        Err(_) => {
-                            error!(
-                                "Received message from {} with invalid UTF-8",
+                            Err(_) => {
+                                error!(
+                                    "Received message from {} with invalid UTF-8",
+                                    source_topic_name
+                                );
+                            }
+                        },
+                        None => {
+                            debug!(
+                                "Received message from {} with no payload",
                                 source_topic_name
                             );
                         }
                     },
-                    None => {
-                        debug!(
-                            "Received message from {} with no payload",
-                            source_topic_name
-                        );
-                    }
-                },
-            }}
+                }
+            }
         }
     }
 }
@@ -536,7 +541,9 @@ fn mapper_json_to_clickhouse_record(
                                 record.insert(key, clickhouse_value);
                             }
                             Err(e) => {
-                                log::debug!("For column {} with type {}, Error mapping JSON value to ClickHouse value: {}", column.name, &column.data_type, e)
+                                // Promote mapping failures to `warn!` so we don't silently skip
+                                // individual records when their schema/value deviates.
+                                log::warn!("For column {} with type {}, Error mapping JSON value to ClickHouse value: {}", column.name, &column.data_type, e)
                             }
                         };
                     }

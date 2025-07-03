@@ -111,10 +111,18 @@ pub async fn run_workflow(
         .start(&project.temporal_config, input)
         .await
         .map_err(|e| {
+            // Remove trailing ', details: [...]' and ', metadata: ...' from error string if present
+            let mut err_str = e.to_string();
+            if let Some(idx) = err_str.find(", details: ") {
+                err_str.truncate(idx);
+            }
+            if let Some(idx) = err_str.find(", metadata: ") {
+                err_str.truncate(idx);
+            }
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{name}': {e}\n"),
+                    details: format!("Could not start workflow '{name}': {err_str}\n"),
                 },
                 e,
             )

@@ -63,12 +63,6 @@ const utils = {
       let serverStarted = false;
       let timeoutId: NodeJS.Timeout;
 
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      };
-
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
         if (!output.match(/^\n[⢹⢺⢼⣸⣇⡧⡗⡏] Starting local infrastructure$/)) {
@@ -80,7 +74,6 @@ const utils = {
           output.includes(TEST_CONFIG.server.startupMessage)
         ) {
           serverStarted = true;
-          cleanup();
           resolve();
         }
       });
@@ -92,7 +85,6 @@ const utils = {
       devProcess.on("exit", (code) => {
         console.log(`Dev process exited with code ${code}`);
         if (!serverStarted) {
-          cleanup();
           reject(new Error(`Dev process exited with code ${code}`));
         }
       });
@@ -119,12 +111,6 @@ const utils = {
         `\\[DB\\] (\\d+) row\\(s\\) successfully written to DB table \\(${tableName}\\)`,
       );
 
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      };
-
       devProcess.stdout?.on("data", async (data) => {
         const output = data.toString();
         console.log("Dev server output:", output);
@@ -135,7 +121,6 @@ const utils = {
             const actualRecords = parseInt(match[1], 10);
             if (actualRecords >= expectedRecords) {
               writeConfirmed = true;
-              cleanup();
               resolve();
             }
           }

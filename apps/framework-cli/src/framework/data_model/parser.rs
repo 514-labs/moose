@@ -37,7 +37,7 @@ pub fn parse_data_model_file(
     if !file_path
         .file_name()
         .and_then(|n| n.to_str())
-        .map_or(false, |s| s.contains("generated"))
+        .is_some_and(|s| s.contains("generated"))
     {
         if let Some(ext) = file_path.extension() {
             match ext.to_str() {

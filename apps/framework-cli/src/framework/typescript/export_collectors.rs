@@ -68,11 +68,9 @@ async fn collect_exports(
     let mut raw_string_stdout: String = String::new();
     stdout.read_to_string(&mut raw_string_stdout).await?;
 
-    Ok(
-        serde_json::from_str(&raw_string_stdout).map_err(|e| ExportCollectorError::Other {
-            message: format!("Invalid JSON from exports: {e}\nRaw output: {raw_string_stdout}"),
-        })?,
-    )
+    serde_json::from_str(&raw_string_stdout).map_err(|e| ExportCollectorError::Other {
+        message: format!("Invalid JSON from exports: {e}\nRaw output: {raw_string_stdout}"),
+    })
 }
 
 pub async fn get_data_model_configs(

@@ -33,7 +33,7 @@
 
 use hyper::Uri;
 use log::{error, warn};
-use log::{info, LevelFilter, Metadata, Record};
+use log::{LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
@@ -157,7 +157,8 @@ fn clean_old_logs() {
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        info!(
+                        // Escalated to warn! — inability to read file metadata may indicate FS issues
+                        warn!(
                             "Failed to read modification time for {:?}. {}",
                             entry.path(),
                             e
@@ -167,7 +168,8 @@ fn clean_old_logs() {
             }
         }
     } else {
-        info!("failed to read directory")
+        // Directory unreadable: surface as warn instead of info so users notice
+        warn!("failed to read directory")
     }
 }
 

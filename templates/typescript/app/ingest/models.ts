@@ -29,7 +29,9 @@ export interface Bar {
 
 /** =======Pipeline Configuration========= */
 
-export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter");
+export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter", {
+  orderByFields: ["failedAt"],
+});
 
 /** Raw data ingestion */
 export const FooPipeline = new IngestPipeline<Foo>("Foo", {

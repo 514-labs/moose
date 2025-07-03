@@ -1378,12 +1378,17 @@ impl Webserver {
                     let route_service = route_service.clone();
                     let conn = conn_builder.serve_connection(
                         io,
-                        route_service,
+                        route_service.clone(),
                     );
                     let watched = graceful.watch(conn);
+                    // Set server_label to "API" for the main API server. This label is used in error logging below.
+                    let server_label = "API";
+                    let port = socket.port();
+                    let project_name = route_service.project.name().to_string();
+                    let version = route_service.current_version.clone();
                     tokio::task::spawn(async move {
                         if let Err(e) = watched.await {
-                            error!("server error: {}", e);
+                            error!("server error on {} server (port {}): {} [project: {}, version: {}]", server_label, port, e, project_name, version);
                         }
                     });
                 }
@@ -1398,9 +1403,14 @@ impl Webserver {
                         management_service,
                     );
                     let watched = graceful.watch(conn);
+                    // Set server_label to "Management" for the management server. This label is used in error logging below.
+                    let server_label = "Management";
+                    let port = management_socket.port();
+                    let project_name = project.name().to_string();
+                    let version = project.cur_version().to_string();
                     tokio::task::spawn(async move {
                         if let Err(e) = watched.await {
-                            error!("server error: {}", e);
+                            error!("server error on {} server (port {}): {} [project: {}, version: {}]", server_label, port, e, project_name, version);
                         }
                     });
                 }
@@ -1561,11 +1571,11 @@ pub struct IntegrateChangesRequest {
     pub tables: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
-struct IntegrateChangesResponse {
-    status: String,
-    message: String,
-    updated_tables: Vec<String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IntegrateChangesResponse {
+    pub status: String,
+    pub message: String,
+    pub updated_tables: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

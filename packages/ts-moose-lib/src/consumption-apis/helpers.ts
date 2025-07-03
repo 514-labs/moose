@@ -48,9 +48,8 @@ export class QueryClient {
       query_params,
       format: "JSONEachRow",
       query_id: this.query_id_prefix + randomUUID(),
-      clickhouse_settings: {
-        wait_end_of_query: 1, // Ensure at least once delivery and DDL acknowledgment
-      },
+      // Note: wait_end_of_query deliberately NOT set here as this is used for SELECT queries
+      // where response buffering would harm streaming performance and concurrency
     });
   }
 }

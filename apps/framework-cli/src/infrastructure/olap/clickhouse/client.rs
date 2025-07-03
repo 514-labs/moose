@@ -212,13 +212,20 @@ impl ClickHouseClient {
 }
 
 fn query_param(query: &str) -> anyhow::Result<String> {
-    let params = &[
-        ("query", query),
-        ("date_time_input_format", "best_effort"),
-        ("wait_end_of_query", "1"),
-    ];
-    let encoded = serde_urlencoded::to_string(params)?;
+    let mut params = vec![("query", query), ("date_time_input_format", "best_effort")];
 
+    // Only add wait_end_of_query for INSERT and DDL operations to ensure at least once delivery
+    // This preserves SELECT query performance by avoiding response buffering
+    let query_upper = query.trim().to_uppercase();
+    if query_upper.starts_with("INSERT")
+        || query_upper.starts_with("CREATE")
+        || query_upper.starts_with("ALTER")
+        || query_upper.starts_with("DROP")
+    {
+        params.push(("wait_end_of_query", "1"));
+    }
+
+    let encoded = serde_urlencoded::to_string(&params)?;
     Ok(encoded)
 }
 

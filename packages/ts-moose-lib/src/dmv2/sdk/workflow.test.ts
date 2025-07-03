@@ -1,0 +1,411 @@
+import { expect } from "chai";
+import { IJsonSchemaCollection } from "typia";
+import { getMooseInternal } from "../internal";
+import { Task, Workflow, TaskConfig } from "./workflow";
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface ProcessedData {
+  userId: string;
+  fullName: string;
+  domain: string;
+}
+
+interface ReportData {
+  total: number;
+  processed: number;
+  failed: number;
+}
+
+describe("Workflows & Tasks", () => {
+  const schema: IJsonSchemaCollection.IV3_1 = {
+    version: "3.1",
+    components: {
+      schemas: {},
+    },
+    schemas: [
+      {
+        type: "null",
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    getMooseInternal().workflows.clear();
+  });
+
+  describe("Task", () => {
+    describe("Task Creation", () => {
+      it("should create a task with no input and no output", async () => {
+        const taskConfig: TaskConfig<null, void> = {
+          run: async () => {
+            console.log("Task with no input/output executed");
+          },
+        };
+
+        const task = new Task<null, void>(
+          "noInputNoOutput",
+          taskConfig,
+          schema,
+          [],
+        );
+
+        expect(task.name).to.equal("noInputNoOutput");
+        expect(task.config).to.deep.equal(taskConfig);
+        expect(task.config.run).to.be.a("function");
+      });
+
+      it("should create a task with no input but with output", async () => {
+        const taskConfig: TaskConfig<null, ReportData> = {
+          run: async () => {
+            return {
+              total: 100,
+              processed: 95,
+              failed: 5,
+            };
+          },
+        };
+
+        const task = new Task<null, ReportData>(
+          "noInputWithOutput",
+          taskConfig,
+          schema,
+          [],
+        );
+
+        expect(task.name).to.equal("noInputWithOutput");
+        expect(task.config).to.deep.equal(taskConfig);
+      });
+
+      it("should create a task with input but no output", async () => {
+        const taskConfig: TaskConfig<UserData, void> = {
+          run: async (input: UserData) => {
+            console.log(`Processing user: ${input.name}`);
+          },
+        };
+
+        const task = new Task<UserData, void>(
+          "inputNoOutput",
+          taskConfig,
+          schema,
+          [],
+        );
+
+        expect(task.name).to.equal("inputNoOutput");
+        expect(task.config).to.deep.equal(taskConfig);
+      });
+
+      it("should create a task with both input and output", async () => {
+        const taskConfig: TaskConfig<UserData, ProcessedData> = {
+          run: async (input: UserData) => {
+            const domain = input.email.split("@")[1];
+            return {
+              userId: input.id,
+              fullName: input.name,
+              domain: domain,
+            };
+          },
+        };
+
+        const task = new Task<UserData, ProcessedData>(
+          "inputWithOutput",
+          taskConfig,
+          schema,
+          [],
+        );
+
+        expect(task.name).to.equal("inputWithOutput");
+        expect(task.config).to.deep.equal(taskConfig);
+      });
+    });
+
+    describe("Task Configuration", () => {
+      it("should handle task configuration with timeout and retries", () => {
+        const taskConfig: TaskConfig<UserData, ProcessedData> = {
+          run: async (input: UserData) => {
+            return {
+              userId: input.id,
+              fullName: input.name,
+              domain: input.email.split("@")[1],
+            };
+          },
+          timeout: "30s",
+          retries: 3,
+        };
+
+        const task = new Task<UserData, ProcessedData>(
+          "configuredTask",
+          taskConfig,
+          schema,
+          [],
+        );
+
+        expect(task.config.timeout).to.equal("30s");
+        expect(task.config.retries).to.equal(3);
+      });
+
+      it("should handle task configuration with onComplete tasks", () => {
+        const firstTask = new Task<null, UserData>(
+          "firstTask",
+          {
+            run: async () => ({
+              id: "1",
+              name: "Test User",
+              email: "test@example.com",
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const secondTask = new Task<UserData, ProcessedData>(
+          "secondTask",
+          {
+            run: async (input: UserData) => ({
+              userId: input.id,
+              fullName: input.name,
+              domain: input.email.split("@")[1],
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const thirdTask = new Task<ProcessedData, void>(
+          "thirdTask",
+          {
+            run: async (input: ProcessedData) => {},
+          },
+          schema,
+          [],
+        );
+
+        const fourthTask = new Task<null, void>(
+          "fourthTask",
+          {
+            run: async () => {},
+          },
+          schema,
+          [],
+        );
+
+        // Verifies onComplete can take different permutations of Task input & output types
+        firstTask.config.onComplete = [secondTask];
+        secondTask.config.onComplete = [thirdTask];
+        thirdTask.config.onComplete = [fourthTask];
+      });
+
+      it("should handle task with multiple onComplete tasks", () => {
+        const mainTask = new Task<null, UserData>(
+          "mainTask",
+          {
+            run: async () => ({
+              id: "1",
+              name: "Test User",
+              email: "test@example.com",
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const task1 = new Task<UserData, void>(
+          "task1",
+          {
+            run: async (input: UserData) => {
+              console.log(`Task 1 processing ${input.name}`);
+            },
+          },
+          schema,
+          [],
+        );
+
+        const task2 = new Task<UserData, void>(
+          "task2",
+          {
+            run: async (input: UserData) => {
+              console.log(`Task 2 processing ${input.name}`);
+            },
+          },
+          schema,
+          [],
+        );
+
+        mainTask.config.onComplete = [task1, task2];
+      });
+    });
+  });
+
+  describe("Workflow", () => {
+    describe("Workflow Creation", () => {
+      it("should support different starting task types", () => {
+        const task1 = new Task<null, UserData>(
+          "task1",
+          {
+            run: async () => ({
+              id: "1",
+              name: "Test",
+              email: "test@example.com",
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const workflow1 = new Workflow("workflow1", {
+          startingTask: task1,
+        });
+        expect(workflow1.config.startingTask).to.equal(task1);
+
+        const task2 = new Task<null, void>(
+          "task2",
+          {
+            run: async () => {
+              console.log("Void task");
+            },
+          },
+          schema,
+          [],
+        );
+
+        const workflow2 = new Workflow("workflow2", {
+          startingTask: task2,
+        });
+        expect(workflow2.config.startingTask).to.equal(task2);
+
+        const task3 = new Task<UserData, ProcessedData>(
+          "task3",
+          {
+            run: async (input: UserData) => ({
+              userId: input.id,
+              fullName: input.name,
+              domain: input.email.split("@")[1],
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const workflow3 = new Workflow("workflow3", {
+          startingTask: task3,
+        });
+        expect(workflow3.config.startingTask).to.equal(task3);
+
+        const task4 = new Task<UserData, void>(
+          "task4",
+          {
+            run: async (input: UserData) => {
+              console.log(`Processing ${input.name}`);
+            },
+          },
+          schema,
+          [],
+        );
+
+        const workflow4 = new Workflow("workflow4", {
+          startingTask: task4,
+        });
+        expect(workflow4.config.startingTask).to.equal(task4);
+      });
+    });
+
+    describe("Workflow Registration", () => {
+      it("should register workflows in moose internal upon creation", () => {
+        const startingTask = new Task<null, void>(
+          "registrationTask",
+          {
+            run: async () => {
+              console.log("Registration test task");
+            },
+          },
+          schema,
+          [],
+        );
+
+        const workflow = new Workflow("registrationWorkflow", {
+          startingTask: startingTask,
+        });
+
+        const mooseInternal = getMooseInternal();
+        expect(mooseInternal.workflows.has("registrationWorkflow")).to.be.true;
+        expect(mooseInternal.workflows.get("registrationWorkflow")).to.equal(
+          workflow,
+        );
+      });
+
+      it("should register multiple workflows without conflicts", () => {
+        const task1 = new Task<null, void>(
+          "task1",
+          {
+            run: async () => console.log("Task 1"),
+          },
+          schema,
+          [],
+        );
+
+        const task2 = new Task<null, void>(
+          "task2",
+          {
+            run: async () => console.log("Task 2"),
+          },
+          schema,
+          [],
+        );
+
+        const workflow1 = new Workflow("workflow1", {
+          startingTask: task1,
+        });
+
+        const workflow2 = new Workflow("workflow2", {
+          startingTask: task2,
+        });
+
+        const mooseInternal = getMooseInternal();
+        expect(mooseInternal.workflows.size).to.equal(2);
+        expect(mooseInternal.workflows.get("workflow1")).to.equal(workflow1);
+        expect(mooseInternal.workflows.get("workflow2")).to.equal(workflow2);
+      });
+
+      it("should throw an error when creating workflows with duplicate names", () => {
+        const task1 = new Task<null, void>(
+          "task1",
+          {
+            run: async () => console.log("Task 1"),
+          },
+          schema,
+          [],
+        );
+
+        const task2 = new Task<null, void>(
+          "task2",
+          {
+            run: async () => console.log("Task 2"),
+          },
+          schema,
+          [],
+        );
+
+        const workflow1 = new Workflow("duplicateName", {
+          startingTask: task1,
+        });
+
+        // Should throw an error when trying to create a workflow with the same name
+        expect(() => {
+          new Workflow("duplicateName", {
+            startingTask: task2,
+          });
+        }).to.throw("Workflow with name duplicateName already exists");
+
+        const mooseInternal = getMooseInternal();
+        expect(mooseInternal.workflows.size).to.equal(1);
+        expect(mooseInternal.workflows.get("duplicateName")).to.equal(
+          workflow1,
+        );
+      });
+    });
+  });
+});

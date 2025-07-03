@@ -176,6 +176,10 @@ export class Workflow {
     readonly name: string,
     readonly config: WorkflowConfig,
   ) {
-    getMooseInternal().workflows.set(name, this);
+    const workflows = getMooseInternal().workflows;
+    if (workflows.has(name)) {
+      throw new Error(`Workflow with name ${name} already exists`);
+    }
+    workflows.set(name, this);
   }
 }

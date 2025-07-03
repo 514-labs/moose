@@ -11,10 +11,19 @@ interface TransformedData {
   value: string;
 }
 
-export class InMemorySource {
+class MockSource {
+  constructor(
+    private count: number,
+    private namePrefix: string = "item",
+    private valuePrefix: string = "value",
+  ) {}
+
   async *[Symbol.asyncIterator](): AsyncIterator<SourceData> {
-    for (let i = 0; i < 3; i++) {
-      const sourceData = { name: `source_${i}`, value: `value_${i}` };
+    for (let i = 0; i < this.count; i++) {
+      const sourceData = {
+        name: `${this.namePrefix}_${i}`,
+        value: `${this.valuePrefix}_${i}`,
+      };
       console.log(`\nExtracted data: ${JSON.stringify(sourceData)}`);
       yield sourceData;
     }
@@ -24,14 +33,13 @@ export class InMemorySource {
 describe("ETLPipeline", () => {
   describe("run", () => {
     it("should handle empty data source gracefully", async () => {
-      class EmptySource {
+      // Use inline anonymous class for simple empty source
+      const source = {
         async *[Symbol.asyncIterator](): AsyncIterator<SourceData> {
-          // Yield nothing
           return;
-        }
-      }
+        },
+      };
 
-      const source = new EmptySource();
       const loadedData: TransformedData[] = [];
 
       const pipeline = new ETLPipeline<SourceData, TransformedData>(
@@ -55,15 +63,7 @@ describe("ETLPipeline", () => {
     });
 
     it("should process large batches correctly", async () => {
-      class LargeSource {
-        async *[Symbol.asyncIterator](): AsyncIterator<SourceData> {
-          for (let i = 0; i < 50; i++) {
-            yield { name: `item_${i}`, value: `value_${i}` };
-          }
-        }
-      }
-
-      const source = new LargeSource();
+      const source = new MockSource(50);
       const loadedData: TransformedData[] = [];
 
       const pipeline = new ETLPipeline<SourceData, TransformedData>(

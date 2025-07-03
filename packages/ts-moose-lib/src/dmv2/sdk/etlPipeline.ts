@@ -11,6 +11,18 @@ interface TransformedResult<U> {
   items: U[];
 }
 
+interface TaskConfig {
+  retries: number;
+  timeout: string;
+  schema: IJsonSchemaCollection.IV3_1;
+}
+
+interface ETLTasks<T, U> {
+  extract: Task<null, BatchResult<T>>;
+  transform: Task<BatchResult<T>, TransformedResult<U>>;
+  load: Task<TransformedResult<U>, void>;
+}
+
 class InternalBatcher<T> {
   private iterator: AsyncIterator<T>;
   private batchSize: number;
@@ -44,18 +56,48 @@ export interface ETLPipelineConfig<T, U> {
 }
 
 export class ETLPipeline<T, U> {
-  private batcher: InternalBatcher<T>;
+  private batcher!: InternalBatcher<T>;
 
   constructor(
     readonly name: string,
     readonly config: ETLPipelineConfig<T, U>,
   ) {
-    // Create batcher from user's extract config
-    const iterable =
-      typeof config.extract === "function" ? config.extract() : config.extract;
+    this.setupPipeline();
+  }
 
-    this.batcher = new InternalBatcher(iterable);
-    const nullSchema: IJsonSchemaCollection.IV3_1 = {
+  private setupPipeline(): void {
+    this.batcher = this.createBatcher();
+    const tasks = this.createAllTasks();
+
+    tasks.extract.config.onComplete = [tasks.transform];
+    tasks.transform.config.onComplete = [tasks.load];
+
+    new Workflow(this.name, {
+      startingTask: tasks.extract,
+      retries: 1,
+      timeout: "30m",
+    });
+  }
+
+  private createBatcher(): InternalBatcher<T> {
+    const iterable =
+      typeof this.config.extract === "function" ?
+        this.config.extract()
+      : this.config.extract;
+
+    return new InternalBatcher(iterable);
+  }
+
+  private getDefaultTaskConfig(): TaskConfig {
+    return {
+      retries: 1,
+      timeout: "30m",
+      schema: this.createNullSchema(),
+    };
+  }
+
+  private createNullSchema(): IJsonSchemaCollection.IV3_1 {
+    return {
       version: "3.1",
       components: {
         schemas: {},
@@ -66,33 +108,49 @@ export class ETLPipeline<T, U> {
         },
       ],
     };
+  }
 
-    // Create Extract Task
-    const extractTask = new Task<null, BatchResult<T>>(
-      `${name}_extract`,
+  private createAllTasks(): ETLTasks<T, U> {
+    const taskConfig = this.getDefaultTaskConfig();
+
+    return {
+      extract: this.createExtractTask(taskConfig),
+      transform: this.createTransformTask(taskConfig),
+      load: this.createLoadTask(taskConfig),
+    };
+  }
+
+  private createExtractTask(
+    taskConfig: TaskConfig,
+  ): Task<null, BatchResult<T>> {
+    return new Task<null, BatchResult<T>>(
+      `${this.name}_extract`,
       {
         run: async () => {
-          console.log(`Running extract task for ${name}...`);
+          console.log(`Running extract task for ${this.name}...`);
           const batch = await this.batcher.getNextBatch();
           console.log(
             `Extract task completed with ${batch.items.length} items`,
           );
           return batch;
         },
-        retries: 1,
-        timeout: "30m",
+        retries: taskConfig.retries,
+        timeout: taskConfig.timeout,
       },
-      nullSchema,
+      taskConfig.schema,
       [],
     );
+  }
 
-    // Create Transform Task
-    const transformTask = new Task<BatchResult<T>, TransformedResult<U>>(
-      `${name}_transform`,
+  private createTransformTask(
+    taskConfig: TaskConfig,
+  ): Task<BatchResult<T>, TransformedResult<U>> {
+    return new Task<BatchResult<T>, TransformedResult<U>>(
+      `${this.name}_transform`,
       {
         run: async (batch: { items: T[]; hasMore: boolean }) => {
           console.log(
-            `Running transform task for ${name} with ${batch.items.length} items...`,
+            `Running transform task for ${this.name} with ${batch.items.length} items...`,
           );
           const transformedItems: U[] = [];
 
@@ -106,20 +164,23 @@ export class ETLPipeline<T, U> {
           );
           return { items: transformedItems };
         },
-        retries: 1,
-        timeout: "30m",
+        retries: taskConfig.retries,
+        timeout: taskConfig.timeout,
       },
-      nullSchema,
+      taskConfig.schema,
       [],
     );
+  }
 
-    // Create Load Task
-    const loadTask = new Task<TransformedResult<U>, void>(
-      `${name}_load`,
+  private createLoadTask(
+    taskConfig: TaskConfig,
+  ): Task<TransformedResult<U>, void> {
+    return new Task<TransformedResult<U>, void>(
+      `${this.name}_load`,
       {
         run: async (transformedItems: TransformedResult<U>) => {
           console.log(
-            `Running load task for ${name} with ${transformedItems.items.length} items...`,
+            `Running load task for ${this.name} with ${transformedItems.items.length} items...`,
           );
 
           // Handle both function and OlapTable
@@ -133,22 +194,12 @@ export class ETLPipeline<T, U> {
 
           console.log(`Load task completed`);
         },
-        retries: 1,
-        timeout: "30m",
+        retries: taskConfig.retries,
+        timeout: taskConfig.timeout,
       },
-      nullSchema,
+      taskConfig.schema,
       [],
     );
-
-    // Wire tasks together
-    extractTask.config.onComplete = [transformTask];
-    transformTask.config.onComplete = [loadTask];
-
-    new Workflow(name, {
-      startingTask: extractTask,
-      retries: 1,
-      timeout: "30m",
-    });
   }
 
   // Execute the entire ETL pipeline

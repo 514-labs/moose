@@ -171,6 +171,7 @@ fn clean_old_logs() {
                     // Escalated to WARN to surface unexpected FS errors encountered
                     // during housekeeping.
                     Err(e) => {
+                        // Escalated to warn! — inability to read file metadata may indicate FS issues
                         warn!(
                             "Failed to read modification time for {:?}. {}",
                             entry.path(),
@@ -181,6 +182,7 @@ fn clean_old_logs() {
             }
         }
     } else {
+        // Directory unreadable: surface as warn instead of info so users notice
         // Emitting WARN instead of INFO: inability to read the log directory means
         // housekeeping could not run at all, which can later cause disk-space issues.
         warn!("failed to read directory")

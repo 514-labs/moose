@@ -12,11 +12,19 @@ interface TransformedData {
 }
 
 class MockSource {
+  private count: number;
+  private namePrefix: string;
+  private valuePrefix: string;
+
   constructor(
-    private count: number,
-    private namePrefix: string = "item",
-    private valuePrefix: string = "value",
-  ) {}
+    count: number,
+    namePrefix: string = "item",
+    valuePrefix: string = "value",
+  ) {
+    this.count = count;
+    this.namePrefix = namePrefix;
+    this.valuePrefix = valuePrefix;
+  }
 
   async *[Symbol.asyncIterator](): AsyncIterator<SourceData> {
     for (let i = 0; i < this.count; i++) {

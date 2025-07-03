@@ -61,12 +61,20 @@ pub fn install_packages(
     command.arg("install");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
+    let stdout = output.stdout.clone();
     match String::from_utf8(output.stdout) {
         Ok(val) => {
             debug!("{}", val);
         }
         Err(e) => {
-            error!("Error: {:?}", e);
+            error!(
+                "Failed to decode stdout as UTF-8 for command: `{}` with args {:?} in directory {:?}. Raw output: {:?}. Error: {:?}",
+                package_manager.to_string(),
+                command.get_args().collect::<Vec<_>>(),
+                command.get_current_dir(),
+                &stdout,
+                e
+            );
         }
     }
 
@@ -83,12 +91,20 @@ pub fn run_build(
     command.arg("build");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
+    let stdout = output.stdout.clone();
     match String::from_utf8(output.stdout) {
         Ok(val) => {
             debug!("{}", val);
         }
         Err(e) => {
-            error!("Error: {:?}", e);
+            error!(
+                "Failed to decode stdout as UTF-8 for command: `{}` with args {:?} in directory {:?}. Raw output: {:?}. Error: {:?}",
+                package_manager.to_string(),
+                command.get_args().collect::<Vec<_>>(),
+                command.get_current_dir(),
+                &stdout,
+                e
+            );
         }
     }
 
@@ -112,12 +128,20 @@ pub fn link_sdk(
     }
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
+    let stdout = output.stdout.clone();
     match String::from_utf8(output.stdout) {
         Ok(val) => {
             debug!("{}", val);
         }
         Err(e) => {
-            error!("Error: {:?}", e);
+            error!(
+                "Failed to decode stdout as UTF-8 for command: `{}` with args {:?} in directory {:?}. Raw output: {:?}. Error: {:?}",
+                package_manager.to_string(),
+                command.get_args().collect::<Vec<_>>(),
+                command.get_current_dir(),
+                &stdout,
+                e
+            );
         }
     }
 

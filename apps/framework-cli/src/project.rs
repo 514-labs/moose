@@ -431,7 +431,13 @@ impl Project {
                 });
             } else {
                 debug!("Creating internal dir: {:?}", internal_dir);
-                std::fs::create_dir_all(&internal_dir)?;
+                std::fs::create_dir_all(&internal_dir).map_err(|e| ProjectFileError::Other {
+                    message: format!(
+                        "Failed to create internal directory {}: {}",
+                        internal_dir.display(),
+                        e
+                    ),
+                })?;
             }
         } else {
             debug!("Internal directory Exists: {:?}", internal_dir);

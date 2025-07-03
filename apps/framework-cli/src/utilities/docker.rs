@@ -207,7 +207,7 @@ impl DockerClient {
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr);
-            let friendly_error_message = format!("Failed to stop containers: {}", error_message);
+            let friendly_error_message = format!("Failed to stop containers: {error_message}");
             error!("{}", friendly_error_message);
             Err(anyhow::anyhow!(friendly_error_message))
         } else {
@@ -249,7 +249,7 @@ impl DockerClient {
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr);
-            let friendly_error_message = format!("Failed to start containers. Make sure you have Docker version 2.23.1+ and try again: {}", error_message);
+            let friendly_error_message = format!("Failed to start containers. Make sure you have Docker version 2.23.1+ and try again: {error_message}");
             error!("{}", friendly_error_message);
 
             let mapped_error_message =

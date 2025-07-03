@@ -176,16 +176,30 @@ impl TemporalClient {
     ) -> Result<String> {
         match self {
             TemporalClient::Standard(client) => {
-                let response = client
+                match client
                     .start_workflow_execution(tonic::Request::new(request))
-                    .await?;
-                Ok(response.into_inner().run_id)
+                    .await
+                {
+                    Ok(response) => Ok(response.into_inner().run_id),
+                    Err(status) => {
+                        let concise_msg =
+                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        Err(anyhow::Error::msg(concise_msg))
+                    }
+                }
             }
             TemporalClient::WithInterceptor(client) => {
-                let response = client
+                match client
                     .start_workflow_execution(tonic::Request::new(request))
-                    .await?;
-                Ok(response.into_inner().run_id)
+                    .await
+                {
+                    Ok(response) => Ok(response.into_inner().run_id),
+                    Err(status) => {
+                        let concise_msg =
+                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        Err(anyhow::Error::msg(concise_msg))
+                    }
+                }
             }
         }
     }

@@ -206,6 +206,11 @@ jobs:
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
+      - name: Run ts moose lib tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=@514labs/moose-lib run test
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
       - name: Run e2e Tests
         run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test
         env:

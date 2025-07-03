@@ -166,5 +166,23 @@ async function handleDmv2Task(
     results.push(...childResult);
   }
 
+  // Check if this is an ETL extract task that needs to loop
+  // ETL extract tasks end with "_extract" and return BatchResult with hasMore
+  if (
+    task.name.endsWith("_extract") &&
+    result &&
+    typeof result === "object" &&
+    "hasMore" in result &&
+    result.hasMore === true
+  ) {
+    logger.info(
+      `<DMV2WF> Extract task ${task.name} has more data, restarting chain...`,
+    );
+
+    // Recursively call the extract task again to get the next batch
+    const nextBatchResults = await handleDmv2Task(workflow, task, null);
+    results.push(...nextBatchResults);
+  }
+
   return results;
 }

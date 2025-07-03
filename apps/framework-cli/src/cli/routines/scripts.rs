@@ -114,7 +114,7 @@ pub async fn run_workflow(
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{name}': {e}\n"),
+                    details: format!("Could not start workflow '{name}': {e}"),
                 },
                 e,
             )

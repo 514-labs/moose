@@ -69,6 +69,28 @@ export class UnsupportedFeature extends Error {
   }
 }
 
+export class IndexType extends Error {
+  typeName: string;
+  indexSignatures: string[];
+
+  constructor(typeName: string, indexSignatures: string[]) {
+    const explanation =
+      "Index signatures (e.g. [key: string]: value) are not supported in data models.";
+
+    const suggestion =
+      "Consider splitting this into separate types or using a single Record<K, V> type.";
+
+    const signatures = `Found index signatures: ${indexSignatures.join(", ")}`;
+
+    super(
+      `${explanation}\n\nType: ${typeName}\n\n${signatures}\n\nSuggestion: ${suggestion}`,
+    );
+
+    this.typeName = typeName;
+    this.indexSignatures = indexSignatures;
+  }
+}
+
 /**
  * Type guard: is this DataType an Array(Nested(...))?
  * Uses the ArrayType and Nested types for type safety.

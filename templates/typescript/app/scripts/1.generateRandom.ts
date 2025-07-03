@@ -2,7 +2,7 @@ import { Task, Workflow } from "@514labs/moose-lib";
 import { Foo } from "../ingest/models";
 import { faker } from "@faker-js/faker";
 
-export const ingest = new Task<{}, void>("ingest", {
+export const ingest = new Task<null, void>("ingest", {
   run: async () => {
     for (let i = 0; i < 1000; i++) {
       const foo: Foo = {

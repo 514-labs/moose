@@ -322,6 +322,7 @@ class WorkflowClient:
         else:
             return [f"{os.getcwd()}/app/scripts/{name}", input_data]
 
+    # TODO: Remove when workflows dmv1 is removed
     def load_consolidated_configs(self):
         try:
             file_path = os.path.join(os.getcwd(), ".moose", "workflow_configs.json")
@@ -330,7 +331,7 @@ class WorkflowClient:
                 config_map = {config['name']: config for config in data}
                 return config_map
         except Exception as e:
-            raise ValueError(f"Error loading file {file_path}: {e}")
+            print(f"Could not load configs for workflows v1: {e}")
 
     def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
         if timeout_str.endswith('h'):

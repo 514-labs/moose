@@ -1,17 +1,12 @@
-from moose_lib import task  
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig 
 from datetime import datetime
 from faker import Faker
 from app.ingest.models import Foo, Baz
 import requests
 
-@task
-def generate_random():  # The name of your script
-    """
-    This is a sample task that generates random data for the `Foo` data model and sends it to the ingest API
-    """
+def run_task() -> None:
     fake = Faker()
     for i in range(1000):
-
         # Prepare request data
         foo = Foo(
             primary_key=fake.uuid4(),
@@ -26,17 +21,13 @@ def generate_random():  # The name of your script
             data=foo.model_dump_json().encode('utf-8'),
             headers={'Content-Type': 'application/json'}
         )
-        req.raise_for_status()
-        
-        
-    ## Tasks must return a dictionary with the following keys:
-    # "task": The name of the task function
-    # "data": A dictionary of data to be returned to the workflow
-    return {
-      "task": "generate_random",
-      "data": {
-          "completed_at": datetime.now().isoformat()
-      }
-    }
-    
-    
+
+ingest_task = Task[Foo, None](
+    name="task",
+    config=TaskConfig(run=run_task)
+)
+
+ingest_workflow = Workflow(
+    name="workflow",
+    config=WorkflowConfig(starting_task=ingest_task, schedule="@every 5s")
+)

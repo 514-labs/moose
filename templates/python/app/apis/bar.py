@@ -51,7 +51,10 @@ def run(client: MooseClient, params: QueryParams):
     query = f"""
     SELECT 
         day_of_month,
-        {order_by}
+        total_rows,
+        rows_with_text,
+        max_text_length,
+        total_text_length
     FROM {barAggregatedMV.target_table.name} 
     WHERE day_of_month >= {start_day} 
     AND day_of_month <= {end_day} 

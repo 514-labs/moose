@@ -162,7 +162,7 @@ check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
 check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
 echo
 
-echo "� Project Verification:"
+echo "📂 Project Verification:"
 if [ -f "pnpm-workspace.yaml" ]; then
     echo -e "${GREEN}✓${NC} pnpm workspace configuration found"
 else

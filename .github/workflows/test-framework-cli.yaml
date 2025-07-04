@@ -224,7 +224,9 @@ jobs:
       - name: Run py moose lib tests
         run: |
           cd packages/py-moose-lib
+          pip install --upgrade pip setuptools wheel
           pip install -r requirements-dev.txt
+          pip install -e .
           python -m pytest
         env:
           MOOSE_TELEMETRY_ENABLED: false
@@ -327,6 +329,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade Python build tools
+        run: pip install --upgrade pip setuptools wheel
 
       - name: Run Python E2E Tests
         run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "python template"

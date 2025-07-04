@@ -725,28 +725,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cron"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f8c3e73077b4b4a6ab1ea5047c37c57aee77657bc8ecd6f29b0af082d0b0c07"
-dependencies = [
- "chrono",
- "nom",
- "once_cell",
-]
-
-[[package]]
-name = "cron"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eee8b2b4516038bc0f1d3c9934bcb4a13dd316e04abbc63c96757a6d75978532"
-dependencies = [
- "chrono",
- "nom",
- "once_cell",
-]
-
-[[package]]
 name = "crossbeam"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2584,7 +2562,6 @@ dependencies = [
  "console",
  "constant_time_eq",
  "convert_case 0.6.0",
- "cron 0.13.0",
  "crossterm 0.27.0",
  "csv",
  "ctor",
@@ -2644,7 +2621,6 @@ dependencies = [
  "temporal-sdk-core-protos",
  "thiserror 1.0.69",
  "tokio",
- "tokio-cron-scheduler",
  "tokio-stream",
  "toml",
  "toml_edit",
@@ -2756,17 +2732,6 @@ name = "num-conv"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
-
-[[package]]
-name = "num-derive"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.96",
-]
 
 [[package]]
 name = "num-integer"
@@ -5001,21 +4966,6 @@ dependencies = [
  "socket2",
  "tokio-macros",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "tokio-cron-scheduler"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2594dd7c2abbbafbb1c78d167fd10860dc7bd75f814cb051a1e0d3e796b9702"
-dependencies = [
- "chrono",
- "cron 0.12.1",
- "num-derive",
- "num-traits",
- "tokio",
- "tracing",
- "uuid",
 ]
 
 [[package]]

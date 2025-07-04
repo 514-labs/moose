@@ -339,7 +339,7 @@ mod tests {
             supported_old_versions: std::collections::HashMap::new(),
             jwt: None,
             authentication: crate::project::AuthenticationConfig::default(),
-            cron_jobs: Vec::new(),
+
             features: crate::project::ProjectFeatures::default(),
         }
     }

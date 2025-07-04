@@ -224,10 +224,18 @@ jobs:
       - name: Run py moose lib tests
         run: |
           cd packages/py-moose-lib
+          echo "Installing build tools..."
           pip install --upgrade pip setuptools wheel
+          echo "Installing dev requirements..."
           pip install -r requirements-dev.txt
+          echo "Installing package in development mode..."
           pip install -e .
-          python -m pytest
+          echo "Verifying package installation..."
+          python -c "import moose_lib; print('Package imported successfully')"
+          echo "Listing installed packages..."
+          pip list
+          echo "Running tests..."
+          python -m pytest -v --tb=short
         env:
           MOOSE_TELEMETRY_ENABLED: false
 

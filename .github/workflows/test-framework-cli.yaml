@@ -229,10 +229,10 @@ jobs:
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
-  test-e2e:
+  test-e2e-typescript:
     needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test E2E (Node ${{ matrix.node-version }})
+    name: Test E2E TypeScript (Node ${{ matrix.node-version }})
     runs-on: ubuntu-4
     # Add explicit read-only permissions
     permissions:
@@ -271,8 +271,65 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run e2e Tests
-        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test
+      - name: Run TypeScript E2E Tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "typescript template"
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
+      - name: Inspect Logs
+        if: always()
+        run: |
+          cat ~/.moose/*-cli.log
+
+  test-e2e-python:
+    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
+    if: needs.detect-changes.outputs.should_run == 'true'
+    name: Test E2E Python (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-4
+    # Add explicit read-only permissions
+    permissions:
+      contents: read
+    env:
+      RUST_BACKTRACE: full
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Python for E2E tests
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Run Python E2E Tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "python template"
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
@@ -319,7 +376,7 @@ jobs:
   # Final status check that depends on all jobs
   changes:
     runs-on: ubuntu-latest
-    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib, test-e2e, lints]
+    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib, test-e2e-typescript, test-e2e-python, lints]
     if: always()
     # Add explicit read-only permissions
     permissions:
@@ -341,7 +398,8 @@ jobs:
              [[ "${{ needs.test-cli.result }}" == "failure" ]] || \
              [[ "${{ needs.test-ts-moose-lib.result }}" == "failure" ]] || \
              [[ "${{ needs.test-py-moose-lib.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-e2e.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-e2e-typescript.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-e2e-python.result }}" == "failure" ]] || \
              [[ "${{ needs.lints.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1
@@ -351,7 +409,8 @@ jobs:
              [[ "${{ needs.test-cli.result }}" == "success" ]] && \
              [[ "${{ needs.test-ts-moose-lib.result }}" == "success" ]] && \
              [[ "${{ needs.test-py-moose-lib.result }}" == "success" ]] && \
-             [[ "${{ needs.test-e2e.result }}" == "success" ]] && \
+             [[ "${{ needs.test-e2e-typescript.result }}" == "success" ]] && \
+             [[ "${{ needs.test-e2e-python.result }}" == "success" ]] && \
              [[ "${{ needs.lints.result }}" == "success" ]]; then
             echo "All required jobs succeeded"
             exit 0

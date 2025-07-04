@@ -284,7 +284,7 @@ jobs:
   test-e2e-python:
     needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test E2E Python (Node ${{ matrix.node-version }})
+    name: Test E2E Python (Python ${{ matrix.python-version }})
     runs-on: ubuntu-4
     # Add explicit read-only permissions
     permissions:
@@ -294,7 +294,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22, 24]
+        python-version: ['3.12', '3.13']
     defaults:
       run:
         working-directory: .
@@ -316,17 +316,17 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
 
-      - name: Setup Python for E2E tests
+      - name: Setup Python ${{ matrix.python-version }} for E2E tests
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
 
       - name: Run Python E2E Tests
         run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "python template"

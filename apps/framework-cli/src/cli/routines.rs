@@ -102,7 +102,7 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
-use crate::infrastructure::processes::cron_registry::CronRegistry;
+
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -221,8 +221,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Red
         });
     });
 
-    // Start the leadership lock management task
-    start_leadership_lock_task(redis_client.clone(), project.clone());
+
 
     redis_client.register_message_handler(callback).await;
     redis_client.start_periodic_tasks();
@@ -263,64 +262,11 @@ async fn process_pubsub_message(
     Ok(())
 }
 
-fn start_leadership_lock_task(redis_client: Arc<RedisClient>, project: Arc<Project>) {
-    tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
-        let cron_registry = CronRegistry::new().await.unwrap();
 
-        loop {
-            interval.tick().await;
-            if let Err(e) = manage_leadership_lock(&redis_client, &project, &cron_registry).await {
-                error!("<RedisClient> Error managing leadership lock: {:#}", e);
-            }
-        }
-    });
-}
 
-async fn manage_leadership_lock(
-    redis_client: &Arc<RedisClient>,
-    project: &Arc<Project>,
-    cron_registry: &CronRegistry,
-) -> Result<(), anyhow::Error> {
-    let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
 
-    if has_lock && is_new_acquisition {
-        info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
-        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
-
-        let project_clone = project.clone();
-        let cron_registry: CronRegistry = cron_registry.clone();
-        tokio::spawn(async move {
-            let result = leadership_tasks(project_clone, cron_registry).await;
-            if let Err(e) = result {
-                error!("<RedisClient> Error executing leadership tasks: {}", e);
-            }
-            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-        });
-
-        if let Err(e) = redis_client.broadcast_message("leader.new").await {
-            error!("Failed to broadcast new leader message: {}", e);
-        }
-    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-        if let Err(e) = cron_registry.stop().await {
-            error!("<RedisClient> Failed to stop CronRegistry: {}", e);
-        }
-        // Then mark leadership tasks as not running
-        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-    }
-    Ok(())
-}
-
-async fn leadership_tasks(
-    project: Arc<Project>,
-    cron_registry: CronRegistry,
-) -> Result<(), anyhow::Error> {
-    cron_registry.register_jobs(&project).await?;
-    cron_registry.start().await?;
-    Ok(())
-}
 
 /// Starts the application in development mode.
 /// This mode is optimized for development workflows and includes additional debugging features.

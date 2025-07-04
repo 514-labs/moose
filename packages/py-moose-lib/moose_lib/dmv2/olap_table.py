@@ -426,6 +426,17 @@ class OlapTable(TypedMooseResource, Generic[T]):
     def _to_json_each_row(self, records: list[dict]) -> bytes:
         return "\n".join(json.dumps(r, default=str) for r in records).encode("utf-8")
 
+    def _with_wait_end_settings(self, settings: dict) -> dict:
+        """Add wait_end_of_query setting to ensure at least once delivery for INSERT operations.
+        
+        Args:
+            settings: Base settings dictionary
+            
+        Returns:
+            Settings dictionary with wait_end_of_query added
+        """
+        return {**settings, "wait_end_of_query": 1}
+
     def _prepare_insert_options(
         self,
         table_name: str,
@@ -437,14 +448,14 @@ class OlapTable(TypedMooseResource, Generic[T]):
     ) -> tuple[str, bytes, dict]:
         """Prepare insert options for JSONEachRow raw SQL insert, returning settings dict."""
         # Base settings for all inserts
-        settings = {
+        base_settings = {
             "date_time_input_format": "best_effort",
-            "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
             "max_insert_block_size": 100000 if is_stream else min(len(validated_data), 100000),
             "max_block_size": 65536,
             "async_insert": 1 if len(validated_data) > 1000 else 0,
             "wait_for_async_insert": 1,
         }
+        settings = self._with_wait_end_settings(base_settings)
         if (strategy == "discard" and options and
             (options.allow_errors is not None or options.allow_errors_ratio is not None)):
             if options.allow_errors is not None:
@@ -542,13 +553,13 @@ class OlapTable(TypedMooseResource, Generic[T]):
             batch = records_dict[i:i + RETRY_BATCH_SIZE]
             try:
                 sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                settings = {
+                base_settings = {
                     "date_time_input_format": "best_effort",
-                    "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
                     "max_insert_block_size": RETRY_BATCH_SIZE,
                     "max_block_size": RETRY_BATCH_SIZE,
                     "async_insert": 0
                 }
+                settings = self._with_wait_end_settings(base_settings)
                 json_lines = self._to_json_each_row(batch)
                 client.command(sql, data=json_lines, settings=settings)
                 successful.extend(records[i:i + RETRY_BATCH_SIZE])
@@ -556,13 +567,12 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 for j, record_dict in enumerate(batch):
                     try:
                         sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                        settings = {
+                        individual_settings = self._with_wait_end_settings({
                             "date_time_input_format": "best_effort",
-                            "wait_end_of_query": 1,  # Ensure at least once delivery for INSERT operations
                             "async_insert": 0
-                        }
+                        })
                         json_line = self._to_json_each_row([record_dict])
-                        client.command(sql, data=json_line, settings=settings)
+                        client.command(sql, data=json_line, settings=individual_settings)
                         successful.append(records[i + j])
                     except ClickHouseError as error:
                         failed.append(FailedRecord(
@@ -678,8 +688,8 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 if len(batch) >= 1000:  # Batch size
                     json_lines = self._to_json_each_row(batch)
                     sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                    # Add wait_end_of_query to batch settings
-                    batch_settings = {**settings, "wait_end_of_query": 1}
+                    # Add wait_end_of_query to batch settings using helper function
+                    batch_settings = self._with_wait_end_settings(settings)
                     client.command(sql, data=json_lines, settings=batch_settings)
                     total_inserted += len(batch)
                     batch = []
@@ -687,8 +697,8 @@ class OlapTable(TypedMooseResource, Generic[T]):
             if batch:  # Insert any remaining records
                 json_lines = self._to_json_each_row(batch)
                 sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
-                # Add wait_end_of_query to final batch settings
-                final_settings = {**settings, "wait_end_of_query": 1}
+                # Add wait_end_of_query to final batch settings using helper function
+                final_settings = self._with_wait_end_settings(settings)
                 client.command(sql, data=json_lines, settings=final_settings)
                 total_inserted += len(batch)
 

@@ -1,7 +1,7 @@
 {
   "dockerFile": ".cursor/Dockerfile",
   "install": "pnpm install --frozen-lockfile",
-  "start": "sudo service docker start && echo 'Environment setup complete. Ready for development!'",
+  "start": "sudo systemctl start docker || echo 'Failed to start Docker. Ensure Docker is running manually.' && echo 'Environment setup complete. Ready for development!'",
   "terminals": [
     {
       "name": "Moose Development",

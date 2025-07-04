@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR"""
+"""
 OLAP table definitions for Moose Data Model v2 (dmv2).
 
 This module provides classes for defining and configuring OLAP tables,

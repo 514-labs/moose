@@ -59,7 +59,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
 
 # Install additional Python packages needed for development
-RUN pip install --break-system-packages virtualenv setuptools wheel
+RUN python3.12 -m pip install --break-system-packages virtualenv setuptools wheel
 
 # Install Protocol Buffers compiler (version 24.4 to match CI)
 RUN PROTOC_VERSION=24.4 \

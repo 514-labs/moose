@@ -18,5 +18,5 @@ post_install_print = """
     $ python get_data/ingest_goodreads_data.py
 """
 default_aurora_telemetry="comprehensive"
-
+visible=false
 # we might need to add python dependencies install file

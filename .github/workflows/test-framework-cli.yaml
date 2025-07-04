@@ -211,6 +211,19 @@ jobs:
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
+      - name: Setup Python for py-moose-lib tests
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Run py moose lib tests
+        run: |
+          cd packages/py-moose-lib
+          pip install -r requirements-dev.txt
+          python -m pytest
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
       - name: Run e2e Tests
         run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test
         env:

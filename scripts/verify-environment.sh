@@ -157,7 +157,7 @@ check_command "make" "--version" "Make" || OVERALL_STATUS=1
 check_command "pkg-config" "--version" "pkg-config" || OVERALL_STATUS=1
 echo
 
-echo "� Docker (Required for Moose Development):"
+echo "🐳 Docker (Required for Moose Development):"
 check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
 check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
 echo

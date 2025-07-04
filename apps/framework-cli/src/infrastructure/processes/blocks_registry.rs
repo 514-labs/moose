@@ -37,7 +37,10 @@ impl BlocksProcessRegistry {
 
     pub fn start(&mut self, olap_process: &OlapProcess) -> Result<(), BlocksError> {
         if self.dir.exists() {
-            info!("Starting blocks {:?}...", olap_process);
+            info!("⚠️  DEPRECATION WARNING: Blocks functionality has been deprecated and is no longer supported.");
+            info!("⚠️  Blocks directory exists at {:?}, but blocks will be ignored.", self.dir);
+            info!("⚠️  Please migrate to the new data processing features. See documentation for alternatives.");
+            
             let child = match self.language {
                 SupportedLanguages::Typescript => typescript::blocks::run(
                     self.clickhouse_config.clone(),

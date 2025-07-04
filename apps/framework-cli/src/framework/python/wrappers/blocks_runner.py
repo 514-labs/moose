@@ -1,11 +1,8 @@
 import asyncio
-from dataclasses import dataclass
-from clickhouse_connect import get_client
 from importlib import import_module
 import argparse
 import os
 import sys
-import signal
 from moose_lib import cli_log, CliLogData
 
 
@@ -24,19 +21,9 @@ parser.add_argument('clickhouse_use_ssl', type=str, help='Clickhouse use SSL')
 
 args = parser.parse_args()
 
-interface = 'http' if args.clickhouse_use_ssl == "false" else 'https'
-host = args.clickhouse_host
-port = args.clickhouse_port
-db = args.clickhouse_db
-user = args.clickhouse_username
-password = args.clickhouse_password
 blocks_dir_path = args.blocks_dir_path
 
 sys.path.append(blocks_dir_path)
-
-# TODO: Handle retries
-class DependencyError(Exception):
-    pass
 
 
 def get_file_name(path):
@@ -76,55 +63,12 @@ def walk_dir(dir, file_extension):
     return file_list
 
 
-def create_blocks(ch_client, path):
-    blocks_obj = get_blocks_from_file(path)
-
-    for query in blocks_obj.setup:
-        try:
-            print(f"Creating block using query {query}")
-            # Merge with any existing client settings to preserve defaults like date_time_input_format
-            default_settings = getattr(ch_client, 'default_settings', {})
-            ch_client.command(query, settings={**default_settings, 'wait_end_of_query': 1})  # Ensure at least once delivery and DDL acknowledgment
-        except Exception as err:
-            cli_log(CliLogData(action="Blocks", message=f"Failed to create blocks: {err}", message_type="Error"))
-
-
-def delete_blocks(ch_client, path):
-    blocks_obj = get_blocks_from_file(path)
-
-    for query in blocks_obj.teardown:
-        try:
-            print(f"Deleting block using query {query}")
-            # Merge with any existing client settings to preserve defaults like date_time_input_format
-            default_settings = getattr(ch_client, 'default_settings', {})
-            ch_client.command(query, settings={**default_settings, 'wait_end_of_query': 1})  # Ensure at least once delivery and DDL acknowledgment
-        except Exception as err:
-            cli_log(CliLogData(action="Blocks", message=f"Failed to delete blocks: {err}", message_type="Error"))
-
-
-async def async_worker(task):
-    delete_blocks(task['ch_client'], task['path'])
-    create_blocks(task['ch_client'], task['path'])
+# DEPRECATED: These functions are no longer used since blocks functionality is deprecated
+# They are kept for reference but will not be executed
 
 
 
 async def main():
-    print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
-
-    loop = asyncio.get_running_loop()
-
-    # Define your signal handler
-    def handle_signal(signame):
-        print(f"Received signal {signame}, shutting down.")
-        for task in asyncio.all_tasks():
-            task.cancel()
-
-    # Add signal handlers
-    for signame in ('SIGTERM', 'SIGQUIT', 'SIGHUP'):
-        loop.add_signal_handler(getattr(signal, signame), lambda: handle_signal(signame))
-
-    ch_client = get_client(interface=interface, host=host,
-                           port=port, database=db, username=user, password=password)
     py_files = walk_dir(blocks_dir_path, '.py')
 
     block_files = []
@@ -134,22 +78,19 @@ async def main():
             get_blocks_from_file(file)
             block_files.append(file)
         except Exception as err:
-            cli_log(CliLogData(action="Blocks", message=f"Failed to import blocks from {file}: {err}", message_type="Error"))
+            # Ignore import errors for deprecation - we're not going to execute them anyway
+            pass
 
-    print(f"Found {len(block_files)} blocks in {blocks_dir_path}")
-    print(f"Blocks: {block_files}")
+    if len(block_files) > 0:
+        print(f"⚠️  DEPRECATION WARNING: Blocks functionality has been deprecated and is no longer supported.")
+        print(f"⚠️  Found {len(block_files)} blocks files in {blocks_dir_path}, but they will be ignored.")
+        print(f"⚠️  Please migrate to the new data processing features. See documentation for alternatives.")
+        
+        cli_log(CliLogData(action="Blocks", message=f"Blocks functionality is deprecated. Found {len(block_files)} blocks files but ignoring them.", message_type="Warning"))
+    else:
+        print(f"No blocks files found in {blocks_dir_path}")
 
-    task_defs = [{'ch_client': ch_client, 'path': path, 'retries': len(block_files)} for path in block_files]
-
-    print(f"Creating {len(task_defs)} tasks...")
-    print(f"Tasks: {task_defs}")
-
-    tasks = list(map(lambda x: asyncio.create_task(async_worker(x)), task_defs))
-
-    print(f"Running {len(tasks)} tasks...")
-    print(f"Tasks: {tasks}")
-
-    while not all([task.done() for task in tasks]):
-        await asyncio.sleep(1)
+    # No-op: just return without doing anything
+    return
 
 asyncio.run(main())

@@ -197,7 +197,13 @@ def run(client: MooseClient, params: QueryParams):
 
 "#;
 
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
 pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
+# DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+# This template is kept for backward compatibility but will not be used in new projects.
+# Please migrate to the new data processing features. See documentation for alternatives.
+
 # This file is where you can define your SQL queries to shape and manipulate batches
 # of data using Blocks. Blocks can also manage materialized views to store the results of 
 # your queries for improved performance. A materialized view is the recommended approach for aggregating
@@ -221,7 +227,13 @@ setup_queries = []
 block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
 pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
+# DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+# This template is kept for backward compatibility but will not be used in new projects.
+# Please migrate to the new data processing features. See documentation for alternatives.
+
 # This block is used to aggregate the data from the Bar table into a materialized view
 from moose_lib import (
   Blocks

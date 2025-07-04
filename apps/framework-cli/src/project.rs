@@ -393,11 +393,15 @@ impl Project {
     }
 
     /// Returns the path to the blocks directory
+    /// DEPRECATED: Blocks functionality has been deprecated.
+    /// This method no longer creates new blocks directories but returns the path for existing ones.
     pub fn blocks_dir(&self) -> PathBuf {
         let blocks_dir = self.app_dir().join(BLOCKS_DIR);
 
-        if !blocks_dir.exists() {
-            std::fs::create_dir_all(&blocks_dir).expect("Failed to create blocks directory");
+        // DEPRECATED: No longer create blocks directories for new projects
+        // Only log a warning if the directory exists
+        if blocks_dir.exists() {
+            debug!("⚠️  DEPRECATED: Blocks directory found at {:?}. Blocks functionality has been deprecated.", blocks_dir);
         }
 
         debug!("Blocks dir: {:?}", blocks_dir);

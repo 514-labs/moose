@@ -27,6 +27,10 @@ interface TableCreateOptions {
   orderBy?: string;
 }
 
+// Deprecation warning
+console.warn("⚠️  DEPRECATION WARNING: Blocks functionality has been deprecated and is no longer supported.");
+console.warn("⚠️  Please migrate to the new data processing features. See documentation for alternatives.");
+
 export interface Blocks {
   setup: string[];
   teardown: string[];

@@ -45,7 +45,13 @@ export default function run(source: {{source}}): {{destination}} | null {
 
 "#;
 
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
 pub static TS_BASE_BLOCKS_SAMPLE: &str = r#"
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
+// Please migrate to the new data processing features. See documentation for alternatives.
+
 // Example Block that creates a materialized view that aggregates daily statistics from Bar_0_0
 
 import { Blocks } from "@514labs/moose-lib"; // Import Blocks to structure setup/teardown queries
@@ -125,7 +131,13 @@ export default createConsumptionApi<QueryParams>(
 );
 "#;
 
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
 pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
+// DEPRECATED: Blocks functionality has been deprecated and is no longer supported.
+// This template is kept for backward compatibility but will not be used in new projects.
+// Please migrate to the new data processing features. See documentation for alternatives.
+
 // This file is where you can define your SQL queries to shape and manipulate batches
 // of data using Blocks. There is a collection of helper functions to create SQL queries
 // within the @514labs/moose-lib package. 

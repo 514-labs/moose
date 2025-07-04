@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
+import warnings
+
+# Deprecation warning
+warnings.warn("⚠️  DEPRECATION WARNING: Blocks functionality has been deprecated and is no longer supported. Please migrate to the new data processing features. See documentation for alternatives.", 
+              DeprecationWarning, stacklevel=2)
 
 
 class ClickHouseEngines(Enum):

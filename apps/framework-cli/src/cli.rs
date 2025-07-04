@@ -63,6 +63,14 @@ pub struct Cli {
     #[arg(short, long)]
     debug: bool,
 
+    /// Print backtraces for all errors (same as RUST_LIB_BACKTRACE=1)
+    #[arg(
+        long,
+        global = true,
+        help = "Print backtraces for all errors (same as RUST_LIB_BACKTRACE=1)"
+    )]
+    pub backtrace: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

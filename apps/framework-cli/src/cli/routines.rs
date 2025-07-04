@@ -102,7 +102,6 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
-
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -221,62 +220,13 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Red
         });
     });
 
-    // Start the leadership lock management task (for DDL migrations and OLAP operations)
+    // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone());
 
     redis_client.register_message_handler(callback).await;
     redis_client.start_periodic_tasks();
 
     Ok(redis_client)
-}
-
-fn start_leadership_lock_task(redis_client: Arc<RedisClient>) {
-    tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
-
-        loop {
-            interval.tick().await;
-            if let Err(e) = manage_leadership_lock(&redis_client).await {
-                error!("<RedisClient> Error managing leadership lock: {:#}", e);
-            }
-        }
-    });
-}
-
-async fn manage_leadership_lock(
-    redis_client: &Arc<RedisClient>,
-) -> Result<(), anyhow::Error> {
-    let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
-
-    if has_lock && is_new_acquisition {
-        info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
-
-        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
-
-        tokio::spawn(async move {
-            let result = leadership_tasks().await;
-            if let Err(e) = result {
-                error!("<RedisClient> Error executing leadership tasks: {}", e);
-            }
-            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-        });
-
-        if let Err(e) = redis_client.broadcast_message("leader.new").await {
-            error!("Failed to broadcast new leader message: {}", e);
-        }
-    } else if !has_lock && IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-        // Lost leadership, stop leadership tasks
-        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-    }
-    Ok(())
-}
-
-async fn leadership_tasks() -> Result<(), anyhow::Error> {
-    // Leadership tasks for DDL migrations and OLAP operations
-    // (The actual DDL and OLAP leadership work is handled in execute_initial_infra_change
-    // and execute_leader_changes via the has_lock check)
-    info!("<Leadership> Leadership tasks completed (DDL/OLAP operations handled elsewhere)");
-    Ok(())
 }
 
 async fn process_pubsub_message(
@@ -312,11 +262,40 @@ async fn process_pubsub_message(
     Ok(())
 }
 
+fn start_leadership_lock_task(redis_client: Arc<RedisClient>) {
+    tokio::spawn(async move {
+        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
+        loop {
+            interval.tick().await;
+            if let Err(e) = manage_leadership_lock(&redis_client).await {
+                error!("<RedisClient> Error managing leadership lock: {:#}", e);
+            }
+        }
+    });
+}
 
+async fn manage_leadership_lock(redis_client: &Arc<RedisClient>) -> Result<(), anyhow::Error> {
+    let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
 
+    if has_lock && is_new_acquisition {
+        info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
+        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
 
+        tokio::spawn(async move {
+            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+        });
+
+        if let Err(e) = redis_client.broadcast_message("leader.new").await {
+            error!("Failed to broadcast new leader message: {}", e);
+        }
+    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        // Then mark leadership tasks as not running
+        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+    }
+    Ok(())
+}
 
 /// Starts the application in development mode.
 /// This mode is optimized for development workflows and includes additional debugging features.

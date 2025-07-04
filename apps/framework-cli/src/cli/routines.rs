@@ -102,7 +102,10 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
+<<<<<<< HEAD
 
+=======
+>>>>>>> bebedac7d4bdca3d6ec604be041ea7b79a1f7dc5
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -243,19 +246,23 @@ fn start_leadership_lock_task(redis_client: Arc<RedisClient>) {
     });
 }
 
-async fn manage_leadership_lock(
-    redis_client: &Arc<RedisClient>,
-) -> Result<(), anyhow::Error> {
+async fn manage_leadership_lock(redis_client: &Arc<RedisClient>) -> Result<(), anyhow::Error> {
     let (has_lock, is_new_acquisition) = redis_client.check_and_renew_lock("leadership").await?;
 
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
+        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
+
+        tokio::spawn(async move {
+            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+        });
+
         if let Err(e) = redis_client.broadcast_message("leader.new").await {
             error!("Failed to broadcast new leader message: {}", e);
         }
-    } else if !has_lock && IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-        // Lost leadership, stop leadership tasks
+    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        // Then mark leadership tasks as not running
         IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
     Ok(())
@@ -293,12 +300,6 @@ async fn process_pubsub_message(
     }
     Ok(())
 }
-
-
-
-
-
-
 
 /// Starts the application in development mode.
 /// This mode is optimized for development workflows and includes additional debugging features.

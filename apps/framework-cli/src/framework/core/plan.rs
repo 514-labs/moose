@@ -13,6 +13,8 @@
 ///
 /// The resulting plan is then used by the execution module to apply the changes.
 use crate::framework::core::infra_reality_checker::{InfraRealityChecker, RealityCheckError};
+use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
+use crate::framework::core::infrastructure::olap_process::OlapProcess;
 use crate::framework::core::infrastructure_map::{
     InfraChanges, InfrastructureMap, OlapChange, TableChange,
 };
@@ -195,34 +197,38 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize current infrastructure map".to_string())
     );
 
-    // Plan changes, reconciling with reality if we have a current infrastructure map
-    let plan = match &current_infra_map {
-        Some(current_map) => {
-            // Create the OLAP client for reality checks
-            let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+    // Plan changes, reconciling with reality
+    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
 
-            // Reconcile the current map with reality before diffing
-            let reconciled_map = reconcile_with_reality(project, current_map, olap_client).await?;
+    let current_map_or_empty = current_infra_map.unwrap_or_else(|| InfrastructureMap {
+        topics: Default::default(),
+        api_endpoints: Default::default(),
+        tables: Default::default(),
+        views: Default::default(),
+        topic_to_table_sync_processes: Default::default(),
+        topic_to_topic_sync_processes: Default::default(),
+        function_processes: Default::default(),
+        block_db_processes: OlapProcess {},
+        consumption_api_web_server: ConsumptionApiWebServer {},
+        orchestration_workers: Default::default(),
+        sql_resources: Default::default(),
+        workflows: Default::default(),
+    });
 
-            debug!(
-                "Reconciled infrastructure map: {}",
-                serde_json::to_string(&reconciled_map)
-                    .unwrap_or("Could not serialize reconciled infrastructure map".to_string())
-            );
+    // Reconcile the current map with reality before diffing
+    let reconciled_map =
+        reconcile_with_reality(project, &current_map_or_empty, olap_client).await?;
 
-            // Use the reconciled map for diffing
-            InfraPlan {
-                target_infra_map: target_infra_map.clone(),
-                changes: reconciled_map.diff(&target_infra_map),
-            }
-        }
-        None => {
-            // No current map, so we're initializing from scratch
-            InfraPlan {
-                target_infra_map: target_infra_map.clone(),
-                changes: target_infra_map.init(project),
-            }
-        }
+    debug!(
+        "Reconciled infrastructure map: {}",
+        serde_json::to_string(&reconciled_map)
+            .unwrap_or("Could not serialize reconciled infrastructure map".to_string())
+    );
+
+    // Use the reconciled map for diffing
+    let plan = InfraPlan {
+        target_infra_map: target_infra_map.clone(),
+        changes: reconciled_map.diff(&target_infra_map),
     };
 
     debug!(

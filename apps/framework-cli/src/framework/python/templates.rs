@@ -197,62 +197,6 @@ def run(client: MooseClient, params: QueryParams):
 
 "#;
 
-pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
-# This file is where you can define your SQL queries to shape and manipulate batches
-# of data using Blocks. Blocks can also manage materialized views to store the results of 
-# your queries for improved performance. A materialized view is the recommended approach for aggregating
-# data. For more information on the types of aggregate functions you can run on your existing data, 
-# consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
-
-from moose_lib import (
-    AggregationCreateOptions,
-    AggregationDropOptions,
-    Blocks,
-    ClickHouseEngines,
-    TableCreateOptions,
-    create_aggregation,
-    drop_aggregation,
-)
-
-teardown_queries = []
-
-setup_queries = []
-
-block = Blocks(teardown=teardown_queries, setup=setup_queries)
-"#;
-
-pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
-# This block is used to aggregate the data from the Bar table into a materialized view
-from moose_lib import (
-  Blocks
-)
-
-MV_NAME = "BarAggregated_MV" # The name of the materialized view
-
-# The query to create the materialized view, which is executed when the block is set up
-MV_QUERY = """
-CREATE MATERIALIZED VIEW BarAggregated_MV
-ENGINE = MergeTree()
-ORDER BY day_of_month
-POPULATE
-AS
-SELECT
-  toDayOfMonth(utc_timestamp) as day_of_month,
-  count(primary_key) as total_rows,
-  countIf(has_text) as rows_with_text,
-  sum(text_length) as total_text_length,
-  max(text_length) as max_text_length
-FROM Bar_0_0
-GROUP BY toDayOfMonth(utc_timestamp)
-"""
-
-# The query to drop the materialized view, which is executed when the block is torn down
-DROP_MV_QUERY = f"DROP TABLE IF EXISTS {MV_NAME}"
-
-# The block to create the materialized view
-block = Blocks(teardown=[DROP_MV_QUERY], setup=[MV_QUERY])
-"#;
-
 pub static PYTHON_BASE_SCRIPT_TEMPLATE: &str = r#"from moose_lib import task
 
 @task()

@@ -101,7 +101,7 @@ impl Topic {
             PrimitiveTypes::Function => self.name.clone(),
             PrimitiveTypes::DataModel
             // the following two possibilities are impossible
-            | PrimitiveTypes::DBBlock
+
             | PrimitiveTypes::ConsumptionAPI => {
                 // TODO have a proper version object that standardizes transformations
                 self.version.as_ref().map_or(self.name.clone(), |v| format!("{}_{}", self.name, v.as_suffix()))

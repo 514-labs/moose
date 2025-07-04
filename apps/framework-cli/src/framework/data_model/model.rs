@@ -24,7 +24,7 @@ pub struct DataModel {
 
 impl DataModel {
     // TODO this probably should be on the Table object itself which can be built from
-    // multiple sources. The Aim will be to have DB Blocks provision some tables as well.
+    // multiple sources. The aim will be to have SQL resources provision some tables as well.
     pub fn to_table(&self) -> Table {
         Table {
             name: self

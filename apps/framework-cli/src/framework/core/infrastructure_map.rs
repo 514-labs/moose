@@ -36,7 +36,7 @@
 use super::infrastructure::api_endpoint::ApiEndpoint;
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
-use super::infrastructure::olap_process::OlapProcess;
+
 use super::infrastructure::orchestration_worker::OrchestrationWorker;
 use super::infrastructure::sql_resource::SqlResource;
 use super::infrastructure::table::{Column, Table};
@@ -94,7 +94,7 @@ pub enum InfraMapError {
 
 /// Types of primitives that can be represented in the infrastructure
 ///
-/// These represent the core building blocks of the system that can be
+/// These represent the core components of the system that can be
 /// transformed into infrastructure components.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
@@ -102,8 +102,6 @@ pub enum PrimitiveTypes {
     DataModel,
     /// A function that processes data
     Function,
-    /// A database block for OLAP operations
-    DBBlock,
     /// An API for consumption of data
     ConsumptionAPI,
 }
@@ -151,7 +149,6 @@ impl PrimitiveTypes {
                 crate::proto::infrastructure_map::PrimitiveTypes::DATA_MODEL
             }
             PrimitiveTypes::Function => crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION,
-            PrimitiveTypes::DBBlock => crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK,
             PrimitiveTypes::ConsumptionAPI => {
                 crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API
             }
@@ -173,7 +170,10 @@ impl PrimitiveTypes {
                 PrimitiveTypes::DataModel
             }
             crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION => PrimitiveTypes::Function,
-            crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK => PrimitiveTypes::DBBlock,
+            crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK => {
+                // DBBlock functionality has been removed - this should not occur
+                panic!("DBBlock primitive type is no longer supported")
+            }
             crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API => {
                 PrimitiveTypes::ConsumptionAPI
             }
@@ -307,8 +307,6 @@ pub enum ProcessChange {
     TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
     /// Change to a function process
     FunctionProcess(Change<FunctionProcess>),
-    /// Change to an OLAP process
-    OlapProcess(Change<OlapProcess>),
     /// Change to a consumption API web server
     ConsumptionApiWebServer(Change<ConsumptionApiWebServer>),
     /// Change to an orchestration worker
@@ -379,10 +377,6 @@ pub struct InfrastructureMap {
     /// Collection of function processes that transform data
     pub function_processes: HashMap<String, FunctionProcess>,
 
-    /// Process handling OLAP database operations
-    // TODO change to a hashmap of processes when we have several
-    pub block_db_processes: OlapProcess,
-
     /// Web server handling consumption API endpoints
     // Not sure if we will want to change that or not in the future to be able to tell
     // the new consumption endpoints that were added or removed.
@@ -405,7 +399,7 @@ impl InfrastructureMap {
     /// Creates a new infrastructure map from a project and primitive map
     ///
     /// This is the primary constructor for creating an infrastructure map. It transforms
-    /// the high-level primitives (data models, functions, blocks, etc.) into concrete
+    /// the high-level primitives (data models, functions, etc.) into concrete
     /// infrastructure components and their relationships.
     ///
     /// The method handles complex logic like:
@@ -551,7 +545,6 @@ impl InfrastructureMap {
             tables,
             views,
             function_processes,
-            block_db_processes,
             consumption_api_web_server,
             orchestration_workers,
             sql_resources: Default::default(),
@@ -672,8 +665,6 @@ impl InfrastructureMap {
             .collect();
 
         process_changes.append(&mut function_process_changes);
-
-
 
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
@@ -1050,8 +1041,6 @@ impl InfrastructureMap {
             function_removals,
             function_updates
         );
-
-
 
         // =================================================================
         //                          Consumption Process
@@ -1514,7 +1503,6 @@ impl InfrastructureMap {
                 .map(|(k, v)| (k, OrchestrationWorker::from_proto(v)))
                 .collect(),
             consumption_api_web_server: ConsumptionApiWebServer {},
-            block_db_processes: OlapProcess {},
             sql_resources: proto
                 .sql_resources
                 .into_iter()
@@ -1729,7 +1717,6 @@ impl Default for InfrastructureMap {
             topic_to_table_sync_processes: HashMap::new(),
             topic_to_topic_sync_processes: HashMap::new(),
             function_processes: HashMap::new(),
-            block_db_processes: OlapProcess {},
             consumption_api_web_server: ConsumptionApiWebServer {},
             orchestration_workers: HashMap::new(),
             sql_resources: HashMap::new(),

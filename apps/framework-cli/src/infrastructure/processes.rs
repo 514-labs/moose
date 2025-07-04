@@ -10,12 +10,11 @@ use super::{
     stream::kafka::models::{KafkaConfig, KafkaStreamConfig},
 };
 use crate::{
-    framework::{
-        core::infrastructure_map::{Change, InfraMapError, InfrastructureMap, ProcessChange},
+    framework::core::infrastructure_map::{
+        Change, InfraMapError, InfrastructureMap, ProcessChange,
     },
     metrics::Metrics,
 };
-
 
 pub mod consumption_registry;
 pub mod cron_registry;
@@ -31,8 +30,6 @@ pub enum SyncProcessChangesError {
 
     #[error("Failed in the function registry")]
     FunctionRegistry(#[from] functions_registry::FunctionRegistryError),
-
-
 
     #[error("Failed in the consumption registry")]
     ConsumptionProcess(#[from] ConsumptionError),
@@ -166,13 +163,7 @@ pub async fn execute_changes(
                 process_registry.functions.stop(before).await?;
                 process_registry.functions.start(infra_map, after)?;
             }
-            // Olap process changes are conditional on the leader instance
-            ProcessChange::OlapProcess(Change::Added(_)) => {}
-            ProcessChange::OlapProcess(Change::Removed(_)) => {}
-            ProcessChange::OlapProcess(Change::Updated {
-                before: _,
-                after: _,
-            }) => {}
+
             ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
                 log::info!("Starting Consumption webserver process");
                 process_registry.consumption.start()?;
@@ -219,6 +210,6 @@ pub async fn execute_leader_changes(
     _process_registry: &mut ProcessRegistries,
     _changes: &[ProcessChange],
 ) -> Result<(), SyncProcessChangesError> {
-    // No leader-specific changes to process after removing blocks functionality
+    // No leader-specific changes to process
     Ok(())
 }

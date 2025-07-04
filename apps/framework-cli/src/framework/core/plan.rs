@@ -25,6 +25,7 @@ use crate::project::Project;
 use log::{debug, error, info};
 use rdkafka::error::KafkaError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// Errors that can occur during the planning process.
@@ -70,7 +71,8 @@ pub enum PlanningError {
 /// * `Result<InfrastructureMap, PlanningError>` - The reconciled infrastructure map or an error
 async fn reconcile_with_reality<T: OlapOperations>(
     project: &Project,
-    infra_map: &InfrastructureMap,
+    current_infra_map: &InfrastructureMap,
+    target_table_names: &HashSet<String>,
     olap_client: T,
 ) -> Result<InfrastructureMap, PlanningError> {
     info!("Reconciling infrastructure map with actual database state");
@@ -79,12 +81,14 @@ async fn reconcile_with_reality<T: OlapOperations>(
     let reality_checker = InfraRealityChecker::new(olap_client);
 
     // Get the discrepancies between the infra map and the actual database
-    let discrepancies = reality_checker.check_reality(project, infra_map).await?;
+    let discrepancies = reality_checker
+        .check_reality(project, current_infra_map)
+        .await?;
 
     // If there are no discrepancies, return the original map
     if discrepancies.is_empty() {
         debug!("No discrepancies found between infrastructure map and actual database state");
-        return Ok(infra_map.clone());
+        return Ok(current_infra_map.clone());
     }
 
     debug!(
@@ -94,7 +98,7 @@ async fn reconcile_with_reality<T: OlapOperations>(
     );
 
     // Clone the map so we can modify it
-    let mut reconciled_map = infra_map.clone();
+    let mut reconciled_map = current_infra_map.clone();
 
     // Remove missing tables from the map so that they can be re-created
     // if they are added to the codebase
@@ -136,6 +140,14 @@ async fn reconcile_with_reality<T: OlapOperations>(
                 // We only handle table changes for now
                 debug!("Skipping non-table change: {:?}", change);
             }
+        }
+    }
+    // Add unmapped tables
+    for unmapped_table in discrepancies.unmapped_tables {
+        if target_table_names.contains(&unmapped_table.name) {
+            reconciled_map
+                .tables
+                .insert(unmapped_table.id(), unmapped_table);
         }
     }
 
@@ -216,8 +228,17 @@ pub async fn plan_changes(
     });
 
     // Reconcile the current map with reality before diffing
-    let reconciled_map =
-        reconcile_with_reality(project, &current_map_or_empty, olap_client).await?;
+    let reconciled_map = reconcile_with_reality(
+        project,
+        &current_map_or_empty,
+        &target_infra_map
+            .tables
+            .values()
+            .map(|t| t.name.to_string())
+            .collect(),
+        olap_client,
+    )
+    .await?;
 
     debug!(
         "Reconciled infrastructure map: {}",

@@ -120,7 +120,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-4, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -171,9 +171,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [20, 22, 24]
-    defaults:
-      run:
-        working-directory: .
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -206,9 +203,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.12', '3.13']
-    defaults:
-      run:
-        working-directory: .
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -249,7 +243,7 @@ jobs:
     needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test E2E TypeScript (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-4
+    runs-on: ubuntu-latest
     # Add explicit read-only permissions
     permissions:
       contents: read
@@ -259,9 +253,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [20, 22, 24]
-    defaults:
-      run:
-        working-directory: .
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -301,7 +292,7 @@ jobs:
     needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test E2E Python (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-4
+    runs-on: ubuntu-latest
     # Add explicit read-only permissions
     permissions:
       contents: read
@@ -311,9 +302,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.12', '3.13']
-    defaults:
-      run:
-        working-directory: .
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3

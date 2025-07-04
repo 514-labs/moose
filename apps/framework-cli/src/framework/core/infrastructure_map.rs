@@ -171,14 +171,9 @@ impl PrimitiveTypes {
             }
             crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION => PrimitiveTypes::Function,
             crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK => {
-                // DBBlock functionality has been removed from Moose - gracefully ignore
-                log::warn!(
-                    "Encountered legacy DBBlock primitive type in proto data. This functionality has been removed. \
-                    Treating as DataModel to avoid panic, but this infrastructure component may not function correctly."
-                );
-                // Return DataModel as a safe fallback to prevent panic
-                // This is a temporary workaround for legacy proto data that still contains DB_BLOCK references
-                PrimitiveTypes::DataModel
+                // DBBlock functionality has been removed from Moose
+                // This should never be reached if InfrastructureMap::from_proto filtering is working correctly
+                panic!("Internal error: DBBlock primitive type reached conversion. This indicates a bug in the legacy data filtering logic.")
             }
             crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API => {
                 PrimitiveTypes::ConsumptionAPI
@@ -1471,17 +1466,38 @@ impl InfrastructureMap {
             topics: proto
                 .topics
                 .into_iter()
-                .map(|(k, v)| (k, Topic::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock topic '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, Topic::from_proto(v)))
+                    }
+                })
                 .collect(),
             api_endpoints: proto
                 .api_endpoints
                 .into_iter()
-                .map(|(k, v)| (k, ApiEndpoint::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock api_endpoint '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, ApiEndpoint::from_proto(v)))
+                    }
+                })
                 .collect(),
             tables: proto
                 .tables
                 .into_iter()
-                .map(|(k, v)| (k, Table::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock table '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, Table::from_proto(v)))
+                    }
+                })
                 .collect(),
             views: proto
                 .views
@@ -1491,17 +1507,38 @@ impl InfrastructureMap {
             topic_to_table_sync_processes: proto
                 .topic_to_table_sync_processes
                 .into_iter()
-                .map(|(k, v)| (k, TopicToTableSyncProcess::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock topic_to_table_sync_process '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, TopicToTableSyncProcess::from_proto(v)))
+                    }
+                })
                 .collect(),
             topic_to_topic_sync_processes: proto
                 .topic_to_topic_sync_processes
                 .into_iter()
-                .map(|(k, v)| (k, TopicToTopicSyncProcess::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock topic_to_topic_sync_process '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, TopicToTopicSyncProcess::from_proto(v)))
+                    }
+                })
                 .collect(),
             function_processes: proto
                 .function_processes
                 .into_iter()
-                .map(|(k, v)| (k, FunctionProcess::from_proto(v)))
+                .filter_map(|(k, v)| {
+                    if Self::is_legacy_db_block(&v.source_primitive) {
+                        log::warn!("Skipping legacy DBBlock function_process '{}' - blocks functionality has been removed", k);
+                        None
+                    } else {
+                        Some((k, FunctionProcess::from_proto(v)))
+                    }
+                })
                 .collect(),
             orchestration_workers: proto
                 .orchestration_workers
@@ -1517,6 +1554,30 @@ impl InfrastructureMap {
             // TODO: add proto
             workflows: HashMap::new(),
         })
+    }
+
+    /// Helper function to check if a proto component has legacy DBBlock primitive type
+    ///
+    /// # Arguments
+    /// * `source_primitive` - MessageField proto primitive signature to check
+    ///
+    /// # Returns
+    /// True if the component has DBBlock primitive type, false otherwise
+    fn is_legacy_db_block(
+        source_primitive: &protobuf::MessageField<
+            crate::proto::infrastructure_map::PrimitiveSignature,
+        >,
+    ) -> bool {
+        source_primitive
+            .as_ref()
+            .and_then(|sp| sp.primitive_type.enum_value().ok())
+            .map(|pt| {
+                matches!(
+                    pt,
+                    crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK
+                )
+            })
+            .unwrap_or(false)
     }
 
     /// Adds a table to the infrastructure map

@@ -70,17 +70,18 @@ I have successfully removed:
 2. **`OlapProcess` entirely** - it was dead code used exclusively for blocks
 3. **All 67 files and 120+ code references** related to blocks
 4. **Fixed all compilation errors** and the project now builds successfully
-5. **Added graceful handling for legacy DBBlock proto data** - logs warning and continues instead of panicking
+5. **Added graceful filtering of legacy DBBlock proto data** - cleanly skips components instead of panicking
 
 ## 🔧 **Graceful Legacy Data Handling**
 
 When encountering legacy protobuf data that still contains `DBBlock` references:
-- **Logs a warning** instead of panicking
-- **Continues processing** by treating DBBlock as DataModel
-- **Maintains backward compatibility** with existing proto data
+- **Filters out DBBlock components entirely** instead of converting them
+- **Logs clear warnings** for each skipped component
+- **Maintains backward compatibility** with existing proto data  
 - **Prevents system crashes** during migration periods
+- **No confusion from mismatched component types** - legacy blocks are simply ignored
 
-The system now gracefully handles the transition from blocks-enabled to blocks-disabled infrastructure without breaking existing deployments.
+The system now gracefully handles the transition from blocks-enabled to blocks-disabled infrastructure by cleanly skipping legacy blocks infrastructure rather than trying to convert it.
 
 ## 🎯 **Key Findings**
 

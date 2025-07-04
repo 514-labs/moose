@@ -43,7 +43,6 @@ export interface MooseSessionTelemetry {
   ingestAvgLatencyInMs: number;
   consumedRequestCount: number;
   consumedAvgLatencyInMs: number;
-  blocksCount: number;
   streamingToOLAPEventSyncedCount: number;
   streamingToOLAPEventSyncedBytesCount: number;
   streamingFunctionsInputEventsProcessedCount: number;

@@ -45,39 +45,7 @@ export default function run(source: {{source}}): {{destination}} | null {
 
 "#;
 
-pub static TS_BASE_BLOCKS_SAMPLE: &str = r#"
-// Example Block that creates a materialized view that aggregates daily statistics from Bar_0_0
 
-import { Blocks } from "@514labs/moose-lib"; // Import Blocks to structure setup/teardown queries
-
-const MV_NAME = "BarAggregated_MV";
-
-const MV_QUERY = `
-CREATE MATERIALIZED VIEW ${MV_NAME}
-ENGINE = MergeTree()
-ORDER BY dayOfMonth
-POPULATE
-AS
-SELECT
-  toDayOfMonth(utcTimestamp) as dayOfMonth,
-  count(primaryKey) as totalRows,
-  countIf(hasText) as rowsWithText,
-  sum(textLength) as totalTextLength,
-  max(textLength) as maxTextLength
-FROM Bar_0_0
-GROUP BY toDayOfMonth(utcTimestamp)
-`;
-
-const DROP_MV_QUERY = `
-DROP TABLE IF EXISTS ${MV_NAME}
-`;
-
-export default {
-  teardown: [DROP_MV_QUERY], // SQL to drop the materialized view if it exists
-  setup: [MV_QUERY], // SQL to create a materialized view that aggregates daily statistics from Bar_0_0
-} as Blocks;
-
-"#;
 
 pub static TS_BASE_APIS_SAMPLE: &str = r#"
 import {
@@ -125,23 +93,7 @@ export default createConsumptionApi<QueryParams>(
 );
 "#;
 
-pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
-// This file is where you can define your SQL queries to shape and manipulate batches
-// of data using Blocks. There is a collection of helper functions to create SQL queries
-// within the @514labs/moose-lib package. 
 
-// Blocks can also manage materialized views to store the results of your queries for 
-// improved performance. A materialized view is the recommended approach for aggregating
-// data. For more information on the types of aggregate functions you can run on your existing data, 
-// consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
-
-import { Blocks } from "@514labs/moose-lib";
-
-export default {
-  teardown: [],
-  setup: [],
-} as Blocks;
-"#;
 
 pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
 import { createConsumptionApi } from "@514labs/moose-lib";

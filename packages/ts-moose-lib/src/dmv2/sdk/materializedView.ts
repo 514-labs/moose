@@ -1,10 +1,4 @@
-import {
-  ClickHouseEngines,
-  createMaterializedView,
-  dropView,
-  populateTable,
-} from "../../blocks/helpers";
-import { Sql, toStaticQuery } from "../../sqlHelpers";
+import { Sql, toStaticQuery, ClickHouseEngines, createMaterializedView, dropView, populateTable } from "../../sqlHelpers";
 import { OlapTable } from "./olapTable";
 import { SqlResource } from "./sqlResource";
 import { View } from "./view";

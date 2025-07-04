@@ -39,7 +39,7 @@ use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::utilities::constants::BLOCKS_DIR;
+
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::ENVIRONMENT_VARIABLE_PREFIX;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
@@ -392,17 +392,7 @@ impl Project {
         functions_dir
     }
 
-    /// Returns the path to the blocks directory
-    pub fn blocks_dir(&self) -> PathBuf {
-        let blocks_dir = self.app_dir().join(BLOCKS_DIR);
 
-        if !blocks_dir.exists() {
-            std::fs::create_dir_all(&blocks_dir).expect("Failed to create blocks directory");
-        }
-
-        debug!("Blocks dir: {:?}", blocks_dir);
-        blocks_dir
-    }
 
     /// Returns the path to the consumption directory
     pub fn consumption_dir(&self) -> PathBuf {

@@ -183,3 +183,50 @@ export const mapToClickHouseType = (value: Value) => {
 function emptyIfUndefined(value: string | undefined): string {
   return value === undefined ? "" : value;
 }
+
+export enum ClickHouseEngines {
+  MergeTree = "MergeTree",
+  ReplacingMergeTree = "ReplacingMergeTree",
+  SummingMergeTree = "SummingMergeTree",
+  AggregatingMergeTree = "AggregatingMergeTree",
+  CollapsingMergeTree = "CollapsingMergeTree",
+  VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree",
+  GraphiteMergeTree = "GraphiteMergeTree",
+}
+
+interface MaterializedViewCreateOptions {
+  name: string;
+  destinationTable: string;
+  select: string;
+}
+
+interface PopulateTableOptions {
+  destinationTable: string;
+  select: string;
+}
+
+/**
+ * Drops an existing view if it exists.
+ */
+export function dropView(name: string): string {
+  return `DROP VIEW IF EXISTS ${name}`.trim();
+}
+
+/**
+ * Creates a materialized view.
+ */
+export function createMaterializedView(
+  options: MaterializedViewCreateOptions,
+): string {
+  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
+        TO ${options.destinationTable}
+        AS ${options.select}`.trim();
+}
+
+/**
+ * Populates a table with data.
+ */
+export function populateTable(options: PopulateTableOptions): string {
+  return `INSERT INTO ${options.destinationTable}
+          ${options.select}`.trim();
+}

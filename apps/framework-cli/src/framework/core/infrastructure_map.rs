@@ -530,9 +530,6 @@ impl InfrastructureMap {
             }
         }
 
-        // TODO update here when we have several blocks processes
-        let block_db_processes = OlapProcess::from_blocks(&primitive_map.blocks);
-
         // consumption api endpoints
         let consumption_api_web_server = ConsumptionApiWebServer {};
         for api_endpoint in primitive_map.consumption.endpoint_files {
@@ -676,10 +673,7 @@ impl InfrastructureMap {
 
         process_changes.append(&mut function_process_changes);
 
-        // TODO Change this when we have multiple processes for blocks
-        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
-            Box::new(OlapProcess {}),
-        )));
+
 
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
@@ -1057,24 +1051,7 @@ impl InfrastructureMap {
             function_updates
         );
 
-        // =================================================================
-        //                             Blocks Processes
-        // =================================================================
-        log::info!("Analyzing changes in OLAP Processes...");
 
-        // Until we refactor to have multiple processes, we will consider that we need to restart
-        // the process all the times and the blocks changes all the time.
-        // Once we do the other refactor, we will be able to compare the changes and only restart
-        // the process if there are changes
-
-        // currently we assume there is always a change and restart the processes
-        log::debug!("OLAP Process updated (assumed for now)");
-        changes.processes_changes.push(ProcessChange::OlapProcess(
-            Change::<OlapProcess>::Updated {
-                before: Box::new(OlapProcess {}),
-                after: Box::new(OlapProcess {}),
-            },
-        ));
 
         // =================================================================
         //                          Consumption Process

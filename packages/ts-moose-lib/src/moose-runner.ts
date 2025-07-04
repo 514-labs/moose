@@ -40,7 +40,6 @@ if (
 }
 
 import { loadIndex } from "./dmv2/internal";
-import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
@@ -74,40 +73,6 @@ program
   .action((targetModel) => {
     runExportSerializer(targetModel);
   });
-
-program
-  .command("blocks")
-  .description("Run blocks")
-  .argument("<blocks-dir>", "Directory containing blocks")
-  .argument("<clickhouse-db>", "Clickhouse database name")
-  .argument("<clickhouse-host>", "Clickhouse host")
-  .argument("<clickhouse-port>", "Clickhouse port")
-  .argument("<clickhouse-username>", "Clickhouse username")
-  .argument("<clickhouse-password>", "Clickhouse password")
-  .option("--clickhouse-use-ssl", "Use SSL for Clickhouse connection", false)
-  .action(
-    (
-      blocksDir,
-      clickhouseDb,
-      clickhouseHost,
-      clickhousePort,
-      clickhouseUsername,
-      clickhousePassword,
-      options,
-    ) => {
-      runBlocks({
-        blocksDir,
-        clickhouseConfig: {
-          database: clickhouseDb,
-          host: clickhouseHost,
-          port: clickhousePort,
-          username: clickhouseUsername,
-          password: clickhousePassword,
-          useSSL: options.clickhouseUseSsl,
-        },
-      });
-    },
-  );
 
 program
   .command("consumption-apis")

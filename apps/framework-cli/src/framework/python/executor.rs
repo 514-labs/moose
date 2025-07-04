@@ -29,7 +29,6 @@ impl PythonSerializers {
 // TODO: move to PythonCommands
 #[derive(Debug, Clone)]
 pub enum PythonProgram {
-    BlocksRunner { args: Vec<String> },
     ConsumptionRunner { args: Vec<String> },
     LoadApiParam { args: Vec<String> },
     OrchestrationWorker { args: Vec<String> },
@@ -41,7 +40,6 @@ pub enum PythonCommand {
     StreamingFunctionRunner { args: Vec<String> },
 }
 
-pub static BLOCKS_RUNNER: &str = include_str!("wrappers/blocks_runner.py");
 pub static CONSUMPTION_RUNNER: &str = include_str!("wrappers/consumption_runner.py");
 pub static LOAD_API_PARAMS: &str = include_str!("wrappers/load_api_params.py");
 pub static ORCHESTRATION_WORKER: &str = include_str!("wrappers/scripts/worker-main.py");
@@ -109,7 +107,6 @@ pub fn run_python_program(
     program: PythonProgram,
 ) -> Result<Child, std::io::Error> {
     let (get_args, program_string) = match program {
-        PythonProgram::BlocksRunner { args } => (args, BLOCKS_RUNNER),
         PythonProgram::ConsumptionRunner { args } => (args, CONSUMPTION_RUNNER),
         PythonProgram::LoadApiParam { args } => (args, LOAD_API_PARAMS),
         PythonProgram::OrchestrationWorker { args } => (args, ORCHESTRATION_WORKER),

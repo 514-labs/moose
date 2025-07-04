@@ -11,13 +11,12 @@ use super::{
 };
 use crate::{
     framework::{
-        blocks::model::BlocksError,
         core::infrastructure_map::{Change, InfraMapError, InfrastructureMap, ProcessChange},
     },
     metrics::Metrics,
 };
 
-pub mod blocks_registry;
+
 pub mod consumption_registry;
 pub mod cron_registry;
 pub mod functions_registry;
@@ -33,8 +32,7 @@ pub enum SyncProcessChangesError {
     #[error("Failed in the function registry")]
     FunctionRegistry(#[from] functions_registry::FunctionRegistryError),
 
-    #[error("Failed in the blocks registry")]
-    OlapProcess(#[from] BlocksError),
+
 
     #[error("Failed in the consumption registry")]
     ConsumptionProcess(#[from] ConsumptionError),
@@ -218,27 +216,9 @@ pub async fn execute_changes(
 
 /// This method executes changes that are only allowed on the leader instance.
 pub async fn execute_leader_changes(
-    process_registry: &mut ProcessRegistries,
-    changes: &[ProcessChange],
+    _process_registry: &mut ProcessRegistries,
+    _changes: &[ProcessChange],
 ) -> Result<(), SyncProcessChangesError> {
-    for change in changes.iter() {
-        match (change, &mut process_registry.blocks) {
-            (ProcessChange::OlapProcess(Change::Added(olap_process)), Some(blocks)) => {
-                log::info!("Starting Blocks process: {:?}", olap_process.id());
-                blocks.start(olap_process)?;
-            }
-            (ProcessChange::OlapProcess(Change::Removed(olap_process)), Some(blocks)) => {
-                log::info!("Stopping Blocks process: {:?}", olap_process.id());
-                blocks.stop(olap_process).await?;
-            }
-            (ProcessChange::OlapProcess(Change::Updated { before, after }), Some(blocks)) => {
-                log::info!("Updating Blocks process: {:?}", before.id());
-                blocks.stop(before).await?;
-                blocks.start(after)?;
-            }
-            _ => {}
-        }
-    }
-
+    // No leader-specific changes to process after removing blocks functionality
     Ok(())
 }

@@ -118,7 +118,6 @@ pub struct Statistics {
     pub http_consumed_latency_sum_ms: Counter,
     pub http_consumed_bytes: Family<HTTPLabel, Counter>,
     pub http_to_topic_event_count: Family<MessagesInCounterLabels, Counter>,
-    pub blocks_count: Gauge,
     pub topic_to_olap_event_count: Family<MessagesOutCounterLabels, Counter>,
     pub topic_to_olap_event_total_count: Counter,
     pub topic_to_olap_bytes_count: Family<MessagesOutCounterLabels, Counter>,
@@ -211,7 +210,6 @@ impl Metrics {
             streaming_functions_out_event_total_count: Counter::default(),
             streaming_functions_processed_bytes_total_count: Counter::default(),
             topic_to_olap_event_total_count: Counter::default(),
-            blocks_count: Gauge::default(),
             topic_to_olap_bytes_total_count: Counter::default(),
             http_latency_histogram_aggregate: Histogram::new(
                 [
@@ -534,7 +532,7 @@ impl Metrics {
                         "ingestAvgLatencyInMs": ingested_avg_latency_in_ms,
                         "consumedRequestCount": cloned_data_ref.http_consumed_request_count.get(),
                         "consumedAvgLatencyInMs": consumed_avg_latency_in_ms,
-                        "blocksCount": cloned_data_ref.blocks_count.get(),
+
                         "streamingToOLAPEventSyncedCount": cloned_data_ref.topic_to_olap_event_total_count.get(),
                         "streamingToOLAPEventSyncedBytesCount": cloned_data_ref.topic_to_olap_bytes_total_count.get(),
                         "streamingFunctionsInputEventsProcessedCount": cloned_data_ref.streaming_functions_in_event_total_count.get(),

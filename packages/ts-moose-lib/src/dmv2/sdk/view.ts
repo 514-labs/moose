@@ -1,5 +1,4 @@
-import { dropView } from "../../blocks/helpers";
-import { Sql, toStaticQuery } from "../../sqlHelpers";
+import { Sql, toStaticQuery, dropView } from "../../sqlHelpers";
 import { OlapTable } from "./olapTable";
 import { SqlResource } from "./sqlResource";
 

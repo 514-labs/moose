@@ -10,9 +10,6 @@
 export * from "./datamodels/brain";
 export * from "./datamodels/models";
 
-// Materialized Views and Aggregations
-export * from "./blocks/DailyActiveUsers";
-
 // Consumption APIs
 export * from "./apis/getBrainBySessionId";
 export * from "./apis/getMostActiveBrainwaves";
@@ -27,7 +24,7 @@ import "./functions/UserActivity__ParsedActivity";
  *
  * ✅ Data Models: Converted to DMV2 IngestPipeline pattern for complete data flow management
  * ✅ Streaming Functions: Migrated to pipeline.stream!.addTransform pattern
- * ✅ Blocks/Aggregations: Converted to MaterializedView with pipeline table references
+ * ✅ Aggregations: Converted to MaterializedView with pipeline table references
  * ✅ APIs: Migrated to ConsumptionApi classes with type safety
  * ✅ Infrastructure: Single source of truth through IngestPipeline declarations
  *

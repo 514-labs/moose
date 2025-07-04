@@ -373,18 +373,39 @@ mod tests {
         assert_eq!(discrepancies.unmapped_tables.len(), 1);
         assert_eq!(discrepancies.unmapped_tables[0].name, "unmapped_table");
 
-        // Create another mock client for the reconciliation
-        let reconcile_mock_client = MockOlapClient {
-            tables: vec![table.clone()],
-        };
+        let mut target_maps = HashSet::new();
 
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
-            .await
-            .unwrap();
+        let reconciled = reconcile_with_reality(
+            &project,
+            &infra_map,
+            &target_maps,
+            MockOlapClient {
+                tables: vec![table.clone()],
+            },
+        )
+        .await
+        .unwrap();
 
         // The reconciled map should not contain the unmapped table (ignoring unmapped tables)
         assert_eq!(reconciled.tables.len(), 0);
+
+        target_maps.insert("unmapped_table".to_string());
+
+        // Reconcile the infrastructure map
+        let reconciled = reconcile_with_reality(
+            &project,
+            &infra_map,
+            &target_maps,
+            MockOlapClient {
+                tables: vec![table.clone()],
+            },
+        )
+        .await
+        .unwrap();
+
+        // The reconciled map should not contain the unmapped table (ignoring unmapped tables)
+        assert_eq!(reconciled.tables.len(), 1);
     }
 
     #[tokio::test]
@@ -418,10 +439,17 @@ mod tests {
         // Create another mock client for the reconciliation
         let reconcile_mock_client = MockOlapClient { tables: vec![] };
 
+        let target_table_names = HashSet::new();
+
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
-            .await
-            .unwrap();
+        let reconciled = reconcile_with_reality(
+            &project,
+            &infra_map,
+            &target_table_names,
+            reconcile_mock_client,
+        )
+        .await
+        .unwrap();
 
         // The reconciled map should have no tables
         assert_eq!(reconciled.tables.len(), 0);
@@ -475,10 +503,16 @@ mod tests {
             tables: vec![actual_table.clone()],
         };
 
+        let target_table_names = HashSet::new();
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
-            .await
-            .unwrap();
+        let reconciled = reconcile_with_reality(
+            &project,
+            &infra_map,
+            &target_table_names,
+            reconcile_mock_client,
+        )
+        .await
+        .unwrap();
 
         // The reconciled map should have one table with the extra column
         assert_eq!(reconciled.tables.len(), 1);
@@ -524,10 +558,16 @@ mod tests {
             tables: vec![table.clone()],
         };
 
+        let target_table_names = HashSet::new();
         // Reconcile the infrastructure map
-        let reconciled = reconcile_with_reality(&project, &infra_map, reconcile_mock_client)
-            .await
-            .unwrap();
+        let reconciled = reconcile_with_reality(
+            &project,
+            &infra_map,
+            &target_table_names,
+            reconcile_mock_client,
+        )
+        .await
+        .unwrap();
 
         // The reconciled map should be unchanged
         assert_eq!(reconciled.tables.len(), 1);

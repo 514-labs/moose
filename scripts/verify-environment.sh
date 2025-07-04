@@ -3,7 +3,7 @@
 # Cursor Background Agent Environment Verification Script
 # This script verifies that all required dependencies are installed and working
 
-set -e
+set -euo pipefail
 
 echo "🔍 Verifying Cursor Background Agent Environment..."
 echo "=================================================="

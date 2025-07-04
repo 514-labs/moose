@@ -138,6 +138,7 @@ echo
 echo "🌐 Node.js Environment:"
 check_node_version || OVERALL_STATUS=1
 check_command "npm" "--version" "npm" || OVERALL_STATUS=1
+check_command "npx" "--version" "npx" || OVERALL_STATUS=1
 check_pnpm_version || OVERALL_STATUS=1
 echo
 
@@ -208,6 +209,7 @@ echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"
 echo "3. Run 'cargo build' to build the Rust CLI"
 echo "4. Run 'pnpm build' to build TypeScript packages"
 echo "5. Run 'moose dev' to start development with Docker containers"
-echo "6. Check .cursor/Dockerfile for complete environment setup"
+echo "6. Configure GitHub token in .cursor/mcp.json for PR comment monitoring"
+echo "7. Check .cursor/Dockerfile for complete environment setup"
 
 exit $OVERALL_STATUS

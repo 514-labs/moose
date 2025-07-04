@@ -1,5 +1,8 @@
 FROM ubuntu:22.04
 
+# Set non-interactive mode to prevent prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -46,10 +49,14 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python 3.12 (Ubuntu 22.04 comes with Python 3.10, we need 3.12)
-RUN apt-get update && apt-get install -y software-properties-common \
+# Set timezone non-interactively to avoid hanging
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apt-get update && apt-get install -y software-properties-common \
     && add-apt-repository ppa:deadsnakes/ppa -y \
     && apt-get update \
-    && apt-get install -y python3.12 python3.12-dev python3.12-venv python3.12-distutils \
+    && apt-get install -y python3.12 python3.12-dev python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Make python3.12 the default python3

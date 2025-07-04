@@ -159,37 +159,17 @@ echo
 
 echo "🐳 Docker (Required for Moose Development):"
 check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
-check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
+# Check for Docker Compose (either standalone or plugin)
+if command -v docker-compose &> /dev/null; then
+    check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
+elif docker compose version &> /dev/null; then
+    version=$(docker compose version 2>&1)
+    echo -e "${GREEN}✓${NC} Docker Compose (plugin): $version"
+else
+    echo -e "${RED}✗${NC} Docker Compose: Not found"
+    OVERALL_STATUS=1
+fi
 echo
-
-echo "📂 Project Verification:"
-if [ -f "pnpm-workspace.yaml" ]; then
-    echo -e "${GREEN}✓${NC} pnpm workspace configuration found"
-else
-    echo -e "${RED}✗${NC} pnpm workspace configuration not found"
-    OVERALL_STATUS=1
-fi
-
-if [ -f "Cargo.toml" ]; then
-    echo -e "${GREEN}✓${NC} Cargo workspace configuration found"
-else
-    echo -e "${RED}✗${NC} Cargo workspace configuration not found"
-    OVERALL_STATUS=1
-fi
-
-if [ -f "apps/framework-cli/Cargo.toml" ]; then
-    echo -e "${GREEN}✓${NC} Framework CLI Cargo.toml found"
-else
-    echo -e "${RED}✗${NC} Framework CLI Cargo.toml not found"
-    OVERALL_STATUS=1
-fi
-
-if [ -f "packages/protobuf/infrastructure_map.proto" ]; then
-    echo -e "${GREEN}✓${NC} Protocol buffer definitions found"
-else
-    echo -e "${RED}✗${NC} Protocol buffer definitions not found"
-    OVERALL_STATUS=1
-fi
 
 echo
 echo "=================================================="

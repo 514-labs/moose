@@ -102,10 +102,6 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
-<<<<<<< HEAD
-
-=======
->>>>>>> bebedac7d4bdca3d6ec604be041ea7b79a1f7dc5
 use crate::project::Project;
 
 use super::super::metrics::Metrics;

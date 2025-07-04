@@ -156,7 +156,12 @@ check_command "make" "--version" "Make" || OVERALL_STATUS=1
 check_command "pkg-config" "--version" "pkg-config" || OVERALL_STATUS=1
 echo
 
-echo "📦 Project Verification:"
+echo "� Docker (Required for Moose Development):"
+check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
+check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
+echo
+
+echo "� Project Verification:"
 if [ -f "pnpm-workspace.yaml" ]; then
     echo -e "${GREEN}✓${NC} pnpm workspace configuration found"
 else
@@ -198,9 +203,11 @@ fi
 
 echo
 echo "🚀 Next Steps:"
-echo "1. Run 'pnpm install --frozen-lockfile' to install project dependencies"
-echo "2. Run 'cargo build' to build the Rust CLI"
-echo "3. Run 'pnpm build' to build TypeScript packages"
-echo "4. Check .cursor/Dockerfile for complete environment setup"
+echo "1. Ensure Docker is running (required for 'moose dev')"
+echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"
+echo "3. Run 'cargo build' to build the Rust CLI"
+echo "4. Run 'pnpm build' to build TypeScript packages"
+echo "5. Run 'moose dev' to start development with Docker containers"
+echo "6. Check .cursor/Dockerfile for complete environment setup"
 
 exit $OVERALL_STATUS

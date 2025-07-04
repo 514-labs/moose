@@ -31,5 +31,6 @@ setup(
         "redis>=6.2.0",
         "humanfriendly>=10.0",
         "clickhouse_connect>=0.7.16",
+        "requests>=2.32.3",
     ],
 )

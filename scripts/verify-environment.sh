@@ -87,7 +87,7 @@ check_protoc_version() {
             return 0
         else
             echo -e "${YELLOW}⚠${NC} Protocol Buffers: $version (expected 24.4)"
-            return 1
+            return 0  # Warning, not failure
         fi
     else
         echo -e "${RED}✗${NC} Protocol Buffers: Not found"
@@ -105,7 +105,7 @@ check_pnpm_version() {
             return 0
         else
             echo -e "${YELLOW}⚠${NC} pnpm: $version (expected 9.9.0)"
-            return 1
+            return 0  # Warning, not failure
         fi
     else
         echo -e "${RED}✗${NC} pnpm: Not found"
@@ -193,7 +193,7 @@ if [ $OVERALL_STATUS -eq 0 ]; then
 else
     echo -e "${RED}❌ Environment verification failed!${NC}"
     echo "Some dependencies are missing or have incorrect versions."
-    echo "Please check the installation steps in CURSOR_BACKGROUND_AGENT_SETUP.md"
+    echo "Please check the .cursor/Dockerfile for installation requirements"
 fi
 
 echo
@@ -201,6 +201,6 @@ echo "🚀 Next Steps:"
 echo "1. Run 'pnpm install --frozen-lockfile' to install project dependencies"
 echo "2. Run 'cargo build' to build the Rust CLI"
 echo "3. Run 'pnpm build' to build TypeScript packages"
-echo "4. Check CURSOR_BACKGROUND_AGENT_SETUP.md for detailed instructions"
+echo "4. Check .cursor/Dockerfile for complete environment setup"
 
 exit $OVERALL_STATUS

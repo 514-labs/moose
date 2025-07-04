@@ -251,16 +251,6 @@ async fn manage_leadership_lock(
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
-        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
-
-        tokio::spawn(async move {
-            let result = leadership_tasks().await;
-            if let Err(e) = result {
-                error!("<RedisClient> Error executing leadership tasks: {}", e);
-            }
-            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-        });
-
         if let Err(e) = redis_client.broadcast_message("leader.new").await {
             error!("Failed to broadcast new leader message: {}", e);
         }
@@ -268,14 +258,6 @@ async fn manage_leadership_lock(
         // Lost leadership, stop leadership tasks
         IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
-    Ok(())
-}
-
-async fn leadership_tasks() -> Result<(), anyhow::Error> {
-    // Leadership tasks for DDL migrations and OLAP operations
-    // (The actual DDL and OLAP leadership work is handled in execute_initial_infra_change
-    // and execute_leader_changes via the has_lock check)
-    info!("<Leadership> Leadership tasks completed (DDL/OLAP operations handled elsewhere)");
     Ok(())
 }
 

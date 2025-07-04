@@ -840,7 +840,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -905,7 +905,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -920,7 +920,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1006,7 +1006,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1021,7 +1021,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1127,7 +1127,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1274,7 +1274,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1288,7 +1288,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1302,7 +1302,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1384,7 +1384,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1398,7 +1398,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1412,7 +1412,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1426,7 +1426,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1440,7 +1440,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1585,7 +1585,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1600,7 +1600,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1713,7 +1713,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1728,7 +1728,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1861,7 +1861,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -1875,7 +1875,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -2072,7 +2072,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -2168,7 +2168,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -2273,7 +2273,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };
@@ -2306,7 +2306,7 @@ mod tests {
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
-                primitive_type: PrimitiveTypes::DBBlock,
+                primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
         };

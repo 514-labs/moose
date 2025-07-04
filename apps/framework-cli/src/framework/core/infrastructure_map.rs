@@ -171,8 +171,14 @@ impl PrimitiveTypes {
             }
             crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION => PrimitiveTypes::Function,
             crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK => {
-                // DBBlock functionality has been removed - this should not occur
-                panic!("DBBlock primitive type is no longer supported")
+                // DBBlock functionality has been removed from Moose - gracefully ignore
+                log::warn!(
+                    "Encountered legacy DBBlock primitive type in proto data. This functionality has been removed. \
+                    Treating as DataModel to avoid panic, but this infrastructure component may not function correctly."
+                );
+                // Return DataModel as a safe fallback to prevent panic
+                // This is a temporary workaround for legacy proto data that still contains DB_BLOCK references
+                PrimitiveTypes::DataModel
             }
             crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API => {
                 PrimitiveTypes::ConsumptionAPI

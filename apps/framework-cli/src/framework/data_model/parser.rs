@@ -36,7 +36,8 @@ pub fn parse_data_model_file(
     // TODO - Remove this if when we have deprecated v0.3 of the internal deployment
     if !file_path
         .file_name()
-        .is_some_and(|file_name| file_name.to_str().unwrap().contains("generated"))
+        .and_then(|n| n.to_str())
+        .is_some_and(|s| s.contains("generated"))
     {
         if let Some(ext) = file_path.extension() {
             match ext.to_str() {

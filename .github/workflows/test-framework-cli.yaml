@@ -107,20 +107,20 @@ jobs:
       - name: Run cargo Build in release mode
         run: cargo build --release --locked
 
-  test-cli-macos:
+  test-cli:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test CLI (MacOS, Node ${{ matrix.node-version }})
+    name: Test CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     # Add explicit read-only permissions
     permissions:
       contents: read
     env:
       RUST_BACKTRACE: full
-    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22, 24]
+        os: [ubuntu-4, macos-latest]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -139,59 +139,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
-
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Run pnpm install
-        run: pnpm install --filter=@repo/scripts # for package-templates.js
-
-      - name: Run Tests
-        run: cargo test
-        env:
-          MOOSE_TELEMETRY_ENABLED: false
-
-      - name: Inspect Logs
-        if: always()
-        run: |
-          cat ~/.moose/*-cli.log
-
-  test-cli-ubuntu:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test CLI (Ubuntu, Node ${{ matrix.node-version }})
-    runs-on: ubuntu-4
-    # Add explicit read-only permissions
-    permissions:
-      contents: read
-    env:
-      RUST_BACKTRACE: full
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20, 22, 24]
-    steps:
-      - name: Install Protoc (Needed for Temporal)
-        uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          version: "23.x"
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - uses: pnpm/action-setup@v4
-
-      - name: Install node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -257,7 +205,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.12', '3.13']
     defaults:
       run:
         working-directory: .
@@ -282,7 +230,7 @@ jobs:
           MOOSE_TELEMETRY_ENABLED: false
 
   test-e2e:
-    needs: [detect-changes, check, test-cli-ubuntu, test-ts-moose-lib, test-py-moose-lib]
+    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test E2E (Node ${{ matrix.node-version }})
     runs-on: ubuntu-4
@@ -371,7 +319,7 @@ jobs:
   # Final status check that depends on all jobs
   changes:
     runs-on: ubuntu-latest
-    needs: [detect-changes, check, test-cli-macos, test-cli-ubuntu, test-ts-moose-lib, test-py-moose-lib, test-e2e, lints]
+    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib, test-e2e, lints]
     if: always()
     # Add explicit read-only permissions
     permissions:
@@ -390,8 +338,7 @@ jobs:
 
           # Check if any required jobs failed
           if [[ "${{ needs.check.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-cli-macos.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-cli-ubuntu.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-cli.result }}" == "failure" ]] || \
              [[ "${{ needs.test-ts-moose-lib.result }}" == "failure" ]] || \
              [[ "${{ needs.test-py-moose-lib.result }}" == "failure" ]] || \
              [[ "${{ needs.test-e2e.result }}" == "failure" ]] || \
@@ -401,8 +348,7 @@ jobs:
           fi
 
           if [[ "${{ needs.check.result }}" == "success" ]] && \
-             [[ "${{ needs.test-cli-macos.result }}" == "success" ]] && \
-             [[ "${{ needs.test-cli-ubuntu.result }}" == "success" ]] && \
+             [[ "${{ needs.test-cli.result }}" == "success" ]] && \
              [[ "${{ needs.test-ts-moose-lib.result }}" == "success" ]] && \
              [[ "${{ needs.test-py-moose-lib.result }}" == "success" ]] && \
              [[ "${{ needs.test-e2e.result }}" == "success" ]] && \

@@ -209,8 +209,6 @@ echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"
 echo "3. Run 'cargo build' to build the Rust CLI"
 echo "4. Run 'pnpm build' to build TypeScript packages"
 echo "5. Run 'moose dev' to start development with Docker containers"
-echo "6. Check GitHub authentication: ./scripts/check-github-auth.sh"
-echo "7. Setup GitHub MCP: ./scripts/setup-github-mcp.sh"
-echo "8. Check .cursor/Dockerfile for complete environment setup"
+echo "6. Check .cursor/Dockerfile for complete environment setup"
 
 exit $OVERALL_STATUS

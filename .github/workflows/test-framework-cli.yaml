@@ -199,10 +199,14 @@ jobs:
     # Add explicit read-only permissions
     permissions:
       contents: read
+    # Override the global working directory for this job
+    defaults:
+      run:
+        working-directory: .
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.13']
+        python-version: ["3.12", "3.13"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -240,7 +244,8 @@ jobs:
           MOOSE_TELEMETRY_ENABLED: false
 
   test-e2e-typescript:
-    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
+    needs:
+      [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test E2E TypeScript (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
@@ -289,7 +294,8 @@ jobs:
           cat ~/.moose/*-cli.log
 
   test-e2e-python:
-    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
+    needs:
+      [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
     if: needs.detect-changes.outputs.should_run == 'true'
     name: Test E2E Python (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -301,7 +307,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.13']
+        python-version: ["3.12", "3.13"]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -383,7 +389,17 @@ jobs:
   # Final status check that depends on all jobs
   changes:
     runs-on: ubuntu-latest
-    needs: [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib, test-e2e-typescript, test-e2e-python, lints]
+    needs:
+      [
+        detect-changes,
+        check,
+        test-cli,
+        test-ts-moose-lib,
+        test-py-moose-lib,
+        test-e2e-typescript,
+        test-e2e-python,
+        lints,
+      ]
     if: always()
     # Add explicit read-only permissions
     permissions:

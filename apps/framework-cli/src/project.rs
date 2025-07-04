@@ -27,7 +27,7 @@ use crate::framework::streaming::loader::parse_streaming_function;
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
-use crate::infrastructure::processes::cron_registry::CronJob;
+
 use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 
@@ -168,9 +168,7 @@ pub struct Project {
     /// Authentication configuration
     #[serde(default)]
     pub authentication: AuthenticationConfig,
-    /// List of configured cron jobs
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cron_jobs: Vec<CronJob>,
+
     /// Feature flags
     #[serde(default)]
     pub features: ProjectFeatures,
@@ -252,7 +250,7 @@ impl Project {
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
             jwt: None,
-            cron_jobs: Vec::new(),
+
             features: Default::default(),
             authentication: AuthenticationConfig::default(),
         }

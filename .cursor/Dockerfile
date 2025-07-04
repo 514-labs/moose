@@ -88,7 +88,8 @@ WORKDIR /workspace
 
 # Copy and run verification script
 COPY scripts/verify-environment.sh /tmp/verify-environment.sh
-RUN chmod +x /tmp/verify-environment.sh
+RUN chmod +x /tmp/verify-environment.sh \
+    && /tmp/verify-environment.sh
 
 # Set up environment
 RUN echo 'export PATH="/root/.cargo/bin:$PATH"' >> /root/.bashrc \

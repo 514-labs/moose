@@ -73,7 +73,7 @@ pub struct TemporalConfig {
     #[serde(default = "default_temporal_port")]
     pub temporal_port: u16,
     #[serde(default = "default_temporal_scheme")]
-    pub temporal_scheme: Option<String>,
+    pub temporal_scheme: Option<TemporalScheme>,
     #[serde(default = "default_temporal_version")]
     pub temporal_version: String,
     #[serde(default = "default_admin_tools_version")]

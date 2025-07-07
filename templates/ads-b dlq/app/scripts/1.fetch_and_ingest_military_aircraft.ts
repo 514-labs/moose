@@ -1,55 +1,11 @@
 import { Task, Workflow } from "@514labs/moose-lib";
-
-/**
- * Interface for aircraft data from adsb.lol API
- */
-interface AircraftApiData {
-  hex: string;
-  type?: string;
-  flight?: string;
-  r?: string;
-  t?: string;
-  dbFlags?: number;
-  lat?: number;
-  lon?: number;
-  alt_baro?: string | number;
-  alt_geom?: number;
-  gs?: number;
-  track?: number;
-  baro_rate?: number;
-  geom_rate?: number;
-  squawk?: string;
-  emergency?: string;
-  category?: string;
-  nav_qnh?: number;
-  nav_altitude_mcp?: number;
-  nav_heading?: number;
-  nav_modes?: string[];
-  version?: number;
-  nic_baro?: number;
-  nac_p?: number;
-  nac_v?: number;
-  sil?: number;
-  sil_type?: string;
-  gva?: number;
-  sda?: number;
-  alert?: number;
-  spi?: number;
-  nic?: number;
-  rc?: number;
-  seen_pos?: number;
-  mlat?: string[];
-  tisb?: string[];
-  messages?: number;
-  seen?: number;
-  rssi?: number;
-}
+import { AircraftTrackingData } from "datamodels/models";
 
 /**
  * Interface for API response from adsb.lol
  */
 interface ApiResponse {
-  ac: AircraftApiData[];
+  ac: AircraftTrackingData[];
   total?: number;
   ctime?: number;
   ptime?: number;
@@ -75,29 +31,28 @@ interface FetchTaskOutput {
  * Maps API aircraft data to AircraftTrackingData format
  */
 function mapToAircraftTrackingData(
-  aircraft: AircraftApiData,
+  aircraft: AircraftTrackingData,
   timestamp: Date,
 ): any {
   // Handle alt_baro which can be "ground" or a number
   let alt_baro = 0;
   let alt_baro_is_ground = false;
 
-  if (aircraft.alt_baro === "ground") {
-    alt_baro = 0;
+  if (typeof aircraft.alt_baro === "string" && aircraft.alt_baro === "ground") {
+    alt_baro = 0; // Set to 0 for ground
+    alt_baro_is_ground = true;
+  } else if (typeof aircraft.alt_baro === "number" && aircraft.alt_baro === 0) {
     alt_baro_is_ground = true;
   } else {
-    alt_baro =
-      typeof aircraft.alt_baro === "number" ?
-        aircraft.alt_baro
-      : parseInt(String(aircraft.alt_baro)) || 0;
+    alt_baro = aircraft.alt_baro || 0;
   }
 
   return {
     hex: aircraft.hex,
-    transponder_type: aircraft.type || "",
+    transponder_type: aircraft.transponder_type || "",
     flight: aircraft.flight || "",
     r: aircraft.r || "",
-    aircraft_type: aircraft.t || "",
+    aircraft_type: aircraft.aircraft_type || "",
     dbFlags: aircraft.dbFlags || 0,
     lat: aircraft.lat || 0,
     lon: aircraft.lon || 0,

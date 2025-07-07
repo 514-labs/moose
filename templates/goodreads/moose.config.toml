@@ -31,6 +31,7 @@ main_branch_name = "main"
 db_user = "temporal"
 db_password = "temporal"
 db_port = 5432
+temporal_host = "localhost"
 temporal_port = 7233
 # Uncomment and set to "http" or "https" to force a specific scheme
 # temporal_scheme = "https"

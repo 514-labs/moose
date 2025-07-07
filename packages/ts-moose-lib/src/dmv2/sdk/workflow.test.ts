@@ -429,5 +429,216 @@ describe("Workflows & Tasks", () => {
         );
       });
     });
+
+    describe("Workflow Validation", () => {
+      it("should throw an error when starting task is null", () => {
+        expect(() => {
+          new Workflow("nullStartingTask", {
+            startingTask: null as any,
+          });
+        }).to.throw(
+          'Workflow "nullStartingTask" has a null or undefined starting task',
+        );
+      });
+
+      it("should throw an error when starting task is undefined", () => {
+        expect(() => {
+          new Workflow("undefinedStartingTask", {
+            startingTask: undefined as any,
+          });
+        }).to.throw(
+          'Workflow "undefinedStartingTask" has a null or undefined starting task',
+        );
+      });
+
+      it("should throw an error when a task in the chain is null", () => {
+        const startingTask = new Task<null, void>(
+          "startingTask",
+          {
+            run: async () => console.log("Starting task"),
+            onComplete: [null as any],
+          },
+          schema,
+          [],
+        );
+
+        expect(() => {
+          new Workflow("nullTaskInChain", {
+            startingTask: startingTask,
+          });
+        }).to.throw(
+          'Workflow "nullTaskInChain" contains a null or undefined task in the task chain: startingTask -> null',
+        );
+      });
+
+      it("should detect simple infinite loops", () => {
+        let infiniteLoopTask1: Task<null, void>;
+        let infiniteLoopTask2: Task<null, void>;
+
+        infiniteLoopTask2 = new Task<null, void>(
+          "infiniteLoopTask2",
+          {
+            run: async () => console.log("infiniteLoopTask2"),
+          },
+          schema,
+          [],
+        );
+
+        infiniteLoopTask1 = new Task<null, void>(
+          "infiniteLoopTask1",
+          {
+            run: async () => console.log("infiniteLoopTask1"),
+            onComplete: [infiniteLoopTask2],
+          },
+          schema,
+          [],
+        );
+
+        // Create the cycle after both tasks are created
+        infiniteLoopTask2.config.onComplete = [infiniteLoopTask1];
+
+        expect(() => {
+          new Workflow("infiniteLoopWf", {
+            startingTask: infiniteLoopTask1,
+          });
+        }).to.throw(
+          'Workflow "infiniteLoopWf" contains an infinite loop in task chain: infiniteLoopTask1 -> infiniteLoopTask2 -> infiniteLoopTask1',
+        );
+      });
+
+      it("should detect self-referencing infinite loops", () => {
+        let selfReferencingTask: Task<null, void>;
+
+        selfReferencingTask = new Task<null, void>(
+          "selfReferencingTask",
+          {
+            run: async () => console.log("selfReferencingTask"),
+          },
+          schema,
+          [],
+        );
+
+        // Create self-reference
+        selfReferencingTask.config.onComplete = [selfReferencingTask];
+
+        expect(() => {
+          new Workflow("selfReferenceWf", {
+            startingTask: selfReferencingTask,
+          });
+        }).to.throw(
+          'Workflow "selfReferenceWf" contains an infinite loop in task chain: selfReferencingTask',
+        );
+      });
+
+      it("should detect complex infinite loops", () => {
+        let task1: Task<null, void>;
+        let task2: Task<null, void>;
+        let task3: Task<null, void>;
+
+        task1 = new Task<null, void>(
+          "task1",
+          {
+            run: async () => console.log("task1"),
+          },
+          schema,
+          [],
+        );
+
+        task2 = new Task<null, void>(
+          "task2",
+          {
+            run: async () => console.log("task2"),
+          },
+          schema,
+          [],
+        );
+
+        task3 = new Task<null, void>(
+          "task3",
+          {
+            run: async () => console.log("task3"),
+          },
+          schema,
+          [],
+        );
+
+        // Create a cycle: task1 -> task2 -> task3 -> task1
+        task1.config.onComplete = [task2];
+        task2.config.onComplete = [task3];
+        task3.config.onComplete = [task1];
+
+        expect(() => {
+          new Workflow("complexLoopWf", {
+            startingTask: task1,
+          });
+        }).to.throw(
+          'Workflow "complexLoopWf" contains an infinite loop in task chain: task1 -> task2 -> task3 -> task1',
+        );
+      });
+
+      it("should handle workflows with shared tasks (diamond pattern)", () => {
+        const startTask = new Task<null, UserData>(
+          "startTask",
+          {
+            run: async () => ({
+              id: "1",
+              name: "Test",
+              email: "test@example.com",
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const leftTask = new Task<UserData, ProcessedData>(
+          "leftTask",
+          {
+            run: async (input: UserData) => ({
+              userId: input.id,
+              fullName: input.name,
+              domain: input.email.split("@")[1],
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const rightTask = new Task<UserData, ProcessedData>(
+          "rightTask",
+          {
+            run: async (input: UserData) => ({
+              userId: input.id,
+              fullName: input.name.toUpperCase(),
+              domain: input.email.split("@")[1],
+            }),
+          },
+          schema,
+          [],
+        );
+
+        const endTask = new Task<ProcessedData, void>(
+          "endTask",
+          {
+            run: async (input: ProcessedData) => {
+              console.log(`Final processing: ${input.fullName}`);
+            },
+          },
+          schema,
+          [],
+        );
+
+        // Create diamond pattern: start -> [left, right] -> end
+        startTask.config.onComplete = [leftTask, rightTask];
+        leftTask.config.onComplete = [endTask];
+        rightTask.config.onComplete = [endTask];
+
+        // This should not throw any errors (shared tasks are allowed)
+        expect(() => {
+          new Workflow("diamondWf", {
+            startingTask: startTask,
+          });
+        }).to.not.throw();
+      });
+    });
   });
 });

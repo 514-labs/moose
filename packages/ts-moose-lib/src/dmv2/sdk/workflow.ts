@@ -171,6 +171,7 @@ export class Workflow {
    *
    * @param name - Unique identifier for the workflow
    * @param config - Configuration object defining the workflow behavior and task orchestration
+   * @throws {Error} When the workflow contains null/undefined tasks or infinite loops
    */
   constructor(
     readonly name: string,
@@ -180,6 +181,85 @@ export class Workflow {
     if (workflows.has(name)) {
       throw new Error(`Workflow with name ${name} already exists`);
     }
+    this.validateTaskGraph(config.startingTask, name);
     workflows.set(name, this);
+  }
+
+  /**
+   * Validates the task graph to ensure there are no null tasks or infinite loops.
+   *
+   * @private
+   * @param startingTask - The starting task to begin validation from
+   * @param workflowName - The name of the workflow being validated (for error messages)
+   * @throws {Error} When null/undefined tasks are found or infinite loops are detected
+   */
+  private validateTaskGraph(
+    startingTask:
+      | Task<null, any>
+      | Task<null, void>
+      | Task<any, any>
+      | Task<any, void>
+      | null
+      | undefined,
+    workflowName: string,
+  ): void {
+    if (startingTask === null || startingTask === undefined) {
+      throw new Error(
+        `Workflow "${workflowName}" has a null or undefined starting task`,
+      );
+    }
+
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const validateTask = (
+      task:
+        | Task<null, any>
+        | Task<null, void>
+        | Task<any, any>
+        | Task<any, void>
+        | null
+        | undefined,
+      currentPath: string[],
+    ): void => {
+      if (task === null || task === undefined) {
+        const pathStr =
+          currentPath.length > 0 ? currentPath.join(" -> ") + " -> " : "";
+        throw new Error(
+          `Workflow "${workflowName}" contains a null or undefined task in the task chain: ${pathStr}null`,
+        );
+      }
+
+      const taskName = task.name;
+
+      if (recursionStack.has(taskName)) {
+        const cycleStartIndex = currentPath.indexOf(taskName);
+        const cyclePath =
+          cycleStartIndex >= 0 ?
+            currentPath.slice(cycleStartIndex).concat(taskName)
+          : currentPath.concat(taskName);
+        throw new Error(
+          `Workflow "${workflowName}" contains an infinite loop in task chain: ${cyclePath.join(" -> ")}`,
+        );
+      }
+
+      if (visited.has(taskName)) {
+        // Already processed this task and its children
+        return;
+      }
+
+      visited.add(taskName);
+      recursionStack.add(taskName);
+
+      if (task.config.onComplete) {
+        for (const nextTask of task.config.onComplete) {
+          validateTask(nextTask, [...currentPath, taskName]);
+        }
+      }
+
+      recursionStack.delete(taskName);
+    };
+
+    validateTask(startingTask, []);
   }
 }

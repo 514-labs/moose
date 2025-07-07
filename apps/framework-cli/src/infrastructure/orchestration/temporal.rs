@@ -12,6 +12,8 @@ pub struct TemporalConfig {
     pub temporal_host: String,
     #[serde(default = "default_temporal_port")]
     pub temporal_port: u16,
+    #[serde(default = "default_temporal_scheme")]
+    pub temporal_scheme: Option<String>,
     #[serde(default = "default_temporal_version")]
     pub temporal_version: String,
     #[serde(default = "default_admin_tools_version")]
@@ -54,6 +56,10 @@ fn default_temporal_host() -> String {
 
 fn default_temporal_port() -> u16 {
     7233
+}
+
+fn default_temporal_scheme() -> Option<String> {
+    None
 }
 
 fn default_temporal_version() -> String {
@@ -137,7 +143,9 @@ impl TemporalConfig {
 
     /// Temporal Rust sdk expects a scheme for the temporal url
     pub fn temporal_url_with_scheme(&self) -> String {
-        let scheme = if self.temporal_host == "localhost" {
+        let scheme = if let Some(ref configured_scheme) = self.temporal_scheme {
+            configured_scheme.as_str()
+        } else if self.temporal_host == "localhost" {
             "http"
         } else {
             "https"
@@ -154,6 +162,7 @@ impl Default for TemporalConfig {
             db_port: default_db_port(),
             temporal_host: default_temporal_host(),
             temporal_port: default_temporal_port(),
+            temporal_scheme: default_temporal_scheme(),
             temporal_version: default_temporal_version(),
             admin_tools_version: default_admin_tools_version(),
             ui_version: default_ui_version(),
@@ -166,5 +175,48 @@ impl Default for TemporalConfig {
             ca_cert: default_ca_cert(),
             api_key: default_api_key(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_temporal_url_with_scheme_default_behavior() {
+        let config = TemporalConfig::default();
+        assert_eq!(config.temporal_url_with_scheme(), "http://localhost:7233");
+    }
+
+    #[test]
+    fn test_temporal_url_with_scheme_forced_http() {
+        let mut config = TemporalConfig::default();
+        config.temporal_scheme = Some("http".to_string());
+        config.temporal_host = "example.com".to_string();
+        assert_eq!(config.temporal_url_with_scheme(), "http://example.com:7233");
+    }
+
+    #[test]
+    fn test_temporal_url_with_scheme_forced_https() {
+        let mut config = TemporalConfig::default();
+        config.temporal_scheme = Some("https".to_string());
+        config.temporal_host = "localhost".to_string();
+        assert_eq!(config.temporal_url_with_scheme(), "https://localhost:7233");
+    }
+
+    #[test]
+    fn test_temporal_url_with_scheme_auto_detect_localhost() {
+        let mut config = TemporalConfig::default();
+        config.temporal_scheme = None;
+        config.temporal_host = "localhost".to_string();
+        assert_eq!(config.temporal_url_with_scheme(), "http://localhost:7233");
+    }
+
+    #[test]
+    fn test_temporal_url_with_scheme_auto_detect_non_localhost() {
+        let mut config = TemporalConfig::default();
+        config.temporal_scheme = None;
+        config.temporal_host = "example.com".to_string();
+        assert_eq!(config.temporal_url_with_scheme(), "https://example.com:7233");
     }
 }

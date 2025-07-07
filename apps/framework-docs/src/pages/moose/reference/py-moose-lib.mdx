@@ -205,25 +205,115 @@ class ClickHouseEngines(Enum):
 
 ## Task Management
 
-### `@task`
-Decorator for defining workflow tasks.
+### `Task[T, U]`
+A class that represents a single task within a workflow system, with typed input and output.
 
 ```python
-from moose_lib import task
+from moose_lib import Task, TaskConfig
+from pydantic import BaseModel
 
-@task(retries=5)
-def process_data(input_data: dict) -> dict:
-    # Process data
-    return {
-        "task": "process_data",
-        "data": {"processed": True}
-    }
+# Define input and output models
+class InputData(BaseModel):
+    user_id: str
+    
+class OutputData(BaseModel):
+    result: str
+    status: bool
 
-# Can also be used without parameters
-@task
-def simple_task() -> dict:
-    return {
-        "task": "simple_task",
-        "data": {"completed": True}
-    }
+# Task with input and output
+def process_user(user_data: InputData) -> OutputData:
+    # Process the user data
+    return OutputData(result=f"Processed {user_data.user_id}", status=True)
+
+user_task = Task[InputData, OutputData](
+    name="process_user",
+    config=TaskConfig(
+        run=process_user,
+        retries=3,
+        timeout="30s"
+    )
+)
+
+# Task with no input, but with output
+def fetch_data() -> OutputData:
+    return OutputData(result="Fetched data", status=True)
+    
+fetch_task = Task[None, OutputData](
+    name="fetch_data",
+    config=TaskConfig(run=fetch_data)
+)
+
+# Task with input but no output
+def log_event(data: InputData) -> None:
+    print(f"Event logged for: {data.user_id}")
+
+log_task = Task[InputData, None](
+    name="log_event",
+    config=TaskConfig(run=log_event)
+)
+
+# Task with neither input nor output
+def cleanup() -> None:
+    print("Cleanup complete")
+
+cleanup_task = Task[None, None](
+    name="cleanup",
+    config=TaskConfig(run=cleanup)
+)
+```
+
+### `TaskConfig[T, U]`
+Configuration for a Task.
+
+```python
+@dataclasses.dataclass
+class TaskConfig(Generic[T, U]):
+    # The handler function that executes the task logic
+    run: TaskRunFunc[T, U]
+    
+    # Optional list of tasks to run after this task completes
+    on_complete: Optional[list[Task[U, Any]]] = None
+    
+    # Optional timeout string (e.g. "5m", "1h")
+    timeout: Optional[str] = None
+    
+    # Optional number of retry attempts
+    retries: Optional[int] = None
+```
+
+### `Workflow`
+Represents a workflow composed of one or more tasks.
+
+```python
+from moose_lib import Workflow, WorkflowConfig
+
+# Create a workflow that starts with the fetch_task
+data_workflow = Workflow(
+    name="data_processing",
+    config=WorkflowConfig(
+        starting_task=fetch_task,
+        schedule="@every 1h",  # Run every hour
+        timeout="10m",         # Timeout after 10 minutes
+        retries=2              # Retry up to 2 times if it fails
+    )
+)
+```
+
+### `WorkflowConfig`
+Configuration for a workflow.
+
+```python
+@dataclasses.dataclass
+class WorkflowConfig:
+    # The first task to execute in the workflow
+    starting_task: Task[Any, Any]
+    
+    # Optional number of retry attempts for the entire workflow
+    retries: Optional[int] = None
+    
+    # Optional timeout string for the entire workflow
+    timeout: Optional[str] = None
+    
+    # Optional cron-like schedule string for recurring execution
+    schedule: Optional[str] = None
 ```

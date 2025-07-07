@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { IJsonSchemaCollection } from "typia";
-import { getMooseInternal } from "../internal";
+import { getMooseInternal, toInfraMap } from "../internal";
 import { Task, Workflow, TaskConfig } from "./workflow";
 
 interface UserData {
@@ -358,16 +358,38 @@ describe("Workflows & Tasks", () => {
 
         const workflow1 = new Workflow("workflow1", {
           startingTask: task1,
+          retries: 1,
+          timeout: "1h",
+          schedule: "* * * * *",
         });
 
         const workflow2 = new Workflow("workflow2", {
           startingTask: task2,
+          retries: 2,
+          timeout: "2h",
+          schedule: "@every 30s",
         });
 
         const mooseInternal = getMooseInternal();
         expect(mooseInternal.workflows.size).to.equal(2);
         expect(mooseInternal.workflows.get("workflow1")).to.equal(workflow1);
         expect(mooseInternal.workflows.get("workflow2")).to.equal(workflow2);
+
+        const infraMap = toInfraMap(mooseInternal);
+        expect(infraMap.workflows).to.deep.equal({
+          workflow1: {
+            name: "workflow1",
+            retries: 1,
+            timeout: "1h",
+            schedule: "* * * * *",
+          },
+          workflow2: {
+            name: "workflow2",
+            retries: 2,
+            timeout: "2h",
+            schedule: "@every 30s",
+          },
+        });
       });
 
       it("should throw an error when creating workflows with duplicate names", () => {

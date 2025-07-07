@@ -82,7 +82,9 @@ def create_blocks(ch_client, path):
     for query in blocks_obj.setup:
         try:
             print(f"Creating block using query {query}")
-            ch_client.command(query)
+            # Merge with any existing client settings to preserve defaults like date_time_input_format
+            default_settings = getattr(ch_client, 'default_settings', {})
+            ch_client.command(query, settings={**default_settings, 'wait_end_of_query': 1})  # Ensure at least once delivery and DDL acknowledgment
         except Exception as err:
             cli_log(CliLogData(action="Blocks", message=f"Failed to create blocks: {err}", message_type="Error"))
 
@@ -93,7 +95,9 @@ def delete_blocks(ch_client, path):
     for query in blocks_obj.teardown:
         try:
             print(f"Deleting block using query {query}")
-            ch_client.command(query)
+            # Merge with any existing client settings to preserve defaults like date_time_input_format
+            default_settings = getattr(ch_client, 'default_settings', {})
+            ch_client.command(query, settings={**default_settings, 'wait_end_of_query': 1})  # Ensure at least once delivery and DDL acknowledgment
         except Exception as err:
             cli_log(CliLogData(action="Blocks", message=f"Failed to delete blocks: {err}", message_type="Error"))
 

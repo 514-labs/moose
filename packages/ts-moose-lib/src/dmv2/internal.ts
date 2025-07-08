@@ -383,7 +383,7 @@ if (getMooseInternal() === undefined) {
  * and `end___MOOSE_STUFF___`) for easy extraction by the calling process.
  */
 export const loadIndex = async () => {
-  _loadIndex();
+  dumpMooseInternal();
 
   console.log(
     "___MOOSE_STUFF___start",
@@ -392,7 +392,7 @@ export const loadIndex = async () => {
   );
 };
 
-const _loadIndex = () => {
+const dumpMooseInternal = () => {
   try {
     require(`${process.cwd()}/app/index.ts`);
   } catch (error) {
@@ -418,7 +418,7 @@ const _loadIndex = () => {
  *          and values are the corresponding handler functions.
  */
 export const getStreamingFunctions = async () => {
-  _loadIndex();
+  dumpMooseInternal();
 
   const registry = getMooseInternal();
   const transformFunctions = new Map<
@@ -455,7 +455,7 @@ export const getStreamingFunctions = async () => {
  *          are their corresponding handler functions.
  */
 export const getEgressApis = async () => {
-  _loadIndex();
+  dumpMooseInternal();
   const egressFunctions = new Map<
     string,
     (params: unknown, utils: ConsumptionUtil) => unknown
@@ -576,7 +576,7 @@ export const dlqColumns: Column[] = [
 ];
 
 export const getWorkflows = async () => {
-  _loadIndex();
+  dumpMooseInternal();
 
   const registry = getMooseInternal();
   return registry.workflows;

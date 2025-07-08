@@ -41,7 +41,11 @@ export class SqlResource {
       pushesDataTo?: SqlObject[];
     },
   ) {
-    getMooseInternal().sqlResources.set(name, this);
+    const sqlResources = getMooseInternal().sqlResources;
+    if (sqlResources.has(name)) {
+      throw new Error(`SqlResource with name ${name} already exists`);
+    }
+    sqlResources.set(name, this);
 
     this.name = name;
     this.setup = setup;

@@ -400,7 +400,7 @@ const _loadIndex = () => {
     const details = error instanceof Error ? error.message : String(error);
     if (details.includes("ERR_REQUIRE_ESM") || details.includes("ES Module")) {
       hint =
-        "The file or its dependencies are ESM-only. Switch to packages that dual-support CJS & ESM, or upgrade to Node 24+";
+        "The file or its dependencies are ESM-only. Switch to packages that dual-support CJS & ESM, or upgrade to Node 22.12+";
     }
 
     const errorMsg = `${hint ?? ""}\n\n${details}`;

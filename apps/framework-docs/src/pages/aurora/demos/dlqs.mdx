@@ -1,0 +1,82 @@
+---
+title: "DLQ Demo"
+description: "Learn how to handle failed ingestion events using Dead Letter Queues (DLQs) with Aurora"
+---
+
+import { Steps } from 'nextra/components'
+import { Callout } from "@/components"
+
+
+# Dead Letter Queues (DLQs)
+
+## Handle failed ingestion events gracefully
+
+This demo will walk you through using Aurora to parse messages that have been sent to Moose's dead letter queue system, and remediate those changes automatically by generating streaming functions.
+
+[Skip to prompt](#prompt-the-llm-to-create-dlq-handling) if you started with the ads-b-dlq template.
+
+<Callout type="info" title="Prerequisites">
+- **Aurora and Moose CLIs**: [Install them here](/aurora/getting-started/cursor)
+- **OS**: macOS or Linux (WSL supported for Windows)
+- **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
+- **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
+- **Anthropic API Key**: [Get one here](https://docs.anthropic.com/en/docs/initial-setup)
+- **Client**: [Cursor](https://www.cursor.com/) 
+- **Completed**: [Ingest Demo](/aurora/demos/ingest) (or have data already in your system)
+</Callout>
+
+<Steps>
+
+### Start with the ads-b dlq template
+
+```bash filename="Terminal" copy
+aurora init dlq-demo ads-b-dlq
+```
+
+```bash filename="Terminal" copy
+cd dlq-demo
+npm install
+```
+
+### Run the Moose Dev Server
+
+```bash filename="Terminal" copy
+moose dev 
+```
+
+### Open the project in Cursor
+
+### Initialize the Aurora MCP
+
+Navigate to `Cursor > Settings > Cursor Settings > Tools and Integrations` then toggle on the `Aurora MCP` tool.
+
+### For best results, set the LLM to `claude-4-sonnet`
+
+Gemini 2.5 and 4.1 are also reasonably good, but claude-4-sonnet has the most consistent results.
+
+### Prompt the LLM to create DLQ handling
+
+> Can you look at the dead letter queue topic and see if there are patterns in the messages that are being sent to the DLQ?
+
+> If there are patterns, can you create a streaming function that will automatically remediate the issues?
+
+### Action
+
+The LLM should now use aurora tools to:
+1. analyze the dead letter queue topic to identify patterns in failed messages
+2. examine the structure and common issues in DLQ messages
+3. create streaming functions that automatically remediate identified patterns
+4. test the streaming functions to ensure they properly handle the remediation
+
+You'll know it is succeeding if:
+1. the LLM successfully analyzes DLQ message patterns
+2. you can see identified patterns and common failure modes
+3. streaming functions are created that automatically fix the issues
+4. the system reduces DLQ message volume through automatic remediation
+
+### Continue this demo with:
+
+* [Creating Materialized Views](/aurora/demos/mvs)
+* [Data Egress APIs](/aurora/demos/egress)
+
+</Steps>

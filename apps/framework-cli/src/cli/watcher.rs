@@ -18,7 +18,7 @@
 /// 3. After a short delay (debouncing), changes are processed to update the infrastructure
 /// 4. The updated infrastructure is applied to the system
 use crate::framework;
-use log::{error, info};
+use log::info;
 use notify::event::ModifyKind;
 use notify::{Event, EventHandler, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
@@ -281,7 +281,7 @@ impl FileWatcher {
 
         // Move everything into the spawned task to avoid Send issues
         let watch_task = async move {
-            if let Err(e) = watch(
+            watch(
                 project,
                 route_update_channel,
                 infrastructure_map,
@@ -291,9 +291,6 @@ impl FileWatcher {
                 redis_client,
             )
             .await
-            {
-                error!("File watcher task failed: {:?}", e);
-            }
         };
 
         tokio::spawn(watch_task);

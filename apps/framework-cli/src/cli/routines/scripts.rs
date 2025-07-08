@@ -153,16 +153,7 @@ pub async fn list_workflows(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut table_data = Vec::new();
 
-    let client_manager = TemporalClientManager::new(&project.temporal_config)
-        .map_err(|e| RoutineFailure::error(Message {
-            action: "Temporal".to_string(),
-            details: format!("Failed to create client manager: {}", e),
-        }))?;
-    let temporal_url = project.temporal_config.temporal_url_with_scheme()
-        .map_err(|e| RoutineFailure::error(Message {
-            action: "Temporal".to_string(),
-            details: format!("Invalid temporal scheme: {}", e),
-        }))?;
+    let (client_manager, temporal_url) = build_temporal_client(&project.temporal_config)?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     // Convert status string to Temporal status enum

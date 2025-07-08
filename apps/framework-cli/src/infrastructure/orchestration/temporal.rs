@@ -118,7 +118,7 @@ fn default_temporal_port() -> u16 {
     7233
 }
 
-fn default_temporal_scheme() -> Option<String> {
+fn default_temporal_scheme() -> Option<TemporalScheme> {
     None
 }
 

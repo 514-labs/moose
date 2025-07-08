@@ -21,3 +21,4 @@ post_install_print = """
 	$ npm run dev
 """
 default_aurora_telemetry="standard"
+visible=false

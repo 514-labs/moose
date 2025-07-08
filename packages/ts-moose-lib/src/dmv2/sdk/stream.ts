@@ -195,7 +195,11 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config ?? {}, schema, columns);
-    getMooseInternal().streams.set(name, this);
+    const streams = getMooseInternal().streams;
+    if (streams.has(name)) {
+      throw new Error(`Stream with name ${name} already exists`);
+    }
+    streams.set(name, this);
   }
 
   /**

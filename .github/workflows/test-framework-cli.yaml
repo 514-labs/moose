@@ -107,20 +107,20 @@ jobs:
       - name: Run cargo Build in release mode
         run: cargo build --release --locked
 
-  test-macos:
+  test-cli:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test Suite (MacOS, Node ${{ matrix.node-version }})
+    name: Test CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     # Add explicit read-only permissions
     permissions:
       contents: read
     env:
       RUST_BACKTRACE: full
-    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22, 24]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
@@ -139,7 +139,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -149,7 +149,7 @@ jobs:
       - name: Run pnpm install
         run: pnpm install --filter=@repo/scripts # for package-templates.js
 
-      - name: Run Tests
+      - name: Run CLI Tests
         run: cargo test
         env:
           MOOSE_TELEMETRY_ENABLED: false
@@ -159,11 +159,79 @@ jobs:
         run: |
           cat ~/.moose/*-cli.log
 
-  test-ubuntu:
+  test-ts-moose-lib:
     needs: detect-changes
     if: needs.detect-changes.outputs.should_run == 'true'
-    name: Test Suite (Ubuntu, Node ${{ matrix.node-version }})
-    runs-on: ubuntu-4
+    name: Test TS Moose Lib (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    # Add explicit read-only permissions
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+
+      - name: Run ts moose lib tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=@514labs/moose-lib run test
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
+  test-py-moose-lib:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_run == 'true'
+    name: Test Py Moose Lib (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # Add explicit read-only permissions
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run py moose lib tests
+        working-directory: ./packages/py-moose-lib
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements-dev.txt
+          pip install -e .
+          python -c "import moose_lib"
+          python -m pytest tests/
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
+  test-e2e-typescript:
+    needs:
+      [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
+    if: needs.detect-changes.outputs.should_run == 'true'
+    name: Test E2E TypeScript (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
     # Add explicit read-only permissions
     permissions:
       contents: read
@@ -198,16 +266,66 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run pnpm install
-        run: pnpm install --filter=@repo/scripts # for package-templates.js
-
-      - name: Run Tests
-        run: cargo test
+      - name: Run TypeScript E2E Tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "typescript template"
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
-      - name: Run e2e Tests
-        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test
+      - name: Inspect Logs
+        if: always()
+        run: |
+          cat ~/.moose/*-cli.log
+
+  test-e2e-python:
+    needs:
+      [detect-changes, check, test-cli, test-ts-moose-lib, test-py-moose-lib]
+    if: needs.detect-changes.outputs.should_run == 'true'
+    name: Test E2E Python (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # Add explicit read-only permissions
+    permissions:
+      contents: read
+    env:
+      RUST_BACKTRACE: full
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Python ${{ matrix.python-version }} for E2E tests
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade Python build tools
+        run: pip install --upgrade pip setuptools wheel
+
+      - name: Run Python E2E Tests
+        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test -- --grep "python template"
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
@@ -254,7 +372,17 @@ jobs:
   # Final status check that depends on all jobs
   changes:
     runs-on: ubuntu-latest
-    needs: [detect-changes, check, test-macos, test-ubuntu, lints]
+    needs:
+      [
+        detect-changes,
+        check,
+        test-cli,
+        test-ts-moose-lib,
+        test-py-moose-lib,
+        test-e2e-typescript,
+        test-e2e-python,
+        lints,
+      ]
     if: always()
     # Add explicit read-only permissions
     permissions:
@@ -273,16 +401,22 @@ jobs:
 
           # Check if any required jobs failed
           if [[ "${{ needs.check.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-macos.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-ubuntu.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-cli.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ts-moose-lib.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-py-moose-lib.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-e2e-typescript.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-e2e-python.result }}" == "failure" ]] || \
              [[ "${{ needs.lints.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1
           fi
 
           if [[ "${{ needs.check.result }}" == "success" ]] && \
-             [[ "${{ needs.test-macos.result }}" == "success" ]] && \
-             [[ "${{ needs.test-ubuntu.result }}" == "success" ]] && \
+             [[ "${{ needs.test-cli.result }}" == "success" ]] && \
+             [[ "${{ needs.test-ts-moose-lib.result }}" == "success" ]] && \
+             [[ "${{ needs.test-py-moose-lib.result }}" == "success" ]] && \
+             [[ "${{ needs.test-e2e-typescript.result }}" == "success" ]] && \
+             [[ "${{ needs.test-e2e-python.result }}" == "success" ]] && \
              [[ "${{ needs.lints.result }}" == "success" ]]; then
             echo "All required jobs succeeded"
             exit 0

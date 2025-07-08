@@ -40,15 +40,6 @@ export const isNewMooseResourceWithTypeParam = (
     return false;
   }
 
-  if (typeName === "Task") {
-    return (
-      node.arguments?.length === 2 &&
-      (!node.typeArguments ||
-        node.typeArguments.length === 0 ||
-        node.typeArguments.length === 2)
-    );
-  }
-
   return (
     // name only
     (node.arguments?.length === 1 ||
@@ -83,71 +74,17 @@ const typiaTypeGuard = (node: ts.NewExpression) => {
   );
 };
 
-function taskInternalArgs(node: ts.NewExpression, checker: ts.TypeChecker) {
-  // If no type arguments provided, treat as null, null
-  const typeNodes = node.typeArguments || [
-    factory.createLiteralTypeNode(factory.createNull()),
-    factory.createLiteralTypeNode(factory.createNull()),
-  ];
-  const inputTypeNode = typeNodes[0];
-
-  const inputSchema =
-    checker.typeToString(checker.getTypeAtLocation(inputTypeNode)) === "null" ?
-      factory.createObjectLiteralExpression([
-        factory.createPropertyAssignment(
-          factory.createIdentifier("version"),
-          factory.createStringLiteral("3.1"),
-        ),
-        factory.createPropertyAssignment(
-          factory.createIdentifier("components"),
-          factory.createObjectLiteralExpression([
-            factory.createPropertyAssignment(
-              factory.createIdentifier("schemas"),
-              factory.createObjectLiteralExpression([]),
-            ),
-          ]),
-        ),
-        factory.createPropertyAssignment(
-          factory.createIdentifier("schemas"),
-          factory.createArrayLiteralExpression([
-            factory.createObjectLiteralExpression([
-              factory.createPropertyAssignment(
-                factory.createIdentifier("type"),
-                factory.createStringLiteral("null"),
-              ),
-            ]),
-          ]),
-        ),
-      ])
-    : typiaJsonSchemas(inputTypeNode);
-
-  return [
-    inputSchema,
-    checker.typeToString(checker.getTypeAtLocation(inputTypeNode)) === "null" ?
-      factory.createArrayLiteralExpression([])
-    : parseAsAny(
-        JSON.stringify(
-          toColumns(checker.getTypeAtLocation(inputTypeNode), checker),
-        ),
-      ),
-  ];
-}
-
 export const transformNewMooseResource = (
   node: ts.NewExpression,
   checker: ts.TypeChecker,
 ): ts.Node => {
   const typeName = checker.getSymbolAtLocation(node.expression)!.name;
 
-  // For Task, handle case where typeArguments is undefined
-  const typeNode =
-    typeName === "Task" && !node.typeArguments ?
-      factory.createLiteralTypeNode(factory.createNull())
-    : node.typeArguments![0];
+  const typeNode = node.typeArguments![0];
 
   const internalArguments =
-    typeName === "DeadLetterQueue" ? [typiaTypeGuard(node)]
-    : typeName === "Task" ? taskInternalArgs(node, checker)
+    typeName === "DeadLetterQueue" ?
+      [typiaTypeGuard(node)]
     : [
         typiaJsonSchemas(typeNode),
         parseAsAny(

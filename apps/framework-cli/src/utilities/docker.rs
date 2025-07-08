@@ -1,6 +1,6 @@
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
-use log::{debug, error, info};
+use log::{error, info, warn};
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_str;
@@ -93,9 +93,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!("Could not list containers");
-            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
-            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
+            warn!("Could not list containers");
+            warn!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            warn!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::other("Failed to list Docker containers"));
         }
 
@@ -169,9 +169,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!("Could not list containers");
-            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
-            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
+            warn!("Could not list containers");
+            warn!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            warn!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::other(
                 "Failed to list Docker container names",
             ));
@@ -206,11 +206,10 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            error!(
-                "Failed to stop containers: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            Err(anyhow::anyhow!("Failed to stop containers"))
+            let error_message = String::from_utf8_lossy(&output.stderr);
+            let friendly_error_message = format!("Failed to stop containers: {error_message}");
+            error!("{}", friendly_error_message);
+            Err(anyhow::anyhow!(friendly_error_message))
         } else {
             Ok(())
         }
@@ -250,19 +249,20 @@ impl DockerClient {
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr);
-            error!("Failed to start containers: {}", error_message);
+            let friendly_error_message = format!("Failed to start containers. Make sure you have Docker version 2.23.1+ and try again: {error_message}");
+            error!("{}", friendly_error_message);
 
             let mapped_error_message =
                 if let Some(stuff) = PORT_ALLOCATED_REGEX.captures(&error_message) {
-                    format!("Port {} already in use.", stuff.get(1).unwrap().as_str())
+                    format!(
+                    "Port {} already in use. Terminate the process using that port and try again.",
+                    stuff.get(1).unwrap().as_str()
+                )
                 } else {
-                    error_message.to_string()
+                    friendly_error_message.to_string()
                 };
 
-            Err(anyhow::anyhow!(
-                "Failed to start containers: {}",
-                mapped_error_message
-            ))
+            Err(anyhow::anyhow!(mapped_error_message))
         } else {
             Ok(())
         }
@@ -480,7 +480,7 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
-            debug!(
+            error!(
                 "Failed to get Docker info: stdout: {}, stderr: {}",
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)

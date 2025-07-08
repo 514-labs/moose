@@ -24,6 +24,10 @@ const meta = {
     title: "Data collection policy",
     Icon: History,
   },
+  demos: {
+    title: "Demos",
+    display: "hidden",
+  },
 } as const;
 
 export default render(meta);

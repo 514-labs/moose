@@ -33,7 +33,7 @@
 
 use hyper::Uri;
 use log::{error, warn};
-use log::{info, LevelFilter, Metadata, Record};
+use log::{LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
@@ -97,6 +97,9 @@ pub struct LoggerSettings {
 
     #[serde(deserialize_with = "parsing_url", default = "Option::default")]
     pub export_to: Option<Uri>,
+
+    #[serde(default = "default_include_session_id")]
+    pub include_session_id: bool,
 }
 
 fn parsing_url<'de, D>(deserializer: D) -> Result<Option<Uri>, D::Error>
@@ -123,6 +126,10 @@ fn default_log_format() -> LogFormat {
     LogFormat::Text
 }
 
+fn default_include_session_id() -> bool {
+    false
+}
+
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
@@ -131,11 +138,24 @@ impl Default for LoggerSettings {
             stdout: default_log_stdout(),
             format: default_log_format(),
             export_to: None,
+            include_session_id: default_include_session_id(),
         }
     }
 }
 
-// all errors are swallowed so that an error here does not break the app
+// House-keeping: delete log files older than 7 days.
+//
+// Rationale for WARN vs INFO
+// --------------------------------
+// 1.  Any failure here (e.g. cannot read directory or metadata) prevents log-rotation
+//     which can silently fill disks.
+// 2.  According to our logging guidelines INFO is "things working as expected", while
+//     WARN is for unexpected situations that *might* become a problem.
+// 3.  Therefore we upgraded the two failure branches (`warn!`) below to highlight
+//     these issues in production without terminating execution.
+//
+// Errors are still swallowed so that logging setup never aborts the CLI, but we emit
+// WARN to make operators aware of the problem.
 fn clean_old_logs() {
     let cut_off = SystemTime::now() - Duration::from_secs(7 * 24 * 60 * 60);
 
@@ -148,8 +168,11 @@ fn clean_old_logs() {
                         let _ = std::fs::remove_file(entry.path());
                     }
                     Ok(_) => {}
+                    // Escalated to WARN to surface unexpected FS errors encountered
+                    // during housekeeping.
                     Err(e) => {
-                        info!(
+                        // Escalated to warn! — inability to read file metadata may indicate FS issues
+                        warn!(
                             "Failed to read modification time for {:?}. {}",
                             entry.path(),
                             e
@@ -159,7 +182,10 @@ fn clean_old_logs() {
             }
         }
     } else {
-        info!("failed to read directory")
+        // Directory unreadable: surface as warn instead of info so users notice
+        // Emitting WARN instead of INFO: inability to read the log directory means
+        // housekeeping could not run at all, which can later cause disk-space issues.
+        warn!("failed to read directory")
     }
 }
 
@@ -180,29 +206,37 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     clean_old_logs();
 
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
+    let include_session_id = settings.include_session_id;
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
 
     let format_config = if settings.format == LogFormat::Text {
         fern::Dispatch::new().format(move |out, message, record| {
             out.finish(format_args!(
-                "[{} {} {} - {}] {}",
+                "[{} {}{} - {}] {}",
                 humantime::format_rfc3339_seconds(SystemTime::now()),
                 record.level(),
-                &session_id,
+                if include_session_id {
+                    format!(" {}", &session_id)
+                } else {
+                    String::new()
+                },
                 record.target(),
                 message
             ))
         })
     } else {
         fern::Dispatch::new().format(move |out, message, record| {
-            let log_json = serde_json::json!({
+            let mut log_json = serde_json::json!({
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "severity": record.level().to_string(),
-                "session_id": &session_id,
                 "target": record.target(),
                 "message": message,
             });
+
+            if include_session_id {
+                log_json["session_id"] = serde_json::Value::String(session_id.to_string());
+            }
 
             out.finish(format_args!(
                 "{}",

@@ -6,6 +6,7 @@ import {
   Column,
   DataEnum,
   DataModel,
+  IndexType,
   NullType,
   UnknownType,
   UnsupportedEnum,
@@ -84,6 +85,12 @@ export default function (
               field: e.fieldName,
               parent: e.typeName,
               type: "null",
+            };
+          } else if (e instanceof IndexType) {
+            output = {
+              error_type: "index_type",
+              type: e.typeName,
+              index_signatures: e.indexSignatures,
             };
           } else if (e instanceof UnsupportedEnum) {
             output = {

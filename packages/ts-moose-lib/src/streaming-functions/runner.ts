@@ -1,5 +1,13 @@
 import { Readable } from "node:stream";
-import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
+import {
+  Consumer,
+  Kafka,
+  KafkaMessage,
+  Producer,
+  SASLOptions,
+  KafkaJSError,
+  KafkaJSProtocolError,
+} from "kafkajs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import http from "http";
@@ -27,6 +35,118 @@ const RETRY_INITIAL_TIME_MS = 100;
 const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 500;
 
 //Dummy change
+
+/**
+ * Checks if an error is a MESSAGE_TOO_LARGE error from Kafka
+ */
+const isMessageTooLargeError = (error: any): boolean => {
+  return (
+    error instanceof KafkaJSError &&
+    ((error instanceof KafkaJSProtocolError &&
+      error.type === "MESSAGE_TOO_LARGE") ||
+      (error.cause !== undefined && isMessageTooLargeError(error.cause)))
+  );
+};
+
+/**
+ * Splits a batch of messages into smaller chunks when MESSAGE_TOO_LARGE error occurs
+ */
+const splitBatch = (
+  messages: SlimKafkaMessage[],
+  maxChunkSize: number,
+): SlimKafkaMessage[][] => {
+  if (messages.length <= 1) {
+    return [messages];
+  }
+
+  // If we have more than one message, split into smaller batches
+  const chunks: SlimKafkaMessage[][] = [];
+  let currentChunk: SlimKafkaMessage[] = [];
+  let currentSize = 0;
+
+  for (const message of messages) {
+    const messageSize =
+      Buffer.byteLength(message.value, "utf8") + KAFKAJS_BYTE_MESSAGE_OVERHEAD;
+
+    // If adding this message would exceed the limit, start a new chunk
+    if (currentSize + messageSize > maxChunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [message];
+      currentSize = messageSize;
+    } else {
+      currentChunk.push(message);
+      currentSize += messageSize;
+    }
+  }
+
+  // Add the last chunk if it has messages
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+};
+
+/**
+ * Sends a single chunk of messages with MESSAGE_TOO_LARGE error recovery
+ */
+const sendChunkWithRetry = async (
+  logger: Logger,
+  targetTopic: TopicConfig,
+  producer: Producer,
+  messages: SlimKafkaMessage[],
+  maxRetries: number = 3,
+): Promise<void> => {
+  let currentMessages = messages;
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      await producer.send({
+        topic: targetTopic.name,
+        messages: currentMessages,
+      });
+      logger.log(
+        `Successfully sent ${currentMessages.length} messages to ${targetTopic.name}`,
+      );
+      return;
+    } catch (error) {
+      if (isMessageTooLargeError(error) && currentMessages.length > 1) {
+        logger.warn(
+          `Got MESSAGE_TOO_LARGE error, splitting batch of ${currentMessages.length} messages and retrying (${maxRetries - attempts} attempts left)`,
+        );
+
+        // Split the batch into smaller chunks (use half the current max size)
+        const currentMaxSize = Math.floor(targetTopic.maxMessageBytes / 2);
+        const splitChunks = splitBatch(currentMessages, currentMaxSize);
+
+        // Send each split chunk recursively
+        for (const chunk of splitChunks) {
+          await sendChunkWithRetry(
+            logger,
+            targetTopic,
+            producer,
+            chunk,
+            // this error does not count as one failed attempt
+            maxRetries - attempts,
+          );
+        }
+        return;
+      } else {
+        attempts++;
+        // If it's not MESSAGE_TOO_LARGE or we can't split further, re-throw
+        if (attempts >= maxRetries) {
+          throw error;
+        }
+        logger.warn(
+          `Send ${currentMessages.length} messages failed (attempt ${attempts}/${maxRetries}), retrying: ${error}`,
+        );
+        // Wait briefly before retrying
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempts));
+      }
+    }
+  }
+};
 
 /**
  * Data structure for metrics logging containing counts and metadata
@@ -340,8 +460,7 @@ const sendMessages = async (
           `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
         );
         // Send the current chunk before adding the new message
-        // We are not setting the key, so that should not take any size in the payload
-        await producer.send({ topic: targetTopic.name, messages: chunks });
+        await sendChunkWithRetry(logger, targetTopic, producer, chunks);
         logger.log(
           `Sent ${chunks.length} transformed records to ${targetTopic.name}`,
         );
@@ -366,7 +485,7 @@ const sendMessages = async (
       logger.log(
         `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
       );
-      await producer.send({ topic: targetTopic.name, messages: chunks });
+      await sendChunkWithRetry(logger, targetTopic, producer, chunks);
       logger.log(
         `Sent final ${chunks.length} transformed data to ${targetTopic.name}`,
       );

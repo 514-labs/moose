@@ -30,6 +30,7 @@ pub struct TemplateConfig {
     pub language: String,
     pub description: String,
     pub post_install_print: String,
+    pub visible: bool,
 }
 
 impl TemplateConfig {
@@ -38,6 +39,10 @@ impl TemplateConfig {
             language: value.get("language")?.as_str()?.to_string(),
             description: value.get("description")?.as_str()?.to_string(),
             post_install_print: value.get("post_install_print")?.as_str()?.to_string(),
+            visible: value
+                .get("visible")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true),
         })
     }
 }
@@ -296,11 +301,16 @@ pub async fn list_available_templates(
             table
                 .iter()
                 .filter_map(|(name, config)| {
-                    TemplateConfig::from_toml(config).map(|config| {
-                        format!(
-                            "  - {} ({}) - {}",
-                            name, config.language, config.description
-                        )
+                    TemplateConfig::from_toml(config).and_then(|config| {
+                        // Filter out templates with visible=false
+                        if config.visible {
+                            Some(format!(
+                                "  - {} ({}) - {}",
+                                name, config.language, config.description
+                            ))
+                        } else {
+                            None
+                        }
                     })
                 })
                 .collect()

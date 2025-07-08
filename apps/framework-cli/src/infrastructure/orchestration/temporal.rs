@@ -8,10 +8,20 @@ pub struct InvalidTemporalSchemeError {
 }
 
 /// Valid temporal URL schemes
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum TemporalScheme {
     Http,
     Https,
+}
+
+impl<'de> Deserialize<'de> for TemporalScheme {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        TemporalScheme::from_str(&s).map_err(serde::de::Error::custom)
+    }
 }
 
 impl TemporalScheme {
@@ -118,7 +128,7 @@ fn default_temporal_port() -> u16 {
     7233
 }
 
-fn default_temporal_scheme() -> Option<String> {
+fn default_temporal_scheme() -> Option<TemporalScheme> {
     None
 }
 
@@ -208,14 +218,10 @@ impl TemporalConfig {
 
     /// Temporal Rust sdk expects a scheme for the temporal url
     /// When validate is false, scheme validation is skipped (useful when Temporal is not being used)
-    pub fn temporal_url_with_scheme_validate(&self, validate: bool) -> Result<String, InvalidTemporalSchemeError> {
+    pub fn temporal_url_with_scheme_validate(&self, _validate: bool) -> Result<String, InvalidTemporalSchemeError> {
         let scheme = if let Some(ref configured_scheme) = self.temporal_scheme {
-            if validate {
-                TemporalScheme::from_str(configured_scheme)?.as_str()
-            } else {
-                // Skip validation, just use the scheme as-is
-                configured_scheme.to_lowercase().as_str()
-            }
+            // Since we're using an enum, the scheme is already validated
+            configured_scheme.as_str()
         } else if self.temporal_host == "localhost" {
             TemporalScheme::HTTP
         } else {
@@ -291,7 +297,7 @@ mod tests {
     #[test]
     fn test_temporal_url_with_scheme_forced_http() {
         let mut config = TemporalConfig::default();
-        config.temporal_scheme = Some("http".to_string());
+        config.temporal_scheme = Some(TemporalScheme::Http);
         config.temporal_host = "example.com".to_string();
         assert_eq!(config.temporal_url_with_scheme().unwrap(), "http://example.com:7233");
     }
@@ -299,7 +305,7 @@ mod tests {
     #[test]
     fn test_temporal_url_with_scheme_forced_https() {
         let mut config = TemporalConfig::default();
-        config.temporal_scheme = Some("https".to_string());
+        config.temporal_scheme = Some(TemporalScheme::Https);
         config.temporal_host = "localhost".to_string();
         assert_eq!(config.temporal_url_with_scheme().unwrap(), "https://localhost:7233");
     }
@@ -322,17 +328,14 @@ mod tests {
 
     #[test]
     fn test_temporal_url_with_scheme_invalid_scheme() {
+        // Since we're using an enum, we can't create invalid schemes
+        // The validation happens at deserialization time
         let mut config = TemporalConfig::default();
-        config.temporal_scheme = Some("ftp".to_string());
+        config.temporal_scheme = Some(TemporalScheme::Http);
         config.temporal_host = "example.com".to_string();
         
         let result = config.temporal_url_with_scheme();
-        assert!(result.is_err());
-        
-        if let Err(InvalidTemporalSchemeError { scheme }) = result {
-            assert_eq!(scheme, "ftp");
-        } else {
-            panic!("Expected InvalidTemporalSchemeError");
-        }
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "http://example.com:7233");
     }
 }

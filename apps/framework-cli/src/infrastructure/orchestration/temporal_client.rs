@@ -12,7 +12,7 @@ use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
 use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
-use crate::infrastructure::orchestration::temporal::TemporalConfig;
+use crate::infrastructure::orchestration::temporal::{TemporalConfig, InvalidTemporalSchemeError};
 
 pub struct TemporalClientManager {
     temporal_url: String,

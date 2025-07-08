@@ -48,6 +48,8 @@ export class QueryClient {
       query_params,
       format: "JSONEachRow",
       query_id: this.query_id_prefix + randomUUID(),
+      // Note: wait_end_of_query deliberately NOT set here as this is used for SELECT queries
+      // where response buffering would harm streaming performance and concurrency
     });
   }
 }

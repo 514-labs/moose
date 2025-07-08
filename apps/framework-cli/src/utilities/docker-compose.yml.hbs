@@ -109,7 +109,7 @@ services:
       - postgresql
     environment:
       - DB=postgres12
-      - DB_PORT=${TEMPORAL_DB_PORT:-5432}
+      - DB_PORT=5432
       - POSTGRES_USER=${TEMPORAL_DB_USER:-temporal}
       - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal}
       - POSTGRES_SEEDS=postgresql

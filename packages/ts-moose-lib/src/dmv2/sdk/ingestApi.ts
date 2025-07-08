@@ -50,6 +50,10 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config, schema, columns);
-    getMooseInternal().ingestApis.set(name, this);
+    const ingestApis = getMooseInternal().ingestApis;
+    if (ingestApis.has(name)) {
+      throw new Error(`Ingest API with name ${name} already exists`);
+    }
+    ingestApis.set(name, this);
   }
 }

@@ -194,7 +194,7 @@ interface SqlResourceJson {
  * @param registry The internal Moose resource registry (`moose_internal`).
  * @returns An object containing dictionaries of tables, topics, ingest APIs, egress APIs, and SQL resources, formatted according to the `*Json` interfaces.
  */
-const toInfraMap = (registry: typeof moose_internal) => {
+export const toInfraMap = (registry: typeof moose_internal) => {
   const tables: { [key: string]: TableJson } = {};
   const topics: { [key: string]: StreamJson } = {};
   const ingestApis: { [key: string]: IngestApiJson } = {};

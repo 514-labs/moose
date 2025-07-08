@@ -1,6 +1,3 @@
-import { IJsonSchemaCollection } from "typia";
-import { TypedBase } from "../typedBase";
-import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
 
 /**
@@ -51,7 +48,7 @@ export interface TaskConfig<T, R> {
  * @template T - The input type that this task expects
  * @template R - The return type that this task produces
  */
-export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
+export class Task<T, R> {
   /**
    * Creates a new Task instance.
    *
@@ -89,32 +86,10 @@ export class Task<T, R> extends TypedBase<T, TaskConfig<T, R>> {
    * });
    * ```
    */
-  constructor(name: string, config: TaskConfig<T, R>);
-
-  /**
-   * Internal constructor with additional schema and column parameters.
-   *
-   * @internal
-   * @param name - Unique identifier for the task
-   * @param config - Configuration object defining the task behavior
-   * @param schema - JSON schema collection for type validation
-   * @param columns - Column definitions for data structure
-   */
   constructor(
-    name: string,
-    config: TaskConfig<T, R>,
-    schema: IJsonSchemaCollection.IV3_1,
-    columns: Column[],
-  );
-
-  constructor(
-    name: string,
-    config: TaskConfig<T, R>,
-    schema?: IJsonSchemaCollection.IV3_1,
-    columns?: Column[],
-  ) {
-    super(name, config, schema, columns);
-  }
+    readonly name: string,
+    readonly config: TaskConfig<T, R>,
+  ) {}
 }
 
 /**
@@ -171,11 +146,83 @@ export class Workflow {
    *
    * @param name - Unique identifier for the workflow
    * @param config - Configuration object defining the workflow behavior and task orchestration
+   * @throws {Error} When the workflow contains null/undefined tasks or infinite loops
    */
   constructor(
     readonly name: string,
     readonly config: WorkflowConfig,
   ) {
-    getMooseInternal().workflows.set(name, this);
+    const workflows = getMooseInternal().workflows;
+    if (workflows.has(name)) {
+      throw new Error(`Workflow with name ${name} already exists`);
+    }
+    this.validateTaskGraph(config.startingTask, name);
+    workflows.set(name, this);
+  }
+
+  /**
+   * Validates the task graph to ensure there are no null tasks or infinite loops.
+   *
+   * @private
+   * @param startingTask - The starting task to begin validation from
+   * @param workflowName - The name of the workflow being validated (for error messages)
+   * @throws {Error} When null/undefined tasks are found or infinite loops are detected
+   */
+  private validateTaskGraph(
+    startingTask: Task<any, any> | null | undefined,
+    workflowName: string,
+  ): void {
+    if (startingTask === null || startingTask === undefined) {
+      throw new Error(
+        `Workflow "${workflowName}" has a null or undefined starting task`,
+      );
+    }
+
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const validateTask = (
+      task: Task<any, any> | null | undefined,
+      currentPath: string[],
+    ): void => {
+      if (task === null || task === undefined) {
+        const pathStr =
+          currentPath.length > 0 ? currentPath.join(" -> ") + " -> " : "";
+        throw new Error(
+          `Workflow "${workflowName}" contains a null or undefined task in the task chain: ${pathStr}null`,
+        );
+      }
+
+      const taskName = task.name;
+
+      if (recursionStack.has(taskName)) {
+        const cycleStartIndex = currentPath.indexOf(taskName);
+        const cyclePath =
+          cycleStartIndex >= 0 ?
+            currentPath.slice(cycleStartIndex).concat(taskName)
+          : currentPath.concat(taskName);
+        throw new Error(
+          `Workflow "${workflowName}" contains an infinite loop in task chain: ${cyclePath.join(" -> ")}`,
+        );
+      }
+
+      if (visited.has(taskName)) {
+        // Already processed this task and its children
+        return;
+      }
+
+      visited.add(taskName);
+      recursionStack.add(taskName);
+
+      if (task.config.onComplete) {
+        for (const nextTask of task.config.onComplete) {
+          validateTask(nextTask, [...currentPath, taskName]);
+        }
+      }
+
+      recursionStack.delete(taskName);
+    };
+
+    validateTask(startingTask, []);
   }
 }

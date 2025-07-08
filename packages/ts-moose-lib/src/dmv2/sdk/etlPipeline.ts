@@ -1,4 +1,3 @@
-import { IJsonSchemaCollection } from "typia";
 import { Workflow, Task } from "./workflow";
 import { OlapTable } from "./olapTable";
 
@@ -14,7 +13,6 @@ interface TransformedResult<U> {
 interface TaskConfig {
   retries: number;
   timeout: string;
-  schema: IJsonSchemaCollection.IV3_1;
 }
 
 interface ETLTasks<T, U> {
@@ -92,21 +90,6 @@ export class ETLPipeline<T, U> {
     return {
       retries: 1,
       timeout: "30m",
-      schema: this.createNullSchema(),
-    };
-  }
-
-  private createNullSchema(): IJsonSchemaCollection.IV3_1 {
-    return {
-      version: "3.1",
-      components: {
-        schemas: {},
-      },
-      schemas: [
-        {
-          type: "null",
-        },
-      ],
     };
   }
 
@@ -123,23 +106,16 @@ export class ETLPipeline<T, U> {
   private createExtractTask(
     taskConfig: TaskConfig,
   ): Task<null, BatchResult<T>> {
-    return new Task<null, BatchResult<T>>(
-      `${this.name}_extract`,
-      {
-        run: async () => {
-          console.log(`Running extract task for ${this.name}...`);
-          const batch = await this.batcher.getNextBatch();
-          console.log(
-            `Extract task completed with ${batch.items.length} items`,
-          );
-          return batch;
-        },
-        retries: taskConfig.retries,
-        timeout: taskConfig.timeout,
+    return new Task<null, BatchResult<T>>(`${this.name}_extract`, {
+      run: async () => {
+        console.log(`Running extract task for ${this.name}...`);
+        const batch = await this.batcher.getNextBatch();
+        console.log(`Extract task completed with ${batch.items.length} items`);
+        return batch;
       },
-      taskConfig.schema,
-      [],
-    );
+      retries: taskConfig.retries,
+      timeout: taskConfig.timeout,
+    });
   }
 
   private createTransformTask(
@@ -167,39 +143,32 @@ export class ETLPipeline<T, U> {
         retries: taskConfig.retries,
         timeout: taskConfig.timeout,
       },
-      taskConfig.schema,
-      [],
     );
   }
 
   private createLoadTask(
     taskConfig: TaskConfig,
   ): Task<TransformedResult<U>, void> {
-    return new Task<TransformedResult<U>, void>(
-      `${this.name}_load`,
-      {
-        run: async (transformedItems: TransformedResult<U>) => {
-          console.log(
-            `Running load task for ${this.name} with ${transformedItems.items.length} items...`,
-          );
+    return new Task<TransformedResult<U>, void>(`${this.name}_load`, {
+      run: async (transformedItems: TransformedResult<U>) => {
+        console.log(
+          `Running load task for ${this.name} with ${transformedItems.items.length} items...`,
+        );
 
-          // Handle both function and OlapTable
-          if ("insert" in this.config.load) {
-            // It's an OlapTable - insert entire batch
-            await this.config.load.insert(transformedItems.items);
-          } else {
-            // It's a function - call with entire array
-            await this.config.load(transformedItems.items);
-          }
+        // Handle both function and OlapTable
+        if ("insert" in this.config.load) {
+          // It's an OlapTable - insert entire batch
+          await this.config.load.insert(transformedItems.items);
+        } else {
+          // It's a function - call with entire array
+          await this.config.load(transformedItems.items);
+        }
 
-          console.log(`Load task completed`);
-        },
-        retries: taskConfig.retries,
-        timeout: taskConfig.timeout,
+        console.log(`Load task completed`);
       },
-      taskConfig.schema,
-      [],
-    );
+      retries: taskConfig.retries,
+      timeout: taskConfig.timeout,
+    });
   }
 
   // Execute the entire ETL pipeline

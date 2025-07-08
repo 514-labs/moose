@@ -87,7 +87,7 @@ pub(crate) async fn execute_workflow(
 async fn execute_workflow_for_language(
     params: WorkflowExecutionParams<'_>,
 ) -> Result<String, TemporalExecutionError> {
-    let client_manager = TemporalClientManager::new(params.temporal_config)
+    let client_manager = TemporalClientManager::new_validate(params.temporal_config, true)
         .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))?;
 
     let temporal_url = params.temporal_config.temporal_url_with_scheme()
@@ -180,7 +180,7 @@ pub(crate) async fn execute_scheduled_workflows(
 }
 
 async fn list_running_workflows(project: &Project) -> HashSet<String> {
-    let client_manager = match TemporalClientManager::new(&project.temporal_config) {
+    let client_manager = match TemporalClientManager::new_validate(&project.temporal_config, true) {
         Ok(manager) => manager,
         Err(e) => {
             log::error!("Failed to create Temporal client manager: {}", e);

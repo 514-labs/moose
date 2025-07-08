@@ -354,7 +354,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .into_iter()
         .filter_map(|execution| execution.execution)
         .map(|execution_info| {
-            let client_manager: Arc<TemporalClientManager> = Arc::clone(&client_manager);
+            let client_manager = Arc::clone(&client_manager);
             let namespace = namespace.clone();
             async move {
                 let request = TerminateWorkflowExecutionRequest {

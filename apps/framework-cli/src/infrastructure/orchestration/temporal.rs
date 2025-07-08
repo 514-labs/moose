@@ -203,8 +203,19 @@ impl TemporalConfig {
 
     /// Temporal Rust sdk expects a scheme for the temporal url
     pub fn temporal_url_with_scheme(&self) -> Result<String, InvalidTemporalSchemeError> {
+        self.temporal_url_with_scheme_validate(true)
+    }
+
+    /// Temporal Rust sdk expects a scheme for the temporal url
+    /// When validate is false, scheme validation is skipped (useful when Temporal is not being used)
+    pub fn temporal_url_with_scheme_validate(&self, validate: bool) -> Result<String, InvalidTemporalSchemeError> {
         let scheme = if let Some(ref configured_scheme) = self.temporal_scheme {
-            TemporalScheme::from_str(configured_scheme)?.as_str()
+            if validate {
+                TemporalScheme::from_str(configured_scheme)?.as_str()
+            } else {
+                // Skip validation, just use the scheme as-is
+                configured_scheme.to_lowercase().as_str()
+            }
         } else if self.temporal_host == "localhost" {
             TemporalScheme::HTTP
         } else {

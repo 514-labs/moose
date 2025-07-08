@@ -64,40 +64,39 @@ def generate_mock_ant_hr_data() -> None:
         device_data[device_id]['hr_history'].append(device_data[device_id]['rhr'])
 
     # Main loop - runs indefinitely
-    while True: # Changed from time-based condition
-        for device_id in device_ids:
-            # time_elapsed is still useful for the interval calculation
-            time_elapsed = time.time() - start_time 
-            
-            # Determine the last recorded heart rate for smoothing
-            last_hr = device_data[device_id]['hr_history'][-1] if device_data[device_id]['hr_history'] else None
-            
-            # Update target HR less frequently (e.g., every few packets or based on HR event)
-            # For simplicity, let's update it when a beat event occurs or at the start
-            if device_data[device_id]['hr_event'] or device_data[device_id]['packet_number'] == 0:
-                device_data[device_id]['target_hr'] = generate_realistic_heart_rate(
-                    time_elapsed,
-                    base_hr=device_data[device_id]['rhr'],
-                    max_hr=device_data[device_id]['hr_max'], 
-                    last_hr=last_hr, # Pass last HR for smoothing
-                    phase=device_data[device_id]['phase'] # Phase can still be used for variation between devices
-                )
-                device_data[device_id]['hr_event'] = False
-            
-            ant_packet = generate_ant_hrm_packet(device_id, device_data[device_id])
-            json_data = json.dumps(ant_packet)
-            
-            try:
-                logger.info(f"Sending JSON: {json_data}")
-                response = requests.post(url, data=json_data, headers=headers)
-                if response.status_code == 200:
-                    logger.info(f"Successfully sent packet: {ant_packet}")
-                else:
-                    logger.error(f"Failed to send packet: {response.status_code}, {response.text}")
-            except requests.exceptions.RequestException as e:
-                logger.error(f"An error occurred: {e}")
-                # Pause briefly if there's a connection error
-                time.sleep(1)  # Wait 1 second before retry
+    for device_id in device_ids:
+        # time_elapsed is still useful for the interval calculation
+        time_elapsed = time.time() - start_time 
+        
+        # Determine the last recorded heart rate for smoothing
+        last_hr = device_data[device_id]['hr_history'][-1] if device_data[device_id]['hr_history'] else None
+        
+        # Update target HR less frequently (e.g., every few packets or based on HR event)
+        # For simplicity, let's update it when a beat event occurs or at the start
+        if device_data[device_id]['hr_event'] or device_data[device_id]['packet_number'] == 0:
+            device_data[device_id]['target_hr'] = generate_realistic_heart_rate(
+                time_elapsed,
+                base_hr=device_data[device_id]['rhr'],
+                max_hr=device_data[device_id]['hr_max'], 
+                last_hr=last_hr, # Pass last HR for smoothing
+                phase=device_data[device_id]['phase'] # Phase can still be used for variation between devices
+            )
+            device_data[device_id]['hr_event'] = False
+        
+        ant_packet = generate_ant_hrm_packet(device_id, device_data[device_id])
+        json_data = json.dumps(ant_packet)
+        
+        try:
+            logger.info(f"Sending JSON: {json_data}")
+            response = requests.post(url, data=json_data, headers=headers)
+            if response.status_code == 200:
+                logger.info(f"Successfully sent packet: {ant_packet}")
+            else:
+                logger.error(f"Failed to send packet: {response.status_code}, {response.text}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"An error occurred: {e}")
+            # Pause briefly if there's a connection error
+            time.sleep(1)  # Wait 1 second before retry
 
         time.sleep(0.25)
         

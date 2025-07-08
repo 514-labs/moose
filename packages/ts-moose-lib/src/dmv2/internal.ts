@@ -382,8 +382,8 @@ if (getMooseInternal() === undefined) {
  * It prints the JSON map surrounded by specific delimiters (`___MOOSE_STUFF___start`
  * and `end___MOOSE_STUFF___`) for easy extraction by the calling process.
  */
-export const loadIndex = async () => {
-  dumpMooseInternal();
+export const dumpMooseInternal = async () => {
+  loadIndex();
 
   console.log(
     "___MOOSE_STUFF___start",
@@ -392,7 +392,7 @@ export const loadIndex = async () => {
   );
 };
 
-const dumpMooseInternal = () => {
+const loadIndex = () => {
   try {
     require(`${process.cwd()}/app/index.ts`);
   } catch (error) {
@@ -418,7 +418,7 @@ const dumpMooseInternal = () => {
  *          and values are the corresponding handler functions.
  */
 export const getStreamingFunctions = async () => {
-  dumpMooseInternal();
+  loadIndex();
 
   const registry = getMooseInternal();
   const transformFunctions = new Map<
@@ -455,7 +455,7 @@ export const getStreamingFunctions = async () => {
  *          are their corresponding handler functions.
  */
 export const getEgressApis = async () => {
-  dumpMooseInternal();
+  loadIndex();
   const egressFunctions = new Map<
     string,
     (params: unknown, utils: ConsumptionUtil) => unknown
@@ -576,7 +576,7 @@ export const dlqColumns: Column[] = [
 ];
 
 export const getWorkflows = async () => {
-  dumpMooseInternal();
+  loadIndex();
 
   const registry = getMooseInternal();
   return registry.workflows;

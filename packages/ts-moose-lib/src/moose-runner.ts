@@ -39,7 +39,7 @@ if (
   });
 }
 
-import { loadIndex } from "./dmv2/internal";
+import { dumpMooseInternal } from "./dmv2/internal";
 import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
@@ -64,7 +64,7 @@ program
   .command("dmv2-serializer")
   .description("Load DMv2 index")
   .action(() => {
-    loadIndex();
+    dumpMooseInternal();
   });
 
 program

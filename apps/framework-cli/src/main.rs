@@ -56,6 +56,11 @@ fn main() {
         }
     };
 
+    if cli_result.backtrace {
+        // Safe: no other threads have started and no errors have been created yet.
+        std::env::set_var("RUST_LIB_BACKTRACE", "1");
+    }
+
     // Create a runtime with a single thread to avoid issues with dropping runtimes
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

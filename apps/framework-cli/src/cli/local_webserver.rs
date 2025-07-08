@@ -1434,7 +1434,9 @@ impl Webserver {
 fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
     match e.kind() {
         ErrorKind::AddrInUse => {
-            eprintln!("Port {port} already in use.");
+            eprintln!(
+                "Port {port} already in use. Terminate the process using that port and try again."
+            );
             std::process::exit(1)
         }
         _ => panic!("Failed to listen to port {port}: {e:?}"),

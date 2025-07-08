@@ -160,7 +160,11 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   ) {
     super(name, config ?? {}, schema, columns, validators);
 
-    getMooseInternal().tables.set(name, this);
+    const tables = getMooseInternal().tables;
+    if (tables.has(name)) {
+      throw new Error(`OlapTable with name ${name} already exists`);
+    }
+    tables.set(name, this);
   }
 
   /**
@@ -624,6 +628,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
       format: "JSONEachRow",
       clickhouse_settings: {
         date_time_input_format: "best_effort",
+        wait_end_of_query: 1, // Ensure at least once delivery for INSERT operations
         // Performance optimizations
         max_insert_block_size:
           isStream ? 100000 : Math.min(validatedData.length, 100000),

@@ -19,4 +19,5 @@ post_install_print = """
 """
 default_aurora_telemetry="comprehensive"
 visible=false
+
 # we might need to add python dependencies install file

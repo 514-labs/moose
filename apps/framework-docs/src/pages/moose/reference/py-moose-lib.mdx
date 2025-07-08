@@ -269,6 +269,7 @@ Configuration for a Task.
 @dataclasses.dataclass
 class TaskConfig(Generic[T, U]):
     # The handler function that executes the task logic
+    # Can be any of: () -> None, () -> U, (T) -> None, or (T) -> U depending on input/output types
     run: TaskRunFunc[T, U]
     
     # Optional list of tasks to run after this task completes

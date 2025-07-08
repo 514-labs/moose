@@ -676,8 +676,8 @@ async fn handle_json_array_body(
                 Ok(Value::Object(value)) => vec![value],
                 _ => {
                     info!(
-                        "Received payload for {} is not valid JSON objects or arrays. Not sending them to DLQ. Body: {:?}",
-                        topic_name, body
+                        "Received payload for {} is not valid JSON objects or arrays. Not sending them to DLQ.",
+                        topic_name
                     );
                     vec![]
                 }
@@ -700,7 +700,7 @@ async fn handle_json_array_body(
             )
             .await;
         }
-        error!(
+        warn!(
             "Bad JSON in request to topic {}: {}. Body: {:?}",
             topic_name, e, body
         );

@@ -1,5 +1,7 @@
 name: Format
 on:
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - "**"

@@ -285,6 +285,7 @@ mod tests {
             authentication: crate::project::AuthenticationConfig::default(),
             cron_jobs: Vec::new(),
             features: crate::project::ProjectFeatures::default(),
+            load_infra: None,
         }
     }
 

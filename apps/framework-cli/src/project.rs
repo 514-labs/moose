@@ -5,6 +5,18 @@
 //! A project is initialized using the `moose init` command and is stored
 //!  in the `$PROJECT_PATH/.moose` directory.
 //!
+//! ## Infrastructure Loading (`load_infra` flag)
+//! - The `load_infra` flag in `moose.config.toml` determines if this Moose instance should load infrastructure (Docker) containers during `moose dev`.
+//! - If `load_infra` is **missing** from the config, the default is **true** (infra is loaded, for backward compatibility).
+//! - If `load_infra` is **present and set to true**, infra containers are loaded.
+//! - If `load_infra` is **present and set to false**, infra containers are NOT loaded.
+//! - If the config file is missing or malformed, infra is loaded by default.
+//!
+//! Example:
+//! ```toml
+//! load_infra = true  # or false
+//! ```
+//!
 //! The `Project` struct contains the following fields:
 //! - `name` - The name of the project
 //! - `language` - The language of the project
@@ -172,6 +184,9 @@ pub struct Project {
     /// Feature flags
     #[serde(default)]
     pub features: ProjectFeatures,
+    /// Whether this instance should load infra containers (see module docs)
+    #[serde(default)]
+    pub load_infra: Option<bool>,
 }
 
 impl Default for ProjectFeatures {
@@ -253,6 +268,7 @@ impl Project {
 
             features: Default::default(),
             authentication: AuthenticationConfig::default(),
+            load_infra: None,
         }
     }
 
@@ -547,6 +563,14 @@ impl Project {
     /// Checks if the project is running in a docker container
     pub fn is_docker_image(&self) -> bool {
         std::env::var("DOCKER_IMAGE").unwrap_or("false".to_string()) == "true"
+    }
+
+    /// Returns true if this instance should load infra containers, according to the load_infra flag.
+    ///
+    /// - If load_infra is Some(true) or None (missing), returns true (default: load infra).
+    /// - If load_infra is Some(false), returns false (do not load infra).
+    pub fn should_load_infra(&self) -> bool {
+        self.load_infra.unwrap_or(true)
     }
 }
 

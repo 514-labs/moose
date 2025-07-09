@@ -1526,7 +1526,8 @@ async fn shutdown(
         // Use the centralized settings function to check if containers should be shutdown
         let should_shutdown_containers = settings.should_shutdown_containers();
 
-        if should_shutdown_containers {
+        // Only shutdown containers if this instance is responsible for infra
+        if should_shutdown_containers && project.should_load_infra() {
             // Create docker client with a fresh settings reference
             let docker = DockerClient::new(settings);
             info!("Starting container shutdown process");
@@ -1557,6 +1558,8 @@ async fn shutdown(
             );
 
             info!("Container shutdown complete");
+        } else if !project.should_load_infra() {
+            info!("Skipping container shutdown: load_infra is set to false for this instance");
         } else {
             info!("Skipping container shutdown due to settings configuration");
         }

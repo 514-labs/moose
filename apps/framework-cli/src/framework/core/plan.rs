@@ -341,6 +341,7 @@ mod tests {
             authentication: crate::project::AuthenticationConfig::default(),
 
             features: crate::project::ProjectFeatures::default(),
+            load_infra: None,
         }
     }
 

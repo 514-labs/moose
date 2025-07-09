@@ -48,7 +48,7 @@ function run() {
   // instead of prematurely exiting
   process.on("SIGINT", () => {});
   const processResult = spawnSync(getExePath(), args, { stdio: "inherit" });
-  process.exit(processResult.status ?? 0);
+  process.exit(processResult.status ?? 1);
 }
 
 run();

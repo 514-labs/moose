@@ -1,5 +1,7 @@
 volumes:
+  {{#if streaming_engine}}
   redpanda-0: null
+  {{/if}}
   clickhouse-0-data: null
   clickhouse-0-logs: null
   clickhouse-0-users: null

@@ -389,8 +389,7 @@ impl DockerClient {
                 .render_template(PROD_COMPOSE_FILE, &data)
                 .map_err(|e| std::io::Error::other(e.to_string()))?;
             Ok(std::fs::write(compose_file, rendered)?)
-        }
-        else {
+        } else {
             let rendered = handlebars
                 .render_template(COMPOSE_FILE, &data)
                 .map_err(|e| std::io::Error::other(e.to_string()))?;

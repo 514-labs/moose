@@ -396,7 +396,9 @@ pub async fn top_command_handler(
                 details: "Please provide a subcommand".to_string(),
             })),
         },
-        Commands::Prod { start_include_dependencies } => {
+        Commands::Prod {
+            start_include_dependencies,
+        } => {
             info!("Running prod command");
             info!("Moose Version: {}", CLI_VERSION);
 

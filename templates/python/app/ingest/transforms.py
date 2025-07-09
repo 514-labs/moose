@@ -1,18 +1,32 @@
 from app.ingest.models import fooModel, barModel, Foo, Bar
-from moose_lib import DeadLetterQueue, DeadLetterModel, TransformConfig
+from moose_lib import DeadLetterQueue, DeadLetterModel, TransformConfig, MooseCache
 from datetime import datetime
 
 
 def foo_to_bar(foo: Foo):
+
+    # Create a cache
+    cache = MooseCache()
+    cache_key = f"foo_to_bar:{foo.primary_key}"
+
+    # Checked for cached transformation result
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return cached_result
+
     if foo.timestamp == 1728000000.0:  # magic value to test the dead letter queue
         raise ValueError("blah")
-    return Bar(
+    result = Bar(
         primary_key=foo.primary_key,
         baz=foo.baz,
         utc_timestamp=datetime.fromtimestamp(foo.timestamp),
         has_text=foo.optional_text is not None,
         text_length=len(foo.optional_text) if foo.optional_text else 0
     )
+
+    # Store the result in cache
+    cache.set(result, cache_key, 3600)  # Cache for 1 hour
+    return result
 
 
 # Transform Foo events to Bar events

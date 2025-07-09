@@ -214,7 +214,8 @@ def main():
         load_models()
 
     moose_client = MooseClient(ch_client, temporal_client)
-    server_address = ('', 4001)
+    port = int(os.environ.get('PROXY_PORT', 4001))
+    server_address = ('', port)
     handler = handler_with_client(moose_client)
     httpd = HTTPServer(server_address, handler)
     
@@ -240,7 +241,7 @@ def main():
     signal.signal(signal.SIGQUIT, signal_handler)
     signal.signal(signal.SIGHUP, signal_handler)
     
-    print(f"Starting server on http://localhost:4001")
+    print(f"Starting server on http://localhost:{port}")
     
     try:
         httpd.serve_forever()

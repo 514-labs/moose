@@ -233,8 +233,10 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
           config.jwtConfig,
         ),
       );
-      server.listen(4001, () => {
-        console.log("Server running on port 4001");
+      const port =
+        process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 4001;
+      server.listen(port, () => {
+        console.log(`Server running on port ${port}`);
       });
 
       return server;

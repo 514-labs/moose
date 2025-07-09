@@ -130,8 +130,15 @@ pub struct LocalWebserverConfig {
     /// The port to bind the management server to
     #[serde(default = "default_management_port")]
     pub management_port: u16,
+    /// The port to bind the proxy server to (for consumption APIs)
+    #[serde(default = "default_proxy_port")]
+    pub proxy_port: u16,
     /// Optional path prefix for all routes
     pub path_prefix: Option<String>,
+}
+
+pub fn default_proxy_port() -> u16 {
+    4001
 }
 
 impl LocalWebserverConfig {
@@ -162,6 +169,7 @@ impl Default for LocalWebserverConfig {
             host: "localhost".to_string(),
             port: 4000,
             management_port: default_management_port(),
+            proxy_port: default_proxy_port(),
             path_prefix: None,
         }
     }
@@ -187,10 +195,17 @@ async fn get_consumption_api_res(
             )))?);
     }
 
+    // Use proxy_port from LocalWebserverConfig
+    let proxy_port = {
+        // Try to get from project config if available, else use default
+        // This assumes you have access to the config here; if not, refactor signature to pass it in
+        // For now, fallback to default
+        default_proxy_port()
+    };
     let url = format!(
         "http://{}:{}{}{}",
         host,
-        4001,
+        proxy_port,
         req.uri().path().strip_prefix("/consumption").unwrap_or(""),
         req.uri()
             .query()

@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
+use std::io::{stdout, IsTerminal};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
@@ -243,7 +244,7 @@ macro_rules! show_message {
 ///
 /// * `message` - The message to display alongside the spinner
 /// * `f` - The function to execute
-/// * `activate` - Whether to actually show the spinner (if false, just runs the function)
+/// * `activate` - Whether to actually show the spinner (if false or not terminal, just runs the function)
 ///
 /// # Returns
 ///
@@ -252,13 +253,12 @@ pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
 {
-    if !activate {
-        return f();
-    }
-
-    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
+    let sp = (activate && stdout().is_terminal())
+        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
     let res = f();
-    sp.stop_with_newline();
+    if let Some(mut sp) = sp {
+        sp.stop_with_newline();
+    }
     res
 }
 
@@ -268,7 +268,7 @@ where
 ///
 /// * `message` - The message to display alongside the spinner
 /// * `f` - The async function to execute
-/// * `activate` - Whether to actually show the spinner (if false, just runs the function)
+/// * `activate` - Whether to actually show the spinner (if false or not terminal, just runs the function)
 ///
 /// # Returns
 ///
@@ -277,13 +277,12 @@ pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
 {
-    if !activate {
-        return f.await;
-    }
-
-    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
+    let sp = (activate && stdout().is_terminal())
+        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
     let res = f.await;
-    sp.stop_with_newline();
+    if let Some(mut sp) = sp {
+        sp.stop_with_newline();
+    }
     res
 }
 

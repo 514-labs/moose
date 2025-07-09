@@ -382,14 +382,31 @@ if (getMooseInternal() === undefined) {
  * It prints the JSON map surrounded by specific delimiters (`___MOOSE_STUFF___start`
  * and `end___MOOSE_STUFF___`) for easy extraction by the calling process.
  */
-export const loadIndex = async () => {
-  await require(`${process.cwd()}/app/index.ts`);
+export const dumpMooseInternal = async () => {
+  loadIndex();
 
   console.log(
     "___MOOSE_STUFF___start",
     JSON.stringify(toInfraMap(getMooseInternal())),
     "end___MOOSE_STUFF___",
   );
+};
+
+const loadIndex = () => {
+  try {
+    require(`${process.cwd()}/app/index.ts`);
+  } catch (error) {
+    let hint: string | undefined;
+    const details = error instanceof Error ? error.message : String(error);
+    if (details.includes("ERR_REQUIRE_ESM") || details.includes("ES Module")) {
+      hint =
+        "The file or its dependencies are ESM-only. Switch to packages that dual-support CJS & ESM, or upgrade to Node 22.12+. " +
+        "If you must use Node 20, you may try Node 20.19";
+    }
+
+    const errorMsg = `${hint ?? ""}\n\n${details}`;
+    throw new Error(errorMsg);
+  }
 };
 
 /**
@@ -401,7 +418,7 @@ export const loadIndex = async () => {
  *          and values are the corresponding handler functions.
  */
 export const getStreamingFunctions = async () => {
-  await require(`${process.cwd()}/app/index.ts`);
+  loadIndex();
 
   const registry = getMooseInternal();
   const transformFunctions = new Map<
@@ -438,7 +455,7 @@ export const getStreamingFunctions = async () => {
  *          are their corresponding handler functions.
  */
 export const getEgressApis = async () => {
-  await require(`${process.cwd()}/app/index.ts`);
+  loadIndex();
   const egressFunctions = new Map<
     string,
     (params: unknown, utils: ConsumptionUtil) => unknown
@@ -559,7 +576,7 @@ export const dlqColumns: Column[] = [
 ];
 
 export const getWorkflows = async () => {
-  await require(`${process.cwd()}/app/index.ts`);
+  loadIndex();
 
   const registry = getMooseInternal();
   return registry.workflows;

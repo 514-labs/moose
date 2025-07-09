@@ -175,28 +175,78 @@ enum ClickHouseEngines {
 
 ## Task Management
 
-### `TaskFunction`
-Type for defining workflow task functions.
+### `Task<T, R>`
+A class that represents a single task within a workflow system.
 ```ts
-interface TaskFunction {
-  (input?: any): Promise<{ task: string; data: any }>;
-}
+// No input, no output
+const task1 = new Task<null, void>("task1", {
+  run: async () => {
+    console.log("No input/output");
+  },
+  retries: 3,
+  timeout: "30s"
+});
+
+// With input and output
+const task2 = new Task<InputType, OutputType>("task2", {
+  run: async (input: InputType) => {
+    return process(input);
+  },
+  onComplete: [nextTask]
+});
 ```
 
-### `TaskConfig`
+### `TaskHandler<T, R>`
+A function type that handles task execution.
+```ts
+type TaskHandler<T, R> =
+  T extends null ? () => Promise<R> : (input: T) => Promise<R>;
+```
+
+### `TaskConfig<T, R>`
 Configuration options for tasks.
 ```ts
-interface TaskConfig {
-  retries: number;
+interface TaskConfig<T, R> {
+  // The main function that executes the task logic
+  run: TaskHandler<T, R>;
+  
+  // Optional array of tasks to execute after this task completes
+  onComplete?: (Task<R extends void ? null : R, any> | Task<R extends void ? null : R, void>)[];
+  
+  // Optional timeout duration (e.g., "30s", "5m")
+  timeout?: string;
+  
+  // Optional number of retry attempts
+  retries?: number;
 }
 ```
 
-### `TaskDefinition`
-Complete definition of a workflow task.
+### `Workflow`
+A class that represents a complete workflow composed of interconnected tasks.
 ```ts
-interface TaskDefinition {
-  task: TaskFunction;
-  config?: TaskConfig;
+const myWorkflow = new Workflow("getData", {
+  startingTask: callAPI,
+  schedule: "@every 5s", // Run every 5 seconds
+  timeout: "1h",
+  retries: 3
+});
+```
+
+### `WorkflowConfig`
+Configuration options for defining a workflow.
+```ts
+interface WorkflowConfig {
+  // The initial task that begins the workflow execution
+  startingTask: Task<null, any> | Task<null, void> | Task<any, any> | Task<any, void>;
+  
+  // Optional number of retry attempts
+  retries?: number;
+  
+  // Optional timeout duration (e.g., "10m", "1h")
+  timeout?: string;
+  
+  // Optional cron-style schedule string
+  schedule?: string;
 }
 ```
 

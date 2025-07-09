@@ -1,4 +1,4 @@
-from moose_lib import MaterializedView, MaterializedViewOptions, Aggregated, AggregateFunction, ClickHouseEngines
+from moose_lib import MaterializedView, MaterializedViewOptions, AggregateFunction, ClickHouseEngines
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Annotated

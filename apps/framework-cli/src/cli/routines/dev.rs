@@ -16,7 +16,23 @@ pub fn run_local_infrastructure(
     settings: &Settings,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
+    // Debug log to check load_infra value at runtime
+    log::info!(
+        "[moose] DEBUG: load_infra from config: {:?}, should_load_infra(): {}",
+        project.load_infra,
+        project.should_load_infra()
+    );
     create_docker_compose_file(project, settings, docker_client)?.show();
+
+    // Check the load_infra flag before starting containers
+    // If load_infra is false, skip infra loading for this instance
+    if !project.should_load_infra() {
+        println!("[moose] Skipping infra container startup: load_infra is set to false in moose.config.toml");
+        return Ok(RoutineSuccess::success(Message::new(
+            "Skipped".to_string(),
+            "infra container startup (load_infra = false)".to_string(),
+        )));
+    }
 
     ensure_docker_running(docker_client)?;
     run_containers(project, docker_client)?.show();

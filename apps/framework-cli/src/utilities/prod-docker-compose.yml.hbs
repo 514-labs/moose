@@ -1,5 +1,7 @@
 volumes:
+  {{#if streaming_engine}}
   redpanda-0: null
+  {{/if}}
   clickhouse-0-data: null
   clickhouse-0-logs: null
   clickhouse-0-users: null
@@ -30,6 +32,11 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
+    deploy:
+      resources:
+        reservations:
+          cpus: '2.0'
+          memory: 4G
   {{#if streaming_engine}}
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.11
@@ -50,6 +57,11 @@ services:
       - --smp=1
       - --memory=2G
       - --node-id=0
+    deploy:
+      resources:
+        reservations:
+          cpus: '4.0'
+          memory: 8G
     healthcheck:
       test:
         ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
@@ -76,6 +88,11 @@ services:
     ports:
       - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
       - "9000:9000"
+    deploy:
+      resources:
+        reservations:
+          cpus: '4.0'
+          memory: 16G
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client -q 'select version()'"]
       interval: 5s
@@ -109,7 +126,7 @@ services:
       - postgresql
     environment:
       - DB=postgres12
-      - DB_PORT=5432
+      - DB_PORT=${TEMPORAL_DB_PORT:-5432}
       - POSTGRES_USER=${TEMPORAL_DB_USER:-temporal}
       - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal}
       - POSTGRES_SEEDS=postgresql
@@ -125,6 +142,11 @@ services:
         mode: 0444
     volumes:
       - temporal-data:/var/temporal/data
+    deploy:
+      resources:
+        reservations:
+          cpus: '2.0'
+          memory: 4G
     healthcheck:
       test: ["CMD-SHELL", "tctl --address temporal:${TEMPORAL_PORT:-7233} workflow list"]
       interval: 1s

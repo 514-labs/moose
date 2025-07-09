@@ -291,7 +291,6 @@ impl FileWatcher {
                 redis_client,
             )
             .await
-            .unwrap()
         };
 
         tokio::spawn(watch_task);

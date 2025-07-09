@@ -38,6 +38,7 @@ interface ConsumptionApisConfig {
   temporalConfig?: TemporalConfig;
   enforceAuth: boolean;
   isDmv2: boolean;
+  proxyPort?: number;
 }
 
 // Convert our config to Clickhouse client config
@@ -233,8 +234,8 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
           config.jwtConfig,
         ),
       );
-      const port =
-        process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 4001;
+      // port is now passed via config.proxyPort or defaults to 4001
+      const port = config.proxyPort !== undefined ? config.proxyPort : 4001;
       server.listen(port, () => {
         console.log(`Server running on port ${port}`);
       });

@@ -182,6 +182,7 @@ async fn get_consumption_api_res(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
+    proxy_port: u16,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -195,13 +196,6 @@ async fn get_consumption_api_res(
             )))?);
     }
 
-    // Use proxy_port from LocalWebserverConfig
-    let proxy_port = {
-        // Try to get from project config if available, else use default
-        // This assumes you have access to the config here; if not, refactor signature to pass it in
-        // For now, fallback to default
-        default_proxy_port()
-    };
     let url = format!(
         "http://{}:{}{}{}",
         host,
@@ -985,7 +979,16 @@ async fn router(
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
         (_, &hyper::Method::GET, ["consumption", _rt]) => {
-            match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
+            match get_consumption_api_res(
+                http_client,
+                req,
+                host,
+                consumption_apis,
+                is_prod,
+                project.http_server_config.proxy_port,
+            )
+            .await
+            {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);

@@ -132,6 +132,7 @@ program
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
   .option("--is-dmv2", "Whether this is a DMv2 consumption", false)
+  .option("--proxy-port <port>", "Port to run the proxy server on", parseInt)
   .action(
     (
       consumptionDir,
@@ -165,6 +166,7 @@ program
         },
         enforceAuth: options.enforceAuth,
         isDmv2: options.isDmv2,
+        proxyPort: options.proxyPort,
       });
     },
   );

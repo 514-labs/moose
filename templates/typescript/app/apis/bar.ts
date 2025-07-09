@@ -27,8 +27,9 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
     const cache = await MooseCache.get();
     const cacheKey = `bar:${orderBy}:${limit}:${startDay}:${endDay}`;
 
+    // Try to get from cache first
     const cachedData = await cache.get<ResponseData[]>(cacheKey);
-    if (cachedData) {
+    if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
       return cachedData;
     }
 
@@ -45,9 +46,10 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
       `;
 
     const data = await client.query.execute<ResponseData>(query);
+    const result: ResponseData[] = await data.json();
 
-    await cache.set(cacheKey, data.json(), 3600); // Cache for 1 hour
+    await cache.set(cacheKey, result, 3600); // Cache for 1 hour
 
-    return await data.json();
+    return result;
   },
 );

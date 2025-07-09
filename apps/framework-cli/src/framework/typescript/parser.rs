@@ -95,21 +95,27 @@ pub fn extract_data_model_from_file(
     if !ts_return_code.success() {
         return Err(TypescriptParsingError::TypescriptCompilerError(None));
     }
-    let output = fs::read(
-        output_dir.join(
-            path.file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .replace(".ts", ".json"),
-        ),
-    )
-    .map_err(|e| TypescriptParsingError::OtherError {
-        message: format!("Unable to read output of compiler: {e}"),
+    let json_path = path.with_extension("json");
+    let output_file_name = json_path
+        .file_name()
+        .ok_or_else(|| TypescriptParsingError::OtherError {
+            message: "Missing file name in path".to_string(),
+        })?
+        .to_str()
+        .ok_or_else(|| TypescriptParsingError::OtherError {
+            message: "File name is not valid UTF-8".to_string(),
+        })?;
+    let output = fs::read(output_dir.join(output_file_name)).map_err(|e| {
+        TypescriptParsingError::OtherError {
+            message: format!("Unable to read output of compiler: {e}"),
+        }
     })?;
 
-    let mut output_json = serde_json::from_slice::<Value>(&output)
-        .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
+    let mut output_json = serde_json::from_slice::<Value>(&output).map_err(|e| {
+        TypescriptParsingError::OtherError {
+            message: format!("Unable to parse output JSON: {e}"),
+        }
+    })?;
 
     if let Some(error_type) = output_json.get("error_type") {
         if let Some(error_type) = error_type.as_str() {

@@ -692,12 +692,18 @@ async fn handle_json_array_body(
                         "errorType": "ValidationError",
                         "failedAt": chrono::Utc::now().to_rfc3339(),
                         "source": "api",
+                        "requestBody": String::from_utf8_lossy(&body),
+                        "topic": topic_name,
                     }))
                     .unwrap()
                 }),
             )
             .await;
         }
+        warn!(
+            "Bad JSON in request to topic {}: {}. Body: {:?}",
+            topic_name, e, body
+        );
         return bad_json_response(e);
     }
     let res_arr = send_to_kafka(
@@ -708,6 +714,10 @@ async fn handle_json_array_body(
     .await;
 
     if res_arr.iter().any(|res| res.is_err()) {
+        error!(
+            "Internal server error sending to topic {}. Body: {:?}",
+            topic_name, body
+        );
         return internal_server_error_response();
     }
 

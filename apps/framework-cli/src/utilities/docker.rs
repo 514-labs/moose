@@ -14,6 +14,7 @@ use crate::project::Project;
 use crate::utilities::constants::REDPANDA_CONTAINER_NAME;
 
 static COMPOSE_FILE: &str = include_str!("docker-compose.yml.hbs");
+static PROD_COMPOSE_FILE: &str = include_str!("prod-docker-compose.yml.hbs");
 
 type ContainerName = String;
 type ContainerId = String;
@@ -383,11 +384,17 @@ impl DockerClient {
             }
         }
 
-        let rendered = handlebars
-            .render_template(COMPOSE_FILE, &data)
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-
-        Ok(std::fs::write(compose_file, rendered)?)
+        if project.is_production {
+            let rendered = handlebars
+                .render_template(PROD_COMPOSE_FILE, &data)
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
+            Ok(std::fs::write(compose_file, rendered)?)
+        } else {
+            let rendered = handlebars
+                .render_template(COMPOSE_FILE, &data)
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
+            Ok(std::fs::write(compose_file, rendered)?)
+        }
     }
 
     /// Runs rpk cluster info command

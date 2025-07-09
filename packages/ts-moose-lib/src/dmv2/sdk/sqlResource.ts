@@ -1,5 +1,6 @@
 import { getMooseInternal } from "../internal";
 import { OlapTable } from "./olapTable";
+import { Sql, toStaticQuery } from "../../sqlHelpers";
 
 type SqlObject = OlapTable<any> | SqlResource;
 
@@ -34,8 +35,8 @@ export class SqlResource {
    */
   constructor(
     name: string,
-    setup: readonly string[],
-    teardown: readonly string[],
+    setup: readonly (string | Sql)[],
+    teardown: readonly (string | Sql)[],
     options?: {
       pullsDataFrom?: SqlObject[];
       pushesDataTo?: SqlObject[];
@@ -48,8 +49,12 @@ export class SqlResource {
     sqlResources.set(name, this);
 
     this.name = name;
-    this.setup = setup;
-    this.teardown = teardown;
+    this.setup = setup.map((sql) =>
+      typeof sql === "string" ? sql : toStaticQuery(sql),
+    );
+    this.teardown = teardown.map((sql) =>
+      typeof sql === "string" ? sql : toStaticQuery(sql),
+    );
     this.pullsDataFrom = options?.pullsDataFrom ?? [];
     this.pushesDataTo = options?.pushesDataTo ?? [];
   }

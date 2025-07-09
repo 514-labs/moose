@@ -1323,6 +1323,12 @@ impl Webserver {
             .await
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
+        // Check if proxy port is available
+        let proxy_socket = self.get_socket(project.http_server_config.proxy_port).await;
+        TcpListener::bind(proxy_socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(proxy_socket.port(), e));
+
         let producer = if project.features.streaming_engine {
             Some(kafka::client::create_producer(
                 project.redpanda_config.clone(),

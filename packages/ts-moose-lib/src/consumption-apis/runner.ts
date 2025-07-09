@@ -236,7 +236,7 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
       );
       // port is now passed via config.proxyPort or defaults to 4001
       const port = config.proxyPort !== undefined ? config.proxyPort : 4001;
-      server.listen(port, () => {
+      server.listen(port, "localhost", () => {
         console.log(`Server running on port ${port}`);
       });
 

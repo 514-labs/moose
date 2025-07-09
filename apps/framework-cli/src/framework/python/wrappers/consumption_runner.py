@@ -215,7 +215,7 @@ def main():
 
     moose_client = MooseClient(ch_client, temporal_client)
     port = int(os.environ.get('PROXY_PORT', 4001))
-    server_address = ('', port)
+    server_address = ('localhost', port)
     handler = handler_with_client(moose_client)
     httpd = HTTPServer(server_address, handler)
     

@@ -1,4 +1,4 @@
-import { ConsumptionApi } from "@514labs/moose-lib";
+import { ConsumptionApi, MooseCache } from "@514labs/moose-lib";
 import { BarAggregatedMV } from "../views/barAggregated";
 import { tags } from "typia";
 
@@ -24,6 +24,14 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
     { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
     { client, sql },
   ) => {
+    const cache = await MooseCache.get();
+    const cacheKey = `bar:${orderBy}:${limit}:${startDay}:${endDay}`;
+
+    const cachedData = await cache.get<ResponseData[]>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     const query = sql`
         SELECT 
           ${BarAggregatedMV.targetTable.columns.dayOfMonth},
@@ -37,6 +45,8 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
       `;
 
     const data = await client.query.execute<ResponseData>(query);
+
+    await cache.set(cacheKey, data.json(), 3600); // Cache for 1 hour
 
     return await data.json();
   },

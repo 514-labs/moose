@@ -9,7 +9,6 @@ export default defineConfig({
     "src/compilerPlugin.ts",
     "src/moose-tspc.ts",
     "src/moose-runner.ts",
-    "src/moose-exec.ts",
     "src/dmv2/index.ts",
   ],
   format: ["cjs", "esm"],

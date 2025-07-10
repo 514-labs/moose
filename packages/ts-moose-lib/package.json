@@ -14,7 +14,8 @@
       "types": "./dist/browserCompatible.d.ts",
       "import": "./dist/browserCompatible.mjs",
       "require": "./dist/browserCompatible.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"

@@ -1,8 +1,15 @@
-from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig 
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, InsertOptions
+from pydantic import BaseModel
 from datetime import datetime
 from faker import Faker
 from app.ingest.models import Foo, Baz
 import requests
+
+class FooWorkflow(BaseModel):
+    success: bool
+    message: str
+
+workflow_table = OlapTable[FooWorkflow]("foo_workflow")
 
 def run_task() -> None:
     fake = Faker()
@@ -21,6 +28,11 @@ def run_task() -> None:
             data=foo.model_dump_json().encode('utf-8'),
             headers={'Content-Type': 'application/json'}
         )
+
+        if req.status_code == 200:
+            workflow_table.insert([{"success": True, "message": f"Inserted Foo with primary key: {foo.primary_key}"}])
+        else:
+            workflow_table.insert([{"success": False, "message": f"Failed to insert Foo with error: {req.status_code}"}])
 
 ingest_task = Task[Foo, None](
     name="task",

@@ -46,6 +46,7 @@ use crate::cli::{
 use crate::framework::core::check::check_system_reqs;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::framework::languages::SupportedLanguages;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
@@ -55,6 +56,19 @@ use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
 use anyhow::Result;
+
+fn check_typescript_dependencies(project: &Project) -> Result<(), RoutineFailure> {
+    if project.language == SupportedLanguages::Typescript {
+        let node_modules_path = project.project_location.join("node_modules");
+        if !node_modules_path.exists() {
+            return Err(RoutineFailure::error(Message {
+                action: "Dependencies Missing".to_string(),
+                details: "TypeScript project dependencies are not installed. Please run one of the following commands to install dependencies:\n\n  npm install\n  yarn install\n  pnpm install\n\nThen run 'moose dev' again.".to_string(),
+            }));
+        }
+    }
+    Ok(())
+}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -321,6 +335,7 @@ pub async fn top_command_handler(
             let docker_client = DockerClient::new(&settings);
 
             check_project_name(&project_arc.name())?;
+            check_typescript_dependencies(&project_arc)?;
             run_local_infrastructure(&project_arc, &settings, &docker_client)?.show();
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {

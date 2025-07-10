@@ -265,6 +265,14 @@ async function registerWorkflows(
           ]),
         ),
       },
+      bundlerOptions: {
+        // TODO: Why doesn't this suppress webpack output?
+        webpackConfigHook: (config) => {
+          // Suppress webpack verbose output
+          config.stats = "none";
+          return config;
+        },
+      },
     });
 
     return worker;

@@ -19,9 +19,10 @@ def foo_to_bar(foo: Foo):
     if cached_result:
         return cached_result
 
-    if foo.timestamp == 1728000000.0:  # magic value to test the dead letter queue
-        raise ValueError("blah")
-    
+    # Magic value to test the dead letter queue
+    if foo.timestamp == 1728000000.0:
+        raise ValueError(f"Test DLQ trigger for timestamp {foo.timestamp}")
+
     # Transform Foo to Bar
     result = Bar(
         primary_key=foo.primary_key,
@@ -57,7 +58,7 @@ def print_foo_event(foo):
 
 fooModel.get_stream().add_consumer(print_foo_event)
 
-# DLQ consumer for handling failed events (alternate flow)
+# Prints messages from the dead letter queue
 def print_messages(dead_letter: DeadLetterModel[Foo]):
     print("dead letter:", dead_letter)
     print("foo in dead letter:", dead_letter.as_typed())

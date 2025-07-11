@@ -5,17 +5,9 @@ from datetime import datetime
 
 def foo_to_bar(foo: Foo):
 
-    """Transform Foo events to Bar events with error handling and caching.
-    
-    Normal flow:
-    1. Check cache for previously processed events
-    2. Transform Foo to Bar
-    3. Cache the result
-    4. Return transformed Bar event
-    
-    Alternate flow (DLQ):
-    - If errors occur during transformation, the event is sent to DLQ
-    - This enables separate error handling, monitoring, and retry strategies
+    """
+    Checks cache for event -> Transform Foo to Bar -> cache result -> return Bar
+    If errors occur during transformation, the event is sent to DLQ
     """
 
     # Create a cache
@@ -29,15 +21,17 @@ def foo_to_bar(foo: Foo):
 
     if foo.timestamp == 1728000000.0:  # magic value to test the dead letter queue
         raise ValueError("blah")
+    
+    # Transform Foo to Bar
     result = Bar(
         primary_key=foo.primary_key,
         baz=foo.baz,
-        utc_timestamp=datetime.fromtimestamp(foo.timestamp),
+        utc_timestamp=datetime.fromtimestamp(foo.timestamp), # Convert timestamp to UTC datetime
         has_text=foo.optional_text is not None,
         text_length=len(foo.optional_text) if foo.optional_text else 0
     )
 
-    # Store the result in cache
+    # Cache the result (1 hour retention)
     cache.set(result, cache_key, 3600)  # Cache for 1 hour
     return result
 

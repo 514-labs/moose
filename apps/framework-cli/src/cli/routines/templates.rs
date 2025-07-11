@@ -343,7 +343,7 @@ pub async fn create_project_from_template(
 
     // Special case: If name is ".", use current directory without creating a new folder
     let is_current_dir = name == ".";
-    
+
     if !no_fail_already_exists && dir_path.exists() && !is_current_dir {
         return Err(RoutineFailure::error(Message {
             action: "Init".to_string(),
@@ -352,7 +352,7 @@ pub async fn create_project_from_template(
                 .to_string(),
         }));
     }
-    
+
     if !is_current_dir {
         std::fs::create_dir_all(dir_path).expect("Failed to create directory");
     }
@@ -374,7 +374,7 @@ pub async fn create_project_from_template(
     };
 
     generate_template(template, CLI_VERSION, dir_path).await?;
-    
+
     // For current directory case, use the directory name as the project name if name is "."
     let project_name = if is_current_dir {
         dir_path
@@ -384,7 +384,7 @@ pub async fn create_project_from_template(
     } else {
         name.to_string()
     };
-    
+
     let project = Project::new(dir_path, project_name.clone(), language);
     let project_arc = Arc::new(project);
 
@@ -470,10 +470,11 @@ pub async fn create_project_from_template(
 
 fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
     let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
-    let is_current_dir = project_arc.name() == dir_path
-        .file_name()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "moose-project".to_string());
+    let is_current_dir = project_arc.name()
+        == dir_path
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "moose-project".to_string());
 
     if !is_git_repo {
         crate::utilities::git::create_init_commit(project_arc, dir_path);
@@ -492,7 +493,7 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
         } else {
             format!("Created project at {} 🚀", dir_path.to_string_lossy())
         };
-        
+
         show_message!(
             MessageType::Success,
             Message {

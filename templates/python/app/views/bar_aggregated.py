@@ -1,4 +1,4 @@
-# This block is used to aggregate the data from the Bar table into a materialized view
+# This block aggregates data from the Bar table into a materialized view
 from moose_lib.dmv2 import MaterializedView, MaterializedViewOptions
 from app.ingest.models import barModel
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ class BarAggregated(BaseModel):
     total_text_length: int
     max_text_length: int
 
-# The query to create the materialized view, which is executed when the block is set up
+# Query to create the materialized view
 select_query = """
 SELECT
   toDayOfMonth(utc_timestamp) as day_of_month,

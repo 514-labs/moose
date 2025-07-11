@@ -5,29 +5,20 @@ import {
   DeadLetterModel,
 } from "@514labs/moose-lib";
 
-/**
- * Data Pipeline: Raw Record (Foo) → Processed Record (Bar)
- * Raw (Foo) → HTTP → Raw Stream → Transform → Derived (Bar) → Processed Stream → DB Table
- */
-
-/** =======Data Models========= */
-
-/** Raw data ingested via API */
+// Raw data model
 export interface Foo {
-  primaryKey: Key<string>; // Unique ID
-  timestamp: number; // Unix timestamp
-  optionalText?: string; // Text to analyze
+  primaryKey: Key<string>;
+  timestamp: number;
+  optionalText?: string;
 }
 
-/** Analyzed text metrics derived from Foo */
+// Processed data model
 export interface Bar {
-  primaryKey: Key<string>; // From Foo.primaryKey
-  utcTimestamp: Date; // From Foo.timestamp
-  hasText: boolean; // From Foo.optionalText?
-  textLength: number; // From Foo.optionalText.length
+  primaryKey: Key<string>;
+  utcTimestamp: Date;
+  hasText: boolean;
+  textLength: number;
 }
-
-/** =======Pipeline Configuration========= */
 
 export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter", {
   orderByFields: ["failedAt"],
@@ -35,7 +26,7 @@ export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter", {
 
 /** Raw data ingestion */
 export const FooPipeline = new IngestPipeline<Foo>("Foo", {
-  table: false, // No table; only stream raw records
+  table: false, // No table
   stream: true, // Buffer ingested records
   ingest: true, // POST /ingest/Foo
   deadLetterQueue: {
@@ -45,7 +36,7 @@ export const FooPipeline = new IngestPipeline<Foo>("Foo", {
 
 /** Buffering and storing processed records (@see transforms.ts for transformation logic) */
 export const BarPipeline = new IngestPipeline<Bar>("Bar", {
-  table: true, // Persist in ClickHouse table "Bar"
+  table: true, // Store in ClickHouse table "Bar"
   stream: true, // Buffer processed records
-  ingest: false, // No API; only derive from processed Foo records
+  ingest: false, // No API endpoint
 });

@@ -40,15 +40,14 @@ class QueryResult(BaseModel):
     total_text_length: int
     
     
-## The run function is where you can define your API logic
+# The run function is where you can define your API logic
 def run(client: MooseClient, params: QueryParams):
 
     # Create a cache
     cache = MooseCache()
     cache_key = f"bar:{params.order_by}:{params.limit}:{params.start_day}:{params.end_day}"
 
-    # Check for cached query results
-    cached_result = cache.get(cache_key)
+    cached_result = cache.get(cache_key) # Check for cached query results
     if cached_result and len(cached_result) > 0:
         return cached_result
 
@@ -71,12 +70,9 @@ def run(client: MooseClient, params: QueryParams):
     LIMIT {limit}
     """    
 
+    # Execute query and cache results
     result = client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
-
-    # Cache query results
     cache.set(result, cache_key, 3600)  # Cache for 1 hour
-
     return result
-
 
 bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)

@@ -31,6 +31,7 @@ pub struct ConsumptionProcessRegistry {
     project_path: PathBuf,
     jwt_config: Option<JwtConfig>,
     project: Project,
+    proxy_port: Option<u16>,
 }
 
 impl ConsumptionProcessRegistry {
@@ -41,7 +42,9 @@ impl ConsumptionProcessRegistry {
         dir: PathBuf,
         project_path: PathBuf,
         project: Project,
+        proxy_port: Option<u16>,
     ) -> Self {
+        let proxy_port = proxy_port.or(Some(project.http_server_config.proxy_port));
         Self {
             api_process: Option::None,
             language,
@@ -50,6 +53,7 @@ impl ConsumptionProcessRegistry {
             project_path,
             jwt_config,
             project,
+            proxy_port,
         }
     }
 
@@ -62,6 +66,7 @@ impl ConsumptionProcessRegistry {
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),
                 &self.dir,
+                self.proxy_port,
             ),
             SupportedLanguages::Typescript => typescript::consumption::run(
                 self.project.clone(),
@@ -69,6 +74,7 @@ impl ConsumptionProcessRegistry {
                 self.jwt_config.clone(),
                 &self.dir,
                 &self.project_path,
+                self.proxy_port,
             ),
         }?;
 

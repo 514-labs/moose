@@ -17,6 +17,7 @@ pub fn run(
     clickhouse_config: ClickHouseConfig,
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
+    proxy_port: Option<u16>,
 ) -> Result<Child, ConsumptionError> {
     // Create the wrapper lib files inside the .moose directory
     let internal_dir = project.internal_dir()?;
@@ -78,6 +79,7 @@ pub fn run(
         project.temporal_config.client_key,
         project.temporal_config.api_key,
         project.features.data_model_v2.to_string(),
+        proxy_port.unwrap_or(4001).to_string(),
     ];
 
     let mut consumption_process = executor::run_python_program(

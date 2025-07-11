@@ -22,6 +22,7 @@ pub fn run(
     jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
     project_path: &Path,
+    proxy_port: Option<u16>,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let temporal_url = project.temporal_config.temporal_url();
@@ -71,6 +72,11 @@ pub fn run(
 
     if project.features.data_model_v2 {
         string_args.push("--is-dmv2".to_string());
+    }
+
+    if let Some(port) = proxy_port {
+        string_args.push("--proxy-port".to_string());
+        string_args.push(port.to_string());
     }
 
     let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();

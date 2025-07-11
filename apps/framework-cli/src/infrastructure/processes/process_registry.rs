@@ -81,6 +81,7 @@ impl ProcessRegistries {
             project.consumption_dir(),
             project.project_location.clone(),
             project.clone(),
+            None, // proxy_port: will use project.http_server_config.proxy_port
         );
 
         let orchestration_workers = OrchestrationWorkersRegistry::new(project, settings);

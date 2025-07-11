@@ -66,6 +66,7 @@ impl ConsumptionProcessRegistry {
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),
                 &self.dir,
+                self.proxy_port,
             ),
             SupportedLanguages::Typescript => typescript::consumption::run(
                 self.project.clone(),

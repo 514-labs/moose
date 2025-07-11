@@ -261,10 +261,7 @@ impl Project {
             redpanda_config: KafkaConfig::default(),
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
-            http_server_config: LocalWebserverConfig {
-                proxy_port: crate::cli::local_webserver::default_proxy_port(),
-                ..LocalWebserverConfig::default()
-            },
+            http_server_config: LocalWebserverConfig::default(),
             temporal_config: TemporalConfig::default(),
             language_project_config,
             supported_old_versions: HashMap::new(),

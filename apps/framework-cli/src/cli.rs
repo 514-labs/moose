@@ -89,6 +89,11 @@ fn load_project() -> Result<Project, RoutineFailure> {
 }
 
 fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
+    // Special case: Allow "." as a valid project name to indicate current directory
+    if name == "." {
+        return Ok(());
+    }
+    
     let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).unwrap();
     if !project_name_regex.is_match(name) {
         return Err(RoutineFailure::error(Message {

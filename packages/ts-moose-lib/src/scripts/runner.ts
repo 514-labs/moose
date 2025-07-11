@@ -265,6 +265,15 @@ async function registerWorkflows(
           ]),
         ),
       },
+      bundlerOptions: {
+        // TODO: Why doesn't this suppress webpack output?
+        // https://github.com/temporalio/sdk-typescript/issues/1740
+        webpackConfigHook: (config) => {
+          // Suppress webpack verbose output
+          config.stats = "none";
+          return config;
+        },
+      },
     });
 
     return worker;

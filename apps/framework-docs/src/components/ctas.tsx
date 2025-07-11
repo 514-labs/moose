@@ -201,7 +201,7 @@ export const PathConfig = {
     category: "social" as const,
   },
   slack: {
-    path: "https://join.slack.com/t/moose-community/shared_invite/zt-32tt66s7r-WS9wn~FAFEe31cFBtJeaFA",
+    path: "https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg",
     icon: Icons.slack,
     title: "Join Slack",
     category: "social" as const,

@@ -6,17 +6,8 @@ FooPipeline.stream!.addTransform(
   BarPipeline.stream!,
   async (foo: Foo): Promise<Bar> => {
     /**
-     * Transform Foo events to Bar events with error handling and caching.
-     * 
-     * Normal flow:
-     * 1. Check cache for previously processed events
-     * 2. Transform Foo to Bar
-     * 3. Cache the result
-     * 4. Return transformed Bar event
-     * 
-     * Alternate flow (DLQ):
-     * - If errors occur during transformation, the event is sent to DLQ
-     * - This enables separate error handling, monitoring, and retry strategies
+     * Checks cache for event -> Transform Foo to Bar -> cache result -> return Bar
+     * If errors occur during transformation, the event is sent to DLQ
     */
 
     // Initialize cache
@@ -30,11 +21,12 @@ FooPipeline.stream!.addTransform(
       return cached;
     }
 
+    // Magic value to test the dead letter queue
     if (foo.timestamp === 1728000000.0) {
-      // magic value to test the dead letter queue
       throw new Error("blah");
     }
 
+    // Transform Foo to Bar
     const result: Bar = {
       primaryKey: foo.primaryKey,
       utcTimestamp: new Date(foo.timestamp * 1000), // Convert timestamp to Date
@@ -52,6 +44,13 @@ FooPipeline.stream!.addTransform(
   },
 );
 
+// DLQ consumer for handling failed events (alternate flow)
+FooPipeline.deadLetterQueue!.addConsumer((deadLetter) => {
+  console.log(deadLetter);
+  const foo: Foo = deadLetter.asTyped();
+  console.log(foo);
+});
+
 // Add a streaming consumer to print Foo events
 const printFooEvent = (foo: Foo): void => {
   console.log("Received Foo event:");
@@ -62,10 +61,3 @@ const printFooEvent = (foo: Foo): void => {
 };
 
 FooPipeline.stream!.addConsumer(printFooEvent);
-
-// DLQ consumer for handling failed events (alternate flow)
-FooPipeline.deadLetterQueue!.addConsumer((deadLetter) => {
-  console.log(deadLetter);
-  const foo: Foo = deadLetter.asTyped();
-  console.log(foo);
-});

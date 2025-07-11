@@ -21,6 +21,7 @@ const SCRIPTS_BIN: &str = "scripts";
 // Check if a log line is from webpack bundling process
 // Ideally suppressed in the worker through webpack config,
 // temporal/webpack doesn't seem to be respecting it.
+// https://github.com/temporalio/sdk-typescript/issues/1740
 fn is_webpack_log(line: &str) -> bool {
     let line_lower = line.to_lowercase();
     line_lower.contains("modules by path")

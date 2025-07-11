@@ -95,6 +95,7 @@ const sendChunkWithRetry = async (
   targetTopic: TopicConfig,
   producer: Producer,
   messages: SlimKafkaMessage[],
+  currentMaxSize: number,
   maxRetries: number = 3,
 ): Promise<void> => {
   let currentMessages = messages;
@@ -117,8 +118,8 @@ const sendChunkWithRetry = async (
         );
 
         // Split the batch into smaller chunks (use half the current max size)
-        const currentMaxSize = Math.floor(targetTopic.maxMessageBytes / 2);
-        const splitChunks = splitBatch(currentMessages, currentMaxSize);
+        const newMaxSize = Math.floor(currentMaxSize / 2);
+        const splitChunks = splitBatch(currentMessages, newMaxSize);
 
         // Send each split chunk recursively
         for (const chunk of splitChunks) {
@@ -127,6 +128,7 @@ const sendChunkWithRetry = async (
             targetTopic,
             producer,
             chunk,
+            newMaxSize,
             // this error does not count as one failed attempt
             maxRetries - attempts,
           );
@@ -184,8 +186,8 @@ type SlimKafkaMessage = { value: string };
 export interface TopicConfig {
   name: string; // Full topic name including namespace if present
   partitions: number;
-  retentionPeriod: number;
-  maxMessageBytes: number;
+  retention_ms: number;
+  max_message_bytes: number;
   namespace?: string;
   version?: string;
 }
@@ -447,47 +449,62 @@ const sendMessages = async (
   messages: SlimKafkaMessage[],
 ): Promise<void> => {
   try {
-    let chunks: SlimKafkaMessage[] = [];
+    let chunk: SlimKafkaMessage[] = [];
     let chunkSize = 0;
+
+    const maxMessageSize = targetTopic.max_message_bytes || 1024 * 1024;
 
     for (const message of messages) {
       const messageSize =
         Buffer.byteLength(message.value, "utf8") +
         KAFKAJS_BYTE_MESSAGE_OVERHEAD;
 
-      if (chunkSize + messageSize > targetTopic.maxMessageBytes) {
+      if (chunkSize + messageSize > maxMessageSize) {
         logger.log(
           `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
         );
         // Send the current chunk before adding the new message
-        await sendChunkWithRetry(logger, targetTopic, producer, chunks);
+        await sendChunkWithRetry(
+          logger,
+          targetTopic,
+          producer,
+          chunk,
+          maxMessageSize,
+        );
         logger.log(
-          `Sent ${chunks.length} transformed records to ${targetTopic.name}`,
+          `Sent ${chunk.length} transformed records to ${targetTopic.name}`,
         );
 
         // Start a new chunk
-        chunks = [message];
+        chunk = [message];
         chunkSize = messageSize;
       } else {
         // Add the new message to the current chunk
-        chunks.push(message);
-        chunks.forEach(
-          (chunk) => (metrics.bytes += Buffer.byteLength(chunk.value, "utf8")),
+        chunk.push(message);
+        chunk.forEach(
+          (message) =>
+            (metrics.bytes += Buffer.byteLength(message.value, "utf8")),
         );
         chunkSize += messageSize;
       }
     }
 
-    metrics.count_out += chunks.length;
+    metrics.count_out += chunk.length;
 
     // Send the last chunk
-    if (chunks.length > 0) {
+    if (chunk.length > 0) {
       logger.log(
         `Sending ${chunkSize} bytes of a transformed record batch to ${targetTopic.name}`,
       );
-      await sendChunkWithRetry(logger, targetTopic, producer, chunks);
+      await sendChunkWithRetry(
+        logger,
+        targetTopic,
+        producer,
+        chunk,
+        maxMessageSize,
+      );
       logger.log(
-        `Sent final ${chunks.length} transformed data to ${targetTopic.name}`,
+        `Sent final ${chunk.length} transformed data to ${targetTopic.name}`,
       );
     }
   } catch (e) {

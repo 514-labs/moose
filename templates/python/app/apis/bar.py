@@ -1,7 +1,7 @@
 
 # This file is where you can define your API templates for consuming your data
 
-from moose_lib import MooseClient, ConsumptionApi
+from moose_lib import MooseClient, ConsumptionApi, MooseCache
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.views.bar_aggregated import barAggregatedMV
@@ -42,7 +42,16 @@ class QueryResult(BaseModel):
     
 ## The run function is where you can define your API logic
 def run(client: MooseClient, params: QueryParams):
-    
+
+    # Create a cache
+    cache = MooseCache()
+    cache_key = f"bar:{params.order_by}:{params.limit}:{params.start_day}:{params.end_day}"
+
+    # Check for cached query results
+    cached_result = cache.get(cache_key)
+    if cached_result and len(cached_result) > 0:
+        return cached_result
+
     start_day = params.start_day
     end_day = params.end_day
     limit = params.limit
@@ -61,8 +70,13 @@ def run(client: MooseClient, params: QueryParams):
     ORDER BY {order_by} DESC
     LIMIT {limit}
     """    
-   
-    return client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
+
+    result = client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
+
+    # Cache query results
+    cache.set(result, cache_key, 3600)  # Cache for 1 hour
+
+    return result
 
 
 bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)

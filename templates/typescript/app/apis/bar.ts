@@ -47,7 +47,6 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
 
     const data = await client.query.execute<ResponseData>(query);
     const result: ResponseData[] = await data.json();
-
     await cache.set(cacheKey, result, 3600); // Cache for 1 hour
 
     return result;

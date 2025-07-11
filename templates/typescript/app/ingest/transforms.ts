@@ -23,7 +23,7 @@ FooPipeline.stream!.addTransform(
 
     // Magic value to test the dead letter queue
     if (foo.timestamp === 1728000000.0) {
-      throw new Error("blah");
+      throw new Error(`Test DLQ trigger for timestamp ${foo.timestamp}`);
     }
 
     // Transform Foo to Bar

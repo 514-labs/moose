@@ -341,7 +341,10 @@ pub async fn create_project_from_template(
 ) -> Result<String, RoutineFailure> {
     let template_config = get_template_config(template, CLI_VERSION).await?;
 
-    if !no_fail_already_exists && dir_path.exists() {
+    // Special case: If name is ".", use current directory without creating a new folder
+    let is_current_dir = name == ".";
+
+    if !no_fail_already_exists && dir_path.exists() && !is_current_dir {
         return Err(RoutineFailure::error(Message {
             action: "Init".to_string(),
             details:
@@ -349,7 +352,15 @@ pub async fn create_project_from_template(
                 .to_string(),
         }));
     }
-    std::fs::create_dir_all(dir_path).expect("Failed to create directory");
+
+    if !is_current_dir {
+        std::fs::create_dir_all(dir_path).map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Init".into(),
+                details: format!("Failed to create directory: {e}"),
+            })
+        })?;
+    }
 
     if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
         return Err(RoutineFailure::error(Message {
@@ -368,7 +379,18 @@ pub async fn create_project_from_template(
     };
 
     generate_template(template, CLI_VERSION, dir_path).await?;
-    let project = Project::new(dir_path, name.to_string(), language);
+
+    // For current directory case, use the directory name as the project name if name is "."
+    let project_name = if is_current_dir {
+        dir_path
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "moose-project".to_string())
+    } else {
+        name.to_string()
+    };
+
+    let project = Project::new(dir_path, project_name.clone(), language);
     let project_arc = Arc::new(project);
 
     // Update project configuration based on language
@@ -394,7 +416,7 @@ pub async fn create_project_from_template(
                 if let Some(obj) = package_json.as_object_mut() {
                     obj.insert(
                         "name".to_string(),
-                        serde_json::Value::String(name.to_string()),
+                        serde_json::Value::String(project_name.clone()),
                     );
                     std::fs::write(
                         &package_json_path,
@@ -444,14 +466,14 @@ pub async fn create_project_from_template(
         }
     }
 
-    maybe_create_git_repo(dir_path, project_arc);
+    maybe_create_git_repo(dir_path, project_arc, is_current_dir);
 
     Ok(template_config
         .post_install_print
         .replace("{project_dir}", &dir_path.to_string_lossy()))
 }
 
-fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
+fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>, is_current_dir: bool) {
     let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
 
     if !is_git_repo {
@@ -466,11 +488,17 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
     }
 
     {
+        let message = if is_current_dir {
+            "Created project in current directory 🚀".to_string()
+        } else {
+            format!("Created project at {} 🚀", dir_path.to_string_lossy())
+        };
+
         show_message!(
             MessageType::Success,
             Message {
                 action: "Success!".to_string(),
-                details: format!("Created project at {} 🚀", dir_path.to_string_lossy()),
+                details: message,
             }
         );
     }

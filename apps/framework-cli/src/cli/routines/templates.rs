@@ -354,7 +354,12 @@ pub async fn create_project_from_template(
     }
 
     if !is_current_dir {
-        std::fs::create_dir_all(dir_path).expect("Failed to create directory");
+        std::fs::create_dir_all(dir_path).map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Init".into(),
+                details: format!("Failed to create directory: {e}"),
+            })
+        })?;
     }
 
     if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
@@ -461,20 +466,15 @@ pub async fn create_project_from_template(
         }
     }
 
-    maybe_create_git_repo(dir_path, project_arc);
+    maybe_create_git_repo(dir_path, project_arc, is_current_dir);
 
     Ok(template_config
         .post_install_print
         .replace("{project_dir}", &dir_path.to_string_lossy()))
 }
 
-fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
+fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>, is_current_dir: bool) {
     let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
-    let is_current_dir = project_arc.name()
-        == dir_path
-            .file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "moose-project".to_string());
 
     if !is_git_repo {
         crate::utilities::git::create_init_commit(project_arc, dir_path);

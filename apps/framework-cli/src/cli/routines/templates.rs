@@ -489,7 +489,7 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>, is_current_
 
     {
         let message = if is_current_dir {
-            format!("Created project in current directory 🚀")
+            "Created project in current directory 🚀".to_string()
         } else {
             format!("Created project at {} 🚀", dir_path.to_string_lossy())
         };

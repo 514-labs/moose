@@ -163,9 +163,9 @@ pub fn create_table_query(
         "table_name": table.name,
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
-            format!("`{}`", primary_key.join("`, `"))
+            Some(format!("`{}`", primary_key.join("`, `")))
         } else {
-            "()".to_string()
+            None
         },
         "order_by_string": if !table.order_by.is_empty() {
             Some(table.order_by.iter().map(|item| {format!("`{item}`")}).collect::<Vec<String>>().join(", "))

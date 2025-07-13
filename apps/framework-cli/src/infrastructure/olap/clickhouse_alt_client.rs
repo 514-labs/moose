@@ -297,22 +297,28 @@ async fn select_as_json<'a>(
         .map(|c| column_type_to_enum_mapping(&c.column_type))
         .collect();
 
-    let key_columns = table
-        .columns
-        .iter()
-        .filter_map(|c| {
-            if c.primary_key {
-                Some(c.name.as_str())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let order_by = if key_columns.is_empty() {
-        "".to_string()
+    let order_by = if !table.order_by.is_empty() {
+        // Use explicit order_by fields if they exist
+        format!("ORDER BY {}", table.order_by.join(", "))
     } else {
-        format!("ORDER BY {}", key_columns.join(", "))
+        // Fall back to primary key columns only if no explicit order_by is specified
+        let key_columns = table
+            .columns
+            .iter()
+            .filter_map(|c| {
+                if c.primary_key {
+                    Some(c.name.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if key_columns.is_empty() {
+            "".to_string()
+        } else {
+            format!("ORDER BY {}", key_columns.join(", "))
+        }
     };
 
     let query = &format!(

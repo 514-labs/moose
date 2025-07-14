@@ -23,7 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     apt-transport-https \
     software-properties-common \
-    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Create ubuntu user early with proper sudoers permissions
@@ -82,7 +81,7 @@ RUN PROTOC_VERSION=24.4 \
 # Install maturin for Python-Rust bindings (with --break-system-packages for newer Python)
 RUN pip install maturin==1.8.1 --break-system-packages
 
-# Install Rust toolchain for ubuntu user
+# Install Rust toolchain for ubuntu user (the user that actually uses the environment)
 USER ubuntu
 WORKDIR /home/ubuntu
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -91,23 +90,22 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 USER root
 WORKDIR /
 
-# Also install Rust for root user (for compatibility)
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
 # Set up PATH environment variables for consistent access in all contexts
-ENV PATH="/root/.cargo/bin:/root/.local/bin:${PATH}"
 ENV PATH="/home/ubuntu/.cargo/bin:/home/ubuntu/.local/bin:${PATH}"
 
 # Verify installations
 RUN node --version \
     && npm --version \
     && pnpm --version \
-    && rustc --version \
-    && cargo --version \
     && python3 --version \
     && pip --version \
     && protoc --version \
     && maturin --version
+
+# Verify Rust installations as ubuntu user
+USER ubuntu
+RUN rustc --version && cargo --version
+USER root
 
 # Set working directory
 WORKDIR /workspace
@@ -116,10 +114,6 @@ WORKDIR /workspace
 COPY scripts/verify-environment.sh /tmp/verify-environment.sh
 RUN chmod +x /tmp/verify-environment.sh \
     && /tmp/verify-environment.sh
-
-# Set up environment for both users in bashrc (for interactive shells)
-RUN echo 'export PATH="/root/.cargo/bin:$PATH"' >> /root/.bashrc \
-    && echo 'export PATH="/root/.local/bin:$PATH"' >> /root/.bashrc
 
 # Set up environment for ubuntu user in bashrc (for interactive shells)
 USER ubuntu

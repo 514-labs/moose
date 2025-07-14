@@ -5,7 +5,7 @@ use log::info;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::io::{stdout, IsTerminal};
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
 use crate::framework::core::infrastructure_map::TableChange;
@@ -267,7 +267,7 @@ where
 pub fn force_cleanup_spinners() {
     // Force a newline to ensure we're on a clean line
     // This helps if a spinner was interrupted mid-animation
-    print!("\n");
+    println!();
 
     // Send escape sequences to ensure any spinner-related terminal state is cleared
     print!("\x1b[?25h"); // Show cursor (in case spinner hid it)

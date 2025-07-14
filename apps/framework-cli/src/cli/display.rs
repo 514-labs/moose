@@ -1,5 +1,4 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
-use console::{pad_str, style};
 use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
@@ -7,6 +6,14 @@ use spinners::{Spinner, Spinners};
 use std::io::{stdout, IsTerminal};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
+
+// Crossterm imports for migration
+use crossterm::{
+    execute,
+    style::{
+        Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    },
+};
 
 use crate::framework::core::infrastructure_map::TableChange;
 use crate::framework::core::{
@@ -55,13 +62,11 @@ use crate::framework::core::{
 ///
 /// A terminal instance with associated state for displaying CLI messages.
 ///
-/// The CommandTerminal wraps a console::Term for stdout handling and tracks the
+/// The CommandTerminal wraps stdout handling and tracks the
 /// number of messages written for potential future needs (such as clearing or
 /// updating specific messages).
 #[derive(Debug, Clone)]
 pub struct CommandTerminal {
-    /// The underlying terminal output handler
-    pub term: console::Term,
     /// Counter tracking the number of messages written to the terminal
     pub counter: usize,
 }
@@ -73,10 +78,12 @@ impl CommandTerminal {
     ///
     /// * `CommandTerminal` - A new terminal instance with counter initialized to 0
     pub fn new() -> CommandTerminal {
-        CommandTerminal {
-            term: console::Term::stdout(),
-            counter: 0,
-        }
+        CommandTerminal { counter: 0 }
+    }
+
+    /// Write a line to stdout using crossterm
+    pub fn write_line(&self, content: &str) -> std::io::Result<()> {
+        crossterm_utils::write_line(content)
     }
 }
 
@@ -135,18 +142,24 @@ lazy_static! {
 ///
 /// * `message` - The message describing the added infrastructure
 pub fn infra_added(message: &str) {
-    let command_terminal = TERM.write().unwrap();
+    let mut command_terminal = TERM.write().unwrap();
     let padder = 14;
 
+    let padded_text =
+        crossterm_utils::pad_str("+", padder, crossterm_utils::Alignment::Right, Some("..."));
+    let styled_prefix = crossterm_utils::style(padded_text).green();
+
+    // Write styled prefix
+    styled_prefix
+        .write_to_stdout()
+        .expect("failed to write styled prefix to terminal");
+
+    // Write message
     command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("+", padder, console::Alignment::Right, Some("..."))).green(),
-            message
-        ))
+        .write_line(&format!(" {}", message))
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("+ {}", message.trim());
 }
 
@@ -156,18 +169,24 @@ pub fn infra_added(message: &str) {
 ///
 /// * `message` - The message describing the removed infrastructure
 pub fn infra_removed(message: &str) {
-    let command_terminal = TERM.write().unwrap();
+    let mut command_terminal = TERM.write().unwrap();
     let padder = 14;
 
+    let padded_text =
+        crossterm_utils::pad_str("-", padder, crossterm_utils::Alignment::Right, Some("..."));
+    let styled_prefix = crossterm_utils::style(padded_text).red();
+
+    // Write styled prefix
+    styled_prefix
+        .write_to_stdout()
+        .expect("failed to write styled prefix to terminal");
+
+    // Write message
     command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("-", padder, console::Alignment::Right, Some("..."))).red(),
-            message
-        ))
+        .write_line(&format!(" {}", message))
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("- {}", message.trim());
 }
 
@@ -177,25 +196,31 @@ pub fn infra_removed(message: &str) {
 ///
 /// * `message` - The message describing the updated infrastructure
 pub fn infra_updated(message: &str) {
-    let command_terminal = TERM.write().unwrap();
+    let mut command_terminal = TERM.write().unwrap();
     let padder = 14;
 
+    let padded_text =
+        crossterm_utils::pad_str("~", padder, crossterm_utils::Alignment::Right, Some("..."));
+    let styled_prefix = crossterm_utils::style(padded_text).yellow();
+
+    // Write styled prefix
+    styled_prefix
+        .write_to_stdout()
+        .expect("failed to write styled prefix to terminal");
+
+    // Write message
     command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("~", padder, console::Alignment::Right, Some("..."))).yellow(),
-            message
-        ))
+        .write_line(&format!(" {}", message))
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("~ {}", message.trim());
 }
 
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
         use crate::cli::display::TERM;
-        use console::{pad_str, style};
+        use crate::cli::display::crossterm_utils;
 
         let padder = 14;
         let evaluated_message = $message;
@@ -204,16 +229,28 @@ macro_rules! show_message {
 
         {
             let mut command_terminal = TERM.write().unwrap();
-            let color = match $message_type {
-                MessageType::Info => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).cyan().bold(),
-                MessageType::Success => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).green().bold(),
-                MessageType::Error => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).red().bold(),
-                MessageType::Highlight => style(pad_str(action.as_str(), padder, console::Alignment::Center, Some("..."))).on_green().bold(),
+
+            // Create styled prefix based on message type
+            let padded_action = match $message_type {
+                MessageType::Info => crossterm_utils::pad_str(action.as_str(), padder, crossterm_utils::Alignment::Right, Some("...")),
+                MessageType::Success => crossterm_utils::pad_str(action.as_str(), padder, crossterm_utils::Alignment::Right, Some("...")),
+                MessageType::Error => crossterm_utils::pad_str(action.as_str(), padder, crossterm_utils::Alignment::Right, Some("...")),
+                MessageType::Highlight => crossterm_utils::pad_str(action.as_str(), padder, crossterm_utils::Alignment::Center, Some("...")),
             };
 
+            let styled_prefix = match $message_type {
+                MessageType::Info => crossterm_utils::style(padded_action).cyan().bold(),
+                MessageType::Success => crossterm_utils::style(padded_action).green().bold(),
+                MessageType::Error => crossterm_utils::style(padded_action).red().bold(),
+                MessageType::Highlight => crossterm_utils::style(padded_action).on_green().bold(),
+            };
+
+            // Write styled prefix
+            styled_prefix.write_to_stdout().expect("failed to write styled prefix to terminal");
+
+            // Write details
             command_terminal
-                .term
-                .write_line(&format!("{} {}", color, details))
+                .write_line(&format!(" {}", details))
                 .expect("failed to write message to terminal");
             command_terminal.counter += 1;
 
@@ -394,7 +431,6 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
 pub fn show_changes(infra_plan: &InfraPlan) {
     TERM.write()
         .unwrap()
-        .term
         .write_line("")
         .expect("failed to write message to terminal");
     // TODO there is probably a better way to do the following through
@@ -560,5 +596,139 @@ mod tests {
             }
         );
         result
+    }
+}
+
+/// Crossterm utility functions to replace console crate functionality
+pub mod crossterm_utils {
+    use super::*;
+
+    #[derive(Debug, Clone, Copy)]
+    pub enum Alignment {
+        Left,
+        Right,
+        Center,
+    }
+
+    /// Pads a string with specified alignment, similar to console::pad_str
+    pub fn pad_str(text: &str, width: usize, alignment: Alignment, fill: Option<&str>) -> String {
+        let fill_char = fill.unwrap_or(" ");
+        let text_len = text.len();
+
+        if text_len >= width {
+            return text.to_string();
+        }
+
+        let padding_needed = width - text_len;
+
+        match alignment {
+            Alignment::Left => {
+                format!("{}{}", text, fill_char.repeat(padding_needed))
+            }
+            Alignment::Right => {
+                format!("{}{}", fill_char.repeat(padding_needed), text)
+            }
+            Alignment::Center => {
+                let left_padding = padding_needed / 2;
+                let right_padding = padding_needed - left_padding;
+                format!(
+                    "{}{}{}",
+                    fill_char.repeat(left_padding),
+                    text,
+                    fill_char.repeat(right_padding)
+                )
+            }
+        }
+    }
+
+    /// Styled text builder for crossterm
+    pub struct StyledText {
+        text: String,
+        foreground: Option<Color>,
+        background: Option<Color>,
+        bold: bool,
+    }
+
+    impl StyledText {
+        pub fn new(text: String) -> Self {
+            Self {
+                text,
+                foreground: None,
+                background: None,
+                bold: false,
+            }
+        }
+
+        pub fn cyan(mut self) -> Self {
+            self.foreground = Some(Color::Cyan);
+            self
+        }
+
+        pub fn green(mut self) -> Self {
+            self.foreground = Some(Color::Green);
+            self
+        }
+
+        pub fn red(mut self) -> Self {
+            self.foreground = Some(Color::Red);
+            self
+        }
+
+        pub fn yellow(mut self) -> Self {
+            self.foreground = Some(Color::Yellow);
+            self
+        }
+
+        pub fn bold(mut self) -> Self {
+            self.bold = true;
+            self
+        }
+
+        pub fn on_green(mut self) -> Self {
+            self.background = Some(Color::Green);
+            self
+        }
+
+        /// Write this styled text to stdout
+        pub fn write_to_stdout(&self) -> std::io::Result<()> {
+            let mut stdout = std::io::stdout();
+
+            // Apply foreground color
+            if let Some(color) = self.foreground {
+                execute!(stdout, SetForegroundColor(color))?;
+            }
+
+            // Apply background color
+            if let Some(color) = self.background {
+                execute!(stdout, SetBackgroundColor(color))?;
+            }
+
+            // Apply bold
+            if self.bold {
+                execute!(stdout, SetAttribute(Attribute::Bold))?;
+            }
+
+            // Print the text
+            execute!(stdout, Print(&self.text))?;
+
+            // Reset all styling
+            execute!(stdout, ResetColor)?;
+            if self.bold {
+                execute!(stdout, SetAttribute(Attribute::Reset))?;
+            }
+
+            Ok(())
+        }
+    }
+
+    /// Create a styled text instance
+    pub fn style(text: String) -> StyledText {
+        StyledText::new(text)
+    }
+
+    /// Write a line to stdout with crossterm
+    pub fn write_line(content: &str) -> std::io::Result<()> {
+        let mut stdout = std::io::stdout();
+        execute!(stdout, Print(content), Print("\n"))
     }
 }

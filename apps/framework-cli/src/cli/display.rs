@@ -265,7 +265,8 @@ where
     F: FnOnce() -> R,
 {
     let sp = if activate && stdout().is_terminal() {
-        let mut spinner = crossterm_utils::CrosstermSpinner::new(message);
+        use crossterm_utils::TerminalComponent;
+        let mut spinner = crossterm_utils::SpinnerComponent::new(message);
         let _ = spinner.start();
         Some(spinner)
     } else {
@@ -275,7 +276,9 @@ where
     let res = f();
 
     if let Some(mut spinner) = sp {
-        spinner.stop_with_newline();
+        use crossterm_utils::TerminalComponent;
+        let _ = spinner.stop();
+        let _ = spinner.cleanup();
     }
 
     res
@@ -297,7 +300,8 @@ where
     F: Future<Output = R>,
 {
     let sp = if activate && stdout().is_terminal() {
-        let mut spinner = crossterm_utils::CrosstermSpinner::new(message);
+        use crossterm_utils::TerminalComponent;
+        let mut spinner = crossterm_utils::SpinnerComponent::new(message);
         let _ = spinner.start();
         Some(spinner)
     } else {
@@ -307,7 +311,8 @@ where
     let res = f.await;
 
     if let Some(mut spinner) = sp {
-        spinner.stop_with_newline();
+        use crossterm_utils::TerminalComponent;
+        let _ = spinner.stop();
     }
 
     res
@@ -593,6 +598,159 @@ mod tests {
 pub mod crossterm_utils {
     use super::*;
 
+    /// Base trait for terminal output components
+    /// Each component manages its own terminal state and cleanup
+    pub trait TerminalComponent {
+        /// Start the component (display initial state)
+        fn start(&mut self) -> std::io::Result<()>;
+
+        /// Stop the component and clean up terminal state
+        fn stop(&mut self) -> std::io::Result<()>;
+
+        /// Ensure terminal is ready for the next component
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // Default implementation - print newline to ensure next component starts fresh
+            use std::io::Write;
+            println!();
+            std::io::stdout().flush()
+        }
+    }
+
+    /// Ephemeral spinner component that disappears when done
+    pub struct SpinnerComponent {
+        message: String,
+        handle: Option<std::thread::JoinHandle<()>>,
+        stop_signal: Arc<std::sync::atomic::AtomicBool>,
+        started: bool,
+    }
+
+    impl SpinnerComponent {
+        pub fn new(message: &str) -> Self {
+            Self {
+                message: message.to_string(),
+                handle: None,
+                stop_signal: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                started: false,
+            }
+        }
+    }
+
+    impl TerminalComponent for SpinnerComponent {
+        fn start(&mut self) -> std::io::Result<()> {
+            if self.started {
+                return Ok(());
+            }
+
+            use std::io::Write;
+            use std::sync::atomic::Ordering;
+            use std::time::Duration;
+
+            // Dots9 animation frames
+            const DOTS9_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+            let message = self.message.clone();
+            let stop_signal = self.stop_signal.clone();
+
+            // Start on a fresh line
+            print!("{} {}", DOTS9_FRAMES[0], message);
+            std::io::stdout().flush()?;
+
+            self.handle = Some(std::thread::spawn(move || {
+                let mut frame_index = 0;
+                while !stop_signal.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(80));
+
+                    if !stop_signal.load(Ordering::Relaxed) {
+                        // Update spinner on same line
+                        print!("\r{} {}", DOTS9_FRAMES[frame_index], message);
+                        std::io::stdout().flush().unwrap_or(());
+                        frame_index = (frame_index + 1) % DOTS9_FRAMES.len();
+                    }
+                }
+            }));
+
+            self.started = true;
+            Ok(())
+        }
+
+        fn stop(&mut self) -> std::io::Result<()> {
+            if !self.started {
+                return Ok(());
+            }
+
+            use std::io::Write;
+            use std::sync::atomic::Ordering;
+
+            // Signal the thread to stop
+            self.stop_signal.store(true, Ordering::Relaxed);
+
+            // Wait for the thread to finish
+            if let Some(handle) = self.handle.take() {
+                let _ = handle.join();
+            }
+
+            // Clear the spinner line completely and move to start of line
+            print!("\r{}\r", " ".repeat(self.message.len() + 2));
+            std::io::stdout().flush()?;
+
+            self.started = false;
+            Ok(())
+        }
+
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // SpinnerComponent disappears completely, so no newline needed
+            // Terminal is already clean at the beginning of the line
+            Ok(())
+        }
+    }
+
+    impl Drop for SpinnerComponent {
+        fn drop(&mut self) {
+            let _ = self.stop();
+            let _ = self.cleanup();
+        }
+    }
+
+    /// Permanent message component that stays in the output
+    pub struct MessageComponent {
+        styled_text: StyledText,
+        message: String,
+        displayed: bool,
+    }
+
+    impl MessageComponent {
+        pub fn new(styled_text: StyledText, message: &str) -> Self {
+            Self {
+                styled_text,
+                message: message.to_string(),
+                displayed: false,
+            }
+        }
+    }
+
+    impl TerminalComponent for MessageComponent {
+        fn start(&mut self) -> std::io::Result<()> {
+            if self.displayed {
+                return Ok(());
+            }
+
+            // Write the styled message (this stays in the output)
+            write_styled_line(&self.styled_text, &self.message)?;
+            self.displayed = true;
+            Ok(())
+        }
+
+        fn stop(&mut self) -> std::io::Result<()> {
+            // Messages don't need to be stopped - they stay in output
+            Ok(())
+        }
+
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // Messages already end with newline, terminal is ready for next component
+            Ok(())
+        }
+    }
+
     #[derive(Debug, Clone, Copy)]
     pub enum Alignment {
         Right,
@@ -722,91 +880,5 @@ pub mod crossterm_utils {
         }
 
         Ok(())
-    }
-
-    /// Crossterm-based spinner implementation
-    pub struct CrosstermSpinner {
-        message: String,
-        handle: Option<std::thread::JoinHandle<()>>,
-        stop_signal: Arc<std::sync::atomic::AtomicBool>,
-    }
-
-    impl CrosstermSpinner {
-        /// Create a new spinner with the given message
-        pub fn new(message: &str) -> Self {
-            Self {
-                message: message.to_string(),
-                handle: None,
-                stop_signal: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            }
-        }
-
-        /// Start the spinner animation
-        pub fn start(&mut self) -> std::io::Result<()> {
-            use crossterm::cursor::{Hide, MoveToColumn, RestorePosition, SavePosition, Show};
-            use crossterm::terminal::{Clear, ClearType};
-            use std::sync::atomic::Ordering;
-            use std::time::Duration;
-
-            // Dots9 animation frames (same as spinners crate)
-            const DOTS9_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-            let message = self.message.clone();
-            let stop_signal = self.stop_signal.clone();
-
-            self.handle = Some(std::thread::spawn(move || {
-                let mut stdout = std::io::stdout();
-                let mut frame_index = 0;
-
-                // Hide cursor and save position
-                let _ = execute!(stdout, Hide, SavePosition);
-
-                while !stop_signal.load(Ordering::Relaxed) {
-                    // Clear current line and move to beginning
-                    let _ = execute!(
-                        stdout,
-                        MoveToColumn(0),
-                        Clear(ClearType::CurrentLine),
-                        Print(format!("{} {}", DOTS9_FRAMES[frame_index], message))
-                    );
-
-                    frame_index = (frame_index + 1) % DOTS9_FRAMES.len();
-                    std::thread::sleep(Duration::from_millis(80));
-                }
-
-                // Clear the spinner line and restore cursor
-                let _ = execute!(
-                    stdout,
-                    MoveToColumn(0),
-                    Clear(ClearType::CurrentLine),
-                    RestorePosition,
-                    Show
-                );
-            }));
-
-            Ok(())
-        }
-
-        /// Stop the spinner with a newline
-        pub fn stop_with_newline(&mut self) {
-            use std::sync::atomic::Ordering;
-
-            // Signal the thread to stop
-            self.stop_signal.store(true, Ordering::Relaxed);
-
-            // Wait for the thread to finish
-            if let Some(handle) = self.handle.take() {
-                let _ = handle.join();
-            }
-
-            // Print a newline to move to the next line
-            let _ = execute!(std::io::stdout(), Print("\n"));
-        }
-    }
-
-    impl Drop for CrosstermSpinner {
-        fn drop(&mut self) {
-            self.stop_with_newline();
-        }
     }
 }

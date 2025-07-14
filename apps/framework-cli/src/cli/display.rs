@@ -2,7 +2,6 @@ use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArra
 use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
-use spinners::{Spinner, Spinners};
 use std::io::{stdout, IsTerminal};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
@@ -265,12 +264,20 @@ pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
 {
-    let sp = (activate && stdout().is_terminal())
-        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
+    let sp = if activate && stdout().is_terminal() {
+        let mut spinner = crossterm_utils::CrosstermSpinner::new(message);
+        let _ = spinner.start();
+        Some(spinner)
+    } else {
+        None
+    };
+
     let res = f();
-    if let Some(mut sp) = sp {
-        sp.stop_with_newline();
+
+    if let Some(mut spinner) = sp {
+        spinner.stop_with_newline();
     }
+
     res
 }
 
@@ -289,12 +296,20 @@ pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
 {
-    let sp = (activate && stdout().is_terminal())
-        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
+    let sp = if activate && stdout().is_terminal() {
+        let mut spinner = crossterm_utils::CrosstermSpinner::new(message);
+        let _ = spinner.start();
+        Some(spinner)
+    } else {
+        None
+    };
+
     let res = f.await;
-    if let Some(mut sp) = sp {
-        sp.stop_with_newline();
+
+    if let Some(mut spinner) = sp {
+        spinner.stop_with_newline();
     }
+
     res
 }
 
@@ -707,5 +722,91 @@ pub mod crossterm_utils {
         }
 
         Ok(())
+    }
+
+    /// Crossterm-based spinner implementation
+    pub struct CrosstermSpinner {
+        message: String,
+        handle: Option<std::thread::JoinHandle<()>>,
+        stop_signal: Arc<std::sync::atomic::AtomicBool>,
+    }
+
+    impl CrosstermSpinner {
+        /// Create a new spinner with the given message
+        pub fn new(message: &str) -> Self {
+            Self {
+                message: message.to_string(),
+                handle: None,
+                stop_signal: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            }
+        }
+
+        /// Start the spinner animation
+        pub fn start(&mut self) -> std::io::Result<()> {
+            use crossterm::cursor::{Hide, MoveToColumn, RestorePosition, SavePosition, Show};
+            use crossterm::terminal::{Clear, ClearType};
+            use std::sync::atomic::Ordering;
+            use std::time::Duration;
+
+            // Dots9 animation frames (same as spinners crate)
+            const DOTS9_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+            let message = self.message.clone();
+            let stop_signal = self.stop_signal.clone();
+
+            self.handle = Some(std::thread::spawn(move || {
+                let mut stdout = std::io::stdout();
+                let mut frame_index = 0;
+
+                // Hide cursor and save position
+                let _ = execute!(stdout, Hide, SavePosition);
+
+                while !stop_signal.load(Ordering::Relaxed) {
+                    // Clear current line and move to beginning
+                    let _ = execute!(
+                        stdout,
+                        MoveToColumn(0),
+                        Clear(ClearType::CurrentLine),
+                        Print(format!("{} {}", DOTS9_FRAMES[frame_index], message))
+                    );
+
+                    frame_index = (frame_index + 1) % DOTS9_FRAMES.len();
+                    std::thread::sleep(Duration::from_millis(80));
+                }
+
+                // Clear the spinner line and restore cursor
+                let _ = execute!(
+                    stdout,
+                    MoveToColumn(0),
+                    Clear(ClearType::CurrentLine),
+                    RestorePosition,
+                    Show
+                );
+            }));
+
+            Ok(())
+        }
+
+        /// Stop the spinner with a newline
+        pub fn stop_with_newline(&mut self) {
+            use std::sync::atomic::Ordering;
+
+            // Signal the thread to stop
+            self.stop_signal.store(true, Ordering::Relaxed);
+
+            // Wait for the thread to finish
+            if let Some(handle) = self.handle.take() {
+                let _ = handle.join();
+            }
+
+            // Print a newline to move to the next line
+            let _ = execute!(std::io::stdout(), Print("\n"));
+        }
+    }
+
+    impl Drop for CrosstermSpinner {
+        fn drop(&mut self) {
+            self.stop_with_newline();
+        }
     }
 }

@@ -78,47 +78,43 @@ RUN PROTOC_VERSION=24.4 \
     && rm -f $PROTOC_ZIP \
     && chmod +x /usr/local/bin/protoc
 
+# Switch to ubuntu user for remaining installations
+USER ubuntu
+WORKDIR /home/ubuntu
+
 # Install maturin for Python-Rust bindings (with --break-system-packages for newer Python)
 RUN pip install maturin==1.8.1 --break-system-packages
 
 # Install Rust toolchain for ubuntu user (the user that actually uses the environment)
-USER ubuntu
-WORKDIR /home/ubuntu
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
-# Switch back to root for remaining setup
-USER root
-WORKDIR /
 
 # Set up PATH environment variables for consistent access in all contexts
 ENV PATH="/home/ubuntu/.cargo/bin:/home/ubuntu/.local/bin:${PATH}"
 
-# Verify installations
+# Set up environment for ubuntu user in bashrc (for interactive shells)
+RUN echo 'export PATH="/home/ubuntu/.cargo/bin:$PATH"' >> /home/ubuntu/.bashrc \
+    && echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
+
+# Verify installations as ubuntu user
 RUN node --version \
     && npm --version \
     && pnpm --version \
     && python3 --version \
     && pip --version \
     && protoc --version \
-    && maturin --version
-
-# Verify Rust installations as ubuntu user
-USER ubuntu
-RUN rustc --version && cargo --version
-USER root
+    && maturin --version \
+    && rustc --version \
+    && cargo --version
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy and run verification script
+# Copy and run verification script (switch to root temporarily for this)
+USER root
 COPY scripts/verify-environment.sh /tmp/verify-environment.sh
 RUN chmod +x /tmp/verify-environment.sh \
     && /tmp/verify-environment.sh
 
-# Set up environment for ubuntu user in bashrc (for interactive shells)
+# Switch back to ubuntu user as the default user for the environment
 USER ubuntu
-RUN echo 'export PATH="/home/ubuntu/.cargo/bin:$PATH"' >> /home/ubuntu/.bashrc \
-    && echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
-
-# Switch back to root for final setup
-USER root
+WORKDIR /workspace

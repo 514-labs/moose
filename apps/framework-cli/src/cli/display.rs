@@ -596,9 +596,6 @@ pub mod crossterm_utils {
         let padding_needed = width - text_len;
 
         match alignment {
-            Alignment::Left => {
-                format!("{}{}", text, fill_char.repeat(padding_needed))
-            }
             Alignment::Right => {
                 format!("{}{}", fill_char.repeat(padding_needed), text)
             }
@@ -661,37 +658,6 @@ pub mod crossterm_utils {
         pub fn on_green(mut self) -> Self {
             self.background = Some(Color::Green);
             self
-        }
-
-        /// Write this styled text to stdout
-        pub fn write_to_stdout(&self) -> std::io::Result<()> {
-            let mut stdout = std::io::stdout();
-
-            // Apply foreground color
-            if let Some(color) = self.foreground {
-                execute!(stdout, SetForegroundColor(color))?;
-            }
-
-            // Apply background color
-            if let Some(color) = self.background {
-                execute!(stdout, SetBackgroundColor(color))?;
-            }
-
-            // Apply bold
-            if self.bold {
-                execute!(stdout, SetAttribute(Attribute::Bold))?;
-            }
-
-            // Print the text
-            execute!(stdout, Print(&self.text))?;
-
-            // Reset all styling
-            execute!(stdout, ResetColor)?;
-            if self.bold {
-                execute!(stdout, SetAttribute(Attribute::Reset))?;
-            }
-
-            Ok(())
         }
     }
 

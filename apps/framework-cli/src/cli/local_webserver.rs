@@ -93,46 +93,41 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 /// Restores the terminal to its normal state after shutdown.
 /// This function ensures that the terminal is properly reset to avoid cursor issues
 /// and other terminal state problems that can occur after interrupting the application.
+/// Simplified approach for better compatibility with tools like atuin.sh.
 fn restore_terminal_state() {
     use crossterm::terminal;
     use std::io::{self, Write};
-    
-    // Try to restore terminal state gracefully
-    // This handles cases where the terminal might be in raw mode or alternate screen mode
+
+    // Disable raw mode first
     let _ = terminal::disable_raw_mode();
-    
-    // Reset terminal to normal state and clear screen
-    let _ = crossterm::execute!(
-        io::stdout(),
-        terminal::Clear(terminal::ClearType::All),
-        crossterm::cursor::MoveTo(0, 0),
-        crossterm::cursor::Show
-    );
-    
-    // Flush the output to ensure all commands are processed
+
+    // Core terminal reset - this is the most important part
+    print!("\x1b[?1l"); // Exit application cursor key mode (CRITICAL for arrow keys)
+    print!("\x1b[?1049l"); // Exit alternate screen mode
+    print!("\x1b[?25h"); // Show cursor
+    print!("\x1b[0m"); // Reset all attributes
+    print!("\x1b[2J"); // Clear screen
+    print!("\x1b[H"); // Move cursor to home
+
+    // Reset mouse and special modes
+    print!("\x1b[?1000l"); // Disable mouse reporting
+    print!("\x1b[?1002l"); // Disable button event mouse reporting
+    print!("\x1b[?1006l"); // Disable SGR extended mouse reporting
+    print!("\x1b[?2004l"); // Disable bracketed paste mode
+
+    // Exit special keypad modes (important for atuin/readline)
+    print!("\x1b>"); // Exit alternate keypad mode
+    print!("\x1b[?1l"); // Exit application cursor key mode (repeat - this is critical)
+
+    // Flush everything
     let _ = io::stdout().flush();
-    
-    // Send additional escape sequences to ensure terminal is fully reset
-    // This handles edge cases where the terminal might be in a strange state
-    print!("\x1b[?1049l");  // Exit alternate screen mode (if active)
-    print!("\x1b[?25h");    // Show cursor
-    print!("\x1b[0m");      // Reset all attributes (colors, styles, etc.)
-    print!("\x1b[2J");      // Clear entire screen
-    print!("\x1b[H");       // Move cursor to home position
-    print!("\x1b[?12l");    // Disable cursor blinking (if enabled)
-    print!("\x1b[?1000l");  // Disable mouse reporting (if enabled)
-    print!("\x1b[?1002l");  // Disable button event mouse reporting (if enabled)
-    print!("\x1b[?1006l");  // Disable SGR extended mouse reporting (if enabled)
-    
-    // Additional sequence to ensure we exit any special terminal modes
-    print!("\x1b[!p");      // Soft reset (RIS - Reset to Initial State)
-    print!("\x1b[?47l");    // Exit alternate screen buffer (alternative to ?1049l)
-    
-    // Final flush to ensure all escape sequences are sent
+
+    // Give terminal time to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    // Final newline and flush
+    println!();
     let _ = io::stdout().flush();
-    
-    // Give the terminal a moment to process all the escape sequences
-    std::thread::sleep(std::time::Duration::from_millis(50));
 }
 
 /// Request wrapper for router handling.

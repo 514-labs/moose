@@ -41,14 +41,16 @@ export const ingest = new Task<null, void>("ingest", {
         }
       } catch (error) {
         console.log(`Error ingesting record ${i}: ${error}`);
-        workflowTable.insert([{ success: false, message: error.message }]);
+        workflowTable.insert([
+          { id: "1", success: false, message: error.message },
+        ]);
       }
 
       // Add a small delay to avoid overwhelming the server
       if (i % 100 === 0) {
         console.log(`Ingested ${i} records...`);
         workflowTable.insert([
-          { success: true, message: `Ingested ${i} records` },
+          { id: "1", success: true, message: `Ingested ${i} records` },
         ]);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }

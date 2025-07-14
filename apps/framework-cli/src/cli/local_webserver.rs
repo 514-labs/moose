@@ -98,6 +98,9 @@ fn restore_terminal_state() {
     use crossterm::terminal;
     use std::io::{self, Write};
 
+    // First, clean up any active spinners
+    super::display::force_cleanup_spinners();
+
     // Disable raw mode first
     let _ = terminal::disable_raw_mode();
 

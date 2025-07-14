@@ -5,7 +5,7 @@ use log::info;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::io::{stdout, IsTerminal};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Weak};
 use tokio::macros::support::Future;
 
 use crate::framework::core::infrastructure_map::TableChange;
@@ -260,6 +260,21 @@ where
         sp.stop_with_newline();
     }
     res
+}
+
+/// Force cleanup of any spinner state that might be affecting terminal
+/// This is called during emergency shutdown to ensure clean terminal state
+pub fn force_cleanup_spinners() {
+    // Force a newline to ensure we're on a clean line
+    // This helps if a spinner was interrupted mid-animation
+    print!("\n");
+
+    // Send escape sequences to ensure any spinner-related terminal state is cleared
+    print!("\x1b[?25h"); // Show cursor (in case spinner hid it)
+    print!("\x1b[K"); // Clear current line (in case spinner left artifacts)
+    print!("\x1b[0m"); // Reset terminal attributes
+
+    let _ = std::io::Write::flush(&mut std::io::stdout());
 }
 
 /// Executes an asynchronous function with a spinner displayed during execution.

@@ -36,7 +36,7 @@ export const ingest = new Task<null, void>("ingest", {
           );
           // Insert ingestion result into OLAP table
           workflowTable.insert([
-            { success: false, message: response.statusText },
+            { id: "1", success: false, message: response.statusText },
           ]);
         }
       } catch (error) {

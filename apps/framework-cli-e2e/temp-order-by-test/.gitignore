@@ -1,0 +1,10 @@
+# Moose / Aurora / Cursor folders
+.moose
+.aurora
+.cursor
+
+# Node
+node_modules
+dist
+coverage
+.ts-node

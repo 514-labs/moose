@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 # Set non-interactive mode to prevent prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including protobuf-compiler
+# Install system dependencies (protobuf-compiler will be installed separately with specific version)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
@@ -23,13 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     apt-transport-https \
     software-properties-common \
-    protobuf-compiler \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Create ubuntu user early
+# Create ubuntu user early with proper sudoers permissions
 RUN useradd -m -s /bin/bash ubuntu && \
-    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
+    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu
 
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
@@ -70,6 +70,15 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
 # Install additional Python packages needed for development
 RUN python3.12 -m pip install --break-system-packages virtualenv setuptools wheel
 
+# Install Protocol Buffers compiler (version 24.4 to match CI)
+RUN PROTOC_VERSION=24.4 \
+    && PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip \
+    && curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP \
+    && unzip -o $PROTOC_ZIP -d /usr/local bin/protoc \
+    && unzip -o $PROTOC_ZIP -d /usr/local 'include/*' \
+    && rm -f $PROTOC_ZIP \
+    && chmod +x /usr/local/bin/protoc
+
 # Install maturin for Python-Rust bindings (with --break-system-packages for newer Python)
 RUN pip install maturin==1.8.1 --break-system-packages
 
@@ -77,7 +86,6 @@ RUN pip install maturin==1.8.1 --break-system-packages
 USER ubuntu
 WORKDIR /home/ubuntu
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/home/ubuntu/.cargo/bin:${PATH}"
 
 # Switch back to root for remaining setup
 USER root
@@ -85,7 +93,10 @@ WORKDIR /
 
 # Also install Rust for root user (for compatibility)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:/home/ubuntu/.cargo/bin:${PATH}"
+
+# Set up PATH environment variables for consistent access in all contexts
+ENV PATH="/root/.cargo/bin:/root/.local/bin:${PATH}"
+ENV PATH="/home/ubuntu/.cargo/bin:/home/ubuntu/.local/bin:${PATH}"
 
 # Verify installations
 RUN node --version \
@@ -106,11 +117,11 @@ COPY scripts/verify-environment.sh /tmp/verify-environment.sh
 RUN chmod +x /tmp/verify-environment.sh \
     && /tmp/verify-environment.sh
 
-# Set up environment for both users
+# Set up environment for both users in bashrc (for interactive shells)
 RUN echo 'export PATH="/root/.cargo/bin:$PATH"' >> /root/.bashrc \
     && echo 'export PATH="/root/.local/bin:$PATH"' >> /root/.bashrc
 
-# Set up environment for ubuntu user
+# Set up environment for ubuntu user in bashrc (for interactive shells)
 USER ubuntu
 RUN echo 'export PATH="/home/ubuntu/.cargo/bin:$PATH"' >> /home/ubuntu/.bashrc \
     && echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> /home/ubuntu/.bashrc

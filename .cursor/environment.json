@@ -5,7 +5,7 @@
   "terminals": [
     {
       "name": "Moose Development",
-      "command": "echo 'Run: moose dev' && echo 'This will start ClickHouse, Redpanda, Temporal, and Redis containers' && bash"
+      "command": "echo 'Environment ready! Run the following commands:' && echo '  - moose dev (starts ClickHouse, Redpanda, Temporal, and Redis containers)' && echo '  - pnpm install (if not already run)' && echo '  - cargo build (to build Rust components)' && bash"
     }
   ]
 }

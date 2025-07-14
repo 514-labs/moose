@@ -580,7 +580,6 @@ pub mod crossterm_utils {
 
     #[derive(Debug, Clone, Copy)]
     pub enum Alignment {
-        Left,
         Right,
         Center,
     }

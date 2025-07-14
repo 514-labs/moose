@@ -1,4 +1,4 @@
-from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, InsertOptions
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, InsertOptions, Key
 from pydantic import BaseModel
 from datetime import datetime
 from faker import Faker
@@ -6,6 +6,7 @@ from app.ingest.models import Foo, Baz
 import requests
 
 class FooWorkflow(BaseModel):
+    id: Key[str]
     success: bool
     message: str
 

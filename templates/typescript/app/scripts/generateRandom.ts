@@ -1,9 +1,10 @@
-import { Task, Workflow, OlapTable } from "@514labs/moose-lib";
+import { Task, Workflow, OlapTable, Key } from "@514labs/moose-lib";
 import { Foo } from "../ingest/models";
 import { faker } from "@faker-js/faker";
 
 // Data model for OLAP Table
 interface FooWorkflow {
+  id: Key<string>;
   success: boolean;
   message: string;
 }
@@ -34,7 +35,9 @@ export const ingest = new Task<null, void>("ingest", {
             `Failed to ingest record ${i}: ${response.status} ${response.statusText}`,
           );
           // Insert ingestion result into OLAP table
-          workflowTable.insert([{ success: false, message: response.statusText }]);
+          workflowTable.insert([
+            { success: false, message: response.statusText },
+          ]);
         }
       } catch (error) {
         console.log(`Error ingesting record ${i}: ${error}`);
@@ -44,7 +47,9 @@ export const ingest = new Task<null, void>("ingest", {
       // Add a small delay to avoid overwhelming the server
       if (i % 100 === 0) {
         console.log(`Ingested ${i} records...`);
-        workflowTable.insert([{ success: true, message: `Ingested ${i} records` }]);
+        workflowTable.insert([
+          { success: true, message: `Ingested ${i} records` },
+        ]);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }

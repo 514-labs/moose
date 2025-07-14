@@ -90,64 +90,6 @@ use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure::table::Table;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
 
-/// Restores the terminal to its normal state after shutdown.
-/// This function ensures that the terminal is properly reset to avoid cursor issues
-/// and other terminal state problems that can occur after interrupting the application.
-/// Simplified approach for better compatibility with tools like atuin.sh.
-fn restore_terminal_state() {
-    use crossterm::terminal;
-    use std::io::{self, Write};
-
-    // First, clean up any active spinners
-    super::display::force_cleanup_spinners();
-
-    // Explicitly reset the console crate's terminal state
-    // This is critical since the console crate is what's causing the issue
-    {
-        use console::Term;
-        let term = Term::stdout();
-        // Force the console crate to reset its internal state
-        let _ = term.flush();
-    }
-
-    // Disable raw mode first
-    let _ = terminal::disable_raw_mode();
-
-    // Core terminal reset - this is the most important part for atuin compatibility
-    print!("\x1b[?1l"); // Exit application cursor key mode (CRITICAL for arrow keys)
-    print!("\x1b[?1049l"); // Exit alternate screen mode
-    print!("\x1b[?25h"); // Show cursor
-    print!("\x1b[0m"); // Reset all attributes
-    print!("\x1b[2J"); // Clear screen
-    print!("\x1b[H"); // Move cursor to home
-
-    // Reset mouse and special modes
-    print!("\x1b[?1000l"); // Disable mouse reporting
-    print!("\x1b[?1002l"); // Disable button event mouse reporting
-    print!("\x1b[?1006l"); // Disable SGR extended mouse reporting
-    print!("\x1b[?2004l"); // Disable bracketed paste mode
-
-    // Exit special keypad modes (important for atuin/readline)
-    print!("\x1b>"); // Exit alternate keypad mode
-    print!("\x1b[?1l"); // Exit application cursor key mode (repeat - this is critical)
-
-    // Additional reset for console crate's potential state changes
-    print!("\x1b[0J"); // Clear screen from cursor down
-    print!("\x1b[r"); // Reset scroll region
-    print!("\x1b[?47l"); // Exit alternate screen buffer (alternative method)
-    print!("\x1b[?1000l"); // Disable mouse reporting (repeated for safety)
-
-    // Flush everything
-    let _ = io::stdout().flush();
-
-    // Give terminal time to process
-    std::thread::sleep(std::time::Duration::from_millis(100));
-
-    // Final newline and flush
-    println!();
-    let _ = io::stdout().flush();
-}
-
 /// Request wrapper for router handling.
 /// This struct combines the HTTP request with the route table for processing.
 pub struct RouterRequest {
@@ -1451,15 +1393,6 @@ impl Webserver {
         let conn_builder: &'static _ =
             Box::leak(Box::new(auto::Builder::new(TokioExecutor::new())));
 
-        // Set up panic hook to restore terminal state if there's an unexpected panic
-        let original_panic_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |panic_info| {
-            // Restore terminal state before panicking
-            restore_terminal_state();
-            // Call the original panic hook
-            original_panic_hook(panic_info);
-        }));
-
         loop {
             tokio::select! {
                 _ = sigint.recv() => {
@@ -1662,8 +1595,12 @@ async fn shutdown(
     // Exit the process cleanly
     info!("Exiting application");
 
-    // Properly restore terminal state to prevent cursor issues
-    restore_terminal_state();
+    // Clear terminal using crossterm
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)
+    )
+    .unwrap();
 
     std::process::exit(0);
 }

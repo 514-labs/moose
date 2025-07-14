@@ -423,29 +423,8 @@ fn handle_table_update(
         handle_non_mutable_change_operation(before, after)
     } else {
         // Check if primary key structure has changed
-        let before_primary_keys: Vec<&str> = before
-            .columns
-            .iter()
-            .filter_map(|c| {
-                if c.primary_key {
-                    Some(c.name.as_str())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let after_primary_keys: Vec<&str> = after
-            .columns
-            .iter()
-            .filter_map(|c| {
-                if c.primary_key {
-                    Some(c.name.as_str())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let before_primary_keys = before.primary_key_columns();
+        let after_primary_keys = after.primary_key_columns();
 
         if before_primary_keys != after_primary_keys {
             // If primary key structure changed, we need to drop and recreate the table

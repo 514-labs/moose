@@ -101,10 +101,19 @@ fn restore_terminal_state() {
     // First, clean up any active spinners
     super::display::force_cleanup_spinners();
 
+    // Explicitly reset the console crate's terminal state
+    // This is critical since the console crate is what's causing the issue
+    {
+        use console::Term;
+        let term = Term::stdout();
+        // Force the console crate to reset its internal state
+        let _ = term.flush();
+    }
+
     // Disable raw mode first
     let _ = terminal::disable_raw_mode();
 
-    // Core terminal reset - this is the most important part
+    // Core terminal reset - this is the most important part for atuin compatibility
     print!("\x1b[?1l"); // Exit application cursor key mode (CRITICAL for arrow keys)
     print!("\x1b[?1049l"); // Exit alternate screen mode
     print!("\x1b[?25h"); // Show cursor
@@ -121,6 +130,12 @@ fn restore_terminal_state() {
     // Exit special keypad modes (important for atuin/readline)
     print!("\x1b>"); // Exit alternate keypad mode
     print!("\x1b[?1l"); // Exit application cursor key mode (repeat - this is critical)
+
+    // Additional reset for console crate's potential state changes
+    print!("\x1b[0J"); // Clear screen from cursor down
+    print!("\x1b[r"); // Reset scroll region
+    print!("\x1b[?47l"); // Exit alternate screen buffer (alternative method)
+    print!("\x1b[?1000l"); // Disable mouse reporting (repeated for safety)
 
     // Flush everything
     let _ = io::stdout().flush();

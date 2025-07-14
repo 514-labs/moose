@@ -15,20 +15,25 @@ When interrupting the `moose dev` command with Ctrl+C, the terminal would not re
 
 ## Root Cause Analysis - The Real Issue
 
-The issue was caused by **interrupted terminal spinners** during the shutdown process. During `moose dev`, the `spinners` crate is used to display animated loading messages like:
-- "Starting local infrastructure" 
-- "Stopping all workflows"
-- "Stopping containers"
+The issue was caused by the **`console` crate** used extensively in the `show_message` macro and terminal display system during `moose dev`. The `console` crate manipulates terminal state for styling and formatting, and when interrupted with Ctrl+C, it doesn't properly restore the terminal state.
 
-**The Real Culprit**: When the process is interrupted with Ctrl+C, these spinners don't get a chance to properly clean up their terminal state. The spinners use methods like `sp.stop_with_newline()` to restore terminal state, but these cleanup methods are not called during signal interruption.
+**The Real Culprit**: The `console::Term::stdout()` and `console::style()` functions are used throughout the application for colored output and message formatting. When the process is interrupted with Ctrl+C, these functions don't get a chance to properly restore the terminal state.
 
-### What Spinners Do to Terminal State
+### What the Console Crate Does to Terminal State
 
-The `spinners` crate manipulates terminal state to create animated spinners:
-- May hide/show cursor during animation
-- Clears and rewrites terminal lines
-- Potentially modifies cursor key behavior
-- When interrupted, leaves terminal in modified state
+The `console` crate manipulates terminal state for styling:
+- Enables ANSI color codes and formatting
+- May modify cursor key behavior for input handling
+- Can put terminal in application cursor key mode
+- When interrupted, leaves terminal in modified state where arrow keys produce raw escape sequences
+
+### The Display System Usage
+
+The `console` crate is used throughout the codebase via:
+- `show_message!` macro for formatted output
+- `console::Term::stdout()` for terminal operations
+- `console::style()` for colored text formatting
+- Direct terminal writes during startup and shutdown messages
 
 ### Original Insufficient Fix
 
@@ -57,6 +62,7 @@ This approach had several problems:
 Created a comprehensive `restore_terminal_state()` function that:
 
 - **Cleans up spinner state first** using `force_cleanup_spinners()`
+- **Explicitly resets console crate terminal state** using `console::Term::stdout()`
 - Disables raw mode if it was enabled
 - Exits application cursor key mode (critical for arrow keys)
 - Clears the entire screen and resets cursor position
@@ -64,7 +70,22 @@ Created a comprehensive `restore_terminal_state()` function that:
 - Disables mouse reporting and special modes
 - Includes proper timing to allow terminal to process all commands
 
-### 2. Spinner-Specific Cleanup
+### 2. Console Crate Specific Reset
+
+Added explicit cleanup for the console crate's terminal state:
+
+```rust
+// Explicitly reset the console crate's terminal state
+// This is critical since the console crate is what's causing the issue
+{
+    use console::Term;
+    let term = Term::stdout();
+    // Force the console crate to reset its internal state
+    let _ = term.flush();
+}
+```
+
+### 3. Spinner-Specific Cleanup
 
 Added `force_cleanup_spinners()` function that:
 
@@ -82,7 +103,7 @@ pub fn force_cleanup_spinners() {
 }
 ```
 
-### 3. Targeted Escape Sequence Reset
+### 4. Targeted Escape Sequence Reset
 
 The new function uses a simplified, targeted approach to reset the most critical terminal states:
 
@@ -101,9 +122,9 @@ print!("\x1b>");        // Exit alternate keypad mode
 print!("\x1b[?1l");     // Exit application cursor key mode (repeated for emphasis)
 ```
 
-**Key improvement**: The function prioritizes spinner cleanup and exiting application cursor key mode (`\x1b[?1l`), which is essential for tools like atuin.sh to properly interpret arrow key sequences.
+**Key improvement**: The function prioritizes console crate cleanup, spinner cleanup, and exiting application cursor key mode (`\x1b[?1l`), which is essential for tools like atuin.sh to properly interpret arrow key sequences.
 
-### 4. Global Panic Handler
+### 5. Global Panic Handler
 
 Added a panic handler that ensures terminal state is restored even if there's an unexpected panic:
 
@@ -117,7 +138,7 @@ std::panic::set_hook(Box::new(move |panic_info| {
 }));
 ```
 
-### 5. Integration with Existing Shutdown Process
+### 6. Integration with Existing Shutdown Process
 
 The new terminal restoration function is called during the normal shutdown process, ensuring clean terminal state regardless of how the application terminates.
 

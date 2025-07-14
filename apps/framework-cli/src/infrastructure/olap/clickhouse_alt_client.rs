@@ -302,17 +302,7 @@ async fn select_as_json<'a>(
         format!("ORDER BY {}", table.order_by.join(", "))
     } else {
         // Fall back to primary key columns only if no explicit order_by is specified
-        let key_columns = table
-            .columns
-            .iter()
-            .filter_map(|c| {
-                if c.primary_key {
-                    Some(c.name.as_str())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let key_columns = table.primary_key_columns();
 
         if key_columns.is_empty() {
             "".to_string()

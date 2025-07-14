@@ -636,6 +636,19 @@ impl ClickHouseTable {
     pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
         drop_table_query(db_name, self.clone())
     }
+
+    pub fn primary_key_columns(&self) -> Vec<&str> {
+        self.columns
+            .iter()
+            .filter_map(|c| {
+                if c.primary_key {
+                    Some(c.name.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 pub fn sanitize_column_name(name: String) -> String {

@@ -1,4 +1,4 @@
-from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, InsertOptions
+from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, InsertOptions, Key
 from pydantic import BaseModel
 from datetime import datetime
 from faker import Faker
@@ -6,6 +6,7 @@ from app.ingest.models import Foo, Baz
 import requests
 
 class FooWorkflow(BaseModel):
+    id: Key[str]
     success: bool
     message: str
 
@@ -30,9 +31,9 @@ def run_task() -> None:
         )
 
         if req.status_code == 200:
-            workflow_table.insert([{"success": True, "message": f"Inserted Foo with primary key: {foo.primary_key}"}])
+            workflow_table.insert([{"id": "1", "success": True, "message": f"Inserted Foo with primary key: {foo.primary_key}"}])
         else:
-            workflow_table.insert([{"success": False, "message": f"Failed to insert Foo with error: {req.status_code}"}])
+            workflow_table.insert([{"id": "1", "success": False, "message": f"Failed to insert Foo with error: {req.status_code}"}])
 
 ingest_task = Task[Foo, None](
     name="task",

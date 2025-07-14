@@ -149,14 +149,7 @@ pub fn infra_added(message: &str) {
         crossterm_utils::pad_str("+", padder, crossterm_utils::Alignment::Right, Some("..."));
     let styled_prefix = crossterm_utils::style(padded_text).green();
 
-    // Write styled prefix
-    styled_prefix
-        .write_to_stdout()
-        .expect("failed to write styled prefix to terminal");
-
-    // Write message
-    command_terminal
-        .write_line(&format!(" {}", message))
+    crossterm_utils::write_styled_line(&styled_prefix, message)
         .expect("failed to write message to terminal");
 
     command_terminal.counter += 1;
@@ -176,14 +169,7 @@ pub fn infra_removed(message: &str) {
         crossterm_utils::pad_str("-", padder, crossterm_utils::Alignment::Right, Some("..."));
     let styled_prefix = crossterm_utils::style(padded_text).red();
 
-    // Write styled prefix
-    styled_prefix
-        .write_to_stdout()
-        .expect("failed to write styled prefix to terminal");
-
-    // Write message
-    command_terminal
-        .write_line(&format!(" {}", message))
+    crossterm_utils::write_styled_line(&styled_prefix, message)
         .expect("failed to write message to terminal");
 
     command_terminal.counter += 1;
@@ -203,14 +189,7 @@ pub fn infra_updated(message: &str) {
         crossterm_utils::pad_str("~", padder, crossterm_utils::Alignment::Right, Some("..."));
     let styled_prefix = crossterm_utils::style(padded_text).yellow();
 
-    // Write styled prefix
-    styled_prefix
-        .write_to_stdout()
-        .expect("failed to write styled prefix to terminal");
-
-    // Write message
-    command_terminal
-        .write_line(&format!(" {}", message))
+    crossterm_utils::write_styled_line(&styled_prefix, message)
         .expect("failed to write message to terminal");
 
     command_terminal.counter += 1;
@@ -245,12 +224,8 @@ macro_rules! show_message {
                 MessageType::Highlight => crossterm_utils::style(padded_action).on_green().bold(),
             };
 
-            // Write styled prefix
-            styled_prefix.write_to_stdout().expect("failed to write styled prefix to terminal");
-
-            // Write details
-            command_terminal
-                .write_line(&format!(" {}", details))
+            // Write styled prefix and details in one line
+            crossterm_utils::write_styled_line(&styled_prefix, &details)
                 .expect("failed to write message to terminal");
             command_terminal.counter += 1;
 
@@ -730,5 +705,42 @@ pub mod crossterm_utils {
     pub fn write_line(content: &str) -> std::io::Result<()> {
         let mut stdout = std::io::stdout();
         execute!(stdout, Print(content), Print("\n"))
+    }
+
+    /// Write a styled line in one operation (like console::term.write_line)
+    pub fn write_styled_line(styled_text: &StyledText, message: &str) -> std::io::Result<()> {
+        let mut stdout = std::io::stdout();
+
+        // Apply foreground color
+        if let Some(color) = styled_text.foreground {
+            execute!(stdout, SetForegroundColor(color))?;
+        }
+
+        // Apply background color
+        if let Some(color) = styled_text.background {
+            execute!(stdout, SetBackgroundColor(color))?;
+        }
+
+        // Apply bold
+        if styled_text.bold {
+            execute!(stdout, SetAttribute(Attribute::Bold))?;
+        }
+
+        // Write the styled text and message in one line
+        execute!(
+            stdout,
+            Print(&styled_text.text),
+            Print(" "),
+            Print(message),
+            Print("\n")
+        )?;
+
+        // Reset all styling
+        execute!(stdout, ResetColor)?;
+        if styled_text.bold {
+            execute!(stdout, SetAttribute(Attribute::Reset))?;
+        }
+
+        Ok(())
     }
 }

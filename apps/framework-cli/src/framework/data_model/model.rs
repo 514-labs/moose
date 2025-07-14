@@ -26,6 +26,25 @@ impl DataModel {
     // TODO this probably should be on the Table object itself which can be built from
     // multiple sources. The Aim will be to have DB Blocks provision some tables as well.
     pub fn to_table(&self) -> Table {
+        // Determine the order_by fields based on configuration and primary keys
+        let order_by = if !self.config.storage.order_by_fields.is_empty() {
+            // Use explicit order_by_fields if specified
+            self.config.storage.order_by_fields.clone()
+        } else {
+            // Fall back to primary key columns if no explicit order_by_fields
+            // This ensures ClickHouse's mandatory ORDER BY requirement is met
+            self.columns
+                .iter()
+                .filter_map(|c| {
+                    if c.primary_key {
+                        Some(c.name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
+
         Table {
             name: self
                 .config
@@ -34,7 +53,7 @@ impl DataModel {
                 .clone()
                 .unwrap_or_else(|| format!("{}_{}", self.name, self.version.as_suffix())),
             columns: self.columns.clone(),
-            order_by: self.config.storage.order_by_fields.clone(),
+            order_by,
             deduplicate: self.config.storage.deduplicate,
             engine: None,
             version: Some(self.version.clone()),

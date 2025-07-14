@@ -3,7 +3,8 @@ use serde_json::{json, Value};
 
 use crate::framework::core::infrastructure::table::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
-    AggregationFunction, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
+    wrap_and_join_column_names, AggregationFunction, ClickHouseColumnType, ClickHouseFloat,
+    ClickHouseInt, ClickHouseTable,
 };
 
 use super::errors::ClickhouseError;
@@ -163,12 +164,12 @@ pub fn create_table_query(
         "table_name": table.name,
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
-            Some(format!("`{}`", primary_key.join("`, `")))
+            Some(wrap_and_join_column_names(&primary_key, ","))
         } else {
             None
         },
         "order_by_string": if !table.order_by.is_empty() {
-            Some(table.order_by.iter().map(|item| {format!("`{item}`")}).collect::<Vec<String>>().join(", "))
+            Some(wrap_and_join_column_names(&table.order_by, ","))
         } else {
             None
         },

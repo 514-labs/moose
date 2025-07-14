@@ -654,3 +654,17 @@ impl ClickHouseTable {
 pub fn sanitize_column_name(name: String) -> String {
     name.replace([' ', '-'], "_")
 }
+
+/// Wraps a column name in backticks for safe use in ClickHouse SQL queries
+pub fn wrap_column_name(name: &str) -> String {
+    format!("`{name}`")
+}
+
+/// Wraps multiple column names in backticks and joins them with the specified separator
+pub fn wrap_and_join_column_names(names: &[String], separator: &str) -> String {
+    names
+        .iter()
+        .map(|name| wrap_column_name(name))
+        .collect::<Vec<String>>()
+        .join(separator)
+}

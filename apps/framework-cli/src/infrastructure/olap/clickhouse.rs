@@ -788,6 +788,13 @@ impl OlapOperations for ConfiguredDBClient {
             let order_by_cols = extract_order_by_from_create_query(&create_query);
             debug!("Extracted ORDER BY columns: {:?}", order_by_cols);
 
+            // Check if the CREATE TABLE statement has an explicit PRIMARY KEY clause
+            let has_explicit_primary_key = create_query.to_uppercase().contains("PRIMARY KEY");
+            debug!(
+                "Table {} has explicit PRIMARY KEY: {}",
+                table_name, has_explicit_primary_key
+            );
+
             // Get column information for each table
             let columns_query = format!(
                 r#"
@@ -845,12 +852,18 @@ impl OlapOperations for ConfiguredDBClient {
                         }
                     };
 
+                // Only set primary_key=true if there's an explicit PRIMARY KEY clause
+                // When only ORDER BY is specified (no PRIMARY KEY), ClickHouse internally
+                // treats ORDER BY columns as primary key, but we shouldn't mark them as such
+                // since they come from orderByFields configuration, not Key<T> annotations
+                let is_actual_primary_key = has_explicit_primary_key && is_primary == 1;
+
                 let column = Column {
                     name: col_name.clone(),
                     data_type,
                     required: !is_nullable,
                     unique: false,
-                    primary_key: is_primary == 1,
+                    primary_key: is_actual_primary_key,
                     default: None,
                     annotations: Default::default(),
                 };

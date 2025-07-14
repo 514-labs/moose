@@ -973,7 +973,6 @@ mod tests {
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();
-        println!("Serialized JSON: {json}");
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
     }

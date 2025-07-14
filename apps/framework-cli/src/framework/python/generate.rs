@@ -406,7 +406,6 @@ mod tests {
 
         let result = tables_to_python(&tables);
 
-        println!("{result}");
         assert!(result.contains(
             r#"from pydantic import BaseModel, Field
 from typing import Optional, Any, Annotated
@@ -484,7 +483,6 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
         }];
 
         let result = tables_to_python(&tables);
-        println!("{result}");
         assert!(result.contains(
             r#"class NestedArray(BaseModel):
     id: Key[str]
@@ -582,7 +580,6 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
         }];
 
         let result = tables_to_python(&tables);
-        println!("{result}");
         assert!(result.contains(
             r#"class Address(BaseModel):
     street: str

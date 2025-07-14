@@ -9,11 +9,41 @@ pub mod utilities;
 
 pub mod proto;
 
+use std::io::Write;
+use std::process::ExitCode;
+
 use clap::Parser;
 use cli::display::{Message, MessageType};
 
+/// Ensures terminal is properly reset on exit  
+fn ensure_terminal_cleanup() {
+    // The nuclear option: use the system's reset command
+    // This reads the terminal database and sends ALL necessary sequences
+    let reset_result = std::process::Command::new("reset")
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status();
+
+    // If reset command succeeded, we're done
+    if reset_result.is_ok() && reset_result.unwrap().success() {
+        log::info!("Terminal cleanup complete via reset command");
+        return;
+    }
+
+    // Fallback: try stty sane
+    let _ = std::process::Command::new("stty")
+        .arg("sane")
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status();
+
+    log::info!("Terminal cleanup complete via stty");
+}
+
 // Entry point for the CLI application
-fn main() {
+fn main() -> ExitCode {
     // Handle all CLI setup that doesn't require async functionality
     let user_directory = cli::settings::setup_user_directory();
     if let Err(e) = user_directory {
@@ -78,14 +108,16 @@ fn main() {
     match result {
         Ok(s) => {
             show_message!(s.message_type, s.message);
-            std::process::exit(0);
+            ensure_terminal_cleanup();
+            return ExitCode::from(0);
         }
         Err(e) => {
             show_message!(e.message_type, e.message);
             if let Some(err) = e.error {
                 eprintln!("{err:?}");
             }
-            std::process::exit(1);
+            ensure_terminal_cleanup();
+            return ExitCode::from(1);
         }
     }
 }

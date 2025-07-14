@@ -1,12 +1,15 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
-use console::{pad_str, style};
 use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
-use spinners::{Spinner, Spinners};
 use std::io::{stdout, IsTerminal};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
+
+// Crossterm imports for migration
+use crossterm::style::{
+    Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+};
 
 use crate::framework::core::infrastructure_map::TableChange;
 use crate::framework::core::{
@@ -55,13 +58,11 @@ use crate::framework::core::{
 ///
 /// A terminal instance with associated state for displaying CLI messages.
 ///
-/// The CommandTerminal wraps a console::Term for stdout handling and tracks the
+/// The CommandTerminal wraps stdout handling and tracks the
 /// number of messages written for potential future needs (such as clearing or
 /// updating specific messages).
 #[derive(Debug, Clone)]
 pub struct CommandTerminal {
-    /// The underlying terminal output handler
-    pub term: console::Term,
     /// Counter tracking the number of messages written to the terminal
     pub counter: usize,
 }
@@ -73,10 +74,12 @@ impl CommandTerminal {
     ///
     /// * `CommandTerminal` - A new terminal instance with counter initialized to 0
     pub fn new() -> CommandTerminal {
-        CommandTerminal {
-            term: console::Term::stdout(),
-            counter: 0,
-        }
+        CommandTerminal { counter: 0 }
+    }
+
+    /// Write a line to stdout using crossterm
+    pub fn write_line(&self, content: &str) -> std::io::Result<()> {
+        crossterm_utils::write_line(content)
     }
 }
 
@@ -135,18 +138,14 @@ lazy_static! {
 ///
 /// * `message` - The message describing the added infrastructure
 pub fn infra_added(message: &str) {
-    let command_terminal = TERM.write().unwrap();
-    let padder = 14;
+    let mut command_terminal = TERM.write().unwrap();
 
-    command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("+", padder, console::Alignment::Right, Some("..."))).green(),
-            message
-        ))
+    let styled_text = crossterm_utils::StyledText::new("+ ".to_string()).green();
+    // Use the new styled message writer for clean formatting
+    crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("+ {}", message.trim());
 }
 
@@ -156,18 +155,15 @@ pub fn infra_added(message: &str) {
 ///
 /// * `message` - The message describing the removed infrastructure
 pub fn infra_removed(message: &str) {
-    let command_terminal = TERM.write().unwrap();
-    let padder = 14;
+    let mut command_terminal = TERM.write().unwrap();
 
-    command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("-", padder, console::Alignment::Right, Some("..."))).red(),
-            message
-        ))
+    let styled_text = crossterm_utils::StyledText::new("- ".to_string()).red();
+
+    // Use the new styled message writer for clean formatting
+    crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("- {}", message.trim());
 }
 
@@ -177,43 +173,40 @@ pub fn infra_removed(message: &str) {
 ///
 /// * `message` - The message describing the updated infrastructure
 pub fn infra_updated(message: &str) {
-    let command_terminal = TERM.write().unwrap();
-    let padder = 14;
+    let mut command_terminal = TERM.write().unwrap();
 
-    command_terminal
-        .term
-        .write_line(&format!(
-            "{} {}",
-            style(pad_str("~", padder, console::Alignment::Right, Some("..."))).yellow(),
-            message
-        ))
+    let styled_text = crossterm_utils::StyledText::new("~ ".to_string()).yellow();
+
+    // Use the new styled message writer for clean formatting
+    crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
+    command_terminal.counter += 1;
     info!("~ {}", message.trim());
 }
 
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
         use crate::cli::display::TERM;
-        use console::{pad_str, style};
+        use crate::cli::display::crossterm_utils;
 
-        let padder = 14;
         let evaluated_message = $message;
         let action = evaluated_message.action.clone();
         let details = evaluated_message.details.clone();
 
         {
             let mut command_terminal = TERM.write().unwrap();
-            let color = match $message_type {
-                MessageType::Info => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).cyan().bold(),
-                MessageType::Success => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).green().bold(),
-                MessageType::Error => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).red().bold(),
-                MessageType::Highlight => style(pad_str(action.as_str(), padder, console::Alignment::Center, Some("..."))).on_green().bold(),
+
+            // Create styled prefix based on message type
+            let styled_prefix = match $message_type {
+                MessageType::Info => crossterm_utils::StyledText::new(action.clone()).cyan().bold(),
+                MessageType::Success => crossterm_utils::StyledText::new(action.clone()).green().bold(),
+                MessageType::Error => crossterm_utils::StyledText::new(action.clone()).red().bold(),
+                MessageType::Highlight => crossterm_utils::StyledText::new(action.clone()).on_green().bold(),
             };
 
-            command_terminal
-                .term
-                .write_line(&format!("{} {}", color, details))
+            // Write styled prefix and details in one line
+            crossterm_utils::write_styled_line(&styled_prefix, &details)
                 .expect("failed to write message to terminal");
             command_terminal.counter += 1;
 
@@ -253,12 +246,23 @@ pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
 {
-    let sp = (activate && stdout().is_terminal())
-        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
+    let sp = if activate && stdout().is_terminal() {
+        use crossterm_utils::TerminalComponent;
+        let mut spinner = crossterm_utils::SpinnerComponent::new(message);
+        let _ = spinner.start();
+        Some(spinner)
+    } else {
+        None
+    };
+
     let res = f();
-    if let Some(mut sp) = sp {
-        sp.stop_with_newline();
+
+    if let Some(mut spinner) = sp {
+        use crossterm_utils::TerminalComponent;
+        let _ = spinner.stop();
+        let _ = spinner.cleanup();
     }
+
     res
 }
 
@@ -277,12 +281,22 @@ pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
 {
-    let sp = (activate && stdout().is_terminal())
-        .then(|| Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout));
+    let sp = if activate && stdout().is_terminal() {
+        use crossterm_utils::TerminalComponent;
+        let mut spinner = crossterm_utils::SpinnerComponent::new(message);
+        let _ = spinner.start();
+        Some(spinner)
+    } else {
+        None
+    };
+
     let res = f.await;
-    if let Some(mut sp) = sp {
-        sp.stop_with_newline();
+
+    if let Some(mut spinner) = sp {
+        use crossterm_utils::TerminalComponent;
+        let _ = spinner.stop();
     }
+
     res
 }
 
@@ -394,7 +408,6 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
 pub fn show_changes(infra_plan: &InfraPlan) {
     TERM.write()
         .unwrap()
-        .term
         .write_line("")
         .expect("failed to write message to terminal");
     // TODO there is probably a better way to do the following through
@@ -560,5 +573,278 @@ mod tests {
             }
         );
         result
+    }
+}
+
+/// Crossterm utility functions to replace console crate functionality
+pub mod crossterm_utils {
+    use super::*;
+    use crossterm::execute;
+
+    /// Base trait for terminal output components
+    /// Each component manages its own terminal state and cleanup
+    pub trait TerminalComponent {
+        /// Start the component (display initial state)
+        fn start(&mut self) -> std::io::Result<()>;
+
+        /// Stop the component and clean up terminal state
+        fn stop(&mut self) -> std::io::Result<()>;
+
+        /// Ensure terminal is ready for the next component
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // Default implementation - print newline to ensure next component starts fresh
+            use crossterm::{execute, style::Print};
+            execute!(std::io::stdout(), Print("\n"))?;
+            Ok(())
+        }
+    }
+
+    /// Ephemeral spinner component that disappears when done
+    pub struct SpinnerComponent {
+        message: String,
+        handle: Option<std::thread::JoinHandle<()>>,
+        stop_signal: Arc<std::sync::atomic::AtomicBool>,
+        started: bool,
+    }
+
+    impl SpinnerComponent {
+        pub fn new(message: &str) -> Self {
+            Self {
+                message: message.to_string(),
+                handle: None,
+                stop_signal: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                started: false,
+            }
+        }
+    }
+
+    impl TerminalComponent for SpinnerComponent {
+        fn start(&mut self) -> std::io::Result<()> {
+            if self.started {
+                return Ok(());
+            }
+
+            use std::sync::atomic::Ordering;
+            use std::time::Duration;
+
+            // Dots9 animation frames
+            const DOTS9_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+            let message = self.message.clone();
+            let stop_signal = self.stop_signal.clone();
+
+            // Start on a fresh line using crossterm execute!
+            execute!(
+                std::io::stdout(),
+                Print(&format!("{} {}", DOTS9_FRAMES[0], message))
+            )?;
+
+            self.handle = Some(std::thread::spawn(move || {
+                let mut frame_index = 0;
+                while !stop_signal.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(80));
+
+                    if !stop_signal.load(Ordering::Relaxed) {
+                        // Update spinner on same line using crossterm
+                        let _ = execute!(
+                            std::io::stdout(),
+                            Print(&format!("\r{} {}", DOTS9_FRAMES[frame_index], message))
+                        );
+                        frame_index = (frame_index + 1) % DOTS9_FRAMES.len();
+                    }
+                }
+            }));
+
+            self.started = true;
+            Ok(())
+        }
+
+        fn stop(&mut self) -> std::io::Result<()> {
+            if !self.started {
+                return Ok(());
+            }
+
+            use std::sync::atomic::Ordering;
+
+            // Signal the thread to stop
+            self.stop_signal.store(true, Ordering::Relaxed);
+
+            // Wait for the thread to finish gracefully
+            if let Some(handle) = self.handle.take() {
+                // Try to join the thread with a reasonable timeout
+                let _ = std::thread::spawn(move || {
+                    let _ = handle.join();
+                });
+
+                // Give the thread time to clean up naturally
+                std::thread::sleep(std::time::Duration::from_millis(50));
+
+                // Don't wait for the cleanup thread to finish - just let it complete in background
+            }
+
+            // Clean up the current spinner line gracefully
+            execute!(
+                std::io::stdout(),
+                crossterm::terminal::Clear(crossterm::terminal::ClearType::CurrentLine),
+                crossterm::cursor::MoveToColumn(0)
+            )?;
+
+            self.started = false;
+            Ok(())
+        }
+
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // SpinnerComponent disappears completely, so no newline needed
+            // Terminal is already clean at the beginning of the line
+            Ok(())
+        }
+    }
+
+    impl Drop for SpinnerComponent {
+        fn drop(&mut self) {
+            // Gracefully clean up if needed, but don't force aggressive cleanup
+            if self.started {
+                let _ = self.stop();
+            }
+        }
+    }
+
+    /// Permanent message component that stays in the output
+    pub struct MessageComponent {
+        styled_text: StyledText,
+        message: String,
+        displayed: bool,
+    }
+
+    // impl MessageComponent {
+    //     pub fn new(styled_text: StyledText, message: &str) -> Self {
+    //         Self {
+    //             styled_text,
+    //             message: message.to_string(),
+    //             displayed: false,
+    //         }
+    //     }
+    // }
+
+    impl TerminalComponent for MessageComponent {
+        fn start(&mut self) -> std::io::Result<()> {
+            if self.displayed {
+                return Ok(());
+            }
+
+            // Write the styled message (this stays in the output)
+            write_styled_line(&self.styled_text, &self.message)?;
+            self.displayed = true;
+            Ok(())
+        }
+
+        fn stop(&mut self) -> std::io::Result<()> {
+            // Messages don't need to be stopped - they stay in output
+            Ok(())
+        }
+
+        fn cleanup(&mut self) -> std::io::Result<()> {
+            // Messages already end with newline, terminal is ready for next component
+            Ok(())
+        }
+    }
+
+    /// Styled text builder for crossterm
+    pub struct StyledText {
+        text: String,
+        foreground: Option<Color>,
+        background: Option<Color>,
+        bold: bool,
+    }
+
+    impl StyledText {
+        pub fn new(text: String) -> Self {
+            Self {
+                text,
+                foreground: None,
+                background: None,
+                bold: false,
+            }
+        }
+
+        pub fn cyan(mut self) -> Self {
+            self.foreground = Some(Color::Cyan);
+            self
+        }
+
+        pub fn green(mut self) -> Self {
+            self.foreground = Some(Color::Green);
+            self
+        }
+
+        pub fn yellow(mut self) -> Self {
+            self.foreground = Some(Color::Yellow);
+            self
+        }
+
+        pub fn red(mut self) -> Self {
+            self.foreground = Some(Color::Red);
+            self
+        }
+
+        pub fn bold(mut self) -> Self {
+            self.bold = true;
+            self
+        }
+
+        pub fn on_green(mut self) -> Self {
+            self.background = Some(Color::Green);
+            self
+        }
+    }
+
+    /// Write a line to stdout with crossterm
+    pub fn write_line(content: &str) -> std::io::Result<()> {
+        let mut stdout = std::io::stdout();
+        execute!(stdout, Print(content), Print("\n"))
+    }
+
+    const ACTION_WIDTH: usize = 15;
+
+    /// Write a styled line in one operation with fixed 12-character right-aligned action
+    pub fn write_styled_line(styled_text: &StyledText, message: &str) -> std::io::Result<()> {
+        let mut stdout = std::io::stdout();
+
+        // Ensure action is exactly 12 characters, right-aligned
+        let truncated_action = if styled_text.text.len() > ACTION_WIDTH {
+            &styled_text.text[..ACTION_WIDTH]
+        } else {
+            &styled_text.text
+        };
+        let padded_action = format!("{:>ACTION_WIDTH$}", truncated_action);
+
+        // Apply foreground color
+        if let Some(color) = styled_text.foreground {
+            execute!(stdout, SetForegroundColor(color))?;
+        }
+
+        // Apply background color
+        if let Some(color) = styled_text.background {
+            execute!(stdout, SetBackgroundColor(color))?;
+        }
+
+        // Apply bold
+        if styled_text.bold {
+            execute!(stdout, SetAttribute(Attribute::Bold))?;
+        }
+
+        // Write the styled, right-aligned action text
+        execute!(stdout, Print(&padded_action))?;
+
+        // Reset styling before writing the message
+        execute!(stdout, ResetColor)?;
+        if styled_text.bold {
+            execute!(stdout, SetAttribute(Attribute::Reset))?;
+        }
+
+        // Write separator and message
+        execute!(stdout, Print(" "), Print(message), Print("\n"))?;
+
+        Ok(())
     }
 }

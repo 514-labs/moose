@@ -33,16 +33,7 @@ impl DataModel {
         } else {
             // Fall back to primary key columns if no explicit order_by_fields
             // This ensures ClickHouse's mandatory ORDER BY requirement is met
-            self.columns
-                .iter()
-                .filter_map(|c| {
-                    if c.primary_key {
-                        Some(c.name.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect()
+            self.primary_key_columns()
         };
 
         Table {
@@ -63,6 +54,19 @@ impl DataModel {
             },
             metadata: None,
         }
+    }
+
+    pub fn primary_key_columns(&self) -> Vec<String> {
+        self.columns
+            .iter()
+            .filter_map(|c| {
+                if c.primary_key {
+                    Some(c.name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /**

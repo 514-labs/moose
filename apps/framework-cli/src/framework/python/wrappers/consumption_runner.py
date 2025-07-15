@@ -102,7 +102,19 @@ def handler_with_client(moose_client):
                               str(size)))
         def do_GET(self):
             parsed_path = urlparse(self.path)
-            module_name = parsed_path.path.lstrip('/')
+            path_parts = parsed_path.path.lstrip('/').split('/')
+            
+            # Handle versioned paths (/<endpoint>/<version>) or regular paths (/<endpoint>)
+            module_name = path_parts[0]
+            version = None
+            
+            # Check if this is a versioned path
+            if len(path_parts) > 1:
+                version = path_parts[1]
+                # If we have a versioned path like /Bar/1.0.0
+                # Store the versioned name format that matches what's used in the router
+                versioned_module_name = f"v{version}/{module_name}"
+            
             try:
                 jwt_payload = None
                 if has_jwt_config():
@@ -122,11 +134,19 @@ def handler_with_client(moose_client):
                 query_params = parse_qs(parsed_path.query)
 
                 if is_dmv2:
-                    user_api = get_consumption_api(module_name)
-                    if user_api is not None:
-                        query_fields = convert_pydantic_definition(user_api.model_type)
+                    # First try with versioned name if available
+                    api_to_use = None
+                    if 'versioned_module_name' in locals():
+                        api_to_use = get_consumption_api(versioned_module_name)
+                    
+                    # If no versioned API found, try with regular name
+                    if api_to_use is None:
+                        api_to_use = get_consumption_api(module_name)
+                    
+                    if api_to_use is not None:
+                        query_fields = convert_pydantic_definition(api_to_use.model_type)
                         try:
-                            params = map_params_to_class(query_params, query_fields, user_api.model_type)
+                            params = map_params_to_class(query_params, query_fields, api_to_use.model_type)
                         except (ValidationError, ValueError) as e:
                             traceback.print_exc()
                             self.send_response(400)
@@ -136,7 +156,7 @@ def handler_with_client(moose_client):
                         args = [moose_client, params]
                         if jwt_payload is not None:
                             args.append(jwt_payload)
-                        response = user_api.query_function(*args)
+                        response = api_to_use.query_function(*args)
                         # Convert Pydantic model to dict before JSON serialization
                         if isinstance(response, BaseModel):
                             response = response.model_dump_json()
@@ -146,7 +166,30 @@ def handler_with_client(moose_client):
                         self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
                         return
                 else:
-                    module = import_module(module_name)
+                    # Try to import the module, first with versioned path if available
+                    try:
+                        if version:
+                            # For versioned paths, try importing with version-specific module
+                            versioned_import_path = f"{module_name}_v{version.replace('.', '_')}"
+                            try:
+                                module = import_module(versioned_import_path)
+                            except ModuleNotFoundError:
+                                # Try with just the major version (v1, v2, etc.)
+                                major_version = version.split('.')[0]
+                                versioned_import_path = f"{module_name}_v{major_version}"
+                                module = import_module(versioned_import_path)
+                        else:
+                            # No version specified, try regular import
+                            module = import_module(module_name)
+                    except ModuleNotFoundError:
+                        self.send_response(404)
+                        self.end_headers()
+                        error_msg = f"API module not found: {module_name}"
+                        if version:
+                            error_msg += f" with version {version}"
+                        self.wfile.write(bytes(json.dumps({"error": error_msg}), 'utf-8'))
+                        return
+                        
                     fields_and_class = convert_consumption_api_param(module)
 
                     if fields_and_class is not None:

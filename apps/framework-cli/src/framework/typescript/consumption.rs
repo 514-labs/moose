@@ -17,18 +17,18 @@ const CONSUMPTION_RUNNER_BIN: &str = "consumption-apis";
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
 pub fn run(
-    project: Project,
-    clickhouse_config: ClickHouseConfig,
-    jwt_config: Option<JwtConfig>,
+    project: &Project,
+    clickhouse_config: &ClickHouseConfig,
+    jwt_config: &Option<JwtConfig>,
     consumption_path: &Path,
     project_path: &Path,
     proxy_port: Option<u16>,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let temporal_url = project.temporal_config.temporal_url();
-    let client_cert = project.temporal_config.client_cert;
-    let client_key = project.temporal_config.client_key;
-    let api_key = project.temporal_config.api_key;
+    let client_cert = project.temporal_config.client_cert.clone();
+    let client_key = project.temporal_config.client_key.clone();
+    let api_key = project.temporal_config.api_key.clone();
 
     let mut string_args = vec![
         consumption_path.to_str().unwrap().to_string(),
@@ -49,11 +49,11 @@ pub fn run(
         }
 
         string_args.push("--jwt-secret".to_string());
-        string_args.push(jwt_config.secret);
+        string_args.push(jwt_config.secret.clone());
         string_args.push("--jwt-issuer".to_string());
-        string_args.push(jwt_config.issuer);
+        string_args.push(jwt_config.issuer.clone());
         string_args.push("--jwt-audience".to_string());
-        string_args.push(jwt_config.audience);
+        string_args.push(jwt_config.audience.clone());
     }
 
     if project.features.workflows {

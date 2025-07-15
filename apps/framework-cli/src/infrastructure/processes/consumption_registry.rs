@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use log::info;
-use tokio::process::Child;
 
+use crate::utilities::system::{RestartingProcess, StartChildFn};
 use crate::{
     framework::{languages::SupportedLanguages, python, typescript},
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
     project::{JwtConfig, Project, ProjectFileError},
-    utilities::system::{kill_child, KillProcessError},
+    utilities::system::KillProcessError,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -24,7 +24,7 @@ pub enum ConsumptionError {
 }
 
 pub struct ConsumptionProcessRegistry {
-    api_process: Option<Child>,
+    api_process: Option<RestartingProcess>,
     clickhouse_config: ClickHouseConfig,
     dir: PathBuf,
     language: SupportedLanguages,
@@ -60,25 +60,38 @@ impl ConsumptionProcessRegistry {
     pub fn start(&mut self) -> Result<(), ConsumptionError> {
         info!("Starting consumption API...");
 
-        let child = match self.language {
-            SupportedLanguages::Python => python::consumption::run(
-                self.project.clone(),
-                self.clickhouse_config.clone(),
-                self.jwt_config.clone(),
-                &self.dir,
-                self.proxy_port,
-            ),
-            SupportedLanguages::Typescript => typescript::consumption::run(
-                self.project.clone(),
-                self.clickhouse_config.clone(),
-                self.jwt_config.clone(),
-                &self.dir,
-                &self.project_path,
-                self.proxy_port,
-            ),
-        }?;
+        let project = self.project.clone();
+        let clickhouse_config = self.clickhouse_config.clone();
+        let jwt_config = self.jwt_config.clone();
+        let proxy_port = self.proxy_port;
+        let dir = self.dir.clone();
 
-        self.api_process = Some(child);
+        let start_child: StartChildFn<ConsumptionError> = match self.language {
+            SupportedLanguages::Python => Box::new(move || {
+                python::consumption::run(
+                    &project,
+                    &clickhouse_config,
+                    &jwt_config,
+                    &dir,
+                    proxy_port,
+                )
+            }),
+            SupportedLanguages::Typescript => {
+                let project_path = self.project_path.clone();
+                Box::new(move || {
+                    typescript::consumption::run(
+                        &project,
+                        &clickhouse_config,
+                        &jwt_config,
+                        &dir,
+                        &project_path,
+                        proxy_port,
+                    )
+                })
+            }
+        };
+
+        self.api_process = Some(RestartingProcess::create(start_child)?);
 
         Ok(())
     }
@@ -86,11 +99,9 @@ impl ConsumptionProcessRegistry {
     pub async fn stop(&mut self) -> Result<(), ConsumptionError> {
         info!("Stopping consumption...");
 
-        if let Some(child) = &self.api_process {
-            kill_child(child).await?
+        if let Some(child) = self.api_process.take() {
+            child.stop().await
         };
-
-        self.api_process = None;
 
         Ok(())
     }

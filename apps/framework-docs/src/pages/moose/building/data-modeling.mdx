@@ -1,615 +1,658 @@
----
-title: Data Modeling
-description: Data Modeling for Moose
----
-
 import { Callout, LanguageSwitcher, TypeScript, Python, CTACards, CTACard, CheckmarkBullets, BulletPointsCard } from "@/components";
 import { FileTree, Tabs } from "nextra/components";
 import { PathConfig } from "@/components/ctas";
 
-# Data Modeling
+# Data Modeling 
 <LanguageSwitcher />
 
-## Overview
+## Quick Start
+- [Basic Data Models](#basic-data-models)
+- [ClickHouse-Specific Annotations](#clickhouse-specific-annotations)
+- [Validation Tiers](#validation-tiers)
 
-Data models in Moose are type definitions that generate your data infrastructure. You write them as <TypeScript inline>TypeScript interfaces</TypeScript><Python inline>Pydantic models</Python>, export them from your app's root <TypeScript inline>index.ts</TypeScript><Python inline>main.py</Python> file, and Moose creates the corresponding database tables, APIs, and streams from your code.
+---
 
+## Core Concepts
 
-<BulletPointsCard
-  title="Working with Data Models"
-  bullets={[
-    {
-      title: "Define your schema",
-      description: "Create a type definition with typed fields and a primary key using your language's type system"
-    },
-    {
-      title: "Create infrastructure",
-      description: "Use your model as a type parameter to create tables, APIs, streams, or views"
-    },
-    {
-      title: "Export from root",
-      description: "Export all models and infrastructure from your app's root file (index.ts/main.py) - Moose reads these exports to generate infrastructure"
-    },
-    {
-      title: "Run dev server",
-      description: "When you create or modify data models, Moose automatically creates or updates all dependent infrastructure components with your latest code changes."
-    }
-  ]}
-/>
+### What is Moose Schema?
 
-### Quick Start
-<TypeScript>
-```ts filename="app/index.ts" copy
-// 1. Define your schema (WHAT your data looks like)
-interface MyDataModel {
-  primaryKey: Key<string>;
-  someString: string;
-  someNumber: number;
-  someDate: Date;
-}
+Moose Schema is a code-first approach to ClickHouse database management. Unlike traditional ORMs where your TypeScript/Python types are just hints that may or may not match your actual database schema, Moose Schema makes your code the authoritative source for your ClickHouse infrastructure.
 
-// 2. YOU control which infrastructure to create (HOW to handle your data)
-const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
-  ingest: true,    // Optional: Create API endpoint
-  stream: true,    // Optional: Create topic
-  table: {         // Optional: Create and configure table
-    orderByFields: ["primaryKey", "someDate"],
-    deduplicate: true
-  }
-});
-```
-</TypeScript>
-<Python>
-```python filename="app/main.py"
-# 1. Define your schema (WHAT your data looks like)
-class MyFirstDataModel(BaseModel):
-    id: Key[str] = Field(..., description="Primary key")
-    some_string: str
-    some_number: int
-    some_boolean: bool
-    some_date: datetime
+A Moose data model defines the shape and types of your data using a single <TypeScript inline>TypeScript interface</TypeScript><Python inline>Pydantic model</Python>. Moose uses these models to generate and validate:
 
+- **Tables** (ClickHouse OLAP tables)
+- **APIs** (request/response validation)
+- **Streams** (typed streaming topics)
+- **Workflow Tasks** (typed function/job inputs and outputs)
 
-# 2. YOU control which infrastructure to create (HOW to handle your data)
-my_first_pipeline = IngestPipeline[MyFirstDataModel]("my_first_pipeline", IngestPipelineConfig(
-    ingest=True,  # Create API endpoint
-    stream=True,  # Create stream topic
-    table=True    # Create database table
-))
-```
-</Python>
+**Why this is relevant:**
+- Your <TypeScript inline>TypeScript</TypeScript><Python inline>Python</Python> code **IS** your database schema, not just a description of it
+- Infrastructure is automatically synchronized with your code changes
+- Eliminates schema drift between environments
+- Provides compile-time guarantees for database operations
+- Leverages ClickHouse optimizations without learning complex DDL
 
-<BulletPointsCard
-  divider={false}
-  bulletStyle="check"
-  title="Benefits:"
-  bullets={[
-    "End-to-end type safety across your code and infrastructure",
-    "Full control over your infrastructure with code",
-    "Zero schema drift - change your types in one place, automatically update your infrastructure"
-  ]}
-/>
+> **The key difference:** Traditional ORMs are database-first with disconnected types. Moose Schema is code-first with your data model as the single source of truth.
 
-## Schema Definition
+## Getting Started with Data Models
 
-<Callout type="info" title="The WHAT">
-  This section covers how to define your data models - the structure and types of your data.
-</Callout>
-
-### Basic Types
+### Step 1: Super Basic Data Model
 
 <TypeScript>
-```ts filename="app/datamodels/BasicDataModel.ts" copy
-import { Key } from "@514labs/moose-lib";
-import { tags } from "typia";
-import { ClickHouseDecimal, ClickHousePrecision, LowCardinality } from "@514labs/moose-lib";
-
-export interface BasicDataModel {
-  // Required: Primary key for your data model
-  primaryKey: Key<string>;    // string key
-  // or
-  numericKey: Key<number>;    // numeric key
-
-  // Common types
-  someString: string;         // Text
-  someNumber: number;         // Numbers (Float64 by default)
-  someBoolean: boolean;       // Boolean
-  someDate: Date;             // Timestamps (DateTime)
-  someArray: string[];        // Arrays
-  someJsonObject: Record<string, any>;        // JSON object 
-
-  // Explicit integer types
-  intField: number & tags.Type<"int64">;   // Int64
-  uintField: number & tags.Type<"uint32">; // UInt32
-
-  // Decimal with precision/scale
-  price: ClickHouseDecimal<10, 2>;         // Decimal(10,2)
-
-  // DateTime64 with precision
-  eventTime: Date & ClickHousePrecision<6>; // DateTime64(6)
-
-  // UUID
-  userId: string & tags.Type<"uuid">;      // UUID
-
-  // Nullable fields
-  nullableField?: string;  // Optional field
-
-  // LowCardinality
-  lowCardinalityField: string & LowCardinality; // LowCardinality(String)
+```ts
+export interface ExampleModel {
+  stringField: string;
+  numberField: number;
+  dateField: Date;
 }
 ```
 </TypeScript>
 
 <Python>
-You use Pydantic to define your schemas:
+```python
+from pydantic import BaseModel
+from datetime import datetime
 
-```python filename="app/datamodels/BasicDataModel.py"
-from moose_lib import Key, clickhouse_decimal, clickhouse_datetime64
-from datetime import datetime, date
-from typing import List, Optional, Any, Annotated
-from uuid import UUID
-from pydantic import BaseModel, Field
-from decimal import Decimal
-
-class BasicDataModel(BaseModel):
-    # Required: Primary key for your data model
-    primary_key: Key[str]
-    # or
-    numeric_key: Key[int]
-    
-    # Common types
-    some_string: str             # Text
-    some_number: int             # Numbers (Int64 by default)
-    some_boolean: bool           # Boolean
-    some_date: datetime          # Timestamps (DateTime)
-    some_array: List[str]        # Arrays
-    some_json_object: Any        # JSON object
-
-    # Explicit integer types
-    small_int: Annotated[int, "int16"]   # Int16
-    big_uint: Annotated[int, "uint64"]   # UInt64
-
-    # Decimal with precision/scale
-    price: clickhouse_decimal(10, 2)     # Decimal(10,2)
-
-    # DateTime64 with precision
-    event_time: clickhouse_datetime64(6) # DateTime64(6)
-
-    # UUID
-    user_id: UUID                        # UUID
-
-    # Optional fields
-    optional_field: Optional[str] = None  # May not be present in all records
-
-    # LowCardinality
-    low_cardinality_field: Annotated[str, "LowCardinality"]
+class ExampleModel(BaseModel):
+    string_field: str
+    number_field: float
+    date_field: datetime
 ```
 </Python>
 
-### Advanced Schema Patterns
-
-#### Nested Objects
+### Step 2: Composite Types (No Advanced Rules)
 
 <TypeScript>
-```ts filename="app/datamodels/NestedDataModel.ts" copy
-import { Key } from "@514labs/moose-lib";
-
-// Define nested object separately
-interface NestedObject {
-  nestedNumber: number;
-  nestedBoolean: boolean;
-  nestedArray: number[];
-}
-
-export interface DataModelWithNested {
-  primaryKey: Key<string>;
-  
-  // Reference nested object
-  nestedData: NestedObject;
-
-  // Or define inline
-  inlineNested: {
-    someValue: string;
-    someOtherValue: number;
+```ts
+export interface CompositeExample {
+  stringField: string;
+  numberField: number;
+  nestedObject: {
+    innerString: string;
+    innerNumber: number;
   };
+  numberArray: number[];
+  mapField: Record<string, number>;
+  jsonField: Record<string, any>;
+  literalField: "optionA" | "optionB";
+  optionalField?: string;
+  nullableField: string | null;
+  dateField: Date;
 }
 ```
 </TypeScript>
 
 <Python>
-```python filename="app/datamodels/NestedDataModel.py"
-from moose_lib import Key
-from typing import List
-from pydantic import BaseModel, Field
+```python
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any, Literal
+from datetime import datetime
 
 class NestedObject(BaseModel):
-    nested_number: int
-    nested_boolean: bool
-    nested_array: List[int]
+    inner_string: str
+    inner_number: float
 
-class DataModelWithNested(BaseModel):
-    primary_key: Key[str]
-    nested_data: NestedObject
+class CompositeExample(BaseModel):
+    string_field: str
+    number_field: float
+    nested_object: NestedObject
+    number_array: List[float]
+    map_field: Dict[str, float]
+    json_field: Dict[str, Any]
+    literal_field: Literal["optionA", "optionB"]
+    optional_field: Optional[str] = None
+    nullable_field: Optional[str] = None
+    date_field: datetime
 ```
 </Python>
 
-#### Using Enums
+### Step 3: Composite Types + Advanced Schema Rules
 
 <TypeScript>
-```ts filename="app/datamodels/EnumDataModel.ts" copy
-import { Key } from "@514labs/moose-lib";
+```ts
+import { Key, ClickHouseDecimal, LowCardinality, tags } from "@514labs/moose-lib";
 
-enum OrderStatus {
-  PENDING = "pending",
-  PROCESSING = "processing",
-  COMPLETED = "completed"
+export interface AdvancedExample {
+  id: Key<string & tags.Format<"uuid">>;
+  stringField: string & tags.MinLength<2> & tags.MaxLength<64>;
+  numberField: number & tags.Type<"int64">;
+  decimalField: string & ClickHouseDecimal<10, 2>;
+  lowCardinalityField: string & LowCardinality;
+  nestedObject: {
+    innerString: string;
+    innerNumber: number;
+  };
+  namedTupleField: {
+    name: string;
+    value: number;
+  } & ClickHouseNamedTuple;
+  numberArray: number[] & LowCardinality;
+  mapField: Record<string, number>;
+  literalField: "optionA" | "optionB";
+  optionalField?: string;
+  nullableField: string | null;
+  minMaxNumber: number & tags.Minimum<0> & tags.Maximum<100>;
+  dateField: Date;
+}
+```
+</TypeScript>
+
+---
+
+## The Complete Moose ORM Experience
+
+Moose ORM consists of three integrated modules that work together to provide a seamless ClickHouse development experience:
+
+### 1. **Moose Schema**: Your Code IS Your Database
+- **Code-first approach**: TypeScript interfaces and Python Pydantic models become your ClickHouse table schemas
+- **Zero schema drift**: Your database is always perfectly synchronized with your code
+- **Native types**: No bespoke DSL—just familiar language constructs
+- **ClickHouse optimizations**: Built-in support for LowCardinality, Decimal, NamedTuple, and more
+
+### 2. **Moose Migrate**: Git-Like Infrastructure Management
+- **Automatic synchronization**: No manual migration files or commands
+- **Continuous diffing**: Moose constantly compares your code against your database
+- **Preview changes**: See exactly what DDL will run before deploying to production
+- **Rollback safety**: Understand the impact of changes before applying them
+
+### 3. **Moose Query**: Type-Safe SQL with Autocomplete
+- **Native ClickHouse SQL**: Write SQL exactly as you know it
+- **Full type safety**: Compile-time validation of table and column references
+- **IDE integration**: Autocomplete for all tables and columns
+- **Smart aggregations**: Automatic handling of State/Merge suffixes
+
+### How They Work Together
+
+```typescript
+// 1. Moose Schema: Define your data model
+interface UserMetrics {
+  userId: Key<string>;
+  totalOrders: number & Aggregated<"sum", [number]>;
+  averageOrderValue: number & Aggregated<"avg", [number]>;
 }
 
+// 2. Moose Migrate: Automatically creates/updates the table
+// Run `moose dev` - no migration files needed!
+
+// 3. Moose Query: Write type-safe queries
+const query = sql`
+  SELECT ${userMetrics.columns.userId},
+         ${userMetrics.columns.totalOrders}
+  FROM ${userMetrics}
+  WHERE ${userMetrics.columns.averageOrderValue} > 100
+`;
+```
+
+**The result**: A development experience where your code, database, and queries are always perfectly synchronized with full type safety and zero manual migration management.
+
+---
+
+## Data Flow Visualization
+
+```mermaid
+graph LR
+    A[Your Code] --> B[Data Model]
+    B --> C[Ingest API]
+    B --> D[Stream]
+    B --> E[Table]
+    B --> F[Consumption API]
+    C --> G[Basic Validation]
+    D --> G
+    E --> G
+    F --> H[Full Validation]
+```
+
+---
+
+## Use Cases
+
+### Modeling Your Database (`OlapTable`, `MaterializedView`, & `IngestPipeline`)
+
+<Callout type="info" title="Moose Schema: Code-First ClickHouse ORM">
+  When modeling for ClickHouse tables and views (via `OlapTable`, `MaterializedView`, or `IngestPipeline`), Moose Schema automatically maps your TypeScript/Python types to ClickHouse columns. Unlike traditional query builders where your types are disconnected from your database schema, Moose Schema makes your code the authoritative source for your table structure. In dev mode, Moose hot reloads table and view definitions as you edit your models.
+</Callout>
+
+<TypeScript>
+```ts filename="app/datamodels/Order.ts"
+import { Key, ClickHouseDecimal, LowCardinality, ClickHouseNamedTuple, tags } from "@514labs/moose-lib";
+
 export interface Order {
-  orderId: Key<string>;
-  status: OrderStatus;  // Type-safe status values
-  createdAt: Date;
+  orderId: Key<string>; // Primary key
+  amount: string & ClickHouseDecimal<10, 2>; // Decimal(10,2)
+  status: string & LowCardinality; // LowCardinality(String)
+  createdAt: Date; // DateTime
+  customer: {
+    name: string;
+    address: string;
+  } & ClickHouseNamedTuple; // NamedTuple
+}
+```
+**Why Moose Schema is revolutionary:**
+- **Code IS Database**: Your TypeScript interface doesn't just describe your table—it IS your table schema
+- **Type Safety Everywhere**: Use these models as regular TypeScript interfaces with full type checking and autocompletion across your entire application
+- **ClickHouse Optimizations**: Moose automatically applies ClickHouse-specific optimizations (like `ClickHouseNamedTuple`) when generating table schemas
+- **Context-Aware**: When used outside of table contexts, ClickHouse metadata is ignored—you always get clean, regular TypeScript interfaces
+- **Zero Schema Drift**: Your database schema is always perfectly synchronized with your code
+
+**The key advantage over traditional ORMs:** Tools like Kysely provide TypeScript types that have NO underlying influence on your database schema. With Moose Schema, your TypeScript interface dictates your database table structure. No manual migration generation, no schema drift, no disconnected types.
+
+**Example:** The `ClickHouseNamedTuple` tag lets you use `customer` as a regular TypeScript object in your business logic while Moose automatically generates the optimal ClickHouse table schema.
+
+```ts filename="app/datamodels/Order.ts"
+import { Key, ClickHouseDecimal, LowCardinality } from "@514labs/moose-lib";
+
+export interface Order {
+  orderId: Key<string>; // Primary key
+  amount: number & ClickHouseDecimal<10, 2>; // Decimal(10,2)
+  status: string & LowCardinality; // LowCardinality(String)
+  createdAt: Date; // DateTime
 }
 ```
 </TypeScript>
 
 <Python>
-```python filename="app/datamodels/EnumDataModel.py"
-from enum import Enum
-from moose_lib import Key
-from datetime import datetime
+```python filename="app/datamodels/Order.py"
+from moose_lib import Key, clickhouse_decimal, ClickHouseNamedTuple
+from typing import Annotated
 from pydantic import BaseModel
+from datetime import datetime
 
-class OrderStatus(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
+class Customer(BaseModel):
+    name: str
+    address: str
 
 class Order(BaseModel):
     order_id: Key[str]
-    status: OrderStatus  # Type-safe status values
+    amount: clickhouse_decimal(10, 2)
+    status: str  # Use Literal[...] for LowCardinality
     created_at: datetime
+    customer: Annotated[Customer, "ClickHouseNamedTuple"]
 ```
+
+**Why this is powerful:**
+- Use models as regular Python objects with type checking and autocompletion
+- Moose reads ClickHouse annotations (like `Annotated[Customer, "ClickHouseNamedTuple"]`) to generate correct table schemas
+- ClickHouse metadata is ignored outside table contexts, giving you clean Python objects
+
+**Single source of truth:** Define your data model once and use it everywhere—in business logic, APIs, and infrastructure. ClickHouse specific annotations are additive to your base type, and are ignored when used outside of a table context.
+
+**Example:** The `Annotated` type lets you use `Customer` as a regular Python object while Moose generates the correct ClickHouse column type (`NamedTuple`). This enables reusing table models across your codebase—when used outside tables, the base type is used and ClickHouse metadata is ignored.
+
 </Python>
 
-### Type Mapping
+### Dos and Don'ts for Table Modeling
+- Use explicit types and ClickHouse-specific tags/annotations for columns (see summary table below).
+- Avoid union types, unknown, and nullable composite types (see "Common Data Modeling Mistakes and Workarounds").
+- Use LowCardinality, Enum, Decimal, DateTime64, NamedTuple, Map, etc. as needed for ClickHouse features.
+
+<Callout type="info" title="Supported Type Annotations">
+  See the summary table below for all supported types and how to annotate them for ClickHouse.
+</Callout>
+
+#### Common Data Modeling Mistakes and Workarounds
 
 <TypeScript>
-| TypeScript | ClickHouse | Description |
-|------------|------------|-------------|
-| `string` | String | Text values |
-| `number` | Float64 | Numeric values |
-| `number & tags.Type<"int64">` | Int64 | 64-bit integer |
-| `number & tags.Type<"uint32">` | UInt32 | 32-bit unsigned integer |
-| `boolean` | Boolean | True/false values |
-| `Date` | DateTime | Timestamp values |
-| `Date & ClickHousePrecision<P>` | DateTime64(P) | Timestamp with precision |
-| `ClickHouseDecimal<P, S>` | Decimal(P, S) | Decimal with precision/scale |
-| `string & tags.Type<"uuid">` | UUID | Universally unique identifier |
-| `Array` | Array | Lists of values |
-| `object` | Nested | Nested structures |
-| `Enum` | Enum | Enumerated values |
-| `any` | JSON | JSON object (discouraged, see below) |
-| `Optional<T>` | Nullable | Optional/nullable fields |
-| `object & ClickHouseNamedTuple` | NamedTuple | Named tuple structures |
-| `Record<K, V>` | Map | Map of key-value pairs |
-| `string & LowCardinality` | LowCardinality(String) | Low cardinality string |
-</TypeScript>
-
-<Python>
-| Python | ClickHouse | Description |
-|--------|------------|-------------|
-| `str` | String | Text values |
-| `int` | Int64 | Integer values |
-| `Annotated[int, "int16"]` | Int16 | 16-bit integer |
-| `Annotated[int, "uint64"]` | UInt64 | 64-bit unsigned integer |
-| `float` | Float64 | Decimal values |
-| `Decimal` | Decimal | Arbitrary-precision decimal |
-| `clickhouse_decimal(p, s)` | Decimal(p, s) | Decimal with precision/scale |
-| `bool` | Boolean | True/false values |
-| `datetime` | DateTime | Timestamp values |
-| `clickhouse_datetime64(p)` | DateTime64(p) | Timestamp with precision |
-| `date` | Date | Date values |
-| `List[T]` | Array | Lists of values |
-| `UUID` | UUID | Universally unique identifier |
-| `Any` | JSON | Any value, use with caution |
-| `Enum` | Enum | Enumerated values |
-| `Optional[T]` | Nullable | Values may be present or not |
-| Nested Pydantic | Nested | Nested structures |
-</Python>
-
-### Data Modeling Dos and Don'ts
-
-<TypeScript>
-Do not use `unknown` types for flexible fields (prefer explicit types or `any` for JSON):
 ```ts filename="app/datamodels/AnyFields.ts" copy
+// ❌ DO NOT: Use unknown type for flexible fields
 interface BadDataModel {
   unknownField: unknown;
 }
 ```
-```
-// DO -> Use a specific type or a JSON type if truly needed
+```ts filename="app/datamodels/AnyFields.ts" copy
+// ✅ DO: Use a specific type or JSON type if truly needed
 interface GoodDataModel {
-  jsonField: any; // Only if you need to store arbitrary JSON
+  jsonField: Record<string, any>; // Only if you need to store arbitrary JSON
 }
 ```
-</TypeScript>
 
-Do not use union types for flexible or nullable fields:
-
-<TypeScript>
-```ts filename="app/datamodels/FlexibleFields.ts"
-// DO NOT -> Use union types for conditional fields
+```ts filename="app/datamodels/FlexibleFields.ts" copy
+// ❌ DO NOT: Use union types for flexible or nullable fields
 interface BadDataModel {
   conditionalField: string | number;
-}
-
-// DO -> break out into multiple optional fields
-interface GoodDataModel {
-  conditionalString?: string; // Optional field
-  conditionalNumber?: number; // Optional field
-}
-```
-```ts filename="app/datamodels/NullableFields.ts"
-// DO NOT -> Use union types for nullable fields
-interface BadDataModel {
   nullableField: string | null;
 }
-
-// DO -> Use Optional type
-interface GoodDataModel { 
+```
+```ts filename="app/datamodels/FlexibleFields.ts" copy
+// ✅ DO: Use optional fields for flexibility and nullability
+interface GoodDataModel {
+  conditionalString?: string;
+  conditionalNumber?: number;
   nullableField?: string;
+}
+```
+
+```ts filename="app/datamodels/OptionalNested.ts" copy
+// ❌ DO NOT: Use Nullable with composite types (arrays, maps, nested, namedtuple)
+interface BadDataModel {
+  nullableNested?: {
+    nestedField: string;
+  };
+  nullableNamedTuple?: {
+    nestedField: string;
+  } & ClickHouseNamedTuple;
+  nullableArray?: T[];
+  nullableMap?: Record<K, T>;
+}
+```
+```ts filename="app/datamodels/OptionalNested.ts" copy
+// ✅ DO: Use optional fields inside composite types
+interface GoodDataModel {
+  nested: {
+    nestedField?: string;
+  };
+  namedTuple: {
+    nestedField?: string;
+  } & ClickHouseNamedTuple;
+  array: (T | undefined)[];
+  map: Record<K, T>;
 }
 ```
 </TypeScript>
 
 <Python>
 ```python filename="app/datamodels/FlexibleFields.py"
-# DO NOT -> Use union types for flexible fields
+# ❌ DO NOT: Use union types for flexible or nullable fields
 class BadDataModel(BaseModel):
     flexible_field: Union[str, int]
-
-# DO -> Use Any type for flexible fields
-class FlexibleDataModel(BaseModel):
-    flexible_field: Any # Maps to JSON type in ClickHouse
-```
-```python filename="app/datamodels/NullableFields.py"
-# DO NOT -> Use union types for nullable fields
-class BadDataModel(BaseModel):
     nullable_field: Union[str, None]
-
-# DO -> Use Optional type
+```
+```python filename="app/datamodels/FlexibleFields.py"
+# ✅ DO: Use Any for flexible fields and Optional for nullable fields
 class GoodDataModel(BaseModel):
+    flexible_field: Any  # Maps to JSON type in ClickHouse
     nullable_field: Optional[str]
 ```
-```python filename="app/datamodels/DictFields.py"
-# DO NOT -> Use dict types for nested fields
+
+```python filename="app/datamodels/OptionalNested.py"
+# ❌ DO NOT: Use Optional with composite types
 class BadDataModel(BaseModel):
-    dict_field: dict[str, Any]
-
-class NestedObject(BaseModel):
-    nested_field: str
-
-# DO -> Use Nested type (Pydantic model)
+    nested_data: Optional[NestedObject]
+    named_tuple: Optional[Annotated[Coordinates, ClickHouseNamedTuple]]
+    array: Optional[List[int]]
+    map: Optional[Dict[str, int]]
+```
+```python filename="app/datamodels/OptionalNested.py"
+# ✅ DO: Use Optional fields inside composite types
 class GoodDataModel(BaseModel):
-    dict_field: NestedObject
+    nested_data: NestedObject  # with optional fields inside
+    named_tuple: Annotated[Coordinates, ClickHouseNamedTuple]  # with optional fields inside
+    array: List[Optional[int]]
+    map: Dict[str, int]
 ```
 </Python>
 
-
-## Infrastructure Configuration
-
-<Callout type="info" title="The HOW">
-  This section covers how to apply your data models to infrastructure components.
+<Callout type="info" title="What we're working on next:">
+- Support for default values
 </Callout>
 
-### Getting Data Into Your Database
+---
 
-#### `IngestPipeline`
-The most common pattern - combines ingestion, streaming, and storage into a single component:
+## Modeling APIs: Request and Response Validation
+
+<Callout type="info" title="APIs: Type Safety at the Boundary">
+  Use your data models to define the shape of data accepted by and returned from your Ingest and Consumption API endpoints. Moose validates all requests and responses at runtime, ensuring type safety and preventing schema drift.
+</Callout>
 
 <TypeScript>
-```ts filename="app/index.ts"
-import { IngestPipeline } from "@514labs/moose-lib";
-
-const myPipeline = new IngestPipeline<MyDataModel>("my_pipeline", {
-    ingest: true,
-    stream: true,
-    table: true
-});
+```ts filename="app/datamodels/ApiRequest.ts"
+export interface CreateUserRequest {
+  username: string;
+  email: string;
+  age?: number;
+}
 ```
 </TypeScript>
 
 <Python>
-```python filename="app/index.py"
-from moose_lib import IngestPipeline, IngestPipelineConfig
+```python filename="app/datamodels/ApiRequest.py"
+from pydantic import BaseModel
 
-my_pipeline = IngestPipeline[MyDataModel]("my_pipeline", IngestPipelineConfig(
-    ingest=True,
-    stream=True,
-    table=True
+class CreateUserRequest(BaseModel):
+    username: str
+    email: str
+    age: int | None = None
+```
+</Python>
+
+
+## Modeling Streams: Typed Streaming Topics
+
+### Stream Validation
+Moose automatically validates all data published to a stream against your data model, whether via `Stream.publish(...)` or through transforms (`Stream.add_transform(...)`).
+
+You can also manually validate data in streaming functions using `Event.model_validate(event)`.
+
+<Callout type="info" title="Stream ↔ ClickHouse Syncing:">
+If a stream's `destination` is an `OlapTable`, the stream and table must use the same data model.
+</Callout>
+
+
+
+<TypeScript>
+```ts filename="app/datamodels/Event.ts"
+export interface Event {
+  eventId: string;
+  timestamp: Date;
+  payload: Record<string, any>;
+}
+
+const stream = new Stream<Event>("my-stream", {
+  validateOnPublish: true  
+})
+
+// COMING SOON:
+stream.addConsumer((event: Event) => {
+  validate(event)
+})
+```
+</TypeScript>
+
+<Python>
+```python filename="app/datamodels/Event.py"
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Any
+
+class Event(BaseModel):
+    event_id: str
+    timestamp: datetime
+    payload: dict[str, Any]
+
+stream = Stream[Event]("stream")
+stream.add_consumer(lambda event: Event.model_validate(event))
+```
+</Python>
+---
+
+## Modeling Workflow Tasks: Inputs and Outputs
+
+<Callout type="info" title="Workflow Tasks: Type Safety for Function Inputs and Outputs">
+  Use data models to define the input and output types for workflow tasks (functions, jobs, etc.). Moose validates task inputs and outputs at runtime using your data model.
+</Callout>
+
+<TypeScript>
+```ts filename="app/datamodels/TaskInput.ts"
+interface TaskInput {
+  userId: string;
+  action: string;
+  metadata?: Record<string, any>;
+}
+
+interface TaskOutput {
+  success: boolean;
+  message: string;
+}
+
+const task = new Task<TaskInput, TaskOutput>("task", {
+  run: async (input): Promise<TaskOutput> => {
+    return {
+      success: true,
+      message: "Task completed successfully",
+    };
+  },
+});
+```
+</TypeScript>
+<Python>
+```python filename="app/datamodels/TaskInput.py"
+from pydantic import BaseModel
+from typing import Any
+
+class TaskInput(BaseModel):
+    user_id: str
+    action: str
+    metadata: dict[str, Any] | None = None
+
+class TaskOutput(BaseModel):
+    success: bool
+    message: str
+
+task = Task[TaskInput, TaskOutput]("task", TaskConfig(
+    run=lambda input: TaskOutput(success=True, message="Task completed successfully"),
 ))
 ```
 </Python>
 
-<BulletPointsCard
-  divider={false}
-  bulletStyle="check"
-  title="What gets created?"
-  bullets={[
-    "An HTTP POST endpoint that accepts and validates incoming data against your data model",
-    "A typed Redpanda topic that buffers validated data from the ingest API",
-    "A ClickHouse table with the same schema as your data model",
-    "A Rust process that syncs data from the stream to the table"
-  ]}
-/>
-#### Standalone Components
-If you don't need all the components, you can create them individually and wire them together yourself:
+## Summary Table: Supported Types and Annotations
 
-##### `OlapTable`
-    Creates a ClickHouse table with the same schema as your data model:
-    <TypeScript>
-    ```typescript filename="app/index.ts"
-    import { OlapTable } from "@514labs/moose-lib";
-    
-    // Basic table
-    const myTable = new OlapTable<MyDataModel>("TableName");
-    ```
-    </TypeScript>
-    
-    <Python>
-    ```python filename="app/index.py"
-    from moose_lib import OlapTable
-    
-    # Basic table
-    my_table = OlapTable[MyDataModel]("TableName")
-    ```
-    </Python>
-
-    <Callout type="info" title="Olap Tables">
-      You might use an OlapTable if you do not need streaming ingest capabilities for your data.
-      [Learn more about Olap Tables](/moose/building/olap-table)
-    </Callout>
-  
-##### `Stream`
-Creates a Redpanda topic that can be configured to sync data to a ClickHouse table with the same schema:
 <TypeScript>
-```ts filename="app/index.ts" copy
-import { Stream } from "@514labs/moose-lib";
-
-// Basic stream
-const myStream = new Stream<MyDataModel>("TopicName");
-```
+| Moose TypeScript Type                                 | ClickHouse Type             | Description                                |
+|------------------------------------------------------|-----------------------------|---------------------------------------------|
+| `Key\<string|number>`                                 | String, Int64 (Primary Key) | Primary key for table                       |
+| `string`                                             | String                      | Text values                                 |
+| `number`                                             | Float64                     | Numeric values                              |
+| `boolean`                                            | Boolean                     | True/false values                           |
+| `Date`                                               | DateTime                    | Timestamp values                            |
+| `Array<T>`                                           | Array                       | Lists of values                             |
+| `Record<K, V>`                                       | Map                         | Map of key-value pairs                      |
+| `Enum`                                               | Enum                        | Enumerated values                           |
+| `object` (Nested)                                    | Nested                      | Nested structures                           |
+| `object & ClickHouseNamedTuple` (NamedTuple)         | NamedTuple                  | Named tuple structures                      |
+| `string & LowCardinality`                            | LowCardinality(String)      | Low cardinality string                      |
+| `number & tags.Type\<"int16" | "int32" | "int64">`    | Int16, Int32, UInt32, etc.  | Explicit integer types                      |
+| `string & ClickHouseDecimal<P, S>`                   | Decimal(P, S)               | Decimal with precision/scale                |
+| `Optional<T>`                                        | Nullable(T)                 | Optional/nullable fields (with restrictions)|
 </TypeScript>
 
 <Python>
-```python filename="app/index.py"
-from moose_lib import Stream
-
-# Basic stream
-my_stream = Stream[MyDataModel]("TopicName")
-```
+| Moose Python Type                                    | ClickHouse Type             | Description                                 |
+|------------------------------------------------------|-----------------------------|---------------------------------------------|
+| `Key[str|int]`                                      | String, Int64 (Primary Key) | Primary key for table                       |
+| `str`                                               | String                      | Text values                                 |
+| `int`                                               | Int64                       | Integer values                              |
+| `float`                                             | Float64                     | Decimal values                              |
+| `Decimal`                                           | Decimal                     | Arbitrary-precision decimal                 |
+| `bool`                                              | Boolean                     | True/false values                           |
+| `datetime`                                          | DateTime                    | Timestamp values                            |
+| `date`                                              | Date                        | Date values                                 |
+| `List[T]`                                           | Array                       | Lists of values                             |
+| `Dict[K, V]`                                        | Map                         | Map of key-value pairs                      |
+| `Enum`                                              | Enum                        | Enumerated values                           |
+| `BaseModel` (Nested)                                | Nested                      | Nested structures                           |
+| `Annotated[BaseModel, ClickHouseNamedTuple]`        | NamedTuple                  | Named tuple structures                      |
+| `clickhouse_decimal(p, s)`                          | Decimal(p, s)               | Decimal with precision/scale                |
+| `Literal[...]`                                      | LowCardinality(String)      | Low cardinality string                      |
+| `Optional[T]`                                       | Nullable                    | Optional/nullable fields (with restrictions)|
 </Python>
+---
 
-<Callout type="info" title="Streams">
-  Standalone streams may make sense if you want to transform data on the fly before it is written to the table. [Learn more about stream processing](/moose/building/streams)
-</Callout>
-  
-##### `IngestAPI`
-Creates an HTTP `POST` endpoint at "/ingest/api-route-name" that accepts and validates incoming data against your data model:
+## What to Do Next
+
+### For Beginners
+1. **Start Simple**: Create basic data models without ClickHouse annotations
+2. **Test Your Models**: Use the validation examples to test your schemas
+3. **Build a Pipeline**: Connect an IngestAPI to a Stream to a Table
+
+### For Intermediate Users
+1. **Add ClickHouse Features**: Enhance your models with type annotations
+2. **Implement Validation**: Add advanced validation rules to your models
+3. **Optimize Performance**: Use LowCardinality and other optimizations
+
+### For Advanced Users
+1. **Custom Validators**: Create custom validation rules
+2. **Performance Tuning**: Optimize your ClickHouse table schemas
+3. **Cross-Language Integration**: Ensure consistency across TypeScript/Python
+
+---
+
+## Common Patterns
+
+### Time-Series Data
 <TypeScript>
-```ts filename="app/index.ts" copy
-import { IngestAPI } from "@514labs/moose-lib";
-
-const myIngestAPI = new IngestAPI<MyDataModel>("api-route-name"); // Creates an HTTP `POST` endpoint at "/ingest/api-route-name"
+```ts
+export interface Metric {
+  id: Key<string>;
+  timestamp: Date;
+  value: number;
+  tags: Record<string, string> & ClickHouseMap;
+}
 ```
 </TypeScript>
 
-<Python>
-```python filename="app/index.py"
-from moose_lib import IngestAPI
 
-my_ingest_api = IngestAPI[MyDataModel]("api-route-name")
-```
-</Python>
-<Callout type="info" title="Ingest APIs">
-  Ingest APIs are almost always preferred as part of an `IngestPipeline` instead of being used standalone. [Learn more about Ingestion APIs](/moose/building/ingestion)
-</Callout>
-
-### Getting Data Out of Your Database
-Data models also power your downstream data processing workflows after data is stored, enabling you to create materialized views and typed APIs that prepare and expose your data for consumption:
-
-#### `MaterializedView`
-Materialized views are a way to pre-compute and store the results of complex queries on your data. This allows you to query the materialized view directly for faster results, or use it as the source for another derived table for cascading transformations:
+### User Events
 <TypeScript>
-```ts filename="app/index.ts" copy
-import { MaterializedView } from "@514labs/moose-lib";
-
-const myMaterializedView = new MaterializedView<MyDataModel>({
-  selectStatement: sql`SELECT * FROM my_table`,
-  tableName: "my_table",
-  materializedViewName: "my_materialized_view"
-});
+```ts
+export interface UserEvent {
+  eventId: Key<string>;
+  userId: string;
+  eventType: string & LowCardinality;
+  properties: Record<string, any>;
+  timestamp: Date;
+}
 ```
 </TypeScript>
 
-<Python>
-```python filename="app/index.py"
-from moose_lib import MaterializedView
+## The Developer Experience Revolution
 
-my_materialized_view = MaterializedView[MyDataModel](
-  select_statement="SELECT * FROM my_table",
-  table_name="my_table",
-  materialized_view_name="my_materialized_view"
-)
+### Before Moose ORM
+- **Database-first approach**: Write DDL, then generate types
+- **Manual migrations**: Create migration files for every schema change
+- **Schema drift**: Types and database get out of sync
+- **String-based queries**: No type safety, runtime errors from typos
+- **Complex setup**: Multiple tools and manual processes
+
+### With Moose ORM
+- **Code-first approach**: Your TypeScript/Python code IS your database schema
+- **Zero migrations**: Changes are automatically synchronized
+- **Always in sync**: Impossible for code and database to diverge
+- **Type-safe queries**: Compile-time validation with full autocomplete
+- **Zero configuration**: Everything works together seamlessly
+
+### Real-World Impact
+
+**90% reduction in schema management overhead**
+- No migration files to write or manage
+- No manual synchronization between environments
+- No schema drift debugging
+
+**Eliminate production surprises**
+- Preview exactly what will change before deployment
+- Catch schema issues at compile time
+- Automatic rollback safety checks
+
+**Developer productivity boost**
+- Full IDE support with autocomplete
+- Type safety across your entire stack
+- Focus on business logic, not infrastructure
+
+### Get Started Today
+
+```bash
+npm install @514labs/moose-lib
+# or
+pip install moose-lib
 ```
-</Python>
-<Callout type="info" title="Materialized Views">
-  [Learn more about Materialized Views](/moose/building/materialized-views)
-</Callout>
 
-#### `ConsumptionAPI`
-Consumption APIs are a way to expose your data to external consumers. They are typed and validateagainst your data models, ensuring that the client request parameters and response types are correct at runtime:
+Experience the future of ClickHouse development with Moose ORM.
 
-<TypeScript>
-```ts filename="app/index.ts" copy
-import { ConsumptionAPI } from "@514labs/moose-lib";
+---
 
-const myConsumptionAPI = new ConsumptionAPI<RequestDataModel, ResponseDataModel>("MyConsumptionAPI"async({request: RequestDataModel}, {client, sql}) => {
-      // Do something with the request
-  return new ResponseDataModel();
-});
-```
-</TypeScript>
+## Related Documentation
 
-<Python>
-```python filename="app/index.py"
-from moose_lib import ConsumptionAPI
-
-def handle(request: RequestDataModel) -> ResponseDataModel:
-    # Do something with the request
-    return ResponseDataModel()
-
-my_consumption_api = ConsumptionAPI[RequestDataModel, ResponseDataModel]("api_route_name"query_function=handle)
-    ```
-</Python>
-
-<Callout type="info" title="Consumption APIs">
-  [Learn more about Consumption APIs](/moose/building/consumption-apis)
-</Callout>
-
-## Validation
-Validation at runtime takes place at the following points:
-- The body of a `POST` request to an `IngestAPI` endpoint - [Learn more about Ingestion APIs](/moose/building/ingestion#validation)
-- The query parameters sent in a `GET` request to a Consumption API - [Learn more about Consumption APIs](/moose/building/consumption-apis#adding-advanced-type-validation)
-- The data being synced from a streaming topic to an `OlapTable` - [Learn more about Olap Tables](/moose/building/olap-table)
-
-
-## Next Steps
-
-<CTACards rows={3}>
-  <CTACard
-    ctaLink={PathConfig.streams.path}
-    ctaLabel="Learn More"
-    icon={PathConfig.streams.icon}
-    title="Streaming Deep Dive"
-    description="Learn how to process, transform, and manage data streams in real-time."
-    orientation="horizontal"
-  />
-  <CTACard
-    ctaLink={PathConfig.olapTables.path}
-    ctaLabel="Learn More"
-    icon={PathConfig.olapTables.icon}
-    title="Working with Tables"
-    description="Discover how to optimize storage, querying, and analytics with OLAP tables."
-    orientation="horizontal"
-  />
-  <CTACard
-    ctaLink={PathConfig.ingestion.path}
-    ctaLabel="Learn More"
-    icon={PathConfig.ingestion.icon}
-    title="Ingesting Data"
-    description="Explore how to efficiently ingest data with automatic schema validation."
-    orientation="horizontal"
-  />
-</CTACards>
+- **[Materialized Views](../materialized-views)**: Learn about Moose Query for type-safe SQL
+- **[Infrastructure Planning](../../deploying/planning)**: Understand Moose Migrate workflows
+- **[Ingest APIs](../http-apis)**: Learn how to use your data models for ingestion
+- **[Streaming](../streaming)**: See how data models work with streams
+- **[ClickHouse Tables](../clickhouse)**: Understand table-specific modeling
+- **[Workflows](../workflows)**: Use data models in workflow tasks

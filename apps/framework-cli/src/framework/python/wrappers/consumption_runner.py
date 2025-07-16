@@ -177,7 +177,11 @@ def handler_with_client(moose_client):
                                 # Try with just the major version (v1, v2, etc.)
                                 major_version = version.split('.')[0]
                                 versioned_import_path = f"{module_name}_v{major_version}"
-                                module = import_module(versioned_import_path)
+                                try:
+                                    module = import_module(versioned_import_path)
+                                except ModuleNotFoundError:
+                                    # Fall back to unversioned module if versioned not found
+                                    module = import_module(module_name)
                         else:
                             # No version specified, try regular import
                             module = import_module(module_name)

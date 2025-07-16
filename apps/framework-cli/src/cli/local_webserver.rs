@@ -945,39 +945,8 @@ async fn router(
         // Handle unversioned paths (e.g., /ingest/Foo)
         (Some(configured_producer), &hyper::Method::POST, ["ingest", endpoint]) => {
             if project.features.data_model_v2 {
-                // For DMv2, first check if there are any versioned endpoints
+                // For DMv2, try direct route first (unversioned endpoint)
                 let route_table_read = route_table.read().await;
-                let base_path = PathBuf::from("ingest").join(endpoint);
-                let base_path_str = base_path.to_str().unwrap();
-                let mut has_versioned_endpoints = false;
-                let mut latest_version: Option<&Version> = None;
-
-                // Check if there are any versioned endpoints for this base path
-                for (path, meta) in route_table_read.iter() {
-                    let path_str = path.to_str().unwrap();
-                    if path_str.starts_with(base_path_str) && path_str != base_path_str {
-                        if let Some(version) = &meta.version {
-                            has_versioned_endpoints = true;
-                            if latest_version.is_none() || version > latest_version.unwrap() {
-                                latest_version = Some(version);
-                            }
-                        }
-                    }
-                }
-
-                // If versioned endpoints exist, don't allow direct access to unversioned endpoint
-                if has_versioned_endpoints {
-                    // Return a 404 with a helpful message about using a versioned endpoint
-                    return Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Full::new(Bytes::from(format!(
-                            "Versioned endpoints exist for this API. Please use a specific version (e.g., /ingest/v{}/{})",
-                            latest_version.unwrap_or(&Version::from_string("1.0.0".to_string())),
-                            endpoint
-                        ))));
-                }
-
-                // No versioned endpoints exist, try direct route first
                 if route_table_read.contains_key(&route) {
                     ingest_route(
                         req,
@@ -1064,22 +1033,8 @@ async fn router(
         }
         // Handle traditional consumption path (e.g., /consumption/Foo)
         (_, &hyper::Method::GET, ["consumption", endpoint]) => {
-            // First check if there are versioned endpoints for this API
-            let all_consumption_apis = consumption_apis.read().await;
-            let has_versioned_endpoint = all_consumption_apis
-                .iter()
-                .any(|api| api.starts_with(&format!("v/{}", endpoint)));
-
-            if has_versioned_endpoint {
-                // If versioned endpoints exist, don't allow direct access to unversioned endpoint
-                return Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(Full::new(Bytes::from(format!(
-                        "Versioned endpoints exist for this API. Please use a specific version (e.g., /consumption/v1/{})",
-                        endpoint
-                    ))));
-            }
-
+            // Always try to serve the unversioned endpoint if it exists
+            // This allows unversioned endpoints to work even when versioned endpoints are available
             match get_consumption_api_res(
                 http_client,
                 req,

@@ -213,8 +213,8 @@ const apiHandler =
       }
 
       let result =
-        isDmv2 && userFuncModule.getHandler ?
-          await userFuncModule.getHandler()(paramsObject, {
+        isDmv2 ?
+          await userFuncModule(paramsObject, {
             client: new MooseClient(queryClient, temporalClient),
             sql: sql,
             jwt: jwtPayload,

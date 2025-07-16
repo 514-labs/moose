@@ -122,7 +122,7 @@ pub async fn run_workflow(
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{name}': {e}"),
+                    details: format!("Could not start workflow '{}': {}", name, e),
                 },
                 e,
             )
@@ -133,19 +133,20 @@ pub async fn run_workflow(
         return Err(RoutineFailure::new(
             Message {
                 action: "Workflow".to_string(),
-                details: format!("'{name}' failed to start: Invalid run ID\n"),
+                details: format!("'{}' failed to start: Invalid run ID\n", name),
             },
             anyhow::anyhow!("Invalid run ID"),
         ));
     }
 
     let dashboard_url =
-        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history");
+        format!("http://localhost:8080/namespaces/{}/workflows/{}/{}/history", namespace, name, run_id);
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n"
+            "'{}' started successfully.\nView it in the Temporal dashboard: {}\n",
+            name, dashboard_url
         ),
     }))
 }
@@ -303,20 +304,20 @@ pub async fn terminate_workflow(
                 .to_string()
                 .contains("workflow execution already completed")
             {
-                format!("Workflow '{name}' has already completed")
+                format!("Workflow '{}' has already completed", name)
             } else {
-                format!("Could not terminate workflow '{name}': {e}")
+                format!("Could not terminate workflow '{}': {}", name, e)
             };
 
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("{error_message}\n"),
+                details: format!("{}\n", error_message),
             })
         })?;
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-        details: format!("'{name}' terminated successfully\n"),
+                        details: format!("'{}' terminated successfully\n", name),
     }))
 }
 
@@ -721,7 +722,7 @@ pub async fn get_workflow_status(
         let request = ListWorkflowExecutionsRequest {
             namespace: namespace.clone(),
             page_size: 1,
-            query: format!("WorkflowId = '{name}'"),
+            query: format!("WorkflowId = '{}'", name),
             ..Default::default()
         };
 
@@ -736,7 +737,7 @@ pub async fn get_workflow_status(
             .map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not find workflow '{name}': {e}\n"),
+                    details: format!("Could not find workflow '{}': {}\n", name, e),
                 })
             })?;
 
@@ -744,7 +745,7 @@ pub async fn get_workflow_status(
         if executions.is_empty() {
             return Err(RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("No executions found for workflow '{name}'\n"),
+                details: format!("No executions found for workflow '{}'\n", name),
             }));
         }
 
@@ -773,7 +774,7 @@ pub async fn get_workflow_status(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not get status for workflow '{name}': {e}\n"),
+                details: format!("Could not get status for workflow '{}': {}\n", name, e),
             })
         })?;
 

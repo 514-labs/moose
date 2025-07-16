@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 # Set non-interactive mode to prevent prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Install system dependencies (protobuf-compiler will be installed separately with specific version)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
@@ -25,6 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
+# Create ubuntu user early with proper sudoers permissions
+RUN useradd -m -s /bin/bash ubuntu && \
+    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu
+
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
@@ -32,9 +37,10 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Add setup for Docker-in-Docker (DinD) support
+# Add setup for Docker-in-Docker (DinD) support - add both root and ubuntu to docker group
 RUN groupadd -f docker \
-    && usermod -aG docker root
+    && usermod -aG docker root \
+    && usermod -aG docker ubuntu
 
 # Install Node.js 20.x
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -42,11 +48,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 # Install pnpm
 RUN npm install -g pnpm@9.9.0
-
-# Install Rust toolchain
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && echo 'source $HOME/.cargo/env' >> ~/.bashrc
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python 3.12 (Ubuntu 22.04 comes with Python 3.10, we need 3.12)
 # Set timezone non-interactively to avoid hanging
@@ -77,27 +78,43 @@ RUN PROTOC_VERSION=24.4 \
     && rm -f $PROTOC_ZIP \
     && chmod +x /usr/local/bin/protoc
 
-# Install maturin for Python-Rust bindings
-RUN pip install maturin==1.8.1
+# Switch to ubuntu user for remaining installations
+USER ubuntu
+WORKDIR /home/ubuntu
 
-# Verify installations
+# Install maturin for Python-Rust bindings (with --break-system-packages for newer Python)
+RUN pip install maturin==1.8.1 --break-system-packages
+
+# Install Rust toolchain for ubuntu user (the user that actually uses the environment)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# Set up PATH environment variables for consistent access in all contexts
+ENV PATH="/home/ubuntu/.cargo/bin:/home/ubuntu/.local/bin:${PATH}"
+
+# Set up environment for ubuntu user in bashrc (for interactive shells)
+RUN echo 'export PATH="/home/ubuntu/.cargo/bin:$PATH"' >> /home/ubuntu/.bashrc \
+    && echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
+
+# Verify installations as ubuntu user
 RUN node --version \
     && npm --version \
     && pnpm --version \
-    && rustc --version \
-    && cargo --version \
     && python3 --version \
     && pip --version \
-    && protoc --version
+    && protoc --version \
+    && maturin --version \
+    && rustc --version \
+    && cargo --version
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy and run verification script
+# Copy and run verification script (switch to root temporarily for this)
+USER root
 COPY scripts/verify-environment.sh /tmp/verify-environment.sh
 RUN chmod +x /tmp/verify-environment.sh \
     && /tmp/verify-environment.sh
 
-# Set up environment
-RUN echo 'export PATH="/root/.cargo/bin:$PATH"' >> /root/.bashrc \
-    && echo 'export PATH="/root/.local/bin:$PATH"' >> /root/.bashrc
+# Switch back to ubuntu user as the default user for the environment
+USER ubuntu
+WORKDIR /workspace

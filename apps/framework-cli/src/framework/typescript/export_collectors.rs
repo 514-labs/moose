@@ -46,30 +46,31 @@ async fn collect_exports(
     let args = vec![file_path_str];
     let process = bin::run(command_name, project_path, &args)?;
 
-    let mut stdout = process
-        .stdout
-        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stdout"));
+    let mut stdout = process.stdout.ok_or_else(|| ExportCollectorError::Other {
+        message: format!("{process_name} process did not have a handle to stdout"),
+    })?;
 
-    let mut stderr = process
-        .stderr
-        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stderr"));
+    let mut stderr = process.stderr.ok_or_else(|| ExportCollectorError::Other {
+        message: format!("{process_name} process did not have a handle to stderr"),
+    })?;
 
     let mut raw_string_stderr: String = String::new();
     stderr.read_to_string(&mut raw_string_stderr).await?;
 
     if !raw_string_stderr.is_empty() {
-        Err(ExportCollectorError::Other {
+        return Err(ExportCollectorError::Other {
             message: format!(
                 "Error collecting exports in the file {file:?}: \n{raw_string_stderr}"
             ),
-        })
-    } else {
-        let mut raw_string_stdout: String = String::new();
-        stdout.read_to_string(&mut raw_string_stdout).await?;
-
-        Ok(serde_json::from_str(&raw_string_stdout)
-            .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
+        });
     }
+
+    let mut raw_string_stdout: String = String::new();
+    stdout.read_to_string(&mut raw_string_stdout).await?;
+
+    serde_json::from_str(&raw_string_stdout).map_err(|e| ExportCollectorError::Other {
+        message: format!("Invalid JSON from exports: {e}\nRaw output: {raw_string_stdout}"),
+    })
 }
 
 pub async fn get_data_model_configs(

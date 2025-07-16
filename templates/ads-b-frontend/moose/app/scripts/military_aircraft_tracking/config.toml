@@ -1,5 +1,0 @@
-name = "military_aircraft_tracking"
-timeout = "1h"
-retries = 3
-schedule = "@every 5s"
-tasks = ["fetch_and_ingest_military_aircraft"]

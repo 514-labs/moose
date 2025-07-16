@@ -49,6 +49,7 @@ parser.add_argument('client_cert', type=str, help='Client certificate')
 parser.add_argument('client_key', type=str, help='Client key')
 parser.add_argument('api_key', type=str, help='API key')
 parser.add_argument('is_dmv2', type=str, help='Is DMv2')
+parser.add_argument('proxy_port', type=int, help='Proxy port')
 
 args = parser.parse_args()
 
@@ -214,7 +215,8 @@ def main():
         load_models()
 
     moose_client = MooseClient(ch_client, temporal_client)
-    server_address = ('', 4001)
+    server_port = args.proxy_port
+    server_address = ('localhost', server_port)
     handler = handler_with_client(moose_client)
     httpd = HTTPServer(server_address, handler)
     
@@ -240,7 +242,7 @@ def main():
     signal.signal(signal.SIGQUIT, signal_handler)
     signal.signal(signal.SIGHUP, signal_handler)
     
-    print(f"Starting server on http://localhost:4001")
+    print(f"Starting server on http://localhost:{server_port}")
     
     try:
         httpd.serve_forever()

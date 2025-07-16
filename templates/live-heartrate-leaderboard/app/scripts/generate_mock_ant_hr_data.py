@@ -1,25 +1,28 @@
-from moose_lib import task, Logger
+from moose_lib import Task, Workflow, TaskConfig, WorkflowConfig, Logger
 import requests
 import json
 import random
 import time
 import math
 from pathlib import Path
+from app.datamodels.RawAntHRPacket import RawAntHRPacket
 
 def load_mock_device_ids() -> list[int]:
     """
     Loads device IDs from mock-user-db.json, excluding devices with live_bt_device=True
     Returns a list of integer device IDs
     """
-    json_path = Path(__file__).parents[3] / 'mock-user-db.json'
+    json_path = Path(__file__).parents[2] / 'mock-user-db.json'
     with open(json_path) as f:
         user_db = json.load(f)
     
-    return [int(device_id) for device_id, data in user_db.items() 
-            if not data.get('live_bt_device')]
+    device_ids = [int(device_id) for device_id, data in user_db.items() 
+            if not data.get('live_bt_device') == "True"]
+    
+    print(f"Using mock device IDs: {device_ids}")
+    return device_ids
 
-@task
-def generate_mock_ant_hr_data():
+def generate_mock_ant_hr_data() -> None:
     """
     This script mocks N users who are wearing an ANT+ heart rate monitor.
     It sends data to Moose four times per second indefinitely
@@ -50,42 +53,50 @@ def generate_mock_ant_hr_data():
             'hr_max': random.randint(200, 220),
             'hr_event': False,
             'phase': random.random(),
+            'target_hr': 0,  # Initialize target heart rate
         } for device_id in device_ids
     }
+    
+    # Set initial target heart rate for each device
+    for device_id in device_ids:
+        device_data[device_id]['target_hr'] = device_data[device_id]['rhr']
+        # Add an initial HR value to the history
+        device_data[device_id]['hr_history'].append(device_data[device_id]['rhr'])
 
     # Main loop - runs indefinitely
-    while True: # Changed from time-based condition
-        for device_id in device_ids:
-            # time_elapsed is still useful for the interval calculation
-            time_elapsed = time.time() - start_time 
-            
-            # Determine the last recorded heart rate for smoothing
-            last_hr = device_data[device_id]['hr_history'][-1] if device_data[device_id]['hr_history'] else None
-            
-            # Update target HR less frequently (e.g., every few packets or based on HR event)
-            # For simplicity, let's update it when a beat event occurs or at the start
-            if device_data[device_id]['hr_event'] or device_data[device_id]['packet_number'] == 0:
-                device_data[device_id]['target_hr'] = generate_realistic_heart_rate(
-                    time_elapsed,
-                    base_hr=device_data[device_id]['rhr'],
-                    max_hr=device_data[device_id]['hr_max'], 
-                    last_hr=last_hr, # Pass last HR for smoothing
-                    phase=device_data[device_id]['phase'] # Phase can still be used for variation between devices
-                )
-                device_data[device_id]['hr_event'] = False
-            
-            ant_packet = generate_ant_hrm_packet(device_id, device_data[device_id])
-            json_data = json.dumps(ant_packet)
-            
-            try:
-                logger.info(f"Sending JSON: {json_data}")
-                response = requests.post(url, data=json_data, headers=headers)
-                if response.status_code == 200:
-                    logger.info(f"Successfully sent packet: {ant_packet}")
-                else:
-                    print(f"Failed to send packet: {response.status_code}, {response.text}")
-            except requests.exceptions.RequestException as e:
-                print(f"An error occurred: {e}")
+    for device_id in device_ids:
+        # time_elapsed is still useful for the interval calculation
+        time_elapsed = time.time() - start_time 
+        
+        # Determine the last recorded heart rate for smoothing
+        last_hr = device_data[device_id]['hr_history'][-1] if device_data[device_id]['hr_history'] else None
+        
+        # Update target HR less frequently (e.g., every few packets or based on HR event)
+        # For simplicity, let's update it when a beat event occurs or at the start
+        if device_data[device_id]['hr_event'] or device_data[device_id]['packet_number'] == 0:
+            device_data[device_id]['target_hr'] = generate_realistic_heart_rate(
+                time_elapsed,
+                base_hr=device_data[device_id]['rhr'],
+                max_hr=device_data[device_id]['hr_max'], 
+                last_hr=last_hr, # Pass last HR for smoothing
+                phase=device_data[device_id]['phase'] # Phase can still be used for variation between devices
+            )
+            device_data[device_id]['hr_event'] = False
+        
+        ant_packet = generate_ant_hrm_packet(device_id, device_data[device_id])
+        json_data = json.dumps(ant_packet)
+        
+        try:
+            logger.info(f"Sending JSON: {json_data}")
+            response = requests.post(url, data=json_data, headers=headers)
+            if response.status_code == 200:
+                logger.info(f"Successfully sent packet: {ant_packet}")
+            else:
+                logger.error(f"Failed to send packet: {response.status_code}, {response.text}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"An error occurred: {e}")
+            # Pause briefly if there's a connection error
+            time.sleep(1)  # Wait 1 second before retry
 
         time.sleep(0.25)
         
@@ -135,7 +146,7 @@ def generate_ant_hrm_packet(device_id: int, device_data: dict):
         int(device_data['last_beat_time']) & 0xFF,  # Byte 4: Heart Beat Event Time LSB
         (int(device_data['last_beat_time']) >> 8) & 0xFF,  # Byte 5: Heart Beat Event Time MSB
         device_data['beat_count'],  # Byte 6: Heart Beat Count
-        device_data['hr_history'][-1] if len(device_data['hr_history']) > 0 else 0  # Byte 7: Computed Heart Rate (last value in history)
+        device_data['target_hr']  # Byte 7: Computed Heart Rate (use target HR if no history)
     ]
 
     # Construct the ANT+ packet as a dictionary
@@ -187,3 +198,14 @@ def generate_realistic_heart_rate(time_elapsed, base_hr=60, max_hr=180, last_hr=
     
     # Ensure heart rate stays within bounds
     return int(max(base_hr * 0.9, min(round(new_hr), max_hr))) # Allow slightly below base_hr
+
+ingest_task = Task[RawAntHRPacket, None](
+    name="task",
+    config=TaskConfig(run=generate_mock_ant_hr_data)
+)
+ingest_workflow = Workflow(
+    name="workflow",
+    config=WorkflowConfig(starting_task=ingest_task, schedule="@every 5s")
+)
+
+

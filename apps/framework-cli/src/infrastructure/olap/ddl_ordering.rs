@@ -400,7 +400,8 @@ fn handle_table_remove(table: &Table) -> OperationPlan {
     OperationPlan::teardown(vec![drop_table_operation(table)])
 }
 
-fn handle_order_by_change(before: &Table, after: &Table) -> OperationPlan {
+/// Handles non-mutable changes to a table, such as changing the order of columns or the primary key
+fn handle_non_mutable_change_operation(before: &Table, after: &Table) -> OperationPlan {
     let teardown_op = drop_table_operation(before);
     let setup_op = create_table_operation(after);
 
@@ -417,12 +418,22 @@ fn handle_table_update(
     column_changes: &[ColumnChange],
 ) -> OperationPlan {
     // Check if ORDER BY has changed
-    if before.order_by != after.order_by && !after.order_by.is_empty() {
+    if before.order_by != after.order_by {
         // If ORDER BY changed, we need to drop and recreate the table
-        handle_order_by_change(before, after)
+        handle_non_mutable_change_operation(before, after)
     } else {
-        // If ORDER BY hasn't changed, use the already computed column changes
-        process_column_changes(before, after, column_changes)
+        // Check if primary key structure has changed
+        let before_primary_keys = before.primary_key_columns();
+        let after_primary_keys = after.primary_key_columns();
+
+        if before_primary_keys != after_primary_keys {
+            // If primary key structure changed, we need to drop and recreate the table
+            // This handles cases like changing from orderByFields to Key<T> annotations
+            handle_non_mutable_change_operation(before, after)
+        } else {
+            // If neither ORDER BY nor primary key structure changed, use the already computed column changes
+            process_column_changes(before, after, column_changes)
+        }
     }
 }
 

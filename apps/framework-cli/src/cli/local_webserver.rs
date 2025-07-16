@@ -130,8 +130,15 @@ pub struct LocalWebserverConfig {
     /// The port to bind the management server to
     #[serde(default = "default_management_port")]
     pub management_port: u16,
+    /// The port to bind the proxy server to (for consumption APIs)
+    #[serde(default = "default_proxy_port")]
+    pub proxy_port: u16,
     /// Optional path prefix for all routes
     pub path_prefix: Option<String>,
+}
+
+pub fn default_proxy_port() -> u16 {
+    4001
 }
 
 impl LocalWebserverConfig {
@@ -162,6 +169,7 @@ impl Default for LocalWebserverConfig {
             host: "localhost".to_string(),
             port: 4000,
             management_port: default_management_port(),
+            proxy_port: default_proxy_port(),
             path_prefix: None,
         }
     }
@@ -174,6 +182,7 @@ async fn get_consumption_api_res(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
+    proxy_port: u16,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -190,7 +199,7 @@ async fn get_consumption_api_res(
     let url = format!(
         "http://{}:{}{}{}",
         host,
-        4001,
+        proxy_port,
         req.uri().path().strip_prefix("/consumption").unwrap_or(""),
         req.uri()
             .query()
@@ -692,12 +701,18 @@ async fn handle_json_array_body(
                         "errorType": "ValidationError",
                         "failedAt": chrono::Utc::now().to_rfc3339(),
                         "source": "api",
+                        "requestBody": String::from_utf8_lossy(&body),
+                        "topic": topic_name,
                     }))
                     .unwrap()
                 }),
             )
             .await;
         }
+        warn!(
+            "Bad JSON in request to topic {}: {}. Body: {:?}",
+            topic_name, e, body
+        );
         return bad_json_response(e);
     }
     let res_arr = send_to_kafka(
@@ -708,6 +723,10 @@ async fn handle_json_array_body(
     .await;
 
     if res_arr.iter().any(|res| res.is_err()) {
+        error!(
+            "Internal server error sending to topic {}. Body: {:?}",
+            topic_name, body
+        );
         return internal_server_error_response();
     }
 
@@ -960,7 +979,16 @@ async fn router(
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
         (_, &hyper::Method::GET, ["consumption", _rt]) => {
-            match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
+            match get_consumption_api_res(
+                http_client,
+                req,
+                host,
+                consumption_apis,
+                is_prod,
+                project.http_server_config.proxy_port,
+            )
+            .await
+            {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -1295,6 +1323,12 @@ impl Webserver {
             .await
             .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
+        // Check if proxy port is available
+        let proxy_socket = self.get_socket(project.http_server_config.proxy_port).await;
+        TcpListener::bind(proxy_socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(proxy_socket.port(), e));
+
         let producer = if project.features.streaming_engine {
             Some(kafka::client::create_producer(
                 project.redpanda_config.clone(),
@@ -1516,7 +1550,8 @@ async fn shutdown(
         // Use the centralized settings function to check if containers should be shutdown
         let should_shutdown_containers = settings.should_shutdown_containers();
 
-        if should_shutdown_containers {
+        // Only shutdown containers if this instance is responsible for infra
+        if should_shutdown_containers && project.should_load_infra() {
             // Create docker client with a fresh settings reference
             let docker = DockerClient::new(settings);
             info!("Starting container shutdown process");
@@ -1547,6 +1582,8 @@ async fn shutdown(
             );
 
             info!("Container shutdown complete");
+        } else if !project.should_load_infra() {
+            info!("Skipping container shutdown: load_infra is set to false for this instance");
         } else {
             info!("Skipping container shutdown due to settings configuration");
         }

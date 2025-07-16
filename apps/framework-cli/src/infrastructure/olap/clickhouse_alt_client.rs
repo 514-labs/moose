@@ -31,7 +31,7 @@ use serde_json::{json, Map, Value};
 use crate::framework::core::infrastructure::table::{Column, EnumValue, Table};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{
-    ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
+    wrap_and_join_column_names, ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
 
 /// Creates a ClickHouse connection pool with the provided configuration.
@@ -297,22 +297,28 @@ async fn select_as_json<'a>(
         .map(|c| column_type_to_enum_mapping(&c.column_type))
         .collect();
 
-    let key_columns = table
-        .columns
-        .iter()
-        .filter_map(|c| {
-            if c.primary_key {
-                Some(c.name.as_str())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let order_by = if key_columns.is_empty() {
-        "".to_string()
+    let order_by = if !table.order_by.is_empty() {
+        // Use explicit order_by fields if they exist
+        format!(
+            "ORDER BY {}",
+            wrap_and_join_column_names(&table.order_by, ", ")
+        )
     } else {
-        format!("ORDER BY {}", key_columns.join(", "))
+        // Fall back to primary key columns only if no explicit order_by is specified
+        let key_columns: Vec<String> = table
+            .primary_key_columns()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        if key_columns.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "ORDER BY {}",
+                wrap_and_join_column_names(&key_columns, ", ")
+            )
+        }
     };
 
     let query = &format!(

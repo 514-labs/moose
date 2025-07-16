@@ -89,8 +89,12 @@ fn load_project() -> Result<Project, RoutineFailure> {
 }
 
 fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
-    let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).unwrap();
+    // Special case: Allow "." as a valid project name to indicate current directory
+    if name == "." {
+        return Ok(());
+    }
 
+    let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).unwrap();
     if !project_name_regex.is_match(name) {
         return Err(RoutineFailure::error(Message {
             action: "Init".to_string(),
@@ -396,7 +400,9 @@ pub async fn top_command_handler(
                 details: "Please provide a subcommand".to_string(),
             })),
         },
-        Commands::Prod {} => {
+        Commands::Prod {
+            start_include_dependencies,
+        } => {
             info!("Running prod command");
             info!("Moose Version: {}", CLI_VERSION);
 
@@ -406,6 +412,12 @@ pub async fn top_command_handler(
             let project_arc = Arc::new(project);
 
             check_project_name(&project_arc.name())?;
+
+            // If start_include_dependencies is true, manage Docker containers like dev mode
+            if *start_include_dependencies {
+                let docker_client = DockerClient::new(&settings);
+                run_local_infrastructure(&project_arc, &settings, &docker_client)?.show();
+            }
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {

@@ -93,7 +93,11 @@ pub enum Commands {
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments
-    Prod {},
+    Prod {
+        /// Include and manage dependencies (ClickHouse, Redpanda, etc.) using Docker containers
+        #[arg(long)]
+        start_include_dependencies: bool,
+    },
     /// Generates helpers for your data models (i.e. sdk, api tokens)
     Generate(GenerateArgs),
     /// Clears all temporary data and stops development infrastructure

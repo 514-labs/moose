@@ -272,7 +272,10 @@ mod tests {
                 native_port: 9000,
                 host_data_path: None,
             },
-            http_server_config: LocalWebserverConfig::default(),
+            http_server_config: LocalWebserverConfig {
+                proxy_port: crate::cli::local_webserver::default_proxy_port(),
+                ..LocalWebserverConfig::default()
+            },
             redis_config: crate::infrastructure::redis::redis_client::RedisConfig::default(),
             git_config: crate::utilities::git::GitConfig::default(),
             temporal_config:
@@ -283,8 +286,9 @@ mod tests {
             supported_old_versions: std::collections::HashMap::new(),
             jwt: None,
             authentication: crate::project::AuthenticationConfig::default(),
-            cron_jobs: Vec::new(),
+
             features: crate::project::ProjectFeatures::default(),
+            load_infra: None,
         }
     }
 

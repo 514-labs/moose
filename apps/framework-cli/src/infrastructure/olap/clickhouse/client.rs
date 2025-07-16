@@ -11,7 +11,7 @@ use log::debug;
 use tokio::time::{sleep, Duration};
 
 use super::config::ClickHouseConfig;
-use super::model::ClickHouseRecord;
+use super::model::{wrap_and_join_column_names, ClickHouseRecord};
 
 use log::error;
 
@@ -142,7 +142,7 @@ impl ClickHouseClient {
             "INSERT INTO \"{}\".\"{}\" ({}) VALUES",
             self.config.db_name,
             table_name,
-            columns.join(","),
+            wrap_and_join_column_names(columns, ","),
         );
 
         debug!("Inserting into clickhouse: {}", insert_query);

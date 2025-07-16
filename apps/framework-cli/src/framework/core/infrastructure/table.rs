@@ -76,6 +76,20 @@ impl Table {
         format!("Table: {} Version {:?}", self.name, self.version)
     }
 
+    /// Returns the names of all primary key columns in this table
+    pub fn primary_key_columns(&self) -> Vec<&str> {
+        self.columns
+            .iter()
+            .filter_map(|c| {
+                if c.primary_key {
+                    Some(c.name.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn to_proto(&self) -> ProtoTable {
         ProtoTable {
             name: self.name.clone(),

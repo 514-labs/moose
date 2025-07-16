@@ -90,7 +90,9 @@ async fn execute_workflow_for_language(
     let client_manager = TemporalClientManager::new_validate(params.temporal_config, true)
         .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))?;
 
-    let temporal_url = params.temporal_config.temporal_url_with_scheme()
+    let temporal_url = params
+        .temporal_config
+        .temporal_url_with_scheme()
         .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))?;
     let namespace = get_temporal_namespace(&temporal_url);
 

@@ -12,7 +12,7 @@ use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
 use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
-use crate::infrastructure::orchestration::temporal::{TemporalConfig, InvalidTemporalSchemeError};
+use crate::infrastructure::orchestration::temporal::{InvalidTemporalSchemeError, TemporalConfig};
 
 pub struct TemporalClientManager {
     temporal_url: String,
@@ -56,7 +56,10 @@ impl TemporalClientManager {
         Self::new_validate(config, true)
     }
 
-    pub fn new_validate(config: &TemporalConfig, validate: bool) -> Result<Self, InvalidTemporalSchemeError> {
+    pub fn new_validate(
+        config: &TemporalConfig,
+        validate: bool,
+    ) -> Result<Self, InvalidTemporalSchemeError> {
         Ok(Self {
             temporal_url: config.temporal_url_with_scheme_validate(validate)?,
             ca_cert: config.ca_cert.clone(),

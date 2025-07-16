@@ -58,10 +58,9 @@ impl TryFrom<&str> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{}\"", scheme))
-            .map_err(|_| InvalidTemporalSchemeError { 
-                scheme: scheme.to_string() 
-            })
+        serde_json::from_str(&format!("\"{}\"", scheme)).map_err(|_| InvalidTemporalSchemeError {
+            scheme: scheme.to_string(),
+        })
     }
 }
 
@@ -213,7 +212,10 @@ impl TemporalConfig {
 
     /// Temporal Rust sdk expects a scheme for the temporal url
     /// When validate is false, scheme validation is skipped (useful when Temporal is not being used)
-    pub fn temporal_url_with_scheme_validate(&self, _validate: bool) -> Result<String, InvalidTemporalSchemeError> {
+    pub fn temporal_url_with_scheme_validate(
+        &self,
+        _validate: bool,
+    ) -> Result<String, InvalidTemporalSchemeError> {
         let scheme = if let Some(ref configured_scheme) = self.temporal_scheme {
             // Since we're using an enum, the scheme is already validated
             match configured_scheme {
@@ -225,7 +227,10 @@ impl TemporalConfig {
         } else {
             TemporalScheme::HTTPS
         };
-        Ok(format!("{}://{}:{}", scheme, self.temporal_host, self.temporal_port))
+        Ok(format!(
+            "{}://{}:{}",
+            scheme, self.temporal_host, self.temporal_port
+        ))
     }
 }
 
@@ -260,12 +265,30 @@ mod tests {
     #[test]
     fn test_temporal_scheme_validation() {
         // Valid schemes
-        assert_eq!(TemporalScheme::try_from("http").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::try_from("https").unwrap(), TemporalScheme::Https);
-        assert_eq!(TemporalScheme::try_from("HTTP").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::try_from("HTTPS").unwrap(), TemporalScheme::Https);
-        assert_eq!(TemporalScheme::try_from("Http").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::try_from("Https").unwrap(), TemporalScheme::Https);
+        assert_eq!(
+            TemporalScheme::try_from("http").unwrap(),
+            TemporalScheme::Http
+        );
+        assert_eq!(
+            TemporalScheme::try_from("https").unwrap(),
+            TemporalScheme::Https
+        );
+        assert_eq!(
+            TemporalScheme::try_from("HTTP").unwrap(),
+            TemporalScheme::Http
+        );
+        assert_eq!(
+            TemporalScheme::try_from("HTTPS").unwrap(),
+            TemporalScheme::Https
+        );
+        assert_eq!(
+            TemporalScheme::try_from("Http").unwrap(),
+            TemporalScheme::Http
+        );
+        assert_eq!(
+            TemporalScheme::try_from("Https").unwrap(),
+            TemporalScheme::Https
+        );
 
         // Invalid schemes
         assert!(TemporalScheme::try_from("ftp").is_err());
@@ -283,7 +306,10 @@ mod tests {
     #[test]
     fn test_temporal_url_with_scheme_default_behavior() {
         let config = TemporalConfig::default();
-        assert_eq!(config.temporal_url_with_scheme().unwrap(), "http://localhost:7233");
+        assert_eq!(
+            config.temporal_url_with_scheme().unwrap(),
+            "http://localhost:7233"
+        );
     }
 
     #[test]
@@ -291,7 +317,10 @@ mod tests {
         let mut config = TemporalConfig::default();
         config.temporal_scheme = Some(TemporalScheme::Http);
         config.temporal_host = "example.com".to_string();
-        assert_eq!(config.temporal_url_with_scheme().unwrap(), "http://example.com:7233");
+        assert_eq!(
+            config.temporal_url_with_scheme().unwrap(),
+            "http://example.com:7233"
+        );
     }
 
     #[test]
@@ -299,7 +328,10 @@ mod tests {
         let mut config = TemporalConfig::default();
         config.temporal_scheme = Some(TemporalScheme::Https);
         config.temporal_host = "localhost".to_string();
-        assert_eq!(config.temporal_url_with_scheme().unwrap(), "https://localhost:7233");
+        assert_eq!(
+            config.temporal_url_with_scheme().unwrap(),
+            "https://localhost:7233"
+        );
     }
 
     #[test]
@@ -307,7 +339,10 @@ mod tests {
         let mut config = TemporalConfig::default();
         config.temporal_scheme = None;
         config.temporal_host = "localhost".to_string();
-        assert_eq!(config.temporal_url_with_scheme().unwrap(), "http://localhost:7233");
+        assert_eq!(
+            config.temporal_url_with_scheme().unwrap(),
+            "http://localhost:7233"
+        );
     }
 
     #[test]
@@ -315,7 +350,10 @@ mod tests {
         let mut config = TemporalConfig::default();
         config.temporal_scheme = None;
         config.temporal_host = "example.com".to_string();
-        assert_eq!(config.temporal_url_with_scheme().unwrap(), "https://example.com:7233");
+        assert_eq!(
+            config.temporal_url_with_scheme().unwrap(),
+            "https://example.com:7233"
+        );
     }
 
     #[test]
@@ -325,7 +363,7 @@ mod tests {
         let mut config = TemporalConfig::default();
         config.temporal_scheme = Some(TemporalScheme::Http);
         config.temporal_host = "example.com".to_string();
-        
+
         let result = config.temporal_url_with_scheme();
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "http://example.com:7233");

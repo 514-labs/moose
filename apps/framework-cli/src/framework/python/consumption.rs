@@ -13,9 +13,9 @@ use tokio::process::Child;
 use super::executor;
 
 pub fn run(
-    project: Project,
-    clickhouse_config: ClickHouseConfig,
-    jwt_config: Option<JwtConfig>,
+    project: &Project,
+    clickhouse_config: &ClickHouseConfig,
+    jwt_config: &Option<JwtConfig>,
     consumption_path: &Path,
     proxy_port: Option<u16>,
 ) -> Result<Child, ConsumptionError> {
@@ -64,20 +64,20 @@ pub fn run(
 
     let args = vec![
         consumption_path.to_str().unwrap().to_string(),
-        clickhouse_config.db_name,
-        clickhouse_config.host,
+        clickhouse_config.db_name.clone(),
+        clickhouse_config.host.clone(),
         clickhouse_config.host_port.to_string(),
-        clickhouse_config.user,
-        clickhouse_config.password,
+        clickhouse_config.user.clone(),
+        clickhouse_config.password.clone(),
         clickhouse_config.use_ssl.to_string(),
         jwt_secret,
         jwt_issuer,
         jwt_audience,
         enforce_on_all_consumptions_apis,
         project.temporal_config.temporal_url(),
-        project.temporal_config.client_cert,
-        project.temporal_config.client_key,
-        project.temporal_config.api_key,
+        project.temporal_config.client_cert.clone(),
+        project.temporal_config.client_key.clone(),
+        project.temporal_config.api_key.clone(),
         project.features.data_model_v2.to_string(),
         proxy_port.unwrap_or(4001).to_string(),
     ];

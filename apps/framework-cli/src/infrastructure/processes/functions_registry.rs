@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-
-use log::info;
-use tokio::process::Child;
-
+use crate::utilities::system::{RestartingProcess, StartChildFn};
 use crate::{
     framework::core::{
         infrastructure::function_process::FunctionProcess, infrastructure_map::InfrastructureMap,
@@ -10,8 +6,10 @@ use crate::{
     framework::{python, typescript},
     infrastructure::stream::{kafka::models::KafkaStreamConfig, StreamConfig},
     project::Project,
-    utilities::system::{kill_child, KillProcessError},
+    utilities::system::KillProcessError,
 };
+use log::{error, info};
+use std::collections::HashMap;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FunctionRegistryError {
@@ -29,7 +27,7 @@ pub enum FunctionRegistryError {
 }
 
 pub struct FunctionProcessRegistry {
-    registry: HashMap<String, Child>,
+    registry: HashMap<String, RestartingProcess>,
     project: Project,
 }
 
@@ -46,6 +44,12 @@ impl FunctionProcessRegistry {
         infra_map: &InfrastructureMap,
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
+        let project_location = self.project.project_location.clone();
+        let redpanda_config = self.project.redpanda_config.clone();
+        let executable = function_process.executable.clone();
+        let parallel_process_count = function_process.parallel_process_count;
+        let data_model_v2 = self.project.features.data_model_v2;
+
         match (
             infra_map.find_topic_by_id(&function_process.source_topic_id),
             function_process
@@ -64,37 +68,44 @@ impl FunctionProcessRegistry {
                     target_topic,
                 ));
 
-                let child = if function_process.is_py_function_process() {
-                    Ok(python::streaming::run(
-                        &self.project.project_location,
-                        &self.project.redpanda_config,
-                        &source_topic,
-                        Some(&target_topic),
-                        &function_process.executable,
-                        self.project.features.data_model_v2,
-                    )?)
-                } else if function_process.is_ts_function_process() {
-                    Ok(typescript::streaming::run(
-                        &self.project.redpanda_config,
-                        &source_topic,
-                        Some(&target_topic),
-                        &function_process.executable,
-                        &self.project.project_location,
-                        function_process.parallel_process_count,
-                        self.project.features.data_model_v2,
-                    )?)
-                } else {
-                    Err(FunctionRegistryError::UnsupportedFunctionLanguage {
-                        file_name: function_process
-                            .executable
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    })
-                }?;
+                let start_fn: StartChildFn<FunctionRegistryError> =
+                    if function_process.is_py_function_process() {
+                        Box::new(move || {
+                            Ok(python::streaming::run(
+                                &project_location,
+                                &redpanda_config,
+                                &source_topic,
+                                Some(&target_topic),
+                                &executable,
+                                data_model_v2,
+                            )?)
+                        })
+                    } else if function_process.is_ts_function_process() {
+                        Box::new(move || {
+                            Ok(typescript::streaming::run(
+                                &redpanda_config,
+                                &source_topic,
+                                Some(&target_topic),
+                                &executable,
+                                &project_location,
+                                parallel_process_count,
+                                data_model_v2,
+                            )?)
+                        })
+                    } else {
+                        return Err(FunctionRegistryError::UnsupportedFunctionLanguage {
+                            file_name: executable
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string(),
+                        });
+                    };
 
-                self.registry.insert(function_process.id(), child);
+                let restarting_process =
+                    RestartingProcess::create(function_process.id(), start_fn)?;
+                self.registry
+                    .insert(function_process.id(), restarting_process);
 
                 Ok(())
             }
@@ -106,37 +117,44 @@ impl FunctionProcessRegistry {
                         .unwrap(),
                 ));
 
-                let child = if function_process.is_py_function_process() {
-                    Ok(python::streaming::run(
-                        &self.project.project_location,
-                        &self.project.redpanda_config,
-                        &source_topic,
-                        None,
-                        &function_process.executable,
-                        self.project.features.data_model_v2,
-                    )?)
-                } else if function_process.is_ts_function_process() {
-                    Ok(typescript::streaming::run(
-                        &self.project.redpanda_config,
-                        &source_topic,
-                        None,
-                        &function_process.executable,
-                        &self.project.project_location,
-                        function_process.parallel_process_count,
-                        self.project.features.data_model_v2,
-                    )?)
-                } else {
-                    Err(FunctionRegistryError::UnsupportedFunctionLanguage {
-                        file_name: function_process
-                            .executable
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    })
-                }?;
+                let start_fn: StartChildFn<FunctionRegistryError> =
+                    if function_process.is_py_function_process() {
+                        Box::new(move || {
+                            Ok(python::streaming::run(
+                                &project_location,
+                                &redpanda_config,
+                                &source_topic,
+                                None,
+                                &executable,
+                                data_model_v2,
+                            )?)
+                        })
+                    } else if function_process.is_ts_function_process() {
+                        Box::new(move || {
+                            Ok(typescript::streaming::run(
+                                &redpanda_config,
+                                &source_topic,
+                                None,
+                                &executable,
+                                &project_location,
+                                parallel_process_count,
+                                data_model_v2,
+                            )?)
+                        })
+                    } else {
+                        return Err(FunctionRegistryError::UnsupportedFunctionLanguage {
+                            file_name: executable
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string(),
+                        });
+                    };
 
-                self.registry.insert(function_process.id(), child);
+                let restarting_process =
+                    RestartingProcess::create(function_process.id(), start_fn)?;
+                self.registry
+                    .insert(function_process.id(), restarting_process);
 
                 Ok(())
             }
@@ -146,29 +164,19 @@ impl FunctionProcessRegistry {
         }
     }
 
-    pub async fn stop(
-        &mut self,
-        function_process: &FunctionProcess,
-    ) -> Result<(), FunctionRegistryError> {
+    pub async fn stop(&mut self, function_process: &FunctionProcess) -> () {
         info!("Stopping function process {:?}...", function_process.id());
 
         let id = &function_process.id();
-        if let Some(running_function_process) = self.registry.get_mut(id) {
-            kill_child(running_function_process).await?;
-            self.registry.remove(id);
+        if let Some(restarting_process) = self.registry.remove(id) {
+            restarting_process.stop().await;
         }
-
-        Ok(())
     }
 
-    pub async fn stop_all(&mut self) -> Result<(), FunctionRegistryError> {
-        for (id, running_function_process) in self.registry.iter_mut() {
+    pub async fn stop_all(&mut self) -> () {
+        for (id, restarting_process) in self.registry.drain() {
             info!("Stopping function_process {:?}...", id);
-            kill_child(running_function_process).await?;
+            restarting_process.stop().await;
         }
-
-        self.registry.clear();
-
-        Ok(())
     }
 }

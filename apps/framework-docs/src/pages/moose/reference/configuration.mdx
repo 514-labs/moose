@@ -12,7 +12,14 @@ language = "Typescript"
 # Map of supported old versions and their locations (Default: {})
 # supported_old_versions = { "0.1.0" = "path/to/old/version" }
 
-
+#Telemetry configuration for usage tracking and metrics
+[telemetry]
+# Whether telemetry collection is enabled
+enabled = true
+# Whether to export metrics to external systems
+export_metrics = true
+# Flag indicating if the user is a Moose developer
+is_moose_developer = false
 
 # Redpanda streaming configuration (also aliased as `kafka_config`)
 [redpanda_config]

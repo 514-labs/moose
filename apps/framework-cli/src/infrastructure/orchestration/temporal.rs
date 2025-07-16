@@ -49,7 +49,7 @@ impl TryFrom<String> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{}\"", scheme))
+        serde_json::from_str(&format!("\"{scheme}\""))
             .map_err(|_| InvalidTemporalSchemeError { scheme })
     }
 }
@@ -58,9 +58,8 @@ impl TryFrom<&str> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{}\"", scheme)).map_err(|_| InvalidTemporalSchemeError {
-            scheme: scheme.to_string(),
-        })
+        serde_json::from_str(&format!("\"{scheme}\""))
+            .map_err(|_| InvalidTemporalSchemeError { scheme: scheme.to_string() })
     }
 }
 

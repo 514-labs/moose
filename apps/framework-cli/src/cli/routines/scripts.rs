@@ -161,7 +161,7 @@ pub async fn list_workflows(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?;
     let temporal_url = project
@@ -170,7 +170,7 @@ pub async fn list_workflows(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -325,7 +325,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         TemporalClientManager::new_validate(&project.temporal_config, true).map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?,
     );
@@ -335,7 +335,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -413,9 +413,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "Found workflows: {} | Terminated workflows: {}",
-            total_workflows,
-            results.len()
+            "Found workflows: {total_workflows} | Terminated workflows: {results.len()}",
         ),
     }))
 }
@@ -428,7 +426,7 @@ pub async fn pause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?;
     let temporal_url = project
@@ -437,7 +435,7 @@ pub async fn pause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -484,7 +482,7 @@ pub async fn unpause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?;
     let temporal_url = project
@@ -493,7 +491,7 @@ pub async fn unpause_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -600,7 +598,7 @@ fn process_failure_attributes(
 fn format_failure_text(
     failure: &temporal_sdk_core_protos::temporal::api::failure::v1::Failure,
 ) -> String {
-    let mut text = format!("\n    Error: {}", failure.message);
+    let mut text = format!("\n    Error: {failure.message}");
 
     let (details, stack, error_type) = parse_failure_json(&failure.message);
     if let Some(details) = details {
@@ -699,7 +697,7 @@ pub async fn get_workflow_status(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?;
     let temporal_url = project
@@ -708,7 +706,7 @@ pub async fn get_workflow_status(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url).to_string();
@@ -999,7 +997,7 @@ pub async fn get_workflow_status(
 
                         // Format the basic event info with bullet point
                         details.push_str(&format!(
-                            "  • [{}] {}",
+                            "  • [{}] {}}",
                             timestamp,
                             event_type.as_str_name()
                         ));
@@ -1009,7 +1007,7 @@ pub async fn get_workflow_status(
                             match attrs {
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskScheduledEventAttributes(attr) => {
                                     if let Some(activity_type) = &attr.activity_type {
-                                        details.push_str(&format!("\n    Activity: {}", activity_type.name));
+                                        details.push_str(&format!("\n    Activity: {activity_type.name}"));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {

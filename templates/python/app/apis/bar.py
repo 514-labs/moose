@@ -79,4 +79,4 @@ def run(client: MooseClient, params: QueryParams):
     return result
 
 
-bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
+bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run, version="1")

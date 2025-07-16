@@ -118,7 +118,7 @@ pub fn run(
 pub async fn load_python_query_param(
     project_location: &Path,
     path: &Path,
-) -> Result<(Vec<ConsumptionQueryParam>, Option<String>), std::io::Error> {
+) -> Result<Vec<ConsumptionQueryParam>, std::io::Error> {
     let args = vec![path.file_name().unwrap().to_str().unwrap().to_string()];
     let process = run_python_program(project_location, PythonProgram::LoadApiParam { args })?;
     let output = process.wait_with_output().await?;
@@ -134,5 +134,5 @@ pub async fn load_python_query_param(
         &raw_string_stdout,
     )
     .map_err(std::io::Error::other)?;
-    Ok((config.params, config.version))
+    Ok(config.params)
 }

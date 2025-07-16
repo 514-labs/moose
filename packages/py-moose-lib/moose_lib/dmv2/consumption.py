@@ -88,14 +88,9 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
 
         return curried_constructor
 
-    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = EgressConfig(), version: Optional[str] = None, **kwargs):
+    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = EgressConfig(), **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        
-        # If version is provided as a parameter, update the config
-        if version is not None:
-            config = EgressConfig(version=version, metadata=config.metadata)
-        
         self.config = config
         self.query_function = query_function
         self.metadata = config.metadata

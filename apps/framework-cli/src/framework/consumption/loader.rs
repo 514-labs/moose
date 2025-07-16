@@ -24,7 +24,6 @@ pub enum ConsumptionLoaderError {
 #[derive(Debug, Deserialize)]
 pub struct QueryParamOutput {
     pub params: Vec<ConsumptionQueryParam>,
-    pub version: Option<String>,
 }
 
 pub async fn load_consumption(project: &Project) -> Result<Consumption, ConsumptionLoaderError> {
@@ -67,10 +66,10 @@ async fn build_endpoint_file(
                     .map_err(ConsumptionLoaderError::FailedToLoadTypescriptParams)?
             }
             SupportedLanguages::Python => {
-                let (params, version) = load_python_query_param(&project.project_location, &path)
+                let params = load_python_query_param(&project.project_location, &path)
                     .await
                     .map_err(ConsumptionLoaderError::FailedToLoadPythonParams)?;
-                (params, Value::Null, version)
+                (params, Value::Null, None)
             }
         };
 

@@ -102,7 +102,8 @@ impl FunctionProcessRegistry {
                         });
                     };
 
-                let restarting_process = RestartingProcess::create(start_fn)?;
+                let restarting_process =
+                    RestartingProcess::create(function_process.id(), start_fn)?;
                 self.registry
                     .insert(function_process.id(), restarting_process);
 
@@ -150,7 +151,8 @@ impl FunctionProcessRegistry {
                         });
                     };
 
-                let restarting_process = RestartingProcess::create(start_fn)?;
+                let restarting_process =
+                    RestartingProcess::create(function_process.id(), start_fn)?;
                 self.registry
                     .insert(function_process.id(), restarting_process);
 

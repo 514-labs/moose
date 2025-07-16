@@ -91,7 +91,10 @@ impl ConsumptionProcessRegistry {
             }
         };
 
-        self.api_process = Some(RestartingProcess::create(start_child)?);
+        self.api_process = Some(RestartingProcess::create(
+            "consumption-api".to_string(),
+            start_child,
+        )?);
 
         Ok(())
     }

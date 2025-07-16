@@ -9,6 +9,7 @@ pub struct InvalidTemporalSchemeError {
 
 /// Valid temporal URL schemes
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TemporalScheme {
     Http,
     Https,
@@ -20,37 +21,27 @@ impl<'de> Deserialize<'de> for TemporalScheme {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        TemporalScheme::from_str(&s).map_err(serde::de::Error::custom)
+        match s.to_lowercase().as_str() {
+            "http" => Ok(Self::Http),
+            "https" => Ok(Self::Https),
+            _ => Err(serde::de::Error::custom(InvalidTemporalSchemeError {
+                scheme: s,
+            })),
+        }
     }
 }
 
 impl TemporalScheme {
     pub const HTTP: &'static str = "http";
     pub const HTTPS: &'static str = "https";
-
-    /// Create a TemporalScheme from a string, validating it's either "http" or "https"
-    pub fn from_str(scheme: &str) -> Result<Self, InvalidTemporalSchemeError> {
-        match scheme.to_lowercase().as_str() {
-            Self::HTTP => Ok(Self::Http),
-            Self::HTTPS => Ok(Self::Https),
-            _ => Err(InvalidTemporalSchemeError {
-                scheme: scheme.to_string(),
-            }),
-        }
-    }
-
-    /// Convert the scheme to a string slice
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Http => Self::HTTP,
-            Self::Https => Self::HTTPS,
-        }
-    }
 }
 
 impl std::fmt::Display for TemporalScheme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        match self {
+            Self::Http => write!(f, "{}", Self::HTTP),
+            Self::Https => write!(f, "{}", Self::HTTPS),
+        }
     }
 }
 
@@ -58,7 +49,8 @@ impl TryFrom<String> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: String) -> Result<Self, Self::Error> {
-        Self::from_str(&scheme)
+        serde_json::from_str(&format!("\"{}\"", scheme))
+            .map_err(|_| InvalidTemporalSchemeError { scheme })
     }
 }
 
@@ -66,7 +58,10 @@ impl TryFrom<&str> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: &str) -> Result<Self, Self::Error> {
-        Self::from_str(scheme)
+        serde_json::from_str(&format!("\"{}\"", scheme))
+            .map_err(|_| InvalidTemporalSchemeError { 
+                scheme: scheme.to_string() 
+            })
     }
 }
 
@@ -221,7 +216,10 @@ impl TemporalConfig {
     pub fn temporal_url_with_scheme_validate(&self, _validate: bool) -> Result<String, InvalidTemporalSchemeError> {
         let scheme = if let Some(ref configured_scheme) = self.temporal_scheme {
             // Since we're using an enum, the scheme is already validated
-            configured_scheme.as_str()
+            match configured_scheme {
+                TemporalScheme::Http => TemporalScheme::HTTP,
+                TemporalScheme::Https => TemporalScheme::HTTPS,
+            }
         } else if self.temporal_host == "localhost" {
             TemporalScheme::HTTP
         } else {
@@ -262,30 +260,24 @@ mod tests {
     #[test]
     fn test_temporal_scheme_validation() {
         // Valid schemes
-        assert_eq!(TemporalScheme::from_str("http").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::from_str("https").unwrap(), TemporalScheme::Https);
-        assert_eq!(TemporalScheme::from_str("HTTP").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::from_str("HTTPS").unwrap(), TemporalScheme::Https);
-        assert_eq!(TemporalScheme::from_str("Http").unwrap(), TemporalScheme::Http);
-        assert_eq!(TemporalScheme::from_str("Https").unwrap(), TemporalScheme::Https);
+        assert_eq!(TemporalScheme::try_from("http").unwrap(), TemporalScheme::Http);
+        assert_eq!(TemporalScheme::try_from("https").unwrap(), TemporalScheme::Https);
+        assert_eq!(TemporalScheme::try_from("HTTP").unwrap(), TemporalScheme::Http);
+        assert_eq!(TemporalScheme::try_from("HTTPS").unwrap(), TemporalScheme::Https);
+        assert_eq!(TemporalScheme::try_from("Http").unwrap(), TemporalScheme::Http);
+        assert_eq!(TemporalScheme::try_from("Https").unwrap(), TemporalScheme::Https);
 
         // Invalid schemes
-        assert!(TemporalScheme::from_str("ftp").is_err());
-        assert!(TemporalScheme::from_str("ws").is_err());
-        assert!(TemporalScheme::from_str("invalid").is_err());
-        assert!(TemporalScheme::from_str("").is_err());
+        assert!(TemporalScheme::try_from("ftp").is_err());
+        assert!(TemporalScheme::try_from("ws").is_err());
+        assert!(TemporalScheme::try_from("invalid").is_err());
+        assert!(TemporalScheme::try_from("").is_err());
     }
 
     #[test]
     fn test_temporal_scheme_display() {
         assert_eq!(TemporalScheme::Http.to_string(), "http");
         assert_eq!(TemporalScheme::Https.to_string(), "https");
-    }
-
-    #[test]
-    fn test_temporal_scheme_as_str() {
-        assert_eq!(TemporalScheme::Http.as_str(), "http");
-        assert_eq!(TemporalScheme::Https.as_str(), "https");
     }
 
     #[test]

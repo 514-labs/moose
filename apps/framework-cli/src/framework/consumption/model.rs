@@ -39,6 +39,7 @@ pub struct EndpointFile {
     pub hash: Output<Sha256>,
     pub query_params: Vec<ConsumptionQueryParam>,
     pub output_schema: Value,
+    pub version: Option<String>,
 }
 
 impl EndpointFile {

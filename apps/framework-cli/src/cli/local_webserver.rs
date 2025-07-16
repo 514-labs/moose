@@ -201,12 +201,14 @@ async fn get_consumption_api_res(
     // Determine what to proxy - handle both versioned and unversioned paths
     let consumption_path =
         if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
-            // For versioned paths like /consumption/v1/Bar, we need to construct the path correctly
-            // Strip the 'v' prefix for the proxy URL
-            let version_number = version.strip_prefix('v').unwrap_or(version);
-            format!("/{}/{}", endpoint, version_number)
+            // For versioned paths like /consumption/v1/Bar, forward as /endpoint
+            // The consumption API server itself doesn't need the version in the path
+            format!("/{}", endpoint)
+        } else if let Some(endpoint) = &endpoint_segment {
+            // For traditional paths like /consumption/Bar, forward as /endpoint
+            format!("/{}", endpoint)
         } else {
-            // For traditional paths like /consumption/Bar, use the original path
+            // Fallback: use the original path
             req.uri()
                 .path()
                 .strip_prefix("/consumption")
@@ -1043,7 +1045,7 @@ async fn router(
                 is_prod,
                 project.http_server_config.proxy_port,
                 None,
-                None,
+                Some(endpoint.to_string()),
             )
             .await
             {
@@ -1295,10 +1297,24 @@ impl Webserver {
                                 );
                             }
                             APIType::EGRESS { .. } => {
-                                consumption_apis
-                                    .write()
-                                    .await
-                                    .insert(api_endpoint.path.to_string_lossy().to_string());
+                                let mut apis_to_insert = Vec::new();
+
+                                if let Some(version) = &api_endpoint.version {
+                                    // Register versioned path
+                                    apis_to_insert.push(format!(
+                                        "v{}/{}",
+                                        version.as_str(),
+                                        api_endpoint.name
+                                    ));
+                                }
+
+                                // Always register unversioned path for backward compatibility
+                                apis_to_insert.push(api_endpoint.name.clone());
+
+                                let mut consumption_apis = consumption_apis.write().await;
+                                for api_name in apis_to_insert {
+                                    consumption_apis.insert(api_name);
+                                }
                             }
                         }
                     }
@@ -1309,10 +1325,24 @@ impl Webserver {
                                 route_table.remove(&api_endpoint.path);
                             }
                             APIType::EGRESS { .. } => {
-                                consumption_apis
-                                    .write()
-                                    .await
-                                    .remove(&api_endpoint.path.to_string_lossy().to_string());
+                                let mut apis_to_remove = Vec::new();
+
+                                if let Some(version) = &api_endpoint.version {
+                                    // Remove versioned path
+                                    apis_to_remove.push(format!(
+                                        "v{}/{}",
+                                        version.as_str(),
+                                        api_endpoint.name
+                                    ));
+                                }
+
+                                // Remove unversioned path
+                                apis_to_remove.push(api_endpoint.name.clone());
+
+                                let mut consumption_apis = consumption_apis.write().await;
+                                for api_name in apis_to_remove {
+                                    consumption_apis.remove(&api_name);
+                                }
                             }
                         }
                     }

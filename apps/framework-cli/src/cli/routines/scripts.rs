@@ -413,7 +413,9 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "Found workflows: {total_workflows} | Terminated workflows: {results.len()}",
+            "Found workflows: {} | Terminated workflows: {}",
+            total_workflows,
+            results.len(),
         ),
     }))
 }
@@ -598,30 +600,30 @@ fn process_failure_attributes(
 fn format_failure_text(
     failure: &temporal_sdk_core_protos::temporal::api::failure::v1::Failure,
 ) -> String {
-    let mut text = format!("\n    Error: {failure.message}");
+    let mut text = format!("\n    Error: {}", failure.message);
 
     let (details, stack, error_type) = parse_failure_json(&failure.message);
     if let Some(details) = details {
-        text.push_str(&format!("\n    Details: {details}"));
+        text.push_str(&format!("\n    Details: {}", details));
     }
     if let Some(stack) = stack {
-        text.push_str(&format!("\n    Stack: {stack}"));
+        text.push_str(&format!("\n    Stack: {}", stack));
     }
     if let Some(error_type) = error_type {
-        text.push_str(&format!("\n    Error Type: {error_type}"));
+        text.push_str(&format!("\n    Error Type: {}", error_type));
     }
 
     // Process cause if present
     if let Some(cause) = &failure.cause {
         let (cause_details, cause_stack, cause_error_type) = parse_failure_json(&cause.message);
         if let Some(details) = cause_details {
-            text.push_str(&format!("\n    Details: {details}"));
+            text.push_str(&format!("\n    Details: {}", details));
         }
         if let Some(stack) = cause_stack {
-            text.push_str(&format!("\n    Stack: {stack}"));
+            text.push_str(&format!("\n    Stack: {}", stack));
         }
         if let Some(error_type) = cause_error_type {
-            text.push_str(&format!("\n    Error Type: {error_type}"));
+            text.push_str(&format!("\n    Error Type: {}", error_type));
         }
     }
 
@@ -660,7 +662,7 @@ fn format_activity_result_text(
                         .map(|line| format!("      {line}"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    text.push_str(&format!("\n{indented}"));
+                                            text.push_str(&format!("\n{}", indented));
                 }
                 Err(_) => match decode_base64_to_json(&data_str) {
                     Ok(decoded) => {
@@ -670,7 +672,7 @@ fn format_activity_result_text(
                             .map(|line| format!("      {line}"))
                             .collect::<Vec<_>>()
                             .join("\n");
-                        text.push_str(&format!("\n{indented}"));
+                        text.push_str(&format!("\n{}", indented));
                     }
                     Err(e) => {
                         text.push_str(&format!("Failed to parse payload: {e}"));
@@ -997,7 +999,7 @@ pub async fn get_workflow_status(
 
                         // Format the basic event info with bullet point
                         details.push_str(&format!(
-                            "  • [{}] {}}",
+                                                         "  • [{}] {}",
                             timestamp,
                             event_type.as_str_name()
                         ));
@@ -1007,7 +1009,7 @@ pub async fn get_workflow_status(
                             match attrs {
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskScheduledEventAttributes(attr) => {
                                     if let Some(activity_type) = &attr.activity_type {
-                                        details.push_str(&format!("\n    Activity: {activity_type.name}"));
+                                        details.push_str(&format!("\n    Activity: {}", activity_type.name));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {

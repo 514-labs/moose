@@ -662,7 +662,7 @@ fn format_activity_result_text(
                         .map(|line| format!("      {line}"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                                            text.push_str(&format!("\n{}", indented));
+                    text.push_str(&format!("\n{}", indented));
                 }
                 Err(_) => match decode_base64_to_json(&data_str) {
                     Ok(decoded) => {
@@ -999,7 +999,7 @@ pub async fn get_workflow_status(
 
                         // Format the basic event info with bullet point
                         details.push_str(&format!(
-                                                         "  • [{}] {}",
+                            "  • [{}] {}",
                             timestamp,
                             event_type.as_str_name()
                         ));

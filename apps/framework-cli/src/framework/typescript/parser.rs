@@ -343,7 +343,7 @@ mod tests {
 
         assert_eq!(error.to_string(), "Failed to parse the typescript file");
         if let TypescriptParsingError::OtherError { message } = error {
-            assert_eq!(message, "Unsupported index signature in MyModel");
+            assert_eq!(message, "Unsupported feature: index type");
         } else {
             panic!()
         };

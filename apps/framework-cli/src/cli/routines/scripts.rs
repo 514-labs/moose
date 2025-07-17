@@ -662,7 +662,7 @@ fn format_activity_result_text(
                         .map(|line| format!("      {line}"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    text.push_str(&format!("\n{}", indented));
+                    text.push_str(&format!("\n{indented}"));
                 }
                 Err(_) => match decode_base64_to_json(&data_str) {
                     Ok(decoded) => {
@@ -672,7 +672,7 @@ fn format_activity_result_text(
                             .map(|line| format!("      {line}"))
                             .collect::<Vec<_>>()
                             .join("\n");
-                        text.push_str(&format!("\n{}", indented));
+                        text.push_str(&format!("\n{indented}"));
                     }
                     Err(e) => {
                         text.push_str(&format!("Failed to parse payload: {e}"));

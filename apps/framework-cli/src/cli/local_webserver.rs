@@ -277,7 +277,16 @@ async fn get_consumption_api_res(
 
     // Add version information as a custom header if available
     if let Some(version) = &version_segment {
-        headers.insert("X-Moose-API-Version", version.parse().unwrap());
+        // Strip the 'v' prefix if present (e.g., "v1" -> "1")
+        let version_number = if version.starts_with('v') {
+            &version[1..]
+        } else {
+            version
+        };
+        headers.insert(
+            "x-moose-api-version",
+            HeaderValue::from_str(version_number).unwrap(),
+        );
     }
 
     // Send request

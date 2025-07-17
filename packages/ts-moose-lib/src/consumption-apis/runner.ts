@@ -173,25 +173,38 @@ const apiHandler =
           // Remove leading slash and get the clean path
           const fileName = url.pathname.replace(/^\/+/, "");
 
+          // Parse version from URL path (e.g., "v1/bar" -> version="1", endpoint="bar")
+          let versionFromPath: string | undefined;
+          let endpointName = fileName;
+
+          const pathSegments = fileName.split("/");
+          if (pathSegments.length >= 2 && pathSegments[0].startsWith("v")) {
+            versionFromPath = pathSegments[0].substring(1); // Remove 'v' prefix
+            endpointName = pathSegments[1];
+          }
+
           // Check for version information in headers (passed by Rust proxy)
           const versionHeader = req.headers["x-moose-api-version"] as string;
 
-          if (versionHeader) {
+          // Use version from path first, then fallback to header
+          const version = versionFromPath || versionHeader;
+
+          if (version) {
             // Try versioned lookup first
-            const versionedKey = `v${versionHeader}/${fileName}`;
+            const versionedKey = `v${version}/${endpointName}`;
             userFuncModule = egressApis.get(versionedKey);
           }
 
           if (!userFuncModule) {
             // Fallback to unversioned lookup
-            userFuncModule = egressApis.get(fileName);
+            userFuncModule = egressApis.get(endpointName);
           }
 
           // If still not found, use regex to find any matching API
           if (!userFuncModule) {
             // Create regex pattern to match the endpoint name with any version
             const endpointPattern = new RegExp(
-              `^(v\\d+/)?${fileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+              `^(v\\d+/)?${endpointName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
             );
 
             // Search through all available APIs

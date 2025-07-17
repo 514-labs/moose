@@ -170,23 +170,40 @@ const apiHandler =
       if (userFuncModule === undefined) {
         if (isDmv2) {
           const egressApis = await getEgressApis();
+          // Remove leading slash and get the clean path
           const fileName = url.pathname.replace(/^\/+/, "");
 
-          // Handle versioned paths (v1/endpoint) for DMv2
-          const pathSegments = fileName.split("/");
+          // Check for version information in headers (passed by Rust proxy)
+          const versionHeader = req.headers["x-moose-api-version"] as string;
 
-          if (pathSegments.length > 1 && pathSegments[0].startsWith("v")) {
-            // For versioned paths, first look for the fully qualified version name
-            const versionedName = `${pathSegments[0]}/${pathSegments[1]}`;
-            userFuncModule = egressApis.get(versionedName);
+          if (versionHeader) {
+            // Try versioned lookup first
+            const versionedKey = `v${versionHeader}/${fileName}`;
+            userFuncModule = egressApis.get(versionedKey);
+          }
 
-            if (!userFuncModule) {
-              // Then try with just the endpoint name
-              userFuncModule = egressApis.get(pathSegments[1]);
-            }
-          } else {
-            // Regular unversioned path
+          if (!userFuncModule) {
+            // Fallback to unversioned lookup
             userFuncModule = egressApis.get(fileName);
+          }
+
+          // If still not found, use regex to find any matching API
+          if (!userFuncModule) {
+            // Create regex pattern to match the endpoint name with any version
+            const endpointPattern = new RegExp(
+              `^(v\\d+/)?${fileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            );
+
+            // Search through all available APIs
+            for (const [apiKey, apiHandler] of egressApis.entries()) {
+              if (endpointPattern.test(apiKey)) {
+                userFuncModule = apiHandler;
+                console.log(
+                  `Found API match: ${apiKey} for requested path: ${fileName}`,
+                );
+                break;
+              }
+            }
           }
 
           modulesCache.set(pathName, userFuncModule);

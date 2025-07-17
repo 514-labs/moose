@@ -275,6 +275,11 @@ async fn get_consumption_api_res(
         headers.insert(key, value.clone());
     }
 
+    // Add version information as a custom header if available
+    if let Some(version) = &version_segment {
+        headers.insert("X-Moose-API-Version", version.parse().unwrap());
+    }
+
     // Send request
     let res = http_client.execute(client_req).await?;
     let status = res.status();

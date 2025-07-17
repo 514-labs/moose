@@ -279,8 +279,8 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.egressApis.forEach((api) => {
-    egressApis[api.name] = {
+  registry.egressApis.forEach((api, key) => {
+    egressApis[key] = {
       name: api.name,
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
@@ -462,8 +462,8 @@ export const getEgressApis = async () => {
   >();
 
   const registry = getMooseInternal();
-  registry.egressApis.forEach((api) => {
-    egressFunctions.set(api.name, api.getHandler());
+  registry.egressApis.forEach((api, key) => {
+    egressFunctions.set(key, api.getHandler());
   });
 
   return egressFunctions;

@@ -26,13 +26,13 @@ You are ready to go!
 
 1. **Military Aircraft API** (`https://api.adsb.lol/v2/mil`)
    - Military aircraft tracking data
-   - Scheduled collection every 8 seconds
+   - Collected via ETL pipeline on-demand
    - Source identifier: `"Mil"`
 
 2. **LADD Aircraft API** (`https://api.adsb.lol/v2/ladd`)
    - Limiting Aircraft Data Displayed - civilian aircraft with rich performance data
    - Enhanced fields: navigation, weather, performance metrics
-   - Scheduled collection every 12 seconds
+   - Collected via ETL pipeline on-demand
    - Source identifier: `"LADD"`
 
 ### Data Flow & Transforms
@@ -53,7 +53,7 @@ You are ready to go!
 ┌─────────────────┐    ┌─────────────────┐
 │ Unified Stream  │◄───┤ LADD Stream     │
 │ AircraftTracking│    │ (rich data)     │
-│ Data            │    │                 │
+│ Data (w DLQ)    │    │ (w DLQ)         │
 └─────────┬───────┘    └─────────────────┘
           │
           ▼
@@ -87,15 +87,6 @@ Each API source has its own retry configuration with linear backoff:
 - **Max Retries**: 5 attempts
 - **Backoff Strategy**: 1.5s, 3s, 4.5s, 6s, 7.5s (linear increments)
 - **Total Max Delay**: 22.5 seconds
-
-#### Workflow-Level Staggering
-
-To prevent simultaneous API calls that could trigger rate limits:
-
-- **Military Workflow**: Runs every 8 seconds
-- **LADD Workflow**: Runs every 12 seconds (offset timing)
-
-This staggered approach ensures the APIs aren't hit simultaneously, reducing overall load on the adsb.lol service.
 
 #### Task-Level Retries
 
@@ -215,22 +206,9 @@ This three-layer approach (APISource retries + workflow staggering + task retrie
 }
 ```
 
-## Key Features
-
-- **Unified Data Model**: Both military and civilian aircraft data in standardized format
-- **Source Identification**: Each record tagged with `"Mil"` or `"LADD"` source
-- **Rich LADD Data**: Performance, navigation, and weather data preserved
-- **Real-time Processing**: Stream-based ETL with automatic transforms
-- **Spatial Indexing**: Z-order coordinates for efficient geographic queries
-- **Navigation Analysis**: Parsed autopilot, approach, and TCAS flags
-
 ## Data Statistics
 
-- **Current Data**: 959+ aircraft records
-- **Sources**: 68% LADD civilian, 32% Military
-- **Geographic Coverage**: Global with North America focus
-- **Update Frequency**: 8-12 second intervals
-- **Storage**: ClickHouse analytical database
+- **Sources**: ~68% LADD civilian, 32% Military
 
 ## Learn More
 
@@ -238,6 +216,7 @@ To learn more about Moose, take a look at the following resources:
 
 - [Moose Documentation](https://docs.fiveonefour.com/moose) - learn about Moose.
 - [Aurora Documentation](https://docs.fiveonefour.com/aurora) - learn about Aurora, the MCP interface for data engineering.
+- [Deploy on Boreal](https://www.fiveonefour.com/boreal)
 
 You can check out [the Moose GitHub repository](https://github.com/514-labs/moose) - your feedback and contributions are welcome!
 

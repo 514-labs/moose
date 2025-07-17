@@ -175,14 +175,19 @@ impl Default for LocalWebserverConfig {
     }
 }
 
-#[tracing::instrument(skip(consumption_apis, req, is_prod), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
+/// Configuration for consumption API requests
+struct ConsumptionApiConfig<'a> {
+    host: String,
+    consumption_apis: &'a RwLock<HashSet<String>>,
+    is_prod: bool,
+    proxy_port: u16,
+}
+
+#[tracing::instrument(skip(config, req), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
 async fn get_consumption_api_res(
     http_client: Arc<Client>,
     req: Request<hyper::body::Incoming>,
-    host: String,
-    consumption_apis: &RwLock<HashSet<String>>,
-    is_prod: bool,
-    proxy_port: u16,
+    config: ConsumptionApiConfig<'_>,
     version_segment: Option<String>,
     endpoint_segment: Option<String>,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
@@ -218,8 +223,8 @@ async fn get_consumption_api_res(
 
     let url = format!(
         "http://{}:{}{}{}",
-        host,
-        proxy_port,
+        config.host,
+        config.proxy_port,
         consumption_path,
         req.uri()
             .query()
@@ -228,7 +233,7 @@ async fn get_consumption_api_res(
 
     debug!("Creating client for route: {:?}", url);
     {
-        let consumption_apis = consumption_apis.read().await;
+        let consumption_apis = config.consumption_apis.read().await;
         let consumption_name =
             if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
                 // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
@@ -243,7 +248,7 @@ async fn get_consumption_api_res(
             };
 
         if !consumption_apis.contains(&consumption_name) {
-            if !is_prod {
+            if !config.is_prod {
                 println!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
@@ -1015,10 +1020,12 @@ async fn router(
             match get_consumption_api_res(
                 http_client.clone(),
                 req,
-                host.clone(),
-                consumption_apis,
-                is_prod,
-                project.http_server_config.proxy_port,
+                ConsumptionApiConfig {
+                    host: host.clone(),
+                    consumption_apis,
+                    is_prod,
+                    proxy_port: project.http_server_config.proxy_port,
+                },
                 Some(version_segment.to_string()),
                 Some(endpoint.to_string()),
             )
@@ -1040,10 +1047,12 @@ async fn router(
             match get_consumption_api_res(
                 http_client,
                 req,
-                host,
-                consumption_apis,
-                is_prod,
-                project.http_server_config.proxy_port,
+                ConsumptionApiConfig {
+                    host,
+                    consumption_apis,
+                    is_prod,
+                    proxy_port: project.http_server_config.proxy_port,
+                },
                 None,
                 Some(endpoint.to_string()),
             )

@@ -159,7 +159,7 @@ impl From<EndpointFile> for ApiEndpoint {
     fn from(value: EndpointFile) -> Self {
         let version = value
             .version
-            .map(|v| Version::from_string(v))
+            .map(Version::from_string)
             .unwrap_or_else(|| Version::from_string("0.0.0".to_string()));
 
         ApiEndpoint {

@@ -92,7 +92,7 @@ projects. Example of the dev workflow for updating `ts-moose-lib` (similar for o
     2. From `ts-moose-lib`, verify with `npm list -g` to see the package is actually pointing to your local `ts-moose-lib`
     3. From the moose project, run `npm install` to pull in all dependencies.
     4. From the moose project, run `npm link @514labs/moose-lib`. This will look at your global packages and use that instead
-       (which is pointing to your local `ts-moose-lib`).
+       (which is pointing to your local `ts-moose-lib`). Make sure to use the package name you saw from `npm list -g`.
     5. From the moose project, verify with `ls -la node_modules/@514labs` to see the package is actually pointing to your local `ts-moose-lib`
 4. Iterate. Now that the link is setup, anytime you change `ts-moose-lib`, you just have to build (step 2), and the local moose
    moose project will automatically use the local `ts-moose-lib`.

@@ -57,6 +57,7 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                 let level = parts[0].trim();
                 let message = parts[1].trim();
                 match level {
+                    // Logs from the worker
                     "INFO" => info!("{}", message),
                     "WARN" => warn!("{}", message),
                     "DEBUG" => debug!("{}", message),
@@ -73,7 +74,24 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                     _ => info!("{}", message),
                 }
             } else {
-                info!("{}", line);
+                // These can come from the user's code or other things that
+                // get triggered as part of the workflow.
+                if line.trim().is_empty() {
+                    // Don't do anything for empty lines
+                } else if line.contains("[CompilerPlugin]") {
+                    // Only log, don't show UI message for compiler plugin logs
+                    info!("{}", line);
+                } else {
+                    // For all other logs (likely user code), log & show UI message
+                    info!("{}", line);
+                    show_message_wrapper(
+                        MessageType::Info,
+                        Message {
+                            action: "Workflow".to_string(),
+                            details: line,
+                        },
+                    );
+                }
             }
         }
     });

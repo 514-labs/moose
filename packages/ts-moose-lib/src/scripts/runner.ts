@@ -3,6 +3,7 @@ import {
   NativeConnection,
   NativeConnectionOptions,
   Worker,
+  bundleWorkflowCode,
 } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
@@ -251,11 +252,31 @@ async function registerWorkflows(
       config.temporalConfig,
     );
 
+    // Create a custom logger that suppresses webpack output
+    const silentLogger = {
+      info: () => {}, // Suppress info logs (webpack output)
+      debug: () => {}, // Suppress debug logs
+      warn: () => {}, // Suppress warnings if desired
+      log: () => {}, // Suppress general logs
+      trace: () => {}, // Suppress trace logs
+      error: (message: string, meta?: any) => {
+        // Keep error logs but forward to the main logger
+        logger.error(message, meta);
+      },
+    };
+
+    // Pre-bundle workflows with silent logger to suppress webpack output
+    // https://github.com/temporalio/sdk-typescript/issues/1740
+    const workflowBundle = await bundleWorkflowCode({
+      workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
+      logger: silentLogger,
+    });
+
     const worker = await Worker.create({
       connection,
       namespace: namespace,
       taskQueue: "typescript-script-queue",
-      workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
+      workflowBundle,
       activities: {
         ...activities,
         ...Object.fromEntries(

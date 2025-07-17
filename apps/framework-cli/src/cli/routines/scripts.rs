@@ -39,7 +39,7 @@ pub async fn init_workflow(
         RoutineFailure::new(
             Message {
                 action: "Workflow Init Failed".to_string(),
-                details: format!("Could not initialize workflow '{}': {}", project.name(), e),
+                details: format!("Could not initialize workflow '{}': {e}", project.name()),
             },
             e,
         )
@@ -264,7 +264,7 @@ pub async fn terminate_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Failed to create client manager: {}", e),
+                details: format!("Failed to create client manager: {e}"),
             })
         })?;
     let temporal_url = project
@@ -273,7 +273,7 @@ pub async fn terminate_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -303,9 +303,9 @@ pub async fn terminate_workflow(
                 .to_string()
                 .contains("workflow execution already completed")
             {
-                format!("Workflow '{}' has already completed", name)
+                format!("Workflow '{name}' has already completed")
             } else {
-                format!("Could not terminate workflow '{name}': {}", e)
+                format!("Could not terminate workflow '{name}': {e}")
             };
 
             RoutineFailure::error(Message {
@@ -721,7 +721,7 @@ pub async fn get_workflow_status(
         let request = ListWorkflowExecutionsRequest {
             namespace: namespace.clone(),
             page_size: 1,
-            query: format!("WorkflowId = '{}'", name),
+            query: format!("WorkflowId = '{name}'"),
             ..Default::default()
         };
 
@@ -736,7 +736,7 @@ pub async fn get_workflow_status(
             .map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not find workflow '{}': {}\n", name, e),
+                    details: format!("Could not find workflow '{name}': {e}\n"),
                 })
             })?;
 
@@ -744,7 +744,7 @@ pub async fn get_workflow_status(
         if executions.is_empty() {
             return Err(RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("No executions found for workflow '{}'\n", name),
+                details: format!("No executions found for workflow '{name}'\n"),
             }));
         }
 
@@ -773,7 +773,7 @@ pub async fn get_workflow_status(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("Could not get status for workflow '{}': {}\n", name, e),
+                details: format!("Could not get status for workflow '{name}': {e}\n"),
             })
         })?;
 

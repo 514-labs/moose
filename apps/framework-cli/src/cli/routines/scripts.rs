@@ -139,8 +139,10 @@ pub async fn run_workflow(
         ));
     }
 
-    let dashboard_url =
-        format!("http://localhost:8080/namespaces/{}/workflows/{}/{}/history", namespace, name, run_id);
+    let dashboard_url = format!(
+        "http://localhost:8080/namespaces/{}/workflows/{}/{}/history",
+        namespace, name, run_id
+    );
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
@@ -317,7 +319,7 @@ pub async fn terminate_workflow(
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-                        details: format!("'{}' terminated successfully\n", name),
+        details: format!("'{}' terminated successfully\n", name),
     }))
 }
 

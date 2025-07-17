@@ -11,9 +11,9 @@ pub struct InvalidTemporalSchemeError {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TemporalScheme {
-    #[serde(alias="http", alias="HTTP", alias="Http")]
+    #[serde(alias = "http", alias = "HTTP", alias = "Http")]
     Http,
-    #[serde(alias="https", alias="HTTPS", alias="Https")]
+    #[serde(alias = "https", alias = "HTTPS", alias = "Https")]
     Https,
 }
 
@@ -44,10 +44,9 @@ impl TryFrom<&str> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{}\"", scheme))
-            .map_err(|_| InvalidTemporalSchemeError { 
-                scheme: scheme.to_string() 
-            })
+        serde_json::from_str(&format!("\"{}\"", scheme)).map_err(|_| InvalidTemporalSchemeError {
+            scheme: scheme.to_string(),
+        })
     }
 }
 

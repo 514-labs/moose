@@ -102,7 +102,7 @@ impl ProcessRegistries {
     /// # Returns
     /// * `Result<(), ProcessRegistryError>` - Ok if all processes stopped successfully, Error otherwise
     pub async fn stop(&mut self) -> Result<(), ProcessRegistryError> {
-        self.functions.stop_all().await?;
+        self.functions.stop_all().await;
         self.consumption.stop().await?;
         self.orchestration_workers.stop_all().await?;
         Ok(())

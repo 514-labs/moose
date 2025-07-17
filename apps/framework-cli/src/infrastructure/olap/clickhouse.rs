@@ -76,8 +76,12 @@ pub enum ClickhouseChangesError {
     Clickhouse(#[from] ClickhouseError),
 
     /// Error from the ClickHouse client library
-    #[error("Error interacting with Clickhouse")]
-    ClickhouseClient(#[from] clickhouse::error::Error),
+    #[error("Error interacting with Clickhouse{}", .resource.as_ref().map(|t| format!(" for '{t}'")).unwrap_or_default())]
+    ClickhouseClient {
+        #[source]
+        error: clickhouse::error::Error,
+        resource: Option<String>,
+    },
 
     /// Error for unsupported operations
     #[error("Not Supported {0}")]
@@ -119,7 +123,12 @@ pub async fn execute_changes(
 ) -> Result<(), ClickhouseChangesError> {
     // Setup the client
     let client = create_client(project.clickhouse_config.clone());
-    check_ready(&client).await?;
+    check_ready(&client)
+        .await
+        .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: None,
+        })?;
 
     let db_name = &project.clickhouse_config.db_name;
 
@@ -230,7 +239,12 @@ async fn execute_create_table(
     log::info!("Executing CreateTable: {:?}", table.id());
     let clickhouse_table = std_table_to_clickhouse_table(table)?;
     let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
-    run_query(&create_data_table_query, client).await?;
+    run_query(&create_data_table_query, client)
+        .await
+        .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        })?;
     Ok(())
 }
 
@@ -242,7 +256,12 @@ async fn execute_drop_table(
     log::info!("Executing DropTable: {:?}", table.id());
     let clickhouse_table = std_table_to_clickhouse_table(table)?;
     let drop_query = drop_table_query(db_name, clickhouse_table)?;
-    run_query(&drop_query, client).await?;
+    run_query(&drop_query, client)
+        .await
+        .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        })?;
     Ok(())
 }
 
@@ -274,7 +293,12 @@ async fn execute_add_table_column(
         }
     );
     log::debug!("Adding column: {}", add_column_query);
-    run_query(&add_column_query, client).await?;
+    run_query(&add_column_query, client).await.map_err(|e| {
+        ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        }
+    })?;
     Ok(())
 }
 
@@ -294,7 +318,12 @@ async fn execute_drop_table_column(
         db_name, table.name, column_name
     );
     log::debug!("Dropping column: {}", drop_column_query);
-    run_query(&drop_column_query, client).await?;
+    run_query(&drop_column_query, client).await.map_err(|e| {
+        ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        }
+    })?;
     Ok(())
 }
 
@@ -334,7 +363,12 @@ async fn execute_modify_table_column(
         db_name, table.name, clickhouse_column.name, column_type_string
     );
     log::debug!("Modifying column: {}", modify_column_query);
-    run_query(&modify_column_query, client).await?;
+    run_query(&modify_column_query, client).await.map_err(|e| {
+        ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        }
+    })?;
     Ok(())
 }
 
@@ -351,7 +385,12 @@ async fn execute_create_view(
                 &view.id(),
                 &format!("SELECT * FROM `{db_name}`.`{source_table_name}`"),
             )?;
-            run_query(&create_view_query, client).await?;
+            run_query(&create_view_query, client).await.map_err(|e| {
+                ClickhouseChangesError::ClickhouseClient {
+                    error: e,
+                    resource: Some(view.id()),
+                }
+            })?;
         }
     }
     Ok(())
@@ -366,7 +405,12 @@ async fn execute_drop_view(
     match &view.view_type {
         ViewType::TableAlias { .. } => {
             let delete_view_query = drop_view_query(db_name, &view.id())?;
-            run_query(&delete_view_query, client).await?;
+            run_query(&delete_view_query, client).await.map_err(|e| {
+                ClickhouseChangesError::ClickhouseClient {
+                    error: e,
+                    resource: Some(view.id()),
+                }
+            })?;
         }
     }
     Ok(())
@@ -378,7 +422,12 @@ async fn execute_run_setup_sql(
 ) -> Result<(), ClickhouseChangesError> {
     log::info!("Executing RunSetupSql for resource: {:?}", resource.name);
     for query in &resource.setup {
-        run_query(query, client).await?;
+        run_query(query, client)
+            .await
+            .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+                error: e,
+                resource: Some(resource.name.clone()),
+            })?;
     }
     Ok(())
 }
@@ -389,7 +438,12 @@ async fn execute_run_teardown_sql(
 ) -> Result<(), ClickhouseChangesError> {
     log::info!("Executing RunTeardownSql for resource: {:?}", resource.name);
     for query in &resource.teardown {
-        run_query(query, client).await?;
+        run_query(query, client)
+            .await
+            .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+                error: e,
+                resource: Some(resource.name.clone()),
+            })?;
     }
     Ok(())
 }

@@ -65,7 +65,7 @@ pub async fn run_workflow(
         .map_err(|e| {
             RoutineFailure::error(Message {
                 action: "Temporal".to_string(),
-                details: format!("Invalid temporal scheme: {}", e),
+                details: format!("Invalid temporal scheme: {e}"),
             })
         })?;
     let namespace = get_temporal_namespace(&temporal_url);
@@ -122,7 +122,7 @@ pub async fn run_workflow(
             RoutineFailure::new(
                 Message {
                     action: "Workflow".to_string(),
-                    details: format!("Could not start workflow '{}': {}", name, e),
+                    details: format!("Could not start workflow '{name}': {e}"),
                 },
                 e,
             )
@@ -133,7 +133,7 @@ pub async fn run_workflow(
         return Err(RoutineFailure::new(
             Message {
                 action: "Workflow".to_string(),
-                details: format!("'{}' failed to start: Invalid run ID\n", name),
+                details: format!("'{name}' failed to start: Invalid run ID\n"),
             },
             anyhow::anyhow!("Invalid run ID"),
         ));
@@ -147,8 +147,7 @@ pub async fn run_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "'{}' started successfully.\nView it in the Temporal dashboard: {}\n",
-            name, dashboard_url
+            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n",
         ),
     }))
 }

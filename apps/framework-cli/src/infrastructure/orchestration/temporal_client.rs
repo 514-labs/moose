@@ -190,7 +190,7 @@ impl TemporalClient {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
                         let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                            format!("status: {code:?}, message: {message}", code=status.code(), message=status.message());
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }
@@ -203,7 +203,7 @@ impl TemporalClient {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
                         let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                            format!("status: {code:?}, message: {message}", code=status.code(), message=status.message());
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }

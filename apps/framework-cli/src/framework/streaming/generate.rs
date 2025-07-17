@@ -176,8 +176,8 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
                 field_defaults.push(format!("{name}: {default}"));
             }
             match lang {
-                SupportedLanguages::Typescript => format!("{{ {} }}", field_defaults.join(", ")),
-                SupportedLanguages::Python => format!("{{ {} }}", field_defaults.join(", ")),
+                SupportedLanguages::Typescript => format!("{{ {defaults} }}", defaults=field_defaults.join(", ")),
+                SupportedLanguages::Python => format!("{{ {defaults} }}", defaults=field_defaults.join(", ")),
             }
         }
         (

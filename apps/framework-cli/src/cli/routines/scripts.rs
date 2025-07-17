@@ -140,8 +140,7 @@ pub async fn run_workflow(
     }
 
     let dashboard_url = format!(
-        "http://localhost:8080/namespaces/{}/workflows/{}/{}/history",
-        namespace, name, run_id
+        "http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history",
     );
 
     Ok(RoutineSuccess::success(Message {

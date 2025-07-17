@@ -1228,7 +1228,7 @@ mod tests {
 
         // Visitor should've injected the jwt claims
         let expected_valid =
-            format!(r#"{{"top_level_string":"hello","jwt_object":{jwt_claims}}}"#,);
+            format!(r#"{{"top_level_string":"hello","jwt_object":{jwt_claims}}}"#);
 
         assert_eq!(
             String::from_utf8(valid_result),

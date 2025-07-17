@@ -20,6 +20,13 @@ Prerequisites
 
 You are ready to go!
 
+## What you can do next?
+
+* Add another source from [adsb.lol](https://api.adsb.lol/docs) to this project.
+* You have an API you like? Modify `/app/datamodels/models.ts` with the data model you want to land; `/app/scripts/fetch_from_API` to point to the API you want, and to do any transformations you might need; edit `/app/functions/process_stream` to change any stream processing you need to do.
+* try ask Aurora in Claude or Cursor about your data. Get it to create egress APIs for you.
+
+
 ## Architecture Overview
 
 ### Data Sources

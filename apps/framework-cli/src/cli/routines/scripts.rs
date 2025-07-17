@@ -307,18 +307,18 @@ pub async fn terminate_workflow(
             {
                 format!("Workflow '{}' has already completed", name)
             } else {
-                format!("Could not terminate workflow '{}': {}", name, e)
+                format!("Could not terminate workflow '{name}': {}", e)
             };
 
             RoutineFailure::error(Message {
                 action: "Workflow".to_string(),
-                details: format!("{}\n", error_message),
+                details: format!("{error_message}\n"),
             })
         })?;
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
-        details: format!("'{}' terminated successfully\n", name),
+        details: format!("'{name}' terminated successfully\n"),
     }))
 }
 
@@ -606,26 +606,26 @@ fn format_failure_text(
 
     let (details, stack, error_type) = parse_failure_json(&failure.message);
     if let Some(details) = details {
-        text.push_str(&format!("\n    Details: {}", details));
+        text.push_str(&format!("\n    Details: {details}"));
     }
     if let Some(stack) = stack {
-        text.push_str(&format!("\n    Stack: {}", stack));
+        text.push_str(&format!("\n    Stack: {stack}"));
     }
     if let Some(error_type) = error_type {
-        text.push_str(&format!("\n    Error Type: {}", error_type));
+        text.push_str(&format!("\n    Error Type: {error_type}"));
     }
 
     // Process cause if present
     if let Some(cause) = &failure.cause {
         let (cause_details, cause_stack, cause_error_type) = parse_failure_json(&cause.message);
         if let Some(details) = cause_details {
-            text.push_str(&format!("\n    Details: {}", details));
+            text.push_str(&format!("\n    Details: {details}"));
         }
         if let Some(stack) = cause_stack {
-            text.push_str(&format!("\n    Stack: {}", stack));
+            text.push_str(&format!("\n    Stack: {stack}"));
         }
         if let Some(error_type) = cause_error_type {
-            text.push_str(&format!("\n    Error Type: {}", error_type));
+            text.push_str(&format!("\n    Error Type: {error_type}"));
         }
     }
 

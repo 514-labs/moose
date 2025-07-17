@@ -208,10 +208,10 @@ async fn get_consumption_api_res(
     {
         // For versioned paths like /consumption/v1/Bar, forward as /endpoint
         // The consumption API server itself doesn't need the version in the path
-        format!("/{}", endpoint)
+        format!("/{endpoint}")
     } else if let Some(endpoint) = &endpoint_segment {
         // For traditional paths like /consumption/Bar, forward as /endpoint
-        format!("/{}", endpoint)
+        format!("/{endpoint}")
     } else {
         // Fallback: use the original path
         req.uri()
@@ -237,7 +237,7 @@ async fn get_consumption_api_res(
         let consumption_name =
             if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
                 // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
-                format!("{}/{}", version, endpoint)
+                format!("{version}/{endpoint}")
             } else {
                 // For traditional paths, extract just the endpoint name
                 req.uri()

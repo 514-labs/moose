@@ -33,7 +33,7 @@ interface FetchTaskOutput {
 function mapToAircraftTrackingData(
   aircraft: AircraftTrackingData,
   timestamp: Date,
-): any {
+): AircraftTrackingData {
   // Handle alt_baro which can be "ground" or a number
   let alt_baro = 0;
   let alt_baro_is_ground = false;

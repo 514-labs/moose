@@ -120,7 +120,11 @@ impl Topic {
     }
 
     pub fn short_display(&self) -> String {
-        format!("Topic: {name} - Version: {version:?}", name=self.name, version=self.version)
+        format!(
+            "Topic: {name} - Version: {version:?}",
+            name = self.name,
+            version = self.version
+        )
     }
 
     fn default_duration() -> Duration {

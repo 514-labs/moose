@@ -73,7 +73,11 @@ impl Table {
     }
 
     pub fn short_display(&self) -> String {
-        format!("Table: {name} Version {version:?}", name=self.name, version=self.version)
+        format!(
+            "Table: {name} Version {version:?}",
+            name = self.name,
+            version = self.version
+        )
     }
 
     /// Returns the names of all primary key columns in this table

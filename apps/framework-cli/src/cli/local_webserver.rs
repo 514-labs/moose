@@ -199,22 +199,22 @@ async fn get_consumption_api_res(
     }
 
     // Determine what to proxy - handle both versioned and unversioned paths
-    let consumption_path =
-        if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
-            // For versioned paths like /consumption/v1/Bar, forward as /endpoint
-            // The consumption API server itself doesn't need the version in the path
-            format!("/{}", endpoint)
-        } else if let Some(endpoint) = &endpoint_segment {
-            // For traditional paths like /consumption/Bar, forward as /endpoint
-            format!("/{}", endpoint)
-        } else {
-            // Fallback: use the original path
-            req.uri()
-                .path()
-                .strip_prefix("/consumption")
-                .unwrap_or("")
-                .to_string()
-        };
+    let consumption_path = if let (Some(_), Some(endpoint)) = (&version_segment, &endpoint_segment)
+    {
+        // For versioned paths like /consumption/v1/Bar, forward as /endpoint
+        // The consumption API server itself doesn't need the version in the path
+        format!("/{}", endpoint)
+    } else if let Some(endpoint) = &endpoint_segment {
+        // For traditional paths like /consumption/Bar, forward as /endpoint
+        format!("/{}", endpoint)
+    } else {
+        // Fallback: use the original path
+        req.uri()
+            .path()
+            .strip_prefix("/consumption")
+            .unwrap_or("")
+            .to_string()
+    };
 
     let url = format!(
         "http://{}:{}{}{}",
@@ -945,7 +945,7 @@ async fn router(
             .await
         }
         // Handle unversioned paths (e.g., /ingest/Foo)
-        (Some(configured_producer), &hyper::Method::POST, ["ingest", endpoint]) => {
+        (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
                 // For DMv2, try direct route first (unversioned endpoint)
                 let route_table_read = route_table.read().await;

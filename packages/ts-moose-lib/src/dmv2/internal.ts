@@ -202,13 +202,18 @@ export const toInfraMap = (registry: typeof moose_internal) => {
   const sqlResources: { [key: string]: SqlResourceJson } = {};
   const workflows: { [key: string]: WorkflowJson } = {};
 
-  registry.tables.forEach((table) => {
+  registry.tables.forEach((table, key) => {
     // If the table is part of an IngestPipeline, inherit metadata if not set
     let metadata = (table as any).metadata;
     if (!metadata && table.config && (table as any).pipelineParent) {
       metadata = (table as any).pipelineParent.metadata;
     }
-    tables[table.name] = {
+    // Convert key format from v{version}/{name} to {name}_{version} for Rust compatibility
+    const rustKey =
+      table.config.version ?
+        `${table.name}_${table.config.version}`
+      : table.name;
+    tables[rustKey] = {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
@@ -219,7 +224,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.streams.forEach((stream) => {
+  registry.streams.forEach((stream, key) => {
     // If the stream is part of an IngestPipeline, inherit metadata if not set
     let metadata = stream.metadata;
     if (!metadata && stream.config && (stream as any).pipelineParent) {
@@ -230,9 +235,14 @@ export const toInfraMap = (registry: typeof moose_internal) => {
 
     stream._transformations.forEach((transforms, destinationName) => {
       transforms.forEach(([destination, _, config]) => {
+        // Convert destination name to Rust format
+        const rustDestinationName =
+          config.version ?
+            `${destination.name}_${config.version}`
+          : destination.name;
         transformationTargets.push({
           kind: "stream",
-          name: destinationName,
+          name: rustDestinationName,
           version: config.version,
           metadata: config.metadata,
         });
@@ -245,8 +255,13 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       });
     });
 
-    topics[stream.name] = {
-      name: stream.name,
+    // Convert key format from v{version}/{name} to {name}_{version} for Rust compatibility
+    const rustKey =
+      stream.config.version ?
+        `${stream.name}_${stream.config.version}`
+      : stream.name;
+    topics[rustKey] = {
+      name: stream.name, // Use the stream name, not the versioned key
       columns: stream.columnArray,
       targetTable: stream.config.destination?.name,
       targetTableVersion: stream.config.destination?.config.version,
@@ -260,27 +275,63 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.ingestApis.forEach((api) => {
+  registry.ingestApis.forEach((api, key) => {
     // If the ingestApi is part of an IngestPipeline, inherit metadata if not set
     let metadata = api.metadata;
     if (!metadata && api.config && (api as any).pipelineParent) {
       metadata = (api as any).pipelineParent.metadata;
     }
-    ingestApis[api.name] = {
+
+    // Find the correct key for the DLQ in the streams registry and convert to Rust format
+    let deadLetterQueueName = undefined;
+    if (api.config.deadLetterQueue) {
+      // Find the key that corresponds to this DLQ stream in the registry
+      for (const [streamKey, stream] of registry.streams) {
+        if (stream === api.config.deadLetterQueue) {
+          // Convert to Rust format
+          deadLetterQueueName =
+            stream.config.version ?
+              `${stream.name}_${stream.config.version}`
+            : stream.name;
+          break;
+        }
+      }
+    }
+
+    // Find the correct key for the destination stream in the streams registry and convert to Rust format
+    let destinationStreamName = api.config.destination.name;
+    for (const [streamKey, stream] of registry.streams) {
+      if (stream === api.config.destination) {
+        // Convert to Rust format
+        destinationStreamName =
+          stream.config.version ?
+            `${stream.name}_${stream.config.version}`
+          : stream.name;
+        break;
+      }
+    }
+
+    // Convert key format from v{version}/{name} to {name}_{version} for Rust compatibility
+    const rustKey =
+      api.config.version ? `${api.name}_${api.config.version}` : api.name;
+    ingestApis[rustKey] = {
       name: api.name,
       columns: api.columnArray,
       version: api.config.version,
       writeTo: {
         kind: "stream",
-        name: api.config.destination.name,
+        name: destinationStreamName,
       },
-      deadLetterQueue: api.config.deadLetterQueue?.name,
+      deadLetterQueue: deadLetterQueueName,
       metadata,
     };
   });
 
   registry.egressApis.forEach((api, key) => {
-    egressApis[key] = {
+    // Convert key format from v{version}/{name} to {name}_{version} for Rust compatibility
+    const rustKey =
+      api.config.version ? `${api.name}_${api.config.version}` : api.name;
+    egressApis[rustKey] = {
       name: api.name,
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,

@@ -196,10 +196,17 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
   ) {
     super(name, config ?? {}, schema, columns);
     const streams = getMooseInternal().streams;
-    if (streams.has(name)) {
-      throw new Error(`Stream with name ${name} already exists`);
+
+    // Create a unique key that includes version information if available
+    const version = config?.version;
+    const streamKey = version ? `v${version}/${name}` : name;
+
+    if (streams.has(streamKey)) {
+      throw new Error(
+        `Stream with name ${name}${version ? ` version ${version}` : ""} already exists`,
+      );
     }
-    streams.set(name, this);
+    streams.set(streamKey, this);
   }
 
   /**
@@ -407,7 +414,8 @@ export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
 
     super(name, config ?? {}, dlqSchema, dlqColumns);
     this.typeGuard = typeGuard;
-    getMooseInternal().streams.set(name, this);
+
+    // No need to register again - the Stream constructor already handles versioned registration
   }
 
   /**

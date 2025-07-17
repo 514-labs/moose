@@ -51,9 +51,16 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
   ) {
     super(name, config, schema, columns);
     const ingestApis = getMooseInternal().ingestApis;
-    if (ingestApis.has(name)) {
-      throw new Error(`Ingest API with name ${name} already exists`);
+
+    // Create a unique key that includes version information if available
+    const version = config?.version;
+    const apiKey = version ? `v${version}/${name}` : name;
+
+    if (ingestApis.has(apiKey)) {
+      throw new Error(
+        `Ingest API with name ${name}${version ? ` version ${version}` : ""} already exists`,
+      );
     }
-    ingestApis.set(name, this);
+    ingestApis.set(apiKey, this);
   }
 }

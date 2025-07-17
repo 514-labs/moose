@@ -238,8 +238,10 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         ...(typeof config.deadLetterQueue === "object" ?
           config.deadLetterQueue
         : {}),
+        // Restore version assignment so each pipeline version gets its own DLQ
         ...(config.version && { version: config.version }),
       };
+
       this.deadLetterQueue = new DeadLetterQueue<T>(
         `${name}DeadLetterQueue`,
         streamConfig,

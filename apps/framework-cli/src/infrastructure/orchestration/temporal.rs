@@ -8,27 +8,13 @@ pub struct InvalidTemporalSchemeError {
 }
 
 /// Valid temporal URL schemes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TemporalScheme {
+    #[serde(alias="http", alias="HTTP", alias="Http")]
     Http,
+    #[serde(alias="https", alias="HTTPS", alias="Https")]
     Https,
-}
-
-impl<'de> Deserialize<'de> for TemporalScheme {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match s.to_lowercase().as_str() {
-            "http" => Ok(Self::Http),
-            "https" => Ok(Self::Https),
-            _ => Err(serde::de::Error::custom(InvalidTemporalSchemeError {
-                scheme: s,
-            })),
-        }
-    }
 }
 
 impl TemporalScheme {
@@ -49,7 +35,7 @@ impl TryFrom<String> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{scheme}\""))
+        serde_json::from_str(&format!("\"{}\"", scheme))
             .map_err(|_| InvalidTemporalSchemeError { scheme })
     }
 }
@@ -58,9 +44,10 @@ impl TryFrom<&str> for TemporalScheme {
     type Error = InvalidTemporalSchemeError;
 
     fn try_from(scheme: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(&format!("\"{scheme}\"")).map_err(|_| InvalidTemporalSchemeError {
-            scheme: scheme.to_string(),
-        })
+        serde_json::from_str(&format!("\"{}\"", scheme))
+            .map_err(|_| InvalidTemporalSchemeError { 
+                scheme: scheme.to_string() 
+            })
     }
 }
 

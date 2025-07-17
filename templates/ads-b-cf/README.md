@@ -16,7 +16,7 @@ Prerequisites
 2. Create project `aurora init aircraft ads-b`
 3. Install dependencies: `cd aircraft && npm install`
 4. Run Moose: `moose dev`
-5. Run Workflows: `moose workflow run laddAircraftETL & moose workflow run laddAircraftETL & wait`
+5. Run Workflows: `moose workflow run militaryAircraftETL & moose workflow run laddAircraftETL & wait`
 
 You are ready to go!
 

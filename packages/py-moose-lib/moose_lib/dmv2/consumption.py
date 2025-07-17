@@ -94,6 +94,15 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
         self.config = config
         self.query_function = query_function
         self.metadata = config.metadata
+        
+        # Register the API with appropriate key(s)
+        # For versioned APIs, register with both versioned and unversioned keys
+        if config.version:
+            # Register versioned API with "v{version}/{name}" format
+            versioned_key = f"v{config.version}/{name}"
+            _egress_apis[versioned_key] = self
+            
+        # Always register unversioned API for backward compatibility
         _egress_apis[name] = self
 
     @classmethod

@@ -183,6 +183,7 @@ export class Cluster<C> {
       if (cluster.isPrimary) {
         await this.shutdownWorkers(signal);
         console.info(`${this.processStr} - worker shutdown successful`);
+        exit(0);
       } else {
         await this.workerStop(this.startOutput!);
         console.info(`${this.processStr} shutdown successful`);

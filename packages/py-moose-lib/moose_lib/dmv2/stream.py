@@ -110,8 +110,9 @@ class Stream(TypedMooseResource, Generic[T]):
             topic_name = self._generate_topic_name()
             _streams[topic_name] = self
             
-            # Also register with unversioned name for backward compatibility
-            _streams[name] = self
+            # For versioned streams, register with version-specific key to avoid conflicts
+            versioned_key = f"{name}_v{config.version}"
+            _streams[versioned_key] = self
         else:
             # For streams without version, register with just the name
             _streams[name] = self

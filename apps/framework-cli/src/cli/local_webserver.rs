@@ -845,6 +845,12 @@ async fn ingest_route(
     debug!("Attempting to find route: {:?}", route);
     let route_table_read = route_table.read().await;
     debug!("Available routes: {:?}", route_table_read.keys());
+    // Print route table for debugging
+    eprintln!("DEBUG: Looking for route: {:?}", route);
+    eprintln!(
+        "DEBUG: Available routes: {:?}",
+        route_table_read.keys().collect::<Vec<_>>()
+    );
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
@@ -942,6 +948,10 @@ async fn router(
     let metrics_method = req.method().to_string();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
+    eprintln!(
+        "DEBUG ROUTE_SPLIT: route: {:?}, route_split: {:?}",
+        route, route_split
+    );
     let res = match (configured_producer, req.method(), &route_split[..]) {
         // Handle explicit version in path (e.g., /ingest/v1/Foo)
         (
@@ -950,12 +960,16 @@ async fn router(
             ["ingest", version_segment, endpoint],
         ) if version_segment.starts_with('v') => {
             let version_str = version_segment.to_string();
+            let version_number = version_str.strip_prefix('v').unwrap_or(version_segment);
+            let constructed_route = PathBuf::from("ingest").join(endpoint).join(version_number);
+
+            eprintln!("DEBUG VERSIONED: Original path: {}, version_segment: {}, endpoint: {}, version_number: {}, constructed_route: {:?}", 
+                req.uri().path(), version_segment, endpoint, version_number, constructed_route);
+
             // This handles paths like /ingest/v1/Foo where the version is explicitly in the URL
             ingest_route(
                 req,
-                PathBuf::from("ingest")
-                    .join(endpoint)
-                    .join(version_str.strip_prefix('v').unwrap_or(version_segment)),
+                constructed_route,
                 configured_producer,
                 route_table,
                 is_prod,
@@ -979,10 +993,34 @@ async fn router(
                     )
                     .await
                 } else {
-                    // Otherwise fall back to latest version
+                    // Find an available version for this endpoint
+                    let route_str = route.to_str().unwrap();
+                    let available_versions: Vec<String> = route_table_read
+                        .keys()
+                        .filter_map(|k| {
+                            let k_str = k.to_str().unwrap();
+                            if k_str.starts_with(&format!("{}/", route_str)) {
+                                let version = k_str.strip_prefix(&format!("{}/", route_str))?;
+                                Some(version.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    // Try current version first, then fall back to any available version
+                    let fallback_version = if available_versions.contains(&current_version) {
+                        current_version.clone()
+                    } else {
+                        available_versions
+                            .first()
+                            .cloned()
+                            .unwrap_or(current_version.clone())
+                    };
+
                     ingest_route(
                         req,
-                        route.join(&current_version),
+                        route.join(&fallback_version),
                         configured_producer,
                         route_table,
                         is_prod,

@@ -62,6 +62,10 @@ class IngestApi(TypedMooseResource, Generic[T]):
         self.config = config
         self.metadata = getattr(config, 'metadata', None)
         
-        # Register the API with the unversioned name only
-        # The versioning is handled by the topic ID, not the API name
-        _ingest_apis[name] = self
+        # Register the API with versioned key if version is present
+        if config.version:
+            versioned_key = f"{name}_v{config.version}"
+            _ingest_apis[versioned_key] = self
+        else:
+            # Register unversioned API with just the name
+            _ingest_apis[name] = self

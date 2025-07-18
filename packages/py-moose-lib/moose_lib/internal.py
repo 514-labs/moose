@@ -313,32 +313,28 @@ def to_infra_map() -> dict:
             metadata=getattr(stream, "metadata", None),
         )
 
-    for name, api in get_ingest_apis().items():
-        # Use versioned topic ID for the destination
-        destination_topic_id = api.config.destination._generate_topic_id()
+    for registry_key, api in get_ingest_apis().items():
+        # Generate topic ID ensuring unique identification for versioned APIs
+        if api.config.version:
+            # For versioned APIs, construct topic ID using API name and version
+            # This ensures each version gets a unique topic ID
+            api_name = api.name
+            version_suffix = api.config.version.replace(".", "_")
+            destination_topic_id = f"{api_name}_{version_suffix}_{version_suffix}"
+        else:
+            # For unversioned APIs, use the standard topic ID generation
+            destination_topic_id = api.config.destination._generate_topic_id()
+        
         dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
         
-        # Generate versioned and unversioned APIs
+        # Generate API endpoint with version information
         if api.config.version:
-            # Generate versioned API with v{version}/{name} format
-            versioned_name = f"v{api.config.version}/{name}"
-            ingest_apis[versioned_name] = IngestApiConfig(
-                name=versioned_name,
+            # Generate versioned API with unique key based on name and version
+            versioned_key = f"{api.name}_v{api.config.version}"
+            ingest_apis[versioned_key] = IngestApiConfig(
+                name=api.name,  # Use original name from the API object
                 columns=_to_columns(api._t),
-                version=None,  # Don't pass version separately since it's in the name
-                write_to=Target(
-                    kind="stream",
-                    name=destination_topic_id
-                ),
-                metadata=getattr(api, "metadata", None),
-                dead_letter_queue=dead_letter_queue_id
-            )
-            
-            # Generate unversioned API for backward compatibility
-            ingest_apis[name] = IngestApiConfig(
-                name=name,
-                columns=_to_columns(api._t),
-                version=None,  # Don't pass version for unversioned API
+                version=api.config.version,  # Pass version for path generation
                 write_to=Target(
                     kind="stream",
                     name=destination_topic_id
@@ -347,9 +343,9 @@ def to_infra_map() -> dict:
                 dead_letter_queue=dead_letter_queue_id
             )
         else:
-            # Generate unversioned API only
-            ingest_apis[name] = IngestApiConfig(
-                name=name,
+            # Generate unversioned API
+            ingest_apis[api.name] = IngestApiConfig(
+                name=api.name,  # Use original name from the API object
                 columns=_to_columns(api._t),
                 version=None,
                 write_to=Target(

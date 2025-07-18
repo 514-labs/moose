@@ -104,15 +104,15 @@ def handler_with_client(moose_client):
             parsed_path = urlparse(self.path)
             path_parts = parsed_path.path.lstrip('/').split('/')
             
-            # Handle versioned paths (/<endpoint>/<version>) or regular paths (/<endpoint>)
+            # Get the module name from the path
             module_name = path_parts[0]
-            version = None
             
-            # Check if this is a versioned path
-            if len(path_parts) > 1:
-                version = path_parts[1]
-                # If we have a versioned path like /Bar/1.0.0
-                # Store the versioned name format that matches what's used in the router
+            # Check for version in the custom header sent by the Rust webserver
+            version = self.headers.get('x-moose-api-version')
+            versioned_module_name = None
+            
+            if version:
+                # Create versioned module name in the format expected by the registry
                 versioned_module_name = f"v{version}/{module_name}"
             
             try:
@@ -136,7 +136,7 @@ def handler_with_client(moose_client):
                 if is_dmv2:
                     # First try with versioned name if available
                     api_to_use = None
-                    if 'versioned_module_name' in locals():
+                    if versioned_module_name:
                         api_to_use = get_consumption_api(versioned_module_name)
                     
                     # If no versioned API found, try with regular name

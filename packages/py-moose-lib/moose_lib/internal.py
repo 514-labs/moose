@@ -321,11 +321,8 @@ def to_infra_map() -> dict:
         )
 
     for name, api in get_consumption_apis().items():
-        # Skip versioned keys (they start with "v" followed by a digit and "/")
-        # Only include the original API names in the infrastructure map
-        if name.startswith('v') and '/' in name and name.split('/')[0][1:].isdigit():
-            continue
-            
+        # Include all APIs in the infrastructure map
+        # The routing logic will handle version resolution
         egress_apis[name] = EgressApiConfig(
             name=name,
             query_params=_to_columns(api.model_type),

@@ -266,8 +266,10 @@ def to_infra_map() -> dict:
 
     for name, table in get_tables().items():
         engine = table.config.engine
-        tables[name] = TableConfig(
-            name=name,
+        # Use versioned table name for the infrastructure map
+        table_name = table._generate_table_name()
+        tables[table_name] = TableConfig(
+            name=table_name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
@@ -293,10 +295,14 @@ def to_infra_map() -> dict:
             for consumer in stream.consumers
         ]
 
-        topics[name] = TopicConfig(
-            name=name,
+        # Use versioned topic ID for the infrastructure map key and topic name for the value
+        topic_id = stream._generate_topic_id()
+        topic_name = stream._generate_topic_name()
+        target_table_name = stream.config.destination._generate_table_name() if stream.config.destination else None
+        topics[topic_id] = TopicConfig(
+            name=topic_name,
             columns=_to_columns(stream._t),
-            target_table=stream.config.destination.name if stream.config.destination else None,
+            target_table=target_table_name,
             target_table_version=stream.config.destination.config.version if stream.config.destination else None,
             retention_period=stream.config.retention_period,
             partition_count=stream.config.parallelism,
@@ -308,17 +314,51 @@ def to_infra_map() -> dict:
         )
 
     for name, api in get_ingest_apis().items():
-        ingest_apis[name] = IngestApiConfig(
-            name=name,
-            columns=_to_columns(api._t),
-            version=api.config.version,
-            write_to=Target(
-                kind="stream",
-                name=api.config.destination.name
-            ),
-            metadata=getattr(api, "metadata", None),
-            dead_letter_queue=api.config.dead_letter_queue.name
-        )
+        # Use versioned topic ID for the destination
+        destination_topic_id = api.config.destination._generate_topic_id()
+        dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
+        
+        # Generate versioned and unversioned APIs
+        if api.config.version:
+            # Generate versioned API with v{version}/{name} format
+            versioned_name = f"v{api.config.version}/{name}"
+            ingest_apis[versioned_name] = IngestApiConfig(
+                name=versioned_name,
+                columns=_to_columns(api._t),
+                version=None,  # Don't pass version separately since it's in the name
+                write_to=Target(
+                    kind="stream",
+                    name=destination_topic_id
+                ),
+                metadata=getattr(api, "metadata", None),
+                dead_letter_queue=dead_letter_queue_id
+            )
+            
+            # Generate unversioned API for backward compatibility
+            ingest_apis[name] = IngestApiConfig(
+                name=name,
+                columns=_to_columns(api._t),
+                version=None,  # Don't pass version for unversioned API
+                write_to=Target(
+                    kind="stream",
+                    name=destination_topic_id
+                ),
+                metadata=getattr(api, "metadata", None),
+                dead_letter_queue=dead_letter_queue_id
+            )
+        else:
+            # Generate unversioned API only
+            ingest_apis[name] = IngestApiConfig(
+                name=name,
+                columns=_to_columns(api._t),
+                version=None,
+                write_to=Target(
+                    kind="stream",
+                    name=destination_topic_id
+                ),
+                metadata=getattr(api, "metadata", None),
+                dead_letter_queue=dead_letter_queue_id
+            )
 
     for name, api in get_consumption_apis().items():
         # Include all APIs in the infrastructure map

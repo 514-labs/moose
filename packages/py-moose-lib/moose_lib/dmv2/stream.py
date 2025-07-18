@@ -103,7 +103,18 @@ class Stream(TypedMooseResource, Generic[T]):
         self.metadata = config.metadata
         self.consumers = []
         self.transformations = {}
-        _streams[name] = self
+        
+        # Register the stream with appropriate key(s)
+        if config.version:
+            # Register versioned stream with versioned name
+            topic_name = self._generate_topic_name()
+            _streams[topic_name] = self
+            
+            # Also register with unversioned name for backward compatibility
+            _streams[name] = self
+        else:
+            # For streams without version, register with just the name
+            _streams[name] = self
 
     def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]],
                       config: TransformConfig = None):
@@ -150,6 +161,37 @@ class Stream(TypedMooseResource, Generic[T]):
             True if the stream has one or more consumers, False otherwise.
         """
         return len(self.consumers) > 0
+
+    def _generate_topic_name(self) -> str:
+        """Generate the versioned topic name following Moose's naming convention.
+
+        Format: {topicName}_{version_with_dots_replaced_by_underscores}
+
+        Returns:
+            The versioned topic name.
+        """
+        topic_version = self.config.version
+        if not topic_version:
+            return self.name
+        else:
+            version_suffix = topic_version.replace(".", "_")
+            return f"{self.name}_{version_suffix}"
+
+    def _generate_topic_id(self) -> str:
+        """Generate the topic ID following Rust CLI's naming convention.
+
+        Format: {topicName}_{version_with_dots_replaced_by_underscores}_{version_with_dots_replaced_by_underscores}
+
+        Returns:
+            The topic ID used as the key in the Rust CLI.
+        """
+        topic_name = self._generate_topic_name()
+        topic_version = self.config.version
+        if not topic_version:
+            return topic_name
+        else:
+            version_suffix = topic_version.replace(".", "_")
+            return f"{topic_name}_{version_suffix}"
 
     def routed(self, values: ZeroOrMany[T]) -> _RoutedMessage:
         """Creates a `_RoutedMessage` for use in multi-transform functions.

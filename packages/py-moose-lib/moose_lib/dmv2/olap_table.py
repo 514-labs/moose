@@ -136,7 +136,18 @@ class OlapTable(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         self.metadata = config.metadata
-        _tables[name] = self
+        
+        # Register the table with appropriate key(s)
+        if config.version:
+            # Register versioned table with versioned name
+            table_name = self._generate_table_name()
+            _tables[table_name] = self
+            
+            # Also register with unversioned name for backward compatibility
+            _tables[name] = self
+        else:
+            # For tables without version, register with just the name
+            _tables[name] = self
 
     def _generate_table_name(self) -> str:
         """Generate the versioned table name following Moose's naming convention.

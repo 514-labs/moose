@@ -28,18 +28,20 @@ export interface EgressConfig<T> {
   metadata?: { description?: string };
 }
 
+// Counter to ensure uniqueness when no version is specified
+let unversionedApiCounter = 0;
+
 /**
- * Represents a Consumption API endpoint (Egress API), used for querying data from a Moose system.
- * Exposes data, often from an OlapTable or derived through a custom handler function.
- *
- * @template T The data type defining the expected structure of the API's query parameters.
- * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
+ * Class representing a Consumption API that can be registered in Moose.
+ * @template T The data type of the request parameters.
+ * @template R The data type of the response.
  */
-export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
-  /** @internal The handler function that processes requests and generates responses. */
-  _handler: ConsumptionHandler<T, R>;
-  /** @internal The JSON schema definition for the response type R. */
-  responseSchema: IJsonSchemaCollection.IV3_1;
+export class ConsumptionApi<T = any, R = any> extends TypedBase<
+  T,
+  EgressConfig<T>
+> {
+  private _handler: ConsumptionHandler<T, R>;
+  public responseSchema: IJsonSchemaCollection.IV3_1;
 
   /**
    * Creates a new ConsumptionApi instance.
@@ -78,7 +80,15 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
 
     // Create a unique key that includes version information if available
     const version = config?.version;
-    const apiKey = version ? `v${version}/${name}` : name;
+    let apiKey: string;
+
+    if (version) {
+      // Use version-based key when version is specified
+      apiKey = `v${version}/${name}`;
+    } else {
+      // Generate unique key for unversioned APIs using counter
+      apiKey = `${name}_${unversionedApiCounter++}`;
+    }
 
     if (egressApis.has(apiKey)) {
       throw new Error(

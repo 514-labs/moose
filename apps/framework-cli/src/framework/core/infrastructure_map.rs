@@ -449,13 +449,24 @@ impl InfrastructureMap {
                 // If storage is enabled for this data model, create necessary infrastructure
                 if data_model.config.storage.enabled {
                     let table = data_model.to_table();
-                    let topic_to_table_sync_process = TopicToTableSyncProcess::new(&topic, &table);
-
-                    tables.insert(table.id(), table);
-                    topic_to_table_sync_processes.insert(
-                        topic_to_table_sync_process.id(),
-                        topic_to_table_sync_process,
-                    );
+                    match TopicToTableSyncProcess::new(&topic, &table) {
+                        Ok(topic_to_table_sync_process) => {
+                            tables.insert(table.id(), table);
+                            topic_to_table_sync_processes.insert(
+                                topic_to_table_sync_process.id(),
+                                topic_to_table_sync_process,
+                            );
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to create topic_to_table_sync_process for data model '{}': {}",
+                                data_model.name,
+                                e
+                            );
+                            // Still insert the table even if sync process creation fails
+                            tables.insert(table.id(), table);
+                        }
+                    }
                 }
 
                 // If streaming engine is enabled, create topics and API endpoints

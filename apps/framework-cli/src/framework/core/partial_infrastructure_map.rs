@@ -596,10 +596,21 @@ impl PartialInfrastructureMap {
                     .find(|table| table.matches(target_table_name, target_table_version.as_ref()))
                     .expect(table_not_found);
 
-                let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);
-                let sync_id = sync_process.id();
-                sync_processes.insert(sync_id.clone(), sync_process);
-                log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
+                match TopicToTableSyncProcess::new(source_topic, target_table) {
+                    Ok(sync_process) => {
+                        let sync_id = sync_process.id();
+                        sync_processes.insert(sync_id.clone(), sync_process);
+                        log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "<dmv2> Failed to create topic_to_table_sync_process for topic '{}' -> table '{}': {}",
+                            source_topic.id(),
+                            target_table.id(),
+                            e
+                        );
+                    }
+                }
             } else {
                 log::info!(
                     "<dmv2> Topic {} has no target_table specified, skipping sync process creation",

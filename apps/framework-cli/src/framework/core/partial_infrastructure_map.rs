@@ -462,10 +462,7 @@ impl PartialInfrastructureMap {
             };
 
             let not_found = &format!("Target topic '{target_topic_name}' not found");
-            let target_topic = topics
-                .values()
-                .find(|topic| topic.name == target_topic_name)
-                .expect(not_found);
+            let target_topic = topics.get(&target_topic_name).expect(not_found);
 
             // TODO: Remove data model from api endpoints when dmv1 is removed
             let data_model = crate::framework::data_model::model::DataModel {
@@ -573,13 +570,17 @@ impl PartialInfrastructureMap {
     ) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
-        for (topic_name, partial_topic) in &self.topics {
+        for (_topic_name, partial_topic) in &self.topics {
             if let Some(target_table_name) = &partial_topic.target_table {
-                let topic_not_found = &format!("Source topic '{topic_name}' not found");
-                let source_topic = topics
-                    .values()
-                    .find(|topic| &topic.name == topic_name)
-                    .expect(topic_not_found);
+                // Find the topic by constructing the versioned key
+                let topic_key = partial_topic
+                    .version
+                    .as_ref()
+                    .map_or(partial_topic.name.clone(), |v| {
+                        format!("{}_{}", partial_topic.name, v)
+                    });
+                let topic_not_found = &format!("Source topic '{topic_key}' not found");
+                let source_topic = topics.get(&topic_key).expect(topic_not_found);
 
                 let target_table_version: Option<Version> = partial_topic
                     .target_table_version
@@ -595,10 +596,21 @@ impl PartialInfrastructureMap {
                     .find(|table| table.matches(target_table_name, target_table_version.as_ref()))
                     .expect(table_not_found);
 
-                let sync_process = TopicToTableSyncProcess::new(source_topic, target_table);
-                let sync_id = sync_process.id();
-                sync_processes.insert(sync_id.clone(), sync_process);
-                log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
+                match TopicToTableSyncProcess::new(source_topic, target_table) {
+                    Ok(sync_process) => {
+                        let sync_id = sync_process.id();
+                        sync_processes.insert(sync_id.clone(), sync_process);
+                        log::info!("<dmv2> Created topic_to_table_sync_processes {}", sync_id);
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "<dmv2> Failed to create topic_to_table_sync_process for topic '{}' -> table '{}': {}",
+                            source_topic.id(),
+                            target_table.id(),
+                            e
+                        );
+                    }
+                }
             } else {
                 log::info!(
                     "<dmv2> Topic {} has no target_table specified, skipping sync process creation",
@@ -636,10 +648,7 @@ impl PartialInfrastructureMap {
             );
 
             let not_found = &format!("Source topic '{topic_name}' not found");
-            let source_topic = topics
-                .values()
-                .find(|topic| &topic.name == topic_name)
-                .expect(not_found);
+            let source_topic = topics.get(topic_name).expect(not_found);
 
             for transformation_target in &source_partial_topic.transformation_targets {
                 debug!("transformation_target: {:?}", transformation_target);
@@ -648,10 +657,7 @@ impl PartialInfrastructureMap {
                 let process_name = format!("{}__{}", topic_name, transformation_target.name);
 
                 let not_found = &format!("Target topic '{}' not found", transformation_target.name);
-                let target_topic = topics
-                    .values()
-                    .find(|topic| topic.name == transformation_target.name)
-                    .expect(not_found);
+                let target_topic = topics.get(&transformation_target.name).expect(not_found);
 
                 let function_process = FunctionProcess {
                     name: process_name.clone(),

@@ -14,6 +14,23 @@ use crate::proto::infrastructure_map::{
     TopicToTopicSyncProcess as ProtoTopicToTopicSyncProcess,
 };
 
+/// Errors that can occur during TopicToTableSyncProcess creation.
+///
+/// This error type follows the Rust error handling best practices and provides
+/// specific error variants for different failure modes.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum SyncProcessError {
+    /// Error when topic and table versions don't match
+    #[error("Version mismatch between topic '{topic_id}' (version: {topic_version:?}) and table '{table_id}' (version: {table_version:?})")]
+    VersionMismatch {
+        topic_id: String,
+        topic_version: Option<Version>,
+        table_id: String,
+        table_version: Option<Version>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TopicToTableSyncProcess {
     pub source_topic_id: String,
@@ -26,18 +43,23 @@ pub struct TopicToTableSyncProcess {
 }
 
 impl TopicToTableSyncProcess {
-    pub fn new(topic: &Topic, table: &Table) -> Self {
+    pub fn new(topic: &Topic, table: &Table) -> Result<Self, SyncProcessError> {
         if topic.version != table.version {
-            panic!("Version mismatch between topic and table")
+            return Err(SyncProcessError::VersionMismatch {
+                topic_id: topic.id(),
+                topic_version: topic.version.clone(),
+                table_id: table.id(),
+                table_version: table.version.clone(),
+            });
         }
 
-        TopicToTableSyncProcess {
+        Ok(TopicToTableSyncProcess {
             source_topic_id: topic.id(),
             columns: topic.columns.clone(),
             target_table_id: table.id(),
             version: topic.version.clone(),
             source_primitive: topic.source_primitive.clone(),
-        }
+        })
     }
 
     pub fn id(&self) -> String {

@@ -47,8 +47,42 @@ const toClientConfig = (config: ClickhouseConfig) => ({
   useSSL: config.useSSL ? "true" : "false",
 });
 
-const createPath = (consumptionDir: string, path: string) =>
-  `${consumptionDir}${path}.ts`;
+const createPath = (consumptionDir: string, path: string) => {
+  // Check if the path has version information
+  const pathSegments = path.replace(/^\/+/, "").split("/");
+
+  // If it's a versioned path like "v1/endpoint"
+  if (pathSegments.length > 1 && pathSegments[0].startsWith("v")) {
+    const version = pathSegments[0].substring(1); // Remove 'v' prefix
+    const endpoint = pathSegments[1];
+
+    // Try different version formats
+    // 1. endpoint_v1_0_0 (full version)
+    const formattedVersion = version.replace(/\./g, "_");
+    const versionedPath = `${consumptionDir}${endpoint}_v${formattedVersion}.ts`;
+
+    try {
+      // Check if file exists
+      require.resolve(versionedPath);
+      return versionedPath;
+    } catch (e) {
+      // 2. Try endpoint_v1 (major version only)
+      const majorVersion = version.split(".")[0];
+      const majorVersionPath = `${consumptionDir}${endpoint}_v${majorVersion}.ts`;
+
+      try {
+        require.resolve(majorVersionPath);
+        return majorVersionPath;
+      } catch (e) {
+        // Fall back to regular path
+        return `${consumptionDir}${endpoint}.ts`;
+      }
+    }
+  }
+
+  // Regular unversioned path
+  return `${consumptionDir}${path}.ts`;
+};
 
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
@@ -136,15 +170,78 @@ const apiHandler =
       if (userFuncModule === undefined) {
         if (isDmv2) {
           const egressApis = await getEgressApis();
-          userFuncModule = egressApis.get(fileName.replace(/^\/+/, ""));
+          // Remove leading slash and get the clean path
+          const fileName = url.pathname.replace(/^\/+/, "");
+
+          // Parse version from URL path (e.g., "v1/bar" -> version="1", endpoint="bar")
+          let versionFromPath: string | undefined;
+          let endpointName = fileName;
+
+          const pathSegments = fileName.split("/");
+          if (pathSegments.length >= 2 && pathSegments[0].startsWith("v")) {
+            versionFromPath = pathSegments[0].substring(1); // Remove 'v' prefix
+            endpointName = pathSegments[1];
+          }
+
+          // Check for version information in headers (passed by Rust proxy)
+          const versionHeader = req.headers["x-moose-api-version"] as string;
+
+          // Use version from path first, then fallback to header
+          const version = versionFromPath || versionHeader;
+
+          if (version) {
+            // Try versioned lookup first
+            const versionedKey = `v${version}/${endpointName}`;
+            userFuncModule = egressApis.get(versionedKey);
+          }
+
+          if (!userFuncModule) {
+            // Fallback to unversioned lookup
+            userFuncModule = egressApis.get(endpointName);
+          }
+
+          // If still not found, use regex to find any matching API
+          if (!userFuncModule) {
+            // Create regex pattern to match the endpoint name with any version
+            const endpointPattern = new RegExp(
+              `^(v\\d+/)?${endpointName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            );
+
+            // Search through all available APIs
+            for (const [apiKey, apiHandler] of egressApis.entries()) {
+              if (endpointPattern.test(apiKey)) {
+                userFuncModule = apiHandler;
+                console.log(
+                  `Found API match: ${apiKey} for requested path: ${fileName}`,
+                );
+                break;
+              }
+            }
+          }
+
           modulesCache.set(pathName, userFuncModule);
         } else {
-          userFuncModule = require(pathName);
-          modulesCache.set(pathName, userFuncModule);
+          try {
+            userFuncModule = require(pathName);
+            modulesCache.set(pathName, userFuncModule);
+          } catch (e) {
+            res.writeHead(404, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: `API not found: ${fileName}` }));
+            httpLogger(req, res);
+            return;
+          }
         }
       }
 
       const queryClient = new QueryClient(clickhouseClient, fileName);
+
+      if (!userFuncModule) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: `API not found: ${fileName}` }));
+        httpLogger(req, res);
+        return;
+      }
+
       let result =
         isDmv2 ?
           await userFuncModule(paramsObject, {

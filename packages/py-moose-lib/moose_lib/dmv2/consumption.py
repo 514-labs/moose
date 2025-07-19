@@ -88,13 +88,36 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
 
         return curried_constructor
 
-    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = EgressConfig(), **kwargs):
+    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = None, version: str = None, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        self.config = config
+        
+        # Handle version parameter - if version is provided, create EgressConfig with that version
+        # If both version and config are provided, version takes precedence
+        if version is not None:
+            self.config = EgressConfig(version=version)
+        elif config is not None:
+            self.config = config
+        else:
+            self.config = EgressConfig()
+            
         self.query_function = query_function
-        self.metadata = config.metadata
-        _egress_apis[name] = self
+        self.metadata = self.config.metadata
+        
+        # Register the API with appropriate key(s)
+        if self.config.version:
+            # Register versioned API with "v{version}/{name}" format
+            versioned_key = f"v{self.config.version}/{name}"
+            _egress_apis[versioned_key] = self
+            
+            # For backward compatibility, register unversioned API only if:
+            # 1. No unversioned API exists with this name yet, OR
+            # 2. This is version "1" (default version)
+            if name not in _egress_apis or self.config.version == "1":
+                _egress_apis[name] = self
+        else:
+            # For APIs without version, register with just the name
+            _egress_apis[name] = self
 
     @classmethod
     def _get_type(cls, keyword_args: dict):

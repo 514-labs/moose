@@ -61,4 +61,11 @@ class IngestApi(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         self.metadata = getattr(config, 'metadata', None)
-        _ingest_apis[name] = self
+        
+        # Register the API with versioned key if version is present
+        if config.version:
+            versioned_key = f"{name}_v{config.version}"
+            _ingest_apis[versioned_key] = self
+        else:
+            # Register unversioned API with just the name
+            _ingest_apis[name] = self

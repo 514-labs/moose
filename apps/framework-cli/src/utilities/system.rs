@@ -136,7 +136,7 @@ impl RestartingProcess {
         })
     }
 
-    pub async fn stop(self) -> () {
+    pub async fn stop(self) {
         let _ = self.kill.send(());
 
         if let Err(e) = self.monitor_task.await {

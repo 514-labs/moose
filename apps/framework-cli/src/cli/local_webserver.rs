@@ -175,14 +175,21 @@ impl Default for LocalWebserverConfig {
     }
 }
 
-#[tracing::instrument(skip(consumption_apis, req, is_prod), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
+/// Configuration for consumption API requests
+struct ConsumptionApiConfig<'a> {
+    host: String,
+    consumption_apis: &'a RwLock<HashSet<String>>,
+    is_prod: bool,
+    proxy_port: u16,
+}
+
+#[tracing::instrument(skip(config, req), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
 async fn get_consumption_api_res(
     http_client: Arc<Client>,
     req: Request<hyper::body::Incoming>,
-    host: String,
-    consumption_apis: &RwLock<HashSet<String>>,
-    is_prod: bool,
-    proxy_port: u16,
+    config: ConsumptionApiConfig<'_>,
+    version_segment: Option<String>,
+    endpoint_segment: Option<String>,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -196,11 +203,29 @@ async fn get_consumption_api_res(
             )))?);
     }
 
+    // Determine what to proxy - handle both versioned and unversioned paths
+    let consumption_path = if let (Some(_), Some(endpoint)) = (&version_segment, &endpoint_segment)
+    {
+        // For versioned paths like /consumption/v1/Bar, forward as /endpoint
+        // The consumption API server itself doesn't need the version in the path
+        format!("/{endpoint}")
+    } else if let Some(endpoint) = &endpoint_segment {
+        // For traditional paths like /consumption/Bar, forward as /endpoint
+        format!("/{endpoint}")
+    } else {
+        // Fallback: use the original path
+        req.uri()
+            .path()
+            .strip_prefix("/consumption")
+            .unwrap_or("")
+            .to_string()
+    };
+
     let url = format!(
         "http://{}:{}{}{}",
-        host,
-        proxy_port,
-        req.uri().path().strip_prefix("/consumption").unwrap_or(""),
+        config.host,
+        config.proxy_port,
+        consumption_path,
         req.uri()
             .query()
             .map_or("".to_string(), |q| format!("?{q}"))
@@ -208,15 +233,22 @@ async fn get_consumption_api_res(
 
     debug!("Creating client for route: {:?}", url);
     {
-        let consumption_apis = consumption_apis.read().await;
-        let consumption_name = req
-            .uri()
-            .path()
-            .strip_prefix("/consumption/")
-            .unwrap_or(req.uri().path());
+        let consumption_apis = config.consumption_apis.read().await;
+        let consumption_name =
+            if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
+                // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
+                format!("{version}/{endpoint}")
+            } else {
+                // For traditional paths, extract just the endpoint name
+                req.uri()
+                    .path()
+                    .strip_prefix("/consumption/")
+                    .unwrap_or(req.uri().path())
+                    .to_string()
+            };
 
-        if !consumption_apis.contains(consumption_name) {
-            if !is_prod {
+        if !consumption_apis.contains(&consumption_name) {
+            if !config.is_prod {
                 println!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
@@ -241,6 +273,20 @@ async fn get_consumption_api_res(
     let headers = client_req.headers_mut();
     for (key, value) in req.headers() {
         headers.insert(key, value.clone());
+    }
+
+    // Add version information as a custom header if available
+    if let Some(version) = &version_segment {
+        // Strip the 'v' prefix if present (e.g., "v1" -> "1")
+        let version_number = if version.starts_with('v') {
+            &version[1..]
+        } else {
+            version
+        };
+        headers.insert(
+            "x-moose-api-version",
+            HeaderValue::from_str(version_number).unwrap(),
+        );
     }
 
     // Send request
@@ -799,6 +845,12 @@ async fn ingest_route(
     debug!("Attempting to find route: {:?}", route);
     let route_table_read = route_table.read().await;
     debug!("Available routes: {:?}", route_table_read.keys());
+    // Print route table for debugging
+    eprintln!("DEBUG: Looking for route: {:?}", route);
+    eprintln!(
+        "DEBUG: Available routes: {:?}",
+        route_table_read.keys().collect::<Vec<_>>()
+    );
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
@@ -896,51 +948,85 @@ async fn router(
     let metrics_method = req.method().to_string();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
+    eprintln!(
+        "DEBUG ROUTE_SPLIT: route: {:?}, route_split: {:?}",
+        route, route_split
+    );
     let res = match (configured_producer, req.method(), &route_split[..]) {
+        // Handle explicit version in path (e.g., /ingest/v1/Foo)
+        (
+            Some(configured_producer),
+            &hyper::Method::POST,
+            ["ingest", version_segment, endpoint],
+        ) if version_segment.starts_with('v') => {
+            let version_str = version_segment.to_string();
+            let version_number = version_str.strip_prefix('v').unwrap_or(version_segment);
+            let constructed_route = PathBuf::from("ingest").join(endpoint).join(version_number);
+
+            eprintln!("DEBUG VERSIONED: Original path: {}, version_segment: {}, endpoint: {}, version_number: {}, constructed_route: {:?}", 
+                req.uri().path(), version_segment, endpoint, version_number, constructed_route);
+
+            // This handles paths like /ingest/v1/Foo where the version is explicitly in the URL
+            ingest_route(
+                req,
+                constructed_route,
+                configured_producer,
+                route_table,
+                is_prod,
+                jwt_config,
+            )
+            .await
+        }
+        // Handle unversioned paths (e.g., /ingest/Foo)
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
-                // For v2, find the latest version if no version specified
+                // For DMv2, try direct route first (unversioned endpoint)
                 let route_table_read = route_table.read().await;
-                let base_path = route.to_str().unwrap();
-                let mut latest_version: Option<&Version> = None;
-
-                // First find matching routes, then get latest version
-                for (path, meta) in route_table_read.iter() {
-                    let path_str = path.to_str().unwrap();
-                    if path_str.starts_with(base_path) {
-                        if let Some(version) = &meta.version {
-                            if latest_version.is_none() || version > latest_version.unwrap() {
-                                latest_version = Some(version);
+                if route_table_read.contains_key(&route) {
+                    ingest_route(
+                        req,
+                        route,
+                        configured_producer,
+                        route_table,
+                        is_prod,
+                        jwt_config,
+                    )
+                    .await
+                } else {
+                    // Find an available version for this endpoint
+                    let route_str = route.to_str().unwrap();
+                    let available_versions: Vec<String> = route_table_read
+                        .keys()
+                        .filter_map(|k| {
+                            let k_str = k.to_str().unwrap();
+                            if k_str.starts_with(&format!("{}/", route_str)) {
+                                let version = k_str.strip_prefix(&format!("{}/", route_str))?;
+                                Some(version.to_string())
+                            } else {
+                                None
                             }
-                        }
-                    }
-                }
+                        })
+                        .collect();
 
-                match latest_version {
-                    // If latest version exists, use it
-                    Some(version) => {
-                        ingest_route(
-                            req,
-                            route.join(version.to_string()),
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                        )
-                        .await
-                    }
-                    None => {
-                        // Otherwise, try direct route
-                        ingest_route(
-                            req,
-                            route,
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                        )
-                        .await
-                    }
+                    // Try current version first, then fall back to any available version
+                    let fallback_version = if available_versions.contains(&current_version) {
+                        current_version.clone()
+                    } else {
+                        available_versions
+                            .first()
+                            .cloned()
+                            .unwrap_or(current_version.clone())
+                    };
+
+                    ingest_route(
+                        req,
+                        route.join(&fallback_version),
+                        configured_producer,
+                        route_table,
+                        is_prod,
+                        jwt_config,
+                    )
+                    .await
                 }
             } else {
                 // For v1, append current version as before
@@ -955,6 +1041,7 @@ async fn router(
                 .await
             }
         }
+        // Legacy handler for three-segment paths (should be kept for backward compatibility)
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(
                 req,
@@ -978,14 +1065,48 @@ async fn router(
         (_, &hyper::Method::POST, ["admin", "plan"]) => {
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
-        (_, &hyper::Method::GET, ["consumption", _rt]) => {
+        // Handle explicit version in consumption path (e.g., /consumption/v1/Foo)
+        (_, &hyper::Method::GET, ["consumption", version_segment, endpoint])
+            if version_segment.starts_with('v') =>
+        {
+            match get_consumption_api_res(
+                http_client.clone(),
+                req,
+                ConsumptionApiConfig {
+                    host: host.clone(),
+                    consumption_apis,
+                    is_prod,
+                    proxy_port: project.http_server_config.proxy_port,
+                },
+                Some(version_segment.to_string()),
+                Some(endpoint.to_string()),
+            )
+            .await
+            {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    debug!("Error: {:?}", e);
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Error")))
+                }
+            }
+        }
+        // Handle traditional consumption path (e.g., /consumption/Foo)
+        (_, &hyper::Method::GET, ["consumption", endpoint]) => {
+            // Always try to serve the unversioned endpoint if it exists
+            // This allows unversioned endpoints to work even when versioned endpoints are available
             match get_consumption_api_res(
                 http_client,
                 req,
-                host,
-                consumption_apis,
-                is_prod,
-                project.http_server_config.proxy_port,
+                ConsumptionApiConfig {
+                    host,
+                    consumption_apis,
+                    is_prod,
+                    proxy_port: project.http_server_config.proxy_port,
+                },
+                None,
+                Some(endpoint.to_string()),
             )
             .await
             {
@@ -1237,10 +1358,24 @@ impl Webserver {
                                 );
                             }
                             APIType::EGRESS { .. } => {
-                                consumption_apis
-                                    .write()
-                                    .await
-                                    .insert(api_endpoint.path.to_string_lossy().to_string());
+                                let mut apis_to_insert = Vec::new();
+
+                                if let Some(version) = &api_endpoint.version {
+                                    // Register versioned path
+                                    apis_to_insert.push(format!(
+                                        "v{}/{}",
+                                        version.as_str(),
+                                        api_endpoint.name
+                                    ));
+                                }
+
+                                // Always register unversioned path for backward compatibility
+                                apis_to_insert.push(api_endpoint.name.clone());
+
+                                let mut consumption_apis = consumption_apis.write().await;
+                                for api_name in apis_to_insert {
+                                    consumption_apis.insert(api_name);
+                                }
                             }
                         }
                     }
@@ -1251,10 +1386,24 @@ impl Webserver {
                                 route_table.remove(&api_endpoint.path);
                             }
                             APIType::EGRESS { .. } => {
-                                consumption_apis
-                                    .write()
-                                    .await
-                                    .remove(&api_endpoint.path.to_string_lossy().to_string());
+                                let mut apis_to_remove = Vec::new();
+
+                                if let Some(version) = &api_endpoint.version {
+                                    // Remove versioned path
+                                    apis_to_remove.push(format!(
+                                        "v{}/{}",
+                                        version.as_str(),
+                                        api_endpoint.name
+                                    ));
+                                }
+
+                                // Remove unversioned path
+                                apis_to_remove.push(api_endpoint.name.clone());
+
+                                let mut consumption_apis = consumption_apis.write().await;
+                                for api_name in apis_to_remove {
+                                    consumption_apis.remove(&api_name);
+                                }
                             }
                         }
                     }

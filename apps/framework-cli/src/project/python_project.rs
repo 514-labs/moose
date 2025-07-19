@@ -84,7 +84,7 @@ impl Default for PythonProject {
             python_requires,
             dependencies: vec![
                 format!("clickhouse_connect==0.7.16; {python_version}").to_string(),
-                format!("requests==2.32.3; {python_version}").to_string(),
+                format!("requests==2.32.4; {python_version}").to_string(),
                 moose_cli_requirement,
                 moose_lib_requirement,
             ],

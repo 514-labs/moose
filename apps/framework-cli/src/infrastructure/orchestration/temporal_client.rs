@@ -12,7 +12,7 @@ use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
 use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
-use crate::infrastructure::orchestration::temporal::TemporalConfig;
+use crate::infrastructure::orchestration::temporal::{InvalidTemporalSchemeError, TemporalConfig};
 
 pub struct TemporalClientManager {
     temporal_url: String,
@@ -52,14 +52,21 @@ impl tonic::service::Interceptor for ApiKeyInterceptor {
 }
 
 impl TemporalClientManager {
-    pub fn new(config: &TemporalConfig) -> Self {
-        Self {
-            temporal_url: config.temporal_url_with_scheme(),
+    pub fn new(config: &TemporalConfig) -> Result<Self, InvalidTemporalSchemeError> {
+        Self::new_validate(config, true)
+    }
+
+    pub fn new_validate(
+        config: &TemporalConfig,
+        validate: bool,
+    ) -> Result<Self, InvalidTemporalSchemeError> {
+        Ok(Self {
+            temporal_url: config.temporal_url_with_scheme_validate(validate)?,
             ca_cert: config.ca_cert.clone(),
             client_cert: config.client_cert.clone(),
             client_key: config.client_key.clone(),
             api_key: config.api_key.clone(),
-        }
+        })
     }
 
     pub async fn execute<F, Fut, R>(&self, operation: F) -> Result<R>
@@ -182,8 +189,11 @@ impl TemporalClient {
                 {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
-                        let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        let concise_msg = format!(
+                            "status: {code:?}, message: {message}",
+                            code = status.code(),
+                            message = status.message()
+                        );
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }
@@ -195,8 +205,11 @@ impl TemporalClient {
                 {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
-                        let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        let concise_msg = format!(
+                            "status: {code:?}, message: {message}",
+                            code = status.code(),
+                            message = status.message()
+                        );
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }

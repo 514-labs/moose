@@ -39,7 +39,7 @@ pub async fn init_workflow(
         RoutineFailure::new(
             Message {
                 action: "Workflow Init Failed".to_string(),
-                details: format!("Could not initialize workflow '{}': {}", project.name(), e),
+                details: format!("Could not initialize workflow '{}': {e}", project.name()),
             },
             e,
         )
@@ -59,7 +59,15 @@ pub async fn run_workflow(
     name: &str,
     input: Option<String>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     let infra_map = InfrastructureMap::load_from_user_code(project)
@@ -132,12 +140,12 @@ pub async fn run_workflow(
     }
 
     let dashboard_url =
-        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history");
+        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history",);
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n"
+            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n",
         ),
     }))
 }
@@ -149,8 +157,22 @@ pub async fn list_workflows(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut table_data = Vec::new();
 
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     // Convert status string to Temporal status enum
@@ -238,8 +260,22 @@ pub async fn terminate_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     let request = TerminateWorkflowExecutionRequest {
@@ -285,8 +321,23 @@ pub async fn terminate_workflow(
 }
 
 pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = Arc::new(TemporalClientManager::new(&project.temporal_config));
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = Arc::new(
+        TemporalClientManager::new_validate(&project.temporal_config, true).map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?,
+    );
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     let request = ListWorkflowExecutionsRequest {
@@ -326,7 +377,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .into_iter()
         .filter_map(|execution| execution.execution)
         .map(|execution_info| {
-            let client_manager = Arc::clone(&client_manager);
+            let client_manager: Arc<TemporalClientManager> = Arc::clone(&client_manager);
             let namespace = namespace.clone();
             async move {
                 let request = TerminateWorkflowExecutionRequest {
@@ -364,7 +415,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         details: format!(
             "Found workflows: {} | Terminated workflows: {}",
             total_workflows,
-            results.len()
+            results.len(),
         ),
     }))
 }
@@ -373,8 +424,22 @@ pub async fn pause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     let request = SignalWorkflowExecutionRequest {
@@ -415,8 +480,22 @@ pub async fn unpause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url);
 
     let request = SignalWorkflowExecutionRequest {
@@ -616,8 +695,22 @@ pub async fn get_workflow_status(
     verbose: bool,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let temporal_url = project
+        .temporal_config
+        .temporal_url_with_scheme()
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Invalid temporal scheme: {e}"),
+            })
+        })?;
     let namespace = get_temporal_namespace(&temporal_url).to_string();
 
     // If no run_id provided, get the most recent one

@@ -28,7 +28,8 @@ class IngestConfigWithDestination[T: BaseModel]:
 
     Attributes:
         destination: The `Stream` where ingested data will be sent.
-        version: Optional version string.
+        dead_letter_queue: Optional DeadLetterQueue where failed records will be sent.
+        version: Optional version string for this configuration.
         metadata: Optional metadata for the ingestion configuration.
     """
     destination: Stream[T]
@@ -60,12 +61,28 @@ class IngestApi(TypedMooseResource, Generic[T]):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         self.config = config
-        self.metadata = getattr(config, 'metadata', None)
         
-        # Register the API with versioned key if version is present
-        if config.version:
-            versioned_key = f"{name}_v{config.version}"
-            _ingest_apis[versioned_key] = self
-        else:
-            # Register unversioned API with just the name
-            _ingest_apis[name] = self
+        # Initialize metadata object if not present
+        self.metadata = getattr(config, 'metadata', {}) or {}
+        
+        # Add source file information for debugging
+        import inspect
+        frame = inspect.currentframe()
+        if frame:
+            frame_info = inspect.getouterframes(frame)[1]
+            self.metadata.setdefault('source', {
+                'file': frame_info.filename,
+                'line': frame_info.lineno
+            })
+        
+        # Create a unique key that includes version information if available
+        version = config.version
+        api_key = f"v{version}/{name}" if version else name
+        
+        # Check for existing API with the same key
+        if api_key in _ingest_apis:
+            version_text = f" version {version}" if version else ""
+            raise ValueError(f"Ingest API with name {name}{version_text} already exists")
+            
+        # Register the API with the appropriate key
+        _ingest_apis[api_key] = self

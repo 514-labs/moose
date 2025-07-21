@@ -102,22 +102,41 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
             self.config = EgressConfig()
             
         self.query_function = query_function
-        self.metadata = self.config.metadata
         
-        # Register the API with appropriate key(s)
-        if self.config.version:
-            # Register versioned API with "v{version}/{name}" format
-            versioned_key = f"v{self.config.version}/{name}"
-            _egress_apis[versioned_key] = self
+        # Initialize metadata object if not present
+        self.metadata = getattr(config, 'metadata', {}) or {}
+        
+        # Add source file information for debugging
+        import inspect
+        frame = inspect.currentframe()
+        if frame:
+            frame_info = inspect.getouterframes(frame)[1]
+            self.metadata.setdefault('source', {
+                'file': frame_info.filename,
+                'line': frame_info.lineno
+            })
+        
+        # Counter to ensure uniqueness when no version is specified (static counter)
+        if not hasattr(ConsumptionApi, '_unversioned_api_counter'):
+            ConsumptionApi._unversioned_api_counter = 0
             
-            # For backward compatibility, register unversioned API only if:
-            # 1. No unversioned API exists with this name yet, OR
-            # 2. This is version "1" (default version)
-            if name not in _egress_apis or self.config.version == "1":
-                _egress_apis[name] = self
+        # Create a unique key that includes version information if available
+        version = self.config.version
+        if version:
+            # Use version-based key when version is specified
+            api_key = f"v{version}/{name}"
         else:
-            # For APIs without version, register with just the name
-            _egress_apis[name] = self
+            # Generate unique key for unversioned APIs using counter
+            api_key = f"{name}_{ConsumptionApi._unversioned_api_counter}"
+            ConsumptionApi._unversioned_api_counter += 1
+        
+        # Check for existing API with the same key
+        if api_key in _egress_apis:
+            version_text = f" version {version}" if version else ""
+            raise ValueError(f"Consumption API with name {name}{version_text} already exists")
+            
+        # Register the API with the appropriate key
+        _egress_apis[api_key] = self
 
     @classmethod
     def _get_type(cls, keyword_args: dict):

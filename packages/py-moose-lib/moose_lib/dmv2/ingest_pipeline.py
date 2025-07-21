@@ -23,6 +23,7 @@ class IngestPipelineConfig(BaseModel):
         table: Configuration for the OLAP table component.
         stream: Configuration for the stream component.
         ingest: Configuration for the ingest API component.
+        dead_letter_queue: Configuration for the dead letter queue component.
         version: Optional version string applied to all created components.
         metadata: Optional metadata for the ingestion pipeline.
     """
@@ -115,42 +116,60 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
     def __init__(self, name: str, config: IngestPipelineConfig, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        self.metadata = config.metadata
-        table_metadata = config.metadata
-        stream_metadata = config.metadata
-        ingest_metadata = config.metadata
+        
+        # Initialize metadata
+        self.metadata = config.metadata or {}
+        
+        # Apply version to all components if provided
+        version = config.version
+        
+        # Create table if configured
         if config.table:
             table_config = OlapConfig() if config.table is True else config.table
-            if config.version:
-                table_config.version = config.version
-            table_config.metadata = table_metadata
+            if version:
+                table_config.version = version
+            table_config.metadata = self.metadata.copy()
             self.table = OlapTable(name, table_config, t=self._t)
+        
+        # Create stream if configured
         if config.stream:
             stream_config = StreamConfig() if config.stream is True else config.stream
             if config.table and stream_config.destination is not None:
                 raise ValueError("The destination of the stream should be the table created in the IngestPipeline")
             stream_config.destination = self.table
-            if config.version:
-                stream_config.version = config.version
-            stream_config.metadata = stream_metadata
+            if version:
+                stream_config.version = version
+            stream_config.metadata = self.metadata.copy()
             self.stream = Stream(name, stream_config, t=self._t)
+        
+        # Create dead letter queue if configured
         if config.dead_letter_queue:
-            stream_config = StreamConfig() if config.dead_letter_queue is True else config.dead_letter_queue
-            if config.version:
-                stream_config.version = config.version
-            stream_config.metadata = stream_metadata
-            self.dead_letter_queue = DeadLetterQueue(f"{name}DeadLetterQueue", stream_config, t=self._t)
+            dlq_config = StreamConfig() if config.dead_letter_queue is True else config.dead_letter_queue
+            if version:
+                dlq_config.version = version
+            dlq_config.metadata = self.metadata.copy()
+            self.dead_letter_queue = DeadLetterQueue(f"{name}DeadLetterQueue", dlq_config, t=self._t)
+        
+        # Create ingest API if configured
         if config.ingest:
             if self.stream is None:
                 raise ValueError("Ingest API needs a stream to write to.")
-            ingest_config_dict = (
-                IngestConfig() if config.ingest is True else config.ingest
-            ).model_dump()
-            ingest_config_dict["destination"] = self.stream
-            if config.version:
-                ingest_config_dict["version"] = config.version
+            
+            # Create ingest config with version
+            ingest_config = {}
+            if isinstance(config.ingest, IngestConfig):
+                ingest_config = config.ingest.model_dump()
+            
+            # Set destination, version, and DLQ
+            ingest_config["destination"] = self.stream
+            if version:
+                ingest_config["version"] = version
             if self.dead_letter_queue:
-                ingest_config_dict["dead_letter_queue"] = self.dead_letter_queue
-            ingest_config_dict["metadata"] = ingest_metadata
-            ingest_config = IngestConfigWithDestination(**ingest_config_dict)
-            self.ingest_api = IngestApi(name, ingest_config, t=self._t)
+                ingest_config["dead_letter_queue"] = self.dead_letter_queue
+            
+            # Add metadata
+            ingest_config["metadata"] = self.metadata.copy()
+            
+            # Create the ingest API
+            ingest_config_obj = IngestConfigWithDestination(**ingest_config)
+            self.ingest_api = IngestApi(name, ingest_config_obj, t=self._t)

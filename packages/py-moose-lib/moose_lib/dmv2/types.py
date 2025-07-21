@@ -83,13 +83,26 @@ class TypedMooseResource(BaseTypedResource, Generic[T]):
     """Base class for Moose resources that have columns derived from a Pydantic model.
 
     Extends `BaseTypedResource` by adding a `Columns` helper for type-safe
-    column name access.
+    column name access and metadata tracking.
 
     Attributes:
         columns (Columns[T]): An object providing attribute access to column names.
+        metadata (dict): Metadata about this resource, including source file information.
     """
     columns: Columns[T]
+    metadata: dict
 
     def _set_type(self, name: str, t: type[T]):
         super()._set_type(name, t)
         self.columns = Columns[T](self._t)
+        self.metadata = {}
+        
+        # Add source file information for debugging (similar to TypeScript's getInstantiationFileInfo)
+        import inspect
+        frame = inspect.currentframe()
+        if frame:
+            frame_info = inspect.getouterframes(frame)[1]
+            self.metadata['source'] = {
+                'file': frame_info.filename,
+                'line': frame_info.lineno
+            }

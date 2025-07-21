@@ -33,16 +33,38 @@ def get_ingest_apis() -> Dict[str, IngestApi]:
     """Get all registered ingestion APIs."""
     return _ingest_apis
 
-def get_ingest_api(name: str) -> Optional[IngestApi]:
-    """Get a registered ingestion API by name."""
+def get_ingest_api(name: str, version: str = None) -> Optional[IngestApi]:
+    """Get a registered ingestion API by name and optional version.
+    
+    Args:
+        name: The name of the ingestion API.
+        version: Optional version string to look up a specific version.
+        
+    Returns:
+        The IngestApi instance if found, otherwise None.
+    """
+    if version:
+        key = f"v{version}/{name}"
+        return _ingest_apis.get(key)
     return _ingest_apis.get(name)
 
 def get_consumption_apis() -> Dict[str, ConsumptionApi]:
     """Get all registered consumption APIs."""
     return _egress_apis
 
-def get_consumption_api(name: str) -> Optional[ConsumptionApi]:
-    """Get a registered consumption API by name."""
+def get_consumption_api(name: str, version: str = None) -> Optional[ConsumptionApi]:
+    """Get a registered consumption API by name and optional version.
+    
+    Args:
+        name: The name of the consumption API.
+        version: Optional version string to look up a specific version.
+        
+    Returns:
+        The ConsumptionApi instance if found, otherwise None.
+    """
+    if version:
+        key = f"v{version}/{name}"
+        return _egress_apis.get(key)
     return _egress_apis.get(name)
 
 def get_sql_resources() -> Dict[str, SqlResource]:

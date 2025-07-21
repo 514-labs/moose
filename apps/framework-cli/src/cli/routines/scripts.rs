@@ -90,12 +90,11 @@ fn calculate_duration_from_timestamps(
     };
 
     let start_dt = chrono::DateTime::from_timestamp(start.seconds, start.nanos as u32)
-        .unwrap_or_else(|| Utc::now());
+        .unwrap_or_else(Utc::now);
 
     let end_dt = if let Some(close) = close_time {
         // Workflow is completed, use close time
-        chrono::DateTime::from_timestamp(close.seconds, close.nanos as u32)
-            .unwrap_or_else(|| Utc::now())
+        chrono::DateTime::from_timestamp(close.seconds, close.nanos as u32).unwrap_or_else(Utc::now)
     } else {
         // Workflow is still running, use current time
         Utc::now()
@@ -291,7 +290,7 @@ pub async fn get_workflow_list(
 
     // Build query string for Temporal
     let query = if let Some(status) = status_filter {
-        format!("ExecutionStatus = '{}'", status)
+        format!("ExecutionStatus = '{status}'")
     } else {
         "".to_string()
     };

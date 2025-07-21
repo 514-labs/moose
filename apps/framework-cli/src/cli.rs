@@ -692,9 +692,11 @@ pub async fn top_command_handler(
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }
-                Some(WorkflowCommands::List { status, limit }) => {
-                    list_workflows(&project, status.clone(), *limit).await
-                }
+                Some(WorkflowCommands::List {
+                    status,
+                    limit,
+                    json,
+                }) => list_workflows(&project, status.clone(), *limit, *json).await,
                 Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
                     action: "Workflow Resume".to_string(),
                     details: "Not implemented yet".to_string(),

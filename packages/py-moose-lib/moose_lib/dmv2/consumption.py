@@ -116,19 +116,14 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
                 'line': frame_info.lineno
             })
         
-        # Counter to ensure uniqueness when no version is specified (static counter)
-        if not hasattr(ConsumptionApi, '_unversioned_api_counter'):
-            ConsumptionApi._unversioned_api_counter = 0
-            
         # Create a unique key that includes version information if available
         version = self.config.version
         if version:
             # Use version-based key when version is specified
             api_key = f"v{version}/{name}"
         else:
-            # Generate unique key for unversioned APIs using counter
-            api_key = f"{name}_{ConsumptionApi._unversioned_api_counter}"
-            ConsumptionApi._unversioned_api_counter += 1
+            # For unversioned APIs, use the plain name for routing compatibility
+            api_key = name
         
         # Check for existing API with the same key
         if api_key in _egress_apis:

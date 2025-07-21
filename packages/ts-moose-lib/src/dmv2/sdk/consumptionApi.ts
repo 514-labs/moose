@@ -28,9 +28,6 @@ export interface EgressConfig<T> {
   metadata?: { description?: string };
 }
 
-// Counter to ensure uniqueness when no version is specified
-let unversionedApiCounter = 0;
-
 /**
  * Class representing a Consumption API that can be registered in Moose.
  * @template T The data type of the request parameters.
@@ -86,8 +83,8 @@ export class ConsumptionApi<T = any, R = any> extends TypedBase<
       // Use version-based key when version is specified
       apiKey = `v${version}/${name}`;
     } else {
-      // Generate unique key for unversioned APIs using counter
-      apiKey = `${name}_${unversionedApiCounter++}`;
+      // For unversioned APIs, use the plain name for routing compatibility
+      apiKey = name;
     }
 
     if (egressApis.has(apiKey)) {

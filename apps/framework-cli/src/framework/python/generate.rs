@@ -520,7 +520,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     annotations: vec![],
                 },
                 Column {
-                    name: "zip_code".to_string(),
+                    name: "zipCode".to_string(),
                     data_type: ColumnType::String,
                     required: false,
                     unique: false,
@@ -583,7 +583,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
             r#"class Address(BaseModel):
     street: str
     city: str
-    zip_code: Optional[str] = None
+    zipCode: Optional[str] = None
 
 class User(BaseModel):
     id: Key[str]

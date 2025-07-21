@@ -20,7 +20,7 @@
 /// can be started in both development and production modes.
 use super::display::{with_spinner, with_spinner_async, Message, MessageType};
 use super::routines::auth::validate_auth_token;
-use super::routines::scripts::terminate_all_workflows;
+use super::routines::scripts::{get_workflow_list, terminate_all_workflows};
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::kafka::models::KafkaStreamConfig;
@@ -346,6 +346,65 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
         .unwrap();
 
     Ok(response)
+}
+
+#[derive(Deserialize, Default)]
+struct WorkflowQueryParams {
+    status: Option<String>,
+    limit: Option<u32>,
+}
+
+async fn workflows_list_route(
+    req: Request<hyper::body::Incoming>,
+    is_prod: bool,
+    project: Arc<Project>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    if is_prod {
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                serde_json::to_string(&json!({
+                    "error": "Workflows list not available in production"
+                }))
+                .unwrap(),
+            )));
+    }
+
+    let query_params: WorkflowQueryParams = req
+        .uri()
+        .query()
+        .map(|q| serde_urlencoded::from_str(q).unwrap_or_default())
+        .unwrap_or_default();
+
+    let limit = query_params.limit.unwrap_or(10).min(1000);
+
+    match get_workflow_list(&project, query_params.status, limit).await {
+        Ok(workflows) => {
+            let json_string =
+                serde_json::to_string(&workflows).unwrap_or_else(|_| "[]".to_string());
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "application/json")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(Full::new(Bytes::from(json_string)))
+        }
+        Err(e) => {
+            error!("Failed to get workflow list: {:?}", e);
+            let error_response = json!({
+                "error": "Failed to retrieve workflow list",
+                "details": format!("{:?}", e)
+            });
+
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(
+                    serde_json::to_string(&error_response).unwrap(),
+                )))
+        }
+    }
 }
 
 async fn health_route(
@@ -1007,6 +1066,9 @@ async fn router(
                 &redis_client,
             )
             .await
+        }
+        (_, &hyper::Method::GET, ["workflows", "list"]) => {
+            workflows_list_route(req, is_prod, project.clone()).await
         }
         (_, &hyper::Method::OPTIONS, _) => options_route(),
         _ => route_not_found_response(),

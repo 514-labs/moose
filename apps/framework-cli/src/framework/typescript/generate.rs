@@ -118,13 +118,7 @@ fn generate_interface(
         } else {
             type_str
         };
-        writeln!(
-            interface,
-            "    {}: {};",
-            column.name.to_case(Case::Camel),
-            type_str
-        )
-        .unwrap();
+        writeln!(interface, "    {}: {};", column.name, type_str).unwrap();
     }
     writeln!(interface, "}}").unwrap();
     writeln!(interface).unwrap();
@@ -215,13 +209,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
             } else {
                 type_str
             };
-            writeln!(
-                output,
-                "    {}: {};",
-                column.name.to_case(Case::Camel),
-                type_str
-            )
-            .unwrap();
+            writeln!(output, "    {}: {};", column.name, type_str).unwrap();
         }
         writeln!(output, "}}").unwrap();
         writeln!(output).unwrap();
@@ -340,7 +328,7 @@ mod tests {
             r#"export interface Address {
     street: string;
     city: string;
-    zipCode: string | undefined;
+    zip_code: string | undefined;
 }
 
 export interface User {

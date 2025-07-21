@@ -118,7 +118,7 @@ aurora connect clickhouse <--connection-string <connection-string>> <--mcp <clau
 Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
 
 ```bash filename="Terminal" copy
-aurora setup [path] <--mcp <host>>
+aurora setup [path] <tools> <--mcp <host>>
 ```
 
 <ArgTable
@@ -133,6 +133,11 @@ aurora setup [path] <--mcp <host>>
       name: "--mcp <host>",
       description: "Choice of which MCP host to use. If flag is not provided, the default is `cursor-project`.",
       examples: ["default: cursor-project", "other options: claude-desktop", "cursor-global", "cursor-project", "windsurf-global"]
+    },
+    {
+      name: "--<tools>",
+      description: "Setup Aurora MCP to already have access to Moose read tools",
+      examples: ["--moose-read-tools", "--moose-write-tools", "--remote-clickhouse-tools"]
     }
   ]}
 />

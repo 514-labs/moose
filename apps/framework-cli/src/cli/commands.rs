@@ -224,6 +224,10 @@ pub enum WorkflowCommands {
         /// Limit the number of workflows shown
         #[arg(short, long, default_value = "10")]
         limit: u32,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
     },
     /// Terminate a workflow
     Terminate {

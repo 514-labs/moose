@@ -38,7 +38,7 @@ export class ConsumptionApi<T = any, R = any> extends TypedBase<
   EgressConfig<T>
 > {
   protected _handler: ConsumptionHandler<T, R>;
-  private responseSchema: IJsonSchemaCollection.IV3_1;
+  protected responseSchema: IJsonSchemaCollection.IV3_1;
 
   /**
    * Retrieves the response schema associated with this Consumption API.

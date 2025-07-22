@@ -278,8 +278,8 @@ async fn get_consumption_api_res(
     // Add version information as a custom header if available
     if let Some(version) = &version_segment {
         // Strip the 'v' prefix if present (e.g., "v1" -> "1")
-        let version_number = if version.starts_with('v') {
-            &version[1..]
+        let version_number = if let Some(stripped) = version.strip_prefix('v') {
+            stripped
         } else {
             version
         };

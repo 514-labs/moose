@@ -570,7 +570,7 @@ impl PartialInfrastructureMap {
     ) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
-        for (_topic_name, partial_topic) in &self.topics {
+        for partial_topic in self.topics.values() {
             if let Some(target_table_name) = &partial_topic.target_table {
                 // Find the topic by constructing the versioned key
                 let topic_key = partial_topic

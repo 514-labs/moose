@@ -43,14 +43,14 @@ pub struct TopicToTableSyncProcess {
 }
 
 impl TopicToTableSyncProcess {
-    pub fn new(topic: &Topic, table: &Table) -> Result<Self, SyncProcessError> {
+    pub fn new(topic: &Topic, table: &Table) -> Result<Self, Box<SyncProcessError>> {
         if topic.version != table.version {
-            return Err(SyncProcessError::VersionMismatch {
+            return Err(Box::new(SyncProcessError::VersionMismatch {
                 topic_id: topic.id(),
                 topic_version: topic.version.clone(),
                 table_id: table.id(),
                 table_version: table.version.clone(),
-            });
+            }));
         }
 
         Ok(TopicToTableSyncProcess {

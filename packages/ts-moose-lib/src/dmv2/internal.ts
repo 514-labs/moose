@@ -334,7 +334,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     egressApis[rustKey] = {
       name: api.name,
       queryParams: api.columnArray,
-      responseSchema: api.responseSchema,
+      responseSchema: api.getResponseSchema(),
       version: api.config.version,
       metadata: api.metadata,
     };

@@ -1044,8 +1044,8 @@ async fn router(
                         .keys()
                         .filter_map(|k| {
                             let k_str = k.to_str().unwrap();
-                            if k_str.starts_with(&format!("{}/", route_str)) {
-                                let version = k_str.strip_prefix(&format!("{}/", route_str))?;
+                            if k_str.starts_with(&format!("{route_str}/")) {
+                                let version = k_str.strip_prefix(&format!("{route_str}/"))?;
                                 Some(version.to_string())
                             } else {
                                 None

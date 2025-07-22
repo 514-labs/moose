@@ -488,7 +488,7 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
                     .iter()
                     .map(|param| param.name.clone())
                     .collect(),
-                path: format!("consumption/{}", versioned_name),
+                path: format!("consumption/{versioned_name}"),
             })
         }
     }

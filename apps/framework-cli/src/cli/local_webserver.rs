@@ -231,7 +231,7 @@ async fn get_consumption_api_res(
             .map_or("".to_string(), |q| format!("?{q}"))
     );
 
-    eprintln!("Creating client for route: {:?}", url);
+    debug!("Creating client for route: {:?}", url);
     {
         let consumption_apis = config.consumption_apis.read().await;
         let consumption_name =
@@ -246,11 +246,9 @@ async fn get_consumption_api_res(
                     .unwrap_or(req.uri().path())
                     .to_string()
             };
-        eprintln!("consumption_name: {}", consumption_name);
-        eprintln!("consumption_apis: {:?}", consumption_apis);
         if !consumption_apis.contains(&consumption_name) {
             if !config.is_prod {
-                eprintln!(
+                println!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
                     consumption_apis
@@ -289,8 +287,6 @@ async fn get_consumption_api_res(
             HeaderValue::from_str(version_number).unwrap(),
         );
     }
-
-    eprintln!("Headers {:?}", headers);
 
     // Send request
     let res = http_client.execute(client_req).await?;
@@ -907,13 +903,6 @@ async fn ingest_route(
     debug!("Attempting to find route: {:?}", route);
     let route_table_read = route_table.read().await;
     debug!("Available routes: {:?}", route_table_read.keys());
-    eprintln!("Available routes: {:?}", route_table_read.keys());
-    // Print route table for debugging
-    eprintln!("DEBUG: Looking for route: {:?}", route);
-    eprintln!(
-        "DEBUG: Available routes: {:?}",
-        route_table_read.keys().collect::<Vec<_>>()
-    );
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
@@ -1011,10 +1000,6 @@ async fn router(
     let metrics_method = req.method().to_string();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    eprintln!(
-        "DEBUG ROUTE_SPLIT: route: {:?}, route_split: {:?}",
-        route, route_split
-    );
     let res = match (configured_producer, req.method(), &route_split[..]) {
         // Handle explicit version in path (e.g., /ingest/v1/Foo)
         (
@@ -1025,9 +1010,6 @@ async fn router(
             let version_str = version_segment.to_string();
             let version_number = version_str.strip_prefix('v').unwrap_or(version_segment);
             let constructed_route = PathBuf::from("ingest").join(endpoint).join(version_number);
-
-            eprintln!("DEBUG VERSIONED: Original path: {}, version_segment: {}, endpoint: {}, version_number: {}, constructed_route: {:?}", 
-                req.uri().path(), version_segment, endpoint, version_number, constructed_route);
 
             // This handles paths like /ingest/v1/Foo where the version is explicitly in the URL
             ingest_route(
@@ -1132,11 +1114,6 @@ async fn router(
         (_, &hyper::Method::GET, ["consumption", version_segment, endpoint])
             if version_segment.starts_with('v') =>
         {
-            eprintln!(
-                "version {} - endpoint {}",
-                version_segment.to_string(),
-                endpoint.to_string()
-            );
             match get_consumption_api_res(
                 http_client.clone(),
                 req,

@@ -21,16 +21,36 @@ export interface MaterializedViewConfig<T> {
   /** An array of OlapTable or View objects that the `selectStatement` reads from. */
   selectTables: (OlapTable<any> | View)[];
 
-  /** The name for the underlying target OlapTable that stores the materialized data. */
-  tableName: string;
+  /** @deprecated See {@link targetTable}
+   *  The name for the underlying target OlapTable that stores the materialized data. */
+  tableName?: string;
   /** The name for the ClickHouse MATERIALIZED VIEW object itself. */
   materializedViewName: string;
 
-  /** Optional ClickHouse engine for the target table (e.g., ReplacingMergeTree). Defaults to MergeTree. */
+  /** @deprecated See {@link targetTable}
+   *  Optional ClickHouse engine for the target table (e.g., ReplacingMergeTree). Defaults to MergeTree. */
   engine?: ClickHouseEngines;
+
+  targetTable?:
+    | OlapTable<T> /**  Target table if the OlapTable object is already constructed. */
+    | {
+        /** The name for the underlying target OlapTable that stores the materialized data. */
+        name: string;
+        /** Optional ClickHouse engine for the target table (e.g., ReplacingMergeTree). Defaults to MergeTree. */
+        engine?: ClickHouseEngines;
+      };
+
   /** Optional ordering fields for the target table. Crucial if using ReplacingMergeTree. */
   orderByFields?: (keyof T & string)[];
 }
+
+const requireTargetTableName = (tableName: string | undefined): string => {
+  if (typeof tableName === "string") {
+    return tableName;
+  } else {
+    throw new Error("Name of targetTable is not specified.");
+  }
+};
 
 /**
  * Represents a Materialized View in ClickHouse.
@@ -74,24 +94,30 @@ export class MaterializedView<TargetTable> extends SqlResource {
       );
     }
 
-    const targetTable = new OlapTable(
-      options.tableName,
-      {
-        orderByFields: options.orderByFields,
-      },
-      targetSchema,
-      targetColumns,
-    );
+    const targetTable =
+      options.targetTable instanceof OlapTable ?
+        options.targetTable
+      : new OlapTable(
+          requireTargetTableName(
+            options.targetTable?.name ?? options.tableName,
+          ),
+          {
+            orderByFields: options.orderByFields,
+            engine: options.targetTable?.engine ?? options.engine,
+          },
+          targetSchema,
+          targetColumns,
+        );
     super(
       options.materializedViewName,
       [
         createMaterializedView({
           name: options.materializedViewName,
-          destinationTable: options.tableName,
+          destinationTable: targetTable.name,
           select: selectStatement,
         }),
         populateTable({
-          destinationTable: options.tableName,
+          destinationTable: targetTable.name,
           select: selectStatement,
         }),
       ],

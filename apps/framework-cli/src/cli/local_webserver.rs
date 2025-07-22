@@ -231,7 +231,7 @@ async fn get_consumption_api_res(
             .map_or("".to_string(), |q| format!("?{q}"))
     );
 
-    debug!("Creating client for route: {:?}", url);
+    eprintln!("Creating client for route: {:?}", url);
     {
         let consumption_apis = config.consumption_apis.read().await;
         let consumption_name =
@@ -246,10 +246,11 @@ async fn get_consumption_api_res(
                     .unwrap_or(req.uri().path())
                     .to_string()
             };
-
+        eprintln!("consumption_name: {}", consumption_name);
+        eprintln!("consumption_apis: {:?}", consumption_apis);
         if !consumption_apis.contains(&consumption_name) {
             if !config.is_prod {
-                println!(
+                eprintln!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
                     consumption_apis
@@ -288,6 +289,8 @@ async fn get_consumption_api_res(
             HeaderValue::from_str(version_number).unwrap(),
         );
     }
+
+    eprintln!("Headers {:?}", headers);
 
     // Send request
     let res = http_client.execute(client_req).await?;
@@ -904,6 +907,7 @@ async fn ingest_route(
     debug!("Attempting to find route: {:?}", route);
     let route_table_read = route_table.read().await;
     debug!("Available routes: {:?}", route_table_read.keys());
+    eprintln!("Available routes: {:?}", route_table_read.keys());
     // Print route table for debugging
     eprintln!("DEBUG: Looking for route: {:?}", route);
     eprintln!(
@@ -1128,6 +1132,11 @@ async fn router(
         (_, &hyper::Method::GET, ["consumption", version_segment, endpoint])
             if version_segment.starts_with('v') =>
         {
+            eprintln!(
+                "version {} - endpoint {}",
+                version_segment.to_string(),
+                endpoint.to_string()
+            );
             match get_consumption_api_res(
                 http_client.clone(),
                 req,
@@ -1429,10 +1438,10 @@ impl Webserver {
                                         version.as_str(),
                                         api_endpoint.name
                                     ));
+                                } else {
+                                    // Only register unversioned path if no version is specified
+                                    apis_to_insert.push(api_endpoint.name.clone());
                                 }
-
-                                // Always register unversioned path for backward compatibility
-                                apis_to_insert.push(api_endpoint.name.clone());
 
                                 let mut consumption_apis = consumption_apis.write().await;
                                 for api_name in apis_to_insert {
@@ -1457,10 +1466,10 @@ impl Webserver {
                                         version.as_str(),
                                         api_endpoint.name
                                     ));
+                                } else {
+                                    // Only remove unversioned path if no version was specified
+                                    apis_to_remove.push(api_endpoint.name.clone());
                                 }
-
-                                // Remove unversioned path
-                                apis_to_remove.push(api_endpoint.name.clone());
 
                                 let mut consumption_apis = consumption_apis.write().await;
                                 for api_name in apis_to_remove {

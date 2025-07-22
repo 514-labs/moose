@@ -166,7 +166,16 @@ const apiHandler =
         {},
       );
 
-      let userFuncModule = modulesCache.get(pathName);
+      // Create version-specific cache key for DMv2
+      let cacheKey = pathName;
+      if (isDmv2) {
+        const versionHeader = req.headers["x-moose-api-version"] as string;
+        if (versionHeader) {
+          cacheKey = `${pathName}_v${versionHeader}`;
+        }
+      }
+
+      let userFuncModule = modulesCache.get(cacheKey);
       if (userFuncModule === undefined) {
         if (isDmv2) {
           const egressApis = await getEgressApis();
@@ -195,31 +204,26 @@ const apiHandler =
             userFuncModule = egressApis.get(versionedKey);
           }
 
-          if (!userFuncModule) {
-            // Fallback to unversioned lookup
+          // Only fallback to unversioned lookup if no version was requested
+          if (!userFuncModule && !version) {
             userFuncModule = egressApis.get(endpointName);
           }
 
-          // If still not found, use regex to find any matching API
-          if (!userFuncModule) {
-            // Create regex pattern to match the endpoint name with any version
+          // If still not found and no specific version was requested, use regex fallback
+          if (!userFuncModule && !version) {
             const endpointPattern = new RegExp(
               `^(v\\d+/)?${endpointName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
             );
 
-            // Search through all available APIs
             for (const [apiKey, apiHandler] of egressApis.entries()) {
               if (endpointPattern.test(apiKey)) {
                 userFuncModule = apiHandler;
-                console.log(
-                  `Found API match: ${apiKey} for requested path: ${fileName}`,
-                );
                 break;
               }
             }
           }
 
-          modulesCache.set(pathName, userFuncModule);
+          modulesCache.set(cacheKey, userFuncModule);
         } else {
           try {
             userFuncModule = require(pathName);

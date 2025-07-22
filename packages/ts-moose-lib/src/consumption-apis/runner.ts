@@ -305,11 +305,11 @@ const apiHandler =
 
 export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
   const consumptionCluster = new Cluster({
-    // Allow multiple workers and dynamically allocate ports to avoid binding conflicts
-    maxWorkerCount: config.maxWorkerCount || 4, // Default to 4 workers if not specified
-    workerStart: async (workerId) => {
-      const basePort = config.proxyPort !== undefined ? config.proxyPort : 4001;
-      const port = basePort + workerId; // Assign a unique port for each worker
+    // Fix: Use only 1 worker for consumption APIs to avoid port binding conflicts
+    // Multiple workers don't provide significant benefits for I/O-bound consumption APIs
+    // and cause issues when all workers try to bind to the same port
+    maxWorkerCount: 1,
+    workerStart: async () => {
       let temporalClient: TemporalClient | undefined;
       if (config.temporalConfig) {
         temporalClient = await getTemporalClient(

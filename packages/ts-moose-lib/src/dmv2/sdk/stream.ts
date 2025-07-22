@@ -415,8 +415,7 @@ export class DeadLetterQueue<T> extends Stream<DeadLetterModel> {
     super(name, config ?? {}, dlqSchema, dlqColumns);
     this.typeGuard = typeGuard;
 
-    // Explicitly register the DeadLetterQueue instance in the global registry
-    getMooseInternal().streams.set(name, this);
+    // No need to register again - the Stream constructor already handles versioned registration
   }
 
   /**

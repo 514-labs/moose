@@ -38,8 +38,15 @@ export class ConsumptionApi<T = any, R = any> extends TypedBase<
   EgressConfig<T>
 > {
   protected _handler: ConsumptionHandler<T, R>;
-  public responseSchema: IJsonSchemaCollection.IV3_1;
+  private responseSchema: IJsonSchemaCollection.IV3_1;
 
+  /**
+   * Retrieves the response schema associated with this Consumption API.
+   * @returns The response schema.
+   */
+  public getResponseSchema(): IJsonSchemaCollection.IV3_1 {
+    return this.responseSchema;
+  }
   /**
    * Creates a new ConsumptionApi instance.
    * @param name The name of the consumption API endpoint.

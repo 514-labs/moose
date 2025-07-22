@@ -442,6 +442,7 @@ impl ResourceInfo for Vec<StreamInfo> {
 pub struct IngestionApiInfo {
     pub name: String,
     pub destination: String,
+    pub path: String,
 }
 
 fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInfo> {
@@ -450,24 +451,46 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             target_topic_id,
             dead_letter_queue: _,
             data_model: _,
-        } => Either::Left(IngestionApiInfo {
-            name: endpoint.name.clone(),
-            destination: target_topic_id.clone(),
-        }),
+        } => {
+            // For ingestion APIs, show the user-facing URL format instead of internal storage format
+            // Convert internal format "ingest/Foo/1" to user-facing format "ingest/v1/Foo"
+            let user_facing_path = if let Some(version) = &endpoint.version {
+                format!("ingest/v{}/{}", version.as_str(), endpoint.name)
+            } else {
+                format!("ingest/{}", endpoint.name)
+            };
+
+            Either::Left(IngestionApiInfo {
+                name: endpoint.name.clone(),
+                destination: target_topic_id.clone(),
+                path: user_facing_path,
+            })
+        }
         APIType::EGRESS {
             query_params,
             output_schema: _,
-        } => Either::Right(ConsumptionApiInfo {
-            name: endpoint.name.clone(),
-            params: query_params
-                .iter()
-                .map(|param| param.name.clone())
-                .collect(),
-            path: match &endpoint.version {
-                Some(version) => format!("consumption/v{}/{}", version.as_str(), endpoint.name),
-                None => format!("consumption/{}", endpoint.name),
-            },
-        }),
+        } => {
+            // Check if the endpoint name already contains a version prefix (like "v1/bar")
+            let versioned_name = if endpoint.name.contains('/') {
+                // Name already contains version prefix (e.g., "v1/bar" from Python)
+                endpoint.name.clone()
+            } else if let Some(version) = &endpoint.version {
+                // Name doesn't contain version, add it (e.g., "bar" -> "v1/bar" from TypeScript)
+                format!("v{}/{}", version.as_str(), endpoint.name)
+            } else {
+                // No version at all
+                endpoint.name.clone()
+            };
+
+            Either::Right(ConsumptionApiInfo {
+                name: versioned_name.clone(),
+                params: query_params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect(),
+                path: format!("consumption/{}", versioned_name),
+            })
+        }
     }
 }
 
@@ -475,9 +498,13 @@ impl ResourceInfo for Vec<IngestionApiInfo> {
     fn show(&self) {
         show_table(
             "Ingestion APIs".to_string(),
-            vec!["name".to_string(), "destination".to_string()],
+            vec![
+                "name".to_string(),
+                "destination".to_string(),
+                "path".to_string(),
+            ],
             self.iter()
-                .map(|api| vec![api.name.clone(), api.destination.clone()])
+                .map(|api| vec![api.name.clone(), api.destination.clone(), api.path.clone()])
                 .collect(),
         )
     }

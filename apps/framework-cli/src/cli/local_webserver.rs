@@ -517,11 +517,11 @@ async fn admin_reality_check_route(
         match reality_checker.check_reality(project, &infra_map).await {
             Ok(discrepancies) => discrepancies,
             Err(e) => {
-                return Ok(Response::builder()
+                return Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Full::new(Bytes::from(format!(
                         "{{\"status\": \"error\", \"message\": \"{e}\"}}"
-                    ))))?)
+                    ))))
             }
         }
     } else {
@@ -537,10 +537,10 @@ async fn admin_reality_check_route(
         "discrepancies": discrepancies
     });
 
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Full::new(Bytes::from(response.to_string())))?)
+        .body(Full::new(Bytes::from(response.to_string())))
 }
 
 async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {

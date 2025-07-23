@@ -1,4 +1,4 @@
-language = "Typescript"
+language = "Python"
 
 [redpanda_config]
 broker = "localhost:19092"
@@ -18,7 +18,6 @@ native_port = 9000
 [http_server_config]
 host = "localhost"
 port = 4000
-proxy_port = 4002
 management_port = 5001
 
 [redis_config]
@@ -32,6 +31,7 @@ main_branch_name = "main"
 db_user = "temporal"
 db_password = "temporal"
 db_port = 5432
+temporal_host = "localhost"
 temporal_port = 7233
 temporal_version = "1.22.3"
 admin_tools_version = "1.22.3"
@@ -40,8 +40,14 @@ ui_port = 8080
 ui_cors_origins = "http://localhost:3000"
 config_path = "config/dynamicconfig/development-sql.yaml"
 postgresql_version = "13"
+client_cert = ""
+client_key = ""
+ca_cert = ""
+api_key = ""
 
 [supported_old_versions]
+
+[authentication]
 
 [features]
 streaming_engine = true

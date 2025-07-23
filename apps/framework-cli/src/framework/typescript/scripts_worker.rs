@@ -1,7 +1,7 @@
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::project::{Project, ProjectFileError};
 
-use log::{debug, error, info, warn};
+use log::error;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
@@ -47,54 +47,10 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         .take()
         .expect("Scripts process did not have a handle to stderr");
 
-    let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::new(stderr).lines();
+    // Use buffered stdout reader macro to preserve service context
+    crate::buffered_stdout_reader!(stdout, 100, "Workflow");
 
-    tokio::spawn(async move {
-        while let Ok(Some(line)) = stdout_reader.next_line().await {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() == 2 {
-                let level = parts[0].trim();
-                let message = parts[1].trim();
-                match level {
-                    // Logs from the worker
-                    "INFO" => info!("{}", message),
-                    "WARN" => warn!("{}", message),
-                    "DEBUG" => debug!("{}", message),
-                    "ERROR" => {
-                        error!("{}", message);
-                        show_message_wrapper(
-                            MessageType::Error,
-                            Message {
-                                action: "Workflow".to_string(),
-                                details: message.to_string(),
-                            },
-                        );
-                    }
-                    _ => info!("{}", message),
-                }
-            } else {
-                // These can come from the user's code or other things that
-                // get triggered as part of the workflow.
-                if line.trim().is_empty() {
-                    // Don't do anything for empty lines
-                } else if line.contains("[CompilerPlugin]") {
-                    // Only log, don't show UI message for compiler plugin logs
-                    info!("{}", line);
-                } else {
-                    // For all other logs (likely user code), log & show UI message
-                    info!("{}", line);
-                    show_message_wrapper(
-                        MessageType::Info,
-                        Message {
-                            action: "Workflow".to_string(),
-                            details: line,
-                        },
-                    );
-                }
-            }
-        }
-    });
+    let mut stderr_reader = BufReader::new(stderr).lines();
 
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {

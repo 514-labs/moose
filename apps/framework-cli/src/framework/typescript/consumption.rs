@@ -4,7 +4,7 @@ use crate::framework::typescript::export_collectors::ExportCollectorError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
 use crate::project::{JwtConfig, Project};
-use log::{debug, error, info};
+use log::{debug, error};
 use serde_json::{Map, Value};
 use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -92,14 +92,10 @@ pub fn run(
         .take()
         .expect("Consumption process did not have a handle to stderr");
 
-    let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::new(stderr).lines();
+    // Use buffered stdout reader macro to preserve service context
+    crate::buffered_stdout_reader!(stdout, 100, "Consumption");
 
-    tokio::spawn(async move {
-        while let Ok(Some(line)) = stdout_reader.next_line().await {
-            info!("{}", line);
-        }
-    });
+    let mut stderr_reader = BufReader::new(stderr).lines();
 
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {

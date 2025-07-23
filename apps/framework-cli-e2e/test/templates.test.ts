@@ -488,7 +488,7 @@ describe("Moose Templates", () => {
     const TEST_PROJECT_DIR = path.join(__dirname, "../temp-test-project-py");
 
     before(async function () {
-      this.timeout(180_000);
+      this.timeout(300_000); // Increased timeout to 5 minutes for Python setup
       try {
         await fs.promises.access(CLI_PATH, fs.constants.F_OK);
       } catch (err) {
@@ -508,6 +508,20 @@ describe("Moose Templates", () => {
         `"${CLI_PATH}" init moose-py-app python --location "${TEST_PROJECT_DIR}"`,
       );
 
+      // Update requirements.txt to use local moose-lib and remove moose-cli
+      console.log("Updating requirements.txt to use local moose-lib...");
+      const requirementsPath = path.join(TEST_PROJECT_DIR, "requirements.txt");
+      const requirements = fs.readFileSync(requirementsPath, "utf-8");
+      const updatedRequirements = requirements
+        .split("\n")
+        .filter(
+          (line) =>
+            !line.startsWith("moose-cli") && !line.startsWith("moose-lib"),
+        )
+        .concat([`-e ${MOOSE_PY_LIB_PATH}`])
+        .join("\n");
+      fs.writeFileSync(requirementsPath, updatedRequirements);
+
       // Set up Python environment and install dependencies
       console.log(
         "Setting up Python virtual environment and installing dependencies...",
@@ -524,45 +538,41 @@ describe("Moose Templates", () => {
             return;
           }
 
-          // First install project dependencies from requirements.txt
-          const pipReqCmd = spawn(
+          // Upgrade pip first to avoid certificate issues
+          const pipUpgradeCmd = spawn(
             process.platform === "win32" ?
               ".venv\\Scripts\\pip"
             : ".venv/bin/pip",
-            ["install", "-r", "requirements.txt"],
+            ["install", "--upgrade", "pip", "setuptools", "wheel"],
             {
               stdio: "inherit",
               cwd: TEST_PROJECT_DIR,
             },
           );
 
-          pipReqCmd.on("close", (reqPipCode) => {
-            if (reqPipCode !== 0) {
-              reject(
-                new Error(
-                  `requirements.txt pip install failed with code ${reqPipCode}`,
-                ),
-              );
+          pipUpgradeCmd.on("close", (upgradeCode) => {
+            if (upgradeCode !== 0) {
+              reject(new Error(`pip upgrade failed with code ${upgradeCode}`));
               return;
             }
 
-            // Then install the local moose lib
-            const pipMooseCmd = spawn(
+            // Install project dependencies from requirements.txt
+            const pipReqCmd = spawn(
               process.platform === "win32" ?
                 ".venv\\Scripts\\pip"
               : ".venv/bin/pip",
-              ["install", "-e", MOOSE_PY_LIB_PATH],
+              ["install", "-r", "requirements.txt"],
               {
                 stdio: "inherit",
                 cwd: TEST_PROJECT_DIR,
               },
             );
 
-            pipMooseCmd.on("close", (moosePipCode) => {
-              if (moosePipCode !== 0) {
+            pipReqCmd.on("close", (reqPipCode) => {
+              if (reqPipCode !== 0) {
                 reject(
                   new Error(
-                    `moose lib pip install failed with code ${moosePipCode}`,
+                    `requirements.txt pip install failed with code ${reqPipCode}`,
                   ),
                 );
                 return;

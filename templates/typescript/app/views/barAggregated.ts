@@ -13,6 +13,8 @@ interface BarAggregated {
 const barTable = BarPipeline.table!;
 const barColumns = barTable.columns;
 
+BarePipeline.table.columns.utcTimestamp;
+
 export const BarAggregatedMV = new MaterializedView<BarAggregated>({
   tableName: "BarAggregated",
   materializedViewName: "BarAggregated_MV",

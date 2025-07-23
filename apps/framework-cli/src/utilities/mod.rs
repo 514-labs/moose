@@ -1,6 +1,7 @@
 use std::path::Path;
 
 pub mod auth;
+pub mod buffered_stdout_reader;
 pub mod capture;
 pub mod clickhouse_url;
 pub mod constants;
@@ -17,6 +18,7 @@ pub trait PathExt {
     fn ext_is_supported_lang(&self) -> bool;
     fn ext_is_script_config(&self) -> bool;
 }
+
 impl PathExt for Path {
     fn ext_is_supported_lang(&self) -> bool {
         self.extension().is_some_and(|ext| {

@@ -480,6 +480,16 @@ async fn admin_reality_check_route(
         return e.to_response();
     }
 
+    // Early return if storage is disabled - no point loading infrastructure map
+    if !project.features.storage {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                r#"{"status": "error", "message": "Reality check is not available when storage is disabled. Reality check currently only validates database tables, which requires storage to be enabled in your project configuration."}"#
+            )));
+    }
+
     // Load infrastructure map from Redis
     let infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
         Ok(Some(map)) => map,
@@ -493,8 +503,8 @@ async fn admin_reality_check_route(
         }
     };
 
-    // Perform reality check only if storage is enabled
-    let discrepancies = if project.features.storage {
+    // Perform reality check (storage is guaranteed to be enabled at this point)
+    let discrepancies = {
         // Create OLAP client and reality checker
         let olap_client = crate::infrastructure::olap::clickhouse::create_client(
             project.clickhouse_config.clone(),
@@ -512,13 +522,6 @@ async fn admin_reality_check_route(
                     ))))
             }
         }
-    } else {
-        return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header("Content-Type", "application/json")
-            .body(Full::new(Bytes::from(
-                r#"{"status": "error", "message": "Reality check is not available when storage is disabled. Reality check currently only validates database tables, which requires storage to be enabled in your project configuration."}"#
-            )));
     };
 
     let response = serde_json::json!({

@@ -2115,6 +2115,7 @@ mod tests {
     use crate::framework::core::infrastructure_map::{
         OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
     };
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::versions::Version;
 
     fn create_test_table(name: &str) -> Table {
@@ -2138,6 +2139,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

@@ -11,6 +11,7 @@ from .types import TypedMooseResource, T
 from .olap_table import OlapTable, OlapConfig
 from .stream import Stream, StreamConfig, DeadLetterQueue
 from .ingest_api import IngestApi, IngestConfig, IngestConfigWithDestination
+from .life_cycle import LifeCycle
 
 class IngestPipelineConfig(BaseModel):
     """Configuration for creating a complete ingestion pipeline.
@@ -25,6 +26,7 @@ class IngestPipelineConfig(BaseModel):
         ingest: Configuration for the ingest API component.
         version: Optional version string applied to all created components.
         metadata: Optional metadata for the ingestion pipeline.
+        life_cycle: Determines how changes in code will propagate to the resources.
     """
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
@@ -32,6 +34,7 @@ class IngestPipelineConfig(BaseModel):
     dead_letter_queue: bool | StreamConfig = True
     version: Optional[str] = None
     metadata: Optional[dict] = None
+    life_cycle: Optional[LifeCycle] = None
 
 class IngestPipeline(TypedMooseResource, Generic[T]):
     """Creates and configures a linked Table, Stream, and Ingest API pipeline.
@@ -120,13 +123,15 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
         stream_metadata = config.metadata
         ingest_metadata = config.metadata
         if config.table:
-            table_config = OlapConfig() if config.table is True else config.table
+            table_config = (config.table if isinstance(config.table, OlapConfig) else 
+                          OlapConfig(life_cycle=config.life_cycle))
             if config.version:
                 table_config.version = config.version
             table_config.metadata = table_metadata
             self.table = OlapTable(name, table_config, t=self._t)
         if config.stream:
-            stream_config = StreamConfig() if config.stream is True else config.stream
+            stream_config = (config.stream if isinstance(config.stream, StreamConfig) else 
+                           StreamConfig(life_cycle=config.life_cycle))
             if config.table and stream_config.destination is not None:
                 raise ValueError("The destination of the stream should be the table created in the IngestPipeline")
             stream_config.destination = self.table

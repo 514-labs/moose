@@ -163,8 +163,8 @@ pub async fn execute_changes(
                     }
                     std::cmp::Ordering::Less => {
                         info!(
-                            "Setting partitions count for topic: {:?} with: {:?}",
-                            before.name, after.partitions
+                            "Increasing partitions count for topic: {:?} from {} to {}",
+                            before.name, before.partitions, after.partitions
                         );
                         add_partitions(&project.redpanda_config, &before.name, after.partitions)
                             .await?;

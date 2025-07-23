@@ -1,4 +1,5 @@
 use super::table::{Column, Metadata};
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
@@ -6,6 +7,7 @@ use crate::framework::{
     streaming::model::StreamingFunction,
 };
 use crate::proto;
+use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -30,6 +32,8 @@ pub struct Topic {
     pub source_primitive: PrimitiveSignature,
 
     pub metadata: Option<Metadata>,
+
+    pub life_cycle: LifeCycle,
 }
 
 impl Topic {
@@ -47,6 +51,7 @@ impl Topic {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 
@@ -73,6 +78,7 @@ impl Topic {
                 primitive_type: PrimitiveTypes::Function,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let target_topic = function
@@ -90,6 +96,7 @@ impl Topic {
                     primitive_type: PrimitiveTypes::Function,
                 },
                 metadata: None,
+                life_cycle: LifeCycle::FullyManaged,
             });
 
         (source_topic, target_topic)
@@ -148,6 +155,11 @@ impl Topic {
                     special_fields: Default::default(),
                 }
             })),
+            life_cycle: match self.life_cycle {
+                LifeCycle::FullyManaged => ProtoLifeCycle::FULLY_MANAGED.into(),
+                LifeCycle::DeletionProtected => ProtoLifeCycle::DELETION_PROTECTED.into(),
+                LifeCycle::ExternallyManaged => ProtoLifeCycle::EXTERNALLY_MANAGED.into(),
+            },
             special_fields: Default::default(),
         }
     }
@@ -175,6 +187,11 @@ impl Topic {
                     Some(m.description)
                 },
             }),
+            life_cycle: match proto.life_cycle.enum_value_or_default() {
+                ProtoLifeCycle::FULLY_MANAGED => LifeCycle::FullyManaged,
+                ProtoLifeCycle::DELETION_PROTECTED => LifeCycle::DeletionProtected,
+                ProtoLifeCycle::EXTERNALLY_MANAGED => LifeCycle::ExternallyManaged,
+            },
         }
     }
 }

@@ -64,6 +64,7 @@ class TableConfig(BaseModel):
         engine: The name of the ClickHouse engine used.
         version: Optional version string of the table configuration.
         metadata: Optional metadata for the table.
+        life_cycle: Lifecycle management setting for the table.
     """
     model_config = model_config
 
@@ -74,6 +75,7 @@ class TableConfig(BaseModel):
     engine: Optional[str]
     version: Optional[str] = None
     metadata: Optional[dict] = None
+    life_cycle: Optional[str] = None
 
 class TopicConfig(BaseModel):
     """Internal representation of a stream/topic configuration for serialization.
@@ -90,6 +92,7 @@ class TopicConfig(BaseModel):
         has_multi_transform: Flag indicating if a multi-transform function is defined.
         consumers: List of consumers attached to this topic.
         metadata: Optional metadata for the topic.
+        life_cycle: Lifecycle management setting for the topic.
     """
     model_config = model_config
 
@@ -104,6 +107,7 @@ class TopicConfig(BaseModel):
     has_multi_transform: bool
     consumers: List[Consumer]
     metadata: Optional[dict] = None
+    life_cycle: Optional[str] = None
 
 class IngestApiConfig(BaseModel):
     """Internal representation of an Ingest API configuration for serialization.
@@ -274,6 +278,7 @@ def to_infra_map() -> dict:
             engine=None if engine is None else engine.value,
             version=table.config.version,
             metadata=getattr(table, "metadata", None),
+            life_cycle=table.config.life_cycle.value if table.config.life_cycle else None,
         )
 
     for name, stream in get_streams().items():
@@ -305,6 +310,7 @@ def to_infra_map() -> dict:
             has_multi_transform=stream._multipleTransformations is not None,
             consumers=consumers,
             metadata=getattr(stream, "metadata", None),
+            life_cycle=stream.config.life_cycle.value if stream.config.life_cycle else None,
         )
 
     for name, api in get_ingest_apis().items():

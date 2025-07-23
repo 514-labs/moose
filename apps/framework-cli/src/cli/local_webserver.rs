@@ -423,22 +423,6 @@ async fn health_route(
         }
     };
 
-    // Check ClickHouse connectivity only if storage is enabled
-    let clickhouse_healthy = if project.features.storage {
-        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
-            project.clickhouse_config.clone(),
-        );
-        match olap_client.client.query("SELECT 1").execute().await {
-            Ok(_) => true,
-            Err(e) => {
-                warn!("Health check: ClickHouse unavailable: {}", e);
-                false
-            }
-        }
-    } else {
-        true // Skip ClickHouse health check when storage is disabled
-    };
-
     // Prepare healthy and unhealthy lists
     let mut healthy = Vec::new();
     let mut unhealthy = Vec::new();
@@ -453,11 +437,18 @@ async fn health_route(
     } else {
         unhealthy.push("Redpanda")
     }
+
+    // Check ClickHouse connectivity only if storage is enabled
     if project.features.storage {
-        if clickhouse_healthy {
-            healthy.push("ClickHouse")
-        } else {
-            unhealthy.push("ClickHouse")
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        match olap_client.client.query("SELECT 1").execute().await {
+            Ok(_) => healthy.push("ClickHouse"),
+            Err(e) => {
+                warn!("Health check: ClickHouse unavailable: {}", e);
+                unhealthy.push("ClickHouse")
+            }
         }
     }
 

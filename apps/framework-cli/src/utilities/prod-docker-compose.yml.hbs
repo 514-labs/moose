@@ -5,9 +5,9 @@ volumes:
 {{#if storage}}
   clickhouse-0-data: null clickhouse-0-logs: null clickhouse-0-users: null
 {{/if}}
-redis-data:
+redis-data: null
 {{#if scripts_feature}}
-  temporal-data: postgresql-data:
+  temporal-data: null postgresql-data: null
 {{/if}}
 
 {{#if scripts_feature}}
@@ -20,6 +20,7 @@ redis-data:
 services: redis: image: redis:latest ports: - "${REDIS_PORT:-6379}:6379"
 command: ["redis-server", "--appendonly", "yes"] volumes: - redis-data:/data
 deploy: resources: reservations: cpus: '2.0' memory: 4G
+
 {{#if streaming_engine}}
   redpanda: image: docker.redpanda.com/redpandadata/redpanda:v24.3.11 ports: -
   "9092:9092" - "19092:19092" - "9644:9644" volumes: -
@@ -33,6 +34,7 @@ deploy: resources: reservations: cpus: '2.0' memory: 4G
   ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
   interval: 15s timeout: 3s retries: 5 start_period: 5s
 {{/if}}
+
 {{#if storage}}
   clickhousedb: image:
   docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-24.12} volumes:
@@ -53,14 +55,12 @@ deploy: resources: reservations: cpus: '2.0' memory: 4G
 {{/if}}
 
 {{#if scripts_feature}}
-  postgresql: container_name: temporal-postgresql environment:
-  POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal} POSTGRES_USER:
-  ${TEMPORAL_DB_USER:-temporal} image: postgres:${POSTGRESQL_VERSION:-13}
-  networks: temporal-network: aliases: - postgresql ports: -
-  ${TEMPORAL_DB_PORT:-5432}:5432 volumes: -
-  postgresql-data:/var/lib/postgresql/data temporal: container_name: temporal
-  depends_on: - postgresql environment: - DB=postgres12 -
-  DB_PORT=${TEMPORAL_DB_PORT:-5432} -
+  postgresql: environment: POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
+  POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal} image:
+  postgres:${POSTGRESQL_VERSION:-13} networks: temporal-network: aliases: -
+  postgresql ports: - ${TEMPORAL_DB_PORT:-5432}:5432 volumes: -
+  postgresql-data:/var/lib/postgresql/data temporal: depends_on: - postgresql
+  environment: - DB=postgres12 - DB_PORT=${TEMPORAL_DB_PORT:-5432} -
   POSTGRES_USER=${TEMPORAL_DB_USER:-temporal} -
   POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal} - POSTGRES_SEEDS=postgresql -
   DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development-sql.yaml
@@ -70,16 +70,13 @@ deploy: resources: reservations: cpus: '2.0' memory: 4G
   volumes: - temporal-data:/var/temporal/data deploy: resources: reservations:
   cpus: '2.0' memory: 4G healthcheck: test: ["CMD-SHELL", "tctl --address
   temporal:${TEMPORAL_PORT:-7233} workflow list"] interval: 1s retries: 30
-  timeout: 5s temporal-admin-tools: container_name: temporal-admin-tools
-  depends_on: - temporal environment: -
+  timeout: 5s temporal-admin-tools: depends_on: - temporal environment: -
   TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233} -
   TEMPORAL_CLI_ADDRESS=temporal:${TEMPORAL_PORT:-7233} image:
   temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION} networks: -
-  temporal-network stdin_open: true tty: true temporal-ui: container_name:
-  temporal-ui depends_on: - temporal environment: -
-  TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233} -
+  temporal-network stdin_open: true tty: true temporal-ui: depends_on: -
+  temporal environment: - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233} -
   TEMPORAL_CORS_ORIGINS=${TEMPORAL_UI_CORS_ORIGINS:-http://localhost:3000}
   image: temporalio/ui:${TEMPORAL_UI_VERSION} networks: - temporal-network
-  ports: - ${TEMPORAL_UI_PORT:-8080}:8080 networks: temporal-network: driver:
-  bridge name: temporal-network
+  ports: - ${TEMPORAL_UI_PORT:-8080}:8080 networks: temporal-network: null
 {{/if}}

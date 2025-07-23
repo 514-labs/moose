@@ -513,11 +513,12 @@ async fn admin_reality_check_route(
             }
         }
     } else {
-        InfraDiscrepancies {
-            unmapped_tables: Vec::new(),
-            missing_tables: Vec::new(),
-            mismatched_tables: Vec::new(),
-        }
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                r#"{"status": "error", "message": "Reality check is not available when storage is disabled. Reality check currently only validates database tables, which requires storage to be enabled in your project configuration."}"#
+            )));
     };
 
     let response = serde_json::json!({

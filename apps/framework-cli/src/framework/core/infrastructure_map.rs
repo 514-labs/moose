@@ -690,17 +690,13 @@ impl InfrastructureMap {
             Box::new(ConsumptionApiWebServer {}),
         )));
 
-        let mut orchestration_worker_process_changes: Vec<ProcessChange> = self
-            .orchestration_workers
-            .values()
-            .map(|orchestration_worker| {
-                ProcessChange::OrchestrationWorker(Change::<OrchestrationWorker>::Added(Box::new(
-                    orchestration_worker.clone(),
-                )))
-            })
-            .collect();
-
-        process_changes.append(&mut orchestration_worker_process_changes);
+        process_changes.push(ProcessChange::OrchestrationWorker(Change::<
+            OrchestrationWorker,
+        >::Added(
+            Box::new(OrchestrationWorker {
+                supported_language: project.language,
+            }),
+        )));
         process_changes
     }
 

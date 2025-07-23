@@ -1,0 +1,108 @@
+---
+title: Boreal Cloud Deployment
+description: Deploying Moose applications to Boreal cloud platform
+---
+
+import { Callout } from "@/components";
+
+# Boreal Cloud Deployment
+
+[Boreal](https://fiveonefour.com/boreal) is the managed cloud platform for deploying Moose applications. It provides a fully managed infrastructure that automatically handles scaling, monitoring, and maintenance of your Moose applications.
+
+## Version Detection
+
+When deploying to Boreal, the platform automatically detects the appropriate Moose CLI version to use based on your project configuration. This ensures compatibility between your local development environment and the deployed application.
+
+<Callout type="info">
+Boreal automatically manages version compatibility between the Moose CLI and your project's library dependencies, eliminating version mismatch issues.
+</Callout>
+
+### TypeScript Projects
+
+For TypeScript projects, Boreal determines the Moose version using the following priority order:
+
+1. **pnpm-lock.yaml** (preferred)
+2. **package-lock.json** 
+3. **package.json** (fallback)
+
+The version detection process looks for the `@514labs/moose-lib` package version in these files. The logic works as follows:
+
+1. **First attempt**: Check pnpm-lock.yaml for the exact resolved version
+2. **Second attempt**: Look for package-lock.json and parse the dependencies section
+3. **Final fallback**: Use package.json and read from the dependencies object
+4. **Version normalization**: Convert "latest" specifications to "*" (any version)
+
+**Key Points:**
+- Boreal looks for the `@514labs/moose-lib` package version
+- If "latest" is specified, it's treated as "*" (any version)
+- Lock files take precedence over package.json for more precise versioning
+
+### Python Projects
+
+For Python projects, Boreal searches for version information in:
+
+1. **setup.py** (preferred)
+2. **requirements.txt** (fallback)
+
+The search includes subdirectories if files aren't found in the project root. The logic works as follows:
+
+1. **File discovery**: Search for setup.py or requirements.txt in both the project root and subdirectories
+2. **Primary source (setup.py)**: Parse setup.py files looking for `moose_lib` dependency with exact version syntax (==version)
+3. **Fallback source (requirements.txt)**: If no version found in setup.py, scan requirements.txt files for the same pattern
+4. **Version extraction**: Use regex matching to extract version numbers from dependency specifications
+5. **Default handling**: Fall back to "*" (any version) if no specific version constraint is found
+
+**Key Points:**
+- Boreal looks for the `moose_lib` package version
+- Searches both root directory and subdirectories
+- Uses exact version matching with `==` syntax
+- Defaults to "*" (any version) if no specific version is found
+
+## Deployment Process
+
+<Callout type="info">
+The version detection happens automatically during the deployment process. You don't need to manually specify the Moose CLI version.
+</Callout>
+
+1. **Push to Repository**: Commit your changes to your connected Git repository
+2. **Version Detection**: Boreal automatically detects the required Moose version from your project files
+3. **Environment Setup**: The appropriate Moose CLI version is installed in the deployment environment
+4. **Build & Deploy**: Your application is built and deployed using the detected version
+
+## Best Practices
+
+### For TypeScript Projects
+
+- **Use exact versions** in your package.json dependencies:
+  ```json
+  {
+    "dependencies": {
+      "@514labs/moose-lib": "1.2.3"
+    }
+  }
+  ```
+
+- **Commit lock files** (pnpm-lock.yaml or package-lock.json) to ensure reproducible builds
+
+### For Python Projects
+
+- **Specify exact versions** in requirements.txt or setup.py:
+  ```
+  # requirements.txt
+  moose_lib==1.2.3
+  ```
+
+  ```python
+  # setup.py
+  install_requires=[
+      "moose_lib==1.2.3",
+  ]
+  ```
+
+- **Include version constraints** to prevent unexpected updates in production
+
+## Troubleshooting
+
+If you encounter version compatibility issues, check your dependency files to ensure they specify the correct version, update your lock files locally, and use exact versions rather than "latest" in production.
+
+Monitor your Boreal deployment logs to see which version was detected and used.

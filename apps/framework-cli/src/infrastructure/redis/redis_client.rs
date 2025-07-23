@@ -134,6 +134,8 @@ pub struct RedisConfig {
     pub url: String,
     #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
+    #[serde(default = "RedisConfig::default_port")]
+    pub port: u16,
 }
 
 impl RedisConfig {
@@ -162,6 +164,35 @@ impl RedisConfig {
     pub fn default_key_prefix() -> String {
         "MS".to_string()
     }
+
+    /// Returns the default Redis port.
+    ///
+    /// This method provides the default port for Redis connections.
+    ///
+    /// # Returns
+    ///
+    /// The default Redis port: 6379
+    pub fn default_port() -> u16 {
+        6379
+    }
+
+    /// Returns the effective Redis URL, using the port field if the URL doesn't specify a port.
+    ///
+    /// This method constructs the Redis URL by checking if the configured URL already contains
+    /// a port. If it doesn't, it uses the port field to construct the URL.
+    ///
+    /// # Returns
+    ///
+    /// A string containing the effective Redis URL
+    pub fn effective_url(&self) -> String {
+        // If the URL already contains a port (indicated by presence of :port), use it as-is
+        if self.url.contains(":6379") || self.url.matches(':').count() >= 2 {
+            self.url.clone()
+        } else {
+            // Replace the default port with the configured port
+            self.url.replace(":6379", &format!(":{}", self.port))
+        }
+    }
 }
 
 /// Implements the Default trait for RedisConfig.
@@ -174,6 +205,7 @@ impl Default for RedisConfig {
         RedisConfig {
             url: RedisConfig::default_url(),
             key_prefix: RedisConfig::default_key_prefix(),
+            port: RedisConfig::default_port(),
         }
     }
 }
@@ -282,8 +314,9 @@ impl RedisClient {
     pub async fn new(service_name: String, config: RedisConfig) -> anyhow::Result<Self> {
         let instance_id = uuid::Uuid::new_v4().to_string();
 
-        // Create Redis client
-        let client_result = Client::open(config.url.clone());
+        // Create Redis client using the effective URL
+        let effective_url = config.effective_url();
+        let client_result = Client::open(effective_url.clone());
         let (connection_manager, fallback) = match client_result {
             Ok(c) => match ConnectionManagerWrapper::new(&c).await {
                 Ok(cm) => (cm, None),
@@ -350,7 +383,7 @@ impl RedisClient {
         );
 
         let callbacks = self.message_callbacks.clone();
-        let config_url = self.config.url.clone();
+        let config_url = self.config.effective_url();
 
         let instance_channel_clone = instance_channel.clone();
         let broadcast_channel_clone = broadcast_channel.clone();

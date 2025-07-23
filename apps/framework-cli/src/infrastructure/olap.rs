@@ -58,6 +58,12 @@ pub async fn execute_changes(
     project: &Project,
     changes: &[OlapChange],
 ) -> Result<(), OlapChangesError> {
+    // Skip OLAP changes if storage is disabled
+    if !project.features.storage {
+        log::info!("Storage disabled, skipping OLAP changes");
+        return Ok(());
+    }
+
     // Order changes based on dependencies
     let (teardown_plan, setup_plan) = ddl_ordering::order_olap_changes(changes)?;
 

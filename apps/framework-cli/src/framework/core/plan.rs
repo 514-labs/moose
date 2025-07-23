@@ -209,9 +209,6 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize current infrastructure map".to_string())
     );
 
-    // Plan changes, reconciling with reality
-    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
-
     let current_map_or_empty = current_infra_map.unwrap_or_else(|| InfrastructureMap {
         topics: Default::default(),
         api_endpoints: Default::default(),
@@ -227,18 +224,26 @@ pub async fn plan_changes(
         workflows: Default::default(),
     });
 
-    // Reconcile the current map with reality before diffing
-    let reconciled_map = reconcile_with_reality(
-        project,
-        &current_map_or_empty,
-        &target_infra_map
-            .tables
-            .values()
-            .map(|t| t.name.to_string())
-            .collect(),
-        olap_client,
-    )
-    .await?;
+    // Reconcile the current map with reality before diffing, but only if storage is enabled
+    let reconciled_map = if project.features.storage {
+        // Plan changes, reconciling with reality
+        let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+
+        reconcile_with_reality(
+            project,
+            &current_map_or_empty,
+            &target_infra_map
+                .tables
+                .values()
+                .map(|t| t.name.to_string())
+                .collect(),
+            olap_client,
+        )
+        .await?
+    } else {
+        debug!("Storage disabled, skipping reality check reconciliation");
+        current_map_or_empty
+    };
 
     debug!(
         "Reconciled infrastructure map: {}",

@@ -423,15 +423,20 @@ async fn health_route(
         }
     };
 
-    // Check ClickHouse connectivity
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let clickhouse_healthy = match olap_client.client.query("SELECT 1").execute().await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: ClickHouse unavailable: {}", e);
-            false
+    // Check ClickHouse connectivity only if storage is enabled
+    let clickhouse_healthy = if project.features.storage {
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        match olap_client.client.query("SELECT 1").execute().await {
+            Ok(_) => true,
+            Err(e) => {
+                warn!("Health check: ClickHouse unavailable: {}", e);
+                false
+            }
         }
+    } else {
+        true // Skip ClickHouse health check when storage is disabled
     };
 
     // Prepare healthy and unhealthy lists
@@ -448,10 +453,12 @@ async fn health_route(
     } else {
         unhealthy.push("Redpanda")
     }
-    if clickhouse_healthy {
-        healthy.push("ClickHouse")
-    } else {
-        unhealthy.push("ClickHouse")
+    if project.features.storage {
+        if clickhouse_healthy {
+            healthy.push("ClickHouse")
+        } else {
+            unhealthy.push("ClickHouse")
+        }
     }
 
     // Create JSON response
@@ -485,12 +492,6 @@ async fn admin_reality_check_route(
         return e.to_response();
     }
 
-    // Create OLAP client and reality checker
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let reality_checker =
-        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
-
     // Load infrastructure map from Redis
     let infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
         Ok(Some(map)) => map,
@@ -504,25 +505,42 @@ async fn admin_reality_check_route(
         }
     };
 
-    // Perform reality check
-    match reality_checker.check_reality(project, &infra_map).await {
-        Ok(discrepancies) => {
-            let response = serde_json::json!({
-                "status": "success",
-                "discrepancies": discrepancies
-            });
+    // Perform reality check only if storage is enabled
+    let discrepancies = if project.features.storage {
+        // Create OLAP client and reality checker
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        let reality_checker =
+            crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(Full::new(Bytes::from(response.to_string())))?)
+        match reality_checker.check_reality(project, &infra_map).await {
+            Ok(discrepancies) => discrepancies,
+            Err(e) => {
+                return Ok(Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from(format!(
+                        "{{\"status\": \"error\", \"message\": \"{e}\"}}"
+                    ))))?)
+            }
         }
-        Err(e) => Ok(Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Full::new(Bytes::from(format!(
-                "{{\"status\": \"error\", \"message\": \"{e}\"}}"
-            ))))?),
-    }
+    } else {
+        InfraDiscrepancies {
+            unmapped_tables: Vec::new(),
+            missing_tables: Vec::new(),
+            mismatched_tables: Vec::new(),
+        }
+    };
+
+    let response = serde_json::json!({
+        "status": "success",
+        "discrepancies": discrepancies
+    });
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(response.to_string())))?)
 }
 
 async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
@@ -1944,6 +1962,14 @@ async fn admin_integrate_changes_route(
                     .to_response();
             }
         };
+
+    // Skip integration if storage is disabled
+    if !project.features.storage {
+        return IntegrationError::BadRequest(
+            "Storage is disabled, cannot integrate changes".to_string(),
+        )
+        .to_response();
+    }
 
     // Get reality check
     let olap_client =

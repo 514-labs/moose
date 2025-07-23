@@ -677,9 +677,12 @@ impl InfrastructureMap {
         process_changes.append(&mut function_process_changes);
 
         // TODO Change this when we have multiple processes for blocks
-        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
-            Box::new(OlapProcess {}),
-        )));
+        // Only add OLAP process if storage is enabled
+        if project.features.storage {
+            process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
+                Box::new(OlapProcess {}),
+            )));
+        }
 
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
@@ -687,14 +690,17 @@ impl InfrastructureMap {
             Box::new(ConsumptionApiWebServer {}),
         )));
 
-        process_changes.push(ProcessChange::OrchestrationWorker(Change::<
-            OrchestrationWorker,
-        >::Added(
-            Box::new(OrchestrationWorker {
-                supported_language: project.language,
-            }),
-        )));
+        let mut orchestration_worker_process_changes: Vec<ProcessChange> = self
+            .orchestration_workers
+            .values()
+            .map(|orchestration_worker| {
+                ProcessChange::OrchestrationWorker(Change::<OrchestrationWorker>::Added(Box::new(
+                    orchestration_worker.clone(),
+                )))
+            })
+            .collect();
 
+        process_changes.append(&mut orchestration_worker_process_changes);
         process_changes
     }
 

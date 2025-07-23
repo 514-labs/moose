@@ -63,7 +63,7 @@ impl ProcessRegistries {
     pub fn new(project: &Project, settings: &Settings) -> Self {
         let functions = FunctionProcessRegistry::new(project.clone());
 
-        let blocks = if project.features.data_model_v2 {
+        let blocks = if project.features.data_model_v2 || !project.features.storage {
             None
         } else {
             Some(BlocksProcessRegistry::new(

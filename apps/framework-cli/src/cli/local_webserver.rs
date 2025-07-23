@@ -414,15 +414,6 @@ async fn health_route(
     // Check Redis connectivity
     let redis_healthy = redis_client.is_connected();
 
-    // Check Redpanda/Kafka connectivity
-    let kafka_healthy = match kafka::client::health_check(&project.redpanda_config).await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: Redpanda unavailable: {}", e);
-            false
-        }
-    };
-
     // Prepare healthy and unhealthy lists
     let mut healthy = Vec::new();
     let mut unhealthy = Vec::new();
@@ -432,10 +423,16 @@ async fn health_route(
     } else {
         unhealthy.push("Redis")
     }
-    if kafka_healthy {
-        healthy.push("Redpanda")
-    } else {
-        unhealthy.push("Redpanda")
+
+    // Check Redpanda/Kafka connectivity only if streaming is enabled
+    if project.features.streaming_engine {
+        match kafka::client::health_check(&project.redpanda_config).await {
+            Ok(_) => healthy.push("Redpanda"),
+            Err(e) => {
+                warn!("Health check: Redpanda unavailable: {}", e);
+                unhealthy.push("Redpanda")
+            }
+        }
     }
 
     // Check ClickHouse connectivity only if storage is enabled

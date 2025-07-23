@@ -88,54 +88,6 @@ struct MediaTypeSchema {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Schema {
-    #[serde(rename = "type")]
-    schema_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    properties: Option<HashMap<String, Property>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    required: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Property {
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    property_type: Option<String>,
-    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
-    ref_: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    example: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    items: Option<PropertyItem>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum OpenApiType {
-    Simple(String),
-    Complex(Value),
-}
-
-fn nullable(simple_type: String) -> OpenApiType {
-    OpenApiType::Complex(json!({
-        "oneOf": [
-            {"type": "null"},
-            {"type": simple_type},
-        ]
-    }))
-}
-
-#[derive(Serialize, Deserialize)]
-struct PropertyItem {
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    type_: Option<OpenApiType>,
-    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
-    ref_: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
 struct Response {
     description: String,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
@@ -144,7 +96,7 @@ struct Response {
 
 #[derive(Serialize, Deserialize)]
 struct Components {
-    schemas: HashMap<String, Schema>,
+    schemas: HashMap<String, Value>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -254,7 +206,7 @@ fn create_egress_path_item(
     api_endpoint: &ApiEndpoint,
     output_schema: Value,
     query_params: &[ConsumptionQueryParam],
-) -> (PathItem, HashMap<String, Schema>) {
+) -> (PathItem, HashMap<String, Value>) {
     let default_schema = json!({"type": "object"});
     let (response_schema, component_schemas) = if output_schema != Value::Null {
         extract_component_schemas(output_schema)
@@ -296,7 +248,7 @@ fn create_egress_path_item(
     (path_item, component_schemas)
 }
 
-fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) {
+fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Value>) {
     let mut component_schemas = HashMap::new();
 
     // Handle typia-style schema
@@ -304,11 +256,7 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
         if let Some(obj) = components.as_object() {
             // Copy all schemas directly to top level component schemas
             for (name, schema_def) in obj {
-                component_schemas.insert(
-                    name.clone(),
-                    serde_json::from_value(schema_def.clone())
-                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {name}")),
-                );
+                component_schemas.insert(name.clone(), schema_def.clone());
             }
         }
 
@@ -325,11 +273,7 @@ fn extract_component_schemas(schema: Value) -> (Value, HashMap<String, Schema>) 
         if let Some(obj) = defs.as_object() {
             // Copy all schemas directly to top level component schemas
             for (name, schema_def) in obj {
-                component_schemas.insert(
-                    name.clone(),
-                    serde_json::from_value(schema_def.clone())
-                        .unwrap_or_else(|_| panic!("Failed to deserialize schema for {name}")),
-                );
+                component_schemas.insert(name.clone(), schema_def.clone());
             }
         }
 
@@ -356,11 +300,11 @@ fn create_default_responses() -> HashMap<String, Response> {
     responses
 }
 
-fn build_data_model_schema(data_model: &DataModel, schemas: &mut HashMap<String, Schema>) {
+fn build_data_model_schema(data_model: &DataModel, schemas: &mut HashMap<String, Value>) {
     build_schema(&data_model.columns, data_model.name.clone(), schemas);
 }
 
-fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMap<String, Schema>) {
+fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMap<String, Value>) {
     let mut properties = HashMap::new();
     let mut required = Vec::new();
 
@@ -369,51 +313,45 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
             ColumnType::Nested(fields) => {
                 let component_name = format!("{}_{}", parent_name, column.name);
                 build_schema(&fields.columns, component_name.clone(), schemas);
-                Property {
-                    property_type: None,
-                    ref_: Some(format!("#/components/schemas/{component_name}")),
-                    example: None,
-                    items: None,
-                }
+                json!({
+                    "$ref": format!("#/components/schemas/{component_name}")
+                })
             }
             ColumnType::Array {
                 element_type: column_type,
                 element_nullable,
             } => {
-                let item_type = if let ColumnType::Nested(fields) = &**column_type {
+                let item_schema = if let ColumnType::Nested(fields) = &**column_type {
                     let component_name = format!("{}_{}", parent_name, column.name);
                     build_schema(&fields.columns, component_name.clone(), schemas);
-                    PropertyItem {
-                        type_: None,
-                        ref_: Some(format!("#/components/schemas/{component_name}")),
-                    }
+                    json!({
+                        "$ref": format!("#/components/schemas/{component_name}")
+                    })
                 } else {
                     let (property_type, _) = map_column_type(column_type);
-                    let t = if *element_nullable {
-                        nullable(property_type)
+                    if *element_nullable {
+                        json!({
+                            "oneOf": [
+                                {"type": "null"},
+                                {"type": property_type}
+                            ]
+                        })
                     } else {
-                        OpenApiType::Simple(property_type)
-                    };
-                    PropertyItem {
-                        type_: Some(t),
-                        ref_: None,
+                        json!({"type": property_type})
                     }
                 };
-                Property {
-                    property_type: Some("array".to_string()),
-                    ref_: None,
-                    example: None,
-                    items: Some(item_type),
-                }
+                json!({
+                    "type": "array",
+                    "items": item_schema
+                })
             }
             _ => {
                 let (property_type, example) = map_column_type(&column.data_type);
-                Property {
-                    property_type: Some(property_type),
-                    ref_: None,
-                    example,
-                    items: None,
+                let mut prop = json!({"type": property_type});
+                if let Some(ex) = example {
+                    prop["example"] = ex;
                 }
+                prop
             }
         };
 
@@ -424,15 +362,13 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
         }
     }
 
-    schemas.insert(
-        parent_name.clone(),
-        Schema {
-            schema_type: "object".to_string(),
-            properties: Some(properties),
-            required: Some(required),
-            title: None,
-        },
-    );
+    let schema = json!({
+        "type": "object",
+        "properties": properties,
+        "required": required
+    });
+
+    schemas.insert(parent_name, schema);
 }
 
 fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Value>) {
@@ -498,4 +434,122 @@ fn save_openapi_to_file(openapi_spec: &OpenAPI, file_path: &str) -> std::io::Res
     let mut file = File::create(file_path)?;
     file.write_all(openapi_yaml.as_bytes())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_extract_component_schemas_with_enums() {
+        // Test the exact enum pattern mentioned in the issue
+        let test_schema = json!({
+            "components": {
+                "schemas": {
+                    "FooStatus": {
+                        "oneOf": [
+                            {"const": "active"},
+                            {"const": "inactive"},
+                            {"const": "pending"},
+                            {"const": "archived"}
+                        ]
+                    },
+                    "ComplexEnum": {
+                        "anyOf": [
+                            {"type": "string", "enum": ["foo", "bar"]},
+                            {"type": "integer", "enum": [1, 2, 3]}
+                        ]
+                    },
+                    "NestedSchema": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "$ref": "#/components/schemas/FooStatus"
+                            },
+                            "metadata": {
+                                "oneOf": [
+                                    {"type": "null"},
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "created": {"type": "string", "format": "date-time"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "schemas": [
+                {"$ref": "#/components/schemas/NestedSchema"}
+            ]
+        });
+
+        // This should NOT panic (unlike the old implementation)
+        let (response_schema, component_schemas) = extract_component_schemas(test_schema);
+
+        // Verify that all schemas were extracted correctly
+        assert_eq!(component_schemas.len(), 3);
+        assert!(component_schemas.contains_key("FooStatus"));
+        assert!(component_schemas.contains_key("ComplexEnum"));
+        assert!(component_schemas.contains_key("NestedSchema"));
+
+        // Verify that the enum schema was preserved exactly
+        let foo_status = &component_schemas["FooStatus"];
+        assert_eq!(foo_status["oneOf"][0]["const"], "active");
+        assert_eq!(foo_status["oneOf"][1]["const"], "inactive");
+        assert_eq!(foo_status["oneOf"][2]["const"], "pending");
+        assert_eq!(foo_status["oneOf"][3]["const"], "archived");
+
+        // Verify complex enum with anyOf
+        let complex_enum = &component_schemas["ComplexEnum"];
+        assert!(complex_enum["anyOf"].is_array());
+        assert_eq!(complex_enum["anyOf"][0]["type"], "string");
+        assert_eq!(complex_enum["anyOf"][1]["type"], "integer");
+
+        // Verify response schema references the right schema
+        assert_eq!(response_schema["$ref"], "#/components/schemas/NestedSchema");
+    }
+
+    #[test]
+    fn test_extract_component_schemas_with_pydantic_style() {
+        let test_schema = json!({
+            "$defs": {
+                "StatusEnum": {
+                    "enum": ["active", "inactive"],
+                    "type": "string"
+                },
+                "UserModel": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "status": {"$ref": "#/$defs/StatusEnum"}
+                    }
+                }
+            },
+            "type": "object",
+            "properties": {
+                "users": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/UserModel"}
+                }
+            }
+        });
+
+        let (response_schema, component_schemas) = extract_component_schemas(test_schema);
+
+        // Verify schemas were moved to components
+        assert_eq!(component_schemas.len(), 2);
+        assert!(component_schemas.contains_key("StatusEnum"));
+        assert!(component_schemas.contains_key("UserModel"));
+
+        // Verify $defs was removed from response schema
+        assert!(response_schema.get("$defs").is_none());
+        assert!(response_schema["properties"]["users"]["items"]["$ref"]
+            .as_str()
+            .unwrap()
+            .contains("UserModel"));
+    }
 }

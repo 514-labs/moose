@@ -130,12 +130,19 @@ pub struct RedisLock {
 /// capabilities, as the struct implements `Serialize` and `Deserialize`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisConfig {
+    /// Legacy URL field for backwards compatibility
     #[serde(default = "RedisConfig::default_url")]
     pub url: String,
     #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
     #[serde(default = "RedisConfig::default_port")]
     pub port: u16,
+    /// Whether to use TLS (rediss://) or plain Redis (redis://)
+    #[serde(default = "RedisConfig::default_tls")]
+    pub tls: bool,
+    /// Redis hostname
+    #[serde(default = "RedisConfig::default_hostname")]
+    pub hostname: String,
 }
 
 impl RedisConfig {
@@ -176,21 +183,62 @@ impl RedisConfig {
         6379
     }
 
-    /// Returns the effective Redis URL, using the port field if the URL doesn't specify a port.
+    /// Returns the default hostname for Redis connections.
+    pub fn default_hostname() -> String {
+        "127.0.0.1".to_string()
+    }
+
+    /// Returns the default TLS setting.
+    pub fn default_tls() -> bool {
+        false
+    }
+
+    /// Validates the configuration to ensure either URL or new fields are used, but not both.
     ///
-    /// This method constructs the Redis URL by checking if the configured URL already contains
-    /// a port. If it doesn't, it uses the port field to construct the URL.
+    /// # Returns
+    ///
+    /// `Result<(), String>` - Ok if valid, Err with error message if invalid
+    pub fn validate(&self) -> Result<(), String> {
+        let using_new_fields = self.hostname != Self::default_hostname()
+            || self.tls != Self::default_tls()
+            || self.port != Self::default_port();
+        let using_url = self.url != Self::default_url();
+
+        if using_new_fields && using_url {
+            return Err(
+                "Cannot use both 'url' and new fields (hostname, tls, port) in Redis configuration. Please use either 'url' for backwards compatibility or 'hostname'+'tls'+'port' for the new format.".to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Returns the effective Redis URL, using either the new fields (tls, hostname, port)
+    /// or the legacy URL field.
     ///
     /// # Returns
     ///
     /// A string containing the effective Redis URL
+    ///
+    /// # Panics
+    ///
+    /// Panics if both URL and new fields are configured (call validate() first)
     pub fn effective_url(&self) -> String {
-        // If the URL already contains a port (indicated by presence of :port), use it as-is
-        if self.url.contains(":6379") || self.url.matches(':').count() >= 2 {
-            self.url.clone()
+        // Validate configuration
+        if let Err(e) = self.validate() {
+            panic!("Invalid Redis configuration: {}", e);
+        }
+
+        // Use new fields if any differ from defaults (indicating explicit configuration)
+        if self.hostname != Self::default_hostname()
+            || self.tls != Self::default_tls()
+            || self.port != Self::default_port()
+        {
+            let scheme = if self.tls { "rediss" } else { "redis" };
+            format!("{}://{}:{}", scheme, self.hostname, self.port)
         } else {
-            // Replace the default port with the configured port
-            self.url.replace(":6379", &format!(":{}", self.port))
+            // Use legacy URL
+            self.url.clone()
         }
     }
 }
@@ -206,6 +254,8 @@ impl Default for RedisConfig {
             url: RedisConfig::default_url(),
             key_prefix: RedisConfig::default_key_prefix(),
             port: RedisConfig::default_port(),
+            tls: RedisConfig::default_tls(),
+            hostname: RedisConfig::default_hostname(),
         }
     }
 }

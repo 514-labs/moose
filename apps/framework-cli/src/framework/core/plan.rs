@@ -47,6 +47,10 @@ pub enum PlanningError {
     #[error("Failed during reality check")]
     RealityCheck(#[from] RealityCheckError),
 
+    /// Storage is disabled but OLAP changes are required
+    #[error("Storage feature is disabled, but your project requires database operations. Please enable storage in your project configuration by setting 'storage = true' in your project features.")]
+    StorageDisabledButRequired,
+
     /// Other unspecified errors
     #[error("Unknown error")]
     Other(#[from] anyhow::Error),
@@ -256,6 +260,15 @@ pub async fn plan_changes(
         target_infra_map: target_infra_map.clone(),
         changes: reconciled_map.diff(&target_infra_map),
     };
+
+    // Validate that storage is enabled if OLAP changes are required
+    if !project.features.storage && !plan.changes.olap_changes.is_empty() {
+        error!(
+            "Storage is disabled but {} OLAP changes are required. Enable storage in project configuration.",
+            plan.changes.olap_changes.len()
+        );
+        return Err(PlanningError::StorageDisabledButRequired);
+    }
 
     debug!(
         "Plan Changes: {}",

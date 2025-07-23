@@ -67,31 +67,36 @@ pub fn validate_clickhouse_run(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    validate_container_run(
-        project,
-        CLICKHOUSE_CONTAINER_NAME,
-        Some("healthy"),
-        docker_client,
-    )
+    let container_name = format!(
+        "{}-{}-1",
+        project.name().to_lowercase(),
+        CLICKHOUSE_CONTAINER_NAME
+    );
+    validate_container_run(project, &container_name, Some("healthy"), docker_client)
 }
 
 pub fn validate_redpanda_run(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    validate_container_run(project, REDPANDA_CONTAINER_NAME, None, docker_client)
+    let container_name = format!(
+        "{}-{}-1",
+        project.name().to_lowercase(),
+        REDPANDA_CONTAINER_NAME
+    );
+    validate_container_run(project, &container_name, None, docker_client)
 }
 
 pub fn validate_temporal_run(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    validate_container_run(
-        project,
-        TEMPORAL_CONTAINER_NAME,
-        Some("healthy"),
-        docker_client,
-    )
+    let container_name = format!(
+        "{}-{}-1",
+        project.name().to_lowercase(),
+        TEMPORAL_CONTAINER_NAME
+    );
+    validate_container_run(project, &container_name, Some("healthy"), docker_client)
 }
 
 pub fn validate_redpanda_cluster(

@@ -76,7 +76,5 @@ deploy: resources: reservations: cpus: '2.0' memory: 4G
   temporal environment: - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233} -
   TEMPORAL_CORS_ORIGINS=${TEMPORAL_UI_CORS_ORIGINS:-http://localhost:3000}
   image: temporalio/ui:${TEMPORAL_UI_VERSION} networks: - temporal-network
-  ports: - ${TEMPORAL_UI_PORT:-8080}:8080
+  ports: - ${TEMPORAL_UI_PORT:-8080}:8080 networks: temporal-network:
 {{/if}}
-
-networks: temporal-network:

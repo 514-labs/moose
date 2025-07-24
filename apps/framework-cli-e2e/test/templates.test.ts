@@ -443,7 +443,7 @@ describe("Moose Templates", () => {
 
     it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

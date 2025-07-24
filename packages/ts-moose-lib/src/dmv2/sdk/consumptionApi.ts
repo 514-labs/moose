@@ -5,6 +5,19 @@ import { getMooseInternal } from "../internal";
 import type { ConsumptionUtil } from "../../consumption-apis/helpers";
 
 /**
+ * Generate a consistent API key for consumption APIs.
+ * @param name The name of the consumption API.
+ * @param version Optional version string.
+ * @returns The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+ */
+function generateApiKey(name: string, version?: string): string {
+  if (version) {
+    return `v${version}/${name}`;
+  }
+  return name;
+}
+
+/**
  * Defines the signature for a handler function used by a Consumption API.
  * @template T The expected type of the request parameters or query parameters.
  * @template R The expected type of the response data.
@@ -83,20 +96,11 @@ export class ConsumptionApi<T = any, R = any> extends TypedBase<
     const egressApis = getMooseInternal().egressApis;
 
     // Create a unique key that includes version information if available
-    const version = config?.version;
-    let apiKey: string;
-
-    if (version) {
-      // Use version-based key when version is specified
-      apiKey = `v${version}/${name}`;
-    } else {
-      // For unversioned APIs, use the plain name for routing compatibility
-      apiKey = name;
-    }
+    const apiKey = generateApiKey(name, config?.version);
 
     if (egressApis.has(apiKey)) {
       throw new Error(
-        `Consumption API with name ${name}${version ? ` version ${version}` : ""} already exists`,
+        `Consumption API with name ${name}${config?.version ? ` version ${config.version}` : ""} already exists`,
       );
     }
     egressApis.set(apiKey, this);

@@ -18,6 +18,21 @@ from ._registry import _egress_apis
 _global_base_url: Optional[str] = None
 
 
+def _generate_api_key(name: str, version: Optional[str] = None) -> str:
+    """Generate a consistent API key for consumption APIs.
+    
+    Args:
+        name: The name of the consumption API.
+        version: Optional version string.
+        
+    Returns:
+        The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+    """
+    if version:
+        return f"v{version}/{name}"
+    return name
+
+
 def set_moose_base_url(url: str) -> None:
     """Set the global base URL for consumption API calls.
     
@@ -106,24 +121,8 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
         # Initialize metadata object if not present
         self.metadata = getattr(config, 'metadata', {}) or {}
         
-        # Add source file information for debugging
-        import inspect
-        frame = inspect.currentframe()
-        if frame:
-            frame_info = inspect.getouterframes(frame)[1]
-            self.metadata.setdefault('source', {
-                'file': frame_info.filename,
-                'line': frame_info.lineno
-            })
-        
         # Create a unique key that includes version information if available
-        version = self.config.version
-        if version:
-            # Use version-based key when version is specified
-            api_key = f"v{version}/{name}"
-        else:
-            # For unversioned APIs, use the plain name for routing compatibility
-            api_key = name
+        api_key = _generate_api_key(name, self.config.version)
         
         # Check for existing API with the same key
         if api_key in _egress_apis:

@@ -41,6 +41,17 @@ export const FooPipeline = new IngestPipeline<Foo>("Foo", {
   deadLetterQueue: {
     destination: deadLetterTable,
   },
+  version: "1",
+});
+
+export const FooPipelineV2 = new IngestPipeline<Foo>("Foo", {
+  table: true, // No table; only stream raw records
+  stream: true, // Buffer ingested records
+  ingest: true, // POST /ingest/Foo
+  deadLetterQueue: {
+    destination: deadLetterTable,
+  },
+  version: "2",
 });
 
 /** Buffering and storing processed records (@see transforms.ts for transformation logic) */

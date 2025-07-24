@@ -86,6 +86,9 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
 def has_jwt_config() -> bool:
     return jwt_secret and jwt_issuer and jwt_audience
 
+def is_dmv2_enabled() -> bool:
+    return is_dmv2
+
 def handler_with_client(moose_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def log_request(self, code = "-", size = "-"):
@@ -107,41 +110,78 @@ def handler_with_client(moose_client):
             # Get the module name from the path
             module_name = path_parts[0]
             
+            # Extract version information early and maintain it consistently
             # Check for version in the custom header sent by the Rust webserver
-            version = self.headers.get('x-moose-api-version')
+            request_version = self.headers.get('x-moose-api-version')
+            
+            # Generate versioned module name consistently
             versioned_module_name = None
+            if request_version:
+                versioned_module_name = f"v{request_version}/{module_name}"
             
-            if version:
-                # Create versioned module name in the format expected by the registry
-                versioned_module_name = f"v{version}/{module_name}"
-            
+            # Parse JWT token
+            jwt_payload = None
+            auth_header = self.headers.get('Authorization')
+            if auth_header:
+                try:
+                    bearer_token = auth_header.split(' ')[1] if auth_header.startswith('Bearer ') else None
+                    if bearer_token:
+                        jwt_payload = jwt.decode(bearer_token, options={"verify_signature": False})
+                except:
+                    jwt_payload = None
+
+            # Parse query parameters
+            query_params = {}
             try:
-                jwt_payload = None
-                if has_jwt_config():
-                    auth_header = self.headers.get('Authorization')
-                    if auth_header:
-                        # Bearer <token>
-                        token = auth_header.split(" ")[1] if " " in auth_header else None
-                        if token:
-                            jwt_payload = verify_jwt(token)
+                query_params = parse_qs(parsed_path.query, keep_blank_values=True)
+                # Convert lists to individual items where needed
+                for key, value in query_params.items():
+                    if isinstance(value, list) and len(value) == 1:
+                        query_params[key] = value[0]
+            except Exception as e:
+                print(f"Error parsing query params: {e}")
 
-                    if jwt_payload is None and jwt_enforce_all == 'true':
-                        self.send_response(401)
-                        self.end_headers()
-                        self.wfile.write(bytes(json.dumps({"error": "Unauthorized"}), 'utf-8'))
-                        return
-
-                query_params = parse_qs(parsed_path.query)
-
-                if is_dmv2:
-                    # First try with versioned name if available
+            try:
+                # Check if we have a registered consumption API
+                if is_dmv2_enabled():
+                    # Improved deterministic version resolution logic
                     api_to_use = None
-                    if versioned_module_name:
-                        api_to_use = get_consumption_api(versioned_module_name)
-                    
-                    # If no versioned API found, try with regular name
-                    if api_to_use is None:
+                    if request_version:
+                        # When a specific version is requested, only look for that exact version
+                        api_to_use = get_consumption_api(module_name, request_version)
+                        
+                        if not api_to_use:
+                            # Version was explicitly requested but not found - this is an error condition
+                            print(f"Warning: Explicitly requested version {request_version} for endpoint {module_name} not found")
+                    else:
+                        # When no version is specified, try unversioned first
                         api_to_use = get_consumption_api(module_name)
+                        
+                        if not api_to_use:
+                            # Try to find any versioned implementation as fallback
+                            # Use a more deterministic approach: find all versions and pick the highest one
+                            from ._registry import _egress_apis
+                            import re
+                            
+                            available_versions = []
+                            pattern = re.compile(rf"^v(\d+(?:\.\d+)*)\/{re.escape(module_name)}$")
+                            
+                            for api_key in _egress_apis.keys():
+                                match = pattern.match(api_key)
+                                if match:
+                                    available_versions.append(match.group(1))
+                            
+                            if available_versions:
+                                # Sort versions and pick the highest one for deterministic behavior
+                                def version_key(version_str):
+                                    return tuple(int(x) for x in version_str.split('.'))
+                                
+                                available_versions.sort(key=version_key, reverse=True)
+                                highest_version = available_versions[0]
+                                api_to_use = get_consumption_api(module_name, highest_version)
+                                
+                                if api_to_use:
+                                    print(f"Info: No unversioned endpoint found for {module_name}, using version {highest_version} as fallback")
                     
                     if api_to_use is not None:
                         query_fields = convert_pydantic_definition(api_to_use.model_type)
@@ -166,16 +206,16 @@ def handler_with_client(moose_client):
                         self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
                         return
                 else:
-                    # Try to import the module, first with versioned path if available
+                    # Try to import the module, maintaining version consistency
                     try:
-                        if version:
+                        if request_version:
                             # For versioned paths, try importing with version-specific module
-                            versioned_import_path = f"{module_name}_v{version.replace('.', '_')}"
+                            versioned_import_path = f"{module_name}_v{request_version.replace('.', '_')}"
                             try:
                                 module = import_module(versioned_import_path)
                             except ModuleNotFoundError:
                                 # Try with just the major version (v1, v2, etc.)
-                                major_version = version.split('.')[0]
+                                major_version = request_version.split('.')[0]
                                 versioned_import_path = f"{module_name}_v{major_version}"
                                 try:
                                     module = import_module(versioned_import_path)
@@ -189,8 +229,8 @@ def handler_with_client(moose_client):
                         self.send_response(404)
                         self.end_headers()
                         error_msg = f"API module not found: {module_name}"
-                        if version:
-                            error_msg += f" with version {version}"
+                        if request_version:
+                            error_msg += f" with version {request_version}"
                         self.wfile.write(bytes(json.dumps({"error": error_msg}), 'utf-8'))
                         return
                         
@@ -199,29 +239,41 @@ def handler_with_client(moose_client):
                     if fields_and_class is not None:
                         (cls, fields) = fields_and_class
                         query_params = map_params_to_class(query_params, fields, cls)
+                        args = [moose_client, query_params]
+                        if jwt_payload is not None:
+                            args.append(jwt_payload)
+                        response = module.run(*args)
+                    else:
+                        self.send_response(404)
+                        self.end_headers()
+                        self.wfile.write(bytes(json.dumps({"error": "No consumption API found"}), 'utf-8'))
+                        return
 
-                    args = [moose_client, query_params]
-                    if jwt_payload is not None:
-                        args.append(jwt_payload)
-                    response = module.run(*args)
-
-                if hasattr(response, 'status') and hasattr(response, 'body'):
-                    self.send_response(response.status)
-                    response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
-                else:
-                    self.send_response(200)
-                    response_message = bytes(
-                        response if isinstance(response, str) else json.dumps(response, cls=EnhancedJSONEncoder),
-                        'utf-8')
-
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST')
+                self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate')
                 self.end_headers()
-                self.wfile.write(response_message)
+
+                if isinstance(response, str):
+                    self.wfile.write(response.encode())
+                else:
+                    self.wfile.write(bytes(json.dumps(response), 'utf-8'))
 
             except Exception as e:
                 traceback.print_exc()
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(str(e).encode())
+                error_response = json.dumps({"error": str(e)})
+                self.wfile.write(error_response.encode())
+
+        def do_OPTIONS(self):
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST')
+            self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, baggage, sentry-trace, traceparent, tracestate')
+            self.end_headers()
 
     return SimpleHTTPRequestHandler
 

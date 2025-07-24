@@ -5,6 +5,19 @@ import { getMooseInternal } from "../internal";
 import { DeadLetterQueue, Stream } from "./stream";
 
 /**
+ * Generate a consistent API key for ingest APIs.
+ * @param name The name of the ingest API.
+ * @param version Optional version string.
+ * @returns The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+ */
+function generateApiKey(name: string, version?: string): string {
+  if (version) {
+    return `v${version}/${name}`;
+  }
+  return name;
+}
+
+/**
  * @template T The data type of the messages expected by the destination stream.
  */
 export interface IngestConfig<T> {
@@ -53,12 +66,11 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     const ingestApis = getMooseInternal().ingestApis;
 
     // Create a unique key that includes version information if available
-    const version = config?.version;
-    const apiKey = version ? `v${version}/${name}` : name;
+    const apiKey = generateApiKey(name, config?.version);
 
     if (ingestApis.has(apiKey)) {
       throw new Error(
-        `Ingest API with name ${name}${version ? ` version ${version}` : ""} already exists`,
+        `Ingest API with name ${name}${config?.version ? ` version ${config.version}` : ""} already exists`,
       );
     }
     ingestApis.set(apiKey, this);

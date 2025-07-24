@@ -52,6 +52,21 @@ def get_consumption_apis() -> Dict[str, ConsumptionApi]:
     """Get all registered consumption APIs."""
     return _egress_apis
 
+def _generate_api_key(name: str, version: Optional[str] = None) -> str:
+    """Generate a consistent API key for consumption APIs.
+    
+    Args:
+        name: The name of the consumption API.
+        version: Optional version string.
+        
+    Returns:
+        The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+    """
+    if version:
+        return f"v{version}/{name}"
+    return name
+
+
 def get_consumption_api(name: str, version: str = None) -> Optional[ConsumptionApi]:
     """Get a registered consumption API by name and optional version.
     
@@ -62,10 +77,8 @@ def get_consumption_api(name: str, version: str = None) -> Optional[ConsumptionA
     Returns:
         The ConsumptionApi instance if found, otherwise None.
     """
-    if version:
-        key = f"v{version}/{name}"
-        return _egress_apis.get(key)
-    return _egress_apis.get(name)
+    key = _generate_api_key(name, version)
+    return _egress_apis.get(key)
 
 def get_sql_resources() -> Dict[str, SqlResource]:
     """Get all registered SQL resources."""

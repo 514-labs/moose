@@ -356,11 +356,11 @@ def to_infra_map() -> dict:
                 dead_letter_queue=dead_letter_queue_id
             )
 
-    for name, api in get_consumption_apis().items():
+    for registry_key, api in get_consumption_apis().items():
         # Include all APIs in the infrastructure map
         # The routing logic will handle version resolution
-        egress_apis[name] = EgressApiConfig(
-            name=name,
+        egress_apis[registry_key] = EgressApiConfig(
+            name=api.name,  # Use the actual API name, not the registry key
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),
             version=api.config.version,

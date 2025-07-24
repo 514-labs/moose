@@ -190,7 +190,7 @@ async fn get_consumption_api_res(
     config: ConsumptionApiConfig<'_>,
     version_segment: Option<String>,
     endpoint_segment: Option<String>,
-) -> Result<Response<Full<Bytes>>, anyhow::Error> {
+) -> Result<Response<Full<Bytes>>, Box<dyn std::error::Error + Send + Sync>> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
@@ -203,13 +203,17 @@ async fn get_consumption_api_res(
             )))?);
     }
 
+    // Extract and maintain version information consistently throughout the request
+    let request_version = version_segment.as_deref();
+    let request_endpoint = endpoint_segment.as_deref();
+
     // Determine what to proxy - handle both versioned and unversioned paths
-    let consumption_path = if let (Some(_), Some(endpoint)) = (&version_segment, &endpoint_segment)
+    let consumption_path = if let (Some(_), Some(endpoint)) = (&request_version, &request_endpoint)
     {
         // For versioned paths like /consumption/v1/Bar, forward as /endpoint
         // The consumption API server itself doesn't need the version in the path
         format!("/{endpoint}")
-    } else if let Some(endpoint) = &endpoint_segment {
+    } else if let Some(endpoint) = &request_endpoint {
         // For traditional paths like /consumption/Bar, forward as /endpoint
         format!("/{endpoint}")
     } else {
@@ -234,18 +238,22 @@ async fn get_consumption_api_res(
     debug!("Creating client for route: {:?}", url);
     {
         let consumption_apis = config.consumption_apis.read().await;
-        let consumption_name =
-            if let (Some(version), Some(endpoint)) = (&version_segment, &endpoint_segment) {
-                // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
-                format!("{version}/{endpoint}")
-            } else {
-                // For traditional paths, extract just the endpoint name
-                req.uri()
-                    .path()
-                    .strip_prefix("/consumption/")
-                    .unwrap_or(req.uri().path())
-                    .to_string()
-            };
+
+        // Generate consumption API key consistently
+        let consumption_name = if let (Some(version_str), Some(endpoint_str)) =
+            (&request_version, &request_endpoint)
+        {
+            // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
+            format!("{version_str}/{endpoint_str}")
+        } else {
+            // For traditional paths, extract just the endpoint name
+            req.uri()
+                .path()
+                .strip_prefix("/consumption/")
+                .unwrap_or(req.uri().path())
+                .to_string()
+        };
+
         if !consumption_apis.contains(&consumption_name) {
             if !config.is_prod {
                 println!(
@@ -275,12 +283,12 @@ async fn get_consumption_api_res(
     }
 
     // Add version information as a custom header if available
-    if let Some(version) = &version_segment {
+    if let Some(version_str) = &request_version {
         // Strip the 'v' prefix if present (e.g., "v1" -> "1")
-        let version_number = if let Some(stripped) = version.strip_prefix('v') {
+        let version_number = if let Some(stripped) = version_str.strip_prefix('v') {
             stripped
         } else {
-            version
+            version_str
         };
         headers.insert(
             "x-moose-api-version",
@@ -1000,6 +1008,22 @@ async fn router(
     let metrics_method = req.method().to_string();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
+
+    // Extract version information early from the route if present
+    let (extracted_version, extracted_endpoint) = match &route_split[..] {
+        // Handle explicit version in ingest path (e.g., /ingest/v1/Foo)
+        ["ingest", version_segment, endpoint] if version_segment.starts_with('v') => (
+            Some(version_segment.to_string()),
+            Some(endpoint.to_string()),
+        ),
+        // Handle explicit version in consumption path (e.g., /consumption/v1/Foo)
+        ["consumption", version_segment, endpoint] if version_segment.starts_with('v') => (
+            Some(version_segment.to_string()),
+            Some(endpoint.to_string()),
+        ),
+        _ => (None, None),
+    };
+
     let res = match (configured_producer, req.method(), &route_split[..]) {
         // Handle explicit version in path (e.g., /ingest/v1/Foo)
         (
@@ -1045,8 +1069,8 @@ async fn router(
                         .filter_map(|k| {
                             let k_str = k.to_str().unwrap();
                             if k_str.starts_with(&format!("{route_str}/")) {
-                                let version = k_str.strip_prefix(&format!("{route_str}/"))?;
-                                Some(version.to_string())
+                                let version_part = k_str.strip_prefix(&format!("{route_str}/"))?;
+                                Some(version_part.to_string())
                             } else {
                                 None
                             }

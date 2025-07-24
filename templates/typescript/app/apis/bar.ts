@@ -18,38 +18,24 @@ interface ResponseData {
   totalTextLength?: number;
 }
 
-export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
+export const BarApi = new ConsumptionApi<QueryParams, any>(
   "bar",
   async (
-    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
+    { orderBy = "totalRows", limit = 1, startDay = 1, endDay = 31 },
     { client, sql },
   ) => {
-    const cache = await MooseCache.get();
-    const cacheKey = `bar:${orderBy}:${limit}:${startDay}:${endDay}`;
-
-    // Try to get from cache first
-    const cachedData = await cache.get<ResponseData[]>(cacheKey);
-    if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
-      return cachedData;
-    }
-
-    const query = sql`
-        SELECT 
-          ${BarAggregatedMV.targetTable.columns.dayOfMonth},
-          ${BarAggregatedMV.targetTable.columns[orderBy]}
-        FROM ${BarAggregatedMV.targetTable}
-        WHERE 
-          dayOfMonth >= ${startDay} 
-          AND dayOfMonth <= ${endDay}
-        ORDER BY ${BarAggregatedMV.targetTable.columns[orderBy]} DESC
-        LIMIT ${limit}
-      `;
-
-    const data = await client.query.execute<ResponseData>(query);
-    const result: ResponseData[] = await data.json();
-
-    await cache.set(cacheKey, result, 3600); // Cache for 1 hour
-
-    return result;
+    return { version: "1" };
   },
+  { version: "1" },
+);
+
+export const BarApiV2 = new ConsumptionApi<QueryParams, any>(
+  "bar",
+  async (
+    { orderBy = "totalRows", limit = 20, startDay = 1, endDay = 31 },
+    { client, sql },
+  ) => {
+    return { version: "2" };
+  },
+  { version: "2" },
 );

@@ -12,6 +12,22 @@ from .types import TypedMooseResource, T
 from .stream import Stream, DeadLetterQueue
 from ._registry import _ingest_apis
 
+
+def _generate_api_key(name: str, version: Optional[str] = None) -> str:
+    """Generate a consistent API key for ingest APIs.
+    
+    Args:
+        name: The name of the ingest API.
+        version: Optional version string.
+        
+    Returns:
+        The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+    """
+    if version:
+        return f"v{version}/{name}"
+    return name
+
+
 class IngestConfig(BaseModel):
     """Basic configuration for an ingestion point.
 
@@ -76,12 +92,11 @@ class IngestApi(TypedMooseResource, Generic[T]):
             })
         
         # Create a unique key that includes version information if available
-        version = config.version
-        api_key = f"v{version}/{name}" if version else name
+        api_key = _generate_api_key(name, config.version)
         
         # Check for existing API with the same key
         if api_key in _ingest_apis:
-            version_text = f" version {version}" if version else ""
+            version_text = f" version {config.version}" if config.version else ""
             raise ValueError(f"Ingest API with name {name}{version_text} already exists")
             
         # Register the API with the appropriate key

@@ -418,7 +418,7 @@ fn handle_table_update(
     column_changes: &[ColumnChange],
 ) -> OperationPlan {
     // Check if ORDER BY has changed
-    if before.order_by != after.order_by {
+    if !before.order_by_equals(after) {
         // If ORDER BY changed, we need to drop and recreate the table
         handle_non_mutable_change_operation(before, after)
     } else {

@@ -94,6 +94,13 @@ impl Table {
             .collect()
     }
 
+    pub fn order_by_equals(&self, target: &Table) -> bool {
+        self.order_by == target.order_by
+            // target may leave order_by unspecified,
+            // but the implicit order_by from primary keys can be the same
+            || (target.order_by.is_empty() && self.order_by == target.primary_key_columns())
+    }
+
     pub fn to_proto(&self) -> ProtoTable {
         ProtoTable {
             name: self.name.clone(),

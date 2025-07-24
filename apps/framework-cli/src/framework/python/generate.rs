@@ -357,6 +357,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, Nested};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
 
     #[test]
     fn test_tables_to_python() {
@@ -400,6 +401,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_python(&tables);
@@ -478,6 +480,7 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_python(&tables);
@@ -575,6 +578,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_python(&tables);
@@ -646,6 +650,7 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_python(&tables);

@@ -830,6 +830,7 @@ fn path_exists(graph: &DiGraph<usize, ()>, start: NodeIndex, end: NodeIndex) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
         versions::Version,
@@ -854,6 +855,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create some atomic operations
@@ -919,6 +921,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create table B - depends on table A
@@ -934,6 +937,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create view C - depends on table B
@@ -1020,6 +1024,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create table B - target for materialized view
@@ -1035,6 +1040,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create view C - depends on table B
@@ -1141,6 +1147,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let view = View {
@@ -1288,6 +1295,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_b = Table {
@@ -1302,6 +1310,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_c = Table {
@@ -1316,6 +1325,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Test operations
@@ -1398,6 +1408,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_b = Table {
@@ -1412,6 +1423,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_c = Table {
@@ -1426,6 +1438,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_d = Table {
@@ -1440,6 +1453,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_e = Table {
@@ -1454,6 +1468,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let op_create_a = AtomicOlapOperation::CreateTable {
@@ -1599,6 +1614,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create table B - target for materialized view
@@ -1614,6 +1630,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create SQL resource for a materialized view
@@ -1727,6 +1744,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create table B - target for materialized view
@@ -1742,6 +1760,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create SQL resource for a materialized view
@@ -1875,6 +1894,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let table_b = Table {
@@ -1889,6 +1909,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create SQL resource for materialized view
@@ -2086,6 +2107,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create a column
@@ -2182,6 +2204,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Create operations with signatures that work with the current implementation
@@ -2287,6 +2310,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let after_table = Table {
@@ -2320,6 +2344,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DBBlock,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         // Generate the operation plan

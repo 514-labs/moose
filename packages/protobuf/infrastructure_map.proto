@@ -36,6 +36,7 @@ message Topic {
   optional int32 partition_count = 6;
   optional int32 max_message_bytes = 7;
   Metadata metadata = 8;
+  LifeCycle life_cycle = 9;
 }
 
 message ApiEndpoint {
@@ -92,6 +93,7 @@ message Table {
   bool deduplicate = 6;
   google.protobuf.StringValue engine = 7;
   Metadata metadata = 8;
+  LifeCycle life_cycle = 9;
 }
 
 message View {
@@ -273,6 +275,12 @@ enum PrimitiveTypes {
   FUNCTION = 1;
   DB_BLOCK = 2;
   CONSUMPTION_API = 3;
+}
+
+enum LifeCycle {
+  FULLY_MANAGED = 0;
+  DELETION_PROTECTED = 1;
+  EXTERNALLY_MANAGED = 2;
 }
 
 message OrchestrationWorker {

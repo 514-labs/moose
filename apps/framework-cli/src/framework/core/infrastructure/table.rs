@@ -1,10 +1,12 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
+use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
@@ -36,6 +38,7 @@ pub struct Table {
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
     pub metadata: Option<Metadata>,
+    pub life_cycle: LifeCycle,
 }
 
 impl Table {
@@ -119,6 +122,11 @@ impl Table {
                     special_fields: Default::default(),
                 }
             })),
+            life_cycle: match self.life_cycle {
+                LifeCycle::FullyManaged => ProtoLifeCycle::FULLY_MANAGED.into(),
+                LifeCycle::DeletionProtected => ProtoLifeCycle::DELETION_PROTECTED.into(),
+                LifeCycle::ExternallyManaged => ProtoLifeCycle::EXTERNALLY_MANAGED.into(),
+            },
             special_fields: Default::default(),
         }
     }
@@ -139,6 +147,11 @@ impl Table {
                     Some(m.description)
                 },
             }),
+            life_cycle: match proto.life_cycle.enum_value_or_default() {
+                ProtoLifeCycle::FULLY_MANAGED => LifeCycle::FullyManaged,
+                ProtoLifeCycle::DELETION_PROTECTED => LifeCycle::DeletionProtected,
+                ProtoLifeCycle::EXTERNALLY_MANAGED => LifeCycle::ExternallyManaged,
+            },
         }
     }
 }

@@ -43,6 +43,7 @@ use super::infrastructure::table::{Column, Table};
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
+use super::partial_infrastructure_map::LifeCycle;
 use super::partial_infrastructure_map::PartialInfrastructureMap;
 use super::primitive_map::PrimitiveMap;
 use crate::cli::display::{show_message_wrapper, Message, MessageType};
@@ -732,35 +733,68 @@ impl InfrastructureMap {
         for (id, topic) in &self.topics {
             if let Some(target_topic) = target_map.topics.get(id) {
                 if topic != target_topic {
-                    log::debug!("Topic updated: {} ({})", topic.name, id);
-                    topic_updates += 1;
-                    changes
-                        .streaming_engine_changes
-                        .push(StreamingChange::Topic(Change::<Topic>::Updated {
-                            before: Box::new(topic.clone()),
-                            after: Box::new(target_topic.clone()),
-                        }));
+                    // Respect lifecycle: ExternallyManaged topics are never modified
+                    if target_topic.life_cycle == LifeCycle::ExternallyManaged {
+                        log::debug!(
+                            "Topic '{}' has changes but is externally managed - skipping update",
+                            topic.name
+                        );
+                    } else {
+                        log::debug!("Topic updated: {} ({})", topic.name, id);
+                        topic_updates += 1;
+                        changes
+                            .streaming_engine_changes
+                            .push(StreamingChange::Topic(Change::<Topic>::Updated {
+                                before: Box::new(topic.clone()),
+                                after: Box::new(target_topic.clone()),
+                            }));
+                    }
                 }
             } else {
-                log::debug!("Topic removed: {} ({})", topic.name, id);
-                topic_removals += 1;
-                changes
-                    .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
-                        topic.clone(),
-                    ))));
+                // Respect lifecycle: DeletionProtected and ExternallyManaged topics are never removed
+                match topic.life_cycle {
+                    LifeCycle::FullyManaged => {
+                        log::debug!("Topic removed: {} ({})", topic.name, id);
+                        topic_removals += 1;
+                        changes
+                            .streaming_engine_changes
+                            .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
+                                topic.clone(),
+                            ))));
+                    }
+                    LifeCycle::DeletionProtected => {
+                        log::debug!(
+                            "Topic '{}' marked for removal but is deletion-protected - skipping removal",
+                            topic.name
+                        );
+                    }
+                    LifeCycle::ExternallyManaged => {
+                        log::debug!(
+                            "Topic '{}' marked for removal but is externally managed - skipping removal",
+                            topic.name
+                        );
+                    }
+                }
             }
         }
 
         for (id, topic) in &target_map.topics {
             if !self.topics.contains_key(id) {
-                log::debug!("Topic added: {} ({})", topic.name, id);
-                topic_additions += 1;
-                changes
-                    .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
-                        topic.clone(),
-                    ))));
+                // Respect lifecycle: ExternallyManaged topics are never added automatically
+                if topic.life_cycle == LifeCycle::ExternallyManaged {
+                    log::debug!(
+                        "Topic '{}' marked for addition but is externally managed - skipping addition",
+                        topic.name
+                    );
+                } else {
+                    log::debug!("Topic added: {} ({})", topic.name, id);
+                    topic_additions += 1;
+                    changes
+                        .streaming_engine_changes
+                        .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
+                            topic.clone(),
+                        ))));
+                }
             }
         }
 
@@ -1263,6 +1297,86 @@ impl InfrastructureMap {
         }
     }
 
+    /// Diff table with lifecycle-aware filtering
+    ///
+    /// For DeletionProtected tables, this filters out destructive changes like column removals
+    /// while allowing additive changes like column additions.
+    pub fn diff_table_with_lifecycle(table: &Table, target_table: &Table) -> Option<TableChange> {
+        let mut column_changes = compute_table_columns_diff(table, target_table);
+
+        // For DeletionProtected tables, filter out destructive column changes
+        if target_table.life_cycle == LifeCycle::DeletionProtected {
+            let original_len = column_changes.len();
+            column_changes.retain(|change| match change {
+                ColumnChange::Removed(_) => {
+                    log::debug!(
+                        "Filtering out column removal for deletion-protected table '{}'",
+                        table.name
+                    );
+                    false // Remove destructive column removals
+                }
+                ColumnChange::Added { .. } => true, // Allow additive changes
+                ColumnChange::Updated { .. } => true, // Allow column updates (might be risky, but user controls this)
+            });
+
+            if original_len != column_changes.len() {
+                log::info!(
+                    "Filtered {} destructive column changes for deletion-protected table '{}'",
+                    original_len - column_changes.len(),
+                    table.name
+                );
+            }
+        }
+
+        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
+            target_table
+                .columns
+                .iter()
+                .filter_map(|c| {
+                    if c.primary_key {
+                        Some(c.name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+
+        let order_by_changed = table.order_by != target_table.order_by
+            // target may leave order_by unspecified,
+            // but the implicit order_by from primary keys can be the same
+            && !(target_table.order_by.is_empty()
+                && order_by_from_primary_key(target_table) == table.order_by);
+
+        let order_by_change = if order_by_changed {
+            OrderByChange {
+                before: table.order_by.clone(),
+                after: target_table.order_by.clone(),
+            }
+        } else {
+            OrderByChange {
+                before: vec![],
+                after: vec![],
+            }
+        };
+
+        // Only push changes if there are actual differences to report
+        if !column_changes.is_empty()
+            || order_by_changed
+            || table.deduplicate != target_table.deduplicate
+        {
+            Some(TableChange::Updated {
+                name: table.name.clone(),
+                column_changes,
+                order_by_change,
+                before: table.clone(),
+                after: target_table.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
     /// Compare tables between two infrastructure maps and compute the differences
     ///
     /// This method identifies added, removed, and updated tables by comparing
@@ -1294,30 +1408,63 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
-                    if let Some(diff) = InfrastructureMap::diff_table(table, target_table) {
+                    // Respect lifecycle: ExternallyManaged tables are never modified
+                    if target_table.life_cycle == LifeCycle::ExternallyManaged {
+                        log::debug!(
+                            "Table '{}' has changes but is externally managed - skipping update",
+                            table.name
+                        );
+                    } else if let Some(diff) =
+                        InfrastructureMap::diff_table_with_lifecycle(table, target_table)
+                    {
                         table_updates += 1;
                         olap_changes.push(OlapChange::Table(diff));
                     };
                 }
             } else {
-                log::debug!("Table '{}' removed", table.name);
-                table_removals += 1;
-                olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
+                // Respect lifecycle: DeletionProtected and ExternallyManaged tables are never removed
+                match table.life_cycle {
+                    LifeCycle::FullyManaged => {
+                        log::debug!("Table '{}' removed", table.name);
+                        table_removals += 1;
+                        olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
+                    }
+                    LifeCycle::DeletionProtected => {
+                        log::debug!(
+                            "Table '{}' marked for removal but is deletion-protected - skipping removal",
+                            table.name
+                        );
+                    }
+                    LifeCycle::ExternallyManaged => {
+                        log::debug!(
+                            "Table '{}' marked for removal but is externally managed - skipping removal",
+                            table.name
+                        );
+                    }
+                }
             }
         }
 
         for (id, table) in target_tables {
             if !self_tables.contains_key(id) {
-                log::debug!(
-                    "Table '{}' added with {} columns",
-                    table.name,
-                    table.columns.len()
-                );
-                for col in &table.columns {
-                    log::trace!("  - Column: {} ({})", col.name, col.data_type);
+                // Respect lifecycle: ExternallyManaged tables are never added automatically
+                if table.life_cycle == LifeCycle::ExternallyManaged {
+                    log::debug!(
+                        "Table '{}' marked for addition but is externally managed - skipping addition",
+                        table.name
+                    );
+                } else {
+                    log::debug!(
+                        "Table '{}' added with {} columns",
+                        table.name,
+                        table.columns.len()
+                    );
+                    for col in &table.columns {
+                        log::trace!("  - Column: {} ({})", col.name, col.data_type);
+                    }
+                    table_additions += 1;
+                    olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
                 }
-                table_additions += 1;
-                olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
             }
         }
 
@@ -1749,11 +1896,15 @@ impl Default for InfrastructureMap {
 mod tests {
 
     use crate::framework::core::infrastructure::table::IntType;
+    use crate::framework::core::infrastructure_map::{
+        Change, InfrastructureMap, OlapChange, StreamingChange, TableChange,
+    };
     use crate::framework::core::{
         infrastructure::table::{Column, ColumnType, Table},
         infrastructure_map::{
             compute_table_columns_diff, ColumnChange, PrimitiveSignature, PrimitiveTypes,
         },
+        partial_infrastructure_map::LifeCycle,
     };
     use crate::framework::versions::Version;
 
@@ -1799,6 +1950,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let after = Table {
@@ -1841,6 +1993,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         };
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -1854,6 +2007,128 @@ mod tests {
         );
         assert!(matches!(&diff[2], ColumnChange::Removed(col) if col.name == "to_be_removed"));
     }
+
+    #[test]
+    fn test_lifecycle_aware_table_diff() {
+        // Test DeletionProtected table filtering out column removals
+        let mut before_table = super::diff_tests::create_test_table("test_table", "1.0");
+        before_table.life_cycle = LifeCycle::DeletionProtected;
+        before_table.columns = vec![
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int(IntType::Int64),
+                required: true,
+                unique: false,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "to_remove".to_string(),
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+        ];
+
+        let mut after_table = super::diff_tests::create_test_table("test_table", "1.0");
+        after_table.life_cycle = LifeCycle::DeletionProtected;
+        after_table.columns = vec![
+            Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int(IntType::Int64),
+                required: true,
+                unique: false,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+            },
+            Column {
+                name: "new_column".to_string(),
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+        ];
+
+        // Test normal diff (should show removal and addition)
+        let normal_diff = InfrastructureMap::diff_table(&before_table, &after_table);
+        assert!(normal_diff.is_some());
+        if let Some(TableChange::Updated { column_changes, .. }) = normal_diff {
+            assert_eq!(column_changes.len(), 2); // One removal, one addition
+            assert!(column_changes
+                .iter()
+                .any(|c| matches!(c, ColumnChange::Removed(_))));
+            assert!(column_changes
+                .iter()
+                .any(|c| matches!(c, ColumnChange::Added { .. })));
+        }
+
+        // Test lifecycle-aware diff (should filter out removal, keep addition)
+        let lifecycle_diff =
+            InfrastructureMap::diff_table_with_lifecycle(&before_table, &after_table);
+        assert!(lifecycle_diff.is_some());
+        if let Some(TableChange::Updated { column_changes, .. }) = lifecycle_diff {
+            assert_eq!(column_changes.len(), 1); // Only addition, removal filtered out
+            assert!(column_changes
+                .iter()
+                .all(|c| matches!(c, ColumnChange::Added { .. })));
+            assert!(!column_changes
+                .iter()
+                .any(|c| matches!(c, ColumnChange::Removed(_))));
+        }
+    }
+
+    #[test]
+    fn test_externally_managed_diff_filtering() {
+        let mut map1 = InfrastructureMap::default();
+        let mut map2 = InfrastructureMap::default();
+
+        // Create externally managed table that would normally be removed
+        let mut externally_managed_table =
+            super::diff_tests::create_test_table("external_table", "1.0");
+        externally_managed_table.life_cycle = LifeCycle::ExternallyManaged;
+        map1.tables.insert(
+            externally_managed_table.id(),
+            externally_managed_table.clone(),
+        );
+
+        // Create externally managed topic that would normally be added
+        let mut externally_managed_topic =
+            super::diff_topic_tests::create_test_topic("external_topic", "1.0");
+        externally_managed_topic.life_cycle = LifeCycle::ExternallyManaged;
+        map2.add_topic(externally_managed_topic.clone());
+
+        let changes = map1.diff(&map2);
+
+        // Should have no OLAP changes (table removal filtered out)
+        let table_removals = changes
+            .olap_changes
+            .iter()
+            .filter(|c| matches!(c, OlapChange::Table(TableChange::Removed(_))))
+            .count();
+        assert_eq!(
+            table_removals, 0,
+            "Externally managed table should not be removed"
+        );
+
+        // Should have no streaming changes (topic addition filtered out)
+        let topic_additions = changes
+            .streaming_engine_changes
+            .iter()
+            .filter(|c| matches!(c, StreamingChange::Topic(Change::Added(_))))
+            .count();
+        assert_eq!(
+            topic_additions, 0,
+            "Externally managed topic should not be added"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -1866,7 +2141,7 @@ mod diff_tests {
     use serde_json::Value as JsonValue;
 
     // Helper function to create a basic test table
-    fn create_test_table(name: &str, version: &str) -> Table {
+    pub fn create_test_table(name: &str, version: &str) -> Table {
         Table {
             name: name.to_string(),
             engine: None,
@@ -1879,6 +2154,7 @@ mod diff_tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 
@@ -2684,7 +2960,7 @@ mod diff_topic_tests {
     use std::time::Duration;
 
     // Helper function to create a test topic
-    fn create_test_topic(name: &str, version_str: &str) -> Topic {
+    pub fn create_test_topic(name: &str, version_str: &str) -> Topic {
         let version = Version::from_string(version_str.to_string());
         Topic {
             name: name.to_string(),
@@ -2707,6 +2983,7 @@ mod diff_topic_tests {
                 annotations: Vec::new(),
             }],
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

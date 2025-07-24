@@ -127,12 +127,21 @@ async fn reconcile_with_reality<T: OlapOperations>(
         match change {
             OlapChange::Table(table_change) => {
                 match table_change {
-                    TableChange::Updated { before, .. } => {
+                    TableChange::Updated {
+                        before: reality_table,
+                        after: infra_map_table,
+                        ..
+                    } => {
                         debug!(
                             "Updating table {} in infrastructure map to match reality",
-                            before.name
+                            reality_table.name
                         );
-                        reconciled_map.tables.insert(before.id(), before.clone());
+                        let mut table = reality_table.clone();
+                        // we refer to the life cycle value in the target infra map
+                        // if missing, we then refer to the old infra map
+                        // but never `reality_table.life_cycle` which is reconstructed in list_tables
+                        table.life_cycle = infra_map_table.life_cycle;
+                        reconciled_map.tables.insert(reality_table.id(), table);
                     }
                     _ => {
                         // Other table changes (Add/Remove) are already handled by unmapped/missing
@@ -284,6 +293,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::versions::Version;
     use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use crate::infrastructure::olap::OlapChangesError;
@@ -328,6 +338,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

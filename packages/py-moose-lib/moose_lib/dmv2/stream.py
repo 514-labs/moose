@@ -13,6 +13,7 @@ from pydantic.alias_generators import to_camel
 from .types import TypedMooseResource, ZeroOrMany, T, U
 from .olap_table import OlapTable
 from ._registry import _streams
+from .life_cycle import LifeCycle
 
 class StreamConfig(BaseModel):
     """Configuration for data streams (e.g., Redpanda topics).
@@ -23,12 +24,14 @@ class StreamConfig(BaseModel):
         destination: Optional `OlapTable` where stream messages should be automatically ingested.
         version: Optional version string for tracking configuration changes.
         metadata: Optional metadata for the stream.
+        life_cycle: Determines how changes in code will propagate to the resources.
     """
     parallelism: int = 1
     retention_period: int = 60 * 60 * 24 * 7  # 7 days
     destination: Optional[OlapTable[Any]] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None
+    life_cycle: Optional[LifeCycle] = None
 
 class TransformConfig(BaseModel):
     """Configuration for stream transformations.

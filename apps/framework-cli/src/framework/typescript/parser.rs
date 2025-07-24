@@ -1,5 +1,6 @@
 use std::io::ErrorKind::NotFound;
 use std::path::Path;
+#[cfg(test)]
 use std::process::Command;
 use std::{env, fs};
 
@@ -8,6 +9,9 @@ use serde_json::{json, Value};
 use crate::framework::data_model::parser::FileObjects;
 use crate::project::Project;
 use crate::utilities::constants::TSCONFIG_JSON;
+use crate::utilities::process_output::run_command_with_output_proxy;
+#[cfg(test)]
+use crate::utilities::process_output::run_command_with_output_proxy_sync;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
@@ -30,7 +34,7 @@ pub enum TypescriptParsingError {
     },
 }
 
-pub fn extract_data_model_from_file(
+pub async fn extract_data_model_from_file(
     path: &Path,
     project: &Project,
     version: &str,
@@ -73,22 +77,22 @@ pub fn extract_data_model_from_file(
         project.project_location.to_str().unwrap()
     );
 
-    let ts_return_code = Command::new("tspc")
-        .arg("--project")
-        .arg(format!(".moose/{TSCONFIG_JSON}"))
-        .env("PATH", bin_path)
-        .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
-        .current_dir(&project.project_location)
-        .spawn()
-        .map_err(|err| {
-            log::error!("Error while starting moose-tspc: {}", err);
-            TypescriptParsingError::TypescriptCompilerError(Some(err))
-        })?
-        .wait()
-        .map_err(|err| {
-            log::error!("Error while running moose-tspc: {}", err);
-            TypescriptParsingError::TypescriptCompilerError(Some(err))
-        })?;
+    let ts_return_code = {
+        let mut command = tokio::process::Command::new("tspc");
+        command
+            .arg("--project")
+            .arg(format!(".moose/{TSCONFIG_JSON}"))
+            .env("PATH", bin_path)
+            .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
+            .current_dir(&project.project_location);
+
+        run_command_with_output_proxy(command, "TypeScript Compiler")
+            .await
+            .map_err(|err| {
+                log::error!("Error while running moose-tspc: {}", err);
+                TypescriptParsingError::TypescriptCompilerError(None)
+            })?
+    };
 
     log::info!("Typescript compiler return code: {:?}", ts_return_code);
 
@@ -215,11 +219,9 @@ mod tests {
         let mut cmd = Command::new("pnpm");
         cmd_action(&mut cmd)
             .arg("--filter=@514labs/moose-lib")
-            .current_dir("../../")
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap();
+            .current_dir("../../");
+
+        run_command_with_output_proxy_sync(cmd, "pnpm moose-lib").unwrap();
     }
 
     lazy_static! {
@@ -228,30 +230,30 @@ mod tests {
 
             pnpm_moose_lib(|cmd| cmd.arg("run").arg("build"));
 
-            Command::new("npm")
-                .arg("i")
-                .current_dir("./tests/test_project")
-                .spawn()
-                .unwrap()
-                .wait()
-                .unwrap();
+            run_command_with_output_proxy_sync(
+                Command::new("npm")
+                    .arg("i")
+                    .current_dir("./tests/test_project"),
+                "npm install test_project",
+            )
+            .unwrap();
 
-            Command::new("npm")
-                .arg("link")
-                .current_dir("../../packages/ts-moose-lib")
-                .spawn()
-                .unwrap()
-                .wait()
-                .unwrap();
+            run_command_with_output_proxy_sync(
+                Command::new("npm")
+                    .arg("link")
+                    .current_dir("../../packages/ts-moose-lib"),
+                "npm link moose-lib",
+            )
+            .unwrap();
 
-            Command::new("npm")
-                .arg("link")
-                .arg("@514labs/moose-lib")
-                .current_dir("./tests/test_project")
-                .spawn()
-                .unwrap()
-                .wait()
-                .unwrap();
+            run_command_with_output_proxy_sync(
+                Command::new("npm")
+                    .arg("link")
+                    .arg("@514labs/moose-lib")
+                    .current_dir("./tests/test_project"),
+                "npm link in test_project",
+            )
+            .unwrap();
 
             Project::new(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test_project"),

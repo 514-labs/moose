@@ -9,7 +9,6 @@ pub mod utilities;
 
 pub mod proto;
 
-use std::io::Write;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -17,12 +16,10 @@ use cli::display::{Message, MessageType};
 
 /// Ensures terminal is properly reset on exit  
 fn ensure_terminal_cleanup() {
-    // The nuclear option: use the system's reset command
-    // This reads the terminal database and sends ALL necessary sequences
+    // Try reset command with piped output to prevent terminal corruption
     let reset_result = std::process::Command::new("reset")
-        .stdin(std::process::Stdio::inherit())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .status();
 
     // If reset command succeeded, we're done
@@ -31,12 +28,11 @@ fn ensure_terminal_cleanup() {
         return;
     }
 
-    // Fallback: try stty sane
+    // Fallback: try stty sane with piped output
     let _ = std::process::Command::new("stty")
         .arg("sane")
-        .stdin(std::process::Stdio::inherit())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .status();
 
     log::info!("Terminal cleanup complete via stty");

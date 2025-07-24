@@ -6,8 +6,7 @@ use super::{
     topic::Topic,
     DataLineage, InfrastructureSignature,
 };
-use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
-use crate::framework::streaming::model::StreamingFunction;
+use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map::{
     TopicToTableSyncProcess as ProtoTopicToTableSyncProcess,

@@ -4,7 +4,6 @@ use crate::framework::versions::Version;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
-    streaming::model::StreamingFunction,
 };
 use crate::proto;
 use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;

@@ -347,8 +347,7 @@ mod tests {
             assert!(
                 message == "Unsupported feature: index type"
                     || message == "Unsupported index signature in MyModel",
-                "Unexpected error message: {}",
-                message
+                "Unexpected error message: {message}"
             );
         } else {
             panic!()

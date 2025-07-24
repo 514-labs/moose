@@ -1019,17 +1019,6 @@ async fn router(
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
 
-    // Extract version information early from the route if present
-    let (extracted_version, extracted_endpoint) = match &route_split[..] {
-        // Handle explicit version in ingest path (e.g., /ingest/Foo/1)
-        ["ingest", endpoint, version] => (Some(version.to_string()), Some(endpoint.to_string())),
-        // Handle explicit version in consumption path (e.g., /consumption/Foo/1)
-        ["consumption", endpoint, version] => {
-            (Some(version.to_string()), Some(endpoint.to_string()))
-        }
-        _ => (None, None),
-    };
-
     let res = match (configured_producer, req.method(), &route_split[..]) {
         // Handle explicit version in path (e.g., /ingest/Foo/1)
         (Some(configured_producer), &hyper::Method::POST, ["ingest", endpoint, version]) => {
@@ -1108,18 +1097,6 @@ async fn router(
                 )
                 .await
             }
-        }
-        // Legacy handler for three-segment paths (should be kept for backward compatibility)
-        (Some(configured_producer), &hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(
-                req,
-                route,
-                configured_producer,
-                route_table,
-                is_prod,
-                jwt_config,
-            )
-            .await
         }
         (_, &hyper::Method::POST, ["admin", "integrate-changes"]) => {
             admin_integrate_changes_route(

@@ -1241,25 +1241,7 @@ impl InfrastructureMap {
     pub fn diff_table(table: &Table, target_table: &Table) -> Option<TableChange> {
         let column_changes = compute_table_columns_diff(table, target_table);
 
-        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
-            target_table
-                .columns
-                .iter()
-                .filter_map(|c| {
-                    if c.primary_key {
-                        Some(c.name.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        }
-
-        let order_by_changed = table.order_by != target_table.order_by
-            // target may leave order_by unspecified,
-            // but the implicit order_by from primary keys can be the same
-            && !(target_table.order_by.is_empty()
-                && order_by_from_primary_key(target_table) == table.order_by);
+        let order_by_changed = !table.order_by_equals(target_table);
 
         let order_by_change = if order_by_changed {
             OrderByChange {

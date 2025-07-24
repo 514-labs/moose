@@ -47,6 +47,10 @@ pub enum PlanningError {
     #[error("Failed during reality check")]
     RealityCheck(#[from] RealityCheckError),
 
+    /// OLAP is disabled but OLAP changes are required
+    #[error("OLAP feature is disabled, but your project requires database operations. Please enable OLAP in your project configuration by setting 'olap = true' in your project features.")]
+    OlapDisabledButRequired,
+
     /// Other unspecified errors
     #[error("Unknown error")]
     Other(#[from] anyhow::Error),
@@ -209,9 +213,6 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize current infrastructure map".to_string())
     );
 
-    // Plan changes, reconciling with reality
-    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
-
     let current_map_or_empty = current_infra_map.unwrap_or_else(|| InfrastructureMap {
         topics: Default::default(),
         api_endpoints: Default::default(),
@@ -227,18 +228,26 @@ pub async fn plan_changes(
         workflows: Default::default(),
     });
 
-    // Reconcile the current map with reality before diffing
-    let reconciled_map = reconcile_with_reality(
-        project,
-        &current_map_or_empty,
-        &target_infra_map
-            .tables
-            .values()
-            .map(|t| t.name.to_string())
-            .collect(),
-        olap_client,
-    )
-    .await?;
+    // Reconcile the current map with reality before diffing, but only if OLAP is enabled
+    let reconciled_map = if project.features.olap {
+        // Plan changes, reconciling with reality
+        let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+
+        reconcile_with_reality(
+            project,
+            &current_map_or_empty,
+            &target_infra_map
+                .tables
+                .values()
+                .map(|t| t.name.to_string())
+                .collect(),
+            olap_client,
+        )
+        .await?
+    } else {
+        debug!("OLAP disabled, skipping reality check reconciliation");
+        current_map_or_empty
+    };
 
     debug!(
         "Reconciled infrastructure map: {}",
@@ -251,6 +260,15 @@ pub async fn plan_changes(
         target_infra_map: target_infra_map.clone(),
         changes: reconciled_map.diff(&target_infra_map),
     };
+
+    // Validate that OLAP is enabled if OLAP changes are required
+    if !project.features.olap && !plan.changes.olap_changes.is_empty() {
+        error!(
+            "OLAP is disabled but {} OLAP changes are required. Enable OLAP in project configuration.",
+            plan.changes.olap_changes.len()
+        );
+        return Err(PlanningError::OlapDisabledButRequired);
+    }
 
     debug!(
         "Plan Changes: {}",

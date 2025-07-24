@@ -37,7 +37,9 @@ pub fn run_local_infrastructure(
     ensure_docker_running(docker_client)?;
     run_containers(project, docker_client)?.show();
 
-    validate_clickhouse_run(project, docker_client)?.show();
+    if project.features.olap {
+        validate_clickhouse_run(project, docker_client)?.show();
+    }
     if project.features.streaming_engine {
         validate_redpanda_run(project, docker_client)?.show();
         validate_redpanda_cluster(project.name(), docker_client)?.show();

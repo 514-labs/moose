@@ -414,26 +414,6 @@ async fn health_route(
     // Check Redis connectivity
     let redis_healthy = redis_client.is_connected();
 
-    // Check Redpanda/Kafka connectivity
-    let kafka_healthy = match kafka::client::health_check(&project.redpanda_config).await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: Redpanda unavailable: {}", e);
-            false
-        }
-    };
-
-    // Check ClickHouse connectivity
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let clickhouse_healthy = match olap_client.client.query("SELECT 1").execute().await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: ClickHouse unavailable: {}", e);
-            false
-        }
-    };
-
     // Prepare healthy and unhealthy lists
     let mut healthy = Vec::new();
     let mut unhealthy = Vec::new();
@@ -443,15 +423,30 @@ async fn health_route(
     } else {
         unhealthy.push("Redis")
     }
-    if kafka_healthy {
-        healthy.push("Redpanda")
-    } else {
-        unhealthy.push("Redpanda")
+
+    // Check Redpanda/Kafka connectivity only if streaming is enabled
+    if project.features.streaming_engine {
+        match kafka::client::health_check(&project.redpanda_config).await {
+            Ok(_) => healthy.push("Redpanda"),
+            Err(e) => {
+                warn!("Health check: Redpanda unavailable: {}", e);
+                unhealthy.push("Redpanda")
+            }
+        }
     }
-    if clickhouse_healthy {
-        healthy.push("ClickHouse")
-    } else {
-        unhealthy.push("ClickHouse")
+
+    // Check ClickHouse connectivity only if OLAP is enabled
+    if project.features.olap {
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        match olap_client.client.query("SELECT 1").execute().await {
+            Ok(_) => healthy.push("ClickHouse"),
+            Err(e) => {
+                warn!("Health check: ClickHouse unavailable: {}", e);
+                unhealthy.push("ClickHouse")
+            }
+        }
     }
 
     // Create JSON response
@@ -485,11 +480,15 @@ async fn admin_reality_check_route(
         return e.to_response();
     }
 
-    // Create OLAP client and reality checker
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let reality_checker =
-        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
+    // Early return if OLAP is disabled - no point loading infrastructure map
+    if !project.features.olap {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                r#"{"status": "error", "message": "Reality check is not available when OLAP is disabled. Reality check currently only validates database tables, which requires OLAP to be enabled in your project configuration."}"#
+            )));
+    }
 
     // Load infrastructure map from Redis
     let infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
@@ -504,25 +503,36 @@ async fn admin_reality_check_route(
         }
     };
 
-    // Perform reality check
-    match reality_checker.check_reality(project, &infra_map).await {
-        Ok(discrepancies) => {
-            let response = serde_json::json!({
-                "status": "success",
-                "discrepancies": discrepancies
-            });
+    // Perform reality check (storage is guaranteed to be enabled at this point)
+    let discrepancies = {
+        // Create OLAP client and reality checker
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        let reality_checker =
+            crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(Full::new(Bytes::from(response.to_string())))?)
+        match reality_checker.check_reality(project, &infra_map).await {
+            Ok(discrepancies) => discrepancies,
+            Err(e) => {
+                return Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from(format!(
+                        "{{\"status\": \"error\", \"message\": \"{e}\"}}"
+                    ))))
+            }
         }
-        Err(e) => Ok(Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Full::new(Bytes::from(format!(
-                "{{\"status\": \"error\", \"message\": \"{e}\"}}"
-            ))))?),
-    }
+    };
+
+    let response = serde_json::json!({
+        "status": "success",
+        "discrepancies": discrepancies
+    });
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(response.to_string())))
 }
 
 async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
@@ -1944,6 +1954,14 @@ async fn admin_integrate_changes_route(
                     .to_response();
             }
         };
+
+    // Skip integration if OLAP is disabled
+    if !project.features.olap {
+        return IntegrationError::BadRequest(
+            "OLAP is disabled, cannot integrate changes".to_string(),
+        )
+        .to_response();
+    }
 
     // Get reality check
     let olap_client =

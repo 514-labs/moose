@@ -677,9 +677,12 @@ impl InfrastructureMap {
         process_changes.append(&mut function_process_changes);
 
         // TODO Change this when we have multiple processes for blocks
-        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
-            Box::new(OlapProcess {}),
-        )));
+        // Only add OLAP process if OLAP is enabled
+        if project.features.olap {
+            process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
+                Box::new(OlapProcess {}),
+            )));
+        }
 
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
@@ -694,7 +697,6 @@ impl InfrastructureMap {
                 supported_language: project.language,
             }),
         )));
-
         process_changes
     }
 

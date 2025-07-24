@@ -194,7 +194,6 @@ enum Token {
 
     /// Whitespace is skipped
     #[regex(r"[ \t\r\n\f]+", logos::skip)]
-
     /// Error token (for unrecognized input)
     #[regex(".", logos::skip, priority = 0)]
     Error,

@@ -55,53 +55,6 @@ impl Topic {
         }
     }
 
-    pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Option<Topic>) {
-        let name = |suffix: &str| {
-            format!(
-                "{}_{}_{}_{}",
-                function.source_data_model.name,
-                function.source_data_model.version.as_suffix(),
-                function.id(),
-                suffix,
-            )
-        };
-
-        let source_topic = Topic {
-            name: name("input"),
-            version: Some(function.source_data_model.version.clone()),
-            partition_count: function.source_data_model.config.parallelism,
-            retention_period: Topic::default_duration(),
-            max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
-            columns: function.source_data_model.columns.clone(),
-            source_primitive: PrimitiveSignature {
-                name: function.id(),
-                primitive_type: PrimitiveTypes::Function,
-            },
-            metadata: None,
-            life_cycle: LifeCycle::FullyManaged,
-        };
-
-        let target_topic = function
-            .target_data_model
-            .as_ref()
-            .map(|target_data_model| Topic {
-                name: name("output"),
-                version: Some(target_data_model.version.clone()),
-                partition_count: target_data_model.config.parallelism,
-                retention_period: Topic::default_duration(),
-                max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
-                columns: target_data_model.columns.clone(),
-                source_primitive: PrimitiveSignature {
-                    name: function.id(),
-                    primitive_type: PrimitiveTypes::Function,
-                },
-                metadata: None,
-                life_cycle: LifeCycle::FullyManaged,
-            });
-
-        (source_topic, target_topic)
-    }
-
     pub fn id(&self) -> String {
         match self.source_primitive.primitive_type {
             // migration functions has versions in the name already

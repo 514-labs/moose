@@ -453,9 +453,9 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             data_model: _,
         } => {
             // For ingestion APIs, show the user-facing URL format instead of internal storage format
-            // Convert internal format "ingest/Foo/1" to user-facing format "ingest/v1/Foo"
+            // Show user-facing URL format "ingest/Foo/1"
             let user_facing_path = if let Some(version) = &endpoint.version {
-                format!("ingest/v{}/{}", version.as_str(), endpoint.name)
+                format!("ingest/{}/{}", endpoint.name, version.as_str())
             } else {
                 format!("ingest/{}", endpoint.name)
             };
@@ -470,25 +470,28 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             query_params,
             output_schema: _,
         } => {
-            // Check if the endpoint name already contains a version prefix (like "v1/bar")
-            let versioned_name = if endpoint.name.contains('/') {
-                // Name already contains version prefix (e.g., "v1/bar" from Python)
-                endpoint.name.clone()
+            let (display_name, user_facing_path) = if endpoint.name.contains('/') {
+                let name = endpoint.name.clone();
+                (
+                    name.clone(),
+                    format!("consumption/{}", name.replace('/', "/")),
+                )
             } else if let Some(version) = &endpoint.version {
-                // Name doesn't contain version, add it (e.g., "bar" -> "v1/bar" from TypeScript)
-                format!("v{}/{}", version.as_str(), endpoint.name)
+                let display_name = format!("{}/{}", endpoint.name, version.as_str());
+                let path = format!("consumption/{}/{}", endpoint.name, version.as_str());
+                (display_name, path)
             } else {
-                // No version at all
-                endpoint.name.clone()
+                let name = endpoint.name.clone();
+                (name.clone(), format!("consumption/{}", name))
             };
 
             Either::Right(ConsumptionApiInfo {
-                name: versioned_name.clone(),
+                name: display_name,
                 params: query_params
                     .iter()
                     .map(|param| param.name.clone())
                     .collect(),
-                path: format!("consumption/{versioned_name}"),
+                path: user_facing_path,
             })
         }
     }

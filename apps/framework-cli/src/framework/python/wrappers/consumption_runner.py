@@ -107,12 +107,18 @@ def handler_with_client(moose_client):
             parsed_path = urlparse(self.path)
             path_parts = parsed_path.path.lstrip('/').split('/')
             
-            # Get the module name from the path
+            # Parse version from URL path (e.g., "bar/1" -> version="1", endpoint="bar")
             module_name = path_parts[0]
+            version_from_path = None
+            if len(path_parts) >= 2:
+                version_from_path = path_parts[1]
             
             # Extract version information early and maintain it consistently
             # Check for version in the custom header sent by the Rust webserver
-            request_version = self.headers.get('x-moose-api-version')
+            version_from_header = self.headers.get('x-moose-api-version')
+            
+            # Use version from path first, then fallback to header
+            request_version = version_from_path or version_from_header
             
             # Generate versioned module name consistently
             versioned_module_name = None

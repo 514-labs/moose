@@ -52,10 +52,10 @@ const createPath = (consumptionDir: string, path: string) => {
   // Check if the path has version information
   const pathSegments = path.replace(/^\/+/, "").split("/");
 
-  // If it's a versioned path like "v1/endpoint"
-  if (pathSegments.length > 1 && pathSegments[0].startsWith("v")) {
-    const version = pathSegments[0].substring(1); // Remove 'v' prefix
-    const endpoint = pathSegments[1];
+  // If it's a versioned path like "endpoint/1"
+  if (pathSegments.length > 1) {
+    const endpoint = pathSegments[0];
+    const version = pathSegments[1];
 
     // Try different version formats
     // 1. endpoint_v1_0_0 (full version)
@@ -138,15 +138,15 @@ const apiHandler =
       // Check for version in headers (passed by Rust proxy)
       const versionFromHeader = req.headers["x-moose-api-version"] as string;
 
-      // Parse version from URL path (e.g., "v1/bar" -> version="1", endpoint="bar")
+      // Parse version from URL path (e.g., "bar/1" -> version="1", endpoint="bar")
       const fileName = url.pathname.replace(/^\/+/, "");
       const pathSegments = fileName.split("/");
       let versionFromPath: string | undefined;
       let endpointName = fileName;
 
-      if (pathSegments.length >= 2 && pathSegments[0].startsWith("v")) {
-        versionFromPath = pathSegments[0].substring(1); // Remove 'v' prefix
-        endpointName = pathSegments[1];
+      if (pathSegments.length >= 2) {
+        endpointName = pathSegments[0];
+        versionFromPath = pathSegments[1];
       }
 
       // Use version from path first, then fallback to header

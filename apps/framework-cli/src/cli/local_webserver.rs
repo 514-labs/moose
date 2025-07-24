@@ -210,7 +210,7 @@ async fn get_consumption_api_res(
     // Determine what to proxy - handle both versioned and unversioned paths
     let consumption_path = if let (Some(_), Some(endpoint)) = (&request_version, &request_endpoint)
     {
-        // For versioned paths like /consumption/v1/Bar, forward as /endpoint
+        // For versioned paths like /consumption/Bar/1, forward as /endpoint
         // The consumption API server itself doesn't need the version in the path
         format!("/{endpoint}")
     } else if let Some(endpoint) = &request_endpoint {
@@ -244,7 +244,7 @@ async fn get_consumption_api_res(
             (&request_version, &request_endpoint)
         {
             // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
-            format!("{version_str}/{endpoint_str}")
+            format!("v{version_str}/{endpoint_str}")
         } else {
             // For traditional paths, extract just the endpoint name
             req.uri()
@@ -1011,31 +1011,20 @@ async fn router(
 
     // Extract version information early from the route if present
     let (extracted_version, extracted_endpoint) = match &route_split[..] {
-        // Handle explicit version in ingest path (e.g., /ingest/v1/Foo)
-        ["ingest", version_segment, endpoint] if version_segment.starts_with('v') => (
-            Some(version_segment.to_string()),
-            Some(endpoint.to_string()),
-        ),
-        // Handle explicit version in consumption path (e.g., /consumption/v1/Foo)
-        ["consumption", version_segment, endpoint] if version_segment.starts_with('v') => (
-            Some(version_segment.to_string()),
-            Some(endpoint.to_string()),
-        ),
+        // Handle explicit version in ingest path (e.g., /ingest/Foo/1)
+        ["ingest", endpoint, version] => (Some(version.to_string()), Some(endpoint.to_string())),
+        // Handle explicit version in consumption path (e.g., /consumption/Foo/1)
+        ["consumption", endpoint, version] => {
+            (Some(version.to_string()), Some(endpoint.to_string()))
+        }
         _ => (None, None),
     };
 
     let res = match (configured_producer, req.method(), &route_split[..]) {
-        // Handle explicit version in path (e.g., /ingest/v1/Foo)
-        (
-            Some(configured_producer),
-            &hyper::Method::POST,
-            ["ingest", version_segment, endpoint],
-        ) if version_segment.starts_with('v') => {
-            let version_str = version_segment.to_string();
-            let version_number = version_str.strip_prefix('v').unwrap_or(version_segment);
-            let constructed_route = PathBuf::from("ingest").join(endpoint).join(version_number);
+        // Handle explicit version in path (e.g., /ingest/Foo/1)
+        (Some(configured_producer), &hyper::Method::POST, ["ingest", endpoint, version]) => {
+            let constructed_route = PathBuf::from("ingest").join(endpoint).join(version);
 
-            // This handles paths like /ingest/v1/Foo where the version is explicitly in the URL
             ingest_route(
                 req,
                 constructed_route,
@@ -1134,10 +1123,8 @@ async fn router(
         (_, &hyper::Method::POST, ["admin", "plan"]) => {
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
-        // Handle explicit version in consumption path (e.g., /consumption/v1/Foo)
-        (_, &hyper::Method::GET, ["consumption", version_segment, endpoint])
-            if version_segment.starts_with('v') =>
-        {
+        // Handle explicit version in consumption path (e.g., /consumption/Foo/1)
+        (_, &hyper::Method::GET, ["consumption", endpoint, version]) => {
             match get_consumption_api_res(
                 http_client.clone(),
                 req,
@@ -1147,7 +1134,7 @@ async fn router(
                     is_prod,
                     proxy_port: project.http_server_config.proxy_port,
                 },
-                Some(version_segment.to_string()),
+                Some(version.to_string()),
                 Some(endpoint.to_string()),
             )
             .await
@@ -1433,14 +1420,12 @@ impl Webserver {
                                 let mut apis_to_insert = Vec::new();
 
                                 if let Some(version) = &api_endpoint.version {
-                                    // Register versioned path
                                     apis_to_insert.push(format!(
                                         "v{}/{}",
                                         version.as_str(),
                                         api_endpoint.name
                                     ));
                                 } else {
-                                    // Only register unversioned path if no version is specified
                                     apis_to_insert.push(api_endpoint.name.clone());
                                 }
 

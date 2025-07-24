@@ -470,7 +470,10 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             query_params,
             output_schema: _,
         } => {
-            let (display_name, user_facing_path) = if endpoint.name.contains('/') {
+            let (display_name, user_facing_path) = if endpoint.name.contains('/')
+                && endpoint.name.split('/').nth(1).map_or(false, |part| {
+                    part.chars().all(|c| c.is_ascii_digit() || c == '.')
+                }) {
                 let name = endpoint.name.clone();
                 (
                     name.clone(),

@@ -89,8 +89,8 @@ pub async fn execute_initial_infra_change(
     redis_client: &Arc<RedisClient>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
-    // Only execute OLAP changes if storage is enabled
-    if project.features.storage {
+    // Only execute OLAP changes if OLAP is enabled
+    if project.features.olap {
         olap::execute_changes(project, &plan.changes.olap_changes).await?;
     }
     // Only execute streaming changes if streaming engine is enabled
@@ -172,8 +172,8 @@ pub async fn execute_online_change(
     metrics: Arc<Metrics>,
 ) -> Result<(), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
-    // Only execute OLAP changes if storage is enabled
-    if project.features.storage {
+    // Only execute OLAP changes if OLAP is enabled
+    if project.features.olap {
         olap::execute_changes(project, &plan.changes.olap_changes).await?;
     }
     // Only execute streaming changes if streaming engine is enabled

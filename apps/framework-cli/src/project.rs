@@ -140,9 +140,9 @@ pub struct ProjectFeatures {
     #[serde(default)]
     pub data_model_v2: bool,
 
-    /// Whether storage (OLAP/ClickHouse) is enabled
+    /// Whether OLAP (ClickHouse) is enabled
     #[serde(default = "_true")]
-    pub storage: bool,
+    pub olap: bool,
 }
 
 impl Default for ProjectFeatures {
@@ -151,7 +151,7 @@ impl Default for ProjectFeatures {
             streaming_engine: true,
             workflows: false,
             data_model_v2: false,
-            storage: true,
+            olap: true,
         }
     }
 }

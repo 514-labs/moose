@@ -435,8 +435,8 @@ async fn health_route(
         }
     }
 
-    // Check ClickHouse connectivity only if storage is enabled
-    if project.features.storage {
+    // Check ClickHouse connectivity only if OLAP is enabled
+    if project.features.olap {
         let olap_client = crate::infrastructure::olap::clickhouse::create_client(
             project.clickhouse_config.clone(),
         );
@@ -480,13 +480,13 @@ async fn admin_reality_check_route(
         return e.to_response();
     }
 
-    // Early return if storage is disabled - no point loading infrastructure map
-    if !project.features.storage {
+    // Early return if OLAP is disabled - no point loading infrastructure map
+    if !project.features.olap {
         return Response::builder()
             .status(StatusCode::BAD_REQUEST)
             .header("Content-Type", "application/json")
             .body(Full::new(Bytes::from(
-                r#"{"status": "error", "message": "Reality check is not available when storage is disabled. Reality check currently only validates database tables, which requires storage to be enabled in your project configuration."}"#
+                r#"{"status": "error", "message": "Reality check is not available when OLAP is disabled. Reality check currently only validates database tables, which requires OLAP to be enabled in your project configuration."}"#
             )));
     }
 
@@ -1955,10 +1955,10 @@ async fn admin_integrate_changes_route(
             }
         };
 
-    // Skip integration if storage is disabled
-    if !project.features.storage {
+    // Skip integration if OLAP is disabled
+    if !project.features.olap {
         return IntegrationError::BadRequest(
-            "Storage is disabled, cannot integrate changes".to_string(),
+            "OLAP is disabled, cannot integrate changes".to_string(),
         )
         .to_response();
     }

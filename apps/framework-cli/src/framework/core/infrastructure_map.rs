@@ -677,8 +677,8 @@ impl InfrastructureMap {
         process_changes.append(&mut function_process_changes);
 
         // TODO Change this when we have multiple processes for blocks
-        // Only add OLAP process if storage is enabled
-        if project.features.storage {
+        // Only add OLAP process if OLAP is enabled
+        if project.features.olap {
             process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
                 Box::new(OlapProcess {}),
             )));

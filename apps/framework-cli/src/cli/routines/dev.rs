@@ -37,7 +37,7 @@ pub fn run_local_infrastructure(
     ensure_docker_running(docker_client)?;
     run_containers(project, docker_client)?.show();
 
-    if project.features.storage {
+    if project.features.olap {
         validate_clickhouse_run(project, docker_client)?.show();
     }
     if project.features.streaming_engine {

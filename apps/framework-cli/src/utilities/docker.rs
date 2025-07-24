@@ -374,7 +374,7 @@ impl DockerClient {
         let mut data = json!({
             "scripts_feature": settings.features.scripts || project.features.workflows,
             "streaming_engine": project.features.streaming_engine,
-            "storage": project.features.storage
+            "storage": project.features.olap
         });
 
         // Add the clickhouse host data path if it's set

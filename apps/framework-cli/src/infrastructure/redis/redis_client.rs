@@ -226,7 +226,7 @@ impl RedisConfig {
     pub fn effective_url(&self) -> String {
         // Validate configuration
         if let Err(e) = self.validate() {
-            panic!("Invalid Redis configuration: {}", e);
+            panic!("Invalid Redis configuration: {e}");
         }
 
         // Use new fields if any differ from defaults (indicating explicit configuration)

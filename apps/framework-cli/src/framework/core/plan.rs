@@ -47,9 +47,9 @@ pub enum PlanningError {
     #[error("Failed during reality check")]
     RealityCheck(#[from] RealityCheckError),
 
-    /// Storage is disabled but OLAP changes are required
-    #[error("Storage feature is disabled, but your project requires database operations. Please enable storage in your project configuration by setting 'storage = true' in your project features.")]
-    StorageDisabledButRequired,
+    /// OLAP is disabled but OLAP changes are required
+    #[error("OLAP feature is disabled, but your project requires database operations. Please enable OLAP in your project configuration by setting 'olap = true' in your project features.")]
+    OlapDisabledButRequired,
 
     /// Other unspecified errors
     #[error("Unknown error")]
@@ -228,8 +228,8 @@ pub async fn plan_changes(
         workflows: Default::default(),
     });
 
-    // Reconcile the current map with reality before diffing, but only if storage is enabled
-    let reconciled_map = if project.features.storage {
+    // Reconcile the current map with reality before diffing, but only if OLAP is enabled
+    let reconciled_map = if project.features.olap {
         // Plan changes, reconciling with reality
         let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
 
@@ -245,7 +245,7 @@ pub async fn plan_changes(
         )
         .await?
     } else {
-        debug!("Storage disabled, skipping reality check reconciliation");
+        debug!("OLAP disabled, skipping reality check reconciliation");
         current_map_or_empty
     };
 
@@ -261,13 +261,13 @@ pub async fn plan_changes(
         changes: reconciled_map.diff(&target_infra_map),
     };
 
-    // Validate that storage is enabled if OLAP changes are required
-    if !project.features.storage && !plan.changes.olap_changes.is_empty() {
+    // Validate that OLAP is enabled if OLAP changes are required
+    if !project.features.olap && !plan.changes.olap_changes.is_empty() {
         error!(
-            "Storage is disabled but {} OLAP changes are required. Enable storage in project configuration.",
+            "OLAP is disabled but {} OLAP changes are required. Enable OLAP in project configuration.",
             plan.changes.olap_changes.len()
         );
-        return Err(PlanningError::StorageDisabledButRequired);
+        return Err(PlanningError::OlapDisabledButRequired);
     }
 
     debug!(

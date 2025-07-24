@@ -10,6 +10,7 @@ import { getMooseInternal } from "../internal";
 import { Readable } from "node:stream";
 import { createHash } from "node:crypto";
 import type { ConfigurationRegistry } from "../../config/runtime";
+import { LifeCycle } from "./lifeCycle";
 
 /**
  * Represents a failed record during insertion with error details
@@ -116,6 +117,7 @@ export type OlapConfig<T> = {
    * An optional version string for this configuration. Can be used for tracking changes or managing deployments.
    */
   version?: string;
+  lifeCycle?: LifeCycle;
 };
 
 /**

@@ -16,6 +16,7 @@ from ..config.runtime import RuntimeClickHouseConfig
 from .types import TypedMooseResource, T
 from ._registry import _tables
 from ..data_models import Column, is_array_nested_type, is_nested_type, _to_columns
+from .life_cycle import LifeCycle
 
 @dataclass
 class InsertOptions:
@@ -102,6 +103,7 @@ class OlapConfig(BaseModel):
         engine: The ClickHouse table engine to use (e.g., MergeTree, ReplacingMergeTree).
         version: Optional version string for tracking configuration changes.
         metadata: Optional metadata for the table.
+        life_cycle: Determines how changes in code will propagate to the resources.
     """
     order_by_fields: list[str] = []
     # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
@@ -109,6 +111,7 @@ class OlapConfig(BaseModel):
     engine: Optional[ClickHouseEngines] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None
+    life_cycle: Optional[LifeCycle] = None
 
 class OlapTable(TypedMooseResource, Generic[T]):
     """Represents an OLAP table (e.g., a ClickHouse table) typed with a Pydantic model.

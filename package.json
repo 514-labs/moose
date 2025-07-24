@@ -21,6 +21,7 @@
   "packageManager": "pnpm@9.9.0",
   "lint-staged": {
     "*.rs": "rustfmt --edition 2021",
-    "**/*": "prettier --write --ignore-unknown"
+    "**/*.{ts,tsx,js,jsx,json,md}": "prettier --write",
+    "!**/*.hbs": "echo 'Skipping Handlebars template files'"
   }
 }

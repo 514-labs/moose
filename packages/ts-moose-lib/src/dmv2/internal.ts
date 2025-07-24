@@ -61,6 +61,8 @@ interface TableJson {
   version?: string;
   /** Optional metadata for the table (e.g., description). */
   metadata?: { description?: string };
+  /** Lifecycle management setting for the table. */
+  lifeCycle?: string;
 }
 /**
  * Represents a target destination for data flow, typically a stream.
@@ -110,6 +112,8 @@ interface StreamJson {
   consumers: Consumer[];
   /** Optional description for the stream. */
   metadata?: { description?: string };
+  /** Lifecycle management setting for the stream. */
+  lifeCycle?: string;
 }
 /**
  * JSON representation of an Ingest API configuration.
@@ -221,6 +225,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       engine: table.config.engine,
       version: table.config.version,
       metadata,
+      lifeCycle: table.config.lifeCycle,
     };
   });
 
@@ -272,6 +277,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       hasMultiTransform: stream._multipleTransformations === undefined,
       consumers,
       metadata,
+      lifeCycle: stream.config.lifeCycle,
     };
   });
 

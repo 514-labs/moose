@@ -15,6 +15,7 @@ import { TypedBase } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
 import { dlqColumns, dlqSchema, getMooseInternal } from "../internal";
 import { OlapTable } from "./olapTable";
+import { LifeCycle } from "./lifeCycle";
 
 /**
  * Represents zero, one, or many values of type T.
@@ -164,6 +165,7 @@ export interface StreamConfig<T> {
    */
   version?: string;
   metadata?: { description?: string };
+  lifeCycle?: LifeCycle;
 }
 
 /**

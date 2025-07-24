@@ -237,6 +237,7 @@ mod tests {
     use crate::framework::core::infrastructure_map::{
         PrimitiveSignature, PrimitiveTypes, TableChange,
     };
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::versions::Version;
     use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use async_trait::async_trait;
@@ -313,6 +314,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

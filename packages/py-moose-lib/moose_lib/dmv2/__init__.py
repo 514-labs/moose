@@ -68,6 +68,10 @@ from .workflow import (
     Workflow,
 )
 
+from .life_cycle import (
+    LifeCycle,
+)
+
 from .registry import (
     get_tables,
     get_table,
@@ -131,6 +135,9 @@ __all__ = [
     'Task',
     'WorkflowConfig',
     'Workflow',
+
+    # Lifecycle
+    'LifeCycle',
 
     # Registry
     'get_tables',

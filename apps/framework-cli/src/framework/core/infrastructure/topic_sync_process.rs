@@ -6,8 +6,7 @@ use super::{
     topic::Topic,
     DataLineage, InfrastructureSignature,
 };
-use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
-use crate::framework::streaming::model::StreamingFunction;
+use crate::framework::core::infrastructure_map::PrimitiveSignature;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map::{
     TopicToTableSyncProcess as ProtoTopicToTableSyncProcess,
@@ -132,19 +131,6 @@ pub struct TopicToTopicSyncProcess {
 }
 
 impl TopicToTopicSyncProcess {
-    pub fn from_migration_function(function: &StreamingFunction) -> Self {
-        let source_topic = Topic::from_data_model(&function.source_data_model);
-        let (source_for_func, _) = Topic::from_migration_function(function);
-        TopicToTopicSyncProcess {
-            source_topic_id: source_topic.id(),
-            target_topic_id: source_for_func.id(),
-            source_primitive: PrimitiveSignature {
-                name: function.id(),
-                primitive_type: PrimitiveTypes::Function,
-            },
-        }
-    }
-
     pub fn id(&self) -> String {
         self.target_topic_id.to_string()
     }

@@ -38,8 +38,8 @@ pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "Foo";
 pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "Bar";
 
-pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
-pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
+pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb";
+pub const REDPANDA_CONTAINER_NAME: &str = "redpanda";
 pub const TEMPORAL_CONTAINER_NAME: &str = "temporal";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];

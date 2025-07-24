@@ -1,11 +1,12 @@
 use super::table::{Column, Metadata};
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
-    streaming::model::StreamingFunction,
 };
 use crate::proto;
+use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -30,6 +31,8 @@ pub struct Topic {
     pub source_primitive: PrimitiveSignature,
 
     pub metadata: Option<Metadata>,
+
+    pub life_cycle: LifeCycle,
 }
 
 impl Topic {
@@ -47,52 +50,8 @@ impl Topic {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
-    }
-
-    pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Option<Topic>) {
-        let name = |suffix: &str| {
-            format!(
-                "{}_{}_{}_{}",
-                function.source_data_model.name,
-                function.source_data_model.version.as_suffix(),
-                function.id(),
-                suffix,
-            )
-        };
-
-        let source_topic = Topic {
-            name: name("input"),
-            version: Some(function.source_data_model.version.clone()),
-            partition_count: function.source_data_model.config.parallelism,
-            retention_period: Topic::default_duration(),
-            max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
-            columns: function.source_data_model.columns.clone(),
-            source_primitive: PrimitiveSignature {
-                name: function.id(),
-                primitive_type: PrimitiveTypes::Function,
-            },
-            metadata: None,
-        };
-
-        let target_topic = function
-            .target_data_model
-            .as_ref()
-            .map(|target_data_model| Topic {
-                name: name("output"),
-                version: Some(target_data_model.version.clone()),
-                partition_count: target_data_model.config.parallelism,
-                retention_period: Topic::default_duration(),
-                max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
-                columns: target_data_model.columns.clone(),
-                source_primitive: PrimitiveSignature {
-                    name: function.id(),
-                    primitive_type: PrimitiveTypes::Function,
-                },
-                metadata: None,
-            });
-
-        (source_topic, target_topic)
     }
 
     pub fn id(&self) -> String {
@@ -148,6 +107,11 @@ impl Topic {
                     special_fields: Default::default(),
                 }
             })),
+            life_cycle: match self.life_cycle {
+                LifeCycle::FullyManaged => ProtoLifeCycle::FULLY_MANAGED.into(),
+                LifeCycle::DeletionProtected => ProtoLifeCycle::DELETION_PROTECTED.into(),
+                LifeCycle::ExternallyManaged => ProtoLifeCycle::EXTERNALLY_MANAGED.into(),
+            },
             special_fields: Default::default(),
         }
     }
@@ -175,6 +139,11 @@ impl Topic {
                     Some(m.description)
                 },
             }),
+            life_cycle: match proto.life_cycle.enum_value_or_default() {
+                ProtoLifeCycle::FULLY_MANAGED => LifeCycle::FullyManaged,
+                ProtoLifeCycle::DELETION_PROTECTED => LifeCycle::DeletionProtected,
+                ProtoLifeCycle::EXTERNALLY_MANAGED => LifeCycle::ExternallyManaged,
+            },
         }
     }
 }

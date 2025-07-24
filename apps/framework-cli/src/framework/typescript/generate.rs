@@ -240,6 +240,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumMember, Nested};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
 
     #[test]
     fn test_nested_types() {
@@ -320,6 +321,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_typescript(&tables);
@@ -392,6 +394,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_typescript(&tables);

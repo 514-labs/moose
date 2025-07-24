@@ -239,7 +239,8 @@ impl DockerClient {
             .env(
                 "CLICKHOUSE_HOST_PORT",
                 project.clickhouse_config.host_port.to_string(),
-            );
+            )
+            .env("REDIS_PORT", project.redis_config.port.to_string());
 
         let child = child
             .stdout(Stdio::piped())
@@ -318,7 +319,7 @@ impl DockerClient {
         project: &Project,
         container_name: &str,
     ) -> anyhow::Result<()> {
-        let full_container_name = format!("{}-{}", project.name().to_lowercase(), container_name);
+        let full_container_name = format!("{}-{}-1", project.name().to_lowercase(), container_name);
         let container_id = self.get_container_id(&full_container_name)?;
 
         let mut child = tokio::process::Command::new(&self.cli_command)
@@ -372,7 +373,8 @@ impl DockerClient {
 
         let mut data = json!({
             "scripts_feature": settings.features.scripts || project.features.workflows,
-            "streaming_engine": project.features.streaming_engine
+            "streaming_engine": project.features.streaming_engine,
+            "storage": project.features.olap
         });
 
         // Add the clickhouse host data path if it's set
@@ -403,7 +405,7 @@ impl DockerClient {
             .create_command()
             .arg("exec")
             .arg(format!(
-                "{}-{}",
+                "{}-{}-1",
                 project_name.to_lowercase(),
                 REDPANDA_CONTAINER_NAME
             ))
@@ -441,7 +443,11 @@ impl DockerClient {
         let child = self
             .create_command()
             .arg("exec")
-            .arg(format!("{project_name}-{REDPANDA_CONTAINER_NAME}"))
+            .arg(format!(
+                "{}-{}-1",
+                project_name.to_lowercase(),
+                REDPANDA_CONTAINER_NAME
+            ))
             .arg("rpk")
             .args(args)
             .stdout(Stdio::piped())

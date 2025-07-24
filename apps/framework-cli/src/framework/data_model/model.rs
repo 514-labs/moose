@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use crate::framework::core::infrastructure::table::{Column, Table};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::data_model::DuplicateModelError;
 use crate::framework::versions::{find_previous_version, parse_version, Version};
 
@@ -53,6 +54,7 @@ impl DataModel {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

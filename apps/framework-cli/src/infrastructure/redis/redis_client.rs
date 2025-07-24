@@ -130,10 +130,19 @@ pub struct RedisLock {
 /// capabilities, as the struct implements `Serialize` and `Deserialize`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisConfig {
+    /// Legacy URL field for backwards compatibility
     #[serde(default = "RedisConfig::default_url")]
     pub url: String,
     #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
+    #[serde(default = "RedisConfig::default_port")]
+    pub port: u16,
+    /// Whether to use TLS (rediss://) or plain Redis (redis://)
+    #[serde(default = "RedisConfig::default_tls")]
+    pub tls: bool,
+    /// Redis hostname
+    #[serde(default = "RedisConfig::default_hostname")]
+    pub hostname: String,
 }
 
 impl RedisConfig {
@@ -162,6 +171,76 @@ impl RedisConfig {
     pub fn default_key_prefix() -> String {
         "MS".to_string()
     }
+
+    /// Returns the default Redis port.
+    ///
+    /// This method provides the default port for Redis connections.
+    ///
+    /// # Returns
+    ///
+    /// The default Redis port: 6379
+    pub fn default_port() -> u16 {
+        6379
+    }
+
+    /// Returns the default hostname for Redis connections.
+    pub fn default_hostname() -> String {
+        "127.0.0.1".to_string()
+    }
+
+    /// Returns the default TLS setting.
+    pub fn default_tls() -> bool {
+        false
+    }
+
+    /// Validates the configuration to ensure either URL or new fields are used, but not both.
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), String>` - Ok if valid, Err with error message if invalid
+    pub fn validate(&self) -> Result<(), String> {
+        let using_new_fields = self.hostname != Self::default_hostname()
+            || self.tls != Self::default_tls()
+            || self.port != Self::default_port();
+        let using_url = self.url != Self::default_url();
+
+        if using_new_fields && using_url {
+            return Err(
+                "Cannot use both 'url' and new fields (hostname, tls, port) in Redis configuration. Please use either 'url' for backwards compatibility or 'hostname'+'tls'+'port' for the new format.".to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Returns the effective Redis URL, using either the new fields (tls, hostname, port)
+    /// or the legacy URL field.
+    ///
+    /// # Returns
+    ///
+    /// A string containing the effective Redis URL
+    ///
+    /// # Panics
+    ///
+    /// Panics if both URL and new fields are configured (call validate() first)
+    pub fn effective_url(&self) -> String {
+        // Validate configuration
+        if let Err(e) = self.validate() {
+            panic!("Invalid Redis configuration: {e}");
+        }
+
+        // Use new fields if any differ from defaults (indicating explicit configuration)
+        if self.hostname != Self::default_hostname()
+            || self.tls != Self::default_tls()
+            || self.port != Self::default_port()
+        {
+            let scheme = if self.tls { "rediss" } else { "redis" };
+            format!("{}://{}:{}", scheme, self.hostname, self.port)
+        } else {
+            // Use legacy URL
+            self.url.clone()
+        }
+    }
 }
 
 /// Implements the Default trait for RedisConfig.
@@ -174,6 +253,9 @@ impl Default for RedisConfig {
         RedisConfig {
             url: RedisConfig::default_url(),
             key_prefix: RedisConfig::default_key_prefix(),
+            port: RedisConfig::default_port(),
+            tls: RedisConfig::default_tls(),
+            hostname: RedisConfig::default_hostname(),
         }
     }
 }
@@ -282,8 +364,9 @@ impl RedisClient {
     pub async fn new(service_name: String, config: RedisConfig) -> anyhow::Result<Self> {
         let instance_id = uuid::Uuid::new_v4().to_string();
 
-        // Create Redis client
-        let client_result = Client::open(config.url.clone());
+        // Create Redis client using the effective URL
+        let effective_url = config.effective_url();
+        let client_result = Client::open(effective_url.clone());
         let (connection_manager, fallback) = match client_result {
             Ok(c) => match ConnectionManagerWrapper::new(&c).await {
                 Ok(cm) => (cm, None),
@@ -350,7 +433,7 @@ impl RedisClient {
         );
 
         let callbacks = self.message_callbacks.clone();
-        let config_url = self.config.url.clone();
+        let config_url = self.config.effective_url();
 
         let instance_channel_clone = instance_channel.clone();
         let broadcast_channel_clone = broadcast_channel.clone();

@@ -47,6 +47,10 @@ pub enum PlanningError {
     #[error("Failed during reality check")]
     RealityCheck(#[from] RealityCheckError),
 
+    /// OLAP is disabled but OLAP changes are required
+    #[error("OLAP feature is disabled, but your project requires database operations. Please enable OLAP in your project configuration by setting 'olap = true' in your project features.")]
+    OlapDisabledButRequired,
+
     /// Other unspecified errors
     #[error("Unknown error")]
     Other(#[from] anyhow::Error),
@@ -123,12 +127,21 @@ async fn reconcile_with_reality<T: OlapOperations>(
         match change {
             OlapChange::Table(table_change) => {
                 match table_change {
-                    TableChange::Updated { before, .. } => {
+                    TableChange::Updated {
+                        before: reality_table,
+                        after: infra_map_table,
+                        ..
+                    } => {
                         debug!(
                             "Updating table {} in infrastructure map to match reality",
-                            before.name
+                            reality_table.name
                         );
-                        reconciled_map.tables.insert(before.id(), before.clone());
+                        let mut table = reality_table.clone();
+                        // we refer to the life cycle value in the target infra map
+                        // if missing, we then refer to the old infra map
+                        // but never `reality_table.life_cycle` which is reconstructed in list_tables
+                        table.life_cycle = infra_map_table.life_cycle;
+                        reconciled_map.tables.insert(reality_table.id(), table);
                     }
                     _ => {
                         // Other table changes (Add/Remove) are already handled by unmapped/missing
@@ -209,9 +222,6 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize current infrastructure map".to_string())
     );
 
-    // Plan changes, reconciling with reality
-    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
-
     let current_map_or_empty = current_infra_map.unwrap_or_else(|| InfrastructureMap {
         topics: Default::default(),
         api_endpoints: Default::default(),
@@ -227,18 +237,26 @@ pub async fn plan_changes(
         workflows: Default::default(),
     });
 
-    // Reconcile the current map with reality before diffing
-    let reconciled_map = reconcile_with_reality(
-        project,
-        &current_map_or_empty,
-        &target_infra_map
-            .tables
-            .values()
-            .map(|t| t.name.to_string())
-            .collect(),
-        olap_client,
-    )
-    .await?;
+    // Reconcile the current map with reality before diffing, but only if OLAP is enabled
+    let reconciled_map = if project.features.olap {
+        // Plan changes, reconciling with reality
+        let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+
+        reconcile_with_reality(
+            project,
+            &current_map_or_empty,
+            &target_infra_map
+                .tables
+                .values()
+                .map(|t| t.name.to_string())
+                .collect(),
+            olap_client,
+        )
+        .await?
+    } else {
+        debug!("OLAP disabled, skipping reality check reconciliation");
+        current_map_or_empty
+    };
 
     debug!(
         "Reconciled infrastructure map: {}",
@@ -251,6 +269,15 @@ pub async fn plan_changes(
         target_infra_map: target_infra_map.clone(),
         changes: reconciled_map.diff(&target_infra_map),
     };
+
+    // Validate that OLAP is enabled if OLAP changes are required
+    if !project.features.olap && !plan.changes.olap_changes.is_empty() {
+        error!(
+            "OLAP is disabled but {} OLAP changes are required. Enable OLAP in project configuration.",
+            plan.changes.olap_changes.len()
+        );
+        return Err(PlanningError::OlapDisabledButRequired);
+    }
 
     debug!(
         "Plan Changes: {}",
@@ -266,6 +293,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType, Table};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::versions::Version;
     use crate::infrastructure::olap::clickhouse::TableWithUnsupportedType;
     use crate::infrastructure::olap::OlapChangesError;
@@ -310,6 +338,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

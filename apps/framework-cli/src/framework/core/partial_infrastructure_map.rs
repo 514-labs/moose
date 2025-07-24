@@ -66,6 +66,29 @@ use super::{
     infrastructure_map::{InfrastructureMap, PrimitiveSignature, PrimitiveTypes},
 };
 
+/// Defines how Moose manages the lifecycle of database resources when code changes.
+///
+/// This enum controls the behavior when there are differences between code definitions
+/// and the actual database schema or structure.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum LifeCycle {
+    /// Full automatic management (default behavior).
+    /// Moose will automatically modify database resources to match code definitions,
+    /// including potentially destructive operations like dropping columns or tables.
+    FullyManaged,
+
+    /// Deletion-protected automatic management.
+    /// Moose will modify resources to match code but will avoid destructive actions
+    /// such as dropping columns or tables. Only additive changes are applied.
+    DeletionProtected,
+
+    /// External management - no automatic changes.
+    /// Moose will not modify the database resources. You are responsible for managing
+    /// the schema and ensuring it matches code definitions manually.
+    ExternallyManaged,
+}
+
 /// Represents a table definition from user code before it's converted into a complete [`Table`].
 ///
 /// This structure captures the essential properties needed to create a table in the infrastructure,
@@ -80,6 +103,7 @@ struct PartialTable {
     pub engine: Option<String>,
     pub version: Option<String>,
     pub metadata: Option<Metadata>,
+    pub life_cycle: Option<LifeCycle>,
 }
 
 /// Represents a topic definition from user code before it's converted into a complete [`Topic`].
@@ -99,6 +123,7 @@ struct PartialTopic {
     pub version: Option<String>,
     pub consumers: Vec<Consumer>,
     pub metadata: Option<Metadata>,
+    pub life_cycle: Option<LifeCycle>,
 }
 
 /// Specifies the type of destination for write operations.
@@ -403,6 +428,7 @@ impl PartialInfrastructureMap {
                         primitive_type: PrimitiveTypes::DataModel,
                     },
                     metadata: partial_table.metadata.clone(),
+                    life_cycle: partial_table.life_cycle.unwrap_or(LifeCycle::FullyManaged),
                 };
                 (table.id(), table)
             })
@@ -434,6 +460,7 @@ impl PartialInfrastructureMap {
                         primitive_type: PrimitiveTypes::DataModel,
                     },
                     metadata: partial_topic.metadata.clone(),
+                    life_cycle: partial_topic.life_cycle.unwrap_or(LifeCycle::FullyManaged),
                 };
                 (topic.id(), topic)
             })

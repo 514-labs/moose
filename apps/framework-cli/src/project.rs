@@ -139,6 +139,21 @@ pub struct ProjectFeatures {
     /// ongoing redesign of data models
     #[serde(default)]
     pub data_model_v2: bool,
+
+    /// Whether OLAP (ClickHouse) is enabled
+    #[serde(default = "_true")]
+    pub olap: bool,
+}
+
+impl Default for ProjectFeatures {
+    fn default() -> Self {
+        ProjectFeatures {
+            streaming_engine: true,
+            workflows: false,
+            data_model_v2: false,
+            olap: true,
+        }
+    }
 }
 
 /// Represents a user's Moose project
@@ -187,16 +202,6 @@ pub struct Project {
     /// Whether this instance should load infra containers (see module docs)
     #[serde(default)]
     pub load_infra: Option<bool>,
-}
-
-impl Default for ProjectFeatures {
-    fn default() -> Self {
-        ProjectFeatures {
-            streaming_engine: true,
-            workflows: false,
-            data_model_v2: false,
-        }
-    }
 }
 
 static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
@@ -265,7 +270,6 @@ impl Project {
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
             jwt: None,
-
             features: Default::default(),
             authentication: AuthenticationConfig::default(),
             load_infra: None,

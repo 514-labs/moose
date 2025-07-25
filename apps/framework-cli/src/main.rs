@@ -14,28 +14,28 @@ use std::process::ExitCode;
 use clap::Parser;
 use cli::display::{Message, MessageType};
 
-/// Ensures terminal is properly reset on exit  
+/// Ensures terminal is properly reset on exit using crossterm
 fn ensure_terminal_cleanup() {
-    // Try reset command with piped output to prevent terminal corruption
-    let reset_result = std::process::Command::new("reset")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .status();
+    use crossterm::{
+        cursor::Show,
+        execute,
+        terminal::{disable_raw_mode, LeaveAlternateScreen},
+    };
+    use std::io::{stdout, Write};
 
-    // If reset command succeeded, we're done
-    if reset_result.is_ok() && reset_result.unwrap().success() {
-        log::info!("Terminal cleanup complete via reset command");
-        return;
-    }
+    let mut stdout = stdout();
 
-    // Fallback: try stty sane with piped output
-    let _ = std::process::Command::new("stty")
-        .arg("sane")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .status();
+    // Perform the standard ratatui cleanup sequence:
+    // 1. Disable raw mode (if it was enabled)
+    // 2. Leave alternate screen (if we were in it)
+    // 3. Show cursor (if it was hidden)
+    // 4. Reset any terminal state
 
-    log::info!("Terminal cleanup complete via stty");
+    let _ = disable_raw_mode();
+    let _ = execute!(stdout, LeaveAlternateScreen, Show);
+    let _ = stdout.flush();
+
+    log::info!("Terminal cleanup complete via crossterm");
 }
 
 // Entry point for the CLI application

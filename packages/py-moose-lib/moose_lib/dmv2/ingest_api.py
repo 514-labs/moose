@@ -14,12 +14,7 @@ from ._registry import _ingest_apis
 
 
 def _generate_api_key(name: str, version: Optional[str] = None) -> str:
-    """Generate a consistent API key for ingest APIs.
-    
-    Args:
-        name: The name of the ingest API.
-        version: Optional version string.
-        
+    """
     Returns:
         The API key string in the format "v{version}/{name}" or just "{name}" if no version.
     """

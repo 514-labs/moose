@@ -80,7 +80,6 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
         payload = jwt.decode(token, jwt_secret, algorithms=["RS256"], audience=jwt_audience, issuer=jwt_issuer)
         return payload
     except Exception as e:
-        print("JWT verification failed:", str(e))
         return None
 
 def has_jwt_config() -> bool:
@@ -92,9 +91,6 @@ def is_dmv2_enabled() -> bool:
 def handler_with_client(moose_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def log_request(self, code = "-", size = "-"):
-            """instead of calling log_message which goes to stderr by default,
-            this implementation goes to stdout, but is otherwise the same.
-            """
             if isinstance(code, HTTPStatus):
                 code = code.value
             sys.stdout.write('%s - - [%s] "%s" %s %s\n' %
@@ -107,25 +103,19 @@ def handler_with_client(moose_client):
             parsed_path = urlparse(self.path)
             path_parts = parsed_path.path.lstrip('/').split('/')
             
-            # Parse version from URL path (e.g., "bar/1" -> version="1", endpoint="bar")
             module_name = path_parts[0]
             version_from_path = None
             if len(path_parts) >= 2:
                 version_from_path = path_parts[1]
             
-            # Extract version information early and maintain it consistently
-            # Check for version in the custom header sent by the Rust webserver
             version_from_header = self.headers.get('x-moose-api-version')
             
-            # Use version from path first, then fallback to header
             request_version = version_from_path or version_from_header
             
-            # Generate versioned module name consistently
             versioned_module_name = None
             if request_version:
                 versioned_module_name = f"v{request_version}/{module_name}"
             
-            # Parse JWT token
             jwt_payload = None
             auth_header = self.headers.get('Authorization')
             if auth_header:
@@ -136,33 +126,21 @@ def handler_with_client(moose_client):
                 except:
                     jwt_payload = None
 
-            # Parse query parameters
             query_params = {}
             try:
                 query_params = parse_qs(parsed_path.query, keep_blank_values=True)
-                # Keep all values as lists - map_params_to_class expects this format
             except Exception as e:
                 print(f"Error parsing query params: {e}")
 
             try:
-                # Check if we have a registered consumption API
                 if is_dmv2_enabled():
-                    # Improved deterministic version resolution logic
                     api_to_use = None
                     if request_version:
-                        # When a specific version is requested, only look for that exact version
                         api_to_use = get_consumption_api(module_name, request_version)
-                        
-                        if not api_to_use:
-                            # Version was explicitly requested but not found - this is an error condition
-                            print(f"Warning: Explicitly requested version {request_version} for endpoint {module_name} not found")
                     else:
-                        # When no version is specified, try unversioned first
                         api_to_use = get_consumption_api(module_name)
                         
                         if not api_to_use:
-                            # Try to find any versioned implementation as fallback
-                            # Use a more deterministic approach: find all versions and pick the highest one
                             from ._registry import _egress_apis
                             import re
                             
@@ -175,16 +153,12 @@ def handler_with_client(moose_client):
                                     available_versions.append(match.group(1))
                             
                             if available_versions:
-                                # Sort versions and pick the highest one for deterministic behavior
                                 def version_key(version_str):
                                     return tuple(int(x) for x in version_str.split('.'))
                                 
                                 available_versions.sort(key=version_key, reverse=True)
                                 highest_version = available_versions[0]
                                 api_to_use = get_consumption_api(module_name, highest_version)
-                                
-                                if api_to_use:
-                                    print(f"Info: No unversioned endpoint found for {module_name}, using version {highest_version} as fallback")
                     
                     if api_to_use is not None:
                         query_fields = convert_pydantic_definition(api_to_use.model_type)
@@ -200,7 +174,6 @@ def handler_with_client(moose_client):
                         if jwt_payload is not None:
                             args.append(jwt_payload)
                         response = api_to_use.query_function(*args)
-                        # Convert Pydantic model to dict before JSON serialization
                         if isinstance(response, BaseModel):
                             response = response.model_dump_json()
                     else:
@@ -209,24 +182,19 @@ def handler_with_client(moose_client):
                         self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
                         return
                 else:
-                    # Try to import the module, maintaining version consistency
                     try:
                         if request_version:
-                            # For versioned paths, try importing with version-specific module
                             versioned_import_path = f"{module_name}_v{request_version.replace('.', '_')}"
                             try:
                                 module = import_module(versioned_import_path)
                             except ModuleNotFoundError:
-                                # Try with just the major version (v1, v2, etc.)
                                 major_version = request_version.split('.')[0]
                                 versioned_import_path = f"{module_name}_v{major_version}"
                                 try:
                                     module = import_module(versioned_import_path)
                                 except ModuleNotFoundError:
-                                    # Fall back to unversioned module if versioned not found
                                     module = import_module(module_name)
                         else:
-                            # No version specified, try regular import
                             module = import_module(module_name)
                     except ModuleNotFoundError:
                         self.send_response(404)
@@ -301,7 +269,6 @@ def walk_dir(dir, file_extension):
 
 
 def main():
-    print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
     ch_client = get_client(interface=interface, host=host,
                            port=port, database=db, username=user, password=password)
 
@@ -313,7 +280,6 @@ def main():
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
 
     if is_dmv2:
-        print("Loading DMv2 models")
         load_models()
 
     moose_client = MooseClient(ch_client, temporal_client)
@@ -338,7 +304,6 @@ def main():
         # Start shutdown in a separate thread to avoid deadlock
         threading.Thread(target=shutdown_server).start()
     
-    # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGQUIT, signal_handler)

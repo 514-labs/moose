@@ -203,7 +203,6 @@ async fn get_consumption_api_res(
             )))?);
     }
 
-    // Extract and maintain version information consistently throughout the request
     let request_version = version_segment.as_deref();
     let request_endpoint = endpoint_segment.as_deref();
 
@@ -211,7 +210,6 @@ async fn get_consumption_api_res(
     let consumption_path = if let (Some(_), Some(endpoint)) = (&request_version, &request_endpoint)
     {
         // For versioned paths like /consumption/Bar/1, forward as /endpoint
-        // The consumption API server itself doesn't need the version in the path
         format!("/{endpoint}")
     } else if let Some(endpoint) = &request_endpoint {
         // For traditional paths like /consumption/Bar, forward as /endpoint
@@ -243,10 +241,8 @@ async fn get_consumption_api_res(
         let consumption_name = if let (Some(version_str), Some(endpoint_str)) =
             (&request_version, &request_endpoint)
         {
-            // For versioned paths, check for "v<version>/<endpoint>" in the HashSet
             format!("v{version_str}/{endpoint_str}")
         } else {
-            // For traditional paths, extract just the endpoint name
             req.uri()
                 .path()
                 .strip_prefix("/consumption/")
@@ -281,10 +277,7 @@ async fn get_consumption_api_res(
     for (key, value) in req.headers() {
         headers.insert(key, value.clone());
     }
-
-    // Add version information as a custom header if available
     if let Some(version_str) = &request_version {
-        // Strip the 'v' prefix if present (e.g., "v1" -> "1")
         let version_number = if let Some(stripped) = version_str.strip_prefix('v') {
             stripped
         } else {
@@ -1071,7 +1064,6 @@ async fn router(
                         })
                         .collect();
 
-                    // Try current version first, then fall back to any available version
                     let fallback_version = if available_versions.contains(&current_version) {
                         current_version.clone()
                     } else {
@@ -1094,7 +1086,6 @@ async fn router(
                     .await
                 }
             } else {
-                // For v1, append current version as before
                 let versioned_route = route.join(&current_version);
 
                 ingest_route(
@@ -1147,8 +1138,6 @@ async fn router(
         }
         // Handle traditional consumption path (e.g., /consumption/Foo)
         (_, &hyper::Method::GET, ["consumption", endpoint]) => {
-            // Always try to serve the unversioned endpoint if it exists
-            // This allows unversioned endpoints to work even when versioned endpoints are available
             match get_consumption_api_res(
                 http_client,
                 req,

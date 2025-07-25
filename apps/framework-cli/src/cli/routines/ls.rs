@@ -453,7 +453,6 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             data_model: _,
         } => {
             // For ingestion APIs, show the user-facing URL format instead of internal storage format
-            // Show user-facing URL format "ingest/Foo/1"
             let user_facing_path = if let Some(version) = &endpoint.version {
                 format!("ingest/{}/{}", endpoint.name, version.as_str())
             } else {

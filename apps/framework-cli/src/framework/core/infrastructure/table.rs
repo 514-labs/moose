@@ -38,6 +38,7 @@ pub struct Table {
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
     pub metadata: Option<Metadata>,
+    #[serde(default = "LifeCycle::default_for_deserialization")]
     pub life_cycle: LifeCycle,
 }
 

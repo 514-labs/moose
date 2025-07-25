@@ -9,6 +9,7 @@ const meta = {
   "consumption-apis": "Consumption APIs",
   workflows: "Workflows",
   "dead-letter-queues": "Dead Letter Queues",
+  lifecycle: "LifeCycle Management",
 };
 
 export default render(meta);

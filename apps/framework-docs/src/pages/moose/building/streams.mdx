@@ -1067,5 +1067,40 @@ high_throughput_stream = Stream[Data]("high_throughput", StreamConfig(
 ```
 </Python>
 
+### LifeCycle Management
 
-See the [API Reference](./api-reference#stream) for complete configuration options. 
+Control how Moose manages your stream resources when your code changes. See the [LifeCycle Management guide](./lifecycle) for detailed information.
+
+<TypeScript>
+```typescript filename="LifeCycleStreamConfig.ts"
+import { Stream, LifeCycle } from "@514labs/moose-lib";
+
+// Production stream with external management
+const prodStream = new Stream<Data>("prod_stream", {
+  lifeCycle: LifeCycle.EXTERNALLY_MANAGED
+});
+
+// Development stream with full management
+const devStream = new Stream<Data>("dev_stream", {
+  lifeCycle: LifeCycle.FULLY_MANAGED
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="LifeCycleStreamConfig.py" copy
+from moose_lib import Stream, StreamConfig, LifeCycle
+
+# Production stream with external management
+prod_stream = Stream[Data]("prod_stream", StreamConfig(
+  life_cycle=LifeCycle.EXTERNALLY_MANAGED
+))
+
+# Development stream with full management
+dev_stream = Stream[Data]("dev_stream", StreamConfig(
+  life_cycle=LifeCycle.FULLY_MANAGED
+))
+```
+</Python>
+
+See the [API Reference](./api-reference#stream) for complete configuration options.

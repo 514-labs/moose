@@ -478,14 +478,14 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
                     .is_some_and(|part| part.chars().all(|c| c.is_ascii_digit() || c == '.'))
             {
                 let name = endpoint.name.clone();
-                (name.clone(), format!("consumption/{}", name))
+                (name.clone(), format!("consumption/{name}"))
             } else if let Some(version) = &endpoint.version {
                 let display_name = format!("{}/{}", endpoint.name, version.as_str());
                 let path = format!("consumption/{}/{}", endpoint.name, version.as_str());
                 (display_name, path)
             } else {
                 let name = endpoint.name.clone();
-                (name.clone(), format!("consumption/{}", name))
+                (name.clone(), format!("consumption/{name}"))
             };
 
             Either::Right(ConsumptionApiInfo {

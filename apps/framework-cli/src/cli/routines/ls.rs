@@ -471,14 +471,14 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             output_schema: _,
         } => {
             let (display_name, user_facing_path) = if endpoint.name.contains('/')
-                && endpoint.name.split('/').nth(1).map_or(false, |part| {
-                    part.chars().all(|c| c.is_ascii_digit() || c == '.')
-                }) {
+                && endpoint
+                    .name
+                    .split('/')
+                    .nth(1)
+                    .is_some_and(|part| part.chars().all(|c| c.is_ascii_digit() || c == '.'))
+            {
                 let name = endpoint.name.clone();
-                (
-                    name.clone(),
-                    format!("consumption/{}", name.replace('/', "/")),
-                )
+                (name.clone(), format!("consumption/{}", name))
             } else if let Some(version) = &endpoint.version {
                 let display_name = format!("{}/{}", endpoint.name, version.as_str());
                 let path = format!("consumption/{}/{}", endpoint.name, version.as_str());

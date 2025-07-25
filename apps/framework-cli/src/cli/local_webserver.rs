@@ -1039,10 +1039,23 @@ async fn router(
             if project.features.data_model_v2 {
                 // For DMv2, try direct route first (unversioned endpoint)
                 let route_table_read = route_table.read().await;
-                if route_table_read.contains_key(&route) {
+                println!("Attempting to handle ingest for path: {:?}", route);
+                println!(
+                    "Available routes in registry: {:?}",
+                    route_table_read.keys().collect::<Vec<_>>()
+                );
+                println!("Route: {:?}", route);
+                // Case-insensitive route lookup
+                let route_str = route.to_str().unwrap().to_lowercase();
+                let matching_route = route_table_read
+                    .keys()
+                    .find(|&k| k.to_str().unwrap_or("").to_lowercase() == route_str);
+
+                if let Some(matched_key) = matching_route {
+                    println!("Found direct match for route: {:?}", matched_key);
                     ingest_route(
                         req,
-                        route,
+                        matched_key.clone(),
                         configured_producer,
                         route_table,
                         is_prod,
@@ -1065,19 +1078,30 @@ async fn router(
                         })
                         .collect();
 
+                    println!(
+                        "No direct match found. Available versions for {}: {:?}",
+                        route_str, available_versions
+                    );
+                    println!("Current version: {}", current_version);
                     // Try current version first, then fall back to any available version
                     let fallback_version = if available_versions.contains(&current_version) {
+                        println!("Using current version: {}", current_version);
                         current_version.clone()
                     } else {
-                        available_versions
+                        let version = available_versions
                             .first()
                             .cloned()
-                            .unwrap_or(current_version.clone())
+                            .unwrap_or(current_version.clone());
+                        println!("Using fallback version: {}", version);
+                        version
                     };
+
+                    let versioned_route = route.join(&fallback_version);
+                    println!("Attempting versioned route: {:?}", versioned_route);
 
                     ingest_route(
                         req,
-                        route.join(&fallback_version),
+                        versioned_route,
                         configured_producer,
                         route_table,
                         is_prod,
@@ -1087,9 +1111,15 @@ async fn router(
                 }
             } else {
                 // For v1, append current version as before
+                let versioned_route = route.join(&current_version);
+                println!(
+                    "Using DMv1 path with current version: {:?}",
+                    versioned_route
+                );
+
                 ingest_route(
                     req,
-                    route.join(&current_version),
+                    versioned_route,
                     configured_producer,
                     route_table,
                     is_prod,

@@ -140,10 +140,7 @@ def handler_with_client(moose_client):
             query_params = {}
             try:
                 query_params = parse_qs(parsed_path.query, keep_blank_values=True)
-                # Convert lists to individual items where needed
-                for key, value in query_params.items():
-                    if isinstance(value, list) and len(value) == 1:
-                        query_params[key] = value[0]
+                # Keep all values as lists - map_params_to_class expects this format
             except Exception as e:
                 print(f"Error parsing query params: {e}")
 

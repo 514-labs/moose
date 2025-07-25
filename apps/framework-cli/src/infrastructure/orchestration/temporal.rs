@@ -237,7 +237,8 @@ impl TemporalConfig {
 
     pub fn get_temporal_namespace(&self) -> String {
         let temporal_url = self.temporal_url_with_scheme().unwrap_or_default();
-        if temporal_url.contains("https") {
+        if temporal_url.contains(".tmprl.cloud") {
+            // In boreal, the namespace is part of the url
             let domain_name = self.get_temporal_domain_name();
             domain_name
                 .strip_suffix(".tmprl.cloud")

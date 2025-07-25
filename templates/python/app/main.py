@@ -4,4 +4,4 @@
 from app.ingest import models, transforms
 import app.apis.bar as bar_api
 import app.views.bar_aggregated as bar_view
-# from app.scripts.generate_random import ingest_workflow, ingest_task
+from app.scripts.generate_random import ingest_workflow, ingest_task

@@ -211,47 +211,39 @@ export class WorkflowClient {
  */
 export async function getTemporalClient(
   temporalUrl: string,
+  namespace: string,
   clientCert: string,
   clientKey: string,
   apiKey: string,
 ): Promise<TemporalClient | undefined> {
   try {
-    let namespace = "default";
-    if (!temporalUrl.includes("localhost")) {
-      // Remove port and just get <namespace>.<account>
-      const hostPart = temporalUrl.split(":")[0];
-      const match = hostPart.match(/^([^.]+\.[^.]+)/);
-      if (match && match[1]) {
-        namespace = match[1];
-      }
-    }
-    console.info(`<api> Using namespace from URL: ${namespace}`);
+    console.info(
+      `<api> Using temporal_url: ${temporalUrl} and namespace: ${namespace}`,
+    );
 
     let connectionOptions: ConnectionOptions = {
       address: temporalUrl,
       connectTimeout: "3s",
     };
 
-    if (!temporalUrl.includes("localhost")) {
+    if (clientCert && clientKey) {
       // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
-      if (clientCert && clientKey) {
-        console.log("Using TLS for non-local Temporal");
-        const cert = await fs.readFileSync(clientCert);
-        const key = await fs.readFileSync(clientKey);
+      console.log("Using TLS for secure Temporal");
+      const cert = await fs.readFileSync(clientCert);
+      const key = await fs.readFileSync(clientKey);
 
-        connectionOptions.tls = {
-          clientCertPair: { crt: cert, key: key },
-        };
-      } else if (apiKey) {
-        console.log("Using API key for non-local Temporal");
-        // URL with API key uses gRPC regional endpoint
-        connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
-        connectionOptions.apiKey = apiKey;
-        connectionOptions.tls = {};
-        connectionOptions.metadata = {
-          "temporal-namespace": namespace,
-        };
-      }
+      connectionOptions.tls = {
+        clientCertPair: { crt: cert, key: key },
+      };
+    } else if (apiKey) {
+      console.log("Using API key for secure Temporal");
+      // URL with API key uses gRPC regional endpoint
+      connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
+      connectionOptions.apiKey = apiKey;
+      connectionOptions.tls = {};
+      connectionOptions.metadata = {
+        "temporal-namespace": namespace,
+      };
     }
 
     console.log(`<api> Connecting to Temporal at ${connectionOptions.address}`);
@@ -262,6 +254,7 @@ export async function getTemporalClient(
     return client;
   } catch (error) {
     console.warn(`Failed to connect to Temporal. Is the feature flag enabled?`);
+    console.warn(error);
     return undefined;
   }
 }

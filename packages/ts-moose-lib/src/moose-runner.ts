@@ -128,6 +128,7 @@ program
     false,
   )
   .option("--temporal-url <url>", "Temporal server URL")
+  .option("--temporal-namespace <namespace>", "Temporal namespace")
   .option("--client-cert <path>", "Path to client certificate")
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
@@ -160,6 +161,7 @@ program
         },
         temporalConfig: {
           url: options.temporalUrl,
+          namespace: options.temporalNamespace,
           clientCert: options.clientCert,
           clientKey: options.clientKey,
           apiKey: options.apiKey,
@@ -216,6 +218,7 @@ program
   .description("Run scripts")
   .argument("<script-dir>", "Directory containing scripts")
   .option("--temporal-url <url>", "Temporal server URL")
+  .option("--temporal-namespace <namespace>", "Temporal namespace")
   .option("--client-cert <path>", "Path to client certificate")
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
@@ -224,6 +227,7 @@ program
       scriptDir,
       temporalConfig: {
         url: options.temporalUrl,
+        namespace: options.temporalNamespace,
         clientCert: options.clientCert,
         clientKey: options.clientKey,
         apiKey: options.apiKey,

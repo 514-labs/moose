@@ -26,6 +26,7 @@ pub fn run(
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let temporal_url = project.temporal_config.temporal_url();
+    let temporal_namespace = project.temporal_config.get_temporal_namespace();
     let client_cert = project.temporal_config.client_cert.clone();
     let client_key = project.temporal_config.client_key.clone();
     let api_key = project.temporal_config.api_key.clone();
@@ -59,6 +60,9 @@ pub fn run(
     if project.features.workflows {
         string_args.push("--temporal-url".to_string());
         string_args.push(temporal_url);
+
+        string_args.push("--temporal-namespace".to_string());
+        string_args.push(temporal_namespace);
 
         string_args.push("--client-cert".to_string());
         string_args.push(client_cert);

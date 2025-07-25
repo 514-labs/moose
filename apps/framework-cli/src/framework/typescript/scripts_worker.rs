@@ -21,12 +21,15 @@ const SCRIPTS_BIN: &str = "scripts";
 pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError> {
     let project_path = project.project_location.clone();
     let temporal_url = project.temporal_config.temporal_url();
+    let temporal_namespace = project.temporal_config.get_temporal_namespace();
     let scripts_dir = project.scripts_dir();
 
     let args: Vec<&str> = vec![
         scripts_dir.to_str().unwrap(),
         "--temporal-url",
         temporal_url.as_str(),
+        "--temporal-namespace",
+        temporal_namespace.as_str(),
         "--client-cert",
         project.temporal_config.client_cert.as_str(),
         "--client-key",

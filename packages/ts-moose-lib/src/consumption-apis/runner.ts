@@ -42,32 +42,25 @@ interface ConsumptionApisConfig {
   proxyPort?: number;
 }
 
-// Convert our config to Clickhouse client config
 const toClientConfig = (config: ClickhouseConfig) => ({
   ...config,
   useSSL: config.useSSL ? "true" : "false",
 });
 
 const createPath = (consumptionDir: string, path: string) => {
-  // Check if the path has version information
   const pathSegments = path.replace(/^\/+/, "").split("/");
 
-  // If it's a versioned path like "endpoint/1"
   if (pathSegments.length > 1) {
     const endpoint = pathSegments[0];
     const version = pathSegments[1];
 
-    // Try different version formats
-    // 1. endpoint_v1_0_0 (full version)
     const formattedVersion = version.replace(/\./g, "_");
     const versionedPath = `${consumptionDir}${endpoint}_v${formattedVersion}.ts`;
 
     try {
-      // Check if file exists
       require.resolve(versionedPath);
       return versionedPath;
     } catch (e) {
-      // 2. Try endpoint_v1 (major version only)
       const majorVersion = version.split(".")[0];
       const majorVersionPath = `${consumptionDir}${endpoint}_v${majorVersion}.ts`;
 
@@ -75,18 +68,12 @@ const createPath = (consumptionDir: string, path: string) => {
         require.resolve(majorVersionPath);
         return majorVersionPath;
       } catch (e) {
-        // Fall back to regular path
         return `${consumptionDir}${endpoint}.ts`;
       }
     }
   }
 
-  // Regular unversioned path
   return `${consumptionDir}${path}.ts`;
-};
-
-const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
-  console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
 
 const modulesCache = new Map<string, any>();
@@ -134,11 +121,8 @@ const apiHandler =
         return;
       }
 
-      // Extract version information early and maintain it consistently
-      // Check for version in headers (passed by Rust proxy)
       const versionFromHeader = req.headers["x-moose-api-version"] as string;
 
-      // Parse version from URL path (e.g., "bar/1" -> version="1", endpoint="bar")
       const fileName = url.pathname.replace(/^\/+/, "");
       const pathSegments = fileName.split("/");
       let versionFromPath: string | undefined;
@@ -149,7 +133,6 @@ const apiHandler =
         versionFromPath = pathSegments[1];
       }
 
-      // Use version from path first, then fallback to header
       const requestVersion = versionFromPath || versionFromHeader;
 
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
@@ -169,7 +152,6 @@ const apiHandler =
         {},
       );
 
-      // Create version-specific cache key for DMv2
       let cacheKey = endpointName;
       if (isDmv2 && requestVersion) {
         cacheKey = `${endpointName}_v${requestVersion}`;
@@ -180,24 +162,13 @@ const apiHandler =
         if (isDmv2) {
           const egressApis = await getEgressApiInstances();
 
-          // Improved deterministic version resolution logic
           if (requestVersion) {
-            // When a specific version is requested, only look for that exact version
             const versionedApiKey = `v${requestVersion}/${endpointName}`;
             userFuncModule = egressApis.get(versionedApiKey);
-
-            if (!userFuncModule) {
-              // Version was explicitly requested but not found - this is an error condition
-              console.warn(
-                `Explicitly requested version ${requestVersion} for endpoint ${endpointName} not found`,
-              );
-            }
           } else {
             userFuncModule = egressApis.get(endpointName);
 
             if (!userFuncModule) {
-              // Try to find any versioned implementation as fallback
-              // Use a more deterministic approach: sort versions and pick the highest one
               const availableVersions: string[] = [];
               for (const apiKey of egressApis.keys()) {
                 const versionMatch = apiKey.match(
@@ -209,7 +180,6 @@ const apiHandler =
               }
 
               if (availableVersions.length > 0) {
-                // Sort versions and pick the highest one for deterministic behavior
                 availableVersions.sort((a, b) => {
                   const aParts = a.split(".").map(Number);
                   const bParts = b.split(".").map(Number);
@@ -221,7 +191,7 @@ const apiHandler =
                     const aPart = aParts[i] || 0;
                     const bPart = bParts[i] || 0;
                     if (aPart !== bPart) {
-                      return bPart - aPart; // Descending order (highest first)
+                      return bPart - aPart;
                     }
                   }
                   return 0;
@@ -230,19 +200,12 @@ const apiHandler =
                 const highestVersion = availableVersions[0];
                 const fallbackApiKey = `v${highestVersion}/${endpointName}`;
                 userFuncModule = egressApis.get(fallbackApiKey);
-
-                if (userFuncModule) {
-                  console.info(
-                    `No unversioned endpoint found for ${endpointName}, using version ${highestVersion} as fallback`,
-                  );
-                }
               }
             }
           }
 
           modulesCache.set(cacheKey, userFuncModule);
         } else {
-          // Legacy module loading for non-DMv2
           const modulePath = createPath(consumptionDir, endpointName);
 
           try {
@@ -250,7 +213,6 @@ const apiHandler =
             userFuncModule = moduleExports.default || moduleExports;
             modulesCache.set(cacheKey, userFuncModule);
           } catch (error) {
-            console.error(`Failed to load module at ${modulePath}:`, error);
             res.writeHead(404, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ error: "API not found" }));
             return;
@@ -269,15 +231,12 @@ const apiHandler =
       }
 
       let result: any;
-      // Check if it's a ConsumptionApi by looking for the getHandler method
       if (
         isDmv2 &&
         userFuncModule &&
         typeof userFuncModule.getHandler === "function"
       ) {
-        // Handle DMv2 ConsumptionApi
         const handler = userFuncModule.getHandler();
-        // Create proper ConsumptionUtil with database clients
         const queryClient = new QueryClient(
           clickhouseClient,
           "consumption-api-",
@@ -290,7 +249,6 @@ const apiHandler =
         };
         result = await handler(paramsObject, consumptionUtil);
       } else if (typeof userFuncModule === "function") {
-        // Handle legacy function
         const legacyUtil: any = { user: undefined };
         result = await userFuncModule(paramsObject, legacyUtil);
       } else {
@@ -302,7 +260,6 @@ const apiHandler =
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(result));
     } catch (error) {
-      console.error("Error in API handler:", error);
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Internal server error" }));
     }
@@ -310,9 +267,6 @@ const apiHandler =
 
 export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
   const consumptionCluster = new Cluster({
-    // Fix: Use only 1 worker for consumption APIs to avoid port binding conflicts
-    // Multiple workers don't provide significant benefits for I/O-bound consumption APIs
-    // and cause issues when all workers try to bind to the same port
     maxWorkerCount: 1,
     workerStart: async () => {
       let temporalClient: TemporalClient | undefined;
@@ -329,18 +283,15 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
       );
       let publicKey: jose.KeyLike | undefined;
       if (config.jwtConfig?.secret) {
-        console.log("Importing JWT public key...");
         publicKey = await jose.importSPKI(config.jwtConfig.secret, "RS256");
       }
 
       const modulesCache = new Map<string, any>();
 
-      // Get the egress APIs directly from the internal registry
       const getEgressApiInstances = async (): Promise<Map<string, any>> => {
         const { getEgressApis } = await import("../dmv2/internal");
         const handlerMap = await getEgressApis();
 
-        // Convert handler map back to ConsumptionApi instances
         const { getMooseInternal } = await import("../dmv2/internal");
         return getMooseInternal().egressApis;
       };
@@ -355,11 +306,8 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
           temporalClient,
         ),
       );
-      // port is now passed via config.proxyPort or defaults to 4001
       const port = config.proxyPort !== undefined ? config.proxyPort : 4001;
-      server.listen(port, "localhost", () => {
-        console.log(`Server running on port ${port}`);
-      });
+      server.listen(port, "localhost");
 
       return server;
     },

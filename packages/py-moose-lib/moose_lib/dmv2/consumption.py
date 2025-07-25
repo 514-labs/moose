@@ -106,9 +106,7 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
     def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = None, version: str = None, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        
-        # Handle version parameter - if version is provided, create EgressConfig with that version
-        # If both version and config are provided, version takes precedence
+
         if version is not None:
             self.config = EgressConfig(version=version)
         elif config is not None:

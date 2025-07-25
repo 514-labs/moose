@@ -123,7 +123,6 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
         # Initialize metadata
         self.metadata = config.metadata or {}
         
-        # Apply version to all components if provided
         version = config.version
         
         # Create table if configured

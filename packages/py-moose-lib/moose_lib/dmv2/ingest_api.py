@@ -82,7 +82,6 @@ class IngestApi(TypedMooseResource, Generic[T]):
         
         api_key = _generate_api_key(name, config.version)
         
-        # Check for existing API with the same key
         if api_key in _ingest_apis:
             version_text = f" version {config.version}" if config.version else ""
             raise ValueError(f"Ingest API with name {name}{version_text} already exists")

@@ -45,6 +45,7 @@ parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
 parser.add_argument('jwt_audience', type=str, help='JWT audience')
 parser.add_argument('jwt_enforce_all', type=str, help='Auto-handle requests without JWT')
 parser.add_argument('temporal_url', type=str, help='Temporal URL')
+parser.add_argument('temporal_namespace', type=str, help='Temporal namespace')
 parser.add_argument('client_cert', type=str, help='Client certificate')
 parser.add_argument('client_key', type=str, help='Client key')
 parser.add_argument('api_key', type=str, help='API key')
@@ -67,6 +68,7 @@ jwt_audience = args.jwt_audience
 jwt_enforce_all = args.jwt_enforce_all
 
 temporal_url = args.temporal_url
+temporal_namespace = args.temporal_namespace
 client_cert = args.client_cert
 client_key = args.client_key
 api_key = args.api_key
@@ -206,7 +208,7 @@ def main():
     temporal_client = None
     try:
         print("Connecting to Temporal")
-        temporal_client = asyncio.run(create_temporal_connection(temporal_url, client_cert, client_key, api_key))
+        temporal_client = asyncio.run(create_temporal_connection(temporal_url, temporal_namespace, client_cert, client_key, api_key))
     except Exception as e:
         print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
 

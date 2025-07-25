@@ -78,6 +78,7 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         PythonProgram::OrchestrationWorker {
             args: vec![
                 project.temporal_config.temporal_url(),
+                project.temporal_config.get_temporal_namespace(),
                 scripts_dir.to_string_lossy().to_string(),
                 project.temporal_config.client_cert.clone(),
                 project.temporal_config.client_key.clone(),

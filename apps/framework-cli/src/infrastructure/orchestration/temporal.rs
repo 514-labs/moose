@@ -58,6 +58,8 @@ pub struct TemporalConfig {
     pub db_password: String,
     #[serde(default = "default_db_port")]
     pub db_port: u16,
+    #[serde(default = "default_namespace")]
+    pub namespace: String,
     #[serde(default = "default_temporal_host")]
     pub temporal_host: String,
     #[serde(default = "default_temporal_port")]
@@ -86,6 +88,10 @@ pub struct TemporalConfig {
     pub ca_cert: String,
     #[serde(default = "default_api_key")]
     pub api_key: String,
+}
+
+fn default_namespace() -> String {
+    "default".to_string()
 }
 
 fn default_db_user() -> String {
@@ -218,6 +224,29 @@ impl TemporalConfig {
             scheme, self.temporal_host, self.temporal_port
         ))
     }
+
+    pub fn get_temporal_domain_name(&self) -> String {
+        self.temporal_url()
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split(':')
+            .next()
+            .unwrap_or("")
+            .to_string()
+    }
+
+    pub fn get_temporal_namespace(&self) -> String {
+        let temporal_url = self.temporal_url_with_scheme().unwrap_or_default();
+        if temporal_url.contains("https") {
+            let domain_name = self.get_temporal_domain_name();
+            domain_name
+                .strip_suffix(".tmprl.cloud")
+                .unwrap_or(&domain_name)
+                .to_string()
+        } else {
+            self.namespace.clone()
+        }
+    }
 }
 
 impl Default for TemporalConfig {
@@ -226,6 +255,7 @@ impl Default for TemporalConfig {
             db_user: default_db_user(),
             db_password: default_db_password(),
             db_port: default_db_port(),
+            namespace: default_namespace(),
             temporal_host: default_temporal_host(),
             temporal_port: default_temporal_port(),
             temporal_scheme: default_temporal_scheme(),

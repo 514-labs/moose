@@ -11,10 +11,10 @@ use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
 use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
-use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
 use crate::infrastructure::orchestration::temporal::{InvalidTemporalSchemeError, TemporalConfig};
 
 pub struct TemporalClientManager {
+    config: TemporalConfig,
     temporal_url: String,
     ca_cert: String,
     client_cert: String,
@@ -61,6 +61,7 @@ impl TemporalClientManager {
         validate: bool,
     ) -> Result<Self, InvalidTemporalSchemeError> {
         Ok(Self {
+            config: config.clone(),
             temporal_url: config.temporal_url_with_scheme_validate(validate)?,
             ca_cert: config.ca_cert.clone(),
             client_cert: config.client_cert.clone(),
@@ -119,7 +120,7 @@ Is the Moose development server running? Start it with `moose dev`."#
         let client_cert_path = self.client_cert.clone();
         let client_key_path = self.client_key.clone();
 
-        let domain_name = get_temporal_domain_name(&self.temporal_url);
+        let domain_name = self.config.get_temporal_domain_name();
 
         let client_identity = tonic::transport::Identity::from_pem(
             std::fs::read(client_cert_path).map_err(|e| Error::msg(e.to_string()))?,
@@ -149,7 +150,7 @@ Is the Moose development server running? Start it with `moose dev`."#
         let ca_cert_path = self.ca_cert.clone();
         let api_key = self.api_key.clone();
 
-        let namespace = get_temporal_namespace(&self.temporal_url);
+        let namespace = self.config.get_temporal_namespace();
 
         let ca_certificate = tonic::transport::Certificate::from_pem(
             std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,

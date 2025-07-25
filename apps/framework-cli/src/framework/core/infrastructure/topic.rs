@@ -32,6 +32,7 @@ pub struct Topic {
 
     pub metadata: Option<Metadata>,
 
+    #[serde(default = "LifeCycle::default_for_deserialization")]
     pub life_cycle: LifeCycle,
 }
 

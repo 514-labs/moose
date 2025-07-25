@@ -80,25 +80,20 @@ impl TemporalClientManager {
     }
 
     async fn get_client(&self) -> Result<TemporalClient> {
-        let is_local = self.temporal_url.contains("http");
         info!("Getting client for Temporal URL: {}", self.temporal_url);
 
-        if is_local {
-            let client = self.get_temporal_client().await?;
-            Ok(TemporalClient::Standard(client))
-        } else if !self.ca_cert.is_empty()
-            && !self.client_cert.is_empty()
-            && !self.client_key.is_empty()
-        {
+        if !self.ca_cert.is_empty() && !self.client_cert.is_empty() && !self.client_key.is_empty() {
+            info!("Choosing client with mTLS");
             let client = self.get_temporal_client_mtls().await?;
             Ok(TemporalClient::Standard(client))
         } else if !self.ca_cert.is_empty() && !self.api_key.is_empty() {
+            info!("Choosing client with API key");
             let client = self.get_temporal_client_api_key().await?;
             Ok(TemporalClient::WithInterceptor(client))
         } else {
-            Err(Error::msg(
-                "No authentication credentials provided for Temporal.",
-            ))
+            info!("Choosing client with no authentication");
+            let client = self.get_temporal_client().await?;
+            Ok(TemporalClient::Standard(client))
         }
     }
 

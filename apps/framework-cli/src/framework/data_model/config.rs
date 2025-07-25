@@ -99,7 +99,8 @@ mod tests {
 
     #[test]
     fn test_partial_config() {
-        let config: DataModelConfig =
+        let _config: DataModelConfig =
             serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
+        println!("{_config:?}")
     }
 }

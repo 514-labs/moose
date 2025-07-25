@@ -816,7 +816,7 @@ pub mod crossterm_utils {
         } else {
             &styled_text.text
         };
-        let padded_action = format!("{:>ACTION_WIDTH$}", truncated_action);
+        let padded_action = format!("{truncated_action:>ACTION_WIDTH$}");
 
         // Apply foreground color
         if let Some(color) = styled_text.foreground {

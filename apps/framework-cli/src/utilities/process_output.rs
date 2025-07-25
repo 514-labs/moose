@@ -83,14 +83,14 @@ pub fn run_command_with_output_proxy_sync(
     // Spawn threads to handle output
     let stdout_handle = std::thread::spawn(move || {
         let reader = StdBufReader::new(stdout);
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             info!("{label_stdout} {line}");
         }
     });
 
     let stderr_handle = std::thread::spawn(move || {
         let reader = StdBufReader::new(stderr);
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             warn!("{label_stderr} {line}");
         }
     });

@@ -105,7 +105,7 @@ fn main() -> ExitCode {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             ensure_terminal_cleanup();
-            return ExitCode::from(0);
+            ExitCode::from(0)
         }
         Err(e) => {
             show_message!(e.message_type, e.message);
@@ -113,7 +113,7 @@ fn main() -> ExitCode {
                 eprintln!("{err:?}");
             }
             ensure_terminal_cleanup();
-            return ExitCode::from(1);
+            ExitCode::from(1)
         }
     }
 }

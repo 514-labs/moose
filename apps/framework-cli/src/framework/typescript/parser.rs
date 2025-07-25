@@ -1,7 +1,5 @@
 use std::io::ErrorKind::NotFound;
 use std::path::Path;
-#[cfg(test)]
-use std::process::Command;
 use std::{env, fs};
 
 use serde_json::{json, Value};
@@ -10,8 +8,6 @@ use crate::framework::data_model::parser::FileObjects;
 use crate::project::Project;
 use crate::utilities::constants::TSCONFIG_JSON;
 use crate::utilities::process_output::run_command_with_output_proxy;
-#[cfg(test)]
-use crate::utilities::process_output::run_command_with_output_proxy_sync;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
@@ -190,6 +186,7 @@ mod tests {
     use crate::framework::typescript::parser::extract_data_model_from_file;
     use crate::framework::typescript::parser::TypescriptParsingError;
     use crate::project::Project;
+    use crate::utilities::process_output::run_command_with_output_proxy_sync;
     use ctor::ctor;
     use lazy_static::lazy_static;
     use std::fs;
@@ -230,30 +227,19 @@ mod tests {
 
             pnpm_moose_lib(|cmd| cmd.arg("run").arg("build"));
 
-            run_command_with_output_proxy_sync(
-                Command::new("npm")
-                    .arg("i")
-                    .current_dir("./tests/test_project"),
-                "npm install test_project",
-            )
-            .unwrap();
+            let mut cmd = Command::new("npm");
+            cmd.arg("i").current_dir("./tests/test_project");
+            run_command_with_output_proxy_sync(cmd, "npm install test_project").unwrap();
 
-            run_command_with_output_proxy_sync(
-                Command::new("npm")
-                    .arg("link")
-                    .current_dir("../../packages/ts-moose-lib"),
-                "npm link moose-lib",
-            )
-            .unwrap();
+            let mut cmd = Command::new("npm");
+            cmd.arg("link").current_dir("../../packages/ts-moose-lib");
+            run_command_with_output_proxy_sync(cmd, "npm link moose-lib").unwrap();
 
-            run_command_with_output_proxy_sync(
-                Command::new("npm")
-                    .arg("link")
-                    .arg("@514labs/moose-lib")
-                    .current_dir("./tests/test_project"),
-                "npm link in test_project",
-            )
-            .unwrap();
+            let mut cmd = Command::new("npm");
+            cmd.arg("link")
+                .arg("@514labs/moose-lib")
+                .current_dir("./tests/test_project");
+            run_command_with_output_proxy_sync(cmd, "npm link in test_project").unwrap();
 
             Project::new(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test_project"),
@@ -263,53 +249,53 @@ mod tests {
         };
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_ts_mapper() {
+    async fn test_ts_mapper() {
         let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
 
         assert!(result.is_ok());
         println!("{:?}", result.unwrap().models)
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_parse_typescript_file() {
+    async fn test_parse_typescript_file() {
         let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
 
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_parse_import_typescript_file() {
+    async fn test_parse_import_typescript_file() {
         let test_file = TEST_PROJECT.data_models_dir().join("import.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_parse_extend_typescript_file() {
+    async fn test_parse_extend_typescript_file() {
         let test_file = TEST_PROJECT.data_models_dir().join("extend.m.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_ts_syntax_error() {
+    async fn test_ts_syntax_error() {
         let test_file = TEST_PROJECT.data_models_dir().join("syntax_error.ts");
 
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/syntax_error.ts(7,23): error TS1005: ',' expected.
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
@@ -317,12 +303,12 @@ mod tests {
         );
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_ts_missing_type() {
+    async fn test_ts_missing_type() {
         let test_file = TEST_PROJECT.data_models_dir().join("type_missing.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
         assert!(result.is_err());
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.
@@ -333,12 +319,12 @@ mod tests {
         );
     }
 
-    #[test]
+    #[tokio::test]
     #[serial_test::serial(tspc)]
-    fn test_ts_index_type() {
+    async fn test_ts_index_type() {
         let test_file = TEST_PROJECT.data_models_dir().join("index_type.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "").await;
         assert!(result.is_err());
 
         let error = result.err().unwrap();

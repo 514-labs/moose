@@ -442,6 +442,7 @@ impl ResourceInfo for Vec<StreamInfo> {
 pub struct IngestionApiInfo {
     pub name: String,
     pub destination: String,
+    pub path: String,
 }
 
 fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInfo> {
@@ -450,21 +451,51 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
             target_topic_id,
             dead_letter_queue: _,
             data_model: _,
-        } => Either::Left(IngestionApiInfo {
-            name: endpoint.name.clone(),
-            destination: target_topic_id.clone(),
-        }),
+        } => {
+            // For ingestion APIs, show the user-facing URL format instead of internal storage format
+            let user_facing_path = if let Some(version) = &endpoint.version {
+                format!("ingest/{}/{}", endpoint.name, version.as_str())
+            } else {
+                format!("ingest/{}", endpoint.name)
+            };
+
+            Either::Left(IngestionApiInfo {
+                name: endpoint.name.clone(),
+                destination: target_topic_id.clone(),
+                path: user_facing_path,
+            })
+        }
         APIType::EGRESS {
             query_params,
             output_schema: _,
-        } => Either::Right(ConsumptionApiInfo {
-            name: endpoint.name.clone(),
-            params: query_params
-                .iter()
-                .map(|param| param.name.clone())
-                .collect(),
-            path: format!("consumption/{}", endpoint.name),
-        }),
+        } => {
+            let (display_name, user_facing_path) = if endpoint.name.contains('/')
+                && endpoint
+                    .name
+                    .split('/')
+                    .nth(1)
+                    .is_some_and(|part| part.chars().all(|c| c.is_ascii_digit() || c == '.'))
+            {
+                let name = endpoint.name.clone();
+                (name.clone(), format!("consumption/{name}"))
+            } else if let Some(version) = &endpoint.version {
+                let display_name = format!("{}/{}", endpoint.name, version.as_str());
+                let path = format!("consumption/{}/{}", endpoint.name, version.as_str());
+                (display_name, path)
+            } else {
+                let name = endpoint.name.clone();
+                (name.clone(), format!("consumption/{name}"))
+            };
+
+            Either::Right(ConsumptionApiInfo {
+                name: display_name,
+                params: query_params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect(),
+                path: user_facing_path,
+            })
+        }
     }
 }
 
@@ -472,9 +503,13 @@ impl ResourceInfo for Vec<IngestionApiInfo> {
     fn show(&self) {
         show_table(
             "Ingestion APIs".to_string(),
-            vec!["name".to_string(), "destination".to_string()],
+            vec![
+                "name".to_string(),
+                "destination".to_string(),
+                "path".to_string(),
+            ],
             self.iter()
-                .map(|api| vec![api.name.clone(), api.destination.clone()])
+                .map(|api| vec![api.name.clone(), api.destination.clone(), api.path.clone()])
                 .collect(),
         )
     }

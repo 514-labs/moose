@@ -270,8 +270,10 @@ def to_infra_map() -> dict:
 
     for name, table in get_tables().items():
         engine = table.config.engine
-        tables[name] = TableConfig(
-            name=name,
+        # Use versioned table name for the infrastructure map
+        table_name = table._generate_table_name()
+        tables[table_name] = TableConfig(
+            name=table_name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
@@ -298,10 +300,14 @@ def to_infra_map() -> dict:
             for consumer in stream.consumers
         ]
 
-        topics[name] = TopicConfig(
-            name=name,
+        # Use versioned topic ID for the infrastructure map key and topic name for the value
+        topic_id = stream._generate_topic_id()
+        topic_name = stream._generate_topic_name()
+        target_table_name = stream.config.destination._generate_table_name() if stream.config.destination else None
+        topics[topic_id] = TopicConfig(
+            name=topic_name,
             columns=_to_columns(stream._t),
-            target_table=stream.config.destination.name if stream.config.destination else None,
+            target_table=target_table_name,
             target_table_version=stream.config.destination.config.version if stream.config.destination else None,
             retention_period=stream.config.retention_period,
             partition_count=stream.config.parallelism,
@@ -313,22 +319,54 @@ def to_infra_map() -> dict:
             life_cycle=stream.config.life_cycle.value if stream.config.life_cycle else None,
         )
 
-    for name, api in get_ingest_apis().items():
-        ingest_apis[name] = IngestApiConfig(
-            name=name,
-            columns=_to_columns(api._t),
-            version=api.config.version,
-            write_to=Target(
-                kind="stream",
-                name=api.config.destination.name
-            ),
-            metadata=getattr(api, "metadata", None),
-            dead_letter_queue=api.config.dead_letter_queue.name
-        )
+    for registry_key, api in get_ingest_apis().items():
+        # Generate topic ID ensuring unique identification for versioned APIs
+        if api.config.version:
+            # For versioned APIs, construct topic ID using API name and version
+            # This ensures each version gets a unique topic ID
+            api_name = api.name
+            version_suffix = api.config.version.replace(".", "_")
+            destination_topic_id = f"{api_name}_{version_suffix}_{version_suffix}"
+        else:
+            # For unversioned APIs, use the standard topic ID generation
+            destination_topic_id = api.config.destination._generate_topic_id()
+        
+        dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
+        
+        # Generate API endpoint with version information
+        if api.config.version:
+            # Generate versioned API with unique key based on name and version
+            versioned_key = f"{api.name}_v{api.config.version}"
+            ingest_apis[versioned_key] = IngestApiConfig(
+                name=api.name,  # Use original name from the API object
+                columns=_to_columns(api._t),
+                version=api.config.version,  # Pass version for path generation
+                write_to=Target(
+                    kind="stream",
+                    name=destination_topic_id
+                ),
+                metadata=getattr(api, "metadata", None),
+                dead_letter_queue=dead_letter_queue_id
+            )
+        else:
+            # Generate unversioned API
+            ingest_apis[api.name] = IngestApiConfig(
+                name=api.name,  # Use original name from the API object
+                columns=_to_columns(api._t),
+                version=None,
+                write_to=Target(
+                    kind="stream",
+                    name=destination_topic_id
+                ),
+                metadata=getattr(api, "metadata", None),
+                dead_letter_queue=dead_letter_queue_id
+            )
 
-    for name, api in get_consumption_apis().items():
-        egress_apis[name] = EgressApiConfig(
-            name=name,
+    for registry_key, api in get_consumption_apis().items():
+        # Include all APIs in the infrastructure map
+        # The routing logic will handle version resolution
+        egress_apis[registry_key] = EgressApiConfig(
+            name=api.name,  # Use the actual API name, not the registry key
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),
             version=api.config.version,

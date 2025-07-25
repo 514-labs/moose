@@ -5,6 +5,19 @@ import { getMooseInternal } from "../internal";
 import type { ConsumptionUtil } from "../../consumption-apis/helpers";
 
 /**
+ * Generate a consistent API key for consumption APIs.
+ * @param name The name of the consumption API.
+ * @param version Optional version string.
+ * @returns The API key string in the format "v{version}/{name}" or just "{name}" if no version.
+ */
+function generateApiKey(name: string, version?: string): string {
+  if (version) {
+    return `v${version}/${name}`;
+  }
+  return name;
+}
+
+/**
  * Defines the signature for a handler function used by a Consumption API.
  * @template T The expected type of the request parameters or query parameters.
  * @template R The expected type of the response data.
@@ -29,18 +42,24 @@ export interface EgressConfig<T> {
 }
 
 /**
- * Represents a Consumption API endpoint (Egress API), used for querying data from a Moose system.
- * Exposes data, often from an OlapTable or derived through a custom handler function.
- *
- * @template T The data type defining the expected structure of the API's query parameters.
- * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
+ * Class representing a Consumption API that can be registered in Moose.
+ * @template T The data type of the request parameters.
+ * @template R The data type of the response.
  */
-export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
-  /** @internal The handler function that processes requests and generates responses. */
-  _handler: ConsumptionHandler<T, R>;
-  /** @internal The JSON schema definition for the response type R. */
-  responseSchema: IJsonSchemaCollection.IV3_1;
+export class ConsumptionApi<T = any, R = any> extends TypedBase<
+  T,
+  EgressConfig<T>
+> {
+  protected _handler: ConsumptionHandler<T, R>;
+  protected responseSchema: IJsonSchemaCollection.IV3_1;
 
+  /**
+   * Retrieves the response schema associated with this Consumption API.
+   * @returns The response schema.
+   */
+  public getResponseSchema(): IJsonSchemaCollection.IV3_1 {
+    return this.responseSchema;
+  }
   /**
    * Creates a new ConsumptionApi instance.
    * @param name The name of the consumption API endpoint.
@@ -75,10 +94,16 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
       components: { schemas: {} },
     };
     const egressApis = getMooseInternal().egressApis;
-    if (egressApis.has(name)) {
-      throw new Error(`Consumption API with name ${name} already exists`);
+
+    // Create a unique key that includes version information if available
+    const apiKey = generateApiKey(name, config?.version);
+
+    if (egressApis.has(apiKey)) {
+      throw new Error(
+        `Consumption API with name ${name}${config?.version ? ` version ${config.version}` : ""} already exists`,
+      );
     }
-    egressApis.set(name, this);
+    egressApis.set(apiKey, this);
   }
 
   /**

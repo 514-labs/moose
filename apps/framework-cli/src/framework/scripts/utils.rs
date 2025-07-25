@@ -88,7 +88,7 @@ pub fn get_temporal_domain_name(temporal_url: &str) -> &str {
 }
 
 pub fn get_temporal_namespace(temporal_url: &str) -> String {
-    if temporal_url.contains("localhost") {
+    if temporal_url.contains("http") {
         DEFAULT_TEMPORTAL_NAMESPACE.to_string()
     } else {
         let domain_name = get_temporal_domain_name(temporal_url);

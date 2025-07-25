@@ -79,7 +79,7 @@ impl TemporalClientManager {
     }
 
     async fn get_client(&self) -> Result<TemporalClient> {
-        let is_local = self.temporal_url.contains("localhost");
+        let is_local = self.temporal_url.contains("http");
         info!("Getting client for Temporal URL: {}", self.temporal_url);
 
         if is_local {

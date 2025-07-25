@@ -78,20 +78,8 @@ class IngestApi(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         
-        # Initialize metadata object if not present
         self.metadata = getattr(config, 'metadata', {}) or {}
         
-        # Add source file information for debugging
-        import inspect
-        frame = inspect.currentframe()
-        if frame:
-            frame_info = inspect.getouterframes(frame)[1]
-            self.metadata.setdefault('source', {
-                'file': frame_info.filename,
-                'line': frame_info.lineno
-            })
-        
-        # Create a unique key that includes version information if available
         api_key = _generate_api_key(name, config.version)
         
         # Check for existing API with the same key

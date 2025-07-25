@@ -180,19 +180,10 @@ const apiHandler =
         if (isDmv2) {
           const egressApis = await getEgressApiInstances();
 
-          // Debug logging
-          console.log(
-            `[DEBUG] Looking for endpoint: ${endpointName}, requestVersion: ${requestVersion}`,
-          );
-          console.log(`[DEBUG] Available APIs:`, Array.from(egressApis.keys()));
-
           // Improved deterministic version resolution logic
           if (requestVersion) {
             // When a specific version is requested, only look for that exact version
             const versionedApiKey = `v${requestVersion}/${endpointName}`;
-            console.log(
-              `[DEBUG] Looking for versioned API key: ${versionedApiKey}`,
-            );
             userFuncModule = egressApis.get(versionedApiKey);
 
             if (!userFuncModule) {
@@ -202,10 +193,6 @@ const apiHandler =
               );
             }
           } else {
-            // When no version is specified, try unversioned first, then fall back to any available version
-            console.log(
-              `[DEBUG] Looking for unversioned API key: ${endpointName}`,
-            );
             userFuncModule = egressApis.get(endpointName);
 
             if (!userFuncModule) {

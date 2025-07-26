@@ -1,3 +1,53 @@
+//! # Display Module
+//!
+//! This module provides a standardized interface for displaying messages and information
+//! to users in the CLI. It handles terminal output with consistent formatting, colors,
+//! and interactive elements like spinners.
+//!
+//! The module is built around the concept of different message types that correspond
+//! to different visual styles, helping users quickly identify the nature of information
+//! being displayed.
+//!
+//! ## Core Components
+//!
+//! - **Message Types**: Categorized message styles (Info, Success, Error, Highlight)
+//! - **Message Display**: Unified message formatting with color coding
+//! - **Infrastructure Changes**: Specialized display for infrastructure plan changes
+//! - **Interactive Elements**: Spinners for long-running operations
+//! - **Table Display**: Formatted table output for structured data
+//!
+//! ## Usage Examples
+//!
+//! ### Basic Message Display
+//! ```rust
+//! use crate::cli::display::{show_message, MessageType, Message};
+//!
+//! show_message!(
+//!     MessageType::Info,
+//!     Message::new(
+//!         "Loading Config".to_string(),
+//!         "Reading configuration from ~/.moose/config.toml".to_string()
+//!     )
+//! );
+//! ```
+//!
+//! ### Using Spinners
+//! ```rust
+//! use crate::cli::display::with_spinner;
+//!
+//! let result = with_spinner("Processing data", || {
+//!     // Long-running operation
+//!     expensive_computation()
+//! }, true);
+//! ```
+//!
+//! ### Infrastructure Change Display
+//! ```rust
+//! use crate::cli::display::show_changes;
+//!
+//! show_changes(&infrastructure_plan);
+//! ```
+
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use log::info;
 use serde::Deserialize;
@@ -16,55 +66,18 @@ use crate::framework::core::{
     plan::InfraPlan,
 };
 
-/// # Display Module
-/// Standardizes the way we display messages to the user in the CLI. This module
-/// provides a macro that takes a message type and a message struct and displays
-/// the message to the user.
-///
-///
-/// ### Usage
-/// ```
-/// show_message!(
-///     MessageType::Info,
-///     Message {
-///         action: "Loading Config".to_string(),
-///         details: "Reading configuration from ~/.moose/config.toml".to_string(),
-///     });
-/// ```
-///
-///
-/// ## Message Types
-/// - Info: blue action text and white details text. Used for general information.
-/// - Success: green action text and white details text. Used for successful actions.
-/// - Warning: yellow action text and white details text. Used for warnings.
-/// - Error: red action text and white details text. Used for errors.
-/// - Typographic: large stylistic text. Used for a text displays.
-/// - Banner: multi line text that's used to display a banner that should drive an action from the user
-///
-/// ## Message Struct
-/// ```
-/// Message {
-///    action: "Loading Config".to_string(),
-///    details: "Reading configuration from ~/.moose/config.toml".to_string(),
-/// }
-/// ```
-///
-/// ## Suggested Improvements
-/// - add a message type for a "waiting" message
-/// - add a message type for a "loading" message with a progress bar
-/// - add specific macros for each message type
-/// - add a clear screen macro
-///
-/// A terminal instance with associated state for displaying CLI messages.
-///
-/// The CommandTerminal wraps stdout handling and tracks the
-/// number of messages written for potential future needs (such as clearing or
-/// updating specific messages).
-
 /// Types of messages that can be displayed to the user.
 ///
 /// Each message type corresponds to a different visual style in the terminal
-/// to help distinguish between different kinds of information.
+/// to help distinguish between different kinds of information. The styling
+/// affects the color and formatting of the action portion of messages.
+///
+/// # Visual Styles
+///
+/// - `Info`: Cyan text with bold formatting for general information
+/// - `Success`: Green text with bold formatting for successful operations
+/// - `Error`: Red text with bold formatting for error conditions
+/// - `Highlight`: Text with green background and bold formatting for emphasis
 #[derive(Deserialize, Debug, Clone, Copy)]
 pub enum MessageType {
     /// Used for general information with cyan highlighting
@@ -79,8 +92,23 @@ pub enum MessageType {
 
 /// A message to be displayed to the user in the CLI.
 ///
-/// Messages consist of an action (displayed with color based on MessageType)
-/// and details (the main content of the message).
+/// Messages consist of two parts:
+/// - An action (displayed with color based on MessageType) that appears in a fixed-width column
+/// - Details (the main content) that contains the descriptive text
+///
+/// The action is right-aligned in a 15-character column to provide consistent
+/// visual alignment across different message types.
+///
+/// # Examples
+///
+/// ```rust
+/// use crate::cli::display::Message;
+///
+/// let message = Message::new(
+///     "Config".to_string(),
+///     "Successfully loaded configuration file".to_string()
+/// );
+/// ```
 #[derive(Debug, Clone)]
 pub struct Message {
     /// The action or category of the message, displayed with color
@@ -94,12 +122,18 @@ impl Message {
     ///
     /// # Arguments
     ///
-    /// * `action` - The action or category of the message
+    /// * `action` - The action or category of the message (displayed in colored column)
     /// * `details` - The main content or details of the message
     ///
     /// # Returns
     ///
-    /// * `Message` - A new message instance
+    /// A new `Message` instance ready for display
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let msg = Message::new("Deploy".to_string(), "Application deployed successfully".to_string());
+    /// ```
     pub fn new(action: String, details: String) -> Message {
         Message { action, details }
     }
@@ -107,9 +141,18 @@ impl Message {
 
 /// Displays a message about infrastructure being added.
 ///
+/// Uses green styling with a "+" prefix to indicate addition.
+/// The message is both displayed to the terminal and logged.
+///
 /// # Arguments
 ///
 /// * `message` - The message describing the added infrastructure
+///
+/// # Examples
+///
+/// ```rust
+/// infra_added("Database table 'users' created");
+/// ```
 pub fn infra_added(message: &str) {
     let styled_text = crossterm_utils::StyledText::new("+ ".to_string()).green();
     // Use the new styled message writer for clean formatting
@@ -121,9 +164,18 @@ pub fn infra_added(message: &str) {
 
 /// Displays a message about infrastructure being removed.
 ///
+/// Uses red styling with a "-" prefix to indicate removal.
+/// The message is both displayed to the terminal and logged.
+///
 /// # Arguments
 ///
 /// * `message` - The message describing the removed infrastructure
+///
+/// # Examples
+///
+/// ```rust
+/// infra_removed("Database table 'temp_data' dropped");
+/// ```
 pub fn infra_removed(message: &str) {
     let styled_text = crossterm_utils::StyledText::new("- ".to_string()).red();
 
@@ -136,9 +188,18 @@ pub fn infra_removed(message: &str) {
 
 /// Displays a message about infrastructure being updated.
 ///
+/// Uses yellow styling with a "~" prefix to indicate modification.
+/// The message is both displayed to the terminal and logged.
+///
 /// # Arguments
 ///
 /// * `message` - The message describing the updated infrastructure
+///
+/// # Examples
+///
+/// ```rust
+/// infra_updated("Database table 'users' schema modified");
+/// ```
 pub fn infra_updated(message: &str) {
     let styled_text = crossterm_utils::StyledText::new("~ ".to_string()).yellow();
 
@@ -149,6 +210,39 @@ pub fn infra_updated(message: &str) {
     info!("~ {}", message.trim());
 }
 
+/// Macro for displaying styled messages to the terminal.
+///
+/// This macro provides a unified interface for displaying messages with consistent
+/// formatting and optional logging. It handles the styling based on message type
+/// and ensures proper terminal output.
+///
+/// # Syntax
+///
+/// - `show_message!(message_type, message)` - Display and log the message
+/// - `show_message!(message_type, message, no_log)` - Display only, skip logging
+///
+/// # Arguments
+///
+/// * `message_type` - A `MessageType` enum value determining the visual style
+/// * `message` - A `Message` struct containing the action and details
+/// * `no_log` - Optional boolean to disable logging (when present, logging is skipped)
+///
+/// # Examples
+///
+/// ```rust
+/// // Standard usage with logging
+/// show_message!(
+///     MessageType::Success,
+///     Message::new("Deploy".to_string(), "Application deployed successfully".to_string())
+/// );
+///
+/// // Skip logging (useful for log output itself)
+/// show_message!(
+///     MessageType::Info,
+///     Message::new("Log".to_string(), "Debug information".to_string()),
+///     true
+/// );
+/// ```
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
         use crate::cli::display::crossterm_utils;
@@ -194,15 +288,33 @@ macro_rules! show_message {
 
 /// Executes a function with a spinner displayed during execution.
 ///
+/// This function provides visual feedback for long-running operations by displaying
+/// an animated spinner. The spinner automatically disappears when the operation
+/// completes, leaving the terminal clean for subsequent output.
+///
 /// # Arguments
 ///
 /// * `message` - The message to display alongside the spinner
-/// * `f` - The function to execute
-/// * `activate` - Whether to actually show the spinner (if false or not terminal, just runs the function)
+/// * `f` - The function to execute while the spinner is active
+/// * `activate` - Whether to actually show the spinner (false or non-terminal disables spinner)
 ///
 /// # Returns
 ///
-/// * The result of the function execution
+/// The result of the function execution, unchanged
+///
+/// # Behavior
+///
+/// - If `activate` is false or stdout is not a terminal, the function runs without spinner
+/// - The spinner uses a dots animation and updates every 80ms
+/// - Terminal state is properly cleaned up after completion
+///
+/// # Examples
+///
+/// ```rust
+/// let result = with_spinner("Loading configuration", || {
+///     load_config_file()
+/// }, true);
+/// ```
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
@@ -229,15 +341,26 @@ where
 
 /// Executes an asynchronous function with a spinner displayed during execution.
 ///
+/// This is the async version of `with_spinner`, providing the same visual feedback
+/// for long-running async operations.
+///
 /// # Arguments
 ///
 /// * `message` - The message to display alongside the spinner
-/// * `f` - The async function to execute
-/// * `activate` - Whether to actually show the spinner (if false or not terminal, just runs the function)
+/// * `f` - The async function to execute while the spinner is active
+/// * `activate` - Whether to actually show the spinner (false or non-terminal disables spinner)
 ///
 /// # Returns
 ///
-/// * The result of the async function execution
+/// The result of the async function execution, unchanged
+///
+/// # Examples
+///
+/// ```rust
+/// let result = with_spinner_async("Fetching data", async {
+///     fetch_remote_data().await
+/// }, true).await;
+/// ```
 pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
@@ -261,12 +384,29 @@ where
     res
 }
 
-/// Displays a table with headers and rows.
+/// Displays a formatted table with headers and data rows.
+///
+/// Creates a visually appealing table using UTF-8 characters with rounded corners
+/// and full borders. The table automatically adjusts column widths based on content.
 ///
 /// # Arguments
 ///
-/// * `headers` - The column headers for the table
-/// * `rows` - The data rows for the table
+/// * `title` - The title to display above the table
+/// * `headers` - Column headers for the table
+/// * `rows` - Data rows, where each row is a vector of column values
+///
+/// # Examples
+///
+/// ```rust
+/// show_table(
+///     "User Data".to_string(),
+///     vec!["ID".to_string(), "Name".to_string(), "Email".to_string()],
+///     vec![
+///         vec!["1".to_string(), "Alice".to_string(), "alice@example.com".to_string()],
+///         vec!["2".to_string(), "Bob".to_string(), "bob@example.com".to_string()],
+///     ]
+/// );
+/// ```
 pub fn show_table(title: String, headers: Vec<String>, rows: Vec<Vec<String>>) {
     let mut table = Table::new();
     table
@@ -282,23 +422,46 @@ pub fn show_table(title: String, headers: Vec<String>, rows: Vec<Vec<String>>) {
     println!("{title}\n{table}");
 }
 
-/// Wrapper for the show_message macro to allow calling from non-macro contexts.
+/// Wrapper function for the show_message macro.
+///
+/// This function allows calling the show_message functionality from contexts
+/// where macros cannot be used directly. Messages displayed through this
+/// function are not logged to avoid potential recursion in logging contexts.
 ///
 /// # Arguments
 ///
 /// * `message_type` - The type of message to display
 /// * `message` - The message to display
+///
+/// # Examples
+///
+/// ```rust
+/// show_message_wrapper(
+///     MessageType::Error,
+///     Message::new("Failed".to_string(), "Operation could not be completed".to_string())
+/// );
+/// ```
 pub fn show_message_wrapper(message_type: MessageType, message: Message) {
     // Probably shouldn't do macro_export so we just wrap it
     show_message!(message_type, message, false);
 }
 
-/// Displays a message about a batch being inserted into a database table.
+/// Displays a message about a batch database insertion.
+///
+/// This function provides standardized messaging for database operations,
+/// showing the number of rows inserted and the target table name.
 ///
 /// # Arguments
 ///
-/// * `count` - The number of rows inserted
-/// * `table_name` - The name of the table rows were inserted into
+/// * `count` - The number of rows successfully inserted
+/// * `table_name` - The name of the database table
+///
+/// # Examples
+///
+/// ```rust
+/// batch_inserted(150, "user_events");
+/// // Displays: "[DB] 150 row(s) successfully written to DB table (user_events)"
+/// ```
 pub fn batch_inserted(count: usize, table_name: &str) {
     show_message!(
         MessageType::Info,
@@ -309,11 +472,27 @@ pub fn batch_inserted(count: usize, table_name: &str) {
     );
 }
 
-/// Displays OLAP changes (tables and views) to the user.
+/// Displays OLAP (Online Analytical Processing) infrastructure changes.
+///
+/// This function handles the display of changes to OLAP components including
+/// tables, views, and SQL resources. Each change type is displayed with
+/// appropriate styling and formatting.
 ///
 /// # Arguments
 ///
-/// * `olap_changes` - The vector of OLAP changes to display
+/// * `olap_changes` - A slice of OLAP changes to display
+///
+/// # Change Types Handled
+///
+/// - **Table Changes**: Added, removed, or updated database tables
+/// - **View Changes**: Added, removed, or updated database views  
+/// - **SQL Resource Changes**: Added, removed, or updated SQL resources
+///
+/// # Examples
+///
+/// ```rust
+/// show_olap_changes(&infrastructure_plan.changes.olap_changes);
+/// ```
 pub fn show_olap_changes(olap_changes: &[OlapChange]) {
     olap_changes.iter().for_each(|change| match change {
         OlapChange::Table(TableChange::Added(infra)) => {
@@ -359,13 +538,28 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
     });
 }
 
-/// Displays all infrastructure changes from an InfraPlan to the user.
+/// Displays all infrastructure changes from an InfraPlan.
 ///
-/// Shows changes to streaming, OLAP, processes, and API endpoints.
+/// This function provides a comprehensive display of all infrastructure changes
+/// including streaming engine changes, OLAP changes, process changes, and API changes.
+/// Each category of changes is displayed with appropriate formatting and styling.
 ///
 /// # Arguments
 ///
-/// * `infra_plan` - The infrastructure plan containing all changes
+/// * `infra_plan` - The infrastructure plan containing all changes to display
+///
+/// # Change Categories Displayed
+///
+/// - **Streaming Changes**: Topics and streaming infrastructure
+/// - **OLAP Changes**: Tables, views, and SQL resources (via `show_olap_changes`)
+/// - **Process Changes**: Various process types including sync processes, functions, and web servers
+/// - **API Changes**: API endpoints and related infrastructure
+///
+/// # Examples
+///
+/// ```rust
+/// show_changes(&infrastructure_plan);
+/// ```
 pub fn show_changes(infra_plan: &InfraPlan) {
     // TODO there is probably a better way to do the following through
     // https://crates.io/crates/enum_dispatch or something similar
@@ -533,21 +727,63 @@ mod tests {
     }
 }
 
-/// Crossterm utility functions to replace console crate functionality
+/// Crossterm utility functions and components for terminal output.
+///
+/// This module provides low-level terminal manipulation utilities using the crossterm
+/// crate. It includes components for displaying spinners, styled text, and managing
+/// terminal state during CLI operations.
+///
+/// # Components
+///
+/// - **StyledText**: Builder for creating styled terminal text with colors and formatting
+/// - **SpinnerComponent**: Animated spinner for long-running operations
+/// - **MessageComponent**: Permanent message display component
+/// - **TerminalComponent**: Base trait for terminal output components
+///
+/// # Design Philosophy
+///
+/// The utilities are designed to provide clean, ephemeral feedback that doesn't clutter
+/// the terminal output. Spinners disappear completely when operations finish, while
+/// messages remain as permanent records of actions taken.
 pub mod crossterm_utils {
     use super::*;
     use crossterm::execute;
 
-    /// Base trait for terminal output components
-    /// Each component manages its own terminal state and cleanup
+    /// Base trait for terminal output components.
+    ///
+    /// Each component manages its own terminal state and cleanup, ensuring
+    /// consistent behavior and proper resource management. Components can
+    /// be ephemeral (like spinners) or permanent (like messages).
+    ///
+    /// # Design Principles
+    ///
+    /// - Components are responsible for their own state management
+    /// - Proper cleanup prevents terminal corruption
+    /// - Graceful handling of start/stop cycles
+    /// - Non-blocking operation where possible
     pub trait TerminalComponent {
-        /// Start the component (display initial state)
+        /// Start the component and display its initial state.
+        ///
+        /// # Returns
+        ///
+        /// `Ok(())` on success, or an IO error if terminal operations fail
         fn start(&mut self) -> std::io::Result<()>;
 
-        /// Stop the component and clean up terminal state
+        /// Stop the component and clean up its terminal state.
+        ///
+        /// # Returns
+        ///
+        /// `Ok(())` on success, or an IO error if cleanup fails
         fn stop(&mut self) -> std::io::Result<()>;
 
-        /// Ensure terminal is ready for the next component
+        /// Ensure the terminal is ready for the next component.
+        ///
+        /// Default implementation prints a newline to ensure proper spacing.
+        /// Components can override this for specific cleanup behavior.
+        ///
+        /// # Returns
+        ///
+        /// `Ok(())` on success, or an IO error if terminal operations fail
         fn cleanup(&mut self) -> std::io::Result<()> {
             // Default implementation - print newline to ensure next component starts fresh
             use crossterm::{execute, style::Print};
@@ -556,7 +792,21 @@ pub mod crossterm_utils {
         }
     }
 
-    /// Ephemeral spinner component that disappears when done
+    /// An animated spinner component that disappears when the operation completes.
+    ///
+    /// The spinner provides visual feedback for long-running operations using
+    /// a dots animation. It runs in a separate thread to avoid blocking the
+    /// main operation and automatically cleans up when the operation finishes.
+    ///
+    /// # Animation
+    ///
+    /// Uses a 10-frame dots animation (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏) that updates every 80ms
+    /// for smooth visual feedback without being distracting.
+    ///
+    /// # Thread Safety
+    ///
+    /// The spinner uses atomic operations for thread-safe communication
+    /// between the main thread and the animation thread.
     pub struct SpinnerComponent {
         message: String,
         handle: Option<std::thread::JoinHandle<()>>,
@@ -565,6 +815,21 @@ pub mod crossterm_utils {
     }
 
     impl SpinnerComponent {
+        /// Creates a new spinner component with the specified message.
+        ///
+        /// # Arguments
+        ///
+        /// * `message` - The message to display alongside the spinner animation
+        ///
+        /// # Returns
+        ///
+        /// A new `SpinnerComponent` ready to be started
+        ///
+        /// # Examples
+        ///
+        /// ```rust
+        /// let mut spinner = SpinnerComponent::new("Loading data");
+        /// ```
         pub fn new(message: &str) -> Self {
             Self {
                 message: message.to_string(),
@@ -666,7 +931,11 @@ pub mod crossterm_utils {
         }
     }
 
-    /// Permanent message component that stays in the output
+    /// A permanent message component that remains in the terminal output.
+    ///
+    /// Unlike spinners, message components create permanent output that becomes
+    /// part of the terminal history. They are used for displaying important
+    /// information that users may need to reference later.
     pub struct MessageComponent {
         styled_text: StyledText,
         message: String,
@@ -696,7 +965,25 @@ pub mod crossterm_utils {
         }
     }
 
-    /// Styled text builder for crossterm
+    /// Builder for creating styled terminal text with colors and formatting.
+    ///
+    /// This struct provides a fluent interface for building styled text that
+    /// can be displayed in the terminal with various colors and attributes.
+    /// The styling is applied when the text is written to the terminal.
+    ///
+    /// # Supported Styling
+    ///
+    /// - **Foreground Colors**: cyan, green, yellow, red
+    /// - **Background Colors**: green background (on_green)
+    /// - **Attributes**: bold text
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let styled = StyledText::new("Success".to_string())
+    ///     .green()
+    ///     .bold();
+    /// ```
     pub struct StyledText {
         text: String,
         foreground: Option<Color>,
@@ -705,6 +992,15 @@ pub mod crossterm_utils {
     }
 
     impl StyledText {
+        /// Creates a new StyledText with the specified text content.
+        ///
+        /// # Arguments
+        ///
+        /// * `text` - The text content to be styled
+        ///
+        /// # Returns
+        ///
+        /// A new `StyledText` instance with no styling applied
         pub fn new(text: String) -> Self {
             Self {
                 text,
@@ -714,40 +1010,96 @@ pub mod crossterm_utils {
             }
         }
 
+        /// Sets the foreground color to cyan.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn cyan(mut self) -> Self {
             self.foreground = Some(Color::Cyan);
             self
         }
 
+        /// Sets the foreground color to green.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn green(mut self) -> Self {
             self.foreground = Some(Color::Green);
             self
         }
 
+        /// Sets the foreground color to yellow.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn yellow(mut self) -> Self {
             self.foreground = Some(Color::Yellow);
             self
         }
 
+        /// Sets the foreground color to red.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn red(mut self) -> Self {
             self.foreground = Some(Color::Red);
             self
         }
 
+        /// Applies bold formatting to the text.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn bold(mut self) -> Self {
             self.bold = true;
             self
         }
 
+        /// Sets the background color to green.
+        ///
+        /// # Returns
+        ///
+        /// Self for method chaining
         pub fn on_green(mut self) -> Self {
             self.background = Some(Color::Green);
             self
         }
     }
 
+    /// Width of the action column in terminal output
     const ACTION_WIDTH: usize = 15;
 
-    /// Write a styled line in one operation with fixed 12-character right-aligned action
+    /// Writes a styled line to the terminal with consistent formatting.
+    ///
+    /// This function handles the complex terminal operations needed to display
+    /// styled text with proper alignment and formatting. The action text is
+    /// right-aligned in a fixed-width column for visual consistency.
+    ///
+    /// # Arguments
+    ///
+    /// * `styled_text` - The styled text configuration for the action portion
+    /// * `message` - The main message content to display
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an IO error if terminal operations fail
+    ///
+    /// # Format
+    ///
+    /// The output format is: `[ACTION (15 chars, right-aligned)] [message]`
+    /// where ACTION is styled according to the StyledText configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let styled = StyledText::new("Success".to_string()).green().bold();
+    /// write_styled_line(&styled, "Operation completed successfully")?;
+    /// ```
     pub fn write_styled_line(styled_text: &StyledText, message: &str) -> std::io::Result<()> {
         let mut stdout = std::io::stdout();
 

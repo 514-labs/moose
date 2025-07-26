@@ -49,9 +49,15 @@ pub async fn kill_child(child: &Child) -> Result<(), KillProcessError> {
 
     let mut kill = tokio::process::Command::new("kill")
         .args(["-s", "SIGTERM", &id.to_string()])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()?;
 
-    kill.wait().await?;
+    let status = kill.wait().await?;
+
+    if !status.success() {
+        log::warn!("Failed to kill process {}", id);
+    }
 
     Ok(())
 }

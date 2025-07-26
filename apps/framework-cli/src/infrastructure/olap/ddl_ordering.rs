@@ -1818,21 +1818,6 @@ mod tests {
         // Order the operations (teardown mode)
         let ordered = order_operations_by_dependencies(&operations, true).unwrap();
 
-        // Print the actual order for debugging
-        println!(
-            "Actual teardown order: {:?}",
-            ordered
-                .iter()
-                .map(|op| match op {
-                    AtomicOlapOperation::RunTeardownSql { resource, .. } =>
-                        format!("teardown resource {}", resource.name),
-                    AtomicOlapOperation::DropTable { table, .. } =>
-                        format!("drop table {}", table.name),
-                    _ => "other".to_string(),
-                })
-                .collect::<Vec<_>>()
-        );
-
         // Check that the order is correct
         assert_eq!(ordered.len(), 3);
 

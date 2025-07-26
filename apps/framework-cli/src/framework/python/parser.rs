@@ -762,19 +762,16 @@ mod tests {
 
     fn get_simple_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Simple python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/models/simple.py")
     }
 
     fn get_jwt_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Jwt python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/models/jwt.py")
     }
 
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Setup python file lookup current dir: {current_dir:?}");
         current_dir.join("tests/python/project/setup.py")
     }
 
@@ -922,7 +919,6 @@ mod tests {
 
         let models = extract_data_model_from_file(&test_file, "").unwrap().models;
 
-        println!("{models:?}");
         let model = models.iter().find(|m| m.name == "ComplexModel").unwrap();
 
         let list_sub_field = model.columns.iter().find(|c| c.name == "list_sub").unwrap();

@@ -217,7 +217,8 @@ async fn get_consumption_api_res(
 
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
-                println!(
+                use crossterm::{execute, style::Print};
+                let msg = format!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
                     consumption_apis
@@ -226,6 +227,7 @@ async fn get_consumption_api_res(
                         .collect::<Vec<&str>>()
                         .join(", ")
                 );
+                let _ = execute!(std::io::stdout(), Print(msg + "\n"));
             }
 
             return Ok(Response::builder()
@@ -1421,7 +1423,7 @@ impl Webserver {
             show_message!(
                 MessageType::Highlight,
                 Message {
-                    action: "Next Steps".to_string(),
+                    action: "Next Steps  ".to_string(),
                     details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
@@ -1543,7 +1545,7 @@ async fn shutdown(
     project: &Project,
     graceful: GracefulShutdown,
     process_registry: Arc<RwLock<ProcessRegistries>>,
-) -> ! {
+) -> () {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 
@@ -1663,18 +1665,6 @@ async fn shutdown(
 
     // Final delay before exit to ensure any remaining tasks complete
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-    // Exit the process cleanly
-    info!("Exiting application");
-
-    // Clear terminal using crossterm
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)
-    )
-    .unwrap();
-
-    std::process::exit(0);
 }
 
 #[derive(Debug, Serialize, Deserialize)]

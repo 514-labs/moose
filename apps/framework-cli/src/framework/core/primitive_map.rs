@@ -197,7 +197,8 @@ impl PrimitiveMap {
         version: &str,
         file_path: &Path, // one single file
     ) -> Result<Vec<DataModel>, DataModelError> {
-        let file_objects = data_model::parser::parse_data_model_file(file_path, version, project)?;
+        let file_objects =
+            data_model::parser::parse_data_model_file(file_path, version, project).await?;
         log::debug!(
             "Found the following data models: {:?} in path {:?}",
             file_objects.models,

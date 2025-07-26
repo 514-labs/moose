@@ -368,8 +368,8 @@ pub async fn top_command_handler(
             wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
-                "Ran".to_string(),
-                "local infrastructure".to_string(),
+                "Dev".to_string(),
+                "Server shutdown".to_string(),
             )))
         }
         Commands::Generate(generate) => match &generate.command {

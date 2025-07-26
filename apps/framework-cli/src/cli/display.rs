@@ -893,15 +893,10 @@ pub mod crossterm_utils {
 
             // Wait for the thread to finish gracefully
             if let Some(handle) = self.handle.take() {
-                // Try to join the thread with a reasonable timeout
-                let _ = std::thread::spawn(move || {
-                    let _ = handle.join();
-                });
-
-                // Give the thread time to clean up naturally
-                std::thread::sleep(std::time::Duration::from_millis(50));
-
-                // Don't wait for the cleanup thread to finish - just let it complete in background
+                // Join the thread directly - this ensures it has completely stopped
+                // before we clean up the terminal. This eliminates race conditions
+                // and prevents terminal corruption.
+                let _ = handle.join();
             }
 
             // Clean up the current spinner line gracefully
@@ -1103,11 +1098,16 @@ pub mod crossterm_utils {
     pub fn write_styled_line(styled_text: &StyledText, message: &str) -> std::io::Result<()> {
         let mut stdout = std::io::stdout();
 
-        // Ensure action is exactly 12 characters, right-aligned
-        let truncated_action = if styled_text.text.len() > ACTION_WIDTH {
-            &styled_text.text[..ACTION_WIDTH]
+        // Ensure action is exactly ACTION_WIDTH characters, right-aligned
+        // Use character-aware truncation to avoid panics on multi-byte UTF-8 characters
+        let truncated_action = if styled_text.text.chars().count() > ACTION_WIDTH {
+            styled_text
+                .text
+                .chars()
+                .take(ACTION_WIDTH)
+                .collect::<String>()
         } else {
-            &styled_text.text
+            styled_text.text.clone()
         };
         let padded_action = format!("{truncated_action:>ACTION_WIDTH$}");
 

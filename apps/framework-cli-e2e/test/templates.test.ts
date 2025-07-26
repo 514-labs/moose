@@ -108,6 +108,7 @@ const utils = {
       let writeConfirmed = false;
       let timeoutId: NodeJS.Timeout;
       let outputBuffer = "";
+      let recordsWritten = 0;
 
       // Updated regex to match the new right-aligned format with 15-character action field
       const expectedMessageRegex = new RegExp(
@@ -142,10 +143,11 @@ const utils = {
           if (match) {
             console.log("DB write match found:", match[0]);
             const actualRecords = parseInt(match[1], 10);
+            recordsWritten += actualRecords;
             console.log(
               `Found ${actualRecords} records, expecting ${expectedRecords}`,
             );
-            if (actualRecords >= expectedRecords) {
+            if (recordsWritten >= expectedRecords) {
               writeConfirmed = true;
               clearTimeout(timeoutId);
               resolve();

@@ -1,9 +1,8 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
-use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
 use std::io::{stdout, IsTerminal};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::macros::support::Future;
 
 // Crossterm imports for migration
@@ -61,27 +60,6 @@ use crate::framework::core::{
 /// The CommandTerminal wraps stdout handling and tracks the
 /// number of messages written for potential future needs (such as clearing or
 /// updating specific messages).
-#[derive(Debug, Clone)]
-pub struct CommandTerminal {
-    /// Counter tracking the number of messages written to the terminal
-    pub counter: usize,
-}
-
-impl CommandTerminal {
-    /// Creates a new CommandTerminal instance for stdout.
-    ///
-    /// # Returns
-    ///
-    /// * `CommandTerminal` - A new terminal instance with counter initialized to 0
-    pub fn new() -> CommandTerminal {
-        CommandTerminal { counter: 0 }
-    }
-
-    /// Write a line to stdout using crossterm
-    pub fn write_line(&self, content: &str) -> std::io::Result<()> {
-        crossterm_utils::write_line(content)
-    }
-}
 
 /// Types of messages that can be displayed to the user.
 ///
@@ -127,25 +105,17 @@ impl Message {
     }
 }
 
-lazy_static! {
-    pub static ref TERM: Arc<RwLock<CommandTerminal>> =
-        Arc::new(RwLock::new(CommandTerminal::new()));
-}
-
 /// Displays a message about infrastructure being added.
 ///
 /// # Arguments
 ///
 /// * `message` - The message describing the added infrastructure
 pub fn infra_added(message: &str) {
-    let mut command_terminal = TERM.write().unwrap();
-
     let styled_text = crossterm_utils::StyledText::new("+ ".to_string()).green();
     // Use the new styled message writer for clean formatting
     crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
-    command_terminal.counter += 1;
     info!("+ {}", message.trim());
 }
 
@@ -155,15 +125,12 @@ pub fn infra_added(message: &str) {
 ///
 /// * `message` - The message describing the removed infrastructure
 pub fn infra_removed(message: &str) {
-    let mut command_terminal = TERM.write().unwrap();
-
     let styled_text = crossterm_utils::StyledText::new("- ".to_string()).red();
 
     // Use the new styled message writer for clean formatting
     crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
-    command_terminal.counter += 1;
     info!("- {}", message.trim());
 }
 
@@ -173,21 +140,17 @@ pub fn infra_removed(message: &str) {
 ///
 /// * `message` - The message describing the updated infrastructure
 pub fn infra_updated(message: &str) {
-    let mut command_terminal = TERM.write().unwrap();
-
     let styled_text = crossterm_utils::StyledText::new("~ ".to_string()).yellow();
 
     // Use the new styled message writer for clean formatting
     crossterm_utils::write_styled_line(&styled_text, message)
         .expect("failed to write message to terminal");
 
-    command_terminal.counter += 1;
     info!("~ {}", message.trim());
 }
 
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
-        use crate::cli::display::TERM;
         use crate::cli::display::crossterm_utils;
 
         let evaluated_message = $message;
@@ -195,7 +158,6 @@ macro_rules! show_message {
         let details = evaluated_message.details.clone();
 
         {
-            let mut command_terminal = TERM.write().unwrap();
 
             // Create styled prefix based on message type
             let styled_prefix = match $message_type {
@@ -208,7 +170,6 @@ macro_rules! show_message {
             // Write styled prefix and details in one line
             crossterm_utils::write_styled_line(&styled_prefix, &details)
                 .expect("failed to write message to terminal");
-            command_terminal.counter += 1;
 
             if $log {
                 use log::info;
@@ -406,10 +367,6 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
 ///
 /// * `infra_plan` - The infrastructure plan containing all changes
 pub fn show_changes(infra_plan: &InfraPlan) {
-    TERM.write()
-        .unwrap()
-        .write_line("")
-        .expect("failed to write message to terminal");
     // TODO there is probably a better way to do the following through
     // https://crates.io/crates/enum_dispatch or something similar
     infra_plan
@@ -716,16 +673,6 @@ pub mod crossterm_utils {
         displayed: bool,
     }
 
-    // impl MessageComponent {
-    //     pub fn new(styled_text: StyledText, message: &str) -> Self {
-    //         Self {
-    //             styled_text,
-    //             message: message.to_string(),
-    //             displayed: false,
-    //         }
-    //     }
-    // }
-
     impl TerminalComponent for MessageComponent {
         fn start(&mut self) -> std::io::Result<()> {
             if self.displayed {
@@ -796,12 +743,6 @@ pub mod crossterm_utils {
             self.background = Some(Color::Green);
             self
         }
-    }
-
-    /// Write a line to stdout with crossterm
-    pub fn write_line(content: &str) -> std::io::Result<()> {
-        let mut stdout = std::io::stdout();
-        execute!(stdout, Print(content), Print("\n"))
     }
 
     const ACTION_WIDTH: usize = 15;

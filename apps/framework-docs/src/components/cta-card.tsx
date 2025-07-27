@@ -54,7 +54,7 @@ export function CTACard({
           {badge ?
             <IconBadge variant={badge.variant} label={badge.text} />
           : Icon ?
-            <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-center justify-center">
+            <div className="ml-6 bg-muted rounded-lg p-4 shrink-0 flex items-center justify-center border border-neutral-200 dark:border-neutral-800">
               <Icon
                 className={cn(
                   "h-6 w-6",
@@ -81,7 +81,7 @@ export function CTACard({
             {badge ?
               <IconBadge variant={badge.variant} label={badge.text} />
             : orientation === "vertical" && Icon ?
-              <div className="bg-muted rounded-lg p-4">
+              <div className="bg-muted rounded-lg p-4 border border-neutral-200 dark:border-neutral-800">
                 <Icon
                   className={cn(
                     "h-6 w-6",

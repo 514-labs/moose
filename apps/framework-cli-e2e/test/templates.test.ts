@@ -137,16 +137,10 @@ const utils = {
 
           // Reset regex lastIndex for global flag
           expectedMessageRegex.lastIndex = 0;
-          console.log("Checking clean buffer:", JSON.stringify(cleanBuffer));
           const match = cleanBuffer.match(expectedMessageRegex);
-          console.log("Regex match result:", match);
           if (match) {
-            console.log("DB write match found:", match[0]);
             const actualRecords = parseInt(match[1], 10);
             recordsWritten += actualRecords;
-            console.log(
-              `Found ${actualRecords} records, expecting ${expectedRecords}`,
-            );
             if (recordsWritten >= expectedRecords) {
               writeConfirmed = true;
               clearTimeout(timeoutId);

@@ -88,24 +88,6 @@ impl SpinnerComponent {
             started: false,
         }
     }
-
-    /// Checks if the spinner is currently running.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the spinner is started and running
-    pub fn is_running(&self) -> bool {
-        self.started && !self.stop_signal.load(Ordering::Relaxed)
-    }
-
-    /// Gets the message displayed with the spinner.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the spinner message
-    pub fn message(&self) -> &str {
-        &self.message
-    }
 }
 
 impl TerminalComponent for SpinnerComponent {
@@ -288,27 +270,8 @@ mod tests {
 
     #[test]
     fn test_spinner_component_new() {
-        let spinner = SpinnerComponent::new("Test message");
-        assert_eq!(spinner.message(), "Test message");
-        assert!(!spinner.is_running());
-    }
-
-    #[test]
-    fn test_spinner_component_message() {
-        let spinner = SpinnerComponent::new("Loading data");
-        assert_eq!(spinner.message(), "Loading data");
-    }
-
-    #[test]
-    fn test_spinner_component_unicode_message() {
-        let spinner = SpinnerComponent::new("🚀 Deploying");
-        assert_eq!(spinner.message(), "🚀 Deploying");
-    }
-
-    #[test]
-    fn test_spinner_component_empty_message() {
-        let spinner = SpinnerComponent::new("");
-        assert_eq!(spinner.message(), "");
+        let _spinner = SpinnerComponent::new("Test message");
+        // Just test that creation doesn't panic
     }
 
     #[test]

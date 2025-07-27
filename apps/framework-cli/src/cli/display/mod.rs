@@ -91,7 +91,12 @@ pub mod crossterm_utils {
     //!
     //! This module re-exports the terminal utilities under the original
     //! crossterm_utils namespace for backward compatibility with existing code.
+    //!
+    //! Note: These re-exports are maintained for backward compatibility but may
+    //! not be actively used. The main display module provides the primary API.
 
+    #[allow(unused_imports)]
     pub use super::spinner::SpinnerComponent;
+    #[allow(unused_imports)]
     pub use super::terminal::{write_styled_line, StyledText, TerminalComponent};
 }

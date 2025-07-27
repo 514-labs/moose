@@ -154,63 +154,72 @@ mod tests {
 
     #[test]
     fn test_show_message_impl_info() {
-        let message = Message::from_strs("Test", "Test message");
+        let message = Message::new("Test".to_string(), "Test message".to_string());
         let result = show_message_impl(MessageType::Info, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_success() {
-        let message = Message::from_strs("Success", "Operation completed");
+        let message = Message::new("Success".to_string(), "Operation completed".to_string());
         let result = show_message_impl(MessageType::Success, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_error() {
-        let message = Message::from_strs("Error", "Something went wrong");
+        let message = Message::new("Error".to_string(), "Something went wrong".to_string());
         let result = show_message_impl(MessageType::Error, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_highlight() {
-        let message = Message::from_strs("Important", "Pay attention to this");
+        let message = Message::new("Important".to_string(), "Pay attention to this".to_string());
         let result = show_message_impl(MessageType::Highlight, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_with_logging() {
-        let message = Message::from_strs("Log", "This should be logged");
+        let message = Message::new("Log".to_string(), "This should be logged".to_string());
         let result = show_message_impl(MessageType::Info, message, true);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_multiline() {
-        let message = Message::from_strs("Multi\nLine", "Details\nwith\nnewlines");
+        let message = Message::new(
+            "Multi\nLine".to_string(),
+            "Details\nwith\nnewlines".to_string(),
+        );
         let result = show_message_impl(MessageType::Info, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_unicode() {
-        let message = Message::from_strs("🚀 Deploy", "Successfully deployed 🎉");
+        let message = Message::new(
+            "🚀 Deploy".to_string(),
+            "Successfully deployed 🎉".to_string(),
+        );
         let result = show_message_impl(MessageType::Success, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_impl_empty() {
-        let message = Message::from_strs("", "");
+        let message = Message::new("".to_string(), "".to_string());
         let result = show_message_impl(MessageType::Info, message, false);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_show_message_wrapper() {
-        let message = Message::from_strs("Wrapper", "Testing wrapper function");
+        let message = Message::new(
+            "Wrapper".to_string(),
+            "Testing wrapper function".to_string(),
+        );
         // This should not panic
         show_message_wrapper(MessageType::Info, message);
     }
@@ -236,7 +245,7 @@ mod tests {
     // Test the macro itself
     #[test]
     fn test_show_message_macro() {
-        let message = Message::from_strs("Macro", "Testing macro");
+        let message = Message::new("Macro".to_string(), "Testing macro".to_string());
 
         // Test with logging (default)
         show_message!(MessageType::Info, message.clone());
@@ -247,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_show_message_macro_all_types() {
-        let message = Message::from_strs("Test", "Message");
+        let message = Message::new("Test".to_string(), "Message".to_string());
 
         show_message!(MessageType::Info, message.clone());
         show_message!(MessageType::Success, message.clone());

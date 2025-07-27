@@ -78,30 +78,6 @@ impl Message {
     pub fn new(action: String, details: String) -> Self {
         Self { action, details }
     }
-
-    /// Creates a new Message with string slice arguments for convenience.
-    ///
-    /// # Arguments
-    ///
-    /// * `action` - The action or category of the message
-    /// * `details` - The main content or details of the message
-    ///
-    /// # Returns
-    ///
-    /// A new `Message` instance ready for display
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use crate::cli::display::message::Message;
-    /// let msg = Message::from_strs("Deploy", "Application deployed successfully");
-    /// ```
-    pub fn from_strs(action: &str, details: &str) -> Self {
-        Self {
-            action: action.to_string(),
-            details: details.to_string(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -116,16 +92,9 @@ mod tests {
     }
 
     #[test]
-    fn test_message_from_strs() {
-        let message = Message::from_strs("Test", "Test details");
-        assert_eq!(message.action, "Test");
-        assert_eq!(message.details, "Test details");
-    }
-
-    #[test]
     fn test_message_equality() {
         let msg1 = Message::new("Test".to_string(), "Details".to_string());
-        let msg2 = Message::from_strs("Test", "Details");
+        let msg2 = Message::new("Test".to_string(), "Details".to_string());
         assert_eq!(msg1, msg2);
     }
 
@@ -144,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_message_clone() {
-        let original = Message::from_strs("Original", "Original details");
+        let original = Message::new("Original".to_string(), "Original details".to_string());
         let cloned = original.clone();
         assert_eq!(original, cloned);
 
@@ -152,7 +121,6 @@ mod tests {
         assert_eq!(original.action, cloned.action);
         assert_eq!(original.details, cloned.details);
     }
-
     #[test]
     fn test_message_type_copy() {
         let original = MessageType::Error;
@@ -162,21 +130,27 @@ mod tests {
 
     #[test]
     fn test_empty_message() {
-        let message = Message::from_strs("", "");
+        let message = Message::new("".to_string(), "".to_string());
         assert_eq!(message.action, "");
         assert_eq!(message.details, "");
     }
 
     #[test]
     fn test_unicode_message() {
-        let message = Message::from_strs("🚀 Deploy", "Successfully deployed 🎉");
+        let message = Message::new(
+            "🚀 Deploy".to_string(),
+            "Successfully deployed 🎉".to_string(),
+        );
         assert_eq!(message.action, "🚀 Deploy");
         assert_eq!(message.details, "Successfully deployed 🎉");
     }
 
     #[test]
     fn test_multiline_message() {
-        let message = Message::from_strs("Multi\nLine", "Details\nwith\nnewlines");
+        let message = Message::new(
+            "Multi\nLine".to_string(),
+            "Details\nwith\nnewlines".to_string(),
+        );
         assert_eq!(message.action, "Multi\nLine");
         assert_eq!(message.details, "Details\nwith\nnewlines");
     }

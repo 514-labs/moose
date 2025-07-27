@@ -15,7 +15,7 @@ use crate::utilities::process_output::run_command_with_output_proxy;
 pub enum TypescriptParsingError {
     #[error("Failure setting up the file structure")]
     FileSystemError(#[from] std::io::Error),
-    TypescriptCompilerError(Option<std::io::Error>),
+    TypescriptCompilerError(Option<Box<dyn std::error::Error + Send + Sync>>),
     #[error("Typescript Parser - Unsupported data type in {field_name}: {type_name}")]
     UnsupportedDataTypeError {
         type_name: String,

@@ -194,6 +194,7 @@ impl SpinnerComponent {
     /// spinner.stop_with_message(None)?; // Just clears the line
     /// # Ok::<(), std::io::Error>(())
     /// ```
+    #[cfg(test)]
     pub fn stop_with_message(&mut self, completion_message: Option<&str>) -> IoResult<()> {
         match completion_message {
             Some(message) => self.done(message),
@@ -354,6 +355,7 @@ impl Drop for SpinnerComponent {
 /// }, true);
 /// assert_eq!(result, 42);
 /// ```
+#[cfg(test)]
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
@@ -467,6 +469,7 @@ where
 /// assert_eq!(result, 42);
 /// # }
 /// ```
+#[cfg(test)]
 pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,

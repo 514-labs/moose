@@ -1,8 +1,9 @@
 //! Spinner components for displaying progress during long-running operations.
 //!
 //! This module provides animated spinner functionality that gives users visual
-//! feedback during operations that take time to complete. Spinners are ephemeral
-//! and disappear completely when operations finish.
+//! feedback during operations that take time to complete. Spinners can either
+//! disappear completely when stopped or show a completion message with checkmark
+//! when finished successfully.
 
 use super::terminal::TerminalComponent;
 use crossterm::{
@@ -32,23 +33,22 @@ const CHECKMARK: &str = "✓";
 /// Frame update interval in milliseconds
 const FRAME_INTERVAL_MS: u64 = 80;
 
-/// An animated spinner component that stays on the last line while other output appears above.
+/// An animated spinner component that reserves a specific line for display.
 ///
 /// The spinner provides visual feedback for long-running operations using
 /// a dots animation. It runs in a separate thread to avoid blocking the
-/// main operation and automatically handles concurrent output by keeping
-/// the spinner on the bottom line and pushing other output above it.
+/// main operation and reserves its initial line position for updates.
 ///
 /// # Animation
 ///
 /// Uses a 10-frame dots animation (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏) that updates every 80ms
 /// for smooth visual feedback without being distracting.
 ///
-/// # Concurrent Output Handling
+/// # Line Management
 ///
-/// When other processes write to stdout while the spinner is running,
-/// the spinner automatically moves to a new line below the output,
-/// ensuring it's always visible at the bottom of the terminal.
+/// The spinner captures its initial cursor position and reserves that line
+/// for spinner updates. It uses cursor positioning to update the reserved
+/// line without interfering with other output that may appear after it.
 ///
 /// # Thread Safety
 ///
@@ -64,14 +64,11 @@ const FRAME_INTERVAL_MS: u64 = 80;
 /// spinner.start()?;
 /// // ... long running operation that may produce output ...
 ///
-/// // Option 1: Complete with success message (shows checkmark)
+/// // Option 1: Complete with success message (shows checkmark and keeps message visible)
 /// spinner.done("Data loaded successfully")?;
 ///
-/// // Option 2: Just stop without completion message (clears line)
+/// // Option 2: Just stop and clear the spinner line completely
 /// // spinner.stop()?;
-///
-/// // Option 3: Stop with optional completion message
-/// // spinner.stop_with_message(Some("Data loaded successfully"))?;
 /// # Ok::<(), std::io::Error>(())
 /// ```
 pub struct SpinnerComponent {
@@ -115,7 +112,8 @@ impl SpinnerComponent {
     ///
     /// This method stops the spinner animation and displays a checkmark
     /// with the provided completion message on the reserved spinner line.
-    /// The spinner remains visible to show successful completion.
+    /// The completion message remains visible to show successful completion.
+    /// Sets the `is_done` flag to true.
     ///
     /// # Arguments
     ///
@@ -134,6 +132,7 @@ impl SpinnerComponent {
     /// spinner.start()?;
     /// // ... long running operation ...
     /// spinner.done("Data loaded successfully")?;
+    /// // Line now shows: "✓ Data loaded successfully"
     /// # Ok::<(), std::io::Error>(())
     /// ```
     pub fn done(&mut self, completion_message: &str) -> IoResult<()> {
@@ -170,8 +169,11 @@ impl SpinnerComponent {
 
     /// Stops the spinner with an optional completion message.
     ///
-    /// If a completion message is provided, displays a checkmark with the message.
-    /// If no completion message is provided, clears the spinner line completely.
+    /// This is a convenience method that delegates to either `done()` or `stop()`.
+    /// If a completion message is provided, calls `done()` to display a checkmark with the message.
+    /// If no completion message is provided, calls `stop()` to clear the spinner line completely.
+    ///
+    /// Note: This method is only available in test builds (`#[cfg(test)]`).
     ///
     /// # Arguments
     ///
@@ -189,9 +191,9 @@ impl SpinnerComponent {
     /// let mut spinner = SpinnerComponent::new("Processing");
     /// spinner.start()?;
     /// // ... operation ...
-    /// spinner.stop_with_message(Some("Processing complete"))?; // Shows checkmark
+    /// spinner.stop_with_message(Some("Processing complete"))?; // Shows checkmark, sets is_done=true
     /// // OR
-    /// spinner.stop_with_message(None)?; // Just clears the line
+    /// spinner.stop_with_message(None)?; // Just clears the line, is_done remains false
     /// # Ok::<(), std::io::Error>(())
     /// ```
     #[cfg(test)]
@@ -204,6 +206,16 @@ impl SpinnerComponent {
 }
 
 impl TerminalComponent for SpinnerComponent {
+    /// Starts the spinner animation.
+    ///
+    /// Captures the current cursor position to reserve a line for the spinner,
+    /// displays the initial spinner frame, and spawns a background thread to
+    /// animate the spinner. The spinner updates its reserved line every 80ms
+    /// with the next animation frame.
+    ///
+    /// # Returns
+    ///
+    /// `IoResult<()>` indicating success or failure
     fn start(&mut self) -> IoResult<()> {
         if self.started {
             return Ok(());
@@ -264,6 +276,15 @@ impl TerminalComponent for SpinnerComponent {
         Ok(())
     }
 
+    /// Stops the spinner animation and clears the reserved line.
+    ///
+    /// Signals the animation thread to stop, waits for it to finish gracefully,
+    /// and clears the reserved spinner line completely. Unlike `done()`, this
+    /// method does not set the `is_done` flag and leaves no visible trace.
+    ///
+    /// # Returns
+    ///
+    /// `IoResult<()>` indicating success or failure
     fn stop(&mut self) -> IoResult<()> {
         if !self.started {
             return Ok(());
@@ -298,6 +319,15 @@ impl TerminalComponent for SpinnerComponent {
         Ok(())
     }
 
+    /// Performs cleanup after the spinner has been stopped.
+    ///
+    /// For SpinnerComponent, this is a no-op since the spinner either
+    /// disappears completely (when stopped) or shows a completion message
+    /// (when done). No additional cleanup is needed.
+    ///
+    /// # Returns
+    ///
+    /// Always returns `Ok(())`
     fn cleanup(&mut self) -> IoResult<()> {
         // SpinnerComponent disappears completely, so no newline needed
         // Terminal is already clean at the beginning of the line
@@ -317,8 +347,10 @@ impl Drop for SpinnerComponent {
 /// Executes a function with a spinner displayed during execution.
 ///
 /// This function provides visual feedback for long-running operations by displaying
-/// an animated spinner. The spinner automatically handles concurrent output by detecting
-/// when other processes write to stdout and moving to a new line to stay visible.
+/// an animated spinner. The spinner reserves a line for its display and clears
+/// completely when the operation finishes.
+///
+/// Note: This function is only available in test builds (`#[cfg(test)]`).
 ///
 /// # Arguments
 ///
@@ -334,26 +366,19 @@ impl Drop for SpinnerComponent {
 ///
 /// - If `activate` is false or stdout is not a terminal, the function runs without spinner
 /// - The spinner uses a dots animation and updates every 80ms
-/// - When other output appears, the spinner automatically moves to a new line below it
-/// - Terminal state is properly cleaned up after completion
-///
-/// # Concurrent Output Handling
-///
-/// The spinner intelligently detects when other processes or threads write to stdout
-/// and automatically repositions itself to remain visible at the bottom of the output.
-/// This ensures that both the spinner and any log output from subprocesses are visible.
+/// - The spinner reserves its initial line position for updates
+/// - Terminal state is properly cleaned up after completion (spinner disappears completely)
 ///
 /// # Examples
 ///
 /// ```rust
 /// # use crate::cli::display::spinner::with_spinner;
 /// let result = with_spinner("Processing data", || {
-///     // Long-running operation that may produce output
-///     println!("Processing step 1...");
-///     println!("Processing step 2...");
+///     // Long-running operation
 ///     42
 /// }, true);
 /// assert_eq!(result, 42);
+/// // Spinner disappears completely after operation
 /// ```
 #[cfg(test)]
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
@@ -436,7 +461,10 @@ where
 /// Executes an asynchronous function with a spinner displayed during execution.
 ///
 /// This is the async version of `with_spinner`, providing the same visual feedback
-/// and concurrent output handling for long-running async operations.
+/// for long-running async operations. The spinner reserves a line for its display
+/// and clears completely when the operation finishes.
+///
+/// Note: This function is only available in test builds (`#[cfg(test)]`).
 ///
 /// # Arguments
 ///
@@ -448,25 +476,18 @@ where
 ///
 /// The result of the async function execution, unchanged
 ///
-/// # Concurrent Output Handling
-///
-/// Like `with_spinner`, this function automatically handles concurrent output from
-/// other processes or async tasks, ensuring the spinner remains visible at the
-/// bottom of the terminal while other output appears above it.
-///
 /// # Examples
 ///
 /// ```rust
 /// # use crate::cli::display::spinner::with_spinner_async;
 /// # async fn example() {
 /// let result = with_spinner_async("Processing async data", async {
-///     // Async operation that may produce output
-///     println!("Async step 1 complete");
+///     // Async operation
 ///     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-///     println!("Async step 2 complete");
 ///     42
 /// }, true).await;
 /// assert_eq!(result, 42);
+/// // Spinner disappears completely after operation
 /// # }
 /// ```
 #[cfg(test)]
@@ -486,6 +507,7 @@ where
 
     if let Some(mut spinner) = sp {
         let _ = spinner.stop();
+        let _ = spinner.cleanup();
     }
 
     res
@@ -542,6 +564,7 @@ where
 
     if let Some(mut spinner) = sp {
         let _ = spinner.done(completion_message);
+        let _ = spinner.cleanup();
     }
 
     res

@@ -9,7 +9,15 @@ pub fn clean_project(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    ensure_docker_running(docker_client)?;
+    ensure_docker_running(docker_client).map_err(|e| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to ensure docker is running".to_string(),
+            ),
+            e,
+        )
+    })?;
 
     // Get the settings to check if containers should be shut down
     let settings = Settings::load().map_err(|e| {

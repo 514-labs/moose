@@ -13,7 +13,7 @@ use crate::utilities::docker::DockerClient;
 use clap::Parser;
 use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
-use display::with_spinner;
+use display::with_spinner_completion;
 use log::{debug, info};
 use regex::Regex;
 use routines::auth::generate_hash_token;
@@ -288,8 +288,9 @@ pub async fn top_command_handler(
                 );
 
                 // Use the new build_package function instead of Docker build
-                let package_path = with_spinner(
+                let package_path = with_spinner_completion(
                     "Bundling deployment package",
+                    "Package bundled successfully",
                     || {
                         build_package(&project_arc).map_err(|e| {
                             RoutineFailure::error(Message {
@@ -326,7 +327,12 @@ pub async fn top_command_handler(
             let docker_client = DockerClient::new(&settings);
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc, &settings, &docker_client)?.show();
+            run_local_infrastructure(&project_arc, &settings, &docker_client).map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Dev".to_string(),
+                    details: format!("Failed to run local infrastructure: {e:?}"),
+                })
+            })?;
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
@@ -368,8 +374,8 @@ pub async fn top_command_handler(
             wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
-                "Ran".to_string(),
-                "local infrastructure".to_string(),
+                "Dev".to_string(),
+                "Server shutdown".to_string(),
             )))
         }
         Commands::Generate(generate) => match &generate.command {
@@ -416,7 +422,12 @@ pub async fn top_command_handler(
             // If start_include_dependencies is true, manage Docker containers like dev mode
             if *start_include_dependencies {
                 let docker_client = DockerClient::new(&settings);
-                run_local_infrastructure(&project_arc, &settings, &docker_client)?.show();
+                run_local_infrastructure(&project_arc, &settings, &docker_client).map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Prod".to_string(),
+                        details: format!("Failed to run local infrastructure: {e:?}"),
+                    })
+                })?;
             }
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {

@@ -990,18 +990,6 @@ impl Drop for RedisClient {
                 task.abort();
             }
         }
-
-        // Create a runtime for blocking operations during drop
-        if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-        {
-            // Close Redis connections gracefully using the ConnectionManagerWrapper
-            rt.block_on(async {
-                let _ = self.stop_periodic_tasks().await;
-                self.connection_manager.shutdown().await;
-            });
-        }
     }
 }
 

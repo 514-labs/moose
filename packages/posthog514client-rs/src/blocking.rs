@@ -165,7 +165,7 @@ impl BlockingPostHog514Client {
             status => {
                 let error_msg = response.text().unwrap_or_else(|_| "Unknown error".into());
                 Err(PostHogError::send_event(
-                    format!("Unexpected response: {}", status),
+                    format!("Unexpected response: {status}"),
                     Some(crate::error::SendEventErrorKind::Network(error_msg)),
                 ))
             }
@@ -202,7 +202,7 @@ mod tests {
         let mock = server.mock("POST", "/capture/").with_status(200).create();
 
         let client = BlockingPostHog514Client::new("test_key", "test_machine_id").unwrap();
-        let error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+        let error = std::io::Error::other("test error");
         let result = client.capture_cli_error(error, Some("test_project".to_string()), None);
 
         assert!(result.is_ok());

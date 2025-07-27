@@ -1,5 +1,5 @@
 use super::{RoutineFailure, RoutineSuccess};
-use crate::cli::display::with_spinner;
+use crate::cli::display::with_spinner_completion;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
@@ -113,7 +113,15 @@ pub fn create_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client)?;
+    ensure_docker_running(docker_client).map_err(|e| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to ensure docker is running".to_string(),
+            ),
+            e,
+        )
+    })?;
 
     let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
 
@@ -207,7 +215,16 @@ pub fn build_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client)?;
+    ensure_docker_running(docker_client).map_err(|e| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to ensure docker is running".to_string(),
+            ),
+            e,
+        )
+    })?;
+
     let file_path = internal_dir.join("packager/Dockerfile");
     info!("Building Dockerfile at: {:?}", file_path);
 
@@ -272,8 +289,9 @@ pub fn build_dockerfile(
 
     if build_all || is_amd64 {
         info!("Creating docker linux/amd64 image");
-        let buildx_result = with_spinner(
+        let buildx_result = with_spinner_completion(
             "Creating docker linux/amd64 image",
+            "Docker linux/amd64 image created successfully",
             || {
                 docker_client.buildx(
                     &internal_dir.join("packager"),
@@ -300,8 +318,9 @@ pub fn build_dockerfile(
 
     if build_all || is_arm64 {
         info!("Creating docker linux/arm64 image");
-        let buildx_result = with_spinner(
+        let buildx_result = with_spinner_completion(
             "Creating docker linux/arm64 image",
+            "Docker linux/arm64 image created successfully",
             || {
                 docker_client.buildx(
                     &internal_dir.join("packager"),

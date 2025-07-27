@@ -86,7 +86,7 @@ pub async fn extract_data_model_from_file(
             .await
             .map_err(|err| {
                 log::error!("Error while running moose-tspc: {}", err);
-                TypescriptParsingError::TypescriptCompilerError(None)
+                TypescriptParsingError::TypescriptCompilerError(Some(err))
             })?
     };
 

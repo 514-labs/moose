@@ -82,7 +82,14 @@ impl ProcessOutputProxy {
     /// This method should be called after the subprocess has finished to ensure
     /// all output has been read and logged before proceeding.
     pub async fn wait_for_completion(self) {
-        let _ = tokio::join!(self.stdout_task, self.stderr_task);
+        let (stdout_result, stderr_result) = tokio::join!(self.stdout_task, self.stderr_task);
+
+        if let Err(e) = stdout_result {
+            error!("Output proxy stdout task failed: {}", e);
+        }
+        if let Err(e) = stderr_result {
+            error!("Output proxy stderr task failed: {}", e);
+        }
     }
 }
 
@@ -177,8 +184,12 @@ pub fn run_command_with_output_proxy_sync(
     let status = child.wait()?;
 
     // Wait for output threads to complete
-    let _ = stdout_handle.join();
-    let _ = stderr_handle.join();
+    if let Err(e) = stdout_handle.join() {
+        error!("Output proxy stdout thread panicked: {:?}", e);
+    }
+    if let Err(e) = stderr_handle.join() {
+        error!("Output proxy stderr thread panicked: {:?}", e);
+    }
 
     Ok(status)
 }

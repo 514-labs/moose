@@ -1547,7 +1547,7 @@ async fn shutdown(
     project: &Project,
     graceful: GracefulShutdown,
     process_registry: Arc<RwLock<ProcessRegistries>>,
-) -> () {
+) {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 

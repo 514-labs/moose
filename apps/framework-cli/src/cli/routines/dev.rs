@@ -5,7 +5,7 @@ use super::{
     },
     RoutineFailure, RoutineSuccess,
 };
-use crate::cli::{display::with_spinner, settings::Settings};
+use crate::cli::{display::with_spinner_completion, settings::Settings};
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::{cli::display::Message, project::Project};
 use crate::{cli::routines::util::ensure_docker_running, utilities::docker::DockerClient};
@@ -15,7 +15,7 @@ pub fn run_local_infrastructure(
     project: &Project,
     settings: &Settings,
     docker_client: &DockerClient,
-) -> Result<RoutineSuccess, RoutineFailure> {
+) -> anyhow::Result<()> {
     // Debug log to check load_infra value at runtime
     log::info!(
         "[moose] DEBUG: load_infra from config: {:?}, should_load_infra(): {}",
@@ -28,14 +28,11 @@ pub fn run_local_infrastructure(
     // If load_infra is false, skip infra loading for this instance
     if !project.should_load_infra() {
         println!("[moose] Skipping infra container startup: load_infra is set to false in moose.config.toml");
-        return Ok(RoutineSuccess::success(Message::new(
-            "Skipped".to_string(),
-            "infra container startup (load_infra = false)".to_string(),
-        )));
+        return Ok(());
     }
 
     ensure_docker_running(docker_client)?;
-    run_containers(project, docker_client)?.show();
+    run_containers(project, docker_client)?;
 
     if project.features.olap {
         validate_clickhouse_run(project, docker_client)?.show();
@@ -48,10 +45,7 @@ pub fn run_local_infrastructure(
         validate_temporal_run(project, docker_client)?.show();
     }
 
-    Ok(RoutineSuccess::success(Message::new(
-        "Successfully".to_string(),
-        "ran local infrastructure".to_string(),
-    )))
+    Ok(())
 }
 
 lazy_static! {
@@ -61,26 +55,13 @@ lazy_static! {
     );
 }
 
-pub fn run_containers(
-    project: &Project,
-    docker_client: &DockerClient,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    let docker_compose_res = with_spinner(
+pub fn run_containers(project: &Project, docker_client: &DockerClient) -> anyhow::Result<()> {
+    with_spinner_completion(
         "Starting local infrastructure",
+        "Local infrastructure started successfully",
         || docker_client.start_containers(project),
         !project.is_production,
-    );
-
-    match docker_compose_res {
-        Ok(_) => Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "started containers".to_string(),
-        ))),
-        Err(err) => Err(RoutineFailure::new(
-            Message::new("Failed".to_string(), "to start containers".to_string()),
-            err,
-        )),
-    }
+    )
 }
 
 pub fn create_docker_compose_file(

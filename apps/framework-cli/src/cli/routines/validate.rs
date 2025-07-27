@@ -116,7 +116,7 @@ pub fn validate_redpanda_cluster(
         })?;
 
     Ok(RoutineSuccess::success(Message::new(
-        "Successfully".to_string(),
-        "validated red panda cluster".to_string(),
+        "Validated".to_string(),
+        "Redpanda cluster".to_string(),
     )))
 }

@@ -18,7 +18,9 @@
 ///
 /// The webserver is configurable through the `LocalWebserverConfig` struct and
 /// can be started in both development and production modes.
-use super::display::{with_spinner, with_spinner_async, Message, MessageType};
+use super::display::{
+    with_spinner_completion, with_spinner_completion_async, Message, MessageType,
+};
 use super::routines::auth::validate_auth_token;
 use super::routines::scripts::{get_workflow_list, terminate_all_workflows};
 use super::settings::Settings;
@@ -1595,8 +1597,9 @@ async fn shutdown(
                 },
             );
 
-            let termination_result = with_spinner_async(
+            let termination_result = with_spinner_completion_async(
                 "Stopping all workflows",
+                "All workflows stopped successfully",
                 async { terminate_all_workflows(project).await },
                 true,
             )
@@ -1639,8 +1642,9 @@ async fn shutdown(
                 },
             );
 
-            with_spinner(
+            with_spinner_completion(
                 "Stopping containers",
+                "Containers stopped successfully",
                 || {
                     let _ = docker.stop_containers(project);
                 },

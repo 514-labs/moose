@@ -82,7 +82,7 @@ pub mod terminal;
 pub use infrastructure::show_changes;
 pub use message::{Message, MessageType};
 pub use message_display::{batch_inserted, show_message_wrapper};
-pub use spinner::{with_spinner, with_spinner_async};
+pub use spinner::{with_spinner_completion, with_spinner_completion_async};
 pub use table::show_table;
 
 // Legacy compatibility - maintain the crossterm_utils module for existing code

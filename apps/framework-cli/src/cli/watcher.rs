@@ -29,7 +29,7 @@ use tokio::sync::RwLock;
 
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 
-use super::display::{self, with_spinner_async, Message, MessageType};
+use super::display::{self, with_spinner_completion_async, Message, MessageType};
 
 use crate::cli::routines::openapi::openapi;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -156,8 +156,9 @@ async fn watch(
                     receiver_ack.send_replace(EventBuckets::default());
                     rx.mark_unchanged();
 
-                    let _ = with_spinner_async(
+                    let _ = with_spinner_completion_async(
                         "Processing Infrastructure changes from file watcher",
+                        "Infrastructure changes processed successfully",
                         async {
                             let plan_result =
                                 framework::core::plan::plan_changes(&redis_client, &project).await;

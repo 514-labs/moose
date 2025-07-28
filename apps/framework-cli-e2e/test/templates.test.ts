@@ -468,15 +468,6 @@ describe("Moose Templates", () => {
 
     it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          primaryKey: eventId,
-          timestamp: TEST_CONFIG.timestamp,
-          optionalText: "Hello world",
-        }),
-      });
 
       // Send multiple records to trigger batch write (batch size is likely 1000+)
       const recordsToSend = 50; // Send enough to trigger a batch
@@ -646,7 +637,7 @@ describe("Moose Templates", () => {
 
     it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

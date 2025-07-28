@@ -16,23 +16,16 @@ use cli::display::{Message, MessageType};
 
 /// Ensures terminal is properly reset on exit using crossterm
 fn ensure_terminal_cleanup() {
-    use crossterm::{
-        cursor::Show,
-        execute,
-        terminal::{disable_raw_mode, LeaveAlternateScreen},
-    };
+    use crossterm::terminal::disable_raw_mode;
     use std::io::{stdout, Write};
 
     let mut stdout = stdout();
 
     // Perform the standard ratatui cleanup sequence:
     // 1. Disable raw mode (if it was enabled)
-    // 2. Leave alternate screen (if we were in it)
-    // 3. Show cursor (if it was hidden)
-    // 4. Reset any terminal state
+    // 2. Reset any terminal state
 
     let _ = disable_raw_mode();
-    let _ = execute!(stdout, LeaveAlternateScreen, Show);
     let _ = stdout.flush();
 
     log::info!("Terminal cleanup complete via crossterm");

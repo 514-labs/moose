@@ -110,7 +110,11 @@ impl ApiEndpoint {
     }
 
     pub fn short_display(&self) -> String {
-        format!("API Endpoint: {} - Version: {:?}", self.name, self.version)
+        format!(
+            "API Endpoint: {name} - Version: {version:?}",
+            name = self.name,
+            version = self.version
+        )
     }
 
     pub fn to_proto(&self) -> ProtoApiEndpoint {

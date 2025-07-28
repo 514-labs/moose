@@ -164,7 +164,7 @@ impl FunctionProcessRegistry {
         }
     }
 
-    pub async fn stop(&mut self, function_process: &FunctionProcess) -> () {
+    pub async fn stop(&mut self, function_process: &FunctionProcess) {
         info!("Stopping function process {:?}...", function_process.id());
 
         let id = &function_process.id();
@@ -173,7 +173,7 @@ impl FunctionProcessRegistry {
         }
     }
 
-    pub async fn stop_all(&mut self) -> () {
+    pub async fn stop_all(&mut self) {
         for (id, restarting_process) in self.registry.drain() {
             info!("Stopping function_process {:?}...", id);
             restarting_process.stop().await;

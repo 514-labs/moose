@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
+import React from "react";
 
 export type BulletStyle = "default" | "number" | "check" | "x";
 
@@ -251,9 +252,9 @@ export function BulletPointsCard({
       </div>
       <div className={compact ? "space-y-2" : "space-y-4"}>
         {bullets.map((point, index) => (
-          <>
+          <React.Fragment key={index}>
             {divider && index > 0 && <BulletPointDivider compact={compact} />}
-            <Row key={index} compact={compact}>
+            <Row compact={compact}>
               <BulletPoint
                 bullet={point}
                 index={index}
@@ -261,7 +262,7 @@ export function BulletPointsCard({
                 compact={compact}
               />
             </Row>
-          </>
+          </React.Fragment>
         ))}
       </div>
     </BulletPointCard>
@@ -317,9 +318,9 @@ export function CompareBulletPointsCard({
         </div>
       </div>
       {leftColumn.bullets.map((_, index) => (
-        <>
+        <React.Fragment key={index}>
           {divider && index > 0 && <BulletPointDivider compact={compact} />}
-          <Row key={index} compact={compact}>
+          <Row compact={compact}>
             <BulletPoint
               bullet={leftColumn.bullets[index]}
               index={index}
@@ -333,7 +334,7 @@ export function CompareBulletPointsCard({
               compact={compact}
             />
           </Row>
-        </>
+        </React.Fragment>
       ))}
     </BulletPointCard>
   );

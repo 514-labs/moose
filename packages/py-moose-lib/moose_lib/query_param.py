@@ -1,12 +1,13 @@
 import dataclasses
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime
-from typing import Optional, Literal, Union, Any
+from typing import Optional, Union, Any
 import inspect
 
 from pydantic import BaseModel
+from .data_models import DataEnum, py_type_to_column_type, ArrayType as DataModelArrayType
 
-scalar_types = Literal['String', 'Float', 'Int', 'Boolean', 'DateTime']
+scalar_types = Union[str, DataEnum]
 
 
 @dataclass
@@ -23,30 +24,27 @@ class QueryField:
 
 
 def to_scalar_type(t: type) -> scalar_types:
-    if t == str:
-        return 'String'
-    elif t == int:
-        return 'Int'
-    elif t == float:
-        return 'Float'
-    elif t == bool:
-        return 'Boolean'
-    elif t == datetime:
-        return 'DateTime'
-    raise ValueError(f"Unsupported type: {t}")
+    optional, mds, data_type = py_type_to_column_type(t, [])
+
+    # Check if the result is a scalar type (str or DataEnum)
+    if isinstance(data_type, str) or isinstance(data_type, DataEnum):
+        return data_type
+    else:
+        raise ValueError(f"Type {t} maps to non-scalar ClickHouse type: {data_type}")
 
 
 def unwrap_optional(union_type):
     return Union[*[arg for arg in union_type.__args__ if arg is not type(None)]]
 
 
+# dmV1 code, won't upgrade to include the rich types
 def parse_scalar_value(value: str, t: scalar_types) -> Any:
     match t:
         case 'String':
             return value
         case 'Int':
             return int(value)
-        case 'Float':
+        case 'Float' | 'Float64' | 'Float32':
             return float(value)
         case 'Boolean':
             value_lower = value.lower()
@@ -56,7 +54,8 @@ def parse_scalar_value(value: str, t: scalar_types) -> Any:
         case 'DateTime':
             return datetime.fromisoformat(value)
         case _:
-            raise ValueError(f"Unsupported type: {t}")
+            # enum parsing will not be added to dmV1 code
+            return value
 
 
 def convert_pydantic_definition(cls: type) -> list[QueryField]:

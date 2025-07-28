@@ -9,6 +9,7 @@ import {
 } from "./stream";
 import { OlapConfig, OlapTable } from "./olapTable";
 import { IngestApi, IngestConfig } from "./ingestApi";
+import { LifeCycle } from "./lifeCycle";
 
 /**
  * Configuration options for a complete ingestion pipeline, potentially including an Ingest API, a Stream, and an OLAP Table.
@@ -96,6 +97,9 @@ export type IngestPipelineConfig<T> = {
     /** Human-readable description of the pipeline's purpose */
     description?: string;
   };
+
+  /** Determines how changes in code will propagate to the resources. */
+  lifeCycle?: LifeCycle;
 };
 
 /**
@@ -203,7 +207,9 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     // Create OLAP table if configured
     if (config.table) {
       const tableConfig = {
-        ...(typeof config.table === "object" ? config.table : {}),
+        ...(typeof config.table === "object" ?
+          config.table
+        : { lifeCycle: config.lifeCycle }),
         ...(config.version && { version: config.version }),
       };
       this.table = new OlapTable(
@@ -219,7 +225,9 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     if (config.stream) {
       const streamConfig = {
         destination: this.table,
-        ...(typeof config.stream === "object" ? config.stream : {}),
+        ...(typeof config.stream === "object" ?
+          config.stream
+        : { lifeCycle: config.lifeCycle }),
         ...(config.version && { version: config.version }),
       };
       this.stream = new Stream(

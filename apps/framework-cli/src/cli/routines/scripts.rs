@@ -5,7 +5,6 @@ use std::sync::Arc;
 use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::framework::scripts::utils::get_temporal_namespace;
 use crate::framework::scripts::Workflow;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
 use crate::project::Project;
@@ -20,6 +19,88 @@ use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
     ListWorkflowExecutionsRequest, SignalWorkflowExecutionRequest,
     TerminateWorkflowExecutionRequest,
 };
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct WorkflowInfo {
+    pub name: String,
+    pub run_id: String,
+    pub status: String,
+    pub started_at: String,
+    pub duration: String,
+}
+
+impl WorkflowInfo {
+    pub fn display_list(workflows: Vec<WorkflowInfo>, json: bool) {
+        if json {
+            Self::display_as_json(workflows);
+        } else {
+            Self::display_as_table(workflows);
+        }
+    }
+
+    fn display_as_json(workflows: Vec<WorkflowInfo>) {
+        println!("{}", serde_json::to_string_pretty(&workflows).unwrap());
+    }
+
+    fn display_as_table(workflows: Vec<WorkflowInfo>) {
+        let table_data: Vec<Vec<String>> = workflows
+            .into_iter()
+            .map(|w| vec![w.name, w.run_id, w.status, w.started_at, w.duration])
+            .collect();
+
+        show_table(
+            "History".to_string(),
+            vec![
+                "Workflow Name".to_string(),
+                "Run ID".to_string(),
+                "Status".to_string(),
+                "Started At".to_string(),
+                "Duration".to_string(),
+            ],
+            table_data,
+        );
+    }
+}
+
+fn calculate_duration_from_timestamps(
+    start_time: Option<prost_wkt_types::Timestamp>,
+    close_time: Option<prost_wkt_types::Timestamp>,
+) -> String {
+    let Some(start) = start_time else {
+        return "-".to_string();
+    };
+
+    let start_dt = chrono::DateTime::from_timestamp(start.seconds, start.nanos as u32)
+        .unwrap_or_else(Utc::now);
+
+    let end_dt = if let Some(close) = close_time {
+        // Workflow is completed, use close time
+        chrono::DateTime::from_timestamp(close.seconds, close.nanos as u32).unwrap_or_else(Utc::now)
+    } else {
+        // Workflow is still running, use current time
+        Utc::now()
+    };
+
+    let duration = end_dt.signed_duration_since(start_dt);
+    let total_seconds = duration.num_seconds();
+    let total_milliseconds = duration.num_milliseconds();
+
+    if total_seconds == 0 {
+        // Sub-second duration, show milliseconds
+        format!("{total_milliseconds}ms")
+    } else if total_seconds < 60 {
+        format!("{total_seconds}s")
+    } else if total_seconds < 3600 {
+        let minutes = total_seconds / 60;
+        let seconds = total_seconds % 60;
+        format!("{minutes}m {seconds}s")
+    } else {
+        let hours = total_seconds / 3600;
+        let minutes = (total_seconds % 3600) / 60;
+        let seconds = total_seconds % 60;
+        format!("{hours}h {minutes}m {seconds}s")
+    }
+}
 
 pub async fn init_workflow(
     project: &Project,
@@ -39,7 +120,7 @@ pub async fn init_workflow(
         RoutineFailure::new(
             Message {
                 action: "Workflow Init Failed".to_string(),
-                details: format!("Could not initialize workflow '{}': {}", project.name(), e),
+                details: format!("Could not initialize workflow '{}': {e}", project.name()),
             },
             e,
         )
@@ -59,8 +140,7 @@ pub async fn run_workflow(
     name: &str,
     input: Option<String>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let infra_map = InfrastructureMap::load_from_user_code(project)
         .await
@@ -132,33 +212,39 @@ pub async fn run_workflow(
     }
 
     let dashboard_url =
-        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history");
+        format!("http://localhost:8080/namespaces/{namespace}/workflows/{name}/{run_id}/history",);
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!(
-            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n"
+            "'{name}' started successfully.\nView it in the Temporal dashboard: {dashboard_url}\n",
         ),
     }))
 }
 
-pub async fn list_workflows(
+pub async fn get_workflow_history(
     project: &Project,
     status: Option<String>,
     limit: u32,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    let mut table_data = Vec::new();
+) -> Result<Vec<WorkflowInfo>, RoutineFailure> {
+    let mut workflows = Vec::new();
 
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
 
-    // Convert status string to Temporal status enum
+    // Convert status string to Temporal query format
+    // Using WorkflowExecutionStatus returns the whole enum, but temporal expects simpler values
     let status_filter = if let Some(status_str) = status {
         match status_str.to_lowercase().as_str() {
-            "running" => Some(WorkflowExecutionStatus::Running),
-            "completed" => Some(WorkflowExecutionStatus::Completed),
-            "failed" => Some(WorkflowExecutionStatus::Failed),
+            "running" => Some("Running"),
+            "completed" => Some("Completed"),
+            "failed" => Some("Failed"),
             _ => None,
         }
     } else {
@@ -167,7 +253,7 @@ pub async fn list_workflows(
 
     // Build query string for Temporal
     let query = if let Some(status) = status_filter {
-        format!("ExecutionStatus = '{}'", status.as_str_name())
+        format!("ExecutionStatus = '{status}'")
     } else {
         "".to_string()
     };
@@ -195,7 +281,7 @@ pub async fn list_workflows(
             })
         })?;
 
-    // Convert workflow executions to table data
+    // Convert workflow executions to WorkflowInfo structs
     let response_inner = response.into_inner();
     for execution in response_inner.executions {
         if let Some(_workflow_type) = execution.r#type {
@@ -203,34 +289,39 @@ pub async fn list_workflows(
                 .map_or("UNKNOWN".to_string(), |s| s.as_str_name().to_string());
 
             if let Some(execution_info) = execution.execution {
-                table_data.push(vec![
-                    execution_info.workflow_id,
-                    execution_info.run_id,
+                workflows.push(WorkflowInfo {
+                    name: execution_info.workflow_id,
+                    run_id: execution_info.run_id,
                     status,
-                    execution.start_time.map_or("-".to_string(), |t| {
+                    started_at: execution.start_time.map_or("-".to_string(), |t| {
                         chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32)
                             .map_or("-".to_string(), |dt| dt.to_string())
                     }),
-                ]);
+                    duration: calculate_duration_from_timestamps(
+                        execution.start_time,
+                        execution.close_time,
+                    ),
+                });
             }
         }
     }
 
-    // Show table with workflow information
-    show_table(
-        "Workflows".to_string(),
-        vec![
-            "Workflow Name".to_string(),
-            "Run ID".to_string(),
-            "Status".to_string(),
-            "Started At".to_string(),
-        ],
-        table_data,
-    );
+    Ok(workflows)
+}
+
+pub async fn list_workflows_history(
+    project: &Project,
+    status: Option<String>,
+    limit: u32,
+    json: bool,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let workflows = get_workflow_history(project, status, limit).await?;
+
+    WorkflowInfo::display_list(workflows, json);
 
     Ok(RoutineSuccess::success(Message::new(
-        "Workflows".to_string(),
-        "Listed\n".to_string(),
+        "".to_string(),
+        "".to_string(),
     )))
 }
 
@@ -238,9 +329,14 @@ pub async fn terminate_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let request = TerminateWorkflowExecutionRequest {
         namespace,
@@ -285,9 +381,15 @@ pub async fn terminate_workflow(
 }
 
 pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = Arc::new(TemporalClientManager::new(&project.temporal_config));
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = Arc::new(
+        TemporalClientManager::new_validate(&project.temporal_config, true).map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?,
+    );
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let request = ListWorkflowExecutionsRequest {
         namespace: namespace.clone(),
@@ -326,7 +428,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         .into_iter()
         .filter_map(|execution| execution.execution)
         .map(|execution_info| {
-            let client_manager = Arc::clone(&client_manager);
+            let client_manager: Arc<TemporalClientManager> = Arc::clone(&client_manager);
             let namespace = namespace.clone();
             async move {
                 let request = TerminateWorkflowExecutionRequest {
@@ -364,7 +466,7 @@ pub async fn terminate_all_workflows(project: &Project) -> Result<RoutineSuccess
         details: format!(
             "Found workflows: {} | Terminated workflows: {}",
             total_workflows,
-            results.len()
+            results.len(),
         ),
     }))
 }
@@ -373,9 +475,14 @@ pub async fn pause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let request = SignalWorkflowExecutionRequest {
         namespace,
@@ -415,9 +522,14 @@ pub async fn unpause_workflow(
     project: &Project,
     name: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let request = SignalWorkflowExecutionRequest {
         namespace,
@@ -616,9 +728,14 @@ pub async fn get_workflow_status(
     verbose: bool,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url).to_string();
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     // If no run_id provided, get the most recent one
     let execution_id = if let Some(id) = run_id {

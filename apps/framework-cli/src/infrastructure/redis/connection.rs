@@ -219,13 +219,13 @@ impl ConnectionManagerWrapper {
         while !self.state.load(Ordering::SeqCst) {
             log::info!(
                 "<RedisConnection> Attempting to reconnect to Redis at {} (backoff: {}s)",
-                config.url,
+                config.effective_url(),
                 backoff
             );
             time::sleep(Duration::from_secs(backoff)).await;
 
             // Attempt to create a new client and connections
-            let client_result = Client::open(config.url.clone());
+            let client_result = Client::open(config.effective_url());
             match client_result {
                 Ok(client) => {
                     // Try to create both connections

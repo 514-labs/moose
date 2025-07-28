@@ -9,11 +9,30 @@ pub mod utilities;
 
 pub mod proto;
 
+use std::process::ExitCode;
+
 use clap::Parser;
 use cli::display::{Message, MessageType};
 
+/// Ensures terminal is properly reset on exit using crossterm
+fn ensure_terminal_cleanup() {
+    use crossterm::terminal::disable_raw_mode;
+    use std::io::{stdout, Write};
+
+    let mut stdout = stdout();
+
+    // Perform the standard ratatui cleanup sequence:
+    // 1. Disable raw mode (if it was enabled)
+    // 2. Reset any terminal state
+
+    let _ = disable_raw_mode();
+    let _ = stdout.flush();
+
+    log::info!("Terminal cleanup complete via crossterm");
+}
+
 // Entry point for the CLI application
-fn main() {
+fn main() -> ExitCode {
     // Handle all CLI setup that doesn't require async functionality
     let user_directory = cli::settings::setup_user_directory();
     if let Err(e) = user_directory {
@@ -78,14 +97,16 @@ fn main() {
     match result {
         Ok(s) => {
             show_message!(s.message_type, s.message);
-            std::process::exit(0);
+            ensure_terminal_cleanup();
+            ExitCode::from(0)
         }
         Err(e) => {
             show_message!(e.message_type, e.message);
             if let Some(err) = e.error {
                 eprintln!("{err:?}");
             }
-            std::process::exit(1);
+            ensure_terminal_cleanup();
+            ExitCode::from(1)
         }
     }
 }

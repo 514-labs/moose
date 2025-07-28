@@ -18,7 +18,7 @@ mod tests {
         let handles: Vec<_> = (0..3)
             .map(|i| {
                 let client = Arc::clone(&client);
-                thread::spawn(move || client.capture_event(format!("test.event.{}", i), None))
+                thread::spawn(move || client.capture_event(format!("test.event.{i}"), None))
             })
             .collect();
 
@@ -157,7 +157,7 @@ mod tests {
             .create();
 
         let client = BlockingPostHog514Client::new("test_key", "test_machine").unwrap();
-        let error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+        let error = std::io::Error::other("test error");
         let result = client.capture_cli_error(error, None, None);
 
         assert!(result.is_ok());

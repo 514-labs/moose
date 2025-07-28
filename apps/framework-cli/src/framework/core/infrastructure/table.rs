@@ -1,10 +1,12 @@
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
 use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
+use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
 use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
@@ -36,6 +38,8 @@ pub struct Table {
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
     pub metadata: Option<Metadata>,
+    #[serde(default = "LifeCycle::default_for_deserialization")]
+    pub life_cycle: LifeCycle,
 }
 
 impl Table {
@@ -73,7 +77,11 @@ impl Table {
     }
 
     pub fn short_display(&self) -> String {
-        format!("Table: {} Version {:?}", self.name, self.version)
+        format!(
+            "Table: {name} Version {version:?}",
+            name = self.name,
+            version = self.version
+        )
     }
 
     /// Returns the names of all primary key columns in this table
@@ -88,6 +96,13 @@ impl Table {
                 }
             })
             .collect()
+    }
+
+    pub fn order_by_equals(&self, target: &Table) -> bool {
+        self.order_by == target.order_by
+            // target may leave order_by unspecified,
+            // but the implicit order_by from primary keys can be the same
+            || (target.order_by.is_empty() && self.order_by == target.primary_key_columns())
     }
 
     pub fn to_proto(&self) -> ProtoTable {
@@ -108,6 +123,11 @@ impl Table {
                     special_fields: Default::default(),
                 }
             })),
+            life_cycle: match self.life_cycle {
+                LifeCycle::FullyManaged => ProtoLifeCycle::FULLY_MANAGED.into(),
+                LifeCycle::DeletionProtected => ProtoLifeCycle::DELETION_PROTECTED.into(),
+                LifeCycle::ExternallyManaged => ProtoLifeCycle::EXTERNALLY_MANAGED.into(),
+            },
             special_fields: Default::default(),
         }
     }
@@ -128,6 +148,11 @@ impl Table {
                     Some(m.description)
                 },
             }),
+            life_cycle: match proto.life_cycle.enum_value_or_default() {
+                ProtoLifeCycle::FULLY_MANAGED => LifeCycle::FullyManaged,
+                ProtoLifeCycle::DELETION_PROTECTED => LifeCycle::DeletionProtected,
+                ProtoLifeCycle::EXTERNALLY_MANAGED => LifeCycle::ExternallyManaged,
+            },
         }
     }
 }
@@ -948,7 +973,6 @@ mod tests {
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();
-        println!("Serialized JSON: {json}");
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
     }

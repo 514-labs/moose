@@ -28,7 +28,7 @@ impl FileObjects {
     }
 }
 
-pub fn parse_data_model_file(
+pub async fn parse_data_model_file(
     file_path: &Path,
     version: &str,
     project: &Project,
@@ -45,7 +45,8 @@ pub fn parse_data_model_file(
                     // we're not using parser, but TS compiler plugin
                     // this way we can/should retrieve all data models in one tspc invocation
                     // but not yet
-                    typescript::parser::extract_data_model_from_file(file_path, project, version)?,
+                    typescript::parser::extract_data_model_from_file(file_path, project, version)
+                        .await?,
                 ),
                 Some(constants::PYTHON_FILE_EXTENSION) => Ok(
                     python::parser::extract_data_model_from_file(file_path, version)?,

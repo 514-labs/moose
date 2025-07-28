@@ -47,6 +47,7 @@ use crate::framework::core::infrastructure::sql_resource::SqlResource;
 use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
 use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
 use crate::infrastructure::olap::{OlapChangesError, OlapOperations};
@@ -946,6 +947,8 @@ impl OlapOperations for ConfiguredDBClient {
                 version,
                 source_primitive,
                 metadata: None,
+                // this does not matter as we refer to the lifecycle in infra map
+                life_cycle: LifeCycle::ExternallyManaged,
             };
             debug!("Created table object: {:?}", table);
 

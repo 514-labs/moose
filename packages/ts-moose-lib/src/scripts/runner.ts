@@ -3,6 +3,7 @@ import {
   NativeConnection,
   NativeConnectionOptions,
   Worker,
+  bundleWorkflowCode,
 } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
@@ -14,6 +15,7 @@ import { initializeLogger } from "./logger";
 
 interface TemporalConfig {
   url: string;
+  namespace: string;
   clientCert?: string;
   clientKey?: string;
   apiKey?: string;
@@ -87,47 +89,35 @@ function collectActivitiesDmv2(
 async function createTemporalConnection(
   logger: DefaultLogger,
   temporalConfig: TemporalConfig,
-): Promise<{ connection: NativeConnection; namespace: string }> {
-  let namespace = "default";
-  if (!temporalConfig.url.includes("localhost")) {
-    // Remove port and just get <namespace>.<account>
-    const hostPart = temporalConfig.url.split(":")[0];
-    const match = hostPart.match(/^([^.]+\.[^.]+)/);
-    if (match && match[1]) {
-      namespace = match[1];
-    }
-  }
-  logger.info(`<workflow> Using namespace from URL: ${namespace}`);
+): Promise<NativeConnection> {
+  logger.info(
+    `<workflow> Using temporal_url: ${temporalConfig.url} and namespace: ${temporalConfig.namespace}`,
+  );
 
   let connectionOptions: NativeConnectionOptions = {
     address: temporalConfig.url,
   };
 
-  if (!temporalConfig.url.includes("localhost")) {
-    // URL with mTLS uses gRPC namespace endpoint which is what temporalUrl already is
-    if (temporalConfig.clientCert && temporalConfig.clientKey) {
-      logger.info("Using TLS for non-local Temporal");
-      const cert = await fs.readFileSync(temporalConfig.clientCert);
-      const key = await fs.readFileSync(temporalConfig.clientKey);
+  if (temporalConfig.clientCert && temporalConfig.clientKey) {
+    logger.info("Using TLS for secure Temporal");
+    const cert = await fs.readFileSync(temporalConfig.clientCert);
+    const key = await fs.readFileSync(temporalConfig.clientKey);
 
-      connectionOptions.tls = {
-        clientCertPair: {
-          crt: cert,
-          key: key,
-        },
-      };
-    } else if (temporalConfig.apiKey) {
-      logger.info(`Using API key for non-local Temporal`);
-      // URL with API key uses gRPC regional endpoint
-      connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
-      connectionOptions.apiKey = temporalConfig.apiKey;
-      connectionOptions.tls = {};
-      connectionOptions.metadata = {
-        "temporal-namespace": namespace,
-      };
-    } else {
-      logger.error("No authentication credentials provided for Temporal.");
-    }
+    connectionOptions.tls = {
+      clientCertPair: {
+        crt: cert,
+        key: key,
+      },
+    };
+  } else if (temporalConfig.apiKey) {
+    logger.info(`Using API key for secure Temporal`);
+    // URL with API key uses gRPC regional endpoint
+    connectionOptions.address = "us-west1.gcp.api.temporal.io:7233";
+    connectionOptions.apiKey = temporalConfig.apiKey;
+    connectionOptions.tls = {};
+    connectionOptions.metadata = {
+      "temporal-namespace": temporalConfig.namespace,
+    };
   }
 
   logger.info(
@@ -142,7 +132,7 @@ async function createTemporalConnection(
     try {
       const connection = await NativeConnection.connect(connectionOptions);
       logger.info("<workflow> Connected to Temporal server");
-      return { connection, namespace };
+      return connection;
     } catch (err) {
       attempt++;
       logger.error(`<workflow> Connection attempt ${attempt} failed: ${err}`);
@@ -246,16 +236,36 @@ async function registerWorkflows(
       `Found ${dynamicActivities.length} task(s) in ${config.scriptDir}`,
     );
 
-    const { connection, namespace } = await createTemporalConnection(
+    const connection = await createTemporalConnection(
       logger,
       config.temporalConfig,
     );
 
+    // Create a custom logger that suppresses webpack output
+    const silentLogger = {
+      info: () => {}, // Suppress info logs (webpack output)
+      debug: () => {}, // Suppress debug logs
+      warn: () => {}, // Suppress warnings if desired
+      log: () => {}, // Suppress general logs
+      trace: () => {}, // Suppress trace logs
+      error: (message: string, meta?: any) => {
+        // Keep error logs but forward to the main logger
+        logger.error(message, meta);
+      },
+    };
+
+    // Pre-bundle workflows with silent logger to suppress webpack output
+    // https://github.com/temporalio/sdk-typescript/issues/1740
+    const workflowBundle = await bundleWorkflowCode({
+      workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
+      logger: silentLogger,
+    });
+
     const worker = await Worker.create({
       connection,
-      namespace: namespace,
+      namespace: config.temporalConfig.namespace,
       taskQueue: "typescript-script-queue",
-      workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
+      workflowBundle,
       activities: {
         ...activities,
         ...Object.fromEntries(

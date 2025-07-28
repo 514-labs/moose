@@ -21,12 +21,15 @@ const SCRIPTS_BIN: &str = "scripts";
 pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError> {
     let project_path = project.project_location.clone();
     let temporal_url = project.temporal_config.temporal_url();
+    let temporal_namespace = project.temporal_config.get_temporal_namespace();
     let scripts_dir = project.scripts_dir();
 
     let args: Vec<&str> = vec![
         scripts_dir.to_str().unwrap(),
         "--temporal-url",
         temporal_url.as_str(),
+        "--temporal-namespace",
+        temporal_namespace.as_str(),
         "--client-cert",
         project.temporal_config.client_cert.as_str(),
         "--client-key",
@@ -57,6 +60,7 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                 let level = parts[0].trim();
                 let message = parts[1].trim();
                 match level {
+                    // Logs from the worker
                     "INFO" => info!("{}", message),
                     "WARN" => warn!("{}", message),
                     "DEBUG" => debug!("{}", message),
@@ -73,7 +77,24 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                     _ => info!("{}", message),
                 }
             } else {
-                info!("{}", line);
+                // These can come from the user's code or other things that
+                // get triggered as part of the workflow.
+                if line.trim().is_empty() {
+                    // Don't do anything for empty lines
+                } else if line.contains("[CompilerPlugin]") {
+                    // Only log, don't show UI message for compiler plugin logs
+                    info!("{}", line);
+                } else {
+                    // For all other logs (likely user code), log & show UI message
+                    info!("{}", line);
+                    show_message_wrapper(
+                        MessageType::Info,
+                        Message {
+                            action: "Workflow".to_string(),
+                            details: line,
+                        },
+                    );
+                }
             }
         }
     });

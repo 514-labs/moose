@@ -18,9 +18,11 @@
 ///
 /// The webserver is configurable through the `LocalWebserverConfig` struct and
 /// can be started in both development and production modes.
-use super::display::{with_spinner, with_spinner_async, Message, MessageType};
+use super::display::{
+    with_spinner_completion, with_spinner_completion_async, Message, MessageType,
+};
 use super::routines::auth::validate_auth_token;
-use super::routines::scripts::terminate_all_workflows;
+use super::routines::scripts::{get_workflow_history, terminate_all_workflows};
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::kafka::models::KafkaStreamConfig;
@@ -217,7 +219,8 @@ async fn get_consumption_api_res(
 
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
-                println!(
+                use crossterm::{execute, style::Print};
+                let msg = format!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
                     consumption_apis
@@ -226,6 +229,7 @@ async fn get_consumption_api_res(
                         .collect::<Vec<&str>>()
                         .join(", ")
                 );
+                let _ = execute!(std::io::stdout(), Print(msg + "\n"));
             }
 
             return Ok(Response::builder()
@@ -348,32 +352,71 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
+#[derive(Deserialize, Default)]
+struct WorkflowQueryParams {
+    status: Option<String>,
+    limit: Option<u32>,
+}
+
+async fn workflows_list_route(
+    req: Request<hyper::body::Incoming>,
+    is_prod: bool,
+    project: Arc<Project>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    if is_prod {
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                serde_json::to_string(&json!({
+                    "error": "Workflows list not available in production"
+                }))
+                .unwrap(),
+            )));
+    }
+
+    let query_params: WorkflowQueryParams = req
+        .uri()
+        .query()
+        .map(|q| serde_urlencoded::from_str(q).unwrap_or_default())
+        .unwrap_or_default();
+
+    let limit = query_params.limit.unwrap_or(10).min(1000);
+
+    match get_workflow_history(&project, query_params.status, limit).await {
+        Ok(workflows) => {
+            let json_string =
+                serde_json::to_string(&workflows).unwrap_or_else(|_| "[]".to_string());
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "application/json")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(Full::new(Bytes::from(json_string)))
+        }
+        Err(e) => {
+            error!("Failed to get workflow list: {:?}", e);
+            let error_response = json!({
+                "error": "Failed to retrieve workflow list",
+                "details": format!("{:?}", e)
+            });
+
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(
+                    serde_json::to_string(&error_response).unwrap(),
+                )))
+        }
+    }
+}
+
 async fn health_route(
     project: &Project,
     redis_client: &Arc<RedisClient>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Check Redis connectivity
     let redis_healthy = redis_client.is_connected();
-
-    // Check Redpanda/Kafka connectivity
-    let kafka_healthy = match kafka::client::health_check(&project.redpanda_config).await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: Redpanda unavailable: {}", e);
-            false
-        }
-    };
-
-    // Check ClickHouse connectivity
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let clickhouse_healthy = match olap_client.client.query("SELECT 1").execute().await {
-        Ok(_) => true,
-        Err(e) => {
-            warn!("Health check: ClickHouse unavailable: {}", e);
-            false
-        }
-    };
 
     // Prepare healthy and unhealthy lists
     let mut healthy = Vec::new();
@@ -384,15 +427,30 @@ async fn health_route(
     } else {
         unhealthy.push("Redis")
     }
-    if kafka_healthy {
-        healthy.push("Redpanda")
-    } else {
-        unhealthy.push("Redpanda")
+
+    // Check Redpanda/Kafka connectivity only if streaming is enabled
+    if project.features.streaming_engine {
+        match kafka::client::health_check(&project.redpanda_config).await {
+            Ok(_) => healthy.push("Redpanda"),
+            Err(e) => {
+                warn!("Health check: Redpanda unavailable: {}", e);
+                unhealthy.push("Redpanda")
+            }
+        }
     }
-    if clickhouse_healthy {
-        healthy.push("ClickHouse")
-    } else {
-        unhealthy.push("ClickHouse")
+
+    // Check ClickHouse connectivity only if OLAP is enabled
+    if project.features.olap {
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        match olap_client.client.query("SELECT 1").execute().await {
+            Ok(_) => healthy.push("ClickHouse"),
+            Err(e) => {
+                warn!("Health check: ClickHouse unavailable: {}", e);
+                unhealthy.push("ClickHouse")
+            }
+        }
     }
 
     // Create JSON response
@@ -426,11 +484,15 @@ async fn admin_reality_check_route(
         return e.to_response();
     }
 
-    // Create OLAP client and reality checker
-    let olap_client =
-        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let reality_checker =
-        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
+    // Early return if OLAP is disabled - no point loading infrastructure map
+    if !project.features.olap {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(
+                r#"{"status": "error", "message": "Reality check is not available when OLAP is disabled. Reality check currently only validates database tables, which requires OLAP to be enabled in your project configuration."}"#
+            )));
+    }
 
     // Load infrastructure map from Redis
     let infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
@@ -445,28 +507,39 @@ async fn admin_reality_check_route(
         }
     };
 
-    // Perform reality check
-    match reality_checker.check_reality(project, &infra_map).await {
-        Ok(discrepancies) => {
-            let response = serde_json::json!({
-                "status": "success",
-                "discrepancies": discrepancies
-            });
+    // Perform reality check (storage is guaranteed to be enabled at this point)
+    let discrepancies = {
+        // Create OLAP client and reality checker
+        let olap_client = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        let reality_checker =
+            crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
 
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(Full::new(Bytes::from(response.to_string())))?)
+        match reality_checker.check_reality(project, &infra_map).await {
+            Ok(discrepancies) => discrepancies,
+            Err(e) => {
+                return Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from(format!(
+                        "{{\"status\": \"error\", \"message\": \"{e}\"}}"
+                    ))))
+            }
         }
-        Err(e) => Ok(Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Full::new(Bytes::from(format!(
-                "{{\"status\": \"error\", \"message\": \"{e}\"}}"
-            ))))?),
-    }
+    };
+
+    let response = serde_json::json!({
+        "status": "success",
+        "discrepancies": discrepancies
+    });
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(response.to_string())))
 }
 
-async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
+async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
@@ -475,7 +548,18 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
                 action: cli_message.action,
                 details: cli_message.message,
             };
-            show_message!(cli_message.message_type, message);
+            if !is_prod {
+                show_message!(cli_message.message_type, message);
+            } else {
+                match cli_message.message_type {
+                    MessageType::Error => {
+                        error!("{}: {}", message.action, message.details);
+                    }
+                    MessageType::Success | MessageType::Info | MessageType::Highlight => {
+                        info!("{}: {}", message.action, message.details);
+                    }
+                }
+            }
         }
         Err(e) => println!("Received unknown message: {e:?}"),
     }
@@ -1008,6 +1092,9 @@ async fn router(
             )
             .await
         }
+        (_, &hyper::Method::GET, ["workflows", "list"]) => {
+            workflows_list_route(req, is_prod, project.clone()).await
+        }
         (_, &hyper::Method::OPTIONS, _) => options_route(),
         _ => route_not_found_response(),
     };
@@ -1111,7 +1198,7 @@ async fn management_router<I: InfraMapProvider>(
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
     let route = route.to_str().unwrap();
     let res = match (req.method(), route) {
-        (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::POST, "logs") => Ok(log_route(req, is_prod).await),
         (&hyper::Method::POST, METRICS_LOGS_PATH) => {
             Ok(metrics_log_route(req, metrics.clone()).await)
         }
@@ -1349,7 +1436,7 @@ impl Webserver {
             show_message!(
                 MessageType::Highlight,
                 Message {
-                    action: "Next Steps".to_string(),
+                    action: "Next Steps  ".to_string(),
                     details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
@@ -1471,7 +1558,7 @@ async fn shutdown(
     project: &Project,
     graceful: GracefulShutdown,
     process_registry: Arc<RwLock<ProcessRegistries>>,
-) -> ! {
+) {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 
@@ -1521,8 +1608,9 @@ async fn shutdown(
                 },
             );
 
-            let termination_result = with_spinner_async(
+            let termination_result = with_spinner_completion_async(
                 "Stopping all workflows",
+                "All workflows stopped successfully",
                 async { terminate_all_workflows(project).await },
                 true,
             )
@@ -1565,8 +1653,9 @@ async fn shutdown(
                 },
             );
 
-            with_spinner(
+            with_spinner_completion(
                 "Stopping containers",
+                "Containers stopped successfully",
                 || {
                     let _ = docker.stop_containers(project);
                 },
@@ -1591,18 +1680,6 @@ async fn shutdown(
 
     // Final delay before exit to ensure any remaining tasks complete
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-    // Exit the process cleanly
-    info!("Exiting application");
-
-    // Clear terminal using crossterm
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)
-    )
-    .unwrap();
-
-    std::process::exit(0);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1883,6 +1960,14 @@ async fn admin_integrate_changes_route(
             }
         };
 
+    // Skip integration if OLAP is disabled
+    if !project.features.olap {
+        return IntegrationError::BadRequest(
+            "OLAP is disabled, cannot integrate changes".to_string(),
+        )
+        .to_response();
+    }
+
     // Get reality check
     let olap_client =
         crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
@@ -2053,6 +2138,7 @@ mod tests {
     use crate::framework::core::infrastructure_map::{
         OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
     };
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::versions::Version;
 
     fn create_test_table(name: &str) -> Table {
@@ -2076,6 +2162,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }
     }
 

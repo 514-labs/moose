@@ -23,6 +23,7 @@ export {
   Workflow,
   ETLPipeline,
   ETLPipelineConfig,
+  LifeCycle,
 } from "./dmv2";
 
 export {

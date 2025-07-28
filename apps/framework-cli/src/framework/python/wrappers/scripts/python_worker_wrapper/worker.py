@@ -73,7 +73,7 @@ def load_dmv2_workflows() -> dict[str, Workflow]:
         log.error(f"Failed to load DMV2 workflows: {e}")
         return {}
 
-async def register_workflows(temporal_url: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
+async def register_workflows(temporal_url: str, namespace: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
     """
     Register all workflows and activities without executing them.
     Activity names should match the format: "parent_dir/script_name"
@@ -126,7 +126,7 @@ async def register_workflows(temporal_url: str, script_dir: str, client_cert: st
             log.info(f"Found {len(dynamic_activities)} task(s) in {script_dir}")
 
         log.info("Connecting to Temporal server...")
-        client = await create_temporal_connection(temporal_url, client_cert, client_key, api_key)
+        client = await create_temporal_connection(temporal_url, namespace, client_cert, client_key, api_key)
         
         log.info("Creating worker...")
         worker = Worker(
@@ -142,7 +142,7 @@ async def register_workflows(temporal_url: str, script_dir: str, client_cert: st
         log.error(f"Error registering workflows: {str(e)}")
         raise
 
-async def start_worker(temporal_url: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Worker:
+async def start_worker(temporal_url: str, namespace: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Worker:
     """
     Start a Temporal worker that handles Python script execution workflows.
 
@@ -160,7 +160,7 @@ async def start_worker(temporal_url: str, script_dir: str, client_cert: str, cli
 
     loop = asyncio.get_running_loop()
 
-    worker = await register_workflows(temporal_url, script_dir, client_cert, client_key, api_key)
+    worker = await register_workflows(temporal_url, namespace, script_dir, client_cert, client_key, api_key)
 
     if worker is None:
         msg = f"No scripts found to register in {script_dir}"

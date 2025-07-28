@@ -75,6 +75,7 @@ pub fn run(
         jwt_audience,
         enforce_on_all_consumptions_apis,
         project.temporal_config.temporal_url(),
+        project.temporal_config.get_temporal_namespace(),
         project.temporal_config.client_cert.clone(),
         project.temporal_config.client_key.clone(),
         project.temporal_config.api_key.clone(),

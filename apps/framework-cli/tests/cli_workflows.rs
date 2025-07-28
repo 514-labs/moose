@@ -130,7 +130,7 @@ fn test_workflow_init_basic() {
     let mut init_command = Command::cargo_bin("moose-cli").unwrap();
 
     // Initialize the project
-    let output = init_command
+    let _ = init_command
         .current_dir(temp_dir.path())
         .arg("init")
         .arg("moose-project")
@@ -142,8 +142,6 @@ fn test_workflow_init_basic() {
         .output()
         .unwrap();
 
-    println!("Output: {output:?}");
-
     // Initialize the workflow
     let mut workflow_command = Command::cargo_bin("moose-cli").unwrap();
     let output = workflow_command
@@ -153,8 +151,6 @@ fn test_workflow_init_basic() {
         .arg("daily-etl")
         .output()
         .unwrap();
-
-    println!("Output: {output:?}");
 
     // Check for success and workflow directory creation
     assert!(output.status.success(), "Workflow init failed");

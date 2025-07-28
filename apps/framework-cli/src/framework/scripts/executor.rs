@@ -7,9 +7,7 @@ use std::path::Path;
 use super::{config::WorkflowConfig, Workflow};
 use crate::framework::{
     languages::SupportedLanguages,
-    scripts::utils::{
-        get_temporal_namespace, parse_schedule, parse_timeout_to_seconds, TemporalExecutionError,
-    },
+    scripts::utils::{parse_schedule, parse_timeout_to_seconds, TemporalExecutionError},
     scripts::Workflows,
 };
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
@@ -66,7 +64,7 @@ pub(crate) async fn execute_workflow(
                 input,
                 task_queue_name: PYTHON_TASK_QUEUE,
             };
-            let run_id = execute_workflow_for_language(params).await?;
+            let run_id = execute_workflow_for_language(params, temporal_config).await?;
             Ok(run_id)
         }
         SupportedLanguages::Typescript => {
@@ -78,7 +76,7 @@ pub(crate) async fn execute_workflow(
                 input,
                 task_queue_name: TYPESCRIPT_TASK_QUEUE,
             };
-            let run_id = execute_workflow_for_language(params).await?;
+            let run_id = execute_workflow_for_language(params, temporal_config).await?;
             Ok(run_id)
         }
     }
@@ -86,11 +84,12 @@ pub(crate) async fn execute_workflow(
 
 async fn execute_workflow_for_language(
     params: WorkflowExecutionParams<'_>,
+    temporal_config: &TemporalConfig,
 ) -> Result<String, TemporalExecutionError> {
-    let client_manager = TemporalClientManager::new(params.temporal_config);
+    let client_manager = TemporalClientManager::new_validate(params.temporal_config, true)
+        .map_err(|e| TemporalExecutionError::TemporalClientError(e.to_string()))?;
 
-    let temporal_url = params.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let namespace = temporal_config.get_temporal_namespace();
 
     info!("Using namespace: {}", namespace);
 
@@ -178,9 +177,14 @@ pub(crate) async fn execute_scheduled_workflows(
 }
 
 async fn list_running_workflows(project: &Project) -> HashSet<String> {
-    let client_manager = TemporalClientManager::new(&project.temporal_config);
-    let temporal_url = project.temporal_config.temporal_url_with_scheme();
-    let namespace = get_temporal_namespace(&temporal_url);
+    let client_manager = match TemporalClientManager::new_validate(&project.temporal_config, true) {
+        Ok(manager) => manager,
+        Err(e) => {
+            log::error!("Failed to create Temporal client manager: {}", e);
+            return HashSet::new();
+        }
+    };
+    let namespace = project.temporal_config.get_temporal_namespace();
 
     let request = ListWorkflowExecutionsRequest {
         namespace: namespace.clone(),

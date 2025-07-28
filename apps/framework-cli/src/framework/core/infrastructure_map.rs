@@ -2608,8 +2608,6 @@ mod diff_tests {
                 }
             };
 
-            println!("Column {i}: before={col_type:?}, after={after_type:?}");
-
             after.columns.push(Column {
                 name: format!("col_{i}"),
                 data_type: after_type,
@@ -2622,15 +2620,6 @@ mod diff_tests {
         }
 
         let diff = compute_table_columns_diff(&before, &after);
-        println!("Found {} changes", diff.len());
-        for change in &diff {
-            if let ColumnChange::Updated { before, after } = change {
-                println!(
-                    "Column {} changed from {:?} to {:?}",
-                    before.name, before.data_type, after.data_type
-                );
-            }
-        }
 
         assert_eq!(
             diff.len(),

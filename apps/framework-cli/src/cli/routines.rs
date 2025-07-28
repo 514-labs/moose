@@ -145,6 +145,16 @@ pub struct RoutineSuccess {
     pub message_type: MessageType,
 }
 
+impl From<RoutineFailure> for anyhow::Error {
+    fn from(failure: RoutineFailure) -> Self {
+        if let Some(err) = failure.error {
+            err
+        } else {
+            anyhow::anyhow!("{}: {}", failure.message.action, failure.message.details)
+        }
+    }
+}
+
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
     pub fn success(message: Message) -> Self {

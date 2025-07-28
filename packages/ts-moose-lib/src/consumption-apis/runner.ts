@@ -27,6 +27,7 @@ interface JwtConfig {
 
 interface TemporalConfig {
   url: string;
+  namespace: string;
   clientCert: string;
   clientKey: string;
   apiKey: string;
@@ -273,6 +274,7 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
       if (config.temporalConfig) {
         temporalClient = await getTemporalClient(
           config.temporalConfig.url,
+          config.temporalConfig.namespace,
           config.temporalConfig.clientCert,
           config.temporalConfig.clientKey,
           config.temporalConfig.apiKey,

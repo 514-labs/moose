@@ -89,6 +89,13 @@ pub enum LifeCycle {
     ExternallyManaged,
 }
 
+impl LifeCycle {
+    // not implementing the Default trait to avoid accidentally setting this value
+    pub fn default_for_deserialization() -> LifeCycle {
+        LifeCycle::FullyManaged
+    }
+}
+
 /// Represents a table definition from user code before it's converted into a complete [`Table`].
 ///
 /// This structure captures the essential properties needed to create a table in the infrastructure,

@@ -18,7 +18,9 @@
 ///
 /// The webserver is configurable through the `LocalWebserverConfig` struct and
 /// can be started in both development and production modes.
-use super::display::{with_spinner, with_spinner_async, Message, MessageType};
+use super::display::{
+    with_spinner_completion, with_spinner_completion_async, Message, MessageType,
+};
 use super::routines::auth::validate_auth_token;
 use super::routines::scripts::{get_workflow_list, terminate_all_workflows};
 use super::settings::Settings;
@@ -252,7 +254,8 @@ async fn get_consumption_api_res(
 
         if !consumption_apis.contains(&consumption_name) {
             if !config.is_prod {
-                println!(
+                use crossterm::{execute, style::Print};
+                let msg = format!(
                     "Consumption API {} not found. Available consumption paths: {}",
                     consumption_name,
                     consumption_apis
@@ -261,6 +264,7 @@ async fn get_consumption_api_res(
                         .collect::<Vec<&str>>()
                         .join(", ")
                 );
+                let _ = execute!(std::io::stdout(), Print(msg + "\n"));
             }
 
             return Ok(Response::builder()
@@ -1541,7 +1545,7 @@ impl Webserver {
             show_message!(
                 MessageType::Highlight,
                 Message {
-                    action: "Next Steps".to_string(),
+                    action: "Next Steps  ".to_string(),
                     details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
@@ -1663,7 +1667,7 @@ async fn shutdown(
     project: &Project,
     graceful: GracefulShutdown,
     process_registry: Arc<RwLock<ProcessRegistries>>,
-) -> ! {
+) {
     // First, initiate the graceful shutdown of HTTP connections
     let shutdown_future = graceful.shutdown();
 
@@ -1713,8 +1717,9 @@ async fn shutdown(
                 },
             );
 
-            let termination_result = with_spinner_async(
+            let termination_result = with_spinner_completion_async(
                 "Stopping all workflows",
+                "All workflows stopped successfully",
                 async { terminate_all_workflows(project).await },
                 true,
             )
@@ -1757,8 +1762,9 @@ async fn shutdown(
                 },
             );
 
-            with_spinner(
+            with_spinner_completion(
                 "Stopping containers",
+                "Containers stopped successfully",
                 || {
                     let _ = docker.stop_containers(project);
                 },
@@ -1783,18 +1789,6 @@ async fn shutdown(
 
     // Final delay before exit to ensure any remaining tasks complete
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-    // Exit the process cleanly
-    info!("Exiting application");
-
-    // Clear terminal using crossterm
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::UntilNewLine)
-    )
-    .unwrap();
-
-    std::process::exit(0);
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -107,8 +107,13 @@ const utils = {
     return new Promise<void>((resolve, reject) => {
       let writeConfirmed = false;
       let timeoutId: NodeJS.Timeout;
+      let outputBuffer = "";
+      let recordsWritten = 0;
+
+      // Updated regex to match the new right-aligned format with 15-character action field
       const expectedMessageRegex = new RegExp(
-        `\\[DB\\] (\\d+) row\\(s\\) successfully written to DB table \\(${tableName}\\)`,
+        `\\s*\\[DB\\]\\s+(\\d+)\\s*row\\(s\\)\\s*successfully\\s*written\\s*to\\s*DB\\s*table\\s*\\(${tableName}\\)`,
+        "i", // Remove 'g' flag to get proper capture groups
       );
 
       devProcess.stdout?.on("data", async (data) => {
@@ -116,11 +121,29 @@ const utils = {
         console.log("Dev server output:", output);
 
         if (!writeConfirmed) {
-          const match = output.match(expectedMessageRegex);
+          // Accumulate output in buffer to handle split messages
+          outputBuffer += output;
+
+          // Keep only the last 2000 characters to prevent memory issues
+          if (outputBuffer.length > 2000) {
+            outputBuffer = outputBuffer.slice(-2000);
+          }
+
+          // Strip ANSI color codes before matching - try multiple patterns
+          const cleanBuffer = outputBuffer
+            .replace(/\x1b\[[0-9;]*m/g, "") // Standard ANSI
+            .replace(/\[[\d;]*m/g, "") // Just the bracket notation
+            .replace(/\[[0-9;]*m/g, ""); // Alternative pattern
+
+          // Reset regex lastIndex for global flag
+          expectedMessageRegex.lastIndex = 0;
+          const match = cleanBuffer.match(expectedMessageRegex);
           if (match) {
             const actualRecords = parseInt(match[1], 10);
-            if (actualRecords >= expectedRecords) {
+            recordsWritten += actualRecords;
+            if (recordsWritten >= expectedRecords) {
               writeConfirmed = true;
+              clearTimeout(timeoutId);
               resolve();
             }
           }
@@ -134,6 +157,8 @@ const utils = {
       timeoutId = setTimeout(() => {
         if (writeConfirmed) return;
         console.error("DB write confirmation not received in time");
+        console.error("Final buffer contents (last 500 chars):");
+        console.error(outputBuffer.slice(-500));
         reject(new Error("DB write timeout"));
       }, timeout);
     });
@@ -453,14 +478,31 @@ describe("Moose Templates", () => {
         }),
       });
 
-      if (!response.ok) {
-        console.error("Response code:", response.status);
-        const text = await response.text();
-        console.error(`Test request failed: ${text}`);
-        throw new Error(`${response.status}: ${text}`);
+      // Send multiple records to trigger batch write (batch size is likely 1000+)
+      const recordsToSend = 50; // Send enough to trigger a batch
+      const responses = [];
+
+      for (let i = 0; i < recordsToSend; i++) {
+        const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            primaryKey: i === 0 ? eventId : randomUUID(), // Use eventId for first record for verification
+            timestamp: TEST_CONFIG.timestamp,
+            optionalText: `Hello world ${i}`,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Response code:", response.status);
+          const text = await response.text();
+          console.error(`Test request failed: ${text}`);
+          throw new Error(`${response.status}: ${text}`);
+        }
+        responses.push(response);
       }
 
-      await utils.waitForDBWrite(devProcess!, "Bar", 1);
+      await utils.waitForDBWrite(devProcess!, "Bar", recordsToSend);
       await utils.verifyClickhouseData("Bar", eventId, "primaryKey");
       await utils.waitForMaterializedViewUpdate("BarAggregated", 1);
       await utils.verifyConsumptionApi(

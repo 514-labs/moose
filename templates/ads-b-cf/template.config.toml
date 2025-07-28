@@ -9,6 +9,10 @@ post_install_print = """
 
 🛠️ Start dev server:
     $ moose dev
+
+🏃 Run workflows:
+    $ moose workflow run militaryAircraftETL
+    $ moose workflow run laddAircraftETL
 """
 default_aurora_telemetry="comprehensive"
-visible=true
+visible=false

@@ -38,6 +38,7 @@ pub struct Table {
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
     pub metadata: Option<Metadata>,
+    #[serde(default = "LifeCycle::default_for_deserialization")]
     pub life_cycle: LifeCycle,
 }
 
@@ -972,7 +973,6 @@ mod tests {
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();
-        println!("Serialized JSON: {json}");
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
     }

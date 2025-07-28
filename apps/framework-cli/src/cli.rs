@@ -25,7 +25,7 @@ use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
-    get_workflow_status, init_workflow, list_workflows, pause_workflow, run_workflow,
+    get_workflow_status, init_workflow, list_workflows_history, pause_workflow, run_workflow,
     terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
@@ -681,6 +681,7 @@ pub async fn top_command_handler(
                 Some(WorkflowCommands::Init { .. }) => ActivityType::WorkflowInitCommand,
                 Some(WorkflowCommands::Run { .. }) => ActivityType::WorkflowRunCommand,
                 Some(WorkflowCommands::List { .. }) => ActivityType::WorkflowListCommand,
+                Some(WorkflowCommands::History { .. }) => ActivityType::WorkflowListCommand,
                 Some(WorkflowCommands::Resume { .. }) => ActivityType::WorkflowResumeCommand,
                 Some(WorkflowCommands::Terminate { .. }) => ActivityType::WorkflowTerminateCommand,
                 Some(WorkflowCommands::Pause { .. }) => ActivityType::WorkflowPauseCommand,
@@ -703,11 +704,14 @@ pub async fn top_command_handler(
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }
-                Some(WorkflowCommands::List {
+                Some(WorkflowCommands::List { json }) => {
+                    ls_dmv2(&project, Some("workflows"), None, *json).await
+                }
+                Some(WorkflowCommands::History {
                     status,
                     limit,
                     json,
-                }) => list_workflows(&project, status.clone(), *limit, *json).await,
+                }) => list_workflows_history(&project, status.clone(), *limit, *json).await,
                 Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
                     action: "Workflow Resume".to_string(),
                     details: "Not implemented yet".to_string(),

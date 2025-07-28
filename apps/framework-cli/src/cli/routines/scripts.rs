@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-use crate::cli::display::{show_table, Message, MessageType};
+use crate::cli::display::{show_table, Message};
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::scripts::Workflow;
@@ -39,25 +39,7 @@ impl WorkflowInfo {
     }
 
     fn display_as_json(workflows: Vec<WorkflowInfo>) {
-        let json_output: Vec<serde_json::Value> = workflows
-            .into_iter()
-            .map(|w| {
-                serde_json::json!({
-                    "workflow_name": w.name,
-                    "run_id": w.run_id,
-                    "status": w.status,
-                    "started_at": w.started_at,
-                    "duration": w.duration
-                })
-            })
-            .collect();
-
-        show_message!(MessageType::Info, {
-            Message {
-                action: "Workflows".to_string(),
-                details: format!("\n{}", serde_json::to_string_pretty(&json_output).unwrap()),
-            }
-        });
+        println!("{}", serde_json::to_string_pretty(&workflows).unwrap());
     }
 
     fn display_as_table(workflows: Vec<WorkflowInfo>) {
@@ -67,7 +49,7 @@ impl WorkflowInfo {
             .collect();
 
         show_table(
-            "Workflows".to_string(),
+            "History".to_string(),
             vec![
                 "Workflow Name".to_string(),
                 "Run ID".to_string(),
@@ -240,7 +222,7 @@ pub async fn run_workflow(
     }))
 }
 
-pub async fn get_workflow_list(
+pub async fn get_workflow_history(
     project: &Project,
     status: Option<String>,
     limit: u32,
@@ -327,19 +309,19 @@ pub async fn get_workflow_list(
     Ok(workflows)
 }
 
-pub async fn list_workflows(
+pub async fn list_workflows_history(
     project: &Project,
     status: Option<String>,
     limit: u32,
     json: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let workflows = get_workflow_list(project, status, limit).await?;
+    let workflows = get_workflow_history(project, status, limit).await?;
 
     WorkflowInfo::display_list(workflows, json);
 
     Ok(RoutineSuccess::success(Message::new(
-        "Workflows".to_string(),
-        "Listed\n".to_string(),
+        "".to_string(),
+        "".to_string(),
     )))
 }
 

@@ -558,7 +558,6 @@ async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes
                     MessageType::Success | MessageType::Info | MessageType::Highlight => {
                         info!("{}: {}", message.action, message.details);
                     }
-                    _ => {}
                 }
             }
         }

@@ -318,7 +318,6 @@ def to_infra_map() -> dict:
             metadata=getattr(stream, "metadata", None),
             life_cycle=stream.config.life_cycle.value if stream.config.life_cycle else None,
         )
-
     for registry_key, api in get_ingest_apis().items():
         # Generate topic ID ensuring unique identification for versioned APIs
         if api.config.version:
@@ -326,7 +325,7 @@ def to_infra_map() -> dict:
             # This ensures each version gets a unique topic ID
             api_name = api.name
             version_suffix = api.config.version.replace(".", "_")
-            destination_topic_id = f"{api_name}_{version_suffix}_{version_suffix}"
+            destination_topic_id = f"{api_name}_{version_suffix}"
         else:
             # For unversioned APIs, use the standard topic ID generation
             destination_topic_id = api.config.destination._generate_topic_id()
@@ -399,7 +398,7 @@ def to_infra_map() -> dict:
         sql_resources=sql_resources,
         workflows=workflows
     )
-
+    
     return infra_map.model_dump(by_alias=True)
 
 

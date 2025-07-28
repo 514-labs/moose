@@ -495,8 +495,22 @@ impl PartialInfrastructureMap {
                 WriteToKind::Stream => partial_api.write_to.name.clone(),
             };
 
-            let not_found = &format!("Target topic '{target_topic_name}' not found");
-            let target_topic = topics.get(&target_topic_name).expect(not_found);
+            // Find the partial topic to get version information
+            let partial_topic = self
+                .topics
+                .get(&target_topic_name)
+                .expect(&format!("Partial topic '{target_topic_name}' not found"));
+
+            // Construct the versioned key
+            let topic_key = partial_topic
+                .version
+                .as_ref()
+                .map_or(partial_topic.name.clone(), |v| {
+                    format!("{}_{}", partial_topic.name, v)
+                });
+
+            let not_found = &format!("Target topic '{topic_key}' not found");
+            let target_topic = topics.get(&topic_key).expect(not_found);
 
             // TODO: Remove data model from api endpoints when dmv1 is removed
             let data_model = crate::framework::data_model::model::DataModel {
@@ -690,6 +704,7 @@ impl PartialInfrastructureMap {
                 // In dmv1, the process name was the file name which had double underscores
                 let process_name = format!("{}__{}", topic_name, transformation_target.name);
 
+                // The transformation_target.name is already the versioned key we need for lookup
                 let not_found = &format!("Target topic '{}' not found", transformation_target.name);
                 let target_topic = topics.get(&transformation_target.name).expect(not_found);
 

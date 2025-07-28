@@ -243,7 +243,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
         // Convert destination name to Rust format
         const rustDestinationName =
           config.version ?
-            `${destination.name}_${config.version}`
+            `${destination.name}_${destination.config.version}`
           : destination.name;
         transformationTargets.push({
           kind: "stream",

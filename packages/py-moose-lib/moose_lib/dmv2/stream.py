@@ -114,7 +114,7 @@ class Stream(TypedMooseResource, Generic[T]):
             _streams[topic_name] = self
             
             # For versioned streams, register with version-specific key to avoid conflicts
-            versioned_key = f"{name}_v{config.version}"
+            versioned_key = f"{name}_{config.version}"
             _streams[versioned_key] = self
         else:
             # For streams without version, register with just the name
@@ -174,28 +174,22 @@ class Stream(TypedMooseResource, Generic[T]):
         Returns:
             The versioned topic name.
         """
+        return self.name
+
+    def _generate_topic_id(self) -> str:
+        """Generate the topic ID following Rust CLI's naming convention.
+
+        Format: {topicName}_{version_with_dots_replaced_by_underscores}
+
+        Returns:
+            The topic ID used as the key in the Rust CLI.
+        """
         topic_version = self.config.version
         if not topic_version:
             return self.name
         else:
             version_suffix = topic_version.replace(".", "_")
             return f"{self.name}_{version_suffix}"
-
-    def _generate_topic_id(self) -> str:
-        """Generate the topic ID following Rust CLI's naming convention.
-
-        Format: {topicName}_{version_with_dots_replaced_by_underscores}_{version_with_dots_replaced_by_underscores}
-
-        Returns:
-            The topic ID used as the key in the Rust CLI.
-        """
-        topic_name = self._generate_topic_name()
-        topic_version = self.config.version
-        if not topic_version:
-            return topic_name
-        else:
-            version_suffix = topic_version.replace(".", "_")
-            return f"{topic_name}_{version_suffix}"
 
     def routed(self, values: ZeroOrMany[T]) -> _RoutedMessage:
         """Creates a `_RoutedMessage` for use in multi-transform functions.

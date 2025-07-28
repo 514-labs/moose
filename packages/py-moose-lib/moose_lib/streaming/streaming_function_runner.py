@@ -66,12 +66,6 @@ class KafkaTopicConfig:
         """Returns the topic name with any namespace prefix removed."""
 
         name = self.name
-        if self.version is not None:
-            version_suffix = f"_{self.version}".replace(".", "_")
-            if name.endswith(version_suffix):
-                name = name.removesuffix(version_suffix)
-            else:
-                raise Exception(f"Version suffix {version_suffix} not found in topic name {name}")
 
         if self.namespace is not None and self.namespace != "":
             prefix = self.namespace + "."

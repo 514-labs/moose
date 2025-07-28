@@ -22,7 +22,7 @@ use super::display::{
     with_spinner_completion, with_spinner_completion_async, Message, MessageType,
 };
 use super::routines::auth::validate_auth_token;
-use super::routines::scripts::{get_workflow_list, terminate_all_workflows};
+use super::routines::scripts::{get_workflow_history, terminate_all_workflows};
 use super::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::kafka::models::KafkaStreamConfig;
@@ -383,7 +383,7 @@ async fn workflows_list_route(
 
     let limit = query_params.limit.unwrap_or(10).min(1000);
 
-    match get_workflow_list(&project, query_params.status, limit).await {
+    match get_workflow_history(&project, query_params.status, limit).await {
         Ok(workflows) => {
             let json_string =
                 serde_json::to_string(&workflows).unwrap_or_else(|_| "[]".to_string());

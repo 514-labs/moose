@@ -215,8 +215,14 @@ pub enum WorkflowCommands {
         #[arg(long)]
         from: String,
     },
-    /// List running workflows
+    /// List registered workflows
     List {
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show workflow history
+    History {
         /// Filter workflows by status (running, completed, failed)
         #[arg(short, long)]
         status: Option<String>,

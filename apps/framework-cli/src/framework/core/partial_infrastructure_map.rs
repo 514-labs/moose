@@ -499,7 +499,7 @@ impl PartialInfrastructureMap {
             let partial_topic = self
                 .topics
                 .get(&target_topic_name)
-                .expect(&format!("Partial topic '{target_topic_name}' not found"));
+                .unwrap_or_else(|| panic!("Partial topic '{target_topic_name}' not found"));
 
             // Construct the versioned key
             let topic_key = partial_topic

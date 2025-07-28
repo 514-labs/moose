@@ -170,8 +170,8 @@ const apiHandler =
 
             if (!userFuncModule) {
               const availableVersions: string[] = [];
-              for (const apiKey of egressApis.keys()) {
-                const versionMatch = apiKey.match(
+              for (const key of egressApis.keys()) {
+                const versionMatch = key.match(
                   `^v(\\d+(?:\\.\\d+)*)\/${endpointName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
                 );
                 if (versionMatch) {

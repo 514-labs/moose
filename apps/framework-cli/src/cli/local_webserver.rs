@@ -1187,7 +1187,7 @@ async fn management_router<I: InfraMapProvider>(
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
     let route = route.to_str().unwrap();
     let res = match (req.method(), route) {
-        (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::POST, "logs") => Ok(log_route(req).await),
         (&hyper::Method::POST, METRICS_LOGS_PATH) => {
             Ok(metrics_log_route(req, metrics.clone()).await)
         }

@@ -43,8 +43,8 @@ diff the changes, and apply them automatically.
 
 ### Goals
 
-- **Easy Migration**: Minimize work required for most common schema change scenarios
-- **User Control**: Provide full control and customization capabilities when needed  
+- **Sane Defaults**: Provide reasonable default migration behaviour that minimizes work for most common schema change scenarios
+- **User Control**: Ensure clear visibility into migration decisions and provide full control and customization capabilities
 - **Safe Deployment**: Protect against unintended data loss during deployments and rollbacks
 - **Explicit Data Deletion**: Only drop data when the user explicitly requests it
 - **Rollback Safety**: Handle rollback scenarios without automatic data loss
@@ -60,16 +60,31 @@ diff the changes, and apply them automatically.
 The plan is created and approved before deployment,
 and is not committed to the code base nor included in the container image.
 
-1. **Planning**: System generates migration plan before deployment
-2. **Review**:
-   - Runs image with `moose-cli plan` entry point, OR
-   - Send the target infrastructure map to running instance for plan generation
-3. **Approval**: User reviews, edits, and approves the plan
-4. **Execution**: Approved plan gets injected into deployed container
+1. **Planning**: Generate a structured migration plan (see [Plan Data Structure](#plan-data-structure)) before deployment.
+   The deployment process creates a container with `moose-cli plan` entry point to generate plan.
+   While spinning up a new container complicates the lifecycle compared to using the API of the existing deployment,
+   this avoids the problem of relying on a possibly outdated moose version for the plan.
+
+2. **Review**: User examines and optionally modifies the generated plan:
+   - Direct file editing for self-managed deployments
+   - Web interface for managed deployments
+
+3. **Execution**:
+   - Plan file gets mounted into deployment environment
+   - Newly deployed moose then executes operations in sequence
 
 **Auto Approval Workflow**:
 - Runtime environment variable enables automatic plan approval and execution
 - Suitable for development and staging environments
+
+### Failure
+
+If Moose crashed mid-migration,
+The restarted Moose will see that the new reality is different from the start state of the plan.
+It should then try to generate a new plan.
+If the new plan is the same as some suffix of the approved plan, Moose can continue the migration.
+Otherwise, it should be stuck in a crash loop to avoid unapproved changes.
+
 
 #### Benefits
 - Minimal time between plan generation and deployment.
@@ -77,7 +92,25 @@ and is not committed to the code base nor included in the container image.
 #### Downsides
 - No more push-to-main-and-deploy workflow
 unless the user turns on auto-approval - which is the same as the current solution.
+However, users can still expect some safety,
+with the `LifeCycle` enum forbidding Moose deletion (`DELETION_PROTECTED`)
+or mutation (`EXTERNALLY_MANAGED`) for certain resources.
 
+### Plan Data structure
+
+The plan will be a list of JSON objects (or YAML) describing actions to be taken,
+typically matching the JSON representation of
+the current [`AtomicOlapOperation`](https://github.com/514-labs/moose/blob/c3bcdd850f1f64098046d34f562cdc435cd528e8/apps/framework-cli/src/infrastructure/olap/ddl_ordering.rs#L33),
+e.g. `{"DropTableColumn": {"table": "Foo", "column_name": "bar"}}`.
+
+For operations that cannot be expressed through the structured format,
+Moose should also support raw SQL statements as an escape hatch.
+E.g. `{"RawSql": "ALTER TABLE blah ..."}`.
+
+This hybrid approach balances safety with flexibility—structured operations allow
+user to express intent using high level structured objects,
+while `RawSql` objects enable users to handle edge cases
+and advanced operations that the framework cannot anticipate.
 
 ## Alternative Approaches Considered
 
@@ -150,8 +183,4 @@ Maintain the current solution but add user-provided transformation layer for cha
 2. **Performance at Scale**: How do migrations perform on large tables?
   Changing subfields in Nested/Tuple requires an `ALTER TABLE UPDATE` mutation.
 
-3. **Plan Data structure**:
-   How should a plan be represented?
-   It can be a custom data type, e.g. `{"type": "DropColumn", "column_name": "stuff"}` (or in YAML).
-   This is a high level representation but developers have to learn the schema.
-   The plan can also be in SQL statements, but it is harder for Moose to validate.
+3. **Validity of the Plan**: What if the plan, after the user's edit, does not match the desired state in the code?

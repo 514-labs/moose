@@ -55,15 +55,22 @@ interface IconBadgeProps {
   Icon?: React.ElementType;
   label: string;
   variant?: "moose" | "boreal" | "aurora" | "default";
+  rounded?: "md" | "full";
 }
 
-export function IconBadge({ Icon, label, variant = "moose" }: IconBadgeProps) {
+export function IconBadge({
+  Icon,
+  label,
+  variant = "moose",
+  rounded = "md",
+}: IconBadgeProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 w-fit border rounded-md text-xs font-medium",
+        "flex items-center gap-1.5 w-fit border text-xs font-medium",
         "bg-neutral-800 border-neutral-700 text-neutral-100",
         "px-2.5 py-1.5",
+        rounded === "full" ? "rounded-full" : "rounded-md",
       )}
     >
       {Icon && <Icon className="w-3.5 h-3.5" />}

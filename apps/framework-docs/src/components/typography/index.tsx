@@ -63,7 +63,7 @@ export enum HeadingLevel {
   l2 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
   l3 = "text-primary text-lg sm:text-2xl 3xl:text-3xl",
   l4 = "text-primary text-base sm:text-xl 3xl:text-2xl",
-  l5 = "text-muted-foreground text-sm sm:text-lg 3xl:text-xl",
+  l5 = "text-muted-foreground text-base sm:text-xl 3xl:text-xl",
 }
 
 interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {

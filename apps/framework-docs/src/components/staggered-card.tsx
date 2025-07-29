@@ -81,5 +81,5 @@ export function StaggeredCode({
   children,
   language = "ts",
 }: StaggeredCodeProps) {
-  return <div className="rounded-lg overflow-x-auto pr-4">{children}</div>;
+  return <div className="rounded-xl overflow-x-auto pr-4">{children}</div>;
 }

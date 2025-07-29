@@ -22,7 +22,7 @@ export const ArgTable: React.FC<ArgTableProps> = ({ args, heading }) => {
           {heading}
         </Heading>
       )}
-      <div className="divide-y divide-border border rounded-lg overflow-hidden">
+      <div className="divide-y divide-border border rounded-xl overflow-hidden">
         {args.map((arg, idx) => (
           <div
             key={arg.name + idx}

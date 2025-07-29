@@ -420,6 +420,11 @@ pre.nextra-focus {
   --tw-ring-offset-width: 0 !important;
   --tw-ring-color: transparent !important;
   --tw-ring-offset-color: transparent !important;
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  width: auto !important;
+  max-width: 100% !important;
 }
 
 code.nextra-code {
@@ -440,4 +445,75 @@ code.nextra-code {
     ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
     monospace !important;
   font-size: 0.875rem !important;
+}
+
+/* Add border to main nextra code container */
+.nextra-code._relative {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.75rem !important;
+  width: auto !important;
+  overflow: hidden !important;
+}
+
+/* Mobile Safari Border Fixes */
+/* Fix navigation bottom border on mobile Safari */
+@supports (-webkit-touch-callout: none) {
+  /* Navigation container borders */
+  .nextra-nav-container {
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  /* Language switcher border */
+  .sticky.top-\[64px\] {
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  /* Fix any elements with safe area inset padding that have white borders */
+  [class*="pr-[max(env(safe-area-inset-right)"] {
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* General border fixes for mobile Safari */
+  .border,
+  .border-b,
+  .border-t {
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* Divider fixes */
+  hr,
+  .divide-y > * + *,
+  [class*="divide-"] {
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* Navigation specific border fixes */
+  nav[class*="border"],
+  .nextra-nav-container-blur {
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* Dark mode adjustments */
+  :is(html[class~="dark"]) .nextra-nav-container {
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  :is(html[class~="dark"]) .sticky.top-\[64px\] {
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  :is(html[class~="dark"]) .border,
+  :is(html[class~="dark"]) .border-b,
+  :is(html[class~="dark"]) .border-t {
+    border-color: hsl(var(--border)) !important;
+  }
+}
+
+/* WebKit specific fixes for any remaining border issues */
+@media screen and (-webkit-min-device-pixel-ratio: 1) {
+  .nextra-nav-container,
+  .nextra-nav-container-blur,
+  .sticky[class*="border"] {
+    border-color: hsl(var(--border)) !important;
+  }
 }

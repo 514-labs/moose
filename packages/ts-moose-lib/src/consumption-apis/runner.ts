@@ -137,7 +137,29 @@ const apiHandler =
       if (userFuncModule === undefined) {
         if (isDmv2) {
           const egressApis = await getEgressApis();
-          userFuncModule = egressApis.get(fileName.replace(/^\/+/, ""));
+          let apiName = fileName.replace(/^\/+/, "");
+          let version = url.searchParams.get("version");
+
+          // Check if version is in the path (e.g., /bar/1)
+          if (!version && apiName.includes("/")) {
+            const pathParts = apiName.split("/");
+            if (pathParts.length >= 2) {
+              apiName = pathParts[0];
+              version = pathParts[1];
+            }
+          }
+
+          // Try versioned lookup first if version is available
+          if (version) {
+            const versionedKey = `${apiName}:${version}`;
+            userFuncModule = egressApis.get(versionedKey);
+          }
+
+          // Fall back to unversioned lookup if versioned lookup failed or no version specified
+          if (!userFuncModule) {
+            userFuncModule = egressApis.get(apiName);
+          }
+
           modulesCache.set(pathName, userFuncModule);
         } else {
           userFuncModule = require(pathName);

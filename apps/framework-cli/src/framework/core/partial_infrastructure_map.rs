@@ -378,6 +378,7 @@ impl PartialInfrastructureMap {
         let tables = self.convert_tables();
         let topics = self.convert_topics();
         let api_endpoints = self.convert_api_endpoints(main_file, &topics);
+        eprintln!("API Endpoints: {:?}", api_endpoints);
         let topic_to_table_sync_processes =
             self.create_topic_to_table_sync_processes(&tables, &topics);
         let function_processes = self.create_function_processes(main_file, language, &topics);
@@ -572,7 +573,12 @@ impl PartialInfrastructureMap {
                         .collect(),
                     output_schema: partial_api.response_schema.clone(),
                 },
-                path: PathBuf::from(partial_api.name.clone()),
+                path: match partial_api.version.as_ref() {
+                    Some(version) => {
+                        PathBuf::from(format!("{}/{}", partial_api.name.clone(), version.clone()))
+                    }
+                    None => PathBuf::from(partial_api.name.clone()),
+                },
                 method: Method::GET,
                 version: partial_api
                     .version

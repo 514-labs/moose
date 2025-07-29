@@ -175,7 +175,12 @@ impl From<EndpointFile> for ApiEndpoint {
             path: value.path.clone(),
             method: Method::GET,
             // TODO: why does consumption api use patch version, but others only have major.minor?
-            version: Some(Version::from_string("0.0.0".to_string())),
+            version: Some(
+                value
+                    .version
+                    .map(Version::from_string)
+                    .unwrap_or_else(|| Version::from_string("0.0.0".to_string())),
+            ),
             source_primitive: PrimitiveSignature {
                 name: value.path.to_string_lossy().to_string(),
                 primitive_type: PrimitiveTypes::ConsumptionAPI,

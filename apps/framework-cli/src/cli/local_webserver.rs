@@ -217,25 +217,50 @@ async fn get_consumption_api_res(
             .strip_prefix("/consumption/")
             .unwrap_or(req.uri().path());
 
-        if !consumption_apis.contains(consumption_name) {
-            if !is_prod {
-                use crossterm::{execute, style::Print};
-                let msg = format!(
-                    "Consumption API {} not found. Available consumption paths: {}",
-                    consumption_name,
-                    consumption_apis
-                        .iter()
-                        .map(|p| p.as_str())
-                        .collect::<Vec<&str>>()
-                        .join(", ")
-                );
-                let _ = execute!(std::io::stdout(), Print(msg + "\n"));
+        // Check for exact match first
+        if consumption_apis.contains(consumption_name) {
+            // Exact match found, proceed with the request
+        } else {
+            // Try to find a versioned match
+            let mut found_match = false;
+
+            // Check if this looks like a versioned request (contains a slash)
+            if consumption_name.contains('/') {
+                // Split the path to get base name and potential version
+                let parts: Vec<&str> = consumption_name.split('/').collect();
+                if parts.len() >= 2 {
+                    let base_name = parts[0];
+
+                    // Look for any API that starts with the base name followed by a slash
+                    for api in consumption_apis.iter() {
+                        if api.starts_with(&format!("{}/", base_name)) {
+                            found_match = true;
+                            break;
+                        }
+                    }
+                }
             }
 
-            return Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("Consumption API not found.")))
-                .unwrap());
+            if !found_match {
+                if !is_prod {
+                    use crossterm::{execute, style::Print};
+                    let msg = format!(
+                        "Consumption API {} not found. Available consumption paths: {}",
+                        consumption_name,
+                        consumption_apis
+                            .iter()
+                            .map(|p| p.as_str())
+                            .collect::<Vec<&str>>()
+                            .join(", ")
+                    );
+                    let _ = execute!(std::io::stdout(), Print(msg + "\n"));
+                }
+
+                return Ok(Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Full::new(Bytes::from("Consumption API not found.")))
+                    .unwrap());
+            }
         }
     }
 
@@ -1062,7 +1087,9 @@ async fn router(
         (_, &hyper::Method::POST, ["admin", "plan"]) => {
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
-        (_, &hyper::Method::GET, ["consumption", _rt]) => {
+        (_, &hyper::Method::GET, route_segments)
+            if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
+        {
             match get_consumption_api_res(
                 http_client,
                 req,

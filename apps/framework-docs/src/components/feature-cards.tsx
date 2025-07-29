@@ -23,7 +23,7 @@ export function FeatureCard({
   size = "default",
 }: FeatureCardProps) {
   const cardClasses = cn(
-    "flex flex-col rounded-lg border border-border bg-card",
+    "flex flex-col rounded-xl border border-border bg-card",
     {
       "transition-colors cursor-pointer": !!href,
       "hover:border-moose-purple hover:bg-moose-purple/10":

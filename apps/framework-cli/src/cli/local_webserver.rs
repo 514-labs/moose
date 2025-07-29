@@ -233,7 +233,7 @@ async fn get_consumption_api_res(
 
                     // Look for any API that starts with the base name followed by a slash
                     for api in consumption_apis.iter() {
-                        if api.starts_with(&format!("{}/", base_name)) {
+                        if api.starts_with(&format!("{base_name}/")) {
                             found_match = true;
                             break;
                         }

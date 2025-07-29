@@ -10,9 +10,18 @@ export default render({
     },
   },
   moose: {
+    display: "hidden",
+  },
+  stack: {
     type: "page",
-    title: "Moose",
-    href: "/moose",
+    title: "MooseStack",
+    href: "/stack",
+  },
+  "area-code": {
+    type: "page",
+    title: "Area Code",
+    href: "https://github.com/514-labs/area-code",
+    newWindow: true,
   },
   aurora: {
     type: "page",
@@ -26,9 +35,7 @@ export default render({
     newWindow: true,
   },
   templates: {
-    type: "page",
-    title: "Templates",
-    href: "/templates",
+    display: "hidden",
   },
   "release-notes": {
     type: "page",

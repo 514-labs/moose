@@ -707,7 +707,7 @@ pub async fn remote_refresh(
             .values()
             .find(|t| t.name == table.name)
         {
-            match InfrastructureMap::diff_table(table, local_table) {
+            match InfrastructureMap::simple_table_diff(table, local_table) {
                 None => {
                     debug!("Found matching table: {}", table.name);
                     tables_to_integrate.push(table.name.clone());

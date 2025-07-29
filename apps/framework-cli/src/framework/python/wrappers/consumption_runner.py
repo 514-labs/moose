@@ -104,7 +104,11 @@ def handler_with_client(moose_client):
                               str(size)))
         def do_GET(self):
             parsed_path = urlparse(self.path)
-            module_name = parsed_path.path.lstrip('/')
+            path_parts = parsed_path.path.lstrip('/').split('/')
+            module_name = path_parts[0]
+            version_from_path = path_parts[1] if len(path_parts) > 1 else None
+
+
             try:
                 jwt_payload = None
                 if has_jwt_config():
@@ -124,7 +128,7 @@ def handler_with_client(moose_client):
                 query_params = parse_qs(parsed_path.query)
 
                 if is_dmv2:
-                    user_api = get_consumption_api(module_name)
+                    user_api = get_consumption_api(f"{module_name}:{version_from_path}" if version_from_path else module_name)
                     if user_api is not None:
                         query_fields = convert_pydantic_definition(user_api.model_type)
                         try:

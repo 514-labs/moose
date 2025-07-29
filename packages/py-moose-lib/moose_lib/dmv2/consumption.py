@@ -17,6 +17,9 @@ from ._registry import _egress_apis
 # Global base URL configuration
 _global_base_url: Optional[str] = None
 
+def _generate_api_key(name: str, version: Optional[str] = None) -> str:
+    return f"{name}:{version}" if version else name
+
 
 def set_moose_base_url(url: str) -> None:
     """Set the global base URL for consumption API calls.
@@ -88,13 +91,18 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
 
         return curried_constructor
 
-    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = EgressConfig(), **kwargs):
+    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = None, version: str = None, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        self.config = config
+        if version is not None:
+            self.config = EgressConfig(version=version)
+        elif config is not None:
+            self.config = config
+        else:
+            self.config = EgressConfig()
         self.query_function = query_function
-        self.metadata = config.metadata
-        _egress_apis[name] = self
+        self.metadata = getattr(self.config, 'metadata', {}) or {}
+        _egress_apis[_generate_api_key(name, self.config.version)] = self
 
     @classmethod
     def _get_type(cls, keyword_args: dict):

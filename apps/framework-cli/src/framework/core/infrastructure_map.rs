@@ -61,6 +61,63 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+/// Strategy trait for handling database-specific table diffing logic
+///
+/// Different OLAP engines have different capabilities for handling schema changes.
+/// This trait allows database-specific modules to define how table updates should
+/// be decomposed into atomic operations that the database can actually perform.
+pub trait TableDiffStrategy {
+    /// Converts a table update into the appropriate change operations
+    /// based on database capabilities. Returns the actual operations
+    /// that will be shown to the user in the plan.
+    ///
+    /// # Arguments
+    /// * `before` - The table before changes
+    /// * `after` - The table after changes  
+    /// * `column_changes` - Detailed column-level changes
+    /// * `order_by_change` - Changes to the ORDER BY clause
+    ///
+    /// # Returns
+    /// A vector of `OlapChange` representing the actual operations needed
+    fn diff_table_update(
+        &self,
+        before: &Table,
+        after: &Table,
+        column_changes: Vec<ColumnChange>,
+        order_by_change: OrderByChange,
+    ) -> Vec<OlapChange>;
+}
+
+/// Default table diff strategy for databases that support most ALTER operations
+///
+/// This strategy assumes the database can handle:
+/// - Column additions, removals, and modifications via ALTER TABLE
+/// - ORDER BY changes via ALTER TABLE
+/// - Primary key changes via ALTER TABLE
+///
+/// This is suitable for most modern SQL databases.
+pub struct DefaultTableDiffStrategy;
+
+impl TableDiffStrategy for DefaultTableDiffStrategy {
+    fn diff_table_update(
+        &self,
+        before: &Table,
+        after: &Table,
+        column_changes: Vec<ColumnChange>,
+        order_by_change: OrderByChange,
+    ) -> Vec<OlapChange> {
+        // Most databases can handle all changes via ALTER TABLE operations
+        // Return the standard table update change
+        vec![OlapChange::Table(TableChange::Updated {
+            name: before.name.clone(),
+            column_changes,
+            order_by_change,
+            before: before.clone(),
+            after: after.clone(),
+        })]
+    }
+}
+
 /// Error types for InfrastructureMap protocol buffer operations
 ///
 /// This enum defines errors that can occur when converting between protocol
@@ -1198,6 +1255,507 @@ impl InfrastructureMap {
         changes
     }
 
+    /// Compares this infrastructure map with a target map using a custom table diff strategy
+    ///
+    /// This method is similar to `diff()` but allows specifying a custom strategy for
+    /// handling table differences. This is useful for database-specific behavior where
+    /// certain operations need to be decomposed differently (e.g., ClickHouse requiring
+    /// drop+create for ORDER BY changes).
+    ///
+    /// # Arguments
+    /// * `target_map` - The target infrastructure map to compare against
+    /// * `table_diff_strategy` - Strategy for handling database-specific table diffing
+    ///
+    /// # Returns
+    /// An `InfraChanges` object containing all detected changes
+    pub fn diff_with_table_strategy(
+        &self,
+        target_map: &InfrastructureMap,
+        table_diff_strategy: &dyn TableDiffStrategy,
+    ) -> InfraChanges {
+        let mut changes = InfraChanges::default();
+
+        // =================================================================
+        //                              Topics
+        // =================================================================
+        log::info!("Analyzing changes in Topics...");
+        let mut topic_updates = 0;
+        let mut topic_removals = 0;
+        let mut topic_additions = 0;
+
+        for (id, topic) in &self.topics {
+            if let Some(target_topic) = target_map.topics.get(id) {
+                if topic != target_topic {
+                    // Respect lifecycle: ExternallyManaged topics are never modified
+                    if target_topic.life_cycle == LifeCycle::ExternallyManaged {
+                        log::debug!(
+                            "Topic '{}' has changes but is externally managed - skipping update",
+                            topic.name
+                        );
+                    } else {
+                        log::debug!("Topic updated: {} ({})", topic.name, id);
+                        topic_updates += 1;
+                        changes
+                            .streaming_engine_changes
+                            .push(StreamingChange::Topic(Change::<Topic>::Updated {
+                                before: Box::new(topic.clone()),
+                                after: Box::new(target_topic.clone()),
+                            }));
+                    }
+                }
+            } else {
+                // Respect lifecycle: DeletionProtected and ExternallyManaged topics are never removed
+                match topic.life_cycle {
+                    LifeCycle::FullyManaged => {
+                        log::debug!("Topic removed: {} ({})", topic.name, id);
+                        topic_removals += 1;
+                        changes
+                            .streaming_engine_changes
+                            .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
+                                topic.clone(),
+                            ))));
+                    }
+                    LifeCycle::DeletionProtected => {
+                        log::debug!(
+                            "Topic '{}' marked for removal but is deletion-protected - skipping removal",
+                            topic.name
+                        );
+                    }
+                    LifeCycle::ExternallyManaged => {
+                        log::debug!(
+                            "Topic '{}' marked for removal but is externally managed - skipping removal",
+                            topic.name
+                        );
+                    }
+                }
+            }
+        }
+
+        for (id, topic) in &target_map.topics {
+            if !self.topics.contains_key(id) {
+                // Respect lifecycle: ExternallyManaged topics are never added automatically
+                if topic.life_cycle == LifeCycle::ExternallyManaged {
+                    log::debug!(
+                        "Topic '{}' marked for addition but is externally managed - skipping addition",
+                        topic.name
+                    );
+                } else {
+                    log::debug!("Topic added: {} ({})", topic.name, id);
+                    topic_additions += 1;
+                    changes
+                        .streaming_engine_changes
+                        .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
+                            topic.clone(),
+                        ))));
+                }
+            }
+        }
+
+        log::info!(
+            "Topic changes: {} added, {} removed, {} updated",
+            topic_additions,
+            topic_removals,
+            topic_updates
+        );
+
+        // =================================================================
+        //                              API Endpoints
+        // =================================================================
+        log::info!("Analyzing changes in API Endpoints...");
+        let mut api_updates = 0;
+        let mut api_removals = 0;
+        let mut api_additions = 0;
+
+        for (id, api_endpoint) in &self.api_endpoints {
+            if let Some(target_api_endpoint) = target_map.api_endpoints.get(id) {
+                if api_endpoint != target_api_endpoint {
+                    log::debug!("API Endpoint updated: {}", id);
+                    api_updates += 1;
+                    changes.api_changes.push(ApiChange::ApiEndpoint(
+                        Change::<ApiEndpoint>::Updated {
+                            before: Box::new(api_endpoint.clone()),
+                            after: Box::new(target_api_endpoint.clone()),
+                        },
+                    ));
+                }
+            } else {
+                log::debug!("API Endpoint removed: {}", id);
+                api_removals += 1;
+                changes
+                    .api_changes
+                    .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Removed(
+                        Box::new(api_endpoint.clone()),
+                    )));
+            }
+        }
+
+        for (id, api_endpoint) in &target_map.api_endpoints {
+            if !self.api_endpoints.contains_key(id) {
+                log::debug!("API Endpoint added: {}", id);
+                api_additions += 1;
+                changes
+                    .api_changes
+                    .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
+                        Box::new(api_endpoint.clone()),
+                    )));
+            }
+        }
+
+        log::info!(
+            "API Endpoint changes: {} added, {} removed, {} updated",
+            api_additions,
+            api_removals,
+            api_updates
+        );
+
+        // =================================================================
+        //                              Tables
+        // =================================================================
+        log::info!("Analyzing changes in Tables...");
+        let olap_changes_len_before = changes.olap_changes.len();
+        Self::diff_tables_with_strategy(
+            &self.tables,
+            &target_map.tables,
+            &mut changes.olap_changes,
+            table_diff_strategy,
+        );
+        let table_changes = changes.olap_changes.len() - olap_changes_len_before;
+        log::info!("Table changes detected: {}", table_changes);
+
+        // =================================================================
+        //                              Views
+        // =================================================================
+        log::info!("Analyzing changes in Views...");
+        let mut view_updates = 0;
+        let mut view_removals = 0;
+        let mut view_additions = 0;
+
+        for (id, view) in &self.views {
+            if let Some(target_view) = target_map.views.get(id) {
+                if view != target_view {
+                    log::debug!("View updated: {}", view.name);
+                    view_updates += 1;
+                    changes
+                        .olap_changes
+                        .push(OlapChange::View(Change::<View>::Updated {
+                            before: Box::new(view.clone()),
+                            after: Box::new(target_view.clone()),
+                        }));
+                }
+            } else {
+                log::debug!("View removed: {}", view.name);
+                view_removals += 1;
+                changes
+                    .olap_changes
+                    .push(OlapChange::View(Change::<View>::Removed(Box::new(
+                        view.clone(),
+                    ))));
+            }
+        }
+
+        for (id, view) in &target_map.views {
+            if !self.views.contains_key(id) {
+                log::debug!("View added: {}", view.name);
+                view_additions += 1;
+                changes
+                    .olap_changes
+                    .push(OlapChange::View(Change::<View>::Added(Box::new(
+                        view.clone(),
+                    ))));
+            }
+        }
+
+        log::info!(
+            "View changes: {} added, {} removed, {} updated",
+            view_additions,
+            view_removals,
+            view_updates
+        );
+
+        // =================================================================
+        //                              SQL Resources
+        // =================================================================
+        Self::diff_sql_resources(
+            &self.sql_resources,
+            &target_map.sql_resources,
+            &mut changes.olap_changes,
+        );
+
+        // =================================================================
+        //                              Topic to Table Sync Processes
+        // =================================================================
+        log::info!("Analyzing changes in Topic to Table Sync Processes...");
+        let mut t2t_sync_updates = 0;
+        let mut t2t_sync_removals = 0;
+        let mut t2t_sync_additions = 0;
+
+        for (id, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
+            if let Some(target_topic_to_table_sync_process) =
+                target_map.topic_to_table_sync_processes.get(id)
+            {
+                if topic_to_table_sync_process != target_topic_to_table_sync_process {
+                    log::debug!("Topic to Table Sync Process updated: {}", id);
+                    t2t_sync_updates += 1;
+                    changes
+                        .processes_changes
+                        .push(ProcessChange::TopicToTableSyncProcess(Change::<
+                            TopicToTableSyncProcess,
+                        >::Updated {
+                            before: Box::new(topic_to_table_sync_process.clone()),
+                            after: Box::new(target_topic_to_table_sync_process.clone()),
+                        }));
+                }
+            } else {
+                log::debug!("Topic to Table Sync Process removed: {}", id);
+                t2t_sync_removals += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTableSyncProcess(Change::<
+                        TopicToTableSyncProcess,
+                    >::Removed(
+                        Box::new(topic_to_table_sync_process.clone()),
+                    )));
+            }
+        }
+
+        for (id, topic_to_table_sync_process) in &target_map.topic_to_table_sync_processes {
+            if !self.topic_to_table_sync_processes.contains_key(id) {
+                log::debug!("Topic to Table Sync Process added: {}", id);
+                t2t_sync_additions += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTableSyncProcess(Change::<
+                        TopicToTableSyncProcess,
+                    >::Added(
+                        Box::new(topic_to_table_sync_process.clone()),
+                    )));
+            }
+        }
+
+        log::info!(
+            "Topic to Table Sync Process changes: {} added, {} removed, {} updated",
+            t2t_sync_additions,
+            t2t_sync_removals,
+            t2t_sync_updates
+        );
+
+        // =================================================================
+        //                              Topic to Topic Sync Processes
+        // =================================================================
+        log::info!("Analyzing changes in Topic to Topic Sync Processes...");
+        let mut t2t_topic_sync_updates = 0;
+        let mut t2t_topic_sync_removals = 0;
+        let mut t2t_topic_sync_additions = 0;
+
+        for (id, topic_to_topic_sync_process) in &self.topic_to_topic_sync_processes {
+            if let Some(target_topic_to_topic_sync_process) =
+                target_map.topic_to_topic_sync_processes.get(id)
+            {
+                if topic_to_topic_sync_process != target_topic_to_topic_sync_process {
+                    log::debug!("Topic to Topic Sync Process updated: {}", id);
+                    t2t_topic_sync_updates += 1;
+                    changes
+                        .processes_changes
+                        .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                            TopicToTopicSyncProcess,
+                        >::Updated {
+                            before: Box::new(topic_to_topic_sync_process.clone()),
+                            after: Box::new(target_topic_to_topic_sync_process.clone()),
+                        }));
+                }
+            } else {
+                log::debug!("Topic to Topic Sync Process removed: {}", id);
+                t2t_topic_sync_removals += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                        TopicToTopicSyncProcess,
+                    >::Removed(
+                        Box::new(topic_to_topic_sync_process.clone()),
+                    )));
+            }
+        }
+
+        for (id, topic_to_topic_sync_process) in &target_map.topic_to_topic_sync_processes {
+            if !self.topic_to_topic_sync_processes.contains_key(id) {
+                log::debug!("Topic to Topic Sync Process added: {}", id);
+                t2t_topic_sync_additions += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                        TopicToTopicSyncProcess,
+                    >::Added(
+                        Box::new(topic_to_topic_sync_process.clone()),
+                    )));
+            }
+        }
+
+        log::info!(
+            "Topic to Topic Sync Process changes: {} added, {} removed, {} updated",
+            t2t_topic_sync_additions,
+            t2t_topic_sync_removals,
+            t2t_topic_sync_updates
+        );
+
+        // =================================================================
+        //                             Function Processes
+        // =================================================================
+        log::info!("Analyzing changes in Function Processes...");
+        let mut function_updates = 0;
+        let mut function_removals = 0;
+        let mut function_additions = 0;
+
+        for (id, function_process) in &self.function_processes {
+            if let Some(target_function_process) = target_map.function_processes.get(id) {
+                // In this case we don't do a comparison check because the function process is not just
+                // dependent on changing one file, but also on its dependencies. Until we are able to
+                // properly compare the function processes holistically (File + Dependencies), we will just
+                // assume that the function process has changed.
+                log::debug!("Function Process updated: {}", id);
+                function_updates += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::FunctionProcess(
+                        Change::<FunctionProcess>::Updated {
+                            before: Box::new(function_process.clone()),
+                            after: Box::new(target_function_process.clone()),
+                        },
+                    ));
+            } else {
+                log::debug!("Function Process removed: {}", id);
+                function_removals += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::FunctionProcess(
+                        Change::<FunctionProcess>::Removed(Box::new(function_process.clone())),
+                    ));
+            }
+        }
+
+        for (id, function_process) in &target_map.function_processes {
+            if !self.function_processes.contains_key(id) {
+                log::debug!("Function Process added: {}", id);
+                function_additions += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::FunctionProcess(
+                        Change::<FunctionProcess>::Added(Box::new(function_process.clone())),
+                    ));
+            }
+        }
+
+        log::info!(
+            "Function Process changes: {} added, {} removed, {} updated",
+            function_additions,
+            function_removals,
+            function_updates
+        );
+
+        // =================================================================
+        //                             Blocks Processes
+        // =================================================================
+        log::info!("Analyzing changes in OLAP Processes...");
+
+        // Until we refactor to have multiple processes, we will consider that we need to restart
+        // the process all the times and the blocks changes all the time.
+        // Once we do the other refactor, we will be able to compare the changes and only restart
+        // the process if there are changes
+
+        // currently we assume there is always a change and restart the processes
+        log::debug!("OLAP Process updated (assumed for now)");
+        changes.processes_changes.push(ProcessChange::OlapProcess(
+            Change::<OlapProcess>::Updated {
+                before: Box::new(OlapProcess {}),
+                after: Box::new(OlapProcess {}),
+            },
+        ));
+
+        // =================================================================
+        //                          Consumption Process
+        // =================================================================
+        log::info!("Analyzing changes in Consumption API Web Server...");
+
+        // We are currently not tracking individual consumption endpoints, so we will just restart
+        // the consumption web server when something changed. we might want to change that in the future
+        // to be able to only make changes when something in the dependency tree of a consumption api has
+        // changed.
+        log::debug!("Consumption API Web Server updated (assumed for now)");
+        changes
+            .processes_changes
+            .push(ProcessChange::ConsumptionApiWebServer(Change::<
+                ConsumptionApiWebServer,
+            >::Updated {
+                before: Box::new(ConsumptionApiWebServer {}),
+                after: Box::new(ConsumptionApiWebServer {}),
+            }));
+
+        // =================================================================
+        //                      Orchestration Workers
+        // =================================================================
+        log::info!("Analyzing changes in Orchestration Workers...");
+        let mut worker_updates = 0;
+        let mut worker_removals = 0;
+        let mut worker_additions = 0;
+
+        for (id, orchestration_worker) in &self.orchestration_workers {
+            if let Some(target_orchestration_worker) = target_map.orchestration_workers.get(id) {
+                // Until we track individual files changes, we want workers to be restarted for every change
+                log::debug!("Orchestration Worker updated: {}", id);
+                worker_updates += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Updated {
+                        before: Box::new(orchestration_worker.clone()),
+                        after: Box::new(target_orchestration_worker.clone()),
+                    }));
+            } else {
+                log::debug!("Orchestration Worker removed: {}", id);
+                worker_removals += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Removed(
+                        Box::new(orchestration_worker.clone()),
+                    )));
+            }
+        }
+
+        for (id, orchestration_worker) in &target_map.orchestration_workers {
+            if !self.orchestration_workers.contains_key(id) {
+                log::debug!("Orchestration Worker added: {}", id);
+                worker_additions += 1;
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Added(
+                        Box::new(orchestration_worker.clone()),
+                    )));
+            }
+        }
+
+        log::info!(
+            "Orchestration Worker changes: {} added, {} removed, {} updated",
+            worker_additions,
+            worker_removals,
+            worker_updates
+        );
+
+        // Summarize total changes
+        log::info!(
+            "Total changes: {} OLAP, {} Process, {} API, {} Streaming",
+            changes.olap_changes.len(),
+            changes.processes_changes.len(),
+            changes.api_changes.len(),
+            changes.streaming_engine_changes.len()
+        );
+
+        changes
+    }
+
     /// Compare SQL resources between two infrastructure maps and compute the differences
     ///
     /// This method identifies added, removed, and updated SQL resources by comparing
@@ -1263,125 +1821,12 @@ impl InfrastructureMap {
         );
     }
 
-    pub fn diff_table(table: &Table, target_table: &Table) -> Option<TableChange> {
-        let column_changes = compute_table_columns_diff(table, target_table);
-
-        let order_by_changed = !table.order_by_equals(target_table);
-
-        let order_by_change = if order_by_changed {
-            OrderByChange {
-                before: table.order_by.clone(),
-                after: target_table.order_by.clone(),
-            }
-        } else {
-            OrderByChange {
-                before: vec![],
-                after: vec![],
-            }
-        };
-
-        // Only push changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
-            Some(TableChange::Updated {
-                name: table.name.clone(),
-                column_changes,
-                order_by_change,
-                before: table.clone(),
-                after: target_table.clone(),
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Diff table with lifecycle-aware filtering
-    ///
-    /// For DeletionProtected tables, this filters out destructive changes like column removals
-    /// while allowing additive changes like column additions.
-    pub fn diff_table_with_lifecycle(table: &Table, target_table: &Table) -> Option<TableChange> {
-        let mut column_changes = compute_table_columns_diff(table, target_table);
-
-        // For DeletionProtected tables, filter out destructive column changes
-        if target_table.life_cycle == LifeCycle::DeletionProtected {
-            let original_len = column_changes.len();
-            column_changes.retain(|change| match change {
-                ColumnChange::Removed(_) => {
-                    log::debug!(
-                        "Filtering out column removal for deletion-protected table '{}'",
-                        table.name
-                    );
-                    false // Remove destructive column removals
-                }
-                ColumnChange::Added { .. } => true, // Allow additive changes
-                ColumnChange::Updated { .. } => true, // Allow column updates (might be risky, but user controls this)
-            });
-
-            if original_len != column_changes.len() {
-                log::info!(
-                    "Filtered {} destructive column changes for deletion-protected table '{}'",
-                    original_len - column_changes.len(),
-                    table.name
-                );
-            }
-        }
-
-        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
-            target_table
-                .columns
-                .iter()
-                .filter_map(|c| {
-                    if c.primary_key {
-                        Some(c.name.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        }
-
-        let order_by_changed = table.order_by != target_table.order_by
-            // target may leave order_by unspecified,
-            // but the implicit order_by from primary keys can be the same
-            && !(target_table.order_by.is_empty()
-                && order_by_from_primary_key(target_table) == table.order_by);
-
-        let order_by_change = if order_by_changed {
-            OrderByChange {
-                before: table.order_by.clone(),
-                after: target_table.order_by.clone(),
-            }
-        } else {
-            OrderByChange {
-                before: vec![],
-                after: vec![],
-            }
-        };
-
-        // Only push changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
-            Some(TableChange::Updated {
-                name: table.name.clone(),
-                column_changes,
-                order_by_change,
-                before: table.clone(),
-                after: target_table.clone(),
-            })
-        } else {
-            None
-        }
-    }
-
     /// Compare tables between two infrastructure maps and compute the differences
     ///
     /// This method identifies added, removed, and updated tables by comparing
     /// the source and target table maps. For updated tables, it performs a detailed
-    /// analysis of column-level changes.
+    /// analysis of column-level changes and uses the provided strategy to determine
+    /// the appropriate operations based on database capabilities.
     ///
     /// Changes are collected in the provided changes vector with detailed logging
     /// of what has changed.
@@ -1390,10 +1835,12 @@ impl InfrastructureMap {
     /// * `self_tables` - HashMap of source tables to compare from
     /// * `target_tables` - HashMap of target tables to compare against
     /// * `olap_changes` - Mutable vector to collect the identified changes
-    pub fn diff_tables(
+    /// * `strategy` - Strategy for handling database-specific table diffing logic
+    pub fn diff_tables_with_strategy(
         self_tables: &HashMap<String, Table>,
         target_tables: &HashMap<String, Table>,
         olap_changes: &mut Vec<OlapChange>,
+        strategy: &dyn TableDiffStrategy,
     ) {
         log::info!(
             "Analyzing table differences between {} source tables and {} target tables",
@@ -1414,12 +1861,84 @@ impl InfrastructureMap {
                             "Table '{}' has changes but is externally managed - skipping update",
                             table.name
                         );
-                    } else if let Some(diff) =
-                        InfrastructureMap::diff_table_with_lifecycle(table, target_table)
-                    {
-                        table_updates += 1;
-                        olap_changes.push(OlapChange::Table(diff));
-                    };
+                    } else {
+                        // Compute the basic diff components
+                        let mut column_changes = compute_table_columns_diff(table, target_table);
+
+                        // For DeletionProtected tables, filter out destructive column changes
+                        if target_table.life_cycle == LifeCycle::DeletionProtected {
+                            let original_len = column_changes.len();
+                            column_changes.retain(|change| match change {
+                                ColumnChange::Removed(_) => {
+                                    log::debug!(
+                                        "Filtering out column removal for deletion-protected table '{}'",
+                                        table.name
+                                    );
+                                    false // Remove destructive column removals
+                                }
+                                ColumnChange::Added { .. } => true, // Allow additive changes
+                                ColumnChange::Updated { .. } => true, // Allow column updates
+                            });
+
+                            if original_len != column_changes.len() {
+                                log::info!(
+                                    "Filtered {} destructive column changes for deletion-protected table '{}'",
+                                    original_len - column_changes.len(),
+                                    table.name
+                                );
+                            }
+                        }
+
+                        // Compute ORDER BY changes
+                        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
+                            target_table
+                                .columns
+                                .iter()
+                                .filter_map(|c| {
+                                    if c.primary_key {
+                                        Some(c.name.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        }
+
+                        let order_by_changed = table.order_by != target_table.order_by
+                            // target may leave order_by unspecified,
+                            // but the implicit order_by from primary keys can be the same
+                            && !(target_table.order_by.is_empty()
+                                && order_by_from_primary_key(target_table) == table.order_by);
+
+                        let order_by_change = if order_by_changed {
+                            OrderByChange {
+                                before: table.order_by.clone(),
+                                after: target_table.order_by.clone(),
+                            }
+                        } else {
+                            OrderByChange {
+                                before: vec![],
+                                after: vec![],
+                            }
+                        };
+
+                        // Only process changes if there are actual differences to report
+                        if !column_changes.is_empty()
+                            || order_by_changed
+                            || table.deduplicate != target_table.deduplicate
+                        {
+                            // Use the strategy to determine the appropriate changes
+                            let strategy_changes = strategy.diff_table_update(
+                                table,
+                                target_table,
+                                column_changes,
+                                order_by_change,
+                            );
+
+                            table_updates += strategy_changes.len();
+                            olap_changes.extend(strategy_changes);
+                        }
+                    }
                 }
             } else {
                 // Respect lifecycle: DeletionProtected and ExternallyManaged tables are never removed
@@ -1474,6 +1993,172 @@ impl InfrastructureMap {
             table_removals,
             table_updates
         );
+    }
+
+    /// Compare tables between two infrastructure maps and compute the differences
+    ///
+    /// This is a backward-compatible version that uses the default table diff strategy.
+    /// For database-specific behavior, use `diff_tables_with_strategy` instead.
+    ///
+    /// # Arguments
+    /// * `self_tables` - HashMap of source tables to compare from
+    /// * `target_tables` - HashMap of target tables to compare against
+    /// * `olap_changes` - Mutable vector to collect the identified changes
+    pub fn diff_tables(
+        self_tables: &HashMap<String, Table>,
+        target_tables: &HashMap<String, Table>,
+        olap_changes: &mut Vec<OlapChange>,
+    ) {
+        let default_strategy = DefaultTableDiffStrategy;
+        Self::diff_tables_with_strategy(
+            self_tables,
+            target_tables,
+            olap_changes,
+            &default_strategy,
+        );
+    }
+
+    /// Simple table comparison for backward compatibility
+    ///
+    /// Returns None if tables are identical, Some(TableChange) if they differ.
+    /// This is a simplified version of the old diff_table method for use in
+    /// places that just need to check if two tables are the same.
+    ///
+    /// # Arguments
+    /// * `table` - The first table to compare
+    /// * `target_table` - The second table to compare
+    ///
+    /// # Returns
+    /// * `Option<TableChange>` - None if identical, Some(change) if different
+    pub fn simple_table_diff(table: &Table, target_table: &Table) -> Option<TableChange> {
+        if table == target_table {
+            return None;
+        }
+
+        let column_changes = compute_table_columns_diff(table, target_table);
+        let order_by_changed = !table.order_by_equals(target_table);
+
+        let order_by_change = if order_by_changed {
+            OrderByChange {
+                before: table.order_by.clone(),
+                after: target_table.order_by.clone(),
+            }
+        } else {
+            OrderByChange {
+                before: vec![],
+                after: vec![],
+            }
+        };
+
+        // Only return changes if there are actual differences to report
+        if !column_changes.is_empty()
+            || order_by_changed
+            || table.deduplicate != target_table.deduplicate
+        {
+            Some(TableChange::Updated {
+                name: table.name.clone(),
+                column_changes,
+                order_by_change,
+                before: table.clone(),
+                after: target_table.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Simple table comparison with lifecycle-aware filtering for backward compatibility
+    ///
+    /// This method replicates the old diff_table_with_lifecycle behavior for tests.
+    /// For DeletionProtected tables, it filters out destructive changes like column removals.
+    ///
+    /// # Arguments
+    /// * `table` - The first table to compare
+    /// * `target_table` - The second table to compare
+    ///
+    /// # Returns
+    /// * `Option<TableChange>` - None if identical, Some(change) if different
+    pub fn simple_table_diff_with_lifecycle(
+        table: &Table,
+        target_table: &Table,
+    ) -> Option<TableChange> {
+        if table == target_table {
+            return None;
+        }
+
+        let mut column_changes = compute_table_columns_diff(table, target_table);
+
+        // For DeletionProtected tables, filter out destructive column changes
+        if target_table.life_cycle == LifeCycle::DeletionProtected {
+            let original_len = column_changes.len();
+            column_changes.retain(|change| match change {
+                ColumnChange::Removed(_) => {
+                    log::debug!(
+                        "Filtering out column removal for deletion-protected table '{}'",
+                        table.name
+                    );
+                    false // Remove destructive column removals
+                }
+                ColumnChange::Added { .. } => true, // Allow additive changes
+                ColumnChange::Updated { .. } => true, // Allow column updates
+            });
+
+            if original_len != column_changes.len() {
+                log::info!(
+                    "Filtered {} destructive column changes for deletion-protected table '{}'",
+                    original_len - column_changes.len(),
+                    table.name
+                );
+            }
+        }
+
+        fn order_by_from_primary_key(target_table: &Table) -> Vec<String> {
+            target_table
+                .columns
+                .iter()
+                .filter_map(|c| {
+                    if c.primary_key {
+                        Some(c.name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+
+        let order_by_changed = table.order_by != target_table.order_by
+            // target may leave order_by unspecified,
+            // but the implicit order_by from primary keys can be the same
+            && !(target_table.order_by.is_empty()
+                && order_by_from_primary_key(target_table) == table.order_by);
+
+        let order_by_change = if order_by_changed {
+            OrderByChange {
+                before: table.order_by.clone(),
+                after: target_table.order_by.clone(),
+            }
+        } else {
+            OrderByChange {
+                before: vec![],
+                after: vec![],
+            }
+        };
+
+        // Only return changes if there are actual differences to report
+        if !column_changes.is_empty()
+            || order_by_changed
+            || table.deduplicate != target_table.deduplicate
+        {
+            Some(TableChange::Updated {
+                name: table.name.clone(),
+                column_changes,
+                order_by_change,
+                before: table.clone(),
+                after: target_table.clone(),
+            })
+        } else {
+            None
+        }
     }
 
     /// Serializes the infrastructure map to JSON and saves it to a file
@@ -2058,7 +2743,7 @@ mod tests {
         ];
 
         // Test normal diff (should show removal and addition)
-        let normal_diff = InfrastructureMap::diff_table(&before_table, &after_table);
+        let normal_diff = InfrastructureMap::simple_table_diff(&before_table, &after_table);
         assert!(normal_diff.is_some());
         if let Some(TableChange::Updated { column_changes, .. }) = normal_diff {
             assert_eq!(column_changes.len(), 2); // One removal, one addition
@@ -2072,7 +2757,7 @@ mod tests {
 
         // Test lifecycle-aware diff (should filter out removal, keep addition)
         let lifecycle_diff =
-            InfrastructureMap::diff_table_with_lifecycle(&before_table, &after_table);
+            InfrastructureMap::simple_table_diff_with_lifecycle(&before_table, &after_table);
         assert!(lifecycle_diff.is_some());
         if let Some(TableChange::Updated { column_changes, .. }) = lifecycle_diff {
             assert_eq!(column_changes.len(), 1); // Only addition, removal filtered out

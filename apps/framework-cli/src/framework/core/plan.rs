@@ -19,6 +19,7 @@ use crate::framework::core::infrastructure_map::{
     InfraChanges, InfrastructureMap, OlapChange, TableChange,
 };
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::infrastructure::olap::clickhouse::diff_strategy::ClickHouseTableDiffStrategy;
 use crate::infrastructure::olap::OlapOperations;
 use crate::infrastructure::{olap::clickhouse, redis::redis_client::RedisClient};
 use crate::project::Project;
@@ -264,10 +265,11 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize reconciled infrastructure map".to_string())
     );
 
-    // Use the reconciled map for diffing
+    // Use the reconciled map for diffing with ClickHouse-specific strategy
+    let clickhouse_strategy = ClickHouseTableDiffStrategy;
     let plan = InfraPlan {
         target_infra_map: target_infra_map.clone(),
-        changes: reconciled_map.diff(&target_infra_map),
+        changes: reconciled_map.diff_with_table_strategy(&target_infra_map, &clickhouse_strategy),
     };
 
     // Validate that OLAP is enabled if OLAP changes are required

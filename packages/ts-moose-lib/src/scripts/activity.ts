@@ -1,4 +1,5 @@
-import { log as logger } from "@temporalio/activity";
+import { log as logger, Context } from "@temporalio/activity";
+import { isCancellation } from "@temporalio/workflow";
 import * as fs from "fs";
 import { Task, Workflow } from "../dmv2";
 import { getWorkflows, getTaskForWorkflow } from "../dmv2/internal";
@@ -104,10 +105,30 @@ export const activities = {
     task: Task<any, any>,
     inputData: any,
   ): Promise<any[]> {
+    // Get context for heartbeat (required for cancellation detection)
+    const context = Context.current();
+
+    // Periodic heartbeat. Important for cancellation detection.
+    let heartbeatInterval: NodeJS.Timeout | null = null;
+    const startPeriodicHeartbeat = () => {
+      heartbeatInterval = setInterval(() => {
+        context.heartbeat(`Task ${task.name} in progress`);
+      }, 5000);
+    };
+    const stopPeriodicHeartbeat = () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+    };
+
     try {
       logger.info(
         `<DMV2WF> Task ${task.name} received input: ${JSON.stringify(inputData)}`,
       );
+
+      // Send initial heartbeat to enable cancellation detection
+      context.heartbeat(`Starting task: ${task.name}`);
 
       // Data between temporal workflow & activities are serialized so we
       // have to get it again to access the user's run function
@@ -119,7 +140,31 @@ export const activities = {
           JSON.parse(JSON.stringify(inputData), jsonDateReviver)
         : inputData;
 
-      return await fullTask.config.run(revivedInputData);
+      try {
+        startPeriodicHeartbeat();
+
+        const result = await Promise.race([
+          // TODO: We need to actually terminate this function
+          // Might need to run it in a worker thread
+          fullTask.config.run(revivedInputData),
+          context.cancelled,
+        ]);
+        return result;
+      } catch (error) {
+        if (isCancellation(error)) {
+          logger.info(
+            `<DMV2WF> Task ${task.name} cancelled, calling onCancel handler if it exists`,
+          );
+          if (fullTask.config.onCancel) {
+            await fullTask.config.onCancel();
+          }
+          return [];
+        } else {
+          throw error;
+        }
+      } finally {
+        stopPeriodicHeartbeat();
+      }
     } catch (error) {
       const errorData = {
         error: "Task execution failed",

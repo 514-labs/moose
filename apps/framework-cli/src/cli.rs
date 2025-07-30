@@ -25,8 +25,8 @@ use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
-    get_workflow_status, init_workflow, list_workflows_history, pause_workflow, run_workflow,
-    terminate_workflow, unpause_workflow,
+    cancel_workflow, get_workflow_status, init_workflow, list_workflows_history, pause_workflow,
+    run_workflow, terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
 
@@ -684,6 +684,7 @@ pub async fn top_command_handler(
                 Some(WorkflowCommands::History { .. }) => ActivityType::WorkflowListCommand,
                 Some(WorkflowCommands::Resume { .. }) => ActivityType::WorkflowResumeCommand,
                 Some(WorkflowCommands::Terminate { .. }) => ActivityType::WorkflowTerminateCommand,
+                Some(WorkflowCommands::Cancel { .. }) => ActivityType::WorkflowTerminateCommand,
                 Some(WorkflowCommands::Pause { .. }) => ActivityType::WorkflowPauseCommand,
                 Some(WorkflowCommands::Unpause { .. }) => ActivityType::WorkflowUnpauseCommand,
                 Some(WorkflowCommands::Status { .. }) => ActivityType::WorkflowStatusCommand,
@@ -719,6 +720,7 @@ pub async fn top_command_handler(
                 Some(WorkflowCommands::Terminate { name }) => {
                     terminate_workflow(&project, name).await
                 }
+                Some(WorkflowCommands::Cancel { name }) => cancel_workflow(&project, name).await,
                 Some(WorkflowCommands::Pause { name }) => pause_workflow(&project, name).await,
                 Some(WorkflowCommands::Unpause { name }) => unpause_workflow(&project, name).await,
                 Some(WorkflowCommands::Status {

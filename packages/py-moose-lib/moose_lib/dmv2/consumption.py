@@ -94,12 +94,15 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
     def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = None, version: str = None, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
-        if version is not None:
-            self.config = EgressConfig(version=version)
-        elif config is not None:
+        
+        # Handle config and version parameters properly
+        if config is not None:
+            # Use the provided config as base
             self.config = config
-        else:
-            self.config = EgressConfig()
+            # If version is also provided, update the config's version
+            if version is not None:
+                self.config.version = version
+            
         self.query_function = query_function
         self.metadata = getattr(self.config, 'metadata', {}) or {}
         _egress_apis[_generate_api_key(name, self.config.version)] = self

@@ -84,7 +84,7 @@ impl Default for PythonProject {
             python_requires,
             dependencies: vec![
                 format!("clickhouse_connect==0.7.16; {python_version}").to_string(),
-                format!("requests==2.32.3; {python_version}").to_string(),
+                format!("requests==2.32.4; {python_version}").to_string(),
                 moose_cli_requirement,
                 moose_lib_requirement,
             ],
@@ -175,7 +175,6 @@ mod tests {
     #[test]
     fn test_python_load() {
         let test_project_dir = get_test_project_abs_dir_path();
-        println!("Test Project Dir: {test_project_dir:?}");
         let project = PythonProject::load(&test_project_dir).unwrap();
 
         assert_eq!(project.name, "test_project");

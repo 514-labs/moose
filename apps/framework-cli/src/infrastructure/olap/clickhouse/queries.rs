@@ -121,7 +121,7 @@ impl<'a> TryFrom<&'a str> for ClickhouseEngine {
 
     fn try_from(value: &'a str) -> Result<Self, &'a str> {
         // "There is a SharedMergeTree analog for every specific MergeTree engine type"
-        match value.replace("SharedMergeTree", "MergeTree").as_str() {
+        match value.strip_prefix("Shared").unwrap_or(value) {
             "MergeTree" => Ok(ClickhouseEngine::MergeTree),
             "ReplacingMergeTree" => Ok(ClickhouseEngine::ReplacingMergeTree),
             "AggregatingMergeTree" => Ok(ClickhouseEngine::AggregatingMergeTree),

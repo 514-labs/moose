@@ -435,7 +435,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     map: RefCell<MA>,
                     _phantom_data: &'de PhantomData<()>,
                 }
-                impl<'de, 'a, MA: MapAccess<'de>> Serialize for MapPassThrough<'de, 'a, MA> {
+                impl<'de, MA: MapAccess<'de>> Serialize for MapPassThrough<'de, '_, MA> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
                         S: Serializer,
@@ -1227,8 +1227,7 @@ mod tests {
             .unwrap();
 
         // Visitor should've injected the jwt claims
-        let expected_valid =
-            format!(r#"{{"top_level_string":"hello","jwt_object":{jwt_claims}}}"#,);
+        let expected_valid = format!(r#"{{"top_level_string":"hello","jwt_object":{jwt_claims}}}"#);
 
         assert_eq!(
             String::from_utf8(valid_result),

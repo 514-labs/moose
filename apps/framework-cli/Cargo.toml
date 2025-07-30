@@ -16,7 +16,6 @@ itertools = "0.13.0"
 openssl = { version = "0.10", features = ["vendored"] }
 clap = { version = "4.3.17", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
-console = "0.15.7"
 thiserror = "1.0.59"
 hyper = { version = "1", features = ["full"] }
 hyper-tls = "0.6.0"
@@ -44,7 +43,6 @@ hyper-util = { version = "0.1.3", features = ["full"] }
 http-body-util = "0.1"
 lazy_static = "1.4.0"
 anyhow = "1.0"
-spinners = "4.1.1"
 git2 = { version = "0.18.1", features = ["vendored-libgit2"] }
 regex = "1.10.3"
 reqwest = { version = "0.12", features = ["stream", "json", "blocking"] }

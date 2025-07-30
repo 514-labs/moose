@@ -435,6 +435,49 @@ table = OlapTable[Record]("table", OlapTableConfig(
 Deduplication uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning duplicate records may not be removed immediately. This process can take time and is not guaranteed to be immediate. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
 </Callout>
 
+## LifeCycle Management
+
+Control how Moose manages your table resources when your code changes.
+See the [LifeCycle Management guide](./lifecycle) for detailed information.
+
+<TypeScript>
+```ts filename="LifeCycleTable.ts" copy
+import { OlapTable, LifeCycle } from "@514labs/moose-lib";
+
+// Production table with deletion protection
+const prodTable = new OlapTable<UserData>("prod_users", {
+  orderByFields: ["id", "timestamp"],
+  deduplicate: true,
+  lifeCycle: LifeCycle.DELETION_PROTECTED
+});
+
+// Development table with full management
+const devTable = new OlapTable<UserData>("dev_users", {
+  orderByFields: ["id"],
+  lifeCycle: LifeCycle.FULLY_MANAGED
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="LifeCycleTable.py" copy
+from moose_lib import OlapTable, OlapConfig, LifeCycle
+
+# Production table with deletion protection
+prod_table = OlapTable[UserData]("prod_users", OlapConfig(
+    order_by_fields=["id", "timestamp"],
+    deduplicate=True,
+    life_cycle=LifeCycle.DELETION_PROTECTED
+))
+
+# Development table with full management
+dev_table = OlapTable[UserData]("dev_users", OlapConfig(
+    order_by_fields=["id"],
+    life_cycle=LifeCycle.FULLY_MANAGED
+))
+```
+</Python>
+
 ### Invalid Configurations
 
 <TypeScript>

@@ -26,7 +26,7 @@ export const MuxVideo: React.FC<MuxVideoProps> = ({
   poster = "",
 }) => {
   return (
-    <div className="border border-border rounded-lg p-5 flex justify-center items-center">
+    <div className="border border-border rounded-xl p-5 flex justify-center items-center">
       <MuxPlayer
         theme="minimal"
         playbackId={playbackId}

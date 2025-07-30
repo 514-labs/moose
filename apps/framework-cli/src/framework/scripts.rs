@@ -118,6 +118,14 @@ impl Workflow {
         })
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn config(&self) -> &WorkflowConfig {
+        &self.config
+    }
+
     /// Initialize a new workflow with a list of scripts
     pub fn init(project: &Project, name: &str, scripts: &[String]) -> Result<(), anyhow::Error> {
         let scripts_dir = project.scripts_dir();

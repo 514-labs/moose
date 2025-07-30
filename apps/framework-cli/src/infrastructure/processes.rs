@@ -160,11 +160,11 @@ pub async fn execute_changes(
             }
             ProcessChange::FunctionProcess(Change::Removed(function_process)) => {
                 log::info!("Stopping Function process: {:?}", function_process.id());
-                process_registry.functions.stop(function_process).await?;
+                process_registry.functions.stop(function_process).await;
             }
             ProcessChange::FunctionProcess(Change::Updated { before, after }) => {
                 log::info!("Updating Function process: {:?}", before.id());
-                process_registry.functions.stop(before).await?;
+                process_registry.functions.stop(before).await;
                 process_registry.functions.start(infra_map, after)?;
             }
             // Olap process changes are conditional on the leader instance

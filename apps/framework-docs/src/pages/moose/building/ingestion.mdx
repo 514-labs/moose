@@ -270,6 +270,7 @@ interface IngestPipelineConfig<T> {
   metadata?: {
     description?: string;
   };
+  lifeCycle?: LifeCycle;
 }
 ```
 </TypeScript>
@@ -282,6 +283,7 @@ class IngestPipelineConfig(BaseModel):
     dead_letter_queue: bool | StreamConfig = True
     version: Optional[str] = None
     metadata: Optional[dict] = None
+    life_cycle: Optional[LifeCycle] = None
 ```
 </Python>
 </Tabs.Tab>
@@ -310,6 +312,56 @@ class IngestConfigWithDestination[T: BaseModel]:
 </Python>
 </Tabs.Tab>
 </Tabs>
+
+### LifeCycle Management
+
+Control how Moose manages your pipeline resources when your code changes.
+See the [LifeCycle Management guide](./lifecycle) for detailed information.
+
+<TypeScript>
+```ts filename="LifeCyclePipeline.ts" copy
+import { IngestPipeline, LifeCycle, Key } from "@514labs/moose-lib";
+
+interface UserEvent {
+  id: Key<string>;
+  userId: string;
+  timestamp: Date;
+  action: string;
+}
+
+// pipeline with deletion protection
+const events = new IngestPipeline<UserEvent>("events", {
+  table: true,
+  stream: true,
+  ingest: true,
+  // automatically applied to the table and stream
+  lifeCycle: LifeCycle.DELETION_PROTECTED
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="LifeCyclePipeline.py" copy
+from moose_lib import IngestPipeline, IngestPipelineConfig, Key, LifeCycle
+from pydantic import BaseModel
+from datetime import datetime
+
+class UserEvent(BaseModel):
+    id: Key[str]
+    user_id: str
+    timestamp: datetime
+    action: str
+
+# pipeline with deletion protection
+prod_pipeline = IngestPipeline[UserEvent]("events", IngestPipelineConfig(
+    table=True,
+    stream=True,
+    ingest=True,
+    # automatically applied to the table and stream
+    life_cycle=LifeCycle.DELETION_PROTECTED
+))
+```
+</Python>
 
 ---
 

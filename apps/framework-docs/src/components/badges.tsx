@@ -30,24 +30,24 @@ export function ProductBadge({
 
 const variantColors = {
   moose: {
-    background: "bg-purple-200 dark:bg-purple-950",
-    foreground: "text-purple-800 dark:text-purple-400",
-    stroke: "border-purple-300 dark:border-purple-900",
+    background: "bg-gray-950",
+    foreground: "text-gray-100",
+    stroke: "border-gray-800",
   },
   boreal: {
-    background: "bg-green-200 dark:bg-green-950",
-    foreground: "text-green-800 dark:text-green-400",
-    stroke: "border-green-300 dark:border-green-900",
+    background: "bg-gray-950",
+    foreground: "text-gray-100",
+    stroke: "border-gray-800",
   },
   aurora: {
-    background: "bg-teal-200 dark:bg-teal-950",
-    foreground: "text-teal-800 dark:text-teal-400",
-    stroke: "border-teal-300 dark:border-teal-900",
+    background: "bg-gray-950",
+    foreground: "text-gray-100",
+    stroke: "border-gray-800",
   },
   default: {
-    background: "bg-muted",
-    foreground: "text-muted-foreground",
-    stroke: "border-border",
+    background: "bg-gray-950",
+    foreground: "text-gray-100",
+    stroke: "border-gray-800",
   },
 };
 
@@ -55,21 +55,26 @@ interface IconBadgeProps {
   Icon?: React.ElementType;
   label: string;
   variant?: "moose" | "boreal" | "aurora" | "default";
+  rounded?: "md" | "full";
 }
 
-export function IconBadge({ Icon, label, variant = "moose" }: IconBadgeProps) {
+export function IconBadge({
+  Icon,
+  label,
+  variant = "moose",
+  rounded = "md",
+}: IconBadgeProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 w-fit border",
-        variantColors[variant].background,
-        variantColors[variant].stroke,
-        variantColors[variant].foreground,
-        Icon ? "rounded-full px-4 py-2" : "rounded-lg px-2 py-1",
+        "flex items-center gap-1.5 w-fit border text-xs font-medium",
+        "bg-neutral-800 border-neutral-700 text-neutral-100",
+        "px-2.5 py-1.5",
+        rounded === "full" ? "rounded-full" : "rounded-md",
       )}
     >
-      {Icon && <Icon className="w-5 h-5" />}
-      <span className="text-xs font-medium">{label}</span>
+      {Icon && <Icon className="w-3.5 h-3.5" />}
+      <span>{label}</span>
     </div>
   );
 }

@@ -4,17 +4,18 @@ use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_servi
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
     DescribeWorkflowExecutionRequest, DescribeWorkflowExecutionResponse,
     GetWorkflowExecutionHistoryRequest, GetWorkflowExecutionHistoryResponse,
-    ListWorkflowExecutionsRequest, ListWorkflowExecutionsResponse, SignalWorkflowExecutionRequest,
-    SignalWorkflowExecutionResponse, StartWorkflowExecutionRequest,
+    ListWorkflowExecutionsRequest, ListWorkflowExecutionsResponse,
+    RequestCancelWorkflowExecutionRequest, RequestCancelWorkflowExecutionResponse,
+    SignalWorkflowExecutionRequest, SignalWorkflowExecutionResponse, StartWorkflowExecutionRequest,
     TerminateWorkflowExecutionRequest, TerminateWorkflowExecutionResponse,
 };
 use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
-use crate::framework::scripts::utils::{get_temporal_domain_name, get_temporal_namespace};
-use crate::infrastructure::orchestration::temporal::TemporalConfig;
+use crate::infrastructure::orchestration::temporal::{InvalidTemporalSchemeError, TemporalConfig};
 
 pub struct TemporalClientManager {
+    config: TemporalConfig,
     temporal_url: String,
     ca_cert: String,
     client_cert: String,
@@ -52,14 +53,22 @@ impl tonic::service::Interceptor for ApiKeyInterceptor {
 }
 
 impl TemporalClientManager {
-    pub fn new(config: &TemporalConfig) -> Self {
-        Self {
-            temporal_url: config.temporal_url_with_scheme(),
+    pub fn new(config: &TemporalConfig) -> Result<Self, InvalidTemporalSchemeError> {
+        Self::new_validate(config, true)
+    }
+
+    pub fn new_validate(
+        config: &TemporalConfig,
+        validate: bool,
+    ) -> Result<Self, InvalidTemporalSchemeError> {
+        Ok(Self {
+            config: config.clone(),
+            temporal_url: config.temporal_url_with_scheme_validate(validate)?,
             ca_cert: config.ca_cert.clone(),
             client_cert: config.client_cert.clone(),
             client_key: config.client_key.clone(),
             api_key: config.api_key.clone(),
-        }
+        })
     }
 
     pub async fn execute<F, Fut, R>(&self, operation: F) -> Result<R>
@@ -72,25 +81,20 @@ impl TemporalClientManager {
     }
 
     async fn get_client(&self) -> Result<TemporalClient> {
-        let is_local = self.temporal_url.contains("localhost");
         info!("Getting client for Temporal URL: {}", self.temporal_url);
 
-        if is_local {
-            let client = self.get_temporal_client().await?;
-            Ok(TemporalClient::Standard(client))
-        } else if !self.ca_cert.is_empty()
-            && !self.client_cert.is_empty()
-            && !self.client_key.is_empty()
-        {
+        if !self.ca_cert.is_empty() && !self.client_cert.is_empty() && !self.client_key.is_empty() {
+            info!("Choosing client with mTLS");
             let client = self.get_temporal_client_mtls().await?;
             Ok(TemporalClient::Standard(client))
         } else if !self.ca_cert.is_empty() && !self.api_key.is_empty() {
+            info!("Choosing client with API key");
             let client = self.get_temporal_client_api_key().await?;
             Ok(TemporalClient::WithInterceptor(client))
         } else {
-            Err(Error::msg(
-                "No authentication credentials provided for Temporal.",
-            ))
+            info!("Choosing client with no authentication");
+            let client = self.get_temporal_client().await?;
+            Ok(TemporalClient::Standard(client))
         }
     }
 
@@ -112,7 +116,7 @@ Is the Moose development server running? Start it with `moose dev`."#
         let client_cert_path = self.client_cert.clone();
         let client_key_path = self.client_key.clone();
 
-        let domain_name = get_temporal_domain_name(&self.temporal_url);
+        let domain_name = self.config.get_temporal_domain_name();
 
         let client_identity = tonic::transport::Identity::from_pem(
             std::fs::read(client_cert_path).map_err(|e| Error::msg(e.to_string()))?,
@@ -142,7 +146,7 @@ Is the Moose development server running? Start it with `moose dev`."#
         let ca_cert_path = self.ca_cert.clone();
         let api_key = self.api_key.clone();
 
-        let namespace = get_temporal_namespace(&self.temporal_url);
+        let namespace = self.config.get_temporal_namespace();
 
         let ca_certificate = tonic::transport::Certificate::from_pem(
             std::fs::read(ca_cert_path).map_err(|e| Error::msg(e.to_string()))?,
@@ -182,8 +186,11 @@ impl TemporalClient {
                 {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
-                        let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        let concise_msg = format!(
+                            "status: {code:?}, message: {message}",
+                            code = status.code(),
+                            message = status.message()
+                        );
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }
@@ -195,8 +202,11 @@ impl TemporalClient {
                 {
                     Ok(response) => Ok(response.into_inner().run_id),
                     Err(status) => {
-                        let concise_msg =
-                            format!("status: {:?}, message: {}", status.code(), status.message());
+                        let concise_msg = format!(
+                            "status: {code:?}, message: {message}",
+                            code = status.code(),
+                            message = status.message()
+                        );
                         Err(anyhow::Error::msg(concise_msg))
                     }
                 }
@@ -247,6 +257,22 @@ impl TemporalClient {
                 .map_err(Error::from),
             TemporalClient::WithInterceptor(client) => client
                 .terminate_workflow_execution(request)
+                .await
+                .map_err(Error::from),
+        }
+    }
+
+    pub async fn request_cancel_workflow_execution(
+        &mut self,
+        request: RequestCancelWorkflowExecutionRequest,
+    ) -> Result<tonic::Response<RequestCancelWorkflowExecutionResponse>> {
+        match self {
+            TemporalClient::Standard(client) => client
+                .request_cancel_workflow_execution(request)
+                .await
+                .map_err(Error::from),
+            TemporalClient::WithInterceptor(client) => client
+                .request_cancel_workflow_execution(request)
                 .await
                 .map_err(Error::from),
         }

@@ -10,6 +10,7 @@ use crate::framework::core::infrastructure::table::Table;
 use crate::framework::core::infrastructure::topic::Topic;
 use crate::framework::core::infrastructure::topic_sync_process::TopicToTableSyncProcess;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::scripts::Workflow;
 use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
@@ -567,6 +568,42 @@ impl From<FunctionProcess> for StreamTransformationInfo {
 }
 
 #[derive(Debug, Serialize)]
+pub struct WorkflowInfo {
+    pub name: String,
+    pub schedule: String,
+}
+
+impl ResourceInfo for Vec<WorkflowInfo> {
+    fn show(&self) {
+        show_table(
+            "Workflows".to_string(),
+            vec!["name".to_string(), "schedule".to_string()],
+            self.iter()
+                .map(|workflow| vec![workflow.name.clone(), workflow.schedule.clone()])
+                .collect(),
+        )
+    }
+    fn to_json_string(&self) -> Result<String, Error> {
+        serde_json::to_string_pretty(&self)
+    }
+}
+
+impl From<Workflow> for WorkflowInfo {
+    fn from(value: Workflow) -> Self {
+        let schedule = if value.config().schedule.is_empty() {
+            "None".to_string()
+        } else {
+            value.config().schedule.clone()
+        };
+
+        Self {
+            name: value.name().to_string(),
+            schedule,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct ResourceListing {
     pub tables: Vec<TableInfo>,
     pub streams: Vec<StreamInfo>,
@@ -574,6 +611,7 @@ pub struct ResourceListing {
     pub sql_resources: Vec<SqlResourceInfo>,
     pub consumption_apis: Vec<ConsumptionApiInfo>,
     pub stream_transformations: Vec<StreamTransformationInfo>,
+    pub workflows: Vec<WorkflowInfo>,
 }
 
 impl ResourceInfo for ResourceListing {
@@ -584,6 +622,7 @@ impl ResourceInfo for ResourceListing {
         self.sql_resources.show();
         self.consumption_apis.show();
         self.stream_transformations.show();
+        self.workflows.show();
     }
 
     fn to_json_string(&self) -> Result<String, Error> {
@@ -643,6 +682,12 @@ pub async fn ls_dmv2(
             .filter(|api| name.is_none_or(|name| api.name.contains(name)))
             .map(|p| p.into())
             .collect(),
+        workflows: infra_map
+            .workflows
+            .into_values()
+            .filter(|api| name.is_none_or(|name| api.name().contains(name)))
+            .map(|w| w.into())
+            .collect(),
     };
     let listing: &dyn ResourceInfo = match _type {
         None => &resources,
@@ -651,6 +696,7 @@ pub async fn ls_dmv2(
         Some("ingestion") => &resources.ingestion_apis,
         Some("sql_resource") => &resources.sql_resources,
         Some("consumption") => &resources.consumption_apis,
+        Some("workflows") => &resources.workflows,
         _ => {
             return Err(RoutineFailure::error(Message::new(
                 "Unknown".to_string(),

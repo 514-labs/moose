@@ -118,13 +118,7 @@ fn generate_interface(
         } else {
             type_str
         };
-        writeln!(
-            interface,
-            "    {}: {};",
-            column.name.to_case(Case::Camel),
-            type_str
-        )
-        .unwrap();
+        writeln!(interface, "    {}: {};", column.name, type_str).unwrap();
     }
     writeln!(interface, "}}").unwrap();
     writeln!(interface).unwrap();
@@ -215,13 +209,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
             } else {
                 type_str
             };
-            writeln!(
-                output,
-                "    {}: {};",
-                column.name.to_case(Case::Camel),
-                type_str
-            )
-            .unwrap();
+            writeln!(output, "    {}: {};", column.name, type_str).unwrap();
         }
         writeln!(output, "}}").unwrap();
         writeln!(output).unwrap();
@@ -252,6 +240,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumMember, Nested};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+    use crate::framework::core::partial_infrastructure_map::LifeCycle;
 
     #[test]
     fn test_nested_types() {
@@ -332,6 +321,7 @@ mod tests {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_typescript(&tables);
@@ -340,7 +330,7 @@ mod tests {
             r#"export interface Address {
     street: string;
     city: string;
-    zipCode: string | undefined;
+    zip_code: string | undefined;
 }
 
 export interface User {
@@ -404,6 +394,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                 primitive_type: PrimitiveTypes::DataModel,
             },
             metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
         }];
 
         let result = tables_to_typescript(&tables);

@@ -4,6 +4,9 @@ export interface Stuff {
 
 export const StuffConfig = {
     storage: {
-        enabled: false;
+        enabled: false,
+        invalid: {
+            missing: colon
+        }
     }
 }

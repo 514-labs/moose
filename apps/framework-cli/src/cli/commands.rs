@@ -215,8 +215,14 @@ pub enum WorkflowCommands {
         #[arg(long)]
         from: String,
     },
-    /// List running workflows
+    /// List registered workflows
     List {
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show workflow history
+    History {
         /// Filter workflows by status (running, completed, failed)
         #[arg(short, long)]
         status: Option<String>,
@@ -224,10 +230,20 @@ pub enum WorkflowCommands {
         /// Limit the number of workflows shown
         #[arg(short, long, default_value = "10")]
         limit: u32,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
     },
     /// Terminate a workflow
+    #[command(hide = true)]
     Terminate {
         /// Name of the workflow to terminate
+        name: String,
+    },
+    /// Cancel a workflow & allow tasks to execute cleanup
+    Cancel {
+        /// Name of the workflow to cancel
         name: String,
     },
     /// Pause a workflow

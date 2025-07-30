@@ -1,15 +1,17 @@
 volumes:
-  {{#if streaming_engine}}
+{{#if streaming_engine}}
   redpanda-0: null
-  {{/if}}
+{{/if}}
+{{#if storage}}
   clickhouse-0-data: null
   clickhouse-0-logs: null
   clickhouse-0-users: null
-  redis-data:
-  {{#if scripts_feature}}
-  temporal-data:
-  postgresql-data:
-  {{/if}}
+{{/if}}
+  redis-data: null
+{{#if scripts_feature}}
+  temporal-data: null
+  postgresql-data: null
+{{/if}}
 
 {{#if scripts_feature}}
 configs:
@@ -20,7 +22,7 @@ configs:
         - value: 255
           constraints: {}
       system.forceSearchAttributesCacheRefreshOnRead:
-        - value: true # Dev setup only. Please don't turn this on in production.
+        - value: true  # Dev setup only. Please don't turn this on in production.
           constraints: {}
 {{/if}}
 
@@ -28,7 +30,7 @@ services:
   redis:
     image: redis:latest
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -37,7 +39,8 @@ services:
         reservations:
           cpus: '2.0'
           memory: 4G
-  {{#if streaming_engine}}
+
+{{#if streaming_engine}}
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.11
     ports:
@@ -63,21 +66,22 @@ services:
           cpus: '4.0'
           memory: 8G
     healthcheck:
-      test:
-        ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
       interval: 15s
       timeout: 3s
       retries: 5
       start_period: 5s
-  {{/if}}
+{{/if}}
+
+{{#if storage}}
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-24.12}
     volumes:
-      {{#if clickhouse_host_data_path}}
+{{#if clickhouse_host_data_path}}
       - "{{clickhouse_host_data_path}}:/var/lib/clickhouse/"
-      {{else}}
+{{else}}
       - clickhouse-0-data:/var/lib/clickhouse/
-      {{/if}}
+{{/if}}
       - clickhouse-0-logs:/var/log/clickhouse-server/
       - clickhouse-0-users:/etc/clickhouse-server/users.d
     environment:
@@ -103,10 +107,10 @@ services:
       nofile:
         soft: 20000
         hard: 40000
+{{/if}}
 
-  {{#if scripts_feature}}
+{{#if scripts_feature}}
   postgresql:
-    container_name: temporal-postgresql
     environment:
       POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
       POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal}
@@ -121,7 +125,6 @@ services:
       - postgresql-data:/var/lib/postgresql/data
 
   temporal:
-    container_name: temporal
     depends_on:
       - postgresql
     environment:
@@ -154,7 +157,6 @@ services:
       timeout: 5s
 
   temporal-admin-tools:
-    container_name: temporal-admin-tools
     depends_on:
       - temporal
     environment:
@@ -167,7 +169,6 @@ services:
     tty: true
 
   temporal-ui:
-    container_name: temporal-ui
     depends_on:
       - temporal
     environment:
@@ -180,7 +181,5 @@ services:
       - ${TEMPORAL_UI_PORT:-8080}:8080
 
 networks:
-  temporal-network:
-    driver: bridge
-    name: temporal-network
-  {{/if}}
+  temporal-network: null
+{{/if}}

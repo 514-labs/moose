@@ -77,6 +77,28 @@ To debug the CLI, create a `.vscode/launch.json` & change the inputs according t
 }
 ```
 
+### Moose Libs
+
+Moose libraries are in `packages` folder. We use local links to make changes to the libraries & test with local Moose
+projects. Example of the dev workflow for updating `ts-moose-lib` (similar for other packages like `ts-connector-*`)
+
+1. Make your change in `ts-moose-lib` source code.
+2. Build `ts-moose-lib`.
+    1. If you're on VSCode/Cursor, open the command prompt with Cmd + Shift + P, select `Tasks: Run Task`, then select `Build All`
+       The build tasks are defined in `.vscode/tasks.json`.
+    2. If you want to build from command line, run `pnpm --filter=@514labs/moose-lib run build`.
+3. Link `ts-moose-lib` to a local Moose project.
+    1. From `ts-moose-lib` directory, run `npm link .`
+    2. From `ts-moose-lib`, verify with `npm list -g` to see the global package is actually pointing to your local `ts-moose-lib`.
+    3. From the moose project, run `npm install` to pull in all dependencies.
+    4. From the moose project, run `npm link @514labs/moose-lib`. This will look at your global packages and use that instead
+       (which is pointing to your local `ts-moose-lib`). Make sure to use the package name you saw from `npm list -g`.
+    5. From the moose project, verify with `ls -la node_modules/@514labs` to see the package is actually pointing to your local `ts-moose-lib`.
+4. Iterate. Now that the link is setup, anytime you change `ts-moose-lib`, you just have to build (step 2), and the local moose
+   moose project will automatically use the local `ts-moose-lib`.
+5. To unlink, from your moose project, run `npm unlink @514labs/moose-lib` then run `npm install @514labs/moose-lib` to pull in from npm registry.
+6. To remove the global `ts-moose-lib`, run `npm unlink -g @514labs/moose-lib` from the `ts-moose-lib` folder.
+
 ## Versioning Scheme.
 
 We use [semantic versioning](https://semver.org/) to denote versions of the different components of the system.

@@ -38,8 +38,8 @@ pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "Foo";
 pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "Bar";
 
-pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
-pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
+pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb";
+pub const REDPANDA_CONTAINER_NAME: &str = "redpanda";
 pub const TEMPORAL_CONTAINER_NAME: &str = "temporal";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
@@ -99,7 +99,6 @@ pub const UTILS_WRAPPER_PACKAGE_NAME: &str = "utils";
 pub const PYTHON_MAIN_FILE: &str = "main.py";
 pub const TYPESCRIPT_MAIN_FILE: &str = "index.ts";
 
-pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
 pub const WORKFLOW_TYPE: &str = "ScriptWorkflow";
 pub const PYTHON_TASK_QUEUE: &str = "python-script-queue";
 pub const TYPESCRIPT_TASK_QUEUE: &str = "typescript-script-queue";

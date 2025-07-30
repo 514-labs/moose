@@ -159,6 +159,13 @@ const apiHandler =
           if (!userFuncModule) {
             userFuncModule = egressApis.get(apiName);
           }
+          if (!userFuncModule) {
+            const errorMessage =
+              version ?
+                `Consumption API ${apiName} with version ${version} not found in egress APIs.`
+              : `Consumption API ${apiName} not found in egress APIs.`;
+            throw new Error(errorMessage);
+          }
 
           modulesCache.set(pathName, userFuncModule);
         } else {

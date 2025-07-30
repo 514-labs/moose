@@ -1,0 +1,186 @@
+---
+authors: George Leung <george@fiveonefour.com>
+title: Safe Database Schema Migration and Change Management
+state: discussion
+---
+
+## Abstract
+
+This RFD proposes a comprehensive approach to database schema migration and change management for Moose deployments
+that prioritizes safety, user control, and minimal operational overhead.
+The current solution lacks essential safeguards against unintended data loss and
+provides insufficient user control over schema evolution.
+
+The proposed solution implements a **Migration Plan Review and Approval** workflow where the system generates
+migration plans before deployment, allows user review and editing, and requires explicit approval before
+execution. This approach provides explicit user consent for destructive operations while maintaining
+flexibility for automated deployments in development environments.
+
+## Motivation / Problem Description
+
+The current schema migration system in Moose has several critical limitations that impact production deployments.
+
+### Current Process Issues
+
+In production mode, we load the infrastructure map stored in the docker image,
+update it according to the real database state,
+diff the changes, and apply them automatically.
+
+1. **Unintended Data Loss**: `DROP COLUMN` operations happen automatically without user awareness or approval.
+
+2. **No User Control**:
+   When users intend to rename a column,
+   the system interprets this as a `DROP COLUMN` followed by `ADD COLUMN`.
+   Data loss aside, the user has no way to specify how the schema is migrated.
+
+3. **State Inconsistency**:
+   The `integrate-changes` command modifies the infrastructure map,
+   but redeploying the same version means the stored infrastructure map in the image doesn't contain the new changes,
+   causing the system to drop tables as they're not in the desired state.
+
+4. **Async Cast Failures**:
+   `ALTER TABLE MODIFY COLUMN` operations don't change underlying data, and cast operations can fail asynchronously.
+
+### Goals
+
+- **Sane Defaults**: Provide reasonable default migration behaviour that minimizes work for most common schema change scenarios
+- **User Control**: Ensure clear visibility into migration decisions and provide full control and customization capabilities
+- **Safe Deployment**: Protect against unintended data loss during deployments and rollbacks
+- **Explicit Data Deletion**: Only drop data when the user explicitly requests it
+- **Rollback Safety**: Handle rollback scenarios without automatic data loss
+
+### Non-Goals
+
+- **Changing non-Moose managed database objects**: External tables, views, or procedures created outside of Moose
+
+## Solution: Migration Plan Review and Approval
+
+### Overview
+
+The plan is created and approved before deployment,
+and is not committed to the code base nor included in the container image.
+
+1. **Planning**: Generate a structured migration plan (see [Plan Data Structure](#plan-data-structure)) before deployment.
+   The deployment process creates a container with `moose-cli plan` entry point to generate plan.
+   While spinning up a new container complicates the lifecycle compared to using the API of the existing deployment,
+   this avoids the problem of relying on a possibly outdated moose version for the plan.
+
+2. **Review**: User examines and optionally modifies the generated plan:
+   - Direct file editing for self-managed deployments
+   - Web interface for managed deployments
+
+3. **Execution**:
+   - Plan file gets mounted into deployment environment
+   - Newly deployed moose then executes operations in sequence
+
+**Auto Approval Workflow**:
+- Runtime environment variable enables automatic plan approval and execution
+- Suitable for development and staging environments
+
+### Failure
+
+If Moose crashed mid-migration,
+The restarted Moose will see that the new reality is different from the start state of the plan.
+It should then try to generate a new plan.
+If the new plan is the same as some suffix of the approved plan, Moose can continue the migration.
+Otherwise, it should be stuck in a crash loop to avoid unapproved changes.
+
+
+#### Benefits
+- Minimal time between plan generation and deployment.
+
+#### Downsides
+- No more push-to-main-and-deploy workflow
+unless the user turns on auto-approval - which is the same as the current solution.
+However, users can still expect some safety,
+with the `LifeCycle` enum forbidding Moose deletion (`DELETION_PROTECTED`)
+or mutation (`EXTERNALLY_MANAGED`) for certain resources.
+
+### Plan Data structure
+
+The plan will be a list of JSON objects (or YAML) describing actions to be taken,
+typically matching the JSON representation of
+the current [`AtomicOlapOperation`](https://github.com/514-labs/moose/blob/c3bcdd850f1f64098046d34f562cdc435cd528e8/apps/framework-cli/src/infrastructure/olap/ddl_ordering.rs#L33),
+e.g. `{"DropTableColumn": {"table": "Foo", "column_name": "bar"}}`.
+
+For operations that cannot be expressed through the structured format,
+Moose should also support raw SQL statements as an escape hatch.
+E.g. `{"RawSql": "ALTER TABLE blah ..."}`.
+
+This hybrid approach balances safety with flexibility—structured operations allow
+user to express intent using high level structured objects,
+while `RawSql` objects enable users to handle edge cases
+and advanced operations that the framework cannot anticipate.
+
+## Alternative Approaches Considered
+
+### SQL Generation Workflow
+
+#### Overview
+Generate SQL migration scripts as part of the development process rather than executing changes directly at runtime.
+
+#### Process
+1. **Pre-deployment Diff**: Compare against a reference version
+  (remote Moose state, or the end state of accumulated migration scripts.)
+2. **SQL Script Generation**: Produce SQL statements similar to our current solution but output to files instead of executing
+3. **User Review**: Require user to commit SQL files containing `DROP COLUMN` statements - no surprise data loss
+
+#### Benefits
+- Explicit user consent for destructive operations
+- Version control for schema changes
+- Predictable migration behavior
+
+#### Challenges
+- **Version Coordination**: If version 1 diffs against version 0, and version 2 also diffs against version 0,
+  then version 1 is deployed, version 2's SQL statements become invalid
+- **External Changes**: Need mechanisms to cope with external database modifications
+- **Rollback Complexity**: Rollbacks require new images with new SQL statements,
+  adding build time when rapid fixes are needed
+
+### Git History Integration
+
+#### Overview
+Embed git history into Docker images to maintain change lineage and enable safe redeployments.
+
+#### Process
+1. **Change Tracking**: Include git commit history in container images
+2. **State Consistency**: Use git history to determine what changes have been applied
+3. **Safe Redeployment**: Prevent dropping changes that were applied in previous versions
+
+#### Benefits
+- Solves redeployment safety issues
+- Maintains change history
+- Enables rollback tracking
+
+#### Challenges
+- Container size increase
+- Complexity in change tracking logic
+- Integration with existing CI/CD pipelines
+
+### User Override System
+
+#### Overview
+Maintain the current solution but add user-provided transformation layer for change operations.
+
+#### Process
+1. **Change Detection**: Generate a sequence of actions as in the existing behaviour
+2. **User Transform Function**: Pass the actions through user-provided `OlapChange[] => OlapChange[]` transformation
+3. **Full Flexibility**: Users can modify, reorder, or completely replace the generated changes
+
+#### Benefits
+- Maximum flexibility and user control
+- Backward compatibility with the current system
+- Handles edge cases through user customization
+
+#### Challenges
+- Requires user to anticipate changes done by moose
+- Potential for user errors in transformation logic
+
+## Open Questions
+
+1. **Update Atomicity**: How do we handle/stop concurrent writes when a migration is in progress?
+
+2. **Performance at Scale**: How do migrations perform on large tables?
+  Changing subfields in Nested/Tuple requires an `ALTER TABLE UPDATE` mutation.
+
+3. **Validity of the Plan**: What if the plan, after the user's edit, does not match the desired state in the code?

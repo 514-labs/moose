@@ -218,9 +218,7 @@ async fn get_consumption_api_res(
             .unwrap_or(req.uri().path());
 
         // Check for exact match first
-        if consumption_apis.contains(consumption_name) {
-            // Exact match found, proceed with the request
-        } else {
+        if !consumption_apis.contains(consumption_name) {
             // Try to find a versioned match
             let mut found_match = false;
 

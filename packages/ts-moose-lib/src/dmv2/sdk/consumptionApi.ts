@@ -80,7 +80,10 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
         `Consumption API with name ${name} and version ${config?.version} already exists`,
       );
     }
-    egressApis.set(`${name}:${config?.version}`, this);
+    egressApis.set(
+      `${name}${config?.version ? `:${config.version}` : ""}`,
+      this,
+    );
   }
 
   /**

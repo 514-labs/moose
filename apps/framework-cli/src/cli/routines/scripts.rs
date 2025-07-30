@@ -16,8 +16,8 @@ use temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution;
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
     DescribeWorkflowExecutionRequest, GetWorkflowExecutionHistoryRequest,
-    ListWorkflowExecutionsRequest, SignalWorkflowExecutionRequest,
-    TerminateWorkflowExecutionRequest,
+    ListWorkflowExecutionsRequest, RequestCancelWorkflowExecutionRequest,
+    SignalWorkflowExecutionRequest, TerminateWorkflowExecutionRequest,
 };
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -325,6 +325,9 @@ pub async fn list_workflows_history(
     )))
 }
 
+// Terminate is a hard stop. Temporal updates its server states
+// but does not notify workers. Command is hidden for now because we probably
+// want to use cancel instead, with a flag to force kill.
 pub async fn terminate_workflow(
     project: &Project,
     name: &str,
@@ -377,6 +380,60 @@ pub async fn terminate_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!("'{name}' terminated successfully\n"),
+    }))
+}
+
+// Cancel allows for graceful shutdown. Temporal sends a signal to the worker.
+pub async fn cancel_workflow(
+    project: &Project,
+    name: &str,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let client_manager = TemporalClientManager::new_validate(&project.temporal_config, true)
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Temporal".to_string(),
+                details: format!("Failed to create client manager: {e}"),
+            })
+        })?;
+    let namespace = project.temporal_config.get_temporal_namespace();
+
+    let request = RequestCancelWorkflowExecutionRequest {
+        namespace,
+        workflow_execution: Some(WorkflowExecution {
+            workflow_id: name.to_string(),
+            run_id: "".to_string(),
+        }),
+        reason: "Cancelled by user request".to_string(),
+        ..Default::default()
+    };
+
+    client_manager
+        .execute(|mut client| async move {
+            client
+                .request_cancel_workflow_execution(request)
+                .await
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
+        })
+        .await
+        .map_err(|e| {
+            let error_message = if e
+                .to_string()
+                .contains("workflow execution already completed")
+            {
+                format!("Workflow '{name}' has already completed")
+            } else {
+                format!("Could not cancel workflow '{name}': {e}")
+            };
+
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("{error_message}\n"),
+            })
+        })?;
+
+    Ok(RoutineSuccess::success(Message {
+        action: "Workflow".to_string(),
+        details: format!("'{name}' cancellation requested successfully\n"),
     }))
 }
 

@@ -4,8 +4,9 @@ use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_servi
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
     DescribeWorkflowExecutionRequest, DescribeWorkflowExecutionResponse,
     GetWorkflowExecutionHistoryRequest, GetWorkflowExecutionHistoryResponse,
-    ListWorkflowExecutionsRequest, ListWorkflowExecutionsResponse, SignalWorkflowExecutionRequest,
-    SignalWorkflowExecutionResponse, StartWorkflowExecutionRequest,
+    ListWorkflowExecutionsRequest, ListWorkflowExecutionsResponse,
+    RequestCancelWorkflowExecutionRequest, RequestCancelWorkflowExecutionResponse,
+    SignalWorkflowExecutionRequest, SignalWorkflowExecutionResponse, StartWorkflowExecutionRequest,
     TerminateWorkflowExecutionRequest, TerminateWorkflowExecutionResponse,
 };
 use tonic::service::interceptor::InterceptedService;
@@ -256,6 +257,22 @@ impl TemporalClient {
                 .map_err(Error::from),
             TemporalClient::WithInterceptor(client) => client
                 .terminate_workflow_execution(request)
+                .await
+                .map_err(Error::from),
+        }
+    }
+
+    pub async fn request_cancel_workflow_execution(
+        &mut self,
+        request: RequestCancelWorkflowExecutionRequest,
+    ) -> Result<tonic::Response<RequestCancelWorkflowExecutionResponse>> {
+        match self {
+            TemporalClient::Standard(client) => client
+                .request_cancel_workflow_execution(request)
+                .await
+                .map_err(Error::from),
+            TemporalClient::WithInterceptor(client) => client
+                .request_cancel_workflow_execution(request)
                 .await
                 .map_err(Error::from),
         }

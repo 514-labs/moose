@@ -108,7 +108,12 @@ export const activities = {
     // Get context for heartbeat (required for cancellation detection)
     const context = Context.current();
 
-    // Periodic heartbeat. Important for cancellation detection.
+    // Periodic heartbeat is required for cancellation detection
+    // https://docs.temporal.io/develop/typescript/cancellation#cancel-an-activity
+    // - Temporal activities can only receive cancellation if they send heartbeats
+    // - Heartbeats are the communication channel between activity and Temporal server
+    // - Server sends cancellation signals back in heartbeat responses
+    // - Without heartbeats, context.cancelled will never resolve and cancellation is impossible
     let heartbeatInterval: NodeJS.Timeout | null = null;
     const startPeriodicHeartbeat = () => {
       heartbeatInterval = setInterval(() => {
@@ -143,6 +148,10 @@ export const activities = {
       try {
         startPeriodicHeartbeat();
 
+        // Race user code against cancellation detection
+        // - context.cancelled Promise rejects when server signals cancellation via heartbeat response
+        // - This allows immediate cancellation detection rather than waiting for user code to finish
+        // - If cancellation happens first, we catch it below and call onCancel cleanup
         const result = await Promise.race([
           // TODO: We need to actually terminate this function
           // Might need to run it in a worker thread

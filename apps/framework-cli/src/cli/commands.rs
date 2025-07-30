@@ -236,8 +236,14 @@ pub enum WorkflowCommands {
         json: bool,
     },
     /// Terminate a workflow
+    #[command(hide = true)]
     Terminate {
         /// Name of the workflow to terminate
+        name: String,
+    },
+    /// Cancel a workflow & allow tasks to execute cleanup
+    Cancel {
+        /// Name of the workflow to cancel
         name: String,
     },
     /// Pause a workflow

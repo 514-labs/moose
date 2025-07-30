@@ -150,6 +150,7 @@ async function handleDmv2Task(
 
   const { executeDmv2Task } = proxyActivities({
     startToCloseTimeout: taskTimeout,
+    heartbeatTimeout: "10s",
     retry: {
       maximumAttempts: taskRetries,
     },

@@ -32,6 +32,11 @@ export interface TaskConfig<T, R> {
     | Task<R extends void ? null : R, void>
   )[];
 
+  /**
+   * Optional function that is called when the task is cancelled.
+   */
+  onCancel?: () => Promise<void>;
+
   /** Optional timeout duration for the task execution (e.g., "30s", "5m") */
   timeout?: string;
 

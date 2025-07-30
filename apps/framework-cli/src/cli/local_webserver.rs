@@ -211,6 +211,7 @@ async fn get_consumption_api_res(
     debug!("Creating client for route: {:?}", url);
     {
         let consumption_apis = consumption_apis.read().await;
+
         let consumption_name = req
             .uri()
             .path()

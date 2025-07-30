@@ -145,7 +145,7 @@ const apiHandler =
             const pathParts = apiName.split("/");
             if (pathParts.length >= 2) {
               apiName = pathParts[0];
-              version = pathParts[1];
+              version = pathParts.slice(1).join("/");
             }
           }
 

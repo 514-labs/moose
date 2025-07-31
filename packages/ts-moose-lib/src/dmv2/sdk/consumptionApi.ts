@@ -75,7 +75,9 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
       components: { schemas: {} },
     };
     const egressApis = getMooseInternal().egressApis;
-    if (egressApis.has(`${name}:${config?.version}`)) {
+    if (
+      egressApis.has(`${name}${config?.version ? `:${config.version}` : ""}`)
+    ) {
       throw new Error(
         `Consumption API with name ${name} and version ${config?.version} already exists`,
       );

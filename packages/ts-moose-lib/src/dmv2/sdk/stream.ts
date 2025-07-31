@@ -197,11 +197,15 @@ export class Stream<T> extends TypedBase<T, StreamConfig<T>> {
     columns?: Column[],
   ) {
     super(name, config ?? {}, schema, columns);
+
+    const version = config?.version;
+    const streamKey = version ? `${name}_${version}` : name;
+
     const streams = getMooseInternal().streams;
-    if (streams.has(name)) {
-      throw new Error(`Stream with name ${name} already exists`);
+    if (streams.has(streamKey)) {
+      throw new Error(`Stream with name ${streamKey} already exists`);
     }
-    streams.set(name, this);
+    streams.set(streamKey, this);
   }
 
   /**

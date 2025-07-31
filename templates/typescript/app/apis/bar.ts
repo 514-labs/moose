@@ -18,6 +18,20 @@ interface ResponseData {
   totalTextLength?: number;
 }
 
+interface ResponseDataV1 {
+  dayOfMonth: number;
+  totalRows?: number;
+  rowsWithText?: number;
+  maxTextLength?: number;
+  totalTextLength?: number;
+  // V1 specific fields
+  metadata?: {
+    version: string;
+    generatedAt: string;
+    queryParams: QueryParams;
+  };
+}
+
 export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
   "bar",
   async (
@@ -52,4 +66,50 @@ export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
 
     return result;
   },
+);
+
+export const BarApiV1 = new ConsumptionApi<QueryParams, ResponseDataV1[]>(
+  "bar",
+  async (
+    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
+    { client, sql },
+  ) => {
+    const cache = await MooseCache.get();
+    const cacheKey = `bar:v1:${orderBy}:${limit}:${startDay}:${endDay}`;
+
+    // Try to get from cache first
+    const cachedData = await cache.get<ResponseDataV1[]>(cacheKey);
+    if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+      return cachedData;
+    }
+
+    const query = sql`
+        SELECT 
+          ${BarAggregatedMV.targetTable.columns.dayOfMonth},
+          ${BarAggregatedMV.targetTable.columns[orderBy]}
+        FROM ${BarAggregatedMV.targetTable}
+        WHERE 
+          dayOfMonth >= ${startDay} 
+          AND dayOfMonth <= ${endDay}
+        ORDER BY ${BarAggregatedMV.targetTable.columns[orderBy]} DESC
+        LIMIT ${limit}
+      `;
+
+    const data = await client.query.execute<ResponseDataV1>(query);
+    const result: ResponseDataV1[] = await data.json();
+
+    // V1 specific: Add metadata
+    result.forEach((item) => {
+      item.metadata = {
+        version: "1.0",
+        generatedAt: new Date().toISOString(),
+        queryParams: { orderBy, limit, startDay, endDay },
+      };
+    });
+
+    await cache.set(cacheKey, result, 3600); // Cache for 1 hour
+
+    return result;
+  },
+  { version: "1" }, // API can be accessed at /bar/1
 );

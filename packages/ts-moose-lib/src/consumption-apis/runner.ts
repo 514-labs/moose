@@ -137,7 +137,7 @@ const apiHandler =
       if (userFuncModule === undefined) {
         if (isDmv2) {
           const egressApis = await getEgressApis();
-          let apiName = fileName.replace(/^\/+/, "");
+          let apiName = fileName.replace(/^\/+|\/+$/g, "");
           let version = url.searchParams.get("version");
 
           // Check if version is in the path (e.g., /bar/1)

@@ -169,8 +169,8 @@ mod tests {
         let after = create_test_table("test", vec!["id".to_string()], true);
 
         let order_by_change = OrderByChange {
-            before: vec![],
-            after: vec![],
+            before: before.order_by.clone(),
+            after: after.order_by.clone(),
         };
 
         let changes = strategy.diff_table_update(&before, &after, vec![], order_by_change);
@@ -207,8 +207,8 @@ mod tests {
         }];
 
         let order_by_change = OrderByChange {
-            before: vec![],
-            after: vec![],
+            before: before.order_by.clone(),
+            after: after.order_by.clone(),
         };
 
         let changes = strategy.diff_table_update(&before, &after, column_changes, order_by_change);

@@ -402,11 +402,17 @@ fn handle_table_remove(table: &Table) -> OperationPlan {
 
 /// Handles updating a table operation
 ///
+/// Process column-level changes for a table update.
+///
 /// This function now uses a generic approach since database-specific logic
 /// has been moved to the planning phase via TableDiffStrategy implementations.
 /// The ddl_ordering module should only receive the operations that the database
 /// can actually perform.
-fn handle_table_update(
+///
+/// Note: This function only handles column changes. Complex table updates that
+/// require drop+create operations should have been converted to separate
+/// Remove+Add operations by the appropriate TableDiffStrategy.
+fn handle_table_column_updates(
     before: &Table,
     after: &Table,
     column_changes: &[ColumnChange],
@@ -641,7 +647,7 @@ pub fn order_olap_changes(
                 after,
                 column_changes,
                 ..
-            }) => handle_table_update(before, after, column_changes),
+            }) => handle_table_column_updates(before, after, column_changes),
             OlapChange::View(Change::Added(boxed_view)) => handle_view_add(boxed_view),
             OlapChange::View(Change::Removed(boxed_view)) => handle_view_remove(boxed_view),
             OlapChange::View(Change::Updated { before, after }) => {
@@ -2341,7 +2347,7 @@ mod tests {
         ];
 
         // Generate the operation plan
-        let plan = handle_table_update(&before_table, &after_table, &column_changes);
+        let plan = handle_table_column_updates(&before_table, &after_table, &column_changes);
 
         // Check that the plan uses column-level operations (not drop+create)
         assert_eq!(

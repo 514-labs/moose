@@ -4,6 +4,14 @@ import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
 import { DeadLetterQueue, Stream } from "./stream";
 
+function generateIngestApiKey(name: string, version?: string) {
+  if (version) {
+    return `${name}_${version}`;
+  } else {
+    return name;
+  }
+}
+
 /**
  * @template T The data type of the messages expected by the destination stream.
  */
@@ -51,9 +59,12 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
   ) {
     super(name, config, schema, columns);
     const ingestApis = getMooseInternal().ingestApis;
-    if (ingestApis.has(name)) {
+
+    const ingressApiKey = generateIngestApiKey(name, config?.version);
+
+    if (ingestApis.has(ingressApiKey)) {
       throw new Error(`Ingest API with name ${name} already exists`);
     }
-    ingestApis.set(name, this);
+    ingestApis.set(ingressApiKey, this);
   }
 }

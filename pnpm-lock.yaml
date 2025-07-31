@@ -62,7 +62,7 @@ importers:
     devDependencies:
       '@clickhouse/client':
         specifier: latest
-        version: 1.11.1
+        version: 1.12.0
       '@iarna/toml':
         specifier: ^3.0.0
         version: 3.0.0
@@ -141,6 +141,9 @@ importers:
       mixpanel:
         specifier: ^0.18.0
         version: 0.18.1
+      motion:
+        specifier: ^12.23.11
+        version: 12.23.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next:
         specifier: ^14.2.30
         version: 14.2.30(@babel/core@7.27.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -165,6 +168,9 @@ importers:
       react-server-dom-webpack:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-use-measure:
+        specifier: ^2.1.7
+        version: 2.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       remark-mdx-disable-explicit-jsx:
         specifier: ^0.1.0
         version: 0.1.0
@@ -225,7 +231,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.4.258(@swc/core@1.11.29(@swc/helpers@0.5.17))(@swc/helpers@0.5.17)(@types/node@20.17.51)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
+        version: 0.4.324(@swc/core@1.11.29(@swc/helpers@0.5.17))(@swc/helpers@0.5.17)(@types/node@20.17.51)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -244,7 +250,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.4.258
+        version: 0.4.324
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -679,8 +685,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.4.258':
-    resolution: {integrity: sha512-QCSsW4LG73SKPGJ/KHCYD4l8LJubZlrqzQxjzj0QBQRoAdyGy8N1KbDKQrxvRx3JcXjmw+2YIgODT4S8f58AFA==}
+  '@514labs/moose-cli-darwin-arm64@0.4.324':
+    resolution: {integrity: sha512-1HrAvOJbbzqNE5Fpton4elsifSAorfu5+sgO4Z+AR9pCzVHVfF5RT7wRDljLInG3G7rLI3QUdYSqCGGd09l4bA==}
     cpu: [arm64]
     os: [darwin]
 
@@ -689,8 +695,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.4.258':
-    resolution: {integrity: sha512-8ufGzRQp0dz5zmMEVWUYfcuE7FWK1so+18bQ0fAXAfgP/Zbf8bK/Mxvv4cjEyqKY3eElkmbPU76BOoSQ7Trs5Q==}
+  '@514labs/moose-cli-darwin-x64@0.4.324':
+    resolution: {integrity: sha512-WmWog6Za6jZr5Bv8xE4nUsREbvdVtVO649D8F6uruhc1anQJm1NZNlMfim/EXz7lexqpzPln/H9dVseaJqID/A==}
     cpu: [x64]
     os: [darwin]
 
@@ -699,8 +705,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.4.258':
-    resolution: {integrity: sha512-NLy/ALbPoeNIwk/FzantoIr58Nyhx55eKZTFO2WgQihz0q4O9jBq9JzjVVDjqugiOq+oPRBNzVURDbOO6L+dVg==}
+  '@514labs/moose-cli-linux-arm64@0.4.324':
+    resolution: {integrity: sha512-c4RwCo1kD/voM1QWhLrHs2RnzrZirbCaleYT341RCzn8ref+DW1+qjs7YqB8WwdV1RSXBleAyAXxudsL6PLIQQ==}
     cpu: [arm64]
     os: [linux]
 
@@ -709,8 +715,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.4.258':
-    resolution: {integrity: sha512-Jz1vkAKCBfhO9MTQc5+H143gYyLsNTiYH5NyBNhKzU/G1jFFTqUH5f/0bfwh+VXc+vdeHUt0ZHhSS68YQnQhHA==}
+  '@514labs/moose-cli-linux-x64@0.4.324':
+    resolution: {integrity: sha512-hpnYcWkxYkaK670k8fFDWvLGg40dtm7k0JIQgmskVIv15ZgAM4iWNov+LaKlaMW74YwjPyve42K2+8LcP2cL+A==}
     cpu: [x64]
     os: [linux]
 
@@ -718,12 +724,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.4.258':
-    resolution: {integrity: sha512-Nsej8p3m4cV2YvKN/KkuBlYX3sUIVeJaG61uTP+v9kcOcUHsbsJznc36d4aovamOC61WwVmM15dbMMkPggcXew==}
+  '@514labs/moose-cli@0.4.324':
+    resolution: {integrity: sha512-RnYMwHezhQXY5WsFJFXaLOB3NPYanlmYHxfKiArHqtHECkOZ/H9fOxY8F3Xv1it1pPl+mnRwoBLaYHjWwBqUvA==}
     hasBin: true
 
-  '@514labs/moose-lib@0.4.258':
-    resolution: {integrity: sha512-xxqy8eptdwASdcBtNsWayrjZg+RnG+aEGaaOdP9wqhgnFbHJK2PleHfkaN39XEempYePrzS6maRzuN0lKEL3PA==}
+  '@514labs/moose-lib@0.4.324':
+    resolution: {integrity: sha512-K4CW1qdao4Qh7FtGO7lIYpKLwFS+9neJwugiYvgCGeHek1pJloYAcX4Dd/AnMyuvm3UQEsC2GE+FF3TApzUx7A==}
     hasBin: true
     peerDependencies:
       ts-patch: ^3.3.0
@@ -1136,8 +1142,8 @@ packages:
   '@clickhouse/client-common@1.1.0':
     resolution: {integrity: sha512-saD6vNg+gIZACT5OSCWn0evLBP+Cs5bBR2Ol24yOQc8AXcw94b1qcDjQEVxms1xzO6heFhZRuPf+YefMNrL3Ig==}
 
-  '@clickhouse/client-common@1.11.1':
-    resolution: {integrity: sha512-bme0le2yhDSAh13d2fxhSW5ZrNoVqZ3LTyac8jK6hNH0qkksXnjYkLS6KQalPU6NMpffxHmpI4+/Gi2MnX0NCA==}
+  '@clickhouse/client-common@1.12.0':
+    resolution: {integrity: sha512-cyI4n7u9jK30d9q1q0ceQ7IwJ/MtTs5HxoQfc8yHpN+ok5wqaU2jAtq5hpa1z7C7sS1pDy/ZOFmOzg1v1F683g==}
 
   '@clickhouse/client-common@1.5.0':
     resolution: {integrity: sha512-U3vDp+PDnNVEv6kia+Mq5ygnlMZzsYU+3TX+0da3XvL926jzYLMBlIvFUxe2+/5k47ySvnINRC/2QxVK7PC2/A==}
@@ -1151,8 +1157,8 @@ packages:
   '@clickhouse/client-web@1.5.0':
     resolution: {integrity: sha512-21+c2UJ4cx9SPiIWQThCLULb8h/zng0pNrtTwbbnaoCqMbasyRCyRTHs3wRr7fqRUcZ3p9krIPuN0gnJw3GJ6Q==}
 
-  '@clickhouse/client@1.11.1':
-    resolution: {integrity: sha512-u9h++h72SmWystijNqfNvMkfA+5+Y1LNfmLL/odCL3VgI3oyAPP9ubSw/Yrt2zRZkLKehMMD1kuOej0QHbSoBA==}
+  '@clickhouse/client@1.12.0':
+    resolution: {integrity: sha512-vJUSX8THhTzlVn0WxPukVjOgNRaSoY02ubQkB0LpqNoHFxXuF5jQZZAYvGZWpBGbYQ/4gfPrqu8g4TX5UKeNxA==}
     engines: {node: '>=16'}
 
   '@clickhouse/client@1.8.1':
@@ -4783,6 +4789,20 @@ packages:
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
+  framer-motion@12.23.11:
+    resolution: {integrity: sha512-VzNi+exyI3bn7Pzvz1Fjap1VO9gQu8mxrsSsNamMidsZ8AA8W2kQsR+YQOciEUbMtkKAWIbPHPttfn5e9jqqJQ==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   fs-monkey@1.0.6:
     resolution: {integrity: sha512-b1FMfwetIKymC0eioW7mTywihSQE4oLzQn1dB6rZB5fx/3NpNEdAWeCSMB+60/AeT0TCXsxzAlcYVEFCTAksWg==}
 
@@ -6050,6 +6070,26 @@ packages:
     engines: {node: '>= 14.0.0'}
     hasBin: true
 
+  motion-dom@12.23.9:
+    resolution: {integrity: sha512-6Sv++iWS8XMFCgU1qwKj9l4xuC47Hp4+2jvPfyTXkqDg2tTzSgX6nWKD4kNFXk0k7llO59LZTPuJigza4A2K1A==}
+
+  motion-utils@12.23.6:
+    resolution: {integrity: sha512-eAWoPgr4eFEOFfg2WjIsMoqJTW6Z8MTUCgn/GZ3VRpClWBdnbjryiA3ZSNLyxCTmCQx4RmYX6jX1iWHbenUPNQ==}
+
+  motion@12.23.11:
+    resolution: {integrity: sha512-AHv/2SivIz9fjvND8wwN2LldDTuwkPyTSWecAY/xzB1/2eF7zxvh9JRkf8aF4eGoGsy1e2YKp+CQC5yxcssnEw==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -6606,6 +6646,15 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
+        optional: true
+
+  react-use-measure@2.1.7:
+    resolution: {integrity: sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg==}
+    peerDependencies:
+      react: '>=16.13'
+      react-dom: '>=16.13'
+    peerDependenciesMeta:
+      react-dom:
         optional: true
 
   react@18.3.1:
@@ -7820,25 +7869,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.4.258':
+  '@514labs/moose-cli-darwin-arm64@0.4.324':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.4.258':
+  '@514labs/moose-cli-darwin-x64@0.4.324':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.4.258':
+  '@514labs/moose-cli-linux-arm64@0.4.324':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.4.258':
+  '@514labs/moose-cli-linux-x64@0.4.324':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -7848,14 +7897,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.4.258':
+  '@514labs/moose-cli@0.4.324':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.4.258
-      '@514labs/moose-cli-darwin-x64': 0.4.258
-      '@514labs/moose-cli-linux-arm64': 0.4.258
-      '@514labs/moose-cli-linux-x64': 0.4.258
+      '@514labs/moose-cli-darwin-arm64': 0.4.324
+      '@514labs/moose-cli-darwin-x64': 0.4.324
+      '@514labs/moose-cli-linux-arm64': 0.4.324
+      '@514labs/moose-cli-linux-x64': 0.4.324
 
-  '@514labs/moose-lib@0.4.258(@swc/core@1.11.29(@swc/helpers@0.5.17))(@swc/helpers@0.5.17)(@types/node@20.17.51)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
+  '@514labs/moose-lib@0.4.324(@swc/core@1.11.29(@swc/helpers@0.5.17))(@swc/helpers@0.5.17)(@types/node@20.17.51)(ts-patch@3.2.1)(typia@7.6.4(@samchon/openapi@2.5.3)(typescript@5.4.5))':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -8616,7 +8665,7 @@ snapshots:
 
   '@clickhouse/client-common@1.1.0': {}
 
-  '@clickhouse/client-common@1.11.1': {}
+  '@clickhouse/client-common@1.12.0': {}
 
   '@clickhouse/client-common@1.5.0': {}
 
@@ -8630,9 +8679,9 @@ snapshots:
     dependencies:
       '@clickhouse/client-common': 1.5.0
 
-  '@clickhouse/client@1.11.1':
+  '@clickhouse/client@1.12.0':
     dependencies:
-      '@clickhouse/client-common': 1.11.1
+      '@clickhouse/client-common': 1.12.0
 
   '@clickhouse/client@1.8.1':
     dependencies:
@@ -12469,8 +12518,8 @@ snapshots:
       '@typescript-eslint/parser': 5.62.0(eslint@8.57.1)(typescript@5.8.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.31.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -12519,7 +12568,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.31.0)(eslint@8.57.1):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.1(supports-color@8.1.1)
@@ -12530,7 +12579,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.7.2
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -12556,7 +12605,7 @@ snapshots:
       '@typescript-eslint/parser': 5.62.0(eslint@8.57.1)(typescript@5.8.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.31.0)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -12571,7 +12620,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.31.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -13062,6 +13111,15 @@ snapshots:
   format@0.2.2: {}
 
   fraction.js@4.3.7: {}
+
+  framer-motion@12.23.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      motion-dom: 12.23.9
+      motion-utils: 12.23.6
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   fs-monkey@1.0.6: {}
 
@@ -14996,6 +15054,20 @@ snapshots:
       yargs-parser: 20.2.9
       yargs-unparser: 2.0.0
 
+  motion-dom@12.23.9:
+    dependencies:
+      motion-utils: 12.23.6
+
+  motion-utils@12.23.6: {}
+
+  motion@12.23.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      framer-motion: 12.23.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
   ms@2.1.3: {}
 
   ms@3.0.0-canary.1: {}
@@ -15593,6 +15665,12 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 18.3.23
+
+  react-use-measure@2.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+    optionalDependencies:
+      react-dom: 18.3.1(react@18.3.1)
 
   react@18.3.1:
     dependencies:

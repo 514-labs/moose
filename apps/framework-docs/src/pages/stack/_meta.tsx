@@ -24,13 +24,17 @@ const rawMeta = {
     },
     Icon: GanttChart,
   },
-  // "getting-started": {
-  //   title: "Getting Started",
-  //   Icon: HandMetal,
+  "getting-started": {
+    title: "Getting Started",
+    Icon: HandMetal,
+  },
+  // '---core---': {
+  //   title: "Core Modules",
+  //   type: "separator",
   // },
   // Builder's Guide - Task-oriented approach
-  libraries: {
-    title: "Libraries",
+  "---modules---": {
+    title: "Modules",
     type: "separator",
   },
   olap: {
@@ -72,13 +76,18 @@ const rawMeta = {
     Icon: BookOpen,
     isMoose: true,
   },
-  "client-integrations": {
+  "---client-integrations---": {
     type: "separator",
     title: "Client Integrations",
   },
   "open-api": {
     title: "OpenAPI",
     Icon: Code,
+  },
+
+  "---reference---": {
+    title: "Reference",
+    type: "separator",
   },
   "api-reference": {
     title: "API Reference",
@@ -99,4 +108,5 @@ const rawMeta = {
 };
 
 // Process the raw meta object to generate the final meta object with proper rendering
-export default render(rawMeta);
+const showSeparatorLine = true;
+export default render(rawMeta, showSeparatorLine);

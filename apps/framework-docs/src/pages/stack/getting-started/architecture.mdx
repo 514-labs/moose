@@ -1,0 +1,83 @@
+---
+title: Moose Core Concepts
+description: Essential primitives, patterns, and architecture for building with Moose.
+---
+
+import { Callout, ZoomImg, BulletPointsCard } from "@/components";
+import { MapPin } from "lucide-react";
+import { Steps } from "nextra/components";
+
+# Reference Architectures
+See how Moose is used in real-world analytics and data engineering scenarios.
+
+### User-Facing Analytics
+
+<ZoomImg light="/ref_arch_user_facing_analytics_light.png" dark="/ref_arch_user_facing_analytics.png" alt="User-Facing Analytics Architecture" />
+
+Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend.
+
+> Pattern: Application → Moose → Frontend Dashboard
+
+---
+
+### Operational Data Warehouse
+
+<ZoomImg light="/ref_arch_op_dw_light.png" dark="/ref_arch_op_dw.png" alt="Data Warehouse Architecture" />
+
+Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools.
+
+> Pattern: External APIs → Moose → BI Tools
+
+---
+
+### Observability
+
+<ZoomImg light="/ref_arch_observability_light.png" dark="/ref_arch_observability.png" alt="Observability Architecture" />
+
+Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms.
+
+> Pattern: Applications → OTEL Collector → Moose → Monitoring Tools
+
+---
+
+## Configuring Infrastructure
+Certain use cases may not warrant the need for all of the infrastructure that Moose provisions by default. In these cases, you can configure the infrastructure that Moose provisions by editing the `moose.config.toml` file:
+
+### Disabling the Streaming Engine
+
+To disable streaming, set the `streaming_engine` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+
+[features]
+streaming_engine = false
+```
+
+<Callout type="warning" title="Streams won't work">
+Make sure you don't have any `Stream` objects defined in your codebase if you disable the streaming engine.
+</Callout>
+
+### Disabling the Temporal Workflows
+
+To disable Temporal workflows, set the `workflows` feature flag to `false` in the `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+[features]
+workflows = false
+```
+
+<Callout type="warning" title="Workflows won't work">
+Make sure you don't have any `Workflow` objects defined in your codebase if you disable the Temporal workflows.
+</Callout>
+
+
+## Next Steps
+
+- [5-Minute Quickstart](/moose/getting-started/quickstart) — Build your first Moose pipeline
+- [Project Structure](/moose/getting-started/project-structure) — Organize your Moose project for scale
+
+---
+
+<Callout type="success" title="Ready to build?">
+  Head to the <a href="/moose/getting-started/quickstart">5-Minute Quickstart</a> to try Moose yourself!
+</Callout>

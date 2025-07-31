@@ -12,10 +12,11 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { GitHubStarsButton } from "@/components";
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
 import { PathConfig } from "./src/components/ctas";
-import Script from "next/script";
+import { Sidebar } from "@/components/sidebar";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -160,29 +161,13 @@ export default {
           sizes="16x16"
         />
         <link rel="canonical" href={url} />
-        <Script
-          src="https://buttons.github.io/buttons.js"
-          strategy="afterInteractive"
-        />
       </>
     );
   },
   navbar: {
     extraContent: () => (
       <div className="flex items-center gap-2 h-full" suppressHydrationWarning>
-        <div className="max-h-7">
-          <a
-            className="github-button"
-            href="https://github.com/514-labs/moose"
-            data-color-scheme="no-preference: dark; light: light; dark: dark;"
-            data-icon="octicon-star"
-            data-size="large"
-            data-show-count="true"
-            aria-label="Star buttons/github-buttons on GitHub"
-          >
-            Star
-          </a>
-        </div>
+        <GitHubStarsButton username="514-labs" repo="moose" />
       </div>
     ),
   },
@@ -196,6 +181,9 @@ export default {
     prev: true,
     next: true,
   },
+  sidebar: {
+    defaultMenuCollapseLevel: 1,
+  },
   components: {
     // Heading components with stable rendering
     h1: ({ children, ...props }) => (
@@ -204,17 +192,17 @@ export default {
       </Heading>
     ),
     h2: ({ children, ...props }) => (
-      <Heading {...props} level={HeadingLevel.l2}>
+      <Heading {...props} level={HeadingLevel.l2} longForm={true}>
         {children}
       </Heading>
     ),
     h3: ({ children, ...props }) => (
-      <Heading {...props} level={HeadingLevel.l3}>
+      <Heading {...props} level={HeadingLevel.l3} longForm={true}>
         {children}
       </Heading>
     ),
     h4: ({ children, ...props }) => (
-      <Heading {...props} level={HeadingLevel.l4}>
+      <Heading {...props} level={HeadingLevel.l4} longForm={true}>
         {children}
       </Heading>
     ),
@@ -281,9 +269,6 @@ export default {
     saturation: 0,
   },
   darkMode: true,
-  sidebar: {
-    defaultMenuCollapseLevel: 1,
-  },
   footer: {
     content: () => {
       const year = new Date().getFullYear();

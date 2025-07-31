@@ -27,6 +27,7 @@
     "lucide-react": "^0.427.0",
     "mime-types": "^3.0.1",
     "mixpanel": "^0.18.0",
+    "motion": "^12.23.11",
     "next": "^14.2.30",
     "next-sitemap": "^4.2.3",
     "nextra": "^3.3.1",
@@ -35,6 +36,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-server-dom-webpack": "^0.0.1",
+    "react-use-measure": "^2.1.7",
     "remark-mdx-disable-explicit-jsx": "^0.1.0",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7"

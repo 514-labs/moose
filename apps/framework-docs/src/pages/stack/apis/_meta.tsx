@@ -12,4 +12,4 @@ const rawMeta = {
   },
 };
 
-export const meta = render(rawMeta);
+export default render(rawMeta);

@@ -21,6 +21,10 @@ use crate::framework::core::infrastructure_map::{
 pub struct ClickHouseTableDiffStrategy;
 
 impl TableDiffStrategy for ClickHouseTableDiffStrategy {
+    /// This function is only called when there are actual changes to the table
+    /// (column changes, ORDER BY changes, or deduplication changes).
+    /// It determines whether those changes can be handled via ALTER TABLE
+    /// or require a drop+create operation.
     fn diff_table_update(
         &self,
         before: &Table,
@@ -29,8 +33,7 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
         order_by_change: OrderByChange,
     ) -> Vec<OlapChange> {
         // Check if ORDER BY has changed
-        let order_by_changed =
-            !order_by_change.before.is_empty() || !order_by_change.after.is_empty();
+        let order_by_changed = order_by_change.before != order_by_change.after;
         if order_by_changed {
             log::debug!(
                 "ClickHouse: ORDER BY changed for table '{}', requiring drop+create",
@@ -68,15 +71,20 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
             ];
         }
 
-        // For other changes, ClickHouse can handle them via ALTER TABLE
-        // Return the standard table update change
-        vec![OlapChange::Table(TableChange::Updated {
-            name: before.name.clone(),
-            column_changes,
-            order_by_change,
-            before: before.clone(),
-            after: after.clone(),
-        })]
+        // For other changes, ClickHouse can handle them via ALTER TABLE.
+        // If there are no column changes, return an empty vector since
+        // we've already handled all the cases that require drop+create.
+        if column_changes.is_empty() {
+            vec![]
+        } else {
+            vec![OlapChange::Table(TableChange::Updated {
+                name: before.name.clone(),
+                column_changes,
+                order_by_change,
+                before: before.clone(),
+                after: after.clone(),
+            })]
+        }
     }
 }
 
@@ -209,6 +217,107 @@ mod tests {
         assert!(matches!(
             changes[0],
             OlapChange::Table(TableChange::Updated { .. })
+        ));
+    }
+
+    #[test]
+    fn test_identical_order_by_with_column_change_uses_alter() {
+        let strategy = ClickHouseTableDiffStrategy;
+
+        let before = create_test_table(
+            "test",
+            vec!["id".to_string(), "timestamp".to_string()],
+            false,
+        );
+        let after = create_test_table(
+            "test",
+            vec!["id".to_string(), "timestamp".to_string()],
+            false,
+        );
+
+        // Add a column change to make this a realistic scenario
+        let column_changes = vec![ColumnChange::Added {
+            column: Column {
+                name: "status".to_string(),
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            },
+            position_after: Some("timestamp".to_string()),
+        }];
+
+        let order_by_change = OrderByChange {
+            before: vec!["id".to_string(), "timestamp".to_string()],
+            after: vec!["id".to_string(), "timestamp".to_string()],
+        };
+
+        let changes = strategy.diff_table_update(&before, &after, column_changes, order_by_change);
+
+        // With identical ORDER BY but column changes, should use ALTER (not drop+create)
+        assert_eq!(changes.len(), 1);
+        assert!(matches!(
+            changes[0],
+            OlapChange::Table(TableChange::Updated { .. })
+        ));
+    }
+
+    #[test]
+    fn test_no_changes_returns_empty_vector() {
+        let strategy = ClickHouseTableDiffStrategy;
+
+        let before = create_test_table(
+            "test",
+            vec!["id".to_string(), "timestamp".to_string()],
+            false,
+        );
+        let after = create_test_table(
+            "test",
+            vec!["id".to_string(), "timestamp".to_string()],
+            false,
+        );
+
+        // No column changes
+        let column_changes = vec![];
+
+        let order_by_change = OrderByChange {
+            before: vec!["id".to_string(), "timestamp".to_string()],
+            after: vec!["id".to_string(), "timestamp".to_string()],
+        };
+
+        let changes = strategy.diff_table_update(&before, &after, column_changes, order_by_change);
+
+        // With no actual changes, should return empty vector
+        assert_eq!(changes.len(), 0);
+    }
+
+    #[test]
+    fn test_order_by_change_with_no_column_changes_requires_drop_create() {
+        let strategy = ClickHouseTableDiffStrategy;
+
+        let before = create_test_table("test", vec!["id".to_string()], false);
+        let after = create_test_table("test", vec!["timestamp".to_string()], false);
+
+        // No column changes, but ORDER BY changes
+        let column_changes = vec![];
+        let order_by_change = OrderByChange {
+            before: vec!["id".to_string()],
+            after: vec!["timestamp".to_string()],
+        };
+
+        let changes = strategy.diff_table_update(&before, &after, column_changes, order_by_change);
+
+        // Should still require drop+create even with no column changes
+        assert_eq!(changes.len(), 2);
+        assert!(matches!(
+            changes[0],
+            OlapChange::Table(TableChange::Removed(_))
+        ));
+        assert!(matches!(
+            changes[1],
+            OlapChange::Table(TableChange::Added(_))
         ));
     }
 }

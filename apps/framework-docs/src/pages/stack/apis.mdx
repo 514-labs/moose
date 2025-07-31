@@ -1,0 +1,269 @@
+---
+title: Moose APIs
+description: Create type-safe ingestion and consumption APIs for data access and integration
+---
+
+import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python, CTACards, CTACard } from "@/components";
+import { Tabs } from "nextra/components";
+
+# APIs
+<LanguageSwitcher />
+
+## Overview
+
+The APIs capability provides standalone HTTP endpoints for data ingestion and consumption. Unlike other modules of the MooseStack, APIs are meant to be paired with other MooseStack modules like OLAP tables and streams.
+
+
+## Core Capabilities
+
+<CTACards>
+<CTACard
+  title="Ingest Data"
+  description="Create HTTP POST endpoints for data ingestion with validation and routing"
+  ctaLink="/stack/apis/ingest-data"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Ingestion" }}
+/>
+<CTACard
+  title="Egress Data"
+  description="Create HTTP GET endpoints for data consumption with query parameters"
+  ctaLink="/stack/apis/egress-data"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Consumption" }}
+/>
+</CTACards>
+
+## Basic Examples
+
+### Ingestion API
+
+<TypeScript>
+```ts filename="IngestApi.ts" copy
+import { IngestApi } from "@514labs/moose-lib";
+
+interface UserEvent {
+  id: string;
+  userId: string;
+  timestamp: Date;
+  eventType: string;
+}
+
+// Create a standalone ingestion API
+const userEventsApi = new IngestApi<UserEvent>("user-events", {
+  // Route to external service or custom handler
+  destination: (event) => {
+    // Custom logic here
+    console.log("Processing event:", event);
+  }
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="IngestApi.py" copy
+from moose_lib import IngestApi
+from pydantic import BaseModel
+from datetime import datetime
+
+class UserEvent(BaseModel):
+    id: str
+    user_id: str
+    timestamp: datetime
+    event_type: str
+
+# Create a standalone ingestion API
+def process_event(event: UserEvent):
+    # Custom logic here
+    print(f"Processing event: {event}")
+
+user_events_api = IngestApi[UserEvent]("user-events", process_event)
+```
+</Python>
+
+### Consumption API
+
+<TypeScript>
+```ts filename="ConsumptionApi.ts" copy
+import { ConsumptionApi } from "@514labs/moose-lib";
+
+interface QueryParams {
+  userId: string;
+  limit: number;
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Create a standalone consumption API
+const userDataApi = new ConsumptionApi<QueryParams, UserData[]>("user-data", 
+  async ({ userId, limit }, { client, sql }) => {
+    // Query external service or custom logic
+    return [
+      { id: userId, name: "John Doe", email: "john@example.com" }
+    ];
+  }
+);
+```
+</TypeScript>
+
+<Python>
+```py filename="ConsumptionApi.py" copy
+from moose_lib import ConsumptionApi, MooseClient
+from pydantic import BaseModel
+
+class QueryParams(BaseModel):
+    user_id: str
+    limit: int
+
+class UserData(BaseModel):
+    id: str
+    name: str
+    email: str
+
+def get_user_data(client: MooseClient, params: QueryParams) -> list[UserData]:
+    # Query external service or custom logic
+    return [
+        UserData(id=params.user_id, name="John Doe", email="john@example.com")
+    ]
+
+user_data_api = ConsumptionApi[QueryParams, UserData]("user-data", get_user_data)
+```
+</Python>
+
+## When to Use Moose APIs vs. Existing Backends
+
+If you already have a FastAPI, Fastify, or other REST API backend and are using Moose OLAP and streaming modules, here's when to use Moose APIs versus integrating Moose functions into your existing backend:
+
+### Use Moose APIs When:
+
+#### **High-Throughput Data Ingestion**
+- Need to handle thousands of events per second
+- Want Rust-powered performance (much faster than Node.js/Python)
+- Require automatic schema validation and DLQ support
+- Building webhook receivers or event streaming endpoints
+
+#### **Analytics-Focused Endpoints**
+- Creating dedicated analytics APIs separate from your main app
+- Need automatic OpenAPI generation with example data
+- Want type-safe SQL querying with template literals
+- Building data visualization or BI tool integrations
+
+#### **Data Pipeline Integration**
+- Creating standalone ingestion services
+- Need direct connection to streams/tables without glue code
+- Building ETL pipeline endpoints
+- Want push-based data patterns
+
+#### **Microservices Architecture**
+- Creating dedicated data services
+- Need service isolation and independent scaling
+- Building event-driven data pipelines
+- Want separate deployment and monitoring
+
+### Integrate Moose Functions into Existing Backend When:
+
+#### **Unified Application Experience**
+- Want single authentication/authorization system
+- Need consistent middleware and error handling
+- Building user-facing features that need data access
+- Require unified logging and monitoring
+
+#### **Complex Business Logic**
+- Need sophisticated request/response transformations
+- Require custom validation beyond schema validation
+- Building workflows that combine data with business rules
+- Need session management and user context
+
+#### **Legacy Integration**
+- Integrating with existing API patterns
+- Need to maintain current API contracts
+- Building gradual migrations
+- Require specific framework features
+
+#### **Simple Data Access**
+- Basic CRUD operations on Moose tables
+- Simple filtering and pagination
+- When performance isn't critical
+- Building internal admin tools
+
+### Integration Patterns
+
+#### **Option 1: MooseClient in Existing Backend**
+
+<TypeScript>
+```ts filename="FastAPI Integration.ts" copy
+import { MooseClient } from "@514labs/moose-lib";
+
+// In your FastAPI app
+app.get("/users", async (req, res) => {
+  const client = new MooseClient();
+  const result = await client.query.execute(
+    sql`SELECT * FROM users LIMIT ${limit}`,
+    { limit: 10 }
+  );
+  return await result.json();
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="FastAPI Integration.py" copy
+from moose_lib import MooseClient
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/users")
+async def get_users(limit: int = 10):
+    client = MooseClient()
+    result = await client.query.execute(
+        "SELECT * FROM users LIMIT {limit:UInt32}",
+        {"limit": limit}
+    )
+    return await result.json()
+```
+</Python>
+
+#### **Option 2: Hybrid Approach**
+- Use Moose APIs for high-throughput ingestion
+- Use existing backend for complex business logic
+- Use MooseClient for data access in existing endpoints
+
+#### **Option 3: Separate Services**
+- Moose APIs for data pipeline endpoints
+- Existing backend for application logic
+- Communicate via internal APIs or events
+
+### Key Decision Factors
+
+<BulletPointsCard
+  title="Choose Based On"
+  bullets={[
+    {
+      title: "Performance",
+      description: "Moose APIs for high-throughput, existing backend for complex logic"
+    },
+    {
+      title: "Architecture", 
+      description: "Separate services vs. unified application"
+    },
+    {
+      title: "Team Structure",
+      description: "Data team vs. application team ownership"
+    },
+    {
+      title: "Deployment",
+      description: "Independent scaling vs. unified deployment"
+    },
+    {
+      title: "Monitoring",
+      description: "Separate observability vs. unified monitoring"
+    }
+  ]}
+/>
+
+The choice depends on your specific use case, team structure, and performance requirements.
+

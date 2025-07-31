@@ -104,7 +104,7 @@ def handler_with_client(moose_client):
                               str(size)))
         def do_GET(self):
             parsed_path = urlparse(self.path)
-            path_parts = parsed_path.path.lstrip('/').split('/')
+            path_parts = parsed_path.path.lstrip('/').rstrip('/').split('/')
             module_name = path_parts[0]
             version_from_path = "/".join(path_parts[1:]) if len(path_parts) > 1 else None
 

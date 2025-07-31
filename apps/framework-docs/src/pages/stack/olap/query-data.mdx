@@ -1,0 +1,913 @@
+---
+title: Querying Data
+description: Query OLAP tables using SQL with type safety
+---
+
+import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python, CTACard, CTACards } from "@/components";
+import { Tabs } from "nextra/components";
+
+# Querying Data
+
+<LanguageSwitcher />
+
+Moose provides type-safe SQL querying for your `OlapTable` and `MaterializedView` instances. Use cases include:
+
+- Building APIs to expose your data to client/frontend applications
+- Building transformation pipelines inside your database with materialized views
+
+## Querying with MooseClient
+
+Use `MooseClient` to query data from existing tables and materialized views.
+
+### Basic Querying
+
+<TypeScript>
+```ts filename="BasicQuerying.ts"
+import { MooseClient, sql } from "@514labs/moose-lib";
+import { UserTable } from "./tables/UserTable";
+
+const client = new MooseClient();
+
+// Query existing table
+const query = sql`
+  SELECT id, name, email 
+  FROM ${UserTable}
+  WHERE status = 'active'
+  LIMIT 10
+`;
+
+const result = await client.query.execute(query);
+const data = await result.json();
+```
+</TypeScript>
+
+<Python>
+```py filename="BasicQuerying.py"
+from moose_lib import MooseClient
+from app.UserTable import UserTable
+
+client = MooseClient()
+
+# Query existing table
+query = """
+  SELECT id, name, email 
+  FROM {tableName:Identifier}
+  WHERE status = {status:String}
+  LIMIT {limit:UInt32}
+"""
+
+result = client.query.execute(query, {
+    "tableName": UserTable.name,
+    "status": "active",
+    "limit": 10
+})
+data = result.json()
+```
+</Python>
+
+### Querying Materialized Views
+
+<TypeScript>
+```ts filename="QueryMaterializedView.ts"
+import { MooseClient, sql } from "@514labs/moose-lib";
+
+const client = new MooseClient();
+
+// Query existing materialized view
+const query = sql`
+  SELECT user_id, total_orders, average_order_value
+  FROM user_stats_view
+  WHERE total_orders > 10
+  ORDER BY average_order_value DESC
+`;
+
+const result = await client.query.execute(query);
+```
+</TypeScript>
+
+<Python>
+```py filename="QueryMaterializedView.py"
+from moose_lib import MooseClient
+from app.UserStatsView import UserStatsView
+
+client = MooseClient()
+
+# Query existing materialized view
+query = """
+  SELECT user_id, total_orders, average_order_value
+  FROM {viewName:Identifier}
+  WHERE total_orders > {minOrders:UInt32}
+  ORDER BY average_order_value DESC
+"""
+
+result = client.query.execute(query, {
+    "viewName": UserStatsView.name,
+    "minOrders": 10
+})
+```
+</Python>
+
+## Select With Column and Table References
+
+<TypeScript>
+```ts filename="TypedReferences.ts"
+import { sql } from "@514labs/moose-lib";
+import { UserTable, OrderTable } from "./tables";
+
+// Reference table columns with type safety
+const cols = UserTable.columns;
+const query = sql`
+  SELECT 
+    ${cols.id},
+    ${cols.name},
+    ${cols.email}
+  FROM ${UserTable}
+  WHERE ${cols.status} = 'active'
+`;
+
+// Multiple table references
+const joinQuery = sql`
+  SELECT 
+    ${UserTable.columns.id},
+    ${UserTable.columns.name},
+    ${OrderTable.columns.order_value}
+  FROM ${UserTable}
+  JOIN ${OrderTable} ON ${UserTable.columns.id} = ${OrderTable.columns.user_id}
+`;
+```
+
+When you query a materialized view, you reference the `MaterializedView.targetTable` to get the columns of the target table.
+
+
+```ts filename="TypedReferences.ts"
+import { sql } from "@514labs/moose-lib";
+import { ExampleMaterializedView } from "./materialized-views";
+
+
+const query = sql`
+  SELECT 
+    ${ExampleMaterializedView.targetTable.columns.id},
+    ${ExampleMaterializedView.targetTable.columns.name},
+    ${ExampleMaterializedView.targetTable.columns.email}
+  FROM ${ExampleMaterializedView.targetTable}
+`;
+```
+
+In ClickHouse, when you query a Materialized View that has columns of type `AggregateFunction` in the result set, ordinarily you would need to run:
+
+```sql
+SELECT sumMerge(amount) FROM {ExampleMaterializedView}
+```
+
+When querying this with Moose, you can just reference the column name in the `sql` template literal. The interpolation will be replaced with the correct ClickHouse function:
+
+```ts filename="TypedReferences.ts"
+import { sql } from "@514labs/moose-lib";
+import { ExampleMaterializedView } from "./materialized-views";
+
+const query = sql`
+  SELECT ${ExampleMaterializedView.targetTable.columns.amount}
+  FROM ${ExampleMaterializedView.targetTable}
+`;
+
+// This will be replaced with:
+// SELECT sumMerge(amount) FROM {ExampleMaterializedView}
+```
+</TypeScript>
+
+<Python>
+```py filename="TypedReferences.py"
+from moose_lib import MooseClient
+from app.tables import UserTable, OrderTable
+
+client = MooseClient()
+
+# Reference table columns with type safety
+query = """
+  SELECT 
+    id,
+    name,
+    email
+  FROM {userTable:Identifier}
+  WHERE status = {status:String}
+"""
+
+# Multiple table references
+join_query = """
+  SELECT 
+    u.id,
+    u.name,
+    o.order_value
+  FROM {userTable:Identifier} u
+  JOIN {orderTable:Identifier} o ON u.id = o.user_id
+"""
+
+result = client.query.execute(query, {
+    "userTable": UserTable.name,
+    "status": "active"
+})
+```
+</Python>
+
+## Filtering with WHERE Clauses
+
+<TypeScript>
+```ts filename="WhereClauses.ts"
+import { sql } from "@514labs/moose-lib";
+
+// Multiple WHERE conditions
+const filterQuery = sql`
+  SELECT ${UserTable.columns.id}, ${UserTable.columns.name}
+  FROM ${UserTable}
+  WHERE ${UserTable.columns.status} = 'active'
+    AND ${UserTable.columns.created_at} > '2024-01-01'
+    AND ${UserTable.columns.email} ILIKE ${'%' + searchTerm + '%'}
+`;
+
+// Using IN clauses
+const inQuery = sql`
+  SELECT * FROM ${UserTable}
+  WHERE ${UserTable.columns.id} IN (${userIds})
+`;
+
+// Using BETWEEN
+const rangeQuery = sql`
+  SELECT * FROM ${UserTable}
+  WHERE ${UserTable.columns.age} BETWEEN ${minAge} AND ${maxAge}
+`;
+```
+</TypeScript>
+
+<Python>
+```py filename="WhereClauses.py"
+from moose_lib import MooseClient
+
+# Multiple WHERE conditions
+filter_query = """
+  SELECT id, name
+  FROM {tableName:Identifier}
+  WHERE status = {status:String}
+    AND created_at > {startDate:DateTime}
+    AND email ILIKE %{searchTerm:String}%
+"""
+
+# Using IN clauses
+in_query = """
+  SELECT * FROM {tableName:Identifier}
+  WHERE id IN ({userIds:Array(UInt32)})
+"""
+
+# Using BETWEEN
+range_query = """
+  SELECT * FROM {tableName:Identifier}
+  WHERE age BETWEEN {minAge:UInt32} AND {maxAge:UInt32}
+"""
+```
+</Python>
+
+## Dynamic Query Building
+
+<TypeScript>
+```ts filename="DynamicQueries.ts"
+import { sql, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
+interface QueryParams {
+  sortBy: string;
+  fields: string[];
+  filters: Record<string, any>;
+}
+
+const buildDynamicQuery = ({ sortBy, fields, filters }: QueryParams) => {
+  // Build field list
+  const fieldList = fields.map(field => sql`${CH.column(field)}`);
+  
+  // Build WHERE conditions
+  const conditions = Object.entries(filters)
+    .filter(([_, value]) => value !== undefined)
+    .map(([key, value]) => sql`${CH.column(key)} = ${value}`);
+  
+  let query = sql`
+    SELECT ${fieldList.join(', ')}
+    FROM ${UserTable}
+  `;
+  
+  if (conditions.length > 0) {
+    query = sql`${query} WHERE ${conditions.join(' AND ')}`;
+  }
+  
+  query = sql`${query} ORDER BY ${CH.column(sortBy)}`;
+  
+  return query;
+};
+```
+</TypeScript>
+
+<Python>
+```py filename="DynamicQueries.py"
+from moose_lib import MooseClient
+from typing import Dict, Any
+
+def build_dynamic_query(filters: Dict[str, Any], sort_by: str, limit: int):
+    conditions = []
+    parameters = {}
+    
+    for key, value in filters.items():
+        if value is not None:
+            conditions.append(f"{key} = {{{key}:String}}")
+            parameters[key] = value
+    
+    query = "SELECT * FROM {tableName:Identifier}"
+    parameters["tableName"] = UserTable.name
+    
+    if conditions:
+        query += f" WHERE {' AND '.join(conditions)}"
+    
+    query += f" ORDER BY {{sortBy:Identifier}} LIMIT {{limit:UInt32}}"
+    parameters.update({
+        "sortBy": sort_by,
+        "limit": limit
+    })
+    
+    return client.query.execute(query, parameters)
+```
+</Python>
+
+### Interpolation and Security
+
+<TypeScript>
+Use the `sql` template literal to build safe queries:
+
+```ts filename="SqlTemplateLiterals.ts"
+import { sql } from "@514labs/moose-lib";
+
+// Safe interpolation with sql template literal
+const status = 'active';
+const limit = 10;
+
+const query = sql`
+  SELECT id, name, email
+  FROM ${UserTable}
+  WHERE ${UserTable.columns.status} = ${status}
+  LIMIT ${limit}
+`;
+
+// Conditional WHERE clauses
+interface FilterParams {
+  minAge?: number;
+  status?: "active" | "inactive";
+  searchText?: string;
+}
+
+const buildConditionalQuery = (filters: FilterParams) => {
+  let conditions = [];
+  
+  if (filters.minAge !== undefined) {
+    conditions.push(sql`age >= ${filters.minAge}`);
+  }
+  
+  if (filters.status) {
+    conditions.push(sql`status = ${filters.status}`);
+  }
+  
+  if (filters.searchText) {
+    conditions.push(sql`(name ILIKE ${'%' + filters.searchText + '%'} OR email ILIKE ${'%' + filters.searchText + '%'})`);
+  }
+  
+  let query = sql`SELECT * FROM ${UserTable}`;
+  
+  if (conditions.length > 0) {
+    query = sql`${query} WHERE ${conditions.join(' AND ')}`;
+  }
+  
+  return sql`${query} ORDER BY created_at DESC`;
+};
+```
+</TypeScript>
+
+<Python>
+
+<Tabs items={["Parameter Binding (Recommended)", "F-Strings (Use with Caution)"]}>
+<Tabs.Tab>
+Use parameter binding to build safe queries:
+```py filename="ParameterBinding.py"
+from moose_lib import MooseClient
+
+# Safe parameter binding
+query = """
+  SELECT id, name, email
+  FROM {tableName:Identifier}
+  WHERE status = {status:String}
+    AND created_at > {startDate:DateTime}
+  LIMIT {limit:UInt32}
+"""
+
+result = client.query.execute(query, {
+    "tableName": UserTable.name,
+    "status": "active",
+    "startDate": "2024-01-01",
+    "limit": 10
+})
+
+# Conditional WHERE clauses
+def build_conditional_query(client: MooseClient, params: FilterParams):
+    conditions = []
+    parameters = {}
+    
+    if params.min_age is not None:
+        conditions.append("age >= {minAge:UInt32}")
+        parameters["minAge"] = params.min_age
+    
+    if params.status:
+        conditions.append("status = {status:String}")
+        parameters["status"] = params.status
+    
+    if params.search_text:
+        conditions.append("(name ILIKE %{searchText:String}% OR email ILIKE %{searchText:String}%)")
+        parameters["searchText"] = params.search_text
+    
+    query = "SELECT * FROM {tableName:Identifier}"
+    parameters["tableName"] = user_table.name
+    
+    if conditions:
+        query += f" WHERE {' AND '.join(conditions)}"
+    
+    query += " ORDER BY created_at DESC"
+    
+    return client.query.execute(query, parameters)
+```
+</Tabs.Tab>
+<Tabs.Tab>
+For certain use cases, you may be able to use f-strings. This is not recommended for dynamic queries, but for simple cases where you have a static query or a parameterized query with a known set of parameters you can validate the query parameters with Pydantic before using them in the query.
+
+```py filename="FStrings.py"
+from moose_lib import MooseClient
+from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Optional, List
+from datetime import datetime
+
+# Define validated query parameters
+class UserQueryParams(BaseModel):
+    table_name: str = Field(..., description="Table name to query")
+    status: Optional[str] = Field(None, description="User status filter")
+    limit: int = Field(default=10, ge=1, le=1000, description="Query limit")
+    email_domain: Optional[str] = Field(None, description="Email domain filter")
+    
+    @validator('status')
+    def validate_status(cls, v):
+        if v is not None and v not in ['active', 'inactive', 'pending']:
+            raise ValueError('Status must be one of: active, inactive, pending')
+        return v
+    
+    @validator('email_domain')
+    def validate_email_domain(cls, v):
+        if v is not None and not v.startswith('@'):
+            raise ValueError('Email domain must start with @')
+        return v
+
+# Use validated parameters in f-string query
+def build_user_query(params: UserQueryParams) -> str:
+    # Parameters are already validated by Pydantic
+    query = f"""
+        SELECT id, name, email
+        FROM {params.table_name}
+        WHERE 1=1
+    """
+    
+    if params.status:
+        query += f" AND status = '{params.status}'"
+    
+    if params.email_domain:
+        query += f" AND email LIKE '%{params.email_domain}'"
+    
+    query += f" LIMIT {params.limit}"
+    
+    return query
+
+# Usage example
+client = MooseClient()
+
+try:
+    # This will pass validation
+    valid_params = UserQueryParams(
+        table_name="users",
+        status="active",
+        limit=50,
+        email_domain="@example.com"
+    )
+    
+    query = build_user_query(valid_params)
+    result = client.query.execute(query)
+    
+except ValueError as e:
+    print(f"Validation error: {e}")
+    # Handle validation error appropriately
+
+# This would raise a validation error
+try:
+    invalid_params = UserQueryParams(
+        table_name="users",
+        status="invalid_status",  # This will fail validation
+        limit=5000  # This will fail validation (too high)
+    )
+except ValueError as e:
+    print(f"Validation error: {e}")
+```
+</Tabs.Tab>
+</Tabs>
+
+<Callout type="warning">
+**Important Security Notes:**
+- Only use f-strings with **trusted, validated input** that you control
+- Never use f-strings with user-provided data directly
+- Always prefer parameter binding for dynamic queries
+- Pydantic validation helps but doesn't eliminate SQL injection risks
+- Consider using parameter binding for maximum security
+</Callout>
+
+</Python>
+
+
+## Common Query Patterns
+
+### Sorting and Pagination
+
+<TypeScript>
+```ts filename="SortingPagination.ts"
+import { sql } from "@514labs/moose-lib";
+
+// Multi-column sorting
+const sortQuery = sql`
+  SELECT ${UserTable.columns.id}, ${UserTable.columns.name}, ${UserTable.columns.created_at}
+  FROM ${UserTable}
+  ORDER BY ${UserTable.columns.status} ASC, ${UserTable.columns.created_at} DESC
+  LIMIT ${limit} OFFSET ${offset}
+`;
+
+// Dynamic sorting
+const dynamicSortQuery = sql`
+  SELECT * FROM ${UserTable}
+  ORDER BY ${CH.column(sortBy)} ${sortDirection}
+  LIMIT ${limit}
+`;
+```
+</TypeScript>
+
+<Python>
+```py filename="SortingPagination.py"
+from moose_lib import MooseClient
+
+# Multi-column sorting
+sort_query = """
+  SELECT id, name, created_at
+  FROM {tableName:Identifier}
+  ORDER BY status ASC, created_at DESC
+  LIMIT {limit:UInt32} OFFSET {offset:UInt32}
+"""
+
+# Dynamic sorting
+dynamic_sort_query = """
+  SELECT * FROM {tableName:Identifier}
+  ORDER BY {sortBy:Identifier} {sortDirection:String}
+  LIMIT {limit:UInt32}
+"""
+```
+</Python>
+
+### Aggregations and Grouping
+
+<TypeScript>
+```ts filename="Aggregations.ts"
+import { sql } from "@514labs/moose-lib";
+
+// Basic aggregations
+const aggQuery = sql`
+  SELECT 
+    ${UserTable.columns.status},
+    COUNT(*) as user_count,
+    AVG(${UserTable.columns.age}) as avg_age,
+    SUM(${UserTable.columns.score}) as total_score
+  FROM ${UserTable}
+  GROUP BY ${UserTable.columns.status}
+  HAVING COUNT(*) > 10
+`;
+
+// Complex aggregations with CASE statements
+const complexAggQuery = sql`
+  SELECT 
+    ${UserTable.columns.status},
+    COUNT(*) as total_users,
+    COUNT(CASE WHEN ${UserTable.columns.age} > 25 THEN 1 END) as users_over_25,
+    AVG(CASE WHEN ${UserTable.columns.status} = 'active' THEN ${UserTable.columns.score} END) as avg_active_score
+  FROM ${UserTable}
+  GROUP BY ${UserTable.columns.status}
+`;
+```
+</TypeScript>
+
+<Python>
+```py filename="Aggregations.py"
+from moose_lib import MooseClient
+
+# Basic aggregations
+agg_query = """
+  SELECT 
+    status,
+    COUNT(*) as user_count,
+    AVG(age) as avg_age,
+    SUM(score) as total_score
+  FROM {tableName:Identifier}
+  GROUP BY status
+  HAVING COUNT(*) > {minCount:UInt32}
+"""
+
+# Complex aggregations with CASE statements
+complex_agg_query = """
+  SELECT 
+    status,
+    COUNT(*) as total_users,
+    COUNT(CASE WHEN age > 25 THEN 1 END) as users_over_25,
+    AVG(CASE WHEN status = 'active' THEN score END) as avg_active_score
+  FROM {tableName:Identifier}
+  GROUP BY status
+"""
+```
+</Python>
+
+### Joins
+
+<TypeScript>
+```ts filename="Joins.ts"
+import { sql } from "@514labs/moose-lib";
+import { UserTable, OrderTable } from "./tables";
+
+// INNER JOIN
+const innerJoinQuery = sql`
+  SELECT 
+    ${UserTable.columns.id},
+    ${UserTable.columns.name},
+    ${OrderTable.columns.order_value}
+  FROM ${UserTable}
+  INNER JOIN ${OrderTable} ON ${UserTable.columns.id} = ${OrderTable.columns.user_id}
+  WHERE ${OrderTable.columns.status} = 'completed'
+`;
+
+// LEFT JOIN
+const leftJoinQuery = sql`
+  SELECT 
+    ${UserTable.columns.id},
+    ${UserTable.columns.name},
+    COUNT(${OrderTable.columns.id}) as order_count
+  FROM ${UserTable}
+  LEFT JOIN ${OrderTable} ON ${UserTable.columns.id} = ${OrderTable.columns.user_id}
+  GROUP BY ${UserTable.columns.id}, ${UserTable.columns.name}
+`;
+```
+</TypeScript>
+
+<Python>
+```py filename="Joins.py"
+from moose_lib import MooseClient
+
+# INNER JOIN
+inner_join_query = """
+  SELECT 
+    u.id,
+    u.name,
+    o.order_value
+  FROM {userTable:Identifier} u
+  INNER JOIN {orderTable:Identifier} o ON u.id = o.user_id
+  WHERE o.status = {orderStatus:String}
+"""
+
+# LEFT JOIN
+left_join_query = """
+  SELECT 
+    u.id,
+    u.name,
+    COUNT(o.id) as order_count
+  FROM {userTable:Identifier} u
+  LEFT JOIN {orderTable:Identifier} o ON u.id = o.user_id
+  GROUP BY u.id, u.name
+"""
+```
+</Python>
+
+## Building APIs with ConsumptionApi
+
+### Basic API
+
+<TypeScript>
+```ts filename="BasicAPI.ts"
+import { ConsumptionApi, sql } from "@514labs/moose-lib";
+
+interface QueryParams {
+  limit?: number;
+  status?: "active" | "inactive";
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+}
+
+const userApi = new ConsumptionApi<QueryParams, UserData[]>(
+  "users",
+  async ({ limit = 10, status }, { client, sql }) => {
+    let query = sql`
+      SELECT ${UserTable.columns.id}, ${UserTable.columns.name}, ${UserTable.columns.email}
+      FROM ${UserTable}
+    `;
+    
+    if (status) {
+      query = sql`${query} WHERE ${UserTable.columns.status} = ${status}`;
+    }
+    
+    query = sql`${query} LIMIT ${limit}`;
+    
+    const result = await client.query.execute<UserData>(query);
+    return await result.json();
+  }
+);
+```
+</TypeScript>
+
+<Python>
+```py filename="BasicAPI.py"
+from moose_lib import ConsumptionApi, MooseClient
+from pydantic import BaseModel
+from typing import Optional
+
+class QueryParams(BaseModel):
+    limit: Optional[int] = 10
+    status: Optional[str] = None
+
+class UserData(BaseModel):
+    id: str
+    name: str
+    email: str
+
+def user_query(client: MooseClient, params: QueryParams) -> list[UserData]:
+    query = """
+      SELECT id, name, email
+      FROM {tableName:Identifier}
+    """
+    
+    parameters = {"tableName": UserTable.name}
+    
+    if params.status:
+        query += " WHERE status = {status:String}"
+        parameters["status"] = params.status
+    
+    query += " LIMIT {limit:UInt32}"
+    parameters["limit"] = params.limit
+    
+    return client.query.execute(query, parameters)
+
+user_api = ConsumptionApi[QueryParams, UserData](
+    name="users", 
+    query_function=user_query
+)
+```
+</Python>
+
+### Advanced API with Dynamic Filters
+
+<TypeScript>
+```ts filename="AdvancedAPI.ts"
+import { ConsumptionApi, sql, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+
+interface AdvancedQueryParams {
+  filters: Record<string, any>;
+  sortBy: string;
+  sortDirection: "ASC" | "DESC";
+  page: number;
+  limit: number;
+}
+
+const advancedUserApi = new ConsumptionApi<AdvancedQueryParams, UserData[]>(
+  "users/advanced",
+  async ({ filters, sortBy, sortDirection, page, limit }, { client, sql }) => {
+    // Build WHERE conditions
+    const conditions = Object.entries(filters)
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => sql`${CH.column(key)} = ${value}`);
+    
+    let query = sql`
+      SELECT ${UserTable.columns.id}, ${UserTable.columns.name}, ${UserTable.columns.email}
+      FROM ${UserTable}
+    `;
+    
+    if (conditions.length > 0) {
+      query = sql`${query} WHERE ${conditions.join(' AND ')}`;
+    }
+    
+    const offset = (page - 1) * limit;
+    query = sql`${query} ORDER BY ${CH.column(sortBy)} ${sortDirection} LIMIT ${limit} OFFSET ${offset}`;
+    
+    const result = await client.query.execute<UserData>(query);
+    return await result.json();
+  }
+);
+```
+</TypeScript>
+
+<Python>
+```py filename="AdvancedAPI.py"
+from moose_lib import ConsumptionApi, MooseClient
+from pydantic import BaseModel
+from typing import Dict, Any, Literal
+
+class AdvancedQueryParams(BaseModel):
+    filters: Dict[str, Any] = {}
+    sort_by: str = "id"
+    sort_direction: Literal["ASC", "DESC"] = "ASC"
+    page: int = 1
+    limit: int = 10
+
+def advanced_user_query(client: MooseClient, params: AdvancedQueryParams) -> list[UserData]:
+    conditions = []
+    query_params = {"tableName": UserTable.name}
+    
+    # Build WHERE conditions
+    for key, value in params.filters.items():
+        if value is not None:
+            conditions.append(f"{key} = {{{key}:String}}")
+            query_params[key] = value
+    
+    query = """
+      SELECT id, name, email
+      FROM {tableName:Identifier}
+    """
+    
+    if conditions:
+        query += f" WHERE {' AND '.join(conditions)}"
+    
+    offset = (params.page - 1) * params.limit
+    query += f" ORDER BY {{sortBy:Identifier}} {{sortDirection:String}} LIMIT {{limit:UInt32}} OFFSET {{offset:UInt32}}"
+    
+    query_params.update({
+        "sortBy": params.sort_by,
+        "sortDirection": params.sort_direction,
+        "limit": params.limit,
+        "offset": offset
+    })
+    
+    return client.query.execute(query, query_params)
+
+advanced_user_api = ConsumptionApi[AdvancedQueryParams, UserData](
+    name="users/advanced", 
+    query_function=advanced_user_query
+)
+```
+</Python>
+
+
+## Common Pitfalls
+
+<TypeScript>
+<Callout type="warning" title="Common TypeScript Issues">
+- **Column name typos**: Use `UserTable.columns.columnName` for autocomplete
+- **Type mismatches**: Ensure your schema types match ClickHouse types
+- **Missing imports**: Import your table definitions before using them
+- **Template literal syntax**: Use backticks `sql` not regular strings
+- **Forgetting await**: Always await `client.query.execute()`
+</Callout>
+</TypeScript>
+
+<Python>
+<Callout type="warning" title="Common Python Issues">
+- **SQL injection**: Always use parameter binding, never f-strings with user input
+- **Type validation**: Use Pydantic models to validate query parameters
+- **Memory issues**: Add LIMIT clauses for large queries
+- **Connection handling**: Implement proper connection pooling and retry logic
+- **Parameter types**: Use correct ClickHouse type annotations in parameter binding
+</Callout>
+</Python>
+
+## Performance Optimization
+If your query is slower than expected, there are a few things you can check:
+
+- If using filters, try to filter on a column that is defined in the `orderByFields` of the table
+- For common queries, consider [creating a materialized view](/stack/olap/create-materialized-view) to pre-compute the result set
+
+
+## Further Reading
+
+<CTACards columns={1}>
+<CTACard
+  title="Moose APIs"
+  description="Build REST APIs for your data with built-in Moose API module"
+  ctaLink="/stack/apis/egress"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+/>
+<CTACard
+  title="Creating Materialized Views"
+  description="Define data transformations"
+  ctaLink="/stack/olap/create-materialized-view"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+/>
+</CTACards>
+

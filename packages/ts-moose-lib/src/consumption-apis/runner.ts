@@ -153,17 +153,14 @@ const apiHandler =
           if (version) {
             const versionedKey = `${apiName}:${version}`;
             userFuncModule = egressApis.get(versionedKey);
-          }
-
-          // Fall back to unversioned lookup if versioned lookup failed or no version specified
-          if (!userFuncModule) {
+          } else {
             userFuncModule = egressApis.get(apiName);
           }
           if (!userFuncModule) {
             const errorMessage =
               version ?
                 `Consumption API ${apiName} with version ${version} not found in egress APIs.`
-              : `Consumption API ${apiName} not found in egress APIs.`;
+              : `Consumption API ${apiName} not found in consumption APIs.`;
             throw new Error(errorMessage);
           }
 

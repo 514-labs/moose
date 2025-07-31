@@ -92,7 +92,10 @@ function GitHubStarsButton({
   }, []);
 
   const localRef = React.useRef<HTMLAnchorElement>(null);
-  React.useImperativeHandle(ref, () => localRef.current as HTMLAnchorElement);
+  React.useImperativeHandle(
+    ref as React.Ref<HTMLAnchorElement>,
+    () => localRef.current as HTMLAnchorElement,
+  );
 
   const inViewResult = useInView(localRef, {
     once: inViewOnce,

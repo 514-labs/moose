@@ -124,7 +124,10 @@ function SlidingNumber({
   ...props
 }: SlidingNumberProps) {
   const localRef = React.useRef<HTMLSpanElement>(null);
-  React.useImperativeHandle(ref, () => localRef.current!);
+  React.useImperativeHandle(
+    ref as React.Ref<HTMLSpanElement>,
+    () => localRef.current!,
+  );
 
   const inViewResult = useInView(localRef, {
     once: inViewOnce,

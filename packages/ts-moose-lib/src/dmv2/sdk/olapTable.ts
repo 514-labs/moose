@@ -162,11 +162,14 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   ) {
     super(name, config ?? {}, schema, columns, validators);
 
+    const version = config?.version;
+    const tableKey = version ? `${name}_${version}` : name;
+
     const tables = getMooseInternal().tables;
-    if (tables.has(name)) {
-      throw new Error(`OlapTable with name ${name} already exists`);
+    if (tables.has(tableKey)) {
+      throw new Error(`OlapTable with name ${tableKey} already exists`);
     }
-    tables.set(name, this);
+    tables.set(tableKey, this);
   }
 
   /**

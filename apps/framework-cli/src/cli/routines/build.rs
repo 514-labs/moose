@@ -37,12 +37,11 @@ use crate::project::Project;
 use crate::project::ProjectFileError;
 use crate::utilities::constants::LIB_DIR;
 use crate::utilities::constants::PACKAGE_JSON;
-use crate::utilities::constants::PACKAGE_LOCK_JSON;
-use crate::utilities::constants::PNPM_LOCK;
 use crate::utilities::constants::REQUIREMENTS_TXT;
 use crate::utilities::constants::SETUP_PY;
 use crate::utilities::constants::TSCONFIG_JSON;
 use crate::utilities::constants::{APP_DIR, PROJECT_CONFIG_FILE};
+use crate::utilities::package_managers::{detect_package_manager, get_lock_file_path};
 use crate::utilities::system;
 use crate::utilities::system::copy_directory;
 
@@ -191,7 +190,7 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
     let project_root_path = project.project_location.clone();
 
     // Files to include in the package
-    let mut files_to_copy = match project.language {
+    let files_to_copy = match project.language {
         SupportedLanguages::Typescript => {
             vec![APP_DIR, PROJECT_CONFIG_FILE, PACKAGE_JSON, TSCONFIG_JSON]
         }
@@ -200,14 +199,37 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
         }
     };
 
-    // For TypeScript projects, also include lock files if they exist
-    if project.language == SupportedLanguages::Typescript {
-        if project.project_location.join(PNPM_LOCK).exists() {
-            files_to_copy.push(PNPM_LOCK);
-        } else if project.project_location.join(PACKAGE_LOCK_JSON).exists() {
-            files_to_copy.push(PACKAGE_LOCK_JSON);
+    // Handle lock file copying after regular files (may be from parent directories)
+    let _lock_file_copied = if project.language == SupportedLanguages::Typescript {
+        let package_manager = detect_package_manager(&project.project_location);
+        info!("Detected package manager: {}", package_manager);
+
+        if let Some(lock_file_path) = get_lock_file_path(&project.project_location) {
+            let lock_file_name = lock_file_path.file_name().unwrap().to_str().unwrap();
+            let destination_path = package_dir.join(lock_file_name);
+
+            match fs::copy(&lock_file_path, &destination_path) {
+                Ok(_) => {
+                    info!(
+                        "Copied lock file from {:?} to package directory",
+                        lock_file_path
+                    );
+                    true
+                }
+                Err(err) => {
+                    error!("Failed to copy lock file {:?}: {}", lock_file_path, err);
+                    return Err(BuildError::FileCopyFailed(
+                        lock_file_name.to_string(),
+                        err.to_string(),
+                    ));
+                }
+            }
+        } else {
+            false
         }
-    }
+    } else {
+        false
+    };
 
     for item in &files_to_copy {
         let source_path = project_root_path.join(item);
@@ -566,9 +588,10 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
 
 /// Modifies the tsconfig.json file to add baseUrl for proper path resolution.
 ///
-/// This function reads the tsconfig.json file, parses it as JSON, adds the
-/// baseUrl field pointing to "../../" (relative to .moose/packager), and
-/// writes it back to the file.
+/// This function reads the tsconfig.json file, parses it as JSON, and conditionally
+/// adds the baseUrl field pointing to "../../" (relative to .moose/packager) if one
+/// doesn't already exist. If a baseUrl is already present, it preserves the existing
+/// value to respect user configuration.
 ///
 /// # Arguments
 ///
@@ -599,22 +622,55 @@ fn modify_tsconfig_baseurl(tsconfig_path: &Path) -> Result<(), BuildError> {
         BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
     })?;
 
-    // Add baseUrl to compilerOptions
+    // Handle baseUrl in compilerOptions
     if let Some(compiler_options) = tsconfig.get_mut("compilerOptions") {
         if let Some(compiler_obj) = compiler_options.as_object_mut() {
-            compiler_obj.insert(
-                "baseUrl".to_string(),
-                serde_json::Value::String("../../".to_string()),
-            );
+            // Check if baseUrl already exists and get its value
+            let existing_base_url = compiler_obj.get("baseUrl").cloned();
+
+            if let Some(existing_base_url) = existing_base_url {
+                if let Some(base_url_str) = existing_base_url.as_str() {
+                    let modified_base_url = adjust_base_url_for_packager(base_url_str);
+                    match modified_base_url {
+                        Some(new_url) => {
+                            compiler_obj.insert(
+                                "baseUrl".to_string(),
+                                serde_json::Value::String(new_url.clone()),
+                            );
+                            info!(
+                                "Modified existing baseUrl from \"{}\" to \"{}\"",
+                                base_url_str, new_url
+                            );
+                        }
+                        None => {
+                            info!(
+                                "Found complex baseUrl: \"{}\", preserving it unchanged",
+                                base_url_str
+                            );
+                            info!("You may need to manually adjust path resolution for the packaged application");
+                        }
+                    }
+                } else {
+                    info!("Found non-string baseUrl, preserving it unchanged");
+                }
+            } else {
+                // Add baseUrl only if it doesn't exist
+                compiler_obj.insert(
+                    "baseUrl".to_string(),
+                    serde_json::Value::String("../../".to_string()),
+                );
+                info!("Added baseUrl: \"../../\" to tsconfig.json");
+            }
         }
     } else {
-        // If compilerOptions doesn't exist, create it
+        // If compilerOptions doesn't exist, create it with baseUrl
         let mut compiler_options = serde_json::Map::new();
         compiler_options.insert(
             "baseUrl".to_string(),
             serde_json::Value::String("../../".to_string()),
         );
         tsconfig["compilerOptions"] = serde_json::Value::Object(compiler_options);
+        info!("Created compilerOptions with baseUrl: \"../../\"");
     }
 
     // Write the modified tsconfig back to file
@@ -628,6 +684,68 @@ fn modify_tsconfig_baseurl(tsconfig_path: &Path) -> Result<(), BuildError> {
         BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
     })?;
 
-    info!("Successfully added baseUrl to tsconfig.json");
+    info!("Successfully processed baseUrl in tsconfig.json");
     Ok(())
+}
+
+/// Adjusts a baseUrl for the packager directory structure.
+///
+/// This function handles safe cases where we can automatically adjust the baseUrl
+/// by prepending "../../" to account for the .moose/packager directory structure.
+///
+/// # Arguments
+///
+/// * `base_url` - The existing baseUrl string
+///
+/// # Returns
+///
+/// * `Option<String>` - The adjusted baseUrl if safe to modify, None if too complex
+///
+/// # Safe Cases
+/// - "." → "../../."
+/// - "./" → "../../"  
+/// - "./src" → "../../src"
+/// - "src" → "../../src"
+///
+/// # Unsafe Cases (returns None)
+/// - Paths with upward navigation: "../", "../../"
+/// - Absolute paths: "/", "C:\\"
+/// - Complex relative paths that might break
+fn adjust_base_url_for_packager(base_url: &str) -> Option<String> {
+    let trimmed = base_url.trim();
+
+    // Handle empty or just whitespace
+    if trimmed.is_empty() {
+        return Some("../../".to_string());
+    }
+
+    // Reject absolute paths
+    if trimmed.starts_with('/') || (trimmed.len() >= 3 && &trimmed[1..3] == ":\\") {
+        debug!("Rejecting absolute path baseUrl: {}", trimmed);
+        return None;
+    }
+
+    // Reject paths that already navigate upward
+    if trimmed.starts_with("../") || trimmed == ".." {
+        debug!("Rejecting upward navigation baseUrl: {}", trimmed);
+        return None;
+    }
+
+    // Handle safe relative paths
+    match trimmed {
+        "." => Some("../../.".to_string()),
+        "./" => Some("../../".to_string()),
+        path if path.starts_with("./") => {
+            // "./src" → "../../src"
+            Some(format!("../../{}", &path[2..]))
+        }
+        path if !path.contains("../") && !path.starts_with("/") => {
+            // "src" → "../../src"
+            Some(format!("../../{}", path))
+        }
+        _ => {
+            debug!("Rejecting complex baseUrl: {}", trimmed);
+            None
+        }
+    }
 }

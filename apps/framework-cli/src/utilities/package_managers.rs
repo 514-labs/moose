@@ -220,6 +220,37 @@ fn find_pnpm_lock_up_tree(start_dir: &PathBuf) -> Option<PathBuf> {
     None
 }
 
+/// Gets the actual path to the lock file for the detected package manager.
+///
+/// This is useful for copying lock files that might be in parent directories
+/// (e.g., pnpm workspaces) to the package directory.
+///
+/// # Arguments
+///
+/// * `project_dir` - Path to the project directory
+///
+/// # Returns
+///
+/// * `Option<PathBuf>` - Path to the lock file if found
+pub fn get_lock_file_path(project_dir: &PathBuf) -> Option<PathBuf> {
+    debug!("Getting lock file path for directory: {:?}", project_dir);
+
+    // Check for pnpm-lock.yaml up the directory tree first
+    if let Some(pnpm_lock_path) = find_pnpm_lock_up_tree(project_dir) {
+        return Some(pnpm_lock_path);
+    }
+
+    // Check for package-lock.json in current directory only
+    let npm_lock_path = project_dir.join(PACKAGE_LOCK_JSON);
+    if npm_lock_path.exists() {
+        debug!("Found package-lock.json at: {:?}", npm_lock_path);
+        return Some(npm_lock_path);
+    }
+
+    debug!("No lock file found for directory: {:?}", project_dir);
+    None
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

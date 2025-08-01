@@ -7,7 +7,9 @@ use crate::utilities::constants::{
     SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
-use crate::utilities::package_managers::{detect_package_manager, PackageManager};
+use crate::utilities::package_managers::{
+    detect_package_manager, get_lock_file_path, PackageManager,
+};
 use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -163,13 +165,30 @@ pub fn create_dockerfile(
                 PackageManager::Pnpm => "RUN pnpm install",
             };
 
+            // Build copy commands for package files including lock files
+            let mut copy_commands = vec![
+                "COPY --chown=moose:moose ./package.json ./package.json",
+                "COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json",
+            ];
+
+            // Add lock file copy command based on detected package manager
+            match package_manager {
+                PackageManager::Pnpm => {
+                    copy_commands
+                        .push("COPY --chown=moose:moose ./pnpm-lock.yaml ./pnpm-lock.yaml");
+                }
+                PackageManager::Npm => {
+                    copy_commands
+                        .push("COPY --chown=moose:moose ./package-lock.json ./package-lock.json");
+                }
+            }
+
+            let copy_section = copy_commands.join("\n                    ");
+
             let install = DOCKER_FILE_COMMON
                 .replace(
                     "COPY_PACKAGE_FILE",
-                    r#"
-                    COPY --chown=moose:moose ./package.json ./package.json
-                    COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json
-                    "#,
+                    &format!("\n                    {}", copy_section),
                 )
                 .replace("INSTALL_COMMAND", install_command);
 
@@ -258,6 +277,31 @@ pub fn build_dockerfile(
         PROJECT_CONFIG_FILE,
         OLD_PROJECT_CONFIG_FILE,
     ];
+
+    // Handle lock file copying (may be from parent directories for monorepos)
+    if let Some(lock_file_path) = get_lock_file_path(&project_root_path) {
+        let lock_file_name = lock_file_path.file_name().unwrap().to_str().unwrap();
+        let destination_path = internal_dir.join("packager").join(lock_file_name);
+
+        match fs::copy(&lock_file_path, &destination_path) {
+            Ok(_) => {
+                info!(
+                    "Copied lock file from {:?} to packager directory",
+                    lock_file_path
+                );
+            }
+            Err(err) => {
+                error!("Failed to copy lock file {:?}: {}", lock_file_path, err);
+                return Err(RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to copy lock file {}", lock_file_name),
+                    ),
+                    err,
+                ));
+            }
+        }
+    }
 
     for item in items_to_copy {
         if !project_root_path.join(item).exists() {

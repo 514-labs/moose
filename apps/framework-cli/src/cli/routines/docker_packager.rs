@@ -7,6 +7,9 @@ use crate::utilities::constants::{
     SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
+use crate::utilities::package_managers::{
+    detect_package_manager, get_lock_file_path, PackageManager,
+};
 use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -153,17 +156,41 @@ pub fn create_dockerfile(
 
     let docker_file = match project.language {
         SupportedLanguages::Typescript => {
+            // Detect the package manager based on lock files
+            let package_manager = detect_package_manager(&project.project_location);
+            info!("Detected package manager: {}", package_manager);
+
+            let install_command = match package_manager {
+                PackageManager::Npm => "RUN npm install",
+                PackageManager::Pnpm => "RUN pnpm install",
+            };
+
+            // Build copy commands for package files including lock files
+            let mut copy_commands = vec![
+                "COPY --chown=moose:moose ./package.json ./package.json",
+                "COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json",
+            ];
+
+            // Add lock file copy command based on detected package manager
+            match package_manager {
+                PackageManager::Pnpm => {
+                    copy_commands
+                        .push("COPY --chown=moose:moose ./pnpm-lock.yaml ./pnpm-lock.yaml");
+                }
+                PackageManager::Npm => {
+                    copy_commands
+                        .push("COPY --chown=moose:moose ./package-lock.json ./package-lock.json");
+                }
+            }
+
+            let copy_section = copy_commands.join("\n                    ");
+
             let install = DOCKER_FILE_COMMON
                 .replace(
                     "COPY_PACKAGE_FILE",
-                    r#"
-                    COPY --chown=moose:moose ./package.json ./package.json
-                    COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json
-                    "#,
+                    &format!("\n                    {copy_section}"),
                 )
-                // We should get compatible with other package managers
-                // and respect lock files
-                .replace("INSTALL_COMMAND", "RUN npm install");
+                .replace("INSTALL_COMMAND", install_command);
 
             format!("{TS_BASE_DOCKER_FILE}{install}")
         }
@@ -250,6 +277,50 @@ pub fn build_dockerfile(
         PROJECT_CONFIG_FILE,
         OLD_PROJECT_CONFIG_FILE,
     ];
+
+    // Handle lock file copying for TypeScript projects only (may be from parent directories for monorepos)
+    if project.language == SupportedLanguages::Typescript {
+        if let Some(lock_file_path) = get_lock_file_path(&project_root_path) {
+            // Safely extract filename with proper error handling
+            let lock_file_name = match lock_file_path.file_name().and_then(|name| name.to_str()) {
+                Some(name) => name,
+                None => {
+                    error!("Invalid lock file path: {:?}", lock_file_path);
+                    return Err(RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            "to extract lock file name from path".to_string(),
+                        ),
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            "Invalid lock file path",
+                        ),
+                    ));
+                }
+            };
+
+            let destination_path = internal_dir.join("packager").join(lock_file_name);
+
+            match fs::copy(&lock_file_path, &destination_path) {
+                Ok(_) => {
+                    info!(
+                        "Copied lock file from {:?} to packager directory",
+                        lock_file_path
+                    );
+                }
+                Err(err) => {
+                    error!("Failed to copy lock file {:?}: {}", lock_file_path, err);
+                    return Err(RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            format!("to copy lock file {lock_file_name}"),
+                        ),
+                        err,
+                    ));
+                }
+            }
+        }
+    }
 
     for item in items_to_copy {
         if !project_root_path.join(item).exists() {

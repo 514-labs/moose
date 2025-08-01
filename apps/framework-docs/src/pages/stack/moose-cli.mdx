@@ -1,0 +1,155 @@
+---
+title: Moose CLI Reference
+description: Moose CLI Reference
+---
+
+# Moose CLI Reference
+
+## Installation
+
+```bash filename="Terminal" copy
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+## Core Commands
+
+### Init
+Initializes a new Moose project.
+```bash
+moose init <name> --template <template> [--location <location>] [--no-fail-already-exists]
+```
+- `<name>`: Name of your app or service
+- `<template>`: Template to use for the project
+- `--location`: Optional location for your app or service
+- `--no-fail-already-exists`: Skip the directory existence check
+
+#### List Templates
+Lists available templates for project initialization.
+```bash
+moose template list
+```
+
+### Build
+Builds your Moose project.
+```bash
+moose build [--docker] [--amd64] [--arm64]
+```
+- `--docker`: Build for Docker
+- `--amd64`: Build for AMD64 architecture
+- `--arm64`: Build for ARM64 architecture
+
+### Dev
+Starts a local development environment.
+```bash
+moose dev
+```
+
+### Prod
+Starts Moose in production mode for cloud deployments.
+```bash
+moose prod
+```
+
+### Check
+Checks the project for non-runtime errors.
+```bash
+moose check [--write-infra-map]
+```
+
+### Clean
+Clears temporary data and stops development infrastructure.
+```bash
+moose clean
+```
+
+## Monitoring Commands
+
+### Logs
+View Moose logs.
+```bash
+moose logs [--tail] [--filter <search_string>]
+```
+- `--tail`: Follow logs in real-time
+- `--filter`: Filter logs by specific string
+
+### Ps
+View Moose processes.
+```bash
+moose ps
+```
+
+### Ls
+View Moose primitives & infrastructure.
+```bash
+moose ls [--limit <n>] [--version <version>] [--streaming] [--type <type>] [--name <name>] [--json]
+```
+- `--limit`: Limit output (default: 10)
+- `--version`: View specific version
+- `--streaming`: View streaming topics
+- `--type`: Filter by infrastructure type (tables, streams, ingestion, sql_resource, consumption)
+- `--name`: Filter by name
+- `--json`: Output in JSON format
+
+### Metrics
+View live metrics from your Moose application.
+```bash
+moose metrics
+```
+
+### Peek
+View data from a table or stream.
+```bash
+moose peek <name> [--limit <n>] [--file <path>] [-t|--table] [-s|--stream]
+```
+- `<name>`: Name of the table or stream to peek
+- `--limit`: Number of rows to view (default: 5)
+- `--file`: Output to a file
+- `-t, --table`: View data from a table (default if neither flag specified)
+- `-s, --stream`: View data from a stream/topic
+
+## Generation Commands
+
+### Generate Hash Token
+Generate authentication tokens for API access.
+```bash
+moose generate hash-token
+```
+Generates both a plain-text Bearer token and its corresponding hashed version for authentication.
+
+## Workflow Management
+
+### Workflow
+```bash
+moose workflow <command> [options]
+```
+
+Available workflow commands:
+- `init <name> [--tasks <task-list>] [--task <task>...]`: Initialize a new workflow
+- `run <name> [--input <json>]`: Run a workflow
+- `resume <name> --from <task>`: Resume a workflow from a specific task
+- `list [--json]`: List registered workflows
+- `history [--status <status>] [--limit <n>] [--json]`: Show workflow history
+- `terminate <name>`: Terminate a workflow
+- `pause <name>`: Pause a workflow
+- `unpause <name>`: Unpause a workflow
+- `status <name> [--id <run-id>] [--verbose] [--json]`: Get workflow status
+
+## Planning and Deployment
+
+### Plan
+Display infrastructure changes for the next production deployment.
+```bash
+moose plan [--url <url>] [--token <token>]
+```
+- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--token`: API token for authentication
+
+### Refresh
+Integrate matching tables from a remote instance into the local project.
+```bash
+moose refresh [--url <url>] [--token <token>]
+```
+- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--token`: API token for authentication
+
+This reference reflects the current state of the Moose CLI based on the source code in the framework-cli directory. The commands are organized by their primary functions and include all available options and flags.

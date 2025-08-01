@@ -2,12 +2,12 @@ import { render } from "@/components";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { SmallText } from "@/components/typography";
 import {
-  ArrowRight,
+  Settings,
   HandMetal,
   Code,
   BookOpen,
   Rocket,
-  BookMarked,
+  Terminal,
   Hammer,
   Rss,
   Workflow,
@@ -92,6 +92,14 @@ const rawMeta = {
   "api-reference": {
     title: "API Reference",
     Icon: BookOpen,
+  },
+  "moose-cli": {
+    title: "CLI",
+    Icon: Terminal,
+  },
+  configuration: {
+    title: "Project Configuration",
+    Icon: Settings,
   },
   // "client-integrations": {
   //   title: "Client Integrations",

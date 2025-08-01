@@ -10,10 +10,18 @@ import { Tabs } from "nextra/components";
 <LanguageSwitcher />
 
 ## Overview
-Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
+Query APIs are functions that run on your server and automaticallly exposed as HTTP `GET` endpoints. They are designed to read data from your OLAP database.
+
+Query APIs automatically provde the the database client to your function, and handles connection pooling/lifecycle management for you. These special type of APIs also provide automatic type validation and type conversion for your query parameters, which are sent in the URL, and response body.
+
+Common use cases include:
+- Powering user-facing analytics, dashboards and other front-end components
+- Enabling AI tools to interact with your data
+- Building custom APIs for your internal tools
+
 
 <BulletPointsCard
-  title="Working with Consumption APIs"
+  title="Working with Query APIs"
   bullets={[
     {
       title: "Model your API parameters",

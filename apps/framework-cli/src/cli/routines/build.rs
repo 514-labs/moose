@@ -205,7 +205,17 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
         info!("Detected package manager: {}", package_manager);
 
         if let Some(lock_file_path) = get_lock_file_path(&project.project_location) {
-            let lock_file_name = lock_file_path.file_name().unwrap().to_str().unwrap();
+            // Safely extract filename with proper error handling
+            let lock_file_name = match lock_file_path.file_name().and_then(|name| name.to_str()) {
+                Some(name) => name,
+                None => {
+                    error!("Invalid lock file path: {:?}", lock_file_path);
+                    return Err(BuildError::FileCopyFailed(
+                        "lock file".to_string(),
+                        "Invalid lock file path".to_string(),
+                    ));
+                }
+            };
             let destination_path = package_dir.join(lock_file_name);
 
             match fs::copy(&lock_file_path, &destination_path) {

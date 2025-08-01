@@ -12,6 +12,12 @@ from .types import TypedMooseResource, T
 from .stream import Stream, DeadLetterQueue
 from ._registry import _ingest_apis
 
+def generate_ingest_api_config(name: str, version: Optional[str]) -> str:
+    if (version is not None):
+        return f"{name}_{version}"
+    else:
+        return name
+
 class IngestConfig(BaseModel):
     """Basic configuration for an ingestion point.
 

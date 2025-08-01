@@ -1,21 +1,14 @@
 import { render } from "@/components";
 
 const meta = {
-  "---Building & Packaging---": {
-    title: "Preparing for Deployment",
-    type: "separator",
-  },
   "packaging-moose-for-deployment": {
-    title: "Packaging Moose for deployment",
+    title: "Packaging for Deployment",
   },
-  "preparing-clickhouse-redpanda": {
-    title: "Preparing Infrastructure",
+  infrastructure: {
+    title: "Infrastructure Setup",
   },
-  "configuring-moose-for-cloud": {
-    title: "Cloud Configuration",
-  },
-  "---Deployment---": {
-    title: "Deployment Guides",
+  "---Deployment Platforms---": {
+    title: "Deployment Platforms",
     type: "separator",
   },
   "deploying-on-kubernetes": {
@@ -24,18 +17,11 @@ const meta = {
   "deploying-on-ecs": {
     title: "AWS ECS",
   },
-  "deploying-on-an-offline-server": {
-    title: "Offline",
-  },
   "deploying-with-docker-compose": {
     title: "Docker Compose",
   },
-  "---Monitoring---": {
-    title: "Production Monitoring",
-    type: "separator",
-  },
-  monitoring: {
-    title: "Monitoring Your App",
+  "deploying-on-an-offline-server": {
+    title: "Offline Server",
   },
 };
 

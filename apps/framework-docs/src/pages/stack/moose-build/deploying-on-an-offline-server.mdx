@@ -113,71 +113,17 @@ You can install the Moose CLI using the official installer:
 curl -SfsL https://fiveonefour.com/install.sh | bash -s -- moose
 source ~/.bashrc  # Or restart your terminal
 ```
-or
-
-<Python>
-```bash
-pip install moose-cli
-```
-</Python>
-
-<TypeScript>
-```bash
-npm install -g @514labs/moose-cli
-```
-</TypeScript>
 
 ## Building Your Application
-
-### 1. Initialize a New Project (Optional)
-This step is optional if you already have a Moose project.
-Create a new Moose project:
-
-<TypeScript>
-```bash
-moose init your-project-name ts
-cd your-project-name
-```
-
-Install dependencies:
-```bash
-npm install  # or yarn install
-```
-</TypeScript>
-
-<Python>
-```bash
-moose init your-project-name py
-cd your-project-name
-```
-</Python>
-
-### 2. Build the Application
 
 <Callout type="info">
   Make sure you have the `zip` utility installed (`sudo apt install zip`) before building your application.
 </Callout>
 
-if you installed the moose cli to be available globally, you can build the application with the following command:
+Build the application with the following command:
 ```bash
 moose build
 ```
-Or if you installed the moose cli to be available locally, you can build the application with the following command:
-
-<TypeScript>
-Create the deployable package:
-```bash
-npm run moose-cli build
-```
-</TypeScript>
-
-<Python>
-The build process will create a deployable package:
-
-```bash
-moose build
-```
-</Python>
 
 This will create a zip file in your project directory with a timestamp, for example: `your-project-name-YYYY-MM-DD.zip`
 

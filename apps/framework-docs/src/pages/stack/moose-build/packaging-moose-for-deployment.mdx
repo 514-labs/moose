@@ -1,26 +1,37 @@
 ---
-title: Packaging Moose for deployment
-description: Packaging Moose for deployment
+title: Packaging Moose for Deployment
+description: Build and package your Moose application for production deployment
 ---
 
-# Packaging Moose for deployment
+import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
 
-Once you've developed your Moose application locally, you can package it for deployment to your on-prem or cloud infrastructure.
+# Packaging Moose for Deployment
 
-The first step is to navigate (`cd`) to your moose project in your terminal.
+<LanguageSwitcher />
+
+This guide covers building and packaging your Moose application for production deployment. For complete production configuration and deployment strategies, see [Production Mode](../runtime/prod).
+
+## Building Your Application
+
+Navigate to your Moose project directory:
 
 ```bash filename="Terminal" copy
 cd my-moose-project
 ```
 
-The Moose CLI you've used to build your Moose project also has a handy flag that will automate the packaging and building of your project into docker images.
+### Docker Packaging
+
+Build Docker images for deployment:
 
 ```bash filename="Terminal" copy
 moose build --docker
 ```
 
-After the above command completes you can view your newly created docker files by running the `docker images` command:
+To view the architecture-specific images this command creates, run:
 
+```bash filename="Terminal" copy
+docker images
+```
 ```txt filename="Terminal" copy
 >docker images
 REPOSITORY                                              TAG               IMAGE ID       CREATED              SIZE
@@ -28,50 +39,71 @@ moose-df-deployment-aarch64-unknown-linux-gnu           latest            c50674
 moose-df-deployment-x86_64-unknown-linux-gnu            latest            e5b449d3dea3   About a minute ago   163MB
 ```
 
-> Notice that you get two `moose-df-deployment` containers, one for the `aarch64` (ARM64) architecture and another for the `x86_64` architecture. This is necessary to allow you to choose the version that matches your cloud or on-prem machine architecture.
+### Offline Packaging
 
-You can then use standard docker commands to push your new project images to your container repository of choice.
-
-First tag your local images:
+For environments without internet access, create a portable package:
 
 ```bash filename="Terminal" copy
-docker tag moose-df-deployment-aarch64-unknown-linux-gnu:latest {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:latest
-docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:latest
+moose build
 ```
 
-Then `push` your files to your container repository.
+This creates a timestamped zip file: `your-project-name-YYYY-MM-DD.zip`
+
+## Publishing to Container Registry
+
+Tag and push your images to your container registry:
 
 ```bash filename="Terminal" copy
-docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:latest
-docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:latest
+# Tag images
+docker tag moose-df-deployment-aarch64-unknown-linux-gnu:latest {your-repo}/moose-app-arm64:latest
+docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest {your-repo}/moose-app-amd64:latest
+
+# Push images
+docker push {your-repo}/moose-app-arm64:latest
+docker push {your-repo}/moose-app-amd64:latest
 ```
 
-You can also use the following handy shell script to automate the steps above.
+### Automated Publishing Script
+
+<Callout type="info">
+Save this script as `push.sh` to automate the publishing process.
+</Callout>
 
 ```bash filename="push.sh" copy
 #!/bin/bash
 
 version=$2
 
-if [ -z "$1" ]
-then
-      echo "You must specify the dockerhub repository as an argument. Example: ./push.sh container-repo-name"
-      echo "Note: you can also provide a second argument to supply a specific version tag - otherwise this script will use the same version as the latest moose-cli on Github."
-      exit 1
+if [ -z "$1" ]; then
+    echo "Usage: ./push.sh container-repo-name [version]"
+    echo "Example: ./push.sh myrepo/moose-app 1.0.0"
+    exit 1
 fi
 
-if [ -z "$2" ]
-then
-      output=$(npx @514labs/moose-cli -V)
-      version=$(echo "$output" | sed -n '2p' | awk '{print $2}')
+if [ -z "$2" ]; then
+    output=$(npx @514labs/moose-cli -V)
+    version=$(echo "$output" | sed -n '2p' | awk '{print $2}')
 fi
 
 echo "Using version: $version"
-arch="moose-df-deployment-aarch64-unknown-linux-gnu"
-docker tag $arch:$version $1/$arch:$version
-docker push $1/$arch:$version
 
-arch="moose-df-deployment-x86_64-unknown-linux-gnu"
-docker tag $arch:$version $1/$arch:$version
-docker push $1/$arch:$version
+# ARM64
+arch="moose-df-deployment-aarch64-unknown-linux-gnu"
+docker tag $arch:$version $1-arm64:$version
+docker push $1-arm64:$version
+
+# AMD64
+arch="moose-df-deployment-x86_64-unknown-linux-gnu"  
+docker tag $arch:$version $1-amd64:$version
+docker push $1-amd64:$version
+
+echo "Images published successfully"
 ```
+
+## Next Steps
+
+After packaging your application:
+
+1. **Set up infrastructure** - Configure ClickHouse, Redis, and optional services (see [Infrastructure Setup](infrastructure))
+2. **Choose deployment platform** - Select from [Kubernetes](deploying-on-kubernetes), [ECS](deploying-on-ecs), [Docker Compose](deploying-with-docker-compose), or [offline deployment](deploying-on-an-offline-server)
+3. **Configure for production** - Review [Production Mode](../runtime/prod) for comprehensive production configuration

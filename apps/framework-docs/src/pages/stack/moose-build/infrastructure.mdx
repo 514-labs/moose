@@ -11,6 +11,20 @@ Moose requires external services for production deployment. This guide covers pr
 
 ## Required Services
 
+### ClickHouse (Required)
+**Analytics database for storing processed data**
+
+Options:
+- [ClickHouse Cloud](https://clickhouse.com) (managed)
+- Self-hosted ClickHouse cluster
+- Local ClickHouse instance (development only)
+
+**Basic connection parameters:**
+- Database name
+- Username and password
+- Host and ports (HTTP: 8443, Native: 9440)
+- SSL/TLS configuration
+
 ### Redis (Required)
 **Caching and state management**
 
@@ -24,20 +38,6 @@ Options:
 - Key prefix for namespace isolation
 
 ## Optional Services
-
-### ClickHouse (Optional)
-**Analytics database for storing processed data**
-
-Options:
-- [ClickHouse Cloud](https://clickhouse.com) (managed)
-- Self-hosted ClickHouse cluster
-- Local ClickHouse instance (development only)
-
-**Basic connection parameters:**
-- Database name
-- Username and password
-- Host and ports (HTTP: 8443, Native: 9440)
-- SSL/TLS configuration
 
 ### Redpanda (Optional)
 **Event streaming platform**

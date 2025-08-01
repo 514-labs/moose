@@ -30,6 +30,12 @@ model_config = ConfigDict(alias_generator=AliasGenerator(
     serialization_alias=to_camel,
 ))
 
+def generate_versioned_key(name: str, version: Optional[str]) -> str:
+    if (version is not None):
+        return f"{name}_{version}"
+    else:
+        return name
+
 
 class Target(BaseModel):
     """Represents a target destination for data flow, typically a stream.
@@ -271,7 +277,7 @@ def to_infra_map() -> dict:
     for name, table in get_tables().items():
         engine = table.config.engine
         tables[name] = TableConfig(
-            name=name,
+            name=table.name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
@@ -285,7 +291,7 @@ def to_infra_map() -> dict:
         transformation_targets = [
             Target(
                 kind="stream",
-                name=dest_name,
+                name=transform.destination._generate_topic_id(),
                 version=transform.config.version,
                 metadata=getattr(transform.config, "metadata", None),
             )
@@ -299,7 +305,7 @@ def to_infra_map() -> dict:
         ]
 
         topics[name] = TopicConfig(
-            name=name,
+            name=stream.name,
             columns=_to_columns(stream._t),
             target_table=stream.config.destination.name if stream.config.destination else None,
             target_table_version=stream.config.destination.config.version if stream.config.destination else None,
@@ -313,17 +319,22 @@ def to_infra_map() -> dict:
             life_cycle=stream.config.life_cycle.value if stream.config.life_cycle else None,
         )
 
-    for name, api in get_ingest_apis().items():
-        ingest_apis[name] = IngestApiConfig(
-            name=name,
+    for registry_key, api in get_ingest_apis().items():
+        # Use consistent versioned key generation like tables and topics
+        versioned_key = generate_versioned_key(api.name, api.config.version)
+        destination_topic_id = api.config.destination._generate_topic_id()
+        dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
+
+        ingest_apis[versioned_key] = IngestApiConfig(
+            name=api.name,  # Use original name from the API object
             columns=_to_columns(api._t),
             version=api.config.version,
             write_to=Target(
                 kind="stream",
-                name=api.config.destination.name
+                name=destination_topic_id
             ),
             metadata=getattr(api, "metadata", None),
-            dead_letter_queue=api.config.dead_letter_queue.name
+            dead_letter_queue=dead_letter_queue_id
         )
 
     for name, api in get_consumption_apis().items():

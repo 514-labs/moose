@@ -67,4 +67,4 @@ class IngestApi(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         self.metadata = getattr(config, 'metadata', None)
-        _ingest_apis[name] = self
+        _ingest_apis[generate_ingest_api_config(name, config.version)] = self

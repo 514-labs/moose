@@ -160,7 +160,8 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
 
     # Find the stream that has a transformation matching our source/destination
     for source_py_stream_name, stream in get_streams().items():
-        if source_py_stream_name != source_topic.topic_name_to_stream_name():
+        # Compare the stream name (without version) with the topic's stream name
+        if stream.name != source_topic.topic_name_to_stream_name():
             continue
 
         if stream.has_consumers() and target_topic is None:
@@ -171,9 +172,8 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
 
         # Check each transformation in the stream
         for dest_stream_py_name, transform_entries in stream.transformations.items():
-            # The source topic name should match the stream name
-            # The destination topic name should match the destination stream name
-            if source_py_stream_name == source_topic.topic_name_to_stream_name() and dest_stream_py_name == target_topic.topic_name_to_stream_name():
+            # The destination stream name should match the target topic's stream name
+            if dest_stream_py_name == target_topic.topic_name_to_stream_name():
                 # Found the matching transformation
                 transformations = [(entry.transformation, entry.config.dead_letter_queue) for entry in
                                    transform_entries]

@@ -22,6 +22,8 @@ FROM node:20-bookworm-slim
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
+
+RUN npm install -g pnpm
 "#;
 
 // Python and node 'slim' term is flipped
@@ -162,7 +164,7 @@ pub fn create_dockerfile(
 
             let install_command = match package_manager {
                 PackageManager::Npm => "RUN npm install",
-                PackageManager::Pnpm => "RUN npm install -g pnpm\nRUN pnpm install",
+                PackageManager::Pnpm => "RUN pnpm install",
             };
 
             // Build copy commands for package files including lock files

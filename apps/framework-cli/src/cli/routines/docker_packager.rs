@@ -162,7 +162,7 @@ pub fn create_dockerfile(
 
             let install_command = match package_manager {
                 PackageManager::Npm => "RUN npm install",
-                PackageManager::Pnpm => "RUN pnpm install",
+                PackageManager::Pnpm => "RUN npm install -g pnpm\nRUN pnpm install",
             };
 
             // Build copy commands for package files including lock files

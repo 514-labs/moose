@@ -741,7 +741,7 @@ fn adjust_base_url_for_packager(base_url: &str) -> Option<String> {
         }
         path if !path.contains("../") && !path.starts_with("/") => {
             // "src" → "../../src"
-            Some(format!("../../{}", path))
+            Some(format!("../../{path}"))
         }
         _ => {
             debug!("Rejecting complex baseUrl: {}", trimmed);

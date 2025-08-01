@@ -188,7 +188,7 @@ pub fn create_dockerfile(
             let install = DOCKER_FILE_COMMON
                 .replace(
                     "COPY_PACKAGE_FILE",
-                    &format!("\n                    {}", copy_section),
+                    &format!("\n                    {copy_section}"),
                 )
                 .replace("INSTALL_COMMAND", install_command);
 
@@ -295,7 +295,7 @@ pub fn build_dockerfile(
                 return Err(RoutineFailure::new(
                     Message::new(
                         "Failed".to_string(),
-                        format!("to copy lock file {}", lock_file_name),
+                        format!("to copy lock file {lock_file_name}"),
                     ),
                     err,
                 ));

@@ -1,5 +1,6 @@
 import ts, { factory } from "typescript";
 import { avoidTypiaNameClash, replaceProgram } from "./compilerPluginHelper";
+import { compilerLog } from "./commons";
 import {
   isNewMooseResourceWithTypeParam,
   transformNewMooseResource,
@@ -10,11 +11,6 @@ import {
   transformCreateConsumptionApi,
   transformLegacyConsumptionApi,
 } from "./consumption-apis/typiaValidation";
-
-// Helper function to write logs to stdout using the MOOSE_STUFF pattern
-const writeLog = (message: string) => {
-  console.log(message);
-};
 
 /**
  * Creates the typia import statement to avoid name clashes
@@ -40,7 +36,9 @@ const applyTransformation = (
   typeChecker: ts.TypeChecker,
 ): { transformed: ts.Node; wasTransformed: boolean } => {
   if (isCreateConsumptionApi(node, typeChecker)) {
-    writeLog("[CompilerPlugin] Found legacy consumption API, transforming...");
+    compilerLog(
+      "[CompilerPlugin] Found legacy consumption API, transforming...",
+    );
     return {
       transformed: transformLegacyConsumptionApi(node, typeChecker),
       wasTransformed: true,
@@ -48,7 +46,7 @@ const applyTransformation = (
   }
 
   if (isCreateConsumptionApiV2(node, typeChecker)) {
-    writeLog("[CompilerPlugin] Found consumption API v2, transforming...");
+    compilerLog("[CompilerPlugin] Found consumption API v2, transforming...");
     return {
       transformed: transformCreateConsumptionApi(node, typeChecker),
       wasTransformed: true,
@@ -56,7 +54,7 @@ const applyTransformation = (
   }
 
   if (isNewMooseResourceWithTypeParam(node, typeChecker)) {
-    writeLog(
+    compilerLog(
       "[CompilerPlugin] Found Moose resource with type param, transforming...",
     );
     return {
@@ -96,7 +94,7 @@ const hasExistingTypiaImport = (sourceFile: ts.SourceFile): boolean => {
 
     return false;
   });
-  writeLog(
+  compilerLog(
     `[CompilerPlugin] Checking for existing typia import (${avoidTypiaNameClash}) in ${sourceFile.fileName}: ${hasImport}`,
   );
   return hasImport;
@@ -107,13 +105,13 @@ const hasExistingTypiaImport = (sourceFile: ts.SourceFile): boolean => {
  */
 const addTypiaImport = (sourceFile: ts.SourceFile): ts.SourceFile => {
   if (hasExistingTypiaImport(sourceFile)) {
-    writeLog(
+    compilerLog(
       `[CompilerPlugin] Typia import already exists in ${sourceFile.fileName}, skipping...`,
     );
     return sourceFile;
   }
 
-  writeLog(`[CompilerPlugin] Adding typia import to ${sourceFile.fileName}`);
+  compilerLog(`[CompilerPlugin] Adding typia import to ${sourceFile.fileName}`);
   const statementsWithImport = factory.createNodeArray([
     createTypiaImport(),
     ...sourceFile.statements,
@@ -129,7 +127,7 @@ const transform =
   (typeChecker: ts.TypeChecker) =>
   (_context: ts.TransformationContext) =>
   (sourceFile: ts.SourceFile): ts.SourceFile => {
-    writeLog(
+    compilerLog(
       `\n[CompilerPlugin] ========== Processing file: ${sourceFile.fileName} ==========`,
     );
 
@@ -146,7 +144,7 @@ const transform =
       if (wasTransformed) {
         transformationCount++;
         hasTypiaTransformations = true;
-        writeLog(
+        compilerLog(
           `[CompilerPlugin] Transformation #${transformationCount} applied at position ${node.pos}`,
         );
       }
@@ -160,21 +158,23 @@ const transform =
       undefined,
     );
 
-    writeLog(
+    compilerLog(
       `[CompilerPlugin] Total transformations applied: ${transformationCount}`,
     );
 
     // Use transformation tracking instead of scanning for typia references
-    writeLog(`[CompilerPlugin] Needs typia import: ${hasTypiaTransformations}`);
+    compilerLog(
+      `[CompilerPlugin] Needs typia import: ${hasTypiaTransformations}`,
+    );
 
     if (hasTypiaTransformations) {
       const result = addTypiaImport(transformedSourceFile);
-      writeLog(
+      compilerLog(
         `[CompilerPlugin] ========== Completed processing ${sourceFile.fileName} (with import) ==========\n`,
       );
       return result;
     } else {
-      writeLog(
+      compilerLog(
         `[CompilerPlugin] ========== Completed processing ${sourceFile.fileName} (no import needed) ==========\n`,
       );
       return transformedSourceFile;

@@ -1,6 +1,33 @@
 import http from "http";
 import { createClient } from "@clickhouse/client";
 
+/**
+ * Utility function for compiler-related logging that can be disabled via environment variable.
+ * Set MOOSE_DISABLE_COMPILER_LOGS=true to suppress these logs (useful for testing environments).
+ */
+
+/**
+ * Returns true if the value is a common truthy string: "1", "true", "yes", "on" (case-insensitive).
+ */
+function isTruthy(value: string | undefined): boolean {
+  if (!value) return false;
+  switch (value.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+    case "on":
+      return true;
+    default:
+      return false;
+  }
+}
+
+export const compilerLog = (message: string) => {
+  if (!isTruthy(process.env.MOOSE_DISABLE_COMPILER_LOGS)) {
+    console.log(message);
+  }
+};
+
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 

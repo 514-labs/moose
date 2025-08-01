@@ -24,6 +24,7 @@ import { Column } from "../dataModels/dataModelTypes";
 import { ConsumptionUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
 import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
+import { compilerLog } from "../commons";
 
 /**
  * Internal registry holding all defined Moose dmv2 resources.
@@ -436,7 +437,7 @@ export const getStreamingFunctions = async () => {
     stream._transformations.forEach((transforms, destinationName) => {
       transforms.forEach(([_, transform, config]) => {
         const transformFunctionKey = `${stream.name}_${destinationName}${config.version ? `_${config.version}` : ""}`;
-        console.log(`getStreamingFunctions: ${transformFunctionKey}`);
+        compilerLog(`getStreamingFunctions: ${transformFunctionKey}`);
         transformFunctions.set(transformFunctionKey, [transform, config]);
       });
     });

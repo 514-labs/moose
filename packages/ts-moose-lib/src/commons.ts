@@ -1,6 +1,16 @@
 import http from "http";
 import { createClient } from "@clickhouse/client";
 
+/**
+ * Utility function for compiler-related logging that can be disabled via environment variable.
+ * Set MOOSE_DISABLE_COMPILER_LOGS=true to suppress these logs (useful for testing environments).
+ */
+export const compilerLog = (message: string) => {
+  if (process.env.MOOSE_DISABLE_COMPILER_LOGS !== "true") {
+    console.log(message);
+  }
+};
+
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 

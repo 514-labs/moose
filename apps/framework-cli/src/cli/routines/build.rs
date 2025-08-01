@@ -449,7 +449,6 @@ fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
         BuildError::MooseCheckFailed(format!("Failed to get current executable path: {e}"))
     })?);
 
-    println!("Running moose check in directory: {:?}", package_dir);
     cmd.current_dir(package_dir);
     cmd.args(["check", "--write-infra-map"]);
     let output = cmd.output()?;

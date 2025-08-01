@@ -5,6 +5,8 @@ use std::{fmt, path::PathBuf, process::Command};
 use home::home_dir;
 use log::{debug, error};
 
+use crate::utilities::constants::{PACKAGE_LOCK_JSON, PNPM_LOCK};
+
 pub fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
 
@@ -151,8 +153,8 @@ pub fn link_sdk(
 /// Detects the package manager to use based on lock files present in the project directory.
 ///
 /// The detection follows this priority order:
-/// 1. pnpm-lock.yaml -> pnpm
-/// 2. package-lock.json -> npm
+/// 1. pnpm-lock.yaml -> pnpm (searches up the directory tree for monorepo support)
+/// 2. package-lock.json -> npm (only in current directory)
 /// 3. Default to npm if no lock files found
 ///
 /// # Arguments
@@ -163,13 +165,11 @@ pub fn link_sdk(
 ///
 /// * `PackageManager` - The detected package manager
 pub fn detect_package_manager(project_dir: &PathBuf) -> PackageManager {
-    use crate::utilities::constants::{PACKAGE_LOCK_JSON, PNPM_LOCK};
-
     debug!("Detecting package manager in directory: {:?}", project_dir);
 
-    // Check for pnpm-lock.yaml first (most specific)
-    if project_dir.join(PNPM_LOCK).exists() {
-        debug!("Found pnpm-lock.yaml, using pnpm");
+    // Check for pnpm-lock.yaml up the directory tree (for monorepo support)
+    if find_pnpm_lock_up_tree(project_dir).is_some() {
+        debug!("Found pnpm-lock.yaml in directory tree, using pnpm");
         return PackageManager::Pnpm;
     }
 
@@ -182,6 +182,42 @@ pub fn detect_package_manager(project_dir: &PathBuf) -> PackageManager {
     // Default to npm
     debug!("No lock files found, defaulting to npm");
     PackageManager::Npm
+}
+
+/// Searches up the directory tree for pnpm-lock.yaml file.
+///
+/// This is needed because in pnpm workspaces, the lock file is typically
+/// at the workspace root, not in individual package directories.
+///
+/// # Arguments
+///
+/// * `start_dir` - Directory to start searching from
+///
+/// # Returns
+///
+/// * `Option<PathBuf>` - Path to the pnpm-lock.yaml file if found
+fn find_pnpm_lock_up_tree(start_dir: &PathBuf) -> Option<PathBuf> {
+    let mut current_dir = start_dir.clone();
+
+    loop {
+        let lock_file = current_dir.join(PNPM_LOCK);
+        if lock_file.exists() {
+            debug!("Found pnpm-lock.yaml at: {:?}", lock_file);
+            return Some(lock_file);
+        }
+
+        // Move up one directory
+        match current_dir.parent() {
+            Some(parent) => current_dir = parent.to_path_buf(),
+            None => break, // Reached filesystem root
+        }
+    }
+
+    debug!(
+        "No pnpm-lock.yaml found in directory tree starting from: {:?}",
+        start_dir
+    );
+    None
 }
 
 #[cfg(test)]

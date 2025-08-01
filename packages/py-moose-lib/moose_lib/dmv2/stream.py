@@ -112,7 +112,7 @@ class Stream(TypedMooseResource, Generic[T]):
         self.metadata = config.metadata
         self.consumers = []
         self.transformations = {}
-        _streams[name] = self
+        _streams[generate_stream_key(name, config.version)] = self
 
     def add_transform(self, destination: "Stream[U]", transformation: Callable[[T], ZeroOrMany[U]],
                       config: TransformConfig = None):
@@ -127,15 +127,16 @@ class Stream(TypedMooseResource, Generic[T]):
             config: Optional configuration, primarily for setting a version.
         """
         config = config or TransformConfig()
-        if destination.name in self.transformations:
-            existing_transforms = self.transformations[destination.name]
+        dest_key = destination.name  # Use stream name as key for consistency
+        if dest_key in self.transformations:
+            existing_transforms = self.transformations[dest_key]
             # Check if a transform with this version already exists
             has_version = any(t.config.version == config.version for t in existing_transforms)
             if not has_version:
                 existing_transforms.append(
                     TransformEntry(destination=destination, transformation=transformation, config=config))
         else:
-            self.transformations[destination.name] = [
+            self.transformations[dest_key] = [
                 TransformEntry(destination=destination, transformation=transformation, config=config)]
 
     def add_consumer(self, consumer: Callable[[T], None], config: ConsumerConfig = None):
@@ -151,6 +152,19 @@ class Stream(TypedMooseResource, Generic[T]):
         has_version = any(c.config.version == config.version for c in self.consumers)
         if not has_version:
             self.consumers.append(ConsumerEntry(consumer=consumer, config=config))
+
+    def _generate_topic_id(self) -> str:
+        """Generate the topic ID following Rust CLI's naming convention.
+        Format: {topicName}_{version_with_dots_replaced_by_underscores}
+        Returns:
+            The topic ID used as the key in the Rust CLI.
+        """
+        topic_version = self.config.version
+        if not topic_version:
+            return self.name
+        else:
+            version_suffix = topic_version.replace(".", "_")
+            return f"{self.name}_{version_suffix}"
 
     def has_consumers(self) -> bool:
         """Checks if any consumers have been added to this stream.

@@ -15,12 +15,6 @@ from .olap_table import OlapTable
 from ._registry import _streams
 from .life_cycle import LifeCycle
 
-def generate_stream_key(name: str, version: Optional[str]) -> str:
-    """Generate a unique key for the stream based on its name and version."""
-    if version:
-        return f"{name}_{version}"
-    return name
-
 class StreamConfig(BaseModel):
     """Configuration for data streams (e.g., Redpanda topics).
 

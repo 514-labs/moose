@@ -139,12 +139,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         self._set_type(name, self._get_type(kwargs))
         self.config = config
         self.metadata = config.metadata
-        if config.version:
-            # Register versioned table with versioned name
-            table_name = self._generate_table_name()
-            _tables[table_name] = self
-        else:
-            _tables[name] = self
+        _tables[name] = self
 
     def _generate_table_name(self) -> str:
         """Generate the versioned table name following Moose's naming convention.

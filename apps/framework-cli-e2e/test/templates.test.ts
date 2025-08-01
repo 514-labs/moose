@@ -55,6 +55,31 @@ const utils = {
     fs.rmSync(dir, { recursive: true, force: true });
   },
 
+  updateMooseConfig: (
+    projectDir: string,
+    configUpdates: Record<string, any>,
+  ) => {
+    const configPath = path.join(projectDir, "moose.config.toml");
+    if (!fs.existsSync(configPath)) {
+      console.warn(`moose.config.toml not found at ${configPath}`);
+      return;
+    }
+
+    let configContent = fs.readFileSync(configPath, "utf-8");
+
+    // Add config sections to the end of the file
+    Object.entries(configUpdates).forEach(([section, values]) => {
+      configContent += `\n[${section}]\n`;
+      Object.entries(values).forEach(([key, value]) => {
+        const formattedValue = typeof value === "string" ? `"${value}"` : value;
+        configContent += `${key} = ${formattedValue}\n`;
+      });
+    });
+
+    fs.writeFileSync(configPath, configContent);
+    console.log(`Updated moose.config.toml with new configuration`);
+  },
+
   waitForServerStart: async (
     devProcess: ChildProcess,
     timeout: number,
@@ -420,6 +445,13 @@ describe("Moose Templates", () => {
         `"${CLI_PATH}" init moose-ts-app typescript --location "${TEST_PROJECT_DIR}"`,
       );
 
+      // Update moose.config.toml with test configuration
+      utils.updateMooseConfig(TEST_PROJECT_DIR, {
+        telemetry: {
+          is_moose_developer: true,
+        },
+      });
+
       // Update package.json to use local moose-lib
       console.log("Updating package.json to use local moose-lib...");
       const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
@@ -540,6 +572,13 @@ describe("Moose Templates", () => {
       await execAsync(
         `"${CLI_PATH}" init moose-py-app python --location "${TEST_PROJECT_DIR}"`,
       );
+
+      // Update moose.config.toml with test configuration
+      utils.updateMooseConfig(TEST_PROJECT_DIR, {
+        telemetry: {
+          is_moose_developer: true,
+        },
+      });
 
       // Set up Python environment and install dependencies
       console.log(

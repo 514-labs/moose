@@ -50,11 +50,7 @@ interface UserEvent {
 
 // Create a standalone ingestion API
 const userEventsApi = new IngestApi<UserEvent>("user-events", {
-  // Route to external service or custom handler
-  destination: (event) => {
-    // Custom logic here
-    console.log("Processing event:", event);
-  }
+  destination: eventStream
 });
 ```
 </TypeScript>
@@ -72,33 +68,29 @@ class UserEvent(BaseModel):
     event_type: str
 
 # Create a standalone ingestion API
-def process_event(event: UserEvent):
-    # Custom logic here
-    print(f"Processing event: {event}")
-
-user_events_api = IngestApi[UserEvent]("user-events", process_event)
+user_events_api = IngestApi[UserEvent]("user-events", IngestConfig(destination=event_stream))
 ```
 </Python>
 
-### Consumption API
+### Query API
 
 <TypeScript>
-```ts filename="ConsumptionApi.ts" copy
-import { ConsumptionApi } from "@514labs/moose-lib";
+```ts filename="QueryApi.ts" copy
+import { QueryApi } from "@514labs/moose-lib";
 
-interface QueryParams {
+interface Params {
   userId: string;
   limit: number;
 }
 
-interface UserData {
+interface ResultData {
   id: string;
   name: string;
   email: string;
 }
 
 // Create a standalone consumption API
-const userDataApi = new ConsumptionApi<QueryParams, UserData[]>("user-data", 
+const userDataApi = new QueryApi<Params, ResultData[]>("user-data", 
   async ({ userId, limit }, { client, sql }) => {
     // Query external service or custom logic
     return [
@@ -114,22 +106,21 @@ const userDataApi = new ConsumptionApi<QueryParams, UserData[]>("user-data",
 from moose_lib import ConsumptionApi, MooseClient
 from pydantic import BaseModel
 
-class QueryParams(BaseModel):
+class Params(BaseModel):
     user_id: str
     limit: int
 
-class UserData(BaseModel):
+class ResultData(BaseModel):
     id: str
     name: str
     email: str
 
-def get_user_data(client: MooseClient, params: QueryParams) -> list[UserData]:
+def query_function(client: MooseClient, params: QueryParams) -> list[UserData]:
     # Query external service or custom logic
-    return [
-        UserData(id=params.user_id, name="John Doe", email="john@example.com")
-    ]
+    sql = f"SELECT * FROM user_data WHERE user_id = {params.user_id} LIMIT {params.limit}"
+    return client.query.execute(sql)
 
-user_data_api = ConsumptionApi[QueryParams, UserData]("user-data", get_user_data)
+user_data_api = QueryApi[Params, ResultData]("get-data", query_function)
 ```
 </Python>
 
@@ -139,131 +130,18 @@ If you already have a FastAPI, Fastify, or other REST API backend and are using 
 
 ### Use Moose APIs When:
 
-#### **High-Throughput Data Ingestion**
-- Need to handle thousands of events per second
-- Want Rust-powered performance (much faster than Node.js/Python)
-- Require automatic schema validation and DLQ support
-- Building webhook receivers or event streaming endpoints
+- You need a standalone analytical backend service or microservice
+- You need to handle high-throughput data ingestion (Rust-level performance)
+- You want built in schema validation and Dead Letter Queue support
+- You want to re-use your table or stream schemas for API validation
 
-#### **Analytics-Focused Endpoints**
-- Creating dedicated analytics APIs separate from your main app
-- Need automatic OpenAPI generation with example data
-- Want type-safe SQL querying with template literals
-- Building data visualization or BI tool integrations
-
-#### **Data Pipeline Integration**
-- Creating standalone ingestion services
-- Need direct connection to streams/tables without glue code
-- Building ETL pipeline endpoints
-- Want push-based data patterns
-
-#### **Microservices Architecture**
-- Creating dedicated data services
-- Need service isolation and independent scaling
-- Building event-driven data pipelines
-- Want separate deployment and monitoring
 
 ### Integrate Moose Functions into Existing Backend When:
 
-#### **Unified Application Experience**
-- Want single authentication/authorization system
-- Need consistent middleware and error handling
-- Building user-facing features that need data access
-- Require unified logging and monitoring
+- You need to reuse your existing authentication middleware (JWT, OAuth, etc.)
+- You want to maintain consistent API patterns across your application (error handling, response formats, etc.)
 
-#### **Complex Business Logic**
-- Need sophisticated request/response transformations
-- Require custom validation beyond schema validation
-- Building workflows that combine data with business rules
-- Need session management and user context
+### Custom Webhook Authentication
+Moose Ingest APIs don't support custom authentication logic for third-party webhooks (e.g., GitHub webhooks with signature verification, Stripe webhooks with signing secrets).
 
-#### **Legacy Integration**
-- Integrating with existing API patterns
-- Need to maintain current API contracts
-- Building gradual migrations
-- Require specific framework features
-
-#### **Simple Data Access**
-- Basic CRUD operations on Moose tables
-- Simple filtering and pagination
-- When performance isn't critical
-- Building internal admin tools
-
-### Integration Patterns
-
-#### **Option 1: MooseClient in Existing Backend**
-
-<TypeScript>
-```ts filename="FastAPI Integration.ts" copy
-import { MooseClient } from "@514labs/moose-lib";
-
-// In your FastAPI app
-app.get("/users", async (req, res) => {
-  const client = new MooseClient();
-  const result = await client.query.execute(
-    sql`SELECT * FROM users LIMIT ${limit}`,
-    { limit: 10 }
-  );
-  return await result.json();
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="FastAPI Integration.py" copy
-from moose_lib import MooseClient
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/users")
-async def get_users(limit: int = 10):
-    client = MooseClient()
-    result = await client.query.execute(
-        "SELECT * FROM users LIMIT {limit:UInt32}",
-        {"limit": limit}
-    )
-    return await result.json()
-```
-</Python>
-
-#### **Option 2: Hybrid Approach**
-- Use Moose APIs for high-throughput ingestion
-- Use existing backend for complex business logic
-- Use MooseClient for data access in existing endpoints
-
-#### **Option 3: Separate Services**
-- Moose APIs for data pipeline endpoints
-- Existing backend for application logic
-- Communicate via internal APIs or events
-
-### Key Decision Factors
-
-<BulletPointsCard
-  title="Choose Based On"
-  bullets={[
-    {
-      title: "Performance",
-      description: "Moose APIs for high-throughput, existing backend for complex logic"
-    },
-    {
-      title: "Architecture", 
-      description: "Separate services vs. unified application"
-    },
-    {
-      title: "Team Structure",
-      description: "Data team vs. application team ownership"
-    },
-    {
-      title: "Deployment",
-      description: "Independent scaling vs. unified deployment"
-    },
-    {
-      title: "Monitoring",
-      description: "Separate observability vs. unified monitoring"
-    }
-  ]}
-/>
-
-The choice depends on your specific use case, team structure, and performance requirements.
-
+You can use your existing API framework to handle webhook authentication, then use MooseClient to insert validated data into ClickHouse. See the [Client Integrations](/stack/open-api) page for more information.

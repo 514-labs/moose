@@ -1,8 +1,8 @@
 import { render } from "@/components";
 
 const rawMeta = {
-  "---Managing Your Database---": {
-    title: "Managing Your Schema",
+  "---Schema---": {
+    title: "Schema",
     type: "separator",
   },
   "create-table": {
@@ -12,7 +12,7 @@ const rawMeta = {
     title: "Creating Materialized Views",
   },
   "supported-types": {
-    title: "Supported Column Types",
+    title: "Supported Types",
   },
   "schema-optimization": {
     title: "Schema Optimization",

@@ -461,6 +461,10 @@ code.nextra-code {
   overflow: hidden !important;
 }
 
+li:not(:first-child) {
+  margin-top: 0 !important;
+}
+
 /* Mobile Safari Border Fixes */
 /* Fix navigation bottom border on mobile Safari */
 @supports (-webkit-touch-callout: none) {

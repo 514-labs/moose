@@ -7,6 +7,7 @@ use crate::utilities::constants::{
     SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
+use crate::utilities::package_managers::{detect_package_manager, PackageManager};
 use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -153,6 +154,15 @@ pub fn create_dockerfile(
 
     let docker_file = match project.language {
         SupportedLanguages::Typescript => {
+            // Detect the package manager based on lock files
+            let package_manager = detect_package_manager(&project.project_location);
+            info!("Detected package manager: {}", package_manager);
+
+            let install_command = match package_manager {
+                PackageManager::Npm => "RUN npm install",
+                PackageManager::Pnpm => "RUN pnpm install",
+            };
+
             let install = DOCKER_FILE_COMMON
                 .replace(
                     "COPY_PACKAGE_FILE",
@@ -161,9 +171,7 @@ pub fn create_dockerfile(
                     COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json
                     "#,
                 )
-                // We should get compatible with other package managers
-                // and respect lock files
-                .replace("INSTALL_COMMAND", "RUN npm install");
+                .replace("INSTALL_COMMAND", install_command);
 
             format!("{TS_BASE_DOCKER_FILE}{install}")
         }

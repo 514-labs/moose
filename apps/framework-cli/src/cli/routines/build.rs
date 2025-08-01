@@ -37,6 +37,8 @@ use crate::project::Project;
 use crate::project::ProjectFileError;
 use crate::utilities::constants::LIB_DIR;
 use crate::utilities::constants::PACKAGE_JSON;
+use crate::utilities::constants::PACKAGE_LOCK_JSON;
+use crate::utilities::constants::PNPM_LOCK;
 use crate::utilities::constants::REQUIREMENTS_TXT;
 use crate::utilities::constants::SETUP_PY;
 use crate::utilities::constants::TSCONFIG_JSON;
@@ -189,7 +191,7 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
     let project_root_path = project.project_location.clone();
 
     // Files to include in the package
-    let files_to_copy = match project.language {
+    let mut files_to_copy = match project.language {
         SupportedLanguages::Typescript => {
             vec![APP_DIR, PROJECT_CONFIG_FILE, PACKAGE_JSON, TSCONFIG_JSON]
         }
@@ -197,6 +199,15 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
             vec![APP_DIR, PROJECT_CONFIG_FILE, REQUIREMENTS_TXT, SETUP_PY]
         }
     };
+
+    // For TypeScript projects, also include lock files if they exist
+    if project.language == SupportedLanguages::Typescript {
+        if project.project_location.join(PNPM_LOCK).exists() {
+            files_to_copy.push(PNPM_LOCK);
+        } else if project.project_location.join(PACKAGE_LOCK_JSON).exists() {
+            files_to_copy.push(PACKAGE_LOCK_JSON);
+        }
+    }
 
     for item in &files_to_copy {
         let source_path = project_root_path.join(item);
@@ -218,6 +229,14 @@ pub fn build_package(project: &Project) -> Result<PathBuf, BuildError> {
                     err.to_string(),
                 ));
             }
+        }
+    }
+
+    // For TypeScript projects, modify tsconfig.json to add baseUrl
+    if project.language == SupportedLanguages::Typescript {
+        let tsconfig_path = package_dir.join(TSCONFIG_JSON);
+        if tsconfig_path.exists() {
+            modify_tsconfig_baseurl(&tsconfig_path)?;
         }
     }
 
@@ -430,6 +449,7 @@ fn run_moose_check(package_dir: &PathBuf) -> Result<(), BuildError> {
         BuildError::MooseCheckFailed(format!("Failed to get current executable path: {e}"))
     })?);
 
+    println!("Running moose check in directory: {:?}", package_dir);
     cmd.current_dir(package_dir);
     cmd.args(["check", "--write-infra-map"]);
     let output = cmd.output()?;
@@ -543,4 +563,72 @@ fn create_archive(project: &Project, package_dir: &Path) -> Result<PathBuf, Buil
 
     info!("Archive created successfully at: {:?}", archive_path);
     Ok(archive_path)
+}
+
+/// Modifies the tsconfig.json file to add baseUrl for proper path resolution.
+///
+/// This function reads the tsconfig.json file, parses it as JSON, adds the
+/// baseUrl field pointing to "../../" (relative to .moose/packager), and
+/// writes it back to the file.
+///
+/// # Arguments
+///
+/// * `tsconfig_path` - Path to the tsconfig.json file to modify
+///
+/// # Returns
+///
+/// * `Result<(), BuildError>` - Returns Ok(()) on success
+///
+/// # Errors
+///
+/// Returns a `BuildError` if:
+/// - Reading the tsconfig.json file fails
+/// - Parsing the JSON fails
+/// - Writing the modified file fails
+fn modify_tsconfig_baseurl(tsconfig_path: &Path) -> Result<(), BuildError> {
+    info!("Modifying tsconfig.json to add baseUrl");
+
+    // Read the current tsconfig.json
+    let content = fs::read_to_string(tsconfig_path).map_err(|err| {
+        error!("Failed to read tsconfig.json: {}", err);
+        BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
+    })?;
+
+    // Parse as JSON
+    let mut tsconfig: serde_json::Value = serde_json::from_str(&content).map_err(|err| {
+        error!("Failed to parse tsconfig.json: {}", err);
+        BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
+    })?;
+
+    // Add baseUrl to compilerOptions
+    if let Some(compiler_options) = tsconfig.get_mut("compilerOptions") {
+        if let Some(compiler_obj) = compiler_options.as_object_mut() {
+            compiler_obj.insert(
+                "baseUrl".to_string(),
+                serde_json::Value::String("../../".to_string()),
+            );
+        }
+    } else {
+        // If compilerOptions doesn't exist, create it
+        let mut compiler_options = serde_json::Map::new();
+        compiler_options.insert(
+            "baseUrl".to_string(),
+            serde_json::Value::String("../../".to_string()),
+        );
+        tsconfig["compilerOptions"] = serde_json::Value::Object(compiler_options);
+    }
+
+    // Write the modified tsconfig back to file
+    let modified_content = serde_json::to_string_pretty(&tsconfig).map_err(|err| {
+        error!("Failed to serialize modified tsconfig.json: {}", err);
+        BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
+    })?;
+
+    fs::write(tsconfig_path, modified_content).map_err(|err| {
+        error!("Failed to write modified tsconfig.json: {}", err);
+        BuildError::FileCopyFailed("tsconfig.json".to_string(), err.to_string())
+    })?;
+
+    info!("Successfully added baseUrl to tsconfig.json");
+    Ok(())
 }

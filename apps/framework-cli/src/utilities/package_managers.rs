@@ -148,6 +148,42 @@ pub fn link_sdk(
     Ok(())
 }
 
+/// Detects the package manager to use based on lock files present in the project directory.
+///
+/// The detection follows this priority order:
+/// 1. pnpm-lock.yaml -> pnpm
+/// 2. package-lock.json -> npm
+/// 3. Default to npm if no lock files found
+///
+/// # Arguments
+///
+/// * `project_dir` - Path to the project directory to scan for lock files
+///
+/// # Returns
+///
+/// * `PackageManager` - The detected package manager
+pub fn detect_package_manager(project_dir: &PathBuf) -> PackageManager {
+    use crate::utilities::constants::{PACKAGE_LOCK_JSON, PNPM_LOCK};
+
+    debug!("Detecting package manager in directory: {:?}", project_dir);
+
+    // Check for pnpm-lock.yaml first (most specific)
+    if project_dir.join(PNPM_LOCK).exists() {
+        debug!("Found pnpm-lock.yaml, using pnpm");
+        return PackageManager::Pnpm;
+    }
+
+    // Check for package-lock.json
+    if project_dir.join(PACKAGE_LOCK_JSON).exists() {
+        debug!("Found package-lock.json, using npm");
+        return PackageManager::Npm;
+    }
+
+    // Default to npm
+    debug!("No lock files found, defaulting to npm");
+    PackageManager::Npm
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

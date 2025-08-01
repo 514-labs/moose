@@ -7,6 +7,8 @@ pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 pub const PACKAGE_JSON: &str = "package.json";
+pub const PACKAGE_LOCK_JSON: &str = "package-lock.json";
+pub const PNPM_LOCK: &str = "pnpm-lock.yaml";
 pub const TSCONFIG_JSON: &str = "tsconfig.json";
 pub const SETUP_PY: &str = "setup.py";
 pub const LIB_DIR: &str = "lib";

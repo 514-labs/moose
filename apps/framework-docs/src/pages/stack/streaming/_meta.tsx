@@ -25,7 +25,7 @@ const rawMeta = {
     title: "Writing to Streams",
     type: "separator",
   },
-  producers: {
+  "from-your-code": {
     title: "From Your Code",
   },
   "connect-cdc": {

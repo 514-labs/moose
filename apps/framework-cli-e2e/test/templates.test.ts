@@ -378,37 +378,47 @@ const utils = {
 
         // Verify structure - all expected keys exist
         Object.keys(expected).forEach((key) => {
-          if (key === "metadata") {
-            // Special handling for metadata object
-            expect(item).to.have.property("metadata");
-            expect(item.metadata).to.be.an("object");
+          const expectedValue = expected[key];
 
-            // Verify metadata structure
-            expect(item.metadata).to.have.property("version");
-            expect(item.metadata.version).to.equal("1.0");
+          expect(item).to.have.property(key);
 
-            // Check for either camelCase or snake_case timestamp field
-            const hasGeneratedAt = item.metadata.hasOwnProperty("generatedAt");
-            const hasGenerated_at =
-              item.metadata.hasOwnProperty("generated_at");
-            expect(hasGeneratedAt || hasGenerated_at).to.be.true;
+          if (
+            typeof expectedValue === "object" &&
+            expectedValue !== null &&
+            !Array.isArray(expectedValue)
+          ) {
+            // Handle nested objects generically
+            expect(item[key]).to.be.an("object");
 
-            const timestampField =
-              item.metadata.generatedAt || item.metadata.generated_at;
-            expect(timestampField).to.be.a("string");
-            expect(new Date(timestampField).getTime()).to.not.be.NaN;
+            Object.keys(expectedValue).forEach((nestedKey) => {
+              const nestedExpected = expectedValue[nestedKey];
 
-            // Check for either camelCase or snake_case query params field
-            const hasQueryParams = item.metadata.hasOwnProperty("queryParams");
-            const hasQuery_params =
-              item.metadata.hasOwnProperty("query_params");
-            expect(hasQueryParams || hasQuery_params).to.be.true;
+              if (
+                typeof nestedExpected === "object" &&
+                nestedExpected !== null
+              ) {
+                // Handle nested objects like queryParams - check for either camelCase or snake_case variants
+                const camelCaseKey = nestedKey;
+                const snakeCaseKey = nestedKey
+                  .replace(/([A-Z])/g, "_$1")
+                  .toLowerCase();
 
-            const queryParamsField =
-              item.metadata.queryParams || item.metadata.query_params;
-            expect(queryParamsField).to.be.an("object");
+                const hasCamelCase = item[key].hasOwnProperty(camelCaseKey);
+                const hasSnakeCase = item[key].hasOwnProperty(snakeCaseKey);
+                expect(hasCamelCase || hasSnakeCase).to.be.true;
+
+                const nestedField =
+                  item[key][camelCaseKey] || item[key][snakeCaseKey];
+                expect(nestedField).to.be.an("object");
+              } else {
+                // Handle simple properties
+                expect(item[key]).to.have.property(nestedKey);
+                if (typeof nestedExpected === "string") {
+                  expect(item[key][nestedKey]).to.equal(nestedExpected);
+                }
+              }
+            });
           } else {
-            expect(item).to.have.property(key);
             expect(item[key]).to.not.be.null;
           }
         });
@@ -594,7 +604,6 @@ describe("Moose Templates", () => {
             totalRows: "1",
             metadata: {
               version: "1.0",
-              generatedAt: "2025-01-01T00:00:00.000Z", // Placeholder - actual validation in utility
               queryParams: {
                 orderBy: "totalRows",
                 limit: 1,
@@ -782,7 +791,6 @@ describe("Moose Templates", () => {
             total_text_length: 17,
             metadata: {
               version: "1.0",
-              generated_at: "2025-01-01T00:00:00.000Z", // Placeholder - actual validation in utility
               query_params: {
                 order_by: "total_rows",
                 limit: 1,

@@ -27,7 +27,6 @@ interface ResponseDataV1 {
   // V1 specific fields
   metadata?: {
     version: string;
-    generatedAt: string;
     queryParams: QueryParams;
   };
 }
@@ -102,7 +101,6 @@ export const BarApiV1 = new ConsumptionApi<QueryParams, ResponseDataV1[]>(
     result.forEach((item) => {
       item.metadata = {
         version: "1.0",
-        generatedAt: new Date().toISOString(),
         queryParams: { orderBy, limit, startDay, endDay },
       };
     });

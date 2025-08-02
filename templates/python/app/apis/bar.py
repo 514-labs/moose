@@ -115,7 +115,6 @@ def run_v1(client: MooseClient, params: QueryParams):
     for item in result:
         item["metadata"] = {
             "version": "1.0",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
             "query_params": {
                 "order_by": order_by,
                 "limit": limit,

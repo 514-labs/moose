@@ -211,12 +211,14 @@ async fn get_consumption_api_res(
     debug!("Creating client for route: {:?}", url);
     {
         let consumption_apis = consumption_apis.read().await;
+
         let consumption_name = req
             .uri()
             .path()
             .strip_prefix("/consumption/")
             .unwrap_or(req.uri().path());
 
+        // Check for exact match first
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
                 use crossterm::{execute, style::Print};
@@ -1062,7 +1064,9 @@ async fn router(
         (_, &hyper::Method::POST, ["admin", "plan"]) => {
             admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
         }
-        (_, &hyper::Method::GET, ["consumption", _rt]) => {
+        (_, &hyper::Method::GET, route_segments)
+            if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
+        {
             match get_consumption_api_res(
                 http_client,
                 req,

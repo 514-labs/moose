@@ -286,8 +286,10 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.egressApis.forEach((api) => {
-    egressApis[api.name] = {
+  registry.egressApis.forEach((api, key) => {
+    const rustKey =
+      api.config.version ? `${api.name}:${api.config.version}` : api.name;
+    egressApis[rustKey] = {
       name: api.name,
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
@@ -469,8 +471,16 @@ export const getEgressApis = async () => {
   >();
 
   const registry = getMooseInternal();
-  registry.egressApis.forEach((api) => {
-    egressFunctions.set(api.name, api.getHandler());
+  registry.egressApis.forEach((api, key) => {
+    // Use the full key (name:version) for storage
+    egressFunctions.set(key, api.getHandler());
+
+    // For backward compatibility, also store under just the name if no version is specified
+    // Only set the name-only key if this API has no version (making it the default)
+    const nameOnly = api.name;
+    if (!api.config.version && !egressFunctions.has(nameOnly)) {
+      egressFunctions.set(nameOnly, api.getHandler());
+    }
   });
 
   return egressFunctions;

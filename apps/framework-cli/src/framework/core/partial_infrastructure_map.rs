@@ -572,7 +572,12 @@ impl PartialInfrastructureMap {
                         .collect(),
                     output_schema: partial_api.response_schema.clone(),
                 },
-                path: PathBuf::from(partial_api.name.clone()),
+                path: match partial_api.version.as_ref() {
+                    Some(version) => {
+                        PathBuf::from(format!("{}/{}", partial_api.name.clone(), version.clone()))
+                    }
+                    None => PathBuf::from(partial_api.name.clone()),
+                },
                 method: Method::GET,
                 version: partial_api
                     .version

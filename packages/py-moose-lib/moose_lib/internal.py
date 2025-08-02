@@ -328,7 +328,7 @@ def to_infra_map() -> dict:
 
     for name, api in get_consumption_apis().items():
         egress_apis[name] = EgressApiConfig(
-            name=name,
+            name=api.name,
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),
             version=api.config.version,

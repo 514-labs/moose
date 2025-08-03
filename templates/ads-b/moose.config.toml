@@ -1,5 +1,10 @@
 language = "Typescript"
 
+[typescript_config]
+# Package manager to use for installing dependencies
+# Options: "npm" (default), "pnpm", "yarn"
+package_manager = "npm"
+
 [redpanda_config]
 broker = "localhost:19092"
 message_timeout_ms = 1000

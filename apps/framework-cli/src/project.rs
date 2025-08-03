@@ -125,6 +125,26 @@ pub struct AuthenticationConfig {
     pub admin_api_key: Option<String>,
 }
 
+/// TypeScript-specific configuration
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TypescriptConfig {
+    /// Package manager to use (npm, pnpm, yarn)
+    #[serde(default = "default_package_manager")]
+    pub package_manager: String,
+}
+
+impl Default for TypescriptConfig {
+    fn default() -> Self {
+        Self {
+            package_manager: default_package_manager(),
+        }
+    }
+}
+
+fn default_package_manager() -> String {
+    "npm".to_string()
+}
+
 /// Feature flags for the project
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectFeatures {
@@ -202,6 +222,9 @@ pub struct Project {
     /// Whether this instance should load infra containers (see module docs)
     #[serde(default)]
     pub load_infra: Option<bool>,
+    /// TypeScript-specific configuration
+    #[serde(default)]
+    pub typescript_config: TypescriptConfig,
 }
 
 static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
@@ -273,6 +296,7 @@ impl Project {
             features: Default::default(),
             authentication: AuthenticationConfig::default(),
             load_infra: None,
+            typescript_config: TypescriptConfig::default(),
         }
     }
 

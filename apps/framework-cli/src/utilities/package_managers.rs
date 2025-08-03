@@ -5,7 +5,7 @@ use std::{fmt, path::PathBuf, process::Command};
 use home::home_dir;
 use log::{debug, error};
 
-use crate::utilities::constants::{PACKAGE_LOCK_JSON, PNPM_LOCK};
+use crate::utilities::constants::{PACKAGE_LOCK_JSON, PNPM_LOCK, YARN_LOCK};
 
 pub fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
@@ -245,6 +245,13 @@ pub fn get_lock_file_path(project_dir: &PathBuf) -> Option<PathBuf> {
     if npm_lock_path.exists() {
         debug!("Found package-lock.json at: {:?}", npm_lock_path);
         return Some(npm_lock_path);
+    }
+
+    // Check for yarn.lock in current directory only
+    let yarn_lock_path = project_dir.join(YARN_LOCK);
+    if yarn_lock_path.exists() {
+        debug!("Found yarn.lock at: {:?}", yarn_lock_path);
+        return Some(yarn_lock_path);
     }
 
     debug!("No lock file found for directory: {:?}", project_dir);

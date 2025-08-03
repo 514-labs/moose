@@ -371,6 +371,8 @@ mod tests {
 
             features: crate::project::ProjectFeatures::default(),
             load_infra: None,
+
+            typescript_config: crate::project::TypescriptConfig::default(),
         }
     }
 

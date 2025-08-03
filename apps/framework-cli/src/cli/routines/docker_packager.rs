@@ -7,9 +7,7 @@ use crate::utilities::constants::{
     SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
-use crate::utilities::package_managers::{
-    detect_package_manager, get_lock_file_path, PackageManager,
-};
+use crate::utilities::package_managers::get_lock_file_path;
 use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -23,7 +21,8 @@ FROM node:20-bookworm-slim
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
 
-RUN npm install -g pnpm
+# Install alternative package managers globally
+RUN npm install -g pnpm@latest yarn@latest
 "#;
 
 // Python and node 'slim' term is flipped
@@ -158,31 +157,50 @@ pub fn create_dockerfile(
 
     let docker_file = match project.language {
         SupportedLanguages::Typescript => {
-            // Detect the package manager based on lock files
-            let package_manager = detect_package_manager(&project.project_location);
-            info!("Detected package manager: {}", package_manager);
+            // Detect the actual lock file present in the project
+            let project_root = project.project_location.clone();
+            let (install_command, lock_file_copy) =
+                if let Some(lock_file_path) = get_lock_file_path(&project_root) {
+                    // Determine package manager based on detected lock file
+                    let lock_file_name = lock_file_path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("");
 
-            let install_command = match package_manager {
-                PackageManager::Npm => "RUN npm install",
-                PackageManager::Pnpm => "RUN pnpm install",
-            };
+                    match lock_file_name {
+                        "pnpm-lock.yaml" => (
+                            "RUN pnpm install --frozen-lockfile".to_string(),
+                            "COPY --chown=moose:moose ./pnpm-lock.yaml ./pnpm-lock.yaml",
+                        ),
+                        "package-lock.json" => (
+                            "RUN npm ci".to_string(),
+                            "COPY --chown=moose:moose ./package-lock.json ./package-lock.json",
+                        ),
+                        "yarn.lock" => (
+                            "RUN yarn install --frozen-lockfile".to_string(),
+                            "COPY --chown=moose:moose ./yarn.lock ./yarn.lock",
+                        ),
+                        _ => {
+                            // Fallback to configured package manager if lock file is unrecognized
+                            let pm = &project.typescript_config.package_manager;
+                            (format!("RUN {pm} install"), "")
+                        }
+                    }
+                } else {
+                    // No lock file found, use configured package manager
+                    let pm = &project.typescript_config.package_manager;
+                    (format!("RUN {pm} install"), "")
+                };
 
-            // Build copy commands for package files including lock files
+            // Build copy commands for package files
             let mut copy_commands = vec![
                 "COPY --chown=moose:moose ./package.json ./package.json",
                 "COPY --chown=moose:moose ./tsconfig.json ./tsconfig.json",
             ];
 
-            // Add lock file copy command based on detected package manager
-            match package_manager {
-                PackageManager::Pnpm => {
-                    copy_commands
-                        .push("COPY --chown=moose:moose ./pnpm-lock.yaml ./pnpm-lock.yaml");
-                }
-                PackageManager::Npm => {
-                    copy_commands
-                        .push("COPY --chown=moose:moose ./package-lock.json ./package-lock.json");
-                }
+            // Add lock file copy command if detected
+            if !lock_file_copy.is_empty() {
+                copy_commands.push(lock_file_copy);
             }
 
             let copy_section = copy_commands.join("\n                    ");
@@ -192,7 +210,7 @@ pub fn create_dockerfile(
                     "COPY_PACKAGE_FILE",
                     &format!("\n                    {copy_section}"),
                 )
-                .replace("INSTALL_COMMAND", install_command);
+                .replace("INSTALL_COMMAND", &install_command);
 
             format!("{TS_BASE_DOCKER_FILE}{install}")
         }

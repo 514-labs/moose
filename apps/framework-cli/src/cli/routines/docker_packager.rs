@@ -22,7 +22,7 @@ FROM node:20-bookworm-slim
 RUN npm config set update-notifier false
 
 # Install alternative package managers globally
-RUN npm install -g pnpm@latest yarn@latest
+RUN npm install -g pnpm@latest
 "#;
 
 // Python and node 'slim' term is flipped

@@ -108,7 +108,7 @@ pub async fn get_data_model_configs(
 pub async fn get_func_types(
     file: &Path,
     project_path: &Path,
-) -> Result<(Vec<ConsumptionQueryParam>, Value), ExportCollectorError> {
+) -> Result<(Vec<ConsumptionQueryParam>, Value, Option<String>), ExportCollectorError> {
     let exports = collect_exports(
         EXPORT_FUNC_TYPE_BIN,
         EXPORT_FUNC_TYPE_PROCESS,
@@ -119,7 +119,7 @@ pub async fn get_func_types(
 
     debug!("Schema for path {:?} {}", file, exports);
 
-    let (input_params, output_schema) = match exports {
+    let (input_params, output_schema, version) = match exports {
         Value::Object(mut map) => (
             extract_intput_param(&map)?,
             match map.remove("outputSchema") {
@@ -129,10 +129,13 @@ pub async fn get_func_types(
                     message: "output schema must be an object".to_string(),
                 })?,
             },
+            map.get("version")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
         ),
         _ => Err(ExportCollectorError::Other {
             message: "Expected an object as the root of the exports".to_string(),
         })?,
     };
-    Ok((input_params, output_schema))
+    Ok((input_params, output_schema, version))
 }

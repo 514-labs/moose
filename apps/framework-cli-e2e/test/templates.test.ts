@@ -358,6 +358,94 @@ const utils = {
     }
   },
 
+  verifyVersionedConsumptionApi: async (
+    endpoint: string,
+    expectedResponse: any,
+  ): Promise<void> => {
+    const response = await fetch(
+      `${TEST_CONFIG.server.url}/consumption/${endpoint}`,
+    );
+    if (response.ok) {
+      console.log("Versioned API test request sent successfully");
+      const json = (await response.json()) as any[];
+
+      // Check structure and value validation rather than exact matches
+      expect(json).to.be.an("array");
+      expect(json.length).to.be.at.least(1);
+
+      json.forEach((item: any, index: number) => {
+        const expected = expectedResponse[index] || expectedResponse[0];
+
+        // Verify structure - all expected keys exist
+        Object.keys(expected).forEach((key) => {
+          const expectedValue = expected[key];
+
+          expect(item).to.have.property(key);
+
+          if (
+            typeof expectedValue === "object" &&
+            expectedValue !== null &&
+            !Array.isArray(expectedValue)
+          ) {
+            // Handle nested objects generically
+            expect(item[key]).to.be.an("object");
+
+            Object.keys(expectedValue).forEach((nestedKey) => {
+              const nestedExpected = expectedValue[nestedKey];
+
+              if (
+                typeof nestedExpected === "object" &&
+                nestedExpected !== null
+              ) {
+                // Handle nested objects like queryParams - check for either camelCase or snake_case variants
+                const camelCaseKey = nestedKey;
+                const snakeCaseKey = nestedKey
+                  .replace(/([A-Z])/g, "_$1")
+                  .toLowerCase();
+
+                const hasCamelCase = item[key].hasOwnProperty(camelCaseKey);
+                const hasSnakeCase = item[key].hasOwnProperty(snakeCaseKey);
+                expect(hasCamelCase || hasSnakeCase).to.be.true;
+
+                const nestedField =
+                  item[key][camelCaseKey] || item[key][snakeCaseKey];
+                expect(nestedField).to.be.an("object");
+              } else {
+                // Handle simple properties
+                expect(item[key]).to.have.property(nestedKey);
+                if (typeof nestedExpected === "string") {
+                  expect(item[key][nestedKey]).to.equal(nestedExpected);
+                }
+              }
+            });
+          } else {
+            expect(item[key]).to.not.be.null;
+          }
+        });
+
+        // Verify rows_with_text and total_rows are greater than 1
+        if (item.hasOwnProperty("rows_with_text")) {
+          expect(item.rows_with_text).to.be.at.least(
+            1,
+            "rows_with_text should be at least 1",
+          );
+        }
+
+        if (item.hasOwnProperty("total_rows")) {
+          expect(item.total_rows).to.be.at.least(
+            1,
+            "total_rows should be at least 1",
+          );
+        }
+      });
+    } else {
+      console.error("Response code:", response.status);
+      const text = await response.text();
+      console.error(`Versioned API test request failed: ${text}`);
+      throw new Error(`${response.status}: ${text}`);
+    }
+  },
+
   verifyConsumerLogs: async (
     projectDir: string,
     expectedOutput: string[],
@@ -503,6 +591,26 @@ describe("Moose Templates", () => {
             // output_format_json_quote_64bit_integers is true by default in ClickHouse
             dayOfMonth: "19",
             totalRows: "1",
+          },
+        ],
+      );
+
+      // Test versioned API (V1)
+      await utils.verifyVersionedConsumptionApi(
+        "bar/1?orderBy=totalRows&startDay=19&endDay=19&limit=1",
+        [
+          {
+            dayOfMonth: "19",
+            totalRows: "1",
+            metadata: {
+              version: "1.0",
+              queryParams: {
+                orderBy: "totalRows",
+                limit: 1,
+                startDay: 19,
+                endDay: 19,
+              },
+            },
           },
         ],
       );
@@ -667,6 +775,29 @@ describe("Moose Templates", () => {
             rows_with_text: 1,
             max_text_length: 17,
             total_text_length: 17,
+          },
+        ],
+      );
+
+      // Test versioned API (V1)
+      await utils.verifyVersionedConsumptionApi(
+        "bar/1?order_by=total_rows&start_day=19&end_day=19&limit=1",
+        [
+          {
+            day_of_month: 19,
+            total_rows: 1,
+            rows_with_text: 1,
+            max_text_length: 17,
+            total_text_length: 17,
+            metadata: {
+              version: "1.0",
+              query_params: {
+                order_by: "total_rows",
+                limit: 1,
+                start_day: 19,
+                end_day: 19,
+              },
+            },
           },
         ],
       );

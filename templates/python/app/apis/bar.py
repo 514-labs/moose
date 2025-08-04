@@ -1,10 +1,10 @@
-
 # This file is where you can define your API templates for consuming your data
 
 from moose_lib import MooseClient, ConsumptionApi, MooseCache
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.views.bar_aggregated import barAggregatedMV
+from datetime import datetime, timezone
 
 # Query params are defined as Pydantic models and are validated automatically
 class QueryParams(BaseModel):
@@ -79,4 +79,54 @@ def run(client: MooseClient, params: QueryParams):
     return result
 
 
+def run_v1(client: MooseClient, params: QueryParams):
+
+    # Create a cache
+    cache = MooseCache()
+    cache_key = f"bar:v1:{params.order_by}:{params.limit}:{params.start_day}:{params.end_day}"
+
+    # Check for cached query results
+    cached_result = cache.get(cache_key)
+    if cached_result and len(cached_result) > 0:
+        return cached_result
+
+    start_day = params.start_day
+    end_day = params.end_day
+    limit = params.limit
+    order_by = params.order_by
+    
+    query = f"""
+    SELECT 
+        day_of_month,
+        total_rows,
+        rows_with_text,
+        max_text_length,
+        total_text_length
+    FROM {barAggregatedMV.target_table.name} 
+    WHERE day_of_month >= {start_day} 
+    AND day_of_month <= {end_day} 
+    ORDER BY {order_by} DESC
+    LIMIT {limit}
+    """    
+
+    result = client.query.execute(query, {"order_by": order_by, "start_day": start_day, "end_day": end_day, "limit": limit})
+
+    # V1 specific: Add metadata
+    for item in result:
+        item["metadata"] = {
+            "version": "1.0",
+            "query_params": {
+                "order_by": order_by,
+                "limit": limit,
+                "start_day": start_day,
+                "end_day": end_day,
+            }
+        }
+
+    # Cache query results
+    cache.set(result, cache_key, 3600)  # Cache for 1 hour
+
+    return result
+
 bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
+bar_v1 = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run_v1, version="1")

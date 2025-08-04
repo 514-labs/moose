@@ -63,7 +63,7 @@ export class IngestApi<T> extends TypedBase<T, IngestConfig<T>> {
     const ingressApiKey = generateIngestApiKey(name, config?.version);
 
     if (ingestApis.has(ingressApiKey)) {
-      throw new Error(`Ingest API with name ${name} already exists`);
+      throw new Error(`Ingest API with name ${ingressApiKey} already exists`);
     }
     ingestApis.set(ingressApiKey, this);
   }

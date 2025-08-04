@@ -14,7 +14,8 @@ from ._registry import _ingest_apis
 
 def generate_ingest_api_config(name: str, version: Optional[str]) -> str:
     if (version is not None):
-        return f"{name}_{version}"
+        version_suffix = version.replace(".", "_")
+        return f"{name}_{version_suffix}"
     else:
         return name
 

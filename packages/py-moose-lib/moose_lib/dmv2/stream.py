@@ -18,7 +18,8 @@ from .life_cycle import LifeCycle
 def generate_stream_key(name: str, version: Optional[str]) -> str:
     """Generate a unique key for the stream based on its name and version."""
     if version:
-        return f"{name}_{version}"
+        version_suffix = version.replace(".", "_")
+        return f"{name}_{version_suffix}"
     return name
 
 class StreamConfig(BaseModel):

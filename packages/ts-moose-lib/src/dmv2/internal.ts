@@ -45,6 +45,16 @@ const moose_internal = {
 const defaultRetentionPeriod = 60 * 60 * 24 * 7;
 
 /**
+ * Converts a version string to use underscores instead of dots.
+ * This ensures consistency with Rust's Version::as_suffix() method.
+ * @param version - The version string (e.g., "1.2.3")
+ * @returns The version string with dots replaced by underscores (e.g., "1_2_3")
+ */
+const formatVersionForKey = (version: string): string => {
+  return version.replace(/\./g, "_");
+};
+
+/**
  * JSON representation of an OLAP table configuration.
  */
 interface TableJson {
@@ -216,7 +226,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
 
     const tableKey =
       table.config.version ?
-        `${table.name}_${table.config.version}`
+        `${table.name}_${formatVersionForKey(table.config.version)}`
       : table.name;
 
     tables[tableKey] = {
@@ -245,7 +255,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
         // Use the destination stream's version, not the transformation config's version
         const destinationKey =
           destination.config.version ?
-            `${destinationName}_${destination.config.version}`
+            `${destinationName}_${formatVersionForKey(destination.config.version)}`
           : destinationName;
         transformationTargets.push({
           kind: "stream",
@@ -264,7 +274,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
 
     const streamKey =
       stream.config.version ?
-        `${stream.name}_${stream.config.version}`
+        `${stream.name}_${formatVersionForKey(stream.config.version)}`
       : stream.name;
     topics[streamKey] = {
       name: stream.name,
@@ -297,7 +307,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
           // Convert to Rust format
           deadLetterQueueName =
             stream.config.version ?
-              `${stream.name}_${stream.config.version}`
+              `${stream.name}_${formatVersionForKey(stream.config.version)}`
             : stream.name;
           break;
         }
@@ -311,14 +321,16 @@ export const toInfraMap = (registry: typeof moose_internal) => {
         // Convert to Rust format
         destinationStreamName =
           stream.config.version ?
-            `${stream.name}_${stream.config.version}`
+            `${stream.name}_${formatVersionForKey(stream.config.version)}`
           : stream.name;
         break;
       }
     }
 
     const rustKey =
-      api.config.version ? `${api.name}_${api.config.version}` : api.name;
+      api.config.version ?
+        `${api.name}_${formatVersionForKey(api.config.version)}`
+      : api.name;
     ingestApis[rustKey] = {
       name: api.name,
       columns: api.columnArray,
@@ -355,7 +367,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
           const table = r as OlapTable<any>;
           const id =
             table.config.version ?
-              `${table.name}_${table.config.version}`
+              `${table.name}_${formatVersionForKey(table.config.version)}`
             : table.name;
           return {
             id,
@@ -376,7 +388,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
           const table = r as OlapTable<any>;
           const id =
             table.config.version ?
-              `${table.name}_${table.config.version}`
+              `${table.name}_${formatVersionForKey(table.config.version)}`
             : table.name;
           return {
             id,

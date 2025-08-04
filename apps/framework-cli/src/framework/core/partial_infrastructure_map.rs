@@ -501,12 +501,17 @@ impl PartialInfrastructureMap {
                 .unwrap_or_else(|| panic!("Partial topic '{target_topic_name}' not found"));
 
             // Construct the versioned key
-            let topic_key = partial_topic
-                .version
-                .as_ref()
-                .map_or(partial_topic.name.clone(), |v| {
-                    format!("{}_{}", partial_topic.name, v)
-                });
+            let topic_key =
+                partial_topic
+                    .version
+                    .as_ref()
+                    .map_or(partial_topic.name.clone(), |v| {
+                        format!(
+                            "{}_{}",
+                            partial_topic.name,
+                            Version::from_string(v.clone()).as_suffix()
+                        )
+                    });
 
             let not_found = &format!("Target topic '{topic_key}' not found");
             let target_topic = topics.get(&topic_key).expect(not_found);
@@ -624,12 +629,17 @@ impl PartialInfrastructureMap {
 
         for partial_topic in self.topics.values() {
             if let Some(target_table_name) = &partial_topic.target_table {
-                let topic_key = partial_topic
-                    .version
-                    .as_ref()
-                    .map_or(partial_topic.name.clone(), |v| {
-                        format!("{}_{}", partial_topic.name, v)
-                    });
+                let topic_key =
+                    partial_topic
+                        .version
+                        .as_ref()
+                        .map_or(partial_topic.name.clone(), |v| {
+                            format!(
+                                "{}_{}",
+                                partial_topic.name,
+                                Version::from_string(v.clone()).as_suffix()
+                            )
+                        });
                 let topic_not_found = &format!("Source topic '{topic_key}' not found");
                 let source_topic = topics.get(&topic_key).expect(topic_not_found);
 

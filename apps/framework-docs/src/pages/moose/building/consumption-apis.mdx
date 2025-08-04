@@ -75,7 +75,9 @@ const exampleApi = new ConsumptionApi<QueryParams, ResultItem[]>("example_endpoi
 
         // Return the result set as an array of the result item type
         return await resultSet.json();
-    });
+    },
+    { version: "1" }, // Optional version config
+  );
 ```
 <ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
 ```ts filename="SourcePipeline.ts" copy
@@ -134,7 +136,7 @@ def run(client: MooseClient, params: QueryParams) -> list[ResponseBody]:
     return client.query.execute(query, {"table": SourceTable.name, "filterField": params.filterField, "maxResults": params.maxResults})
 
 # Create the API
-example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
+example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run, version="1") # Version config is optional
 ```
 <ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
 ```python filename="SourcePipeline.py" copy

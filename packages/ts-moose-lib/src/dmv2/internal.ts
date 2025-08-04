@@ -242,9 +242,10 @@ export const toInfraMap = (registry: typeof moose_internal) => {
 
     stream._transformations.forEach((transforms, destinationName) => {
       transforms.forEach(([destination, _, config]) => {
+        // Use the destination stream's version, not the transformation config's version
         const destinationKey =
-          config.version ?
-            `${destinationName}_${config.version}`
+          destination.config.version ?
+            `${destinationName}_${destination.config.version}`
           : destinationName;
         transformationTargets.push({
           kind: "stream",

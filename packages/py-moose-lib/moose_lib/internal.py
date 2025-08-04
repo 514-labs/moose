@@ -322,7 +322,7 @@ def to_infra_map() -> dict:
     for registry_key, api in get_ingest_apis().items():
         # Use consistent versioned key generation like tables and topics
         versioned_key = generate_versioned_key(api.name, api.config.version)
-        destination_topic_id = api.config.destination._generate_topic_id()
+
         dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
 
         ingest_apis[versioned_key] = IngestApiConfig(
@@ -331,7 +331,8 @@ def to_infra_map() -> dict:
             version=api.config.version,
             write_to=Target(
                 kind="stream",
-                name=destination_topic_id
+                name=api.config.destination._generate_topic_id(),
+                version=api.config.destination.config.version,
             ),
             metadata=getattr(api, "metadata", None),
             dead_letter_queue=dead_letter_queue_id

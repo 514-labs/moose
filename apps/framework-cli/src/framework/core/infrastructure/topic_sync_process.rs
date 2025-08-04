@@ -26,10 +26,6 @@ pub struct TopicToTableSyncProcess {
 
 impl TopicToTableSyncProcess {
     pub fn new(topic: &Topic, table: &Table) -> Self {
-        println!(
-            "Topic: {:?}, Topic Version: {:?}, Table Version: {:?}",
-            topic, topic.version, table.version
-        );
         if topic.version != table.version {
             panic!(
                 "Version mismatch between topic {:?} and table {:?}",

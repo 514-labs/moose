@@ -400,41 +400,29 @@ fn handle_table_remove(table: &Table) -> OperationPlan {
     OperationPlan::teardown(vec![drop_table_operation(table)])
 }
 
-/// Handles non-mutable changes to a table, such as changing the order of columns or the primary key
-fn handle_non_mutable_change_operation(before: &Table, after: &Table) -> OperationPlan {
-    let teardown_op = drop_table_operation(before);
-    let setup_op = create_table_operation(after);
-
-    let mut plan = OperationPlan::new();
-    plan.teardown_ops.push(teardown_op);
-    plan.setup_ops.push(setup_op);
-    plan
-}
-
 /// Handles updating a table operation
-fn handle_table_update(
+///
+/// Process column-level changes for a table update.
+///
+/// This function now uses a generic approach since database-specific logic
+/// has been moved to the planning phase via TableDiffStrategy implementations.
+/// The ddl_ordering module should only receive the operations that the database
+/// can actually perform.
+///
+/// Note: This function only handles column changes. Complex table updates that
+/// require drop+create operations should have been converted to separate
+/// Remove+Add operations by the appropriate TableDiffStrategy.
+fn handle_table_column_updates(
     before: &Table,
     after: &Table,
     column_changes: &[ColumnChange],
 ) -> OperationPlan {
-    // Check if ORDER BY has changed
-    if !before.order_by_equals(after) {
-        // If ORDER BY changed, we need to drop and recreate the table
-        handle_non_mutable_change_operation(before, after)
-    } else {
-        // Check if primary key structure has changed
-        let before_primary_keys = before.primary_key_columns();
-        let after_primary_keys = after.primary_key_columns();
-
-        if before_primary_keys != after_primary_keys {
-            // If primary key structure changed, we need to drop and recreate the table
-            // This handles cases like changing from orderByFields to Key<T> annotations
-            handle_non_mutable_change_operation(before, after)
-        } else {
-            // If neither ORDER BY nor primary key structure changed, use the already computed column changes
-            process_column_changes(before, after, column_changes)
-        }
-    }
+    // Since database-specific transformations now happen during the diff phase,
+    // we can assume that any table update that reaches this point can be handled
+    // via column-level operations. If a database requires drop+create for certain
+    // changes, those should have been converted to separate Remove+Add operations
+    // by the appropriate TableDiffStrategy.
+    process_column_changes(before, after, column_changes)
 }
 
 /// Process a column addition with position information
@@ -659,7 +647,7 @@ pub fn order_olap_changes(
                 after,
                 column_changes,
                 ..
-            }) => handle_table_update(before, after, column_changes),
+            }) => handle_table_column_updates(before, after, column_changes),
             OlapChange::View(Change::Added(boxed_view)) => handle_view_add(boxed_view),
             OlapChange::View(Change::Removed(boxed_view)) => handle_view_remove(boxed_view),
             OlapChange::View(Change::Updated { before, after }) => {
@@ -2259,11 +2247,12 @@ mod tests {
     }
 
     #[test]
-    fn test_order_by_modification() {
-        // Test handling of ORDER BY modifications
-        // When ORDER BY changes, we need to drop and recreate the table
+    fn test_generic_table_update() {
+        // Test handling of generic table updates that can be handled via column operations
+        // ORDER BY changes are now handled at the diff phase by database-specific strategies,
+        // so this test focuses on column-level changes that all databases can handle.
 
-        // Create before and after tables
+        // Create before and after tables with the same ORDER BY but different columns
         let before_table = Table {
             name: "test_table".to_string(),
             columns: vec![
@@ -2277,9 +2266,9 @@ mod tests {
                     annotations: vec![],
                 },
                 Column {
-                    name: "timestamp".to_string(),
-                    data_type: ColumnType::DateTime { precision: None },
-                    required: true,
+                    name: "old_column".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
                     unique: false,
                     primary_key: false,
                     default: None,
@@ -2311,16 +2300,16 @@ mod tests {
                     annotations: vec![],
                 },
                 Column {
-                    name: "timestamp".to_string(),
-                    data_type: ColumnType::DateTime { precision: None },
-                    required: true,
+                    name: "new_column".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
                     unique: false,
                     primary_key: false,
                     default: None,
                     annotations: vec![],
                 },
             ],
-            order_by: vec!["timestamp".to_string()], // Changed from "id" to "timestamp"
+            order_by: vec!["id".to_string()], // Same ORDER BY
             deduplicate: false,
             engine: None,
             version: None,
@@ -2332,43 +2321,78 @@ mod tests {
             life_cycle: LifeCycle::FullyManaged,
         };
 
-        // Generate the operation plan
-        let plan = handle_table_update(&before_table, &after_table, &[]);
+        // Create column changes (remove old_column, add new_column)
+        let column_changes = vec![
+            ColumnChange::Removed(Column {
+                name: "old_column".to_string(),
+                data_type: ColumnType::String,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+                annotations: vec![],
+            }),
+            ColumnChange::Added {
+                column: Column {
+                    name: "new_column".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                position_after: Some("id".to_string()),
+            },
+        ];
 
-        // Check that the plan includes dropping and recreating the table
+        // Generate the operation plan
+        let plan = handle_table_column_updates(&before_table, &after_table, &column_changes);
+
+        // Check that the plan uses column-level operations (not drop+create)
         assert_eq!(
             plan.teardown_ops.len(),
             1,
-            "Should have one teardown operation for ORDER BY change"
+            "Should have one teardown operation for column removal"
         );
         assert_eq!(
             plan.setup_ops.len(),
             1,
-            "Should have one setup operation for ORDER BY change"
+            "Should have one setup operation for column addition"
         );
 
         match &plan.teardown_ops[0] {
-            AtomicOlapOperation::DropTable { table, .. } => {
-                assert_eq!(table.name, "test_table", "Should drop the original table");
+            AtomicOlapOperation::DropTableColumn {
+                table, column_name, ..
+            } => {
                 assert_eq!(
-                    table.order_by,
-                    vec!["id".to_string()],
-                    "Should have original ORDER BY"
+                    table.name, "test_table",
+                    "Should drop column from correct table"
                 );
+                assert_eq!(column_name, "old_column", "Should drop the old column");
             }
-            _ => panic!("Expected DropTable operation"),
+            _ => panic!("Expected DropTableColumn operation"),
         }
 
         match &plan.setup_ops[0] {
-            AtomicOlapOperation::CreateTable { table, .. } => {
-                assert_eq!(table.name, "test_table", "Should create the new table");
+            AtomicOlapOperation::AddTableColumn {
+                table,
+                column,
+                after_column,
+                ..
+            } => {
                 assert_eq!(
-                    table.order_by,
-                    vec!["timestamp".to_string()],
-                    "Should have new ORDER BY"
+                    table.name, "test_table",
+                    "Should add column to correct table"
+                );
+                assert_eq!(column.name, "new_column", "Should add the new column");
+                assert_eq!(
+                    after_column,
+                    &Some("id".to_string()),
+                    "Should position after id column"
                 );
             }
-            _ => panic!("Expected CreateTable operation"),
+            _ => panic!("Expected AddTableColumn operation"),
         }
     }
 }

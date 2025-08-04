@@ -153,7 +153,7 @@ class Stream(TypedMooseResource, Generic[T]):
         if not has_version:
             self.consumers.append(ConsumerEntry(consumer=consumer, config=config))
 
-    def _generate_topic_id(self) -> str:
+    def generate_topic_id(self) -> str:
         """Generate the topic ID following Rust CLI's naming convention.
         Format: {topicName}_{version_with_dots_replaced_by_underscores}
         Returns:

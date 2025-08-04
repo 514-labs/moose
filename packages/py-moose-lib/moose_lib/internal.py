@@ -291,7 +291,7 @@ def to_infra_map() -> dict:
         transformation_targets = [
             Target(
                 kind="stream",
-                name=transform.destination._generate_topic_id(),
+                name=transform.destination.generate_topic_id(),
                 version=transform.config.version,
                 metadata=getattr(transform.config, "metadata", None),
             )
@@ -323,7 +323,7 @@ def to_infra_map() -> dict:
         # Use consistent versioned key generation like tables and topics
         versioned_key = generate_versioned_key(api.name, api.config.version)
 
-        dead_letter_queue_id = api.config.dead_letter_queue._generate_topic_id() if api.config.dead_letter_queue else None
+        dead_letter_queue_id = api.config.dead_letter_queue.generate_topic_id() if api.config.dead_letter_queue else None
 
         ingest_apis[versioned_key] = IngestApiConfig(
             name=api.name,  # Use original name from the API object
@@ -331,7 +331,7 @@ def to_infra_map() -> dict:
             version=api.config.version,
             write_to=Target(
                 kind="stream",
-                name=api.config.destination._generate_topic_id(),
+                name=api.config.destination.generate_topic_id(),
                 version=api.config.destination.config.version,
             ),
             metadata=getattr(api, "metadata", None),

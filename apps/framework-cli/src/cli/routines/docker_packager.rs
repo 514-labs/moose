@@ -228,20 +228,58 @@ pub fn create_dockerfile(
                 // Add the common Docker sections
                 dockerfile.push_str(DOCKER_FILE_COMMON);
 
+                // Generate COPY commands for all workspace directories
+                let workspace_copies = workspace_config
+                    .iter()
+                    .filter_map(|pattern| {
+                        let base_path = pattern.replace("/*", "");
+                        let full_path = workspace_root.join(&base_path);
+                        if full_path.exists() && full_path.is_dir() {
+                            Some(format!(
+                                "COPY --from=monorepo-base /monorepo/{base_path} ./{base_path}"
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
                 // Modify the copy commands to copy from the build stage
                 let copy_from_build = format!(
                     r#"
-# Copy built application from monorepo stage
+# Copy application files from monorepo stage
 COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/app ./app
 COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/package.json ./package.json
 COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/tsconfig.json ./tsconfig.json
-COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/node_modules ./node_modules
 
 # Copy config files
 COPY --chown=moose:moose ./project.tom[l] ./project.toml
-COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml"#,
+COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
+
+# Create node_modules by installing dependencies for this specific workspace
+# We need to copy necessary monorepo files and run pnpm install with filter
+USER root:root
+WORKDIR /temp-monorepo
+COPY --from=monorepo-base /monorepo/pnpm-workspace.yaml ./
+COPY --from=monorepo-base /monorepo/pnpm-lock.yaml ./
+COPY --from=monorepo-base /monorepo/{} ./{}
+# Copy all workspace directories that exist
+{}
+RUN pnpm install --frozen-lockfile --filter "./{}"
+# Copy the generated node_modules to the application directory
+RUN cp -r /temp-monorepo/{}/node_modules /application/node_modules && \
+    chown -R moose:moose /application/node_modules
+# Clean up
+RUN rm -rf /temp-monorepo
+USER moose:moose
+WORKDIR /application"#,
                     relative_project_path.to_string_lossy(),
                     relative_project_path.to_string_lossy(),
+                    relative_project_path.to_string_lossy(),
+                    relative_project_path.to_string_lossy(),
+                    relative_project_path.to_string_lossy(),
+                    workspace_copies,
                     relative_project_path.to_string_lossy(),
                     relative_project_path.to_string_lossy(),
                 );

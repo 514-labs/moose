@@ -1,5 +1,5 @@
 import { Task, Workflow, OlapTable, Key } from "@514labs/moose-lib";
-import { Foo } from "../ingest/models";
+import { FooV1 } from "../ingest/models";
 import { faker } from "@faker-js/faker";
 
 // Data model for OLAP Table
@@ -15,7 +15,7 @@ const workflowTable = new OlapTable<FooWorkflow>("FooWorkflow");
 export const ingest = new Task<null, void>("ingest", {
   run: async () => {
     for (let i = 0; i < 1000; i++) {
-      const foo: Foo = {
+      const foo: FooV1 = {
         primaryKey: faker.string.uuid(),
         timestamp: faker.date.recent({ days: 365 }).getTime(),
         optionalText: Math.random() < 0.5 ? faker.lorem.text() : undefined,

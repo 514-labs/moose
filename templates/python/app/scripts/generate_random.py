@@ -2,7 +2,7 @@ from moose_lib import Task, TaskConfig, Workflow, WorkflowConfig, OlapTable, Ins
 from pydantic import BaseModel
 from datetime import datetime
 from faker import Faker
-from app.ingest.models import Foo, Baz
+from app.ingest.models import FooV1, Baz
 import requests
 
 class FooWorkflow(BaseModel):
@@ -16,7 +16,7 @@ def run_task() -> None:
     fake = Faker()
     for i in range(1000):
         # Prepare request data
-        foo = Foo(
+        foo = FooV1(
             primary_key=fake.uuid4(),
             timestamp=fake.date_time_between(start_date='-1y', end_date='now').timestamp(),
             baz=fake.random_element(Baz),
@@ -35,7 +35,7 @@ def run_task() -> None:
         else:
             workflow_table.insert([{"id": "1", "success": False, "message": f"Failed to insert Foo with error: {req.status_code}"}])
 
-ingest_task = Task[Foo, None](
+ingest_task = Task[FooV1, None](
     name="task",
     config=TaskConfig(run=run_task)
 )

@@ -1073,22 +1073,38 @@ async fn router(
     let res = match (configured_producer, req.method(), &route_split[..]) {
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
-                // For v2, find the latest version if no version specified
                 let route_table_read = route_table.read().await;
-                let base_path = route.to_str().unwrap();
-                let mut latest_version: Option<&Version> = None;
 
-                // First find matching routes, then get latest version
-                for (path, meta) in route_table_read.iter() {
-                    let path_str = path.to_str().unwrap();
-                    if path_str.starts_with(base_path) {
+                // First, try to find an exact match for the unversioned route
+                if route_table_read.contains_key(&route) {
+                    // Exact match found for unversioned route
+                    ingest_route(
+                        req,
+                        route,
+                        configured_producer,
+                        route_table,
+                        is_prod,
+                        jwt_config,
+                    )
+                    .await
+                } else {
+                    // No exact match, look for the latest versioned route
+                    let base_path = route.to_str().unwrap();
+                    let mut latest_version: Option<&Version> = None;
+
+                    for (path, meta) in route_table_read.iter() {
+                        let path_str = path.to_str().unwrap();
+                        // Only consider versioned routes that match the pattern
                         if let Some(version) = &meta.version {
-                            if latest_version.is_none() || version > latest_version.unwrap() {
-                                latest_version = Some(version);
+                            // Check if this is a versioned route for the same base path
+                            // e.g., "ingest/Foo/1" for base path "ingest/Foo"
+                            if path_str.starts_with(&format!("{}/", base_path)) {
+                                if latest_version.is_none() || version > latest_version.unwrap() {
+                                    latest_version = Some(version);
+                                }
                             }
                         }
                     }
-                }
 
                 match latest_version {
                     // If latest version exists, use it

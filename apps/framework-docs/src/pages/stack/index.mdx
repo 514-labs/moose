@@ -4,7 +4,7 @@ description: Modular toolkit for building real-time analytical backends
 ---
 
 import { Callout, CTACards, CTACard, BulletPointsCard, IconBadge, PathConfig, StaggeredCards, StaggeredCard, StaggeredContent, StaggeredCode, TypeScript, Python } from "@/components";
-import { Database, Laptop, Rocket, Package, FileText, Info } from "lucide-react";
+import { Database, Laptop, Rocket, Package, FileText, Info, Github } from "lucide-react";
 import { Tabs } from "nextra/components";
 
 # MooseStack
@@ -42,11 +42,11 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
     orientation="horizontal"
   />
   <CTACard
-    title="Star on GitHub"
-    description="250+ developers building with Moose"
-    ctaLink={PathConfig.github.path}
+    title="Bootstrap with Area Code"
+    description="Start with a template for integrating Moose with complex microservices architectures"
+    ctaLink="https://github.com/514-labs/area-code"
     ctaLabel="Star on GitHub"
-    Icon={PathConfig.github.icon}
+    Icon={Github}
     variant="default"
     orientation="horizontal"
   />
@@ -131,11 +131,11 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
 
 <br />
 
-## Libraries
+## Fundamentals
 
 <StaggeredCards>
-  <StaggeredCard>
-    <StaggeredContent
+<StaggeredCard>
+ <StaggeredContent
       isMooseModule={true}
       title="Data Models"
       description="Define your schema once, get validation everywhere—catch errors at dev time, not in production."
@@ -161,6 +161,38 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
     </StaggeredCode>
   </StaggeredCard>
 
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      isMooseModule={true}
+      title="Runtime"
+      description="Local dev and production execution environment for analytical backends"
+      cta={{
+        label: "Learn more",
+        href: "/moosestack/runtime",
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode>
+      ```bash
+      # Start local dev server
+      moose dev
+
+      ⡏ Starting local infrastructure
+        Successfully started containers
+        Validated clickhousedb-1 docker container
+        Validated redpanda-1 docker container
+        Successfully validated red panda cluster
+        Validated temporal docker container
+        Successfully ran local infrastructure
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+</StaggeredCards>
+
+
+## Modules
+<StaggeredCards>
+  
   <StaggeredCard className="border-t">
     <StaggeredContent
       isMooseModule={true}
@@ -277,32 +309,6 @@ Each module is independent and can be used on its own. You can start with one ca
 ### Tooling
 
 <StaggeredCards>
-  <StaggeredCard className="border-t">
-    <StaggeredContent
-      isMooseModule={true}
-      title="Runtime"
-      description="Local dev and production execution environment for analytical backends"
-      cta={{
-        label: "Learn more",
-        href: "/moosestack/runtime",
-        variant: "outline",
-      }}
-    />
-    <StaggeredCode>
-      ```bash
-      # Start local dev server
-      moose dev
-
-      ⡏ Starting local infrastructure
-        Successfully started containers
-        Validated clickhousedb-1 docker container
-        Validated redpanda-1 docker container
-        Successfully validated red panda cluster
-        Validated temporal docker container
-        Successfully ran local infrastructure
-      ```
-    </StaggeredCode>
-  </StaggeredCard>
 
   <StaggeredCard className="border-t">
     <StaggeredContent
@@ -364,10 +370,9 @@ Each module is independent and can be used on its own. You can start with one ca
 
 ## Technology Partners
 
-ClickHouse (OLAP)
-Redpanda (Streaming)
-Temporal (Workflows)
-
-More coming soon...
+- [ClickHouse](https://clickhouse.com/) (Online Analytical Processing (OLAP) Database)
+- [Redpanda](https://redpanda.com/) (Streaming)
+- [Temporal](https://temporal.io/) (Workflow Orchestration)
+- [Redis](https://redis.io/) (Internal State Management) 
 
 

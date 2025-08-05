@@ -183,8 +183,6 @@ pub async fn extract_data_model_from_file(
 mod tests {
 
     use crate::framework::languages::SupportedLanguages;
-    use crate::framework::typescript::parser::extract_data_model_from_file;
-    use crate::framework::typescript::parser::TypescriptParsingError;
     use crate::project::Project;
     use crate::utilities::process_output::run_command_with_output_proxy_sync;
     use ctor::ctor;

@@ -11,7 +11,7 @@
     "ts-patch": "^3.3.0",
     "@514labs/moose-lib": "latest",
     "@514labs/moose-connector-api": "latest",
-    "typia": "^7.6.0"
+    "typia": "^9.6.1"
   },
   "devDependencies": {
     "@514labs/moose-cli": "latest",

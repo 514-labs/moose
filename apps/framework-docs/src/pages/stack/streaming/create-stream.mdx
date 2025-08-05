@@ -299,13 +299,13 @@ class TransformedData(BaseModel):
 
 # Create pipeline components for raw data - only for ingestion and streaming
 raw_stream = Stream[RawData]("raw_data") ## No destination table since we're not storing the raw data
-raw_api = IngestApi[RawData]("raw_data", StreamConfig(
+raw_api = IngestApi[RawData]("raw_data", IngestConfig(
   destination=raw_stream ## Connect the ingestion API to the raw data stream
 ))
 
 # Create pipeline components for transformed data - no ingestion API since we're not ingesting the transformed data
 transformed_table = OlapTable[TransformedData]("transformed_data") ## Store the transformed data in a table
-transformed_stream = Stream[TransformedData]("transformed_data", destination=transformed_table) ## Connect the transformed data stream to the destination table
+transformed_stream = Stream[TransformedData]("transformed_data", StreamConfig(destination=transformed_table)) ## Connect the transformed data stream to the destination table
 
 
 ## Example transformation using a lambda function

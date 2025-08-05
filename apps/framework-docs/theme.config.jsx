@@ -15,7 +15,7 @@ import {
 import { useRouter } from "next/router";
 import { useConfig } from "nextra-theme-docs";
 import { PathConfig } from "./src/components/ctas";
-import Script from "next/script";
+import { GitHubStarsButton } from "@/components";
 
 // Base text styles that match your typography components
 const baseTextStyles = {
@@ -160,31 +160,11 @@ export default {
           sizes="16x16"
         />
         <link rel="canonical" href={url} />
-        <Script
-          src="https://buttons.github.io/buttons.js"
-          strategy="afterInteractive"
-        />
       </>
     );
   },
   navbar: {
-    extraContent: () => (
-      <div className="flex items-center gap-2 h-full" suppressHydrationWarning>
-        <div className="max-h-7">
-          <a
-            className="github-button"
-            href="https://github.com/514-labs/moose"
-            data-color-scheme="no-preference: dark; light: light; dark: dark;"
-            data-icon="octicon-star"
-            data-size="large"
-            data-show-count="true"
-            aria-label="Star buttons/github-buttons on GitHub"
-          >
-            Star
-          </a>
-        </div>
-      </div>
-    ),
+    extraContent: () => <GitHubStarsButton username="514-labs" repo="moose" />,
   },
   // main: ({ children }) => (
   //   <div className="relative">

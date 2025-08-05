@@ -13,6 +13,7 @@ interface MetaItem {
   href?: string;
   Icon?: React.ElementType;
   newWindow?: boolean;
+  isMoose?: boolean;
 }
 
 /**
@@ -35,13 +36,34 @@ const UI = {
   IconWithText: ({
     icon,
     text,
+    isMoose = false,
   }: {
     icon?: React.ReactElement;
     text: React.ReactNode;
+    isMoose?: boolean;
   }) => (
-    <div className="flex items-center gap-2 text-primary">
+    <div className="flex items-center gap-2 text-primary my-0">
       {icon}
-      <SmallText className="text-inherit my-2">{text}</SmallText>
+      <SmallText className="text-inherit my-0">
+        {isMoose ?
+          <span className="text-muted-foreground">Moose </span>
+        : ""}
+        {text}
+      </SmallText>
+    </div>
+  ),
+
+  Separator: ({
+    children,
+    showLine = false,
+  }: {
+    children: React.ReactNode;
+    showLine: boolean;
+  }) => (
+    <div className={`${showLine ? "border-t border-border" : ""} my-0`}>
+      <p className="text-muted-foreground text-sm font-normal mb-0 mt-2">
+        {children}
+      </p>
     </div>
   ),
 };
@@ -75,6 +97,7 @@ const renderObjectWithIcon = (item: MetaItem): MetaItem => {
       <UI.IconWithText
         icon={item.Icon ? <item.Icon className="w-4 h-4" /> : undefined}
         text={item.title}
+        isMoose={item.isMoose}
       />
     ),
   };
@@ -100,13 +123,19 @@ const renderStandardObject = (item: MetaItem): MetaItem => {
  * Renders an index item with theme
  */
 const renderIndexWithTheme = (item: MetaItem): MetaItem => {
-  const processedItem = { ...item };
-
-  if (typeof item.title === "string") {
-    processedItem.title = <UI.IconWithText text={item.title} />;
+  if (item.Icon) {
+    return {
+      ...item,
+      title: (
+        <UI.IconWithText
+          text={item.title}
+          icon={<item.Icon className="w-4 h-4" />}
+        />
+      ),
+    };
   }
 
-  return processedItem;
+  return { ...item, title: <UI.HoverText>{item.title}</UI.HoverText> };
 };
 
 /**
@@ -122,10 +151,24 @@ const renderDisplayOrTheme = (item: MetaItem): MetaItem => {
   return processedItem;
 };
 
+const renderSeparatorItem = (
+  item: MetaItem,
+  separatorLine: boolean = false,
+): MetaItem => {
+  return {
+    ...item,
+    title: <UI.Separator showLine={separatorLine}>{item.title}</UI.Separator>,
+  };
+};
+
 /**
  * Determines the type of item and delegates to the appropriate renderer
  */
-const renderItem = (item: string | MetaItem, key?: string): MetaItem => {
+const renderItem = (
+  item: string | MetaItem,
+  key?: string,
+  separatorLine: boolean = false,
+): MetaItem => {
   // Handle string item
   if (typeof item === "string") {
     return renderStringItem(item);
@@ -134,6 +177,10 @@ const renderItem = (item: string | MetaItem, key?: string): MetaItem => {
   // Handle page type
   if (item.type === "page") {
     return renderPageItem(item);
+  }
+
+  if (item.type === "separator") {
+    return renderSeparatorItem(item, separatorLine);
   }
 
   // Handle object with non-React element title
@@ -153,7 +200,10 @@ const renderItem = (item: string | MetaItem, key?: string): MetaItem => {
 /**
  * Process the meta object structure using specialized renderers
  */
-export const render = (items: Record<string, any>): Record<string, any> => {
+export const render = (
+  items: Record<string, any>,
+  separatorLine: boolean = false,
+): Record<string, any> => {
   const result: Record<string, any> = {};
 
   for (const key in items) {
@@ -174,12 +224,12 @@ export const render = (items: Record<string, any>): Record<string, any> => {
       }
       // Standard object items
       else {
-        result[key] = renderItem(item, key);
+        result[key] = renderItem(item, key, separatorLine);
       }
     }
     // String or React element items
     else {
-      result[key] = renderItem(item, key);
+      result[key] = renderItem(item, key, separatorLine);
     }
   }
 

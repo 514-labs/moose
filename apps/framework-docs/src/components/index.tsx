@@ -15,3 +15,4 @@ export * from "./q-and-a-bullets";
 export * from "./ctas";
 export * from "./contact";
 export * from "./staggered-card";
+export * from "./animate-ui/buttons/github-stars";

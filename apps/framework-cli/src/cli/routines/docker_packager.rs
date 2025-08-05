@@ -271,7 +271,7 @@ RUN pnpm install --frozen-lockfile --filter "./{}" --shamefully-hoist
 RUN cp -r /temp-monorepo/{}/node_modules /application/node_modules && \
     chown -R moose:moose /application/node_modules
 
-RUN ls -la /application/node_modules/@514labs/moose-lib/dist/
+RUN if [ -d "/application/node_modules/@514labs/moose-lib/dist/" ]; then ls -la /application/node_modules/@514labs/moose-lib/dist/; fi
 # Clean up
 RUN rm -rf /temp-monorepo
 USER moose:moose

@@ -15,6 +15,7 @@ import {
   GanttChart,
   ChartBar,
   Columns3,
+  HelpCircle,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -112,6 +113,10 @@ const rawMeta = {
   configuration: {
     title: "Project Configuration",
     Icon: Settings,
+  },
+  help: {
+    title: "Help",
+    Icon: HelpCircle,
   },
   // "client-integrations": {
   //   title: "Client Integrations",

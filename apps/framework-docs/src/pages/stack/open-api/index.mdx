@@ -1,0 +1,329 @@
+---
+title: OpenAPI SDK Generation
+description: Generate type-safe client SDKs from your Moose APIs
+---
+
+import { Callout, CTACard, CTACards, PathConfig, ToggleBlock } from "@/components";
+import { Tabs } from "nextra/components";
+
+# OpenAPI SDK Generation
+
+Moose automatically generates OpenAPI specifications for all your APIs, enabling you to create type-safe client SDKs in any language. This allows you to integrate your Moose APIs into any application with full type safety and IntelliSense support.
+
+## Overview
+
+When you run `moose dev`, Moose automatically generates an OpenAPI specification file at `.moose/openapi.yaml` that includes:
+
+- **All ingestion endpoints** with request/response schemas
+- **All consumption APIs** with query parameters and response types
+- **Example data** for testing and documentation
+- **Type definitions** for all data models
+
+## Generating SDKs
+
+### Prerequisites
+
+1. **Install OpenAPI Generator CLI:**
+   ```bash
+   npm install -g @openapitools/openapi-generator-cli
+   ```
+
+2. **Start your Moose dev server:**
+   ```bash
+   moose dev
+   ```
+
+3. **Locate your OpenAPI spec:**
+   The specification is automatically generated at `.moose/openapi.yaml`
+
+### TypeScript SDK Generation
+
+Generate a TypeScript SDK using the fetch client:
+
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g typescript-fetch \
+  -o ./generated-client
+```
+
+### Python SDK Generation
+
+Generate a Python SDK:
+
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g python \
+  -o ./generated-client
+```
+
+### JavaScript SDK Generation
+
+Generate a JavaScript SDK:
+
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g javascript \
+  -o ./generated-client
+```
+
+## Integration Examples
+
+### TypeScript Integration
+
+<ToggleBlock openText="Show TypeScript Setup" closeText="Hide Details">
+```typescript filename="lib/moose-client.ts" copy
+import { DefaultApi, Configuration } from "./generated-client";
+
+const apiConfig = new Configuration({
+  basePath: "http://localhost:4000",
+});
+
+const mooseClient = new DefaultApi(apiConfig);
+
+export { mooseClient };
+```
+</ToggleBlock>
+
+<ToggleBlock openText="Show TypeScript Usage" closeText="Hide Details">
+```typescript filename="components/data-fetching.tsx" copy
+import { mooseClient } from "../lib/moose-client";
+
+// Type-safe API calls with full IntelliSense
+const fetchUserEvents = async () => {
+  const response = await mooseClient.ingestUserEventsPost({
+    id: "event1",
+    userId: "user1", 
+    timestamp: new Date().toISOString(),
+    action: "page_view"
+  });
+  
+  return response;
+};
+
+// Consumption API with query parameters
+const fetchAnalytics = async () => {
+  const response = await mooseClient.consumptionUserEventsGet({
+    startDate: "2024-01-01",
+    endDate: "2024-01-31",
+    limit: 100
+  });
+  
+  return response;
+};
+```
+</ToggleBlock>
+
+### Python Integration
+
+<ToggleBlock openText="Show Python Setup" closeText="Hide Details">
+```python filename="moose_client.py" copy
+from generated_client import DefaultApi, Configuration
+
+api_config = Configuration(
+    host="http://localhost:4000"
+)
+
+moose_client = DefaultApi(api_config)
+```
+</ToggleBlock>
+
+<ToggleBlock openText="Show Python Usage" closeText="Hide Details">
+```python filename="data_processing.py" copy
+from moose_client import moose_client
+from datetime import datetime
+
+# Type-safe ingestion
+def send_user_event():
+    event_data = {
+        "id": "event1",
+        "userId": "user1",
+        "timestamp": datetime.now().isoformat(),
+        "action": "page_view"
+    }
+    
+    response = moose_client.ingest_user_events_post(event_data)
+    return response
+
+# Type-safe consumption
+def fetch_analytics():
+    response = moose_client.consumption_user_events_get(
+        start_date="2024-01-01",
+        end_date="2024-01-31", 
+        limit=100
+    )
+    return response
+```
+</ToggleBlock>
+
+## Available Generators
+
+OpenAPI Generator supports 50+ languages and frameworks. Popular options include:
+
+<Tabs items={["TypeScript", "Python", "JavaScript", "Java", "C#", "Go", "Rust"]}>
+<Tabs.Tab>
+**TypeScript**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g typescript-fetch \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**Python**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g python \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**JavaScript**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g javascript \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**Java**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g java \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**C#**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g csharp \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**Go**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g go \
+  -o ./generated-client
+```
+</Tabs.Tab>
+<Tabs.Tab>
+**Rust**
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g rust \
+  -o ./generated-client
+```
+</Tabs.Tab>
+</Tabs>
+
+## When to Regenerate
+
+<Callout type="warning" title="Regenerate SDKs When:">
+- **Update data models** - Changes to your TypeScript interfaces or Python models
+- **Modify ingestion pipelines** - Adding/removing fields or changing validation rules
+- **Update consumption APIs** - Changing query parameters or response schemas
+- **Add new endpoints** - New ingestion or consumption APIs
+- **Change API configuration** - Modifying authentication, rate limiting, etc.
+</Callout>
+
+
+## Advanced Configuration
+
+### Custom Generator Options
+
+You can customize the generated SDK with additional options:
+
+```bash
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g typescript-fetch \
+  -o ./generated-client \
+  --additional-properties=supportsES6=true,npmName=@myorg/moose-client,npmVersion=1.0.0
+```
+
+### Multiple SDKs
+
+Generate SDKs for multiple languages in one project:
+
+```bash
+# TypeScript for frontend
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g typescript-fetch \
+  -o ./frontend/generated-client
+
+# Python for backend services
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g python \
+  -o ./backend/generated-client
+
+# Go for microservices
+openapi-generator-cli generate \
+  -i .moose/openapi.yaml \
+  -g go \
+  -o ./services/generated-client
+```
+
+### CI/CD Integration
+
+Automate SDK generation in your CI/CD pipeline:
+
+```yaml filename=".github/workflows/generate-sdk.yml" copy
+name: Generate SDK
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'moose.config.toml']
+
+jobs:
+  generate-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install -g @openapitools/openapi-generator-cli
+      - run: moose dev &
+      - run: sleep 10  # Wait for server to start
+      - run: openapi-generator-cli generate -i .moose/openapi.yaml -g typescript-fetch -o ./generated-client
+      - run: git add generated-client
+      - run: git commit -m "Update generated SDK" || echo "No changes"
+      - run: git push
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<Callout type="info" title="SDK Generation Issues">
+- **Server not running**: Ensure `moose dev` is running before generating SDKs
+- **Outdated spec**: Regenerate the OpenAPI spec by restarting the dev server
+- **Type conflicts**: Clear generated client directory before regenerating
+- **Network errors**: Check that the Moose server is accessible at the configured URL
+</Callout>
+
+### Validation
+
+Verify your OpenAPI spec is valid:
+
+```bash
+# Validate the OpenAPI spec
+openapi-generator-cli validate -i .moose/openapi.yaml
+
+# View the generated spec
+cat .moose/openapi.yaml
+```

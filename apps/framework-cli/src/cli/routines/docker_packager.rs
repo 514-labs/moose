@@ -54,7 +54,7 @@ COPY pnpm-lock.yaml ./
 MONOREPO_PACKAGE_COPIES
 
 # Install all dependencies from monorepo root
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 # Stage 2: Production image  
 FROM node:20-bookworm-slim
@@ -270,6 +270,8 @@ RUN pnpm install --frozen-lockfile --filter "./{}" --shamefully-hoist
 # Copy the generated node_modules to the application directory
 RUN cp -r /temp-monorepo/{}/node_modules /application/node_modules && \
     chown -R moose:moose /application/node_modules
+
+RUN ls -la /application/node_modules/@514labs/moose-lib/dist/
 # Clean up
 RUN rm -rf /temp-monorepo
 USER moose:moose

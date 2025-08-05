@@ -10,20 +10,28 @@ import { Cards, Card } from "nextra/components";
 
 <LanguageSwitcher />
 
-The Moose Runtime is the execution environment that runs your analytical backend application. When you run `moose dev` or `moose prod`, the runtime starts up and automatically manages all the infrastructure your application needs - databases, streaming, API servers, and workflows. 
+The Moose Runtime is the execution environment that runs your analytical backend application. The runtime has two modes: `moose dev` and `moose prod`.
+
+- `moose dev` is designed for learning and prototyping quickly, and provisions all infrastructure locally
+- `moose prod` is designed for production deployments, and requires that you have the underlying infrastructure services (Redis, ClickHouse, Redpanda, Temporal) already running somewhere else
 
 
-It also manages the processes (Node.js, Python) to run your server functions: streaming functions, query API route handlers, and workflow tasks.
+In both modes, the runtime automatically applies what you have defined in your code to the infrastructure (databases, streaming, API servers, and workflows). 
 
-## Core Components
+- In development, this happens in real-time as you save your code. 
+- In production, this happens once at startup.
 
-**Infrastructure Map (Redis)**
+
+## Runtime Architecture
+
+**Infrastructure Map**
 - Stores the state of all your application components (tables, streams, views, APIs, functions, workflows)
 - Used as the source of truth when diffing code changes against the state of the infrastructure
 - Provides versioning and rollback capabilities
 
 **Web Server**
 - Main API server for all routes defined in your application code (port 4000)
+- Manages the processes for all `IngestApi` defined in your application code
 - Management server for administrative operations (port 5001)
 
 **<Python inline>Python</Python><TypeScript inline>Node.js</TypeScript> Runtime** for all server functions defined in your application code, including:
@@ -31,15 +39,15 @@ It also manages the processes (Node.js, Python) to run your server functions: st
 - API route handlers
 - Workflow tasks
 
-**Kafka to ClickHouse Data Sync (Rust)**
+**Kafka to ClickHouse Data Sync**
 - Rust-process that syncs data between streaming topics and OLAP tables
 
 ## Managed Infrastructure
 
-The runtime automatically provisions and manages these components based on what your application uses:
+The runtime automatically provisions (`dev` mode only) and manages these components based on what your application uses:
 
 - **ClickHouse (`olap`)**: Columnar database for fast analytical queries
-- **Redpanda (`streaming`)**: Kafka-compatible streaming platform for real-time data
+- **Redpanda (`streaming_engine`)**: Kafka-compatible streaming platform for real-time data
 - **Temporal (`workflows`)**: Workflow engine for data orchestration
 - **Redis**: State coordination and caching (always required)
 
@@ -50,7 +58,7 @@ You can configure which features you want to use in your project configuration. 
 ```toml copy
 [features]
 olap = true 
-streaming = true
+streaming_engine = true
 workflows = true
 ```
 
@@ -90,51 +98,6 @@ Unlike `moose dev`, `moose prod` requires that you have the underlying infrastru
 4. Starts your application with production settings
 
 
-## Quick Start
-
-<TypeScript>
-```bash
-# Start development environment (manages all infrastructure locally)
-moose dev
-
-# Build for production deployment
-moose build
-
-# Run in production mode (connects to external infrastructure)
-moose prod
-```
-</TypeScript>
-
-<Python>
-```bash
-# Start development environment (manages all infrastructure locally)
-moose dev
-
-# Build for production deployment
-moose build
-
-# Run in production mode (connects to external infrastructure)
-moose prod
-```
-</Python>
-
-## Common Workflows
-
-**Starting a new project:**
-1. Define your data models
-2. Run `moose dev` - runtime creates tables and APIs automatically
-3. Send data to your endpoints and query immediately
-
-**Making changes:**
-1. Update your code (add fields, create new models, etc.)
-2. Runtime detects changes and updates infrastructure automatically
-3. No restarts or manual migrations needed
-
-**Going to production:**
-1. Run `moose build` to create production artifacts
-2. Deploy infrastructure externally (or use `--start-include-dependencies`)
-3. Run `moose prod` to connect runtime to production infrastructure
-
-<Callout type="info">
+<Callout type="info" title="Read the Self-Hosting Guide">
 For detailed production deployment instructions including containerization, Kubernetes deployment, cloud configuration, and monitoring setup, see the [Self-Hosting Deployment Guide](/moose/deploying/self-hosting).
 </Callout>

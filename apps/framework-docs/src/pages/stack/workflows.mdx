@@ -132,10 +132,23 @@ workflows = true
 
 While the Workflows capability works independently, it is designed to be used in conjunction with other MooseStack capabilities:
 
-- **OLAP Database**: For batch data ingest, use workflows to run batch data extraction, transformations, and then load directly into your OLAP tables with the `OlapTable.insert()` method.
-- **APIs**: Trigger workflows from API endpoints or call APIs from workflow tasks.
+<CTACards columns={1}>
+<CTACard
+  title="OLAP"
+  description="For batch data ingest, use workflows to run batch data extraction, transformations, and then load directly into your OLAP tables with the `OlapTable.insert()` method."
+  ctaLink="/stack/olap/insert-data"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+  isMooseModule={true}
+/>
+<CTACard
+  title="APIs"
+  description="Trigger workflows from API endpoints or call APIs from workflow tasks."
+  ctaLink="/stack/apis/trigger-api"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+  isMooseModule={true}
+/>
+</CTACards>
 
 
-<Callout type="info">
-**Getting Started**: Begin with [Define Workflows](/moosestack/workflows/define-workflow) to understand how to create your first workflow with task orchestration.
-</Callout>

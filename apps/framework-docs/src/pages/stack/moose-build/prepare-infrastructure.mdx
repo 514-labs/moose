@@ -7,9 +7,23 @@ import { Callout } from "@/components";
 
 # Infrastructure Setup
 
-Moose requires external services for production deployment. This guide covers provisioning and basic configuration of these services. For comprehensive production configuration, see [Production Mode](../runtime/prod).
+Moose requires external services for production deployment. This guide covers provisioning and basic configuration of these services. 
 
 ## Required Services
+
+### ClickHouse (Required)
+**Analytics database for storing processed data**
+
+Options:
+- [ClickHouse Cloud](https://clickhouse.com) (managed)
+- Self-hosted ClickHouse cluster
+- Local ClickHouse instance (development only)
+
+**Basic connection parameters:**
+- Database name
+- Username and password
+- Host and ports (HTTP: 8443, Native: 9440)
+- SSL/TLS configuration
 
 ### Redis (Required)
 **Caching and state management**
@@ -24,20 +38,6 @@ Options:
 - Key prefix for namespace isolation
 
 ## Optional Services
-
-### ClickHouse (Optional)
-**Analytics database for storing processed data**
-
-Options:
-- [ClickHouse Cloud](https://clickhouse.com) (managed)
-- Self-hosted ClickHouse cluster
-- Local ClickHouse instance (development only)
-
-**Basic connection parameters:**
-- Database name
-- Username and password
-- Host and ports (HTTP: 8443, Native: 9440)
-- SSL/TLS configuration
 
 ### Redpanda (Optional)
 **Event streaming platform**
@@ -102,4 +102,3 @@ MOOSE_TEMPORAL_CONFIG__API_KEY=your_api_key
 1. **Provision services** - Set up ClickHouse and Redis instances
 2. **Test connectivity** - Verify your Moose application can connect to services
 3. **Choose deployment platform** - Review deployment guides for your target platform
-4. **Configure for production** - See [Production Mode](../runtime/prod) for security, scaling, and monitoring configuration

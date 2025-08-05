@@ -3,7 +3,8 @@ title: Packaging Moose for Deployment
 description: Build and package your Moose application for production deployment
 ---
 
-import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
+import { TypeScript, Python, LanguageSwitcher, Callout , CTACard, CTACards } from "@/components";
+import { Container, WifiOff } from "lucide-react";
 
 # Packaging Moose for Deployment
 
@@ -105,5 +106,35 @@ echo "Images published successfully"
 After packaging your application:
 
 1. **Set up infrastructure** - Configure ClickHouse, Redis, and optional services (see [Infrastructure Setup](infrastructure))
-2. **Choose deployment platform** - Select from [Kubernetes](deploying-on-kubernetes), [ECS](deploying-on-ecs), [Docker Compose](deploying-with-docker-compose), or [offline deployment](deploying-on-an-offline-server)
-3. **Configure for production** - Review [Production Mode](../runtime/prod) for comprehensive production configuration
+2. **Follow the deployment guide for your platform**
+
+<CTACards>
+<CTACard
+  title="Kubernetes"
+  description="Deploy your application to Kubernetes"
+  ctaLink={"/stack/moose-build/deploying-on-kubernetes"}
+  Icon={Container}
+  orientation="horizontal"
+/>
+<CTACard
+  title="ECS"
+  description="Deploy your application to ECS"
+  ctaLink={"/stack/moose-build/deploying-on-ecs"}
+  Icon={Container}
+  orientation="horizontal"
+/>
+<CTACard
+  title="Docker Compose"
+  description="Deploy your application with Docker Compose"
+  ctaLink={"/stack/moose-build/deploying-with-docker-compose"}
+  Icon={Container}
+  orientation="horizontal"
+/>
+<CTACard
+  title="Offline Deployment"
+  description="Deploy your application to an offline server"
+  ctaLink={"/stack/moose-build/deploying-on-an-offline-server"}
+  Icon={WifiOff}
+  orientation="horizontal"
+/>
+</CTACards>

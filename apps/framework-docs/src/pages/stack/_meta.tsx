@@ -14,6 +14,7 @@ import {
   Database,
   GanttChart,
   ChartBar,
+  Columns3,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -40,7 +41,7 @@ const rawMeta = {
   },
   "data-modeling": {
     title: "Data Models",
-    Icon: Database,
+    Icon: Columns3,
     isMoose: true,
   },
   // Builder's Guide - Task-oriented approach

@@ -4,7 +4,7 @@ const meta = {
   "packaging-moose-for-deployment": {
     title: "Packaging for Deployment",
   },
-  infrastructure: {
+  "prepare-infrastructure": {
     title: "Infrastructure Setup",
   },
   "---Deployment Platforms---": {

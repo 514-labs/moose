@@ -1098,10 +1098,10 @@ async fn router(
                         if let Some(version) = &meta.version {
                             // Check if this is a versioned route for the same base path
                             // e.g., "ingest/Foo/1" for base path "ingest/Foo"
-                            if path_str.starts_with(&format!("{}/", base_path)) {
-                                if latest_version.is_none() || version > latest_version.unwrap() {
-                                    latest_version = Some(version);
-                                }
+                            if path_str.starts_with(&format!("{base_path}/"))
+                                && (latest_version.is_none() || version > latest_version.unwrap())
+                            {
+                                latest_version = Some(version);
                             }
                         }
                     }

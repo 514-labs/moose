@@ -22,6 +22,18 @@ import {
   ListX,
   FileJson,
   Monitor,
+  Hammer,
+  GanttChart,
+  GitCompareArrows,
+  Workflow,
+  Columns3,
+  Rss,
+  Code,
+  HelpCircle,
+  ChartBar,
+  Settings,
+  BookOpen,
+  HandMetal,
 } from "lucide-react";
 
 const XIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -61,24 +73,41 @@ const basePaths = {
 
 // Icon components mapping
 export const Icons = {
-  // Getting Started
+  // Index
+  overview: GanttChart,
+  gettingStarted: HandMetal,
   quickstart: Rocket,
+  addToClickhouse: ClickHouseIcon,
+  areaCode: Github,
   projectStructure: FolderTree,
   architecture: PencilRuler,
   fromClickhouse: ClickHouseIcon,
   coreConcepts: Blocks,
-  // Building
-  dataModels: RectangleEllipsis,
-  ingestion: HardDriveDownload,
-  streams: Waves,
-  olapTables: Table,
-  workflows: Clock,
-  materializedViews: Layers,
-  consumptionApis: HardDriveUpload,
-  deadLetterQueues: ListX,
+
+  // Fundamental Concepts
+  runtime: Rocket,
+  dataModels: Columns3,
+
+  // Modules
+  olap: Table,
+  streaming: Rss,
+  workflows: Workflow,
+  apis: Code,
+
+  // Tools
+  build: Hammer,
+  plan: GitCompareArrows,
+  metrics: ChartBar,
+
+  // Client Integrations
+  openApi: OpenApiIcon,
+
   // Reference
+  apiReference: BookOpen,
   mooseCli: Terminal,
-  mooseLibrary: Library,
+  configuration: Settings,
+  help: HelpCircle,
+
   // Social
   calendly: Calendar,
   slack: Slack,
@@ -86,6 +115,17 @@ export const Icons = {
   twitter: XIcon,
   youtube: Youtube,
   linkedin: Linkedin,
+
+  // -------LEGACY MAPPINGS-------
+  // Building
+  ingestion: HardDriveDownload,
+  streams: Waves,
+  olapTables: Table,
+  materializedViews: Layers,
+  consumptionApis: HardDriveUpload,
+  deadLetterQueues: ListX,
+  mooseLibrary: Library,
+
   // Legacy mappings for backward compatibility
   models: RectangleEllipsis,
   db: Database,
@@ -102,15 +142,21 @@ export const Icons = {
 export const PathConfig = {
   // Getting Started
   quickstart: {
-    path: `${basePaths.start}/quickstart`,
+    path: `/stack/getting-started/quickstart`,
     icon: Icons.quickstart,
     title: "Quickstart",
     category: "getting-started" as const,
   },
   projectStructure: {
-    path: `${basePaths.start}/project-structure`,
+    path: `/stack/getting-started/project-structure`,
     icon: Icons.projectStructure,
     title: "Project Structure",
+    category: "getting-started" as const,
+  },
+  runtime: {
+    path: `/stack/runtime`,
+    icon: Icons.runtime,
+    title: "Runtime",
     category: "getting-started" as const,
   },
   architecture: {

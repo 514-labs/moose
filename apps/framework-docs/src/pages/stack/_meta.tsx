@@ -1,22 +1,5 @@
 import { render } from "@/components";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { SmallText } from "@/components/typography";
-import {
-  Settings,
-  HandMetal,
-  Code,
-  BookOpen,
-  Rocket,
-  Terminal,
-  Hammer,
-  Rss,
-  Workflow,
-  Database,
-  GanttChart,
-  ChartBar,
-  Columns3,
-  HelpCircle,
-} from "lucide-react";
+import { Icons } from "@/components";
 
 // Raw meta object - more concise without repetitive rendering logic
 const rawMeta = {
@@ -25,11 +8,11 @@ const rawMeta = {
     theme: {
       breadcrumb: false,
     },
-    Icon: GanttChart,
+    Icon: Icons.overview,
   },
   "getting-started": {
     title: "Getting Started",
-    Icon: HandMetal,
+    Icon: Icons.gettingStarted,
   },
   "---fundamentals---": {
     title: "Fundamentals",
@@ -37,12 +20,12 @@ const rawMeta = {
   },
   runtime: {
     title: "Runtime",
-    Icon: Rocket,
+    Icon: Icons.runtime,
     isMoose: true,
   },
   "data-modeling": {
     title: "Data Models",
-    Icon: Columns3,
+    Icon: Icons.dataModels,
     isMoose: true,
   },
   // Builder's Guide - Task-oriented approach
@@ -52,22 +35,22 @@ const rawMeta = {
   },
   olap: {
     title: "OLAP",
-    Icon: Database,
+    Icon: Icons.olap,
     isMoose: true,
   },
   streaming: {
     title: "Streaming",
-    Icon: Rss,
+    Icon: Icons.streaming,
     isMoose: true,
   },
   workflows: {
     title: "Workflows",
-    Icon: Workflow,
+    Icon: Icons.workflows,
     isMoose: true,
   },
   apis: {
     title: "APIs",
-    Icon: Code,
+    Icon: Icons.apis,
     isMoose: true,
   },
   tools: {
@@ -76,17 +59,17 @@ const rawMeta = {
   },
   "moose-build": {
     title: "Build",
-    Icon: Hammer,
+    Icon: Icons.build,
     isMoose: true,
   },
   plan: {
     title: "Plan",
-    Icon: BookOpen,
+    Icon: Icons.plan,
     isMoose: true,
   },
   metrics: {
     title: "Metrics",
-    Icon: ChartBar,
+    Icon: Icons.metrics,
     isMoose: true,
   },
   "---client-integrations---": {
@@ -95,7 +78,6 @@ const rawMeta = {
   },
   "open-api": {
     title: "OpenAPI",
-    Icon: Code,
   },
 
   "---reference---": {
@@ -104,19 +86,19 @@ const rawMeta = {
   },
   "api-reference": {
     title: "API Reference",
-    Icon: BookOpen,
+    Icon: Icons.apiReference,
   },
   "moose-cli": {
     title: "CLI",
-    Icon: Terminal,
+    Icon: Icons.mooseCli,
   },
   configuration: {
     title: "Project Configuration",
-    Icon: Settings,
+    Icon: Icons.configuration,
   },
   help: {
     title: "Help",
-    Icon: HelpCircle,
+    Icon: Icons.help,
   },
   // "client-integrations": {
   //   title: "Client Integrations",

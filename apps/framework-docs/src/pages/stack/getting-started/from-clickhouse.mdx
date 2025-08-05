@@ -311,7 +311,7 @@ const api = new ConsumptionApi<QueryParams, TargetSchema>("get-aggregated-data",
 </TypeScript>
 
 **Learn more:**
-- [Consumption APIs documentation](/moose/building/consumption-apis)
+- [APIs documentation](/stack/apis/query-api)
 
 
 ### Build Materialized Views 
@@ -340,7 +340,7 @@ export const materializedView = new MaterializedView<TargetSchema>({
 
 **Learn more:**
 - [Blog post on Materialized Views](https://www.fiveonefour.com/blog/Moose-SQL-Getting-DDL-Dependencies-in-Order)
-- [Official Materialized Views documentation](/moose/building/materialized-views)
+- [Materialized Views documentation](/stack/olap/model-materialized-view)
 
 ### Add New Data Sources
 For new data sources, use Moose's IngestPipelines to stream new data into your ClickHouse—while your legacy flows keep running. You can also use Workflows to run custom ETL pipelines if you have batch workloads.
@@ -365,9 +365,3 @@ Some advanced ClickHouse features may not be fully supported yet. Join the Moose
 **What we're working on:**
 - **Selective table import** (currently imports all tables)
 - **Default value annotations** 
-
-<br />
-
-## What's Next?
-
-<Contact />

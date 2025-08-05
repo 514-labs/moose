@@ -266,7 +266,7 @@ COPY --from=monorepo-base /monorepo/pnpm-lock.yaml ./
 COPY --from=monorepo-base /monorepo/{} ./{}
 # Copy all workspace directories that exist
 {}
-RUN pnpm install --frozen-lockfile --filter "./{}"
+RUN pnpm install --frozen-lockfile --filter "./{}" --shamefully-hoist
 # Copy the generated node_modules to the application directory
 RUN cp -r /temp-monorepo/{}/node_modules /application/node_modules && \
     chown -R moose:moose /application/node_modules

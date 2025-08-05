@@ -112,6 +112,7 @@ impl InfrastructureSignature {
                 InfrastructureSignature::SqlResource { id }
             }
             None => {
+                // TODO: Handle RawSql case when protobuf support is added
                 panic!("Invalid infrastructure signature");
             }
         }

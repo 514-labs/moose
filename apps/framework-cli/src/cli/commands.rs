@@ -70,7 +70,12 @@ pub enum Commands {
         #[arg(long)]
         token: Option<String>,
     },
-
+    /// Generate a migration plan YAML
+    PlanGenerate {
+        /// Force overwrite existing plan file
+        #[arg(long)]
+        force: bool,
+    },
     /// View some data from a table or stream
     Peek {
         /// Name of the table or stream to peek

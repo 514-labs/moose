@@ -164,7 +164,7 @@ async fn watch(
                                 framework::core::plan::plan_changes(&redis_client, &project).await;
 
                             match plan_result {
-                                Ok(plan_result) => {
+                                Ok((_, plan_result)) => {
 
                                     framework::core::plan_validator::validate(&project, &plan_result)?;
 

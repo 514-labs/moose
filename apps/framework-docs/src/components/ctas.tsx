@@ -99,9 +99,6 @@ export const Icons = {
   plan: GitCompareArrows,
   metrics: ChartBar,
 
-  // Client Integrations
-  openApi: OpenApiIcon,
-
   // Reference
   apiReference: BookOpen,
   mooseCli: Terminal,
@@ -138,108 +135,135 @@ export const Icons = {
   computer: Monitor,
 };
 
+const paths = {
+  gettingStarted: "/stack/getting-started",
+  runtime: "/stack/runtime",
+  dataModels: "/stack/data-modeling",
+  olap: "/stack/olap",
+  streaming: "/stack/streaming",
+  workflows: "/stack/workflows",
+  apis: "/stack/apis",
+  build: "/stack/moose-build",
+  plan: "/stack/plan",
+  metrics: "/stack/metrics",
+  openApi: "/stack/open-api",
+  apiReference: "/stack/api-reference",
+  mooseCli: "/stack/moose-cli",
+  configuration: "/stack/configuration",
+  help: "/stack/help",
+};
+
 // Combined paths with icons and metadata
 export const PathConfig = {
-  // Getting Started
+  // GETTING STARTED
   quickstart: {
-    path: `/stack/getting-started/quickstart`,
+    path: `${paths.gettingStarted}/quickstart`,
     icon: Icons.quickstart,
     title: "Quickstart",
     category: "getting-started" as const,
   },
   projectStructure: {
-    path: `/stack/getting-started/project-structure`,
+    path: `${paths.gettingStarted}/project-structure`,
     icon: Icons.projectStructure,
     title: "Project Structure",
     category: "getting-started" as const,
   },
-  runtime: {
-    path: `/stack/runtime`,
-    icon: Icons.runtime,
-    title: "Runtime",
-    category: "getting-started" as const,
-  },
-  architecture: {
-    path: `${basePaths.start}/architecture`,
-    icon: Icons.architecture,
-    title: "Architecture",
-    category: "getting-started" as const,
-  },
   fromClickhouse: {
-    path: `${basePaths.start}/from-clickhouse`,
+    path: `${paths.gettingStarted}/from-clickhouse`,
     icon: Icons.fromClickhouse,
     title: "From ClickHouse",
     category: "getting-started" as const,
   },
-  coreConcepts: {
-    path: `${basePaths.start}/core-concepts`,
-    icon: Icons.coreConcepts,
-    title: "Core Concepts",
+  // FUNDAMENTALS
+  runtime: {
+    path: `${paths.runtime}`,
+    icon: Icons.runtime,
+    title: "Runtime",
     category: "getting-started" as const,
   },
-  // Building
   dataModels: {
-    path: `${basePaths.build}/data-modeling`,
+    path: `${paths.dataModels}`,
     icon: Icons.dataModels,
-    title: "Data Modeling",
-    category: "building" as const,
+    title: "Data Models",
+    category: "getting-started" as const,
   },
-  ingestion: {
-    path: `${basePaths.build}/ingestion`,
-    icon: Icons.ingestion,
-    title: "Ingestion",
-    category: "building" as const,
+  // MODULES
+  olap: {
+    path: `${paths.olap}`,
+    icon: Icons.olap,
+    title: "OLAP",
+    category: "modules" as const,
   },
-  streams: {
-    path: `${basePaths.build}/streams`,
-    icon: Icons.streams,
-    title: "Streams",
-    category: "building" as const,
-  },
-  olapTables: {
-    path: `${basePaths.build}/olap-table`,
-    icon: Icons.olapTables,
-    title: "OLAP Tables",
-    category: "building" as const,
+  streaming: {
+    path: `${paths.streaming}`,
+    icon: Icons.streaming,
+    title: "Streaming",
+    category: "modules" as const,
   },
   workflows: {
-    path: `${basePaths.build}/workflows`,
+    path: `${paths.workflows}`,
     icon: Icons.workflows,
     title: "Workflows",
-    category: "building" as const,
+    category: "modules" as const,
   },
-  materializedViews: {
-    path: `${basePaths.build}/materialized-views`,
-    icon: Icons.materializedViews,
-    title: "Materialized Views",
-    category: "building" as const,
+  apis: {
+    path: `${paths.apis}`,
+    icon: Icons.apis,
+    title: "APIs",
+    category: "modules" as const,
   },
-  consumptionApis: {
-    path: `${basePaths.build}/consumption-apis`,
-    icon: Icons.consumptionApis,
-    title: "Consumption APIs",
-    category: "building" as const,
+  // TOOLS
+  build: {
+    path: `${paths.build}`,
+    icon: Icons.build,
+    title: "Build",
+    category: "tools" as const,
   },
-  deadLetterQueues: {
-    path: `${basePaths.build}/dead-letter-queues`,
-    icon: Icons.deadLetterQueues,
-    title: "Dead Letter Queues",
-    category: "building" as const,
+  plan: {
+    path: `${paths.plan}`,
+    icon: Icons.plan,
+    title: "Plan",
+    category: "tools" as const,
   },
-  // Reference
+  metrics: {
+    path: `${paths.metrics}`,
+    icon: Icons.metrics,
+    title: "Metrics",
+    category: "tools" as const,
+  },
+  // CLIENT INTEGRATIONS
+  openApi: {
+    path: `${paths.openApi}`,
+    icon: Code,
+    title: "OpenAPI",
+    category: "client-integrations" as const,
+  },
+  // REFERENCE
+  apiReference: {
+    path: `${paths.apiReference}`,
+    icon: Icons.apiReference,
+    title: "API Reference",
+    category: "reference" as const,
+  },
   mooseCli: {
-    path: `${basePaths.reference}/moose-cli`,
+    path: `${paths.mooseCli}`,
     icon: Icons.mooseCli,
     title: "Moose CLI",
     category: "reference" as const,
   },
-  mooseLibrary: {
-    path: `${basePaths.reference}/moose-lib`,
-    icon: Icons.mooseLibrary,
-    title: "Moose Library",
+  configuration: {
+    path: `${paths.configuration}`,
+    icon: Icons.configuration,
+    title: "Configuration",
     category: "reference" as const,
   },
-  // Social
+  help: {
+    path: `${paths.help}`,
+    icon: Icons.help,
+    title: "Help",
+    category: "reference" as const,
+  },
+  // SOCIAL
   calendly: {
     path: "https://cal.com/team/514/talk-to-eng",
     icon: Icons.calendly,
@@ -276,37 +300,61 @@ export const PathConfig = {
     title: "LinkedIn",
     category: "social" as const,
   },
+  // LEGACY PATHS (PRE_MODULARIZATION)
+  architecture: {
+    path: `${basePaths.start}/architecture`,
+    icon: Icons.architecture,
+    title: "Architecture",
+    category: "getting-started" as const,
+  },
+  coreConcepts: {
+    path: `${basePaths.start}/core-concepts`,
+    icon: Icons.coreConcepts,
+    title: "Core Concepts",
+    category: "getting-started" as const,
+  },
+  // BUILDING
+  ingestion: {
+    path: `${basePaths.build}/ingestion`,
+    icon: Icons.ingestion,
+    title: "Ingestion",
+    category: "building" as const,
+  },
+  streams: {
+    path: `${basePaths.build}/streams`,
+    icon: Icons.streams,
+    title: "Streams",
+    category: "building" as const,
+  },
+  olapTables: {
+    path: `${basePaths.build}/olap-table`,
+    icon: Icons.olapTables,
+    title: "OLAP Tables",
+    category: "building" as const,
+  },
+  materializedViews: {
+    path: `${basePaths.build}/materialized-views`,
+    icon: Icons.materializedViews,
+    title: "Materialized Views",
+    category: "building" as const,
+  },
+  consumptionApis: {
+    path: `${basePaths.build}/consumption-apis`,
+    icon: Icons.consumptionApis,
+    title: "Consumption APIs",
+    category: "building" as const,
+  },
+  deadLetterQueues: {
+    path: `${basePaths.build}/dead-letter-queues`,
+    icon: Icons.deadLetterQueues,
+    title: "Dead Letter Queues",
+    category: "building" as const,
+  },
+  // Reference
+  mooseLibrary: {
+    path: `${basePaths.reference}/moose-lib`,
+    icon: Icons.mooseLibrary,
+    title: "Moose Library",
+    category: "reference" as const,
+  },
 } as const;
-
-// Helper functions for easy access
-export const getPathByKey = (key: keyof typeof PathConfig) =>
-  PathConfig[key].path;
-export const getIconByKey = (key: keyof typeof PathConfig) =>
-  PathConfig[key].icon;
-export const getTitleByKey = (key: keyof typeof PathConfig) =>
-  PathConfig[key].title;
-export const getCategoryByKey = (key: keyof typeof PathConfig) =>
-  PathConfig[key].category;
-
-// Get all paths by category
-export const getPathsByCategory = (
-  category: "getting-started" | "building" | "reference" | "social",
-) => {
-  return Object.entries(PathConfig).filter(
-    ([_, config]) => config.category === category,
-  );
-};
-
-// Get all paths as a simple object (for backward compatibility)
-export const paths = Object.fromEntries(
-  Object.entries(PathConfig).map(([key, config]) => [key, config.path]),
-);
-
-// Type definitions
-export type PathKey = keyof typeof PathConfig;
-export type PathCategory =
-  | "getting-started"
-  | "building"
-  | "reference"
-  | "social";
-export type IconName = keyof typeof Icons;

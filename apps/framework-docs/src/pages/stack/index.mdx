@@ -141,7 +141,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Define your schema once, get validation everywhere—catch errors at dev time, not in production."
       cta={{
         label: "Learn more",
-        href: "/moosestack/olap",
+        href: PathConfig.dataModels.path,
         variant: "outline",
       }}
     />
@@ -168,7 +168,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Local dev and production execution environment for analytical backends"
       cta={{
         label: "Learn more",
-        href: "/moosestack/runtime",
+        href: PathConfig.runtime.path,
         variant: "outline",
       }}
     />
@@ -200,7 +200,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics. Manage tables, materialized views, and data migrations in code."
       cta={{
         label: "Learn more",
-        href: "/moosestack/olap",
+        href: PathConfig.olap.path,
         variant: "outline",
       }}
     />
@@ -229,7 +229,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Build real-time data pipelines with Kafka/Redpanda streams and transformations in code"
       cta={{
         label: "Learn more",
-        href: "/moosestack/streaming",
+        href: PathConfig.streaming.path,
         variant: "outline",
       }}
     />
@@ -253,7 +253,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Build ETL pipelines and task orchestration with in-memory workflow code"
       cta={{
         label: "Learn more",
-        href: "/moosestack/workflows",
+        href: PathConfig.workflows.path,
         variant: "outline",
       }}
     />
@@ -276,7 +276,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
       description="Type-safe ingestion and query endpoints with auto-generated OpenAPI docs."
       cta={{
         label: "Learn more",
-        href: "/moosestack/apis",
+        href: PathConfig.apis.path,
         variant: "outline",
       }}
     />
@@ -306,7 +306,7 @@ Each module is independent and can be used on its own. You can start with one ca
 </Callout>
 
 
-### Tooling
+## Tooling
 
 <StaggeredCards>
 
@@ -317,7 +317,7 @@ Each module is independent and can be used on its own. You can start with one ca
       description="Easily package up your application for deploying to production"
       cta={{
         label: "Learn more",
-        href: "/moosestack/moose-build",
+        href: PathConfig.build.path,
         variant: "outline",
       }}
     />
@@ -334,10 +334,10 @@ Each module is independent and can be used on its own. You can start with one ca
     <StaggeredContent
       isMooseModule={true}
       title="Plan"
-      description="Create and manage infrastructure diffs"
+      description="Preview and validate infrastructure changes before deployment with detailed schema diffs, migration planning, and rollback capabilities"
       cta={{
         label: "Learn more",
-        href: "/moosestack/plan",
+        href: PathConfig.plan.path,
         variant: "outline",
       }}
     />

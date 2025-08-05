@@ -370,14 +370,40 @@ multi_key_table = OlapTable[MultiKeyRecord]("multi_key_table", OlapTableConfig(
 ```
 </Python>
 
-### Deduplication
-Keep only the latest record per key:
+
+### Table engines
+By default, Moose will create tables with the `MergeTree` engine. You can change the engine by setting the `engine` property in the table config. To use a different engine, you can set the `engine` property in the table config.
+
+<TypeScript>
+```ts filename="TableEngine.ts" copy
+import { OlapTable, ClickHouseEngines } from "@514labs/moose-lib";
+
+const table = new OlapTable<Record>("table", {
+  orderByFields: ["id"],
+  engine: ClickHouseEngines.MergeTree  // Default engine
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="TableEngine.py" copy
+from moose_lib import OlapTable, OlapTableConfig, ClickHouseEngines
+
+table = OlapTable[Record]("table", OlapTableConfig(
+  orderByFields=["id"],
+  engine=ClickHouseEngines.MergeTree  # Default engine
+))
+```
+</Python>
+
+#### Deduplication (`ReplacingMergeTree`)
+Use the `ReplacingMergeTree` engine to keep only the latest record for your designated sort key:
 
 <TypeScript>
 ```ts filename="DeduplicatedTable.ts" copy
 const table = new OlapTable<Record>("table", {
   orderByFields: ["id"],
-  deduplicate: true
+  engine: ClickHouseEngines.ReplacingMergeTree
 });
 ```
 </TypeScript> 
@@ -391,42 +417,17 @@ class Record(BaseModel):
 
 table = OlapTable[Record]("table", OlapTableConfig(
   orderByFields=["id"],
-  deduplicate=True
+  engine=ClickHouseEngines.ReplacingMergeTree
 ))
 ```
 </Python>
 
 <Callout type="warning" title="Deduplication Caveats">
-Deduplication uses ClickHouse's ReplacingMergeTree engine for eventual deduplication, meaning duplicate records may not be removed immediately. This process can take time and is not guaranteed to be immediate. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
+ClickHouse's ReplacingMergeTree engine runs deduplication in the background AFTER data is inserted into the table. This means that duplicate records may not be removed immediately. For more details, see the [ClickHouse documentation](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree).
 </Callout>
 
-### Table engines
-By default, Moose will create tables with the `MergeTree` engine. You can change the engine by setting the `engine` property in the table config. To use a different engine, you can set the `engine` property in the table config.
-
-<TypeScript>
-```ts filename="TableEngine.ts" copy
-import { OlapTable, ClickHouseEngines } from "@514labs/moose-lib";
-
-const table = new OlapTable<Record>("table", {
-  orderByFields: ["id"],
-  engine: ClickHouseEngines.ReplacingMergeTree  // Use ReplacingMergeTree for deduplication
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="TableEngine.py" copy
-from moose_lib import OlapTable, OlapTableConfig, ClickHouseEngines
-
-table = OlapTable[Record]("table", OlapTableConfig(
-  orderByFields=["id"],
-  engine=ClickHouseEngines.ReplacingMergeTree  # Use ReplacingMergeTree for deduplication
-))
-```
-</Python>
-
 ## Externally Managed Tables
-If you have a table that is managed by an external system (e.g Change Data Capture like ClickPipes), you can still use Moose to query it. You can set the config in the table config to set the lifecycle to `externally-managed`.
+If you have a table that is managed by an external system (e.g Change Data Capture like ClickPipes), you can still use Moose to query it. You can set the config in the table config to set the lifecycle to `EXTERNALLY_MANAGED`.
 
 <TypeScript>
 ```ts filename="ExternallyManagedTable.ts" copy
@@ -451,6 +452,12 @@ external_table = OlapTable[UserData]("external_users", OlapConfig(
 ))
 ```
 </Python>
+
+<Callout type="info" title="Learn More About LifeCycle Management">
+Learn more about the different lifecycle options and how to use them in the [LifeCycle Management](/stack/olap/lifecycle) documentation.
+</Callout>
+
+
 
 ## Invalid Configurations
 
@@ -587,35 +594,3 @@ host = "localhost"
 host_port = 18123
 native_port = 9000
 ```
-
-## Best Practices
-
-<BulletPointsCard
-  title="Table Creation Best Practices"
-  bullets={[
-    {
-      title: "Use IngestPipeline for end-to-end flows",
-      description: "Create tables as part of ingestion pipelines for automatic API and stream integration"
-    },
-    {
-      title: "Use standalone tables for custom workflows",
-      description: "Create standalone tables when you need fine-grained control or external data sources"
-    },
-    {
-      title: "Design indexes for your query patterns",
-      description: "Configure orderByFields based on your most common query patterns"
-    },
-    {
-      title: "Use appropriate ClickHouse types",
-      description: "Leverage LowCardinality, NamedTuple, and Decimal types for performance optimization"
-    },
-    {
-      title: "Plan for data lifecycle",
-      description: "Use appropriate lifecycle management for development vs production tables"
-    }
-  ]}
-/>
-
-<Callout type="info">
-For more advanced table configuration and lifecycle management, see the [OLAP Tables documentation](/moose/building/olap-table) and [Data Modeling documentation](/moose/building/data-modeling).
-</Callout>

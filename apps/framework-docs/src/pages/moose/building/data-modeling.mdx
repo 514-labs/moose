@@ -256,7 +256,7 @@ import { Key, ClickHouseDecimal, LowCardinality } from "@514labs/moose-lib";
 
 export interface Order {
   orderId: Key<string>; // Primary key
-  amount: number & ClickHouseDecimal<10, 2>; // Decimal(10,2)
+  amount: string & ClickHouseDecimal<10, 2>; // Decimal(10,2)
   status: string & LowCardinality; // LowCardinality(String)
   createdAt: Date; // DateTime
 }

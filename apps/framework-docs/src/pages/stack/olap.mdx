@@ -68,56 +68,74 @@ my_table = OlapTable[MyFirstTable]("first_table")
 
 <CTACards columns={2}>
 <CTACard
-  title="Create Tables"
+  title="OLAP Tables"
   description="Define and create ClickHouse tables with type-safe schemas"
-  ctaLink="/moosestack/olap/create-table"
+  ctaLink={`${PathConfig.olap.path}/model-table`}
   ctaLabel="Learn More →"
   badge={{ variant: "moose", text: "Tables" }}
 />
 <CTACard
   title="Materialized Views"
   description="Pre-compute and store query results for faster analytics"
-  ctaLink="/moosestack/olap/create-materialized-view"
+  ctaLink={`${PathConfig.olap.path}/model-materialized-view`}
   ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Views" }}
+  badge={{ variant: "moose", text: "Materialized Views" }}
 />
 <CTACard
-  title="Data Modeling Optimization"
+  title="Schema Optimization"
   description="Schema design best practices to optimize your queries"
-  ctaLink="/moosestack/olap/data-modeling-optimization"
+  ctaLink={`${PathConfig.olap.path}/schema-optimization`}
   ctaLabel="Learn More →"
   badge={{ variant: "moose", text: "Data Modeling" }}
 />
 <CTACard
-  title="Schema Migration"
-  description="Safely evolve your table schemas over time"
-  ctaLink="/moosestack/olap/migrate-schema"
+  title="Dynamic Migrations"
+  description="Always keep your code and database in sync with dynamic migrations"
+  ctaLink={`${PathConfig.olap.path}/apply-migrations`}
   ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Migration" }}
+  badge={{ variant: "moose", text: "Migrations" }}
 />
 </CTACards>
 
-### Interacting with your database
+### Accessing your data
 
 These capabilities are available from other MooseStack modules or even from your own client applications:
 
 
 <CTACards columns={1}>
 <CTACard
-  title="Query Data"
+  title="Read Data"
   description="Write type-safe SQL queries with automatic interpolation"
-  ctaLink="/moosestack/olap/query-data"
+  ctaLink={`${PathConfig.olap.path}/read-data`}
   ctaLabel="Learn More →"
   orientation="horizontal"
 />
 <CTACard
   title="Insert Data"
   description="Bulk insert and manage data in your OLAP tables"
-  ctaLink="/moosestack/olap/insert-data"
+  ctaLink={`${PathConfig.olap.path}/insert-data`}
   ctaLabel="Learn More →"
   orientation="horizontal"
 />
 </CTACards>
+
+### Connecting to your ClickHouse instance
+You can connect to your ClickHouse instance with your favorite database client. Your credentials are located in your `moose.config.toml` file:
+
+```toml filename="moose.config.toml" copy
+[clickhouse_config]
+db_name = "local"
+user = "panda"
+password = "pandapass"
+use_ssl = false
+host = "localhost"
+host_port = 18123
+native_port = 9000
+```
+
+<Callout type="info" title="Default Credentials">
+These are the default credentials for your local ClickHouse instance running in dev mode.
+</Callout>
 
 ### Combining with other modules:
 

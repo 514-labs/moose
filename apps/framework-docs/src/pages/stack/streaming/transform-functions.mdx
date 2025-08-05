@@ -73,6 +73,7 @@ rawStream.addTransform(enrichedStream, async (record: RawEvent) => ({
 ```py filename="DataTransform.py" copy
 from moose_lib import Stream, Key
 from pydantic import BaseModel
+from datetime import datetime
 
 class EventProperties(BaseModel):
     user_id: str
@@ -92,11 +93,11 @@ class EnrichedEventProperties(BaseModel):
 
 class EnrichedEventMetadata(BaseModel):
     originalTimestamp: str
-    processedAt: Date
+    processedAt: datetime
 
 class EnrichedEvent(BaseModel):
     eventId: Key[str]
-    timestamp: Date
+    timestamp: datetime
     userId: Key[str]
     properties: EnrichedEventProperties
     metadata: EnrichedEventMetadata

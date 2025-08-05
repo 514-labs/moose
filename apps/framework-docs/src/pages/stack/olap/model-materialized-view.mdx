@@ -6,7 +6,7 @@ description: Create and configure materialized views for data transformations
 import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python } from "@/components";
 import { Tabs } from "nextra/components";
 
-# Creating Materialized Views
+# Modeling Materialized Views
 
 <LanguageSwitcher />
 
@@ -14,25 +14,7 @@ import { Tabs } from "nextra/components";
 
 Materialized views allow you to precompute and store the results of complex queries. This can be useful for improving query performance, reducing the load on your database, and providing a more efficient way to access data.
 
-<BulletPointsCard
-  title="How it works:"
-  bullets={[
-    {
-      title: "Model your target query result set",
-      description: "Write the schema of your materialized view result set as a data model"
-    },
-    {
-      title: "Define your transformation logic",
-      description: "Write a SELECT query to compute the result set"
-    },
-    {
-      title: "Moose generates the infrastructure",
-      description: "Moose turns your query into a materialized view and a physical table to store the results"
-    }
-  ]}
-/>
-
-### Basic Example
+### Basic Usage
 
 <TypeScript>
 ```ts filename="MaterializedView.ts" copy
@@ -123,7 +105,7 @@ class MaterializedViewOptions(BaseModel):
 ```
 </Python>
 
-## Working with Aggregations
+## Using Aggregations
 
 Materialized views support aggregations using the `Aggregated` type in your schema definition and the `AggregatingMergeTree` engine. This is crucial for efficiently maintaining pre-aggregated data in real-time systems.
 

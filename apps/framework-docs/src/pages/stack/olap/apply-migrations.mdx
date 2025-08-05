@@ -3,8 +3,7 @@ title: Applying Migrations
 description: How to apply migrations to your database
 ---
 
-import { Callout, LanguageSwitcher, TypeScript, Python } from "@/components";
-
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard } from "@/components";
 
 # Applying Migrations
 
@@ -12,20 +11,317 @@ import { Callout, LanguageSwitcher, TypeScript, Python } from "@/components";
 
 ## Overview
 
-Moose dynamically works to keep your database schema in sync with your code. As long as:
-- You start the Moose runtime
-- All `OlapTable` and `MaterializedView` instances are exported from the root <TypeScript inline>index.ts</TypeScript> <Python inline>main.py</Python> file
+Moose automatically manages database migrations by comparing your code with your database schema. Migrations are applied automatically when:
 
-Moose will automatically apply the changes to your database.
+- **Development**: Changes are detected during `moose dev`
+- **Production**: Changes are applied during deployment
+
+## When Migrations Happen
+
+<BulletPointsCard
+  title="Migration Triggers"
+  bullets={[
+    {
+      title: "Adding new columns",
+      description: "New fields in your TypeScript interfaces or Python models"
+    },
+    {
+      title: "Removing columns", 
+      description: "Deleted fields from your data models"
+    },
+    {
+      title: "Changing column types",
+      description: "Modified data types (e.g., string to number)"
+    },
+    {
+      title: "Adding new tables",
+      description: "New OlapTable instances in your code"
+    },
+    {
+      title: "Adding materialized views",
+      description: "New MaterializedView instances in your code"
+    }
+  ]}
+/>
 
 ## Development Workflow
 
-When in local development, you can use the `moose dev` command to start the Moose runtime.
+### Starting the Runtime
 
-All changes to your code will be automatically applied to your locally running database, not your production database.
+Use `moose dev` to start the Moose runtime with automatic migration detection:
 
-In 
+```bash
+moose dev
 
+⡏ Starting local infrastructure
+  Successfully started containers
+     Validated clickhousedb-1 docker container
+     Validated redpanda-1 docker container
+  Successfully validated red panda cluster
+     Validated temporal docker container
+  Successfully ran local infrastructure
+```
+
+### Automatic Migration Detection
+
+Moose continuously monitors your code changes and applies migrations automatically. All changes are applied to your **local database only**.
+
+<TypeScript>
+```ts filename="app/tables/events.ts" copy
+interface Event {
+  id: Key<string>;
+  name: string;
+  createdAt: Date;
+  status: string; // New field - will trigger migration
+}
+
+export const events = new OlapTable<Event>("events")
+```
+</TypeScript>
+
+<Python>
+```python filename="app/tables/events.py" copy
+class Event(BaseModel):
+    id: Key[str]
+    name: str
+    created_at: datetime
+    status: str  # New field - will trigger migration
+
+table = OlapTable[Event]("events")
+```
+</Python>
+
+### Migration Logs
+
+When you save changes, you'll see detailed migration logs showing what's being applied:
+
+```bash
+⢹ Processing Infrastructure changes from file watcher
+             ~ Topic: events - Version: 0.0 - Retention Period: 604800s - Partition Count: 1
+             ~ Table events with column changes: [Added(Column { name: "status", data_type: String, required: true, unique: false, primary_key: false, default: None })] and order by changes: OrderByChange { before: [], after: [] }
+             ~ Topic to Table Sync Process: events_0_0 -> events
+             ~ API Endpoint: events - Version: 0.0 - Path: ingest/events - Method: POST - Format: Some(Json)
+```
+
+<Callout type="info">
+**Migration Safety**: In development, migrations are applied immediately. In production, migrations are applied during deployment with additional safety checks.
+</Callout>
 
 ## Production Workflow
-When you deploy your code to production, Moose will compare your code with your production database schema, and apply the changes to your production database during the deployment process.
+
+### Deployment Process
+
+When you deploy your code to production, Moose follows this migration process:
+
+1. **Schema Comparison**: Moose compares the final code in your repository with the state of your production database schema
+2. **Migration Plan**: A migration plan is generated showing what changes will be applied
+3. **Manual Review**: Before applying migrations, you will be prompted to review the plan and confirm the changes. You can make changes to the plan before applying it.
+4. **Application**: Changes are applied to the production database during deployment
+
+
+## Migration Types
+
+### Adding New Tables or Materialized Views
+
+```typescript filename="index.ts" {4-7} copy
+import { newTable, newMaterializedView } from "./path/to/your/newObjects"
+
+// Export the new table and materialized view to apply changes
+export {
+  newTable, // New table
+  newMaterializedView // New materialized view
+}
+```
+
+
+### Column Additions
+
+Adding new fields to your data models:
+
+<TypeScript>
+```ts filename="Before" copy
+interface AddedColumn {
+  id: Key<string>;
+  another_column: string;
+  some_column: string;
+}
+```
+</TypeScript>
+
+<TypeScript>
+```ts filename="After" copy
+interface AddedColumn {
+  id: Key<string>;
+  another_column: string;
+  some_column: string;
+  new_column: number; // New field - migration applied
+}
+```
+</TypeScript>
+
+### Column Removals
+
+Removing fields from your data models:
+
+<TypeScript>
+```ts filename="Before" copy
+interface RemovedColumn {
+  id: Key<string>;
+  another_column: string;
+  some_column: string;
+  old_column: number;
+}
+```
+</TypeScript>
+
+<TypeScript>
+```ts filename="After" copy
+interface RemovedColumn {
+  id: Key<string>;
+  another_column: string;
+  some_column: string;
+  // old_column field removed - migration applied
+}
+```
+</TypeScript>
+
+### Type Changes
+
+Changing data types (use with caution):
+
+<TypeScript>
+```ts filename="Before" copy
+interface ChangedType {
+  id: Key<string>;
+  some_column: string; // String type - migration applied
+}
+```
+</TypeScript>
+
+<TypeScript>
+```ts filename="After" copy
+interface ChangedType {
+  id: Key<string>;
+  some_column: number; // Number type - migration applied
+}
+```
+</TypeScript>
+
+### Materialized View Changes
+
+Modifying the `SELECT` statement of a materialized view:
+
+<TypeScript>
+```ts filename="Before.ts" copy
+export const userStats = new MaterializedView<UserStats>("user_stats", {
+  selectStatement: `
+    SELECT 
+      userId,
+      COUNT(*) as event_count,
+      MAX(createdAt) as last_event
+    FROM users
+    GROUP BY userId
+  `
+  // other MV config properties...
+});
+```
+</TypeScript>
+
+<TypeScript>
+```ts filename="After.ts" copy
+export const userStats = new MaterializedView<UserStats>("user_stats", {
+  selectStatement: `
+    SELECT 
+      userId,
+      COUNT(*) as event_count,
+      MAX(createdAt) as last_event,
+      AVG(value) as avg_value  // New column added
+    FROM users
+    GROUP BY userId
+  `
+  // other MV config properties...
+});
+```
+</TypeScript>
+
+<Python>
+```python filename="Before.py" copy
+user_stats = MaterializedView[UserStats]("user_stats", MaterializedViewConfig(
+    select_statement="""
+    SELECT 
+        user_id,
+        COUNT(*) as event_count,
+        MAX(created_at) as last_event
+    FROM users
+    GROUP BY user_id
+    """
+    # other MV config properties...
+))
+```
+</Python>
+
+<Python>
+```python filename="After.py" copy
+user_stats = MaterializedView[UserStats]("user_stats", MaterializedViewConfig(
+    select_statement="""
+    SELECT 
+        user_id,
+        COUNT(*) as event_count,
+        MAX(created_at) as last_event,
+        AVG(value) as avg_value  # New column added
+    FROM users
+    GROUP BY user_id
+    """
+    # other MV config properties...
+))
+```
+</Python>
+
+When you modify a materialized view's SELECT statement, Moose will:
+1. **Detect the change** in your code
+2. **Drop the existing view** in the database
+3. **Recreate the view** with the new SELECT statement
+4. **Repopulate the data** using the new query
+
+<Callout type="warning">
+**Materialized View Migration**: Changing a materialized view's SELECT statement will recreate the entire view and repopulate all data. This can be time-consuming for large datasets.
+</Callout>
+
+## Migration Best Practices
+
+<BulletPointsCard
+  title="Migration Guidelines"
+  bullets={[
+    {
+      title: "Test migrations locally first",
+      description: "Always test schema changes in development before deploying"
+    },
+    {
+      title: "Use additive changes when possible",
+      description: "Adding columns is safer than removing or changing existing ones"
+    },
+    {
+      title: "Review migration logs",
+      description: "Check the migration output to ensure changes are applied correctly"
+    },
+    {
+      title: "Backup before major changes",
+      description: "Create database backups before significant schema changes"
+    },
+    {
+      title: "Deploy during low-traffic periods",
+      description: "Schedule migrations during periods of low database activity"
+    }
+  ]}
+/>
+
+## Troubleshooting Migrations
+
+### Common Issues
+
+<Callout type="info" title="Migration Issues">
+- **Migration conflicts**: Restart `moose dev` to resolve schema conflicts
+- **Type mismatches**: Ensure data types are compatible with existing data
+- **Missing exports**: Verify all tables are exported from your main file
+- **Network issues**: Check database connectivity if migrations fail
+</Callout>

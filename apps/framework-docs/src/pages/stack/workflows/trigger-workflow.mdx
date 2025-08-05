@@ -62,14 +62,11 @@ const triggerApi = new ConsumptionAPI<WorkflowParams, WorkflowResponse>(
   "trigger-workflow",
   async ({ inputValue, priority = "normal" }: WorkflowParams, { client }) => {
     // Trigger the workflow with input parameters
-    const workflowExecution = await client.workflows.execute({
-      workflow: "data-processing",
-      params: { 
+    const workflowExecution = await client.workflow.execute("data-processing", {
         inputValue,
         priority,
         triggeredAt: new Date().toISOString()
-      }
-    });
+    }); 
 
     return {
       workflowId: workflowExecution.id,

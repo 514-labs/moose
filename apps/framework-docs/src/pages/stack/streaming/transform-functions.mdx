@@ -107,12 +107,12 @@ enriched_stream = Stream[EnrichedEvent]("enriched_events")
 
 raw_stream.add_transform(destination=enriched_stream, transformation=lambda record: EnrichedEvent(
   eventId=record.id,
-  timestamp=record.timestamp,
+  timestamp=datetime.fromisoformat(record.timestamp),
   userId=record.data.user_id,
   properties=EnrichedEventProperties(
     platform=record.data.platform,
     version=record.data.app_version,
-    country=await lookupCountry(record.data.ip_address)
+    country=lookupCountry(record.data.ip_address)
   ),
   metadata=EnrichedEventMetadata(
     originalTimestamp=record.timestamp,

@@ -13,8 +13,8 @@ export const meta = {
   "retries-and-timeouts": {
     title: "Retries and Timeouts",
   },
-  "terminate-workflow": {
-    title: "Termination",
+  "cancel-workflow": {
+    title: "Cancelling Running Workflows",
   },
 };
 

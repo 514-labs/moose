@@ -218,8 +218,14 @@ moose dev
 You can check the status of scheduled workflows using the CLI:
 
 ```bash filename="Terminal" copy
-# List all workflow executions
+# List all workflows defined in your project
 moose workflow list
+
+# Alternative command to list all workflows
+moose ls --type workflows
+
+# View workflow execution history
+moose workflow history
 
 # Check specific workflow status
 moose workflow status daily-data-processing
@@ -299,8 +305,8 @@ robust_scheduled_workflow = Workflow(
 
 ### Common Issues
 
-• **Timezone considerations**: Cron schedules use UTC by default
-• **Resource conflicts**: Ensure scheduled workflows don't compete for resources
-• **Long-running tasks**: Set appropriate timeouts for lengthy operations
-• **Error handling**: Implement proper error handling and logging
+- **Timezone considerations**: Cron schedules use UTC by default
+- **Resource conflicts**: Ensure scheduled workflows don't compete for resources
+- **Long-running tasks**: Set appropriate timeouts for lengthy operations
+- **Error handling**: Implement proper error handling and logging
 

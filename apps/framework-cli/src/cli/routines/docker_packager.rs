@@ -257,8 +257,7 @@ COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/tsconfig.json ./tscon
 COPY --chown=moose:moose ./project.tom[l] ./project.toml
 COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
 
-# Create node_modules by installing dependencies for this specific workspace
-# We need to copy necessary monorepo files and run pnpm install with filter
+# Use pnpm deploy from workspace context to create clean production dependencies
 USER root:root
 WORKDIR /temp-monorepo
 COPY --from=monorepo-base /monorepo/pnpm-workspace.yaml ./
@@ -266,30 +265,30 @@ COPY --from=monorepo-base /monorepo/pnpm-lock.yaml ./
 COPY --from=monorepo-base /monorepo/{} ./{}
 # Copy all workspace directories that exist
 {}
-RUN pnpm install --frozen-lockfile --filter "./{}" --shamefully-hoist
-# Copy the generated node_modules to the application directory
-RUN cp -r /temp-monorepo/{}/node_modules /application/node_modules && \
-    chown -R moose:moose /application/node_modules
-
-RUN if [ -d "/application/node_modules/@514labs/moose-lib/dist/" ]; then ls -la /application/node_modules/@514labs/moose-lib/dist/; fi
+# Use pnpm deploy from workspace to install only production dependencies
+RUN pnpm --filter "./{}" deploy /temp-deploy --prod --legacy
+RUN cp -r /temp-deploy/node_modules /application/node_modules
+RUN chown -R moose:moose /application/node_modules
+RUN rm -rf /temp-deploy
 # Clean up
 RUN rm -rf /temp-monorepo
+
+RUN if [ -d "/application/node_modules/@514labs/moose-lib/dist/" ]; then ls -la /application/node_modules/@514labs/moose-lib/dist/; fi
 USER moose:moose
 WORKDIR /application"#,
-                    relative_project_path.to_string_lossy(),
-                    relative_project_path.to_string_lossy(),
-                    relative_project_path.to_string_lossy(),
-                    relative_project_path.to_string_lossy(),
-                    relative_project_path.to_string_lossy(),
-                    workspace_copies,
-                    relative_project_path.to_string_lossy(),
-                    relative_project_path.to_string_lossy(),
+                    relative_project_path.to_string_lossy(), // 1: /monorepo/{}/app
+                    relative_project_path.to_string_lossy(), // 2: /monorepo/{}/package.json
+                    relative_project_path.to_string_lossy(), // 3: /monorepo/{}/tsconfig.json
+                    relative_project_path.to_string_lossy(), // 4: /monorepo/{} ./{}
+                    relative_project_path.to_string_lossy(), // 5: /monorepo/{} ./{}
+                    workspace_copies,                        // 6: {} (workspace_copies)
+                    relative_project_path.to_string_lossy(), // 7: --filter "./{}"
                 );
 
                 dockerfile = dockerfile.replace("COPY_PACKAGE_FILE", &copy_from_build);
                 dockerfile = dockerfile.replace(
                     "INSTALL_COMMAND",
-                    "# Dependencies already installed in build stage",
+                    "# Dependencies copied from monorepo build stage",
                 );
 
                 // Store monorepo info for build phase

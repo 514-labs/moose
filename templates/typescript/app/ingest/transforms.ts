@@ -1,23 +1,23 @@
-import { FooPipeline, BarPipeline, Foo, Bar } from "./models";
+import { FooPipelineV1, BarPipeline, FooV1, Bar } from "./models";
 import { DeadLetterQueue, MooseCache } from "@514labs/moose-lib";
 
 // Transform Foo events to Bar events
-FooPipeline.stream!.addTransform(
+FooPipelineV1.stream!.addTransform(
   BarPipeline.stream!,
-  async (foo: Foo): Promise<Bar> => {
+  async (foo: FooV1): Promise<Bar> => {
     /**
      * Transform Foo events to Bar events with error handling and caching.
-     * 
+     *
      * Normal flow:
      * 1. Check cache for previously processed events
      * 2. Transform Foo to Bar
      * 3. Cache the result
      * 4. Return transformed Bar event
-     * 
+     *
      * Alternate flow (DLQ):
      * - If errors occur during transformation, the event is sent to DLQ
      * - This enables separate error handling, monitoring, and retry strategies
-    */
+     */
 
     // Initialize cache
     const cache = await MooseCache.get();
@@ -48,12 +48,12 @@ FooPipeline.stream!.addTransform(
     return result;
   },
   {
-    deadLetterQueue: FooPipeline.deadLetterQueue,
+    deadLetterQueue: FooPipelineV1.deadLetterQueue,
   },
 );
 
 // Add a streaming consumer to print Foo events
-const printFooEvent = (foo: Foo): void => {
+const printFooEvent = (foo: FooV1): void => {
   console.log("Received Foo event:");
   console.log(`  Primary Key: ${foo.primaryKey}`);
   console.log(`  Timestamp: ${new Date(foo.timestamp * 1000)}`);
@@ -61,11 +61,11 @@ const printFooEvent = (foo: Foo): void => {
   console.log("---");
 };
 
-FooPipeline.stream!.addConsumer(printFooEvent);
+FooPipelineV1.stream!.addConsumer(printFooEvent);
 
 // DLQ consumer for handling failed events (alternate flow)
-FooPipeline.deadLetterQueue!.addConsumer((deadLetter) => {
+FooPipelineV1.deadLetterQueue!.addConsumer((deadLetter) => {
   console.log(deadLetter);
-  const foo: Foo = deadLetter.asTyped();
+  const foo: FooV1 = deadLetter.asTyped();
   console.log(foo);
 });

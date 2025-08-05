@@ -7,9 +7,6 @@ const rawMeta = {
   prod: {
     title: "Production Mode",
   },
-  observability: {
-    title: "Observability",
-  },
 };
 
 export default render(rawMeta);

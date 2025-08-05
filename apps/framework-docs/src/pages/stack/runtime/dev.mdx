@@ -47,40 +47,16 @@ curl -X POST http://localhost:4000/ingest/YourDataModel \
 
 Development mode automatically manages Docker containers for your infrastructure:
 
-### Automatic Startup
-
-- Starts only containers needed for enabled features
-- Validates container health before proceeding
-- Generates dynamic Docker Compose configurations
-- Handles container networking and port management
-
-### Supported Containers
-
-**ClickHouse** (when `olap` feature is enabled)
-- Columnar OLAP database for analytical queries
-- Automatic schema creation and migration
-- Built-in query optimization
-
-**Redpanda** (when `streaming_engine` feature is enabled)
-- Kafka-compatible streaming platform
-- Automatic topic creation and partitioning
-- Schema registry integration
-
-**Temporal** (when `workflows` feature is enabled)
-- Workflow orchestration engine
-- Task queue management
-- Workflow state persistence
-
-**Redis** (always enabled)
-- State coordination between components
-- Caching layer for improved performance
-- Session and configuration storage
+- **ClickHouse** (when `olap` feature is enabled)
+- **Redpanda** (when `streaming_engine` feature is enabled)
+- **Temporal** (when `workflows` feature is enabled)
+- **Redis** (always enabled)
 
 ### Container Configuration
 
 Control which containers start with feature flags:
 
-```toml
+```toml copy
 # moose.config.toml
 [features]
 olap = true              # Enables ClickHouse

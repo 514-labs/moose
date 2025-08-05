@@ -2,16 +2,20 @@ import { render } from "@/components";
 
 const rawMeta = {
   "ingest-api": {
-    title: "Configure Ingest Endpoints",
+    title: "Ingest Data",
   },
   "query-api": {
-    title: "Expose Queries as APIs",
+    title: "Expose Data",
   },
   "trigger-api": {
-    title: "Trigger Workflows from APIs",
+    title: "Trigger Workflows",
   },
   auth: {
     title: "Securing API Endpoints",
+  },
+  "admin-api": {
+    title: "Admin APIs",
+    display: "hidden",
   },
 };
 

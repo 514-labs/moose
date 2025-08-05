@@ -10,31 +10,29 @@ import { Cards, Card } from "nextra/components";
 
 <LanguageSwitcher />
 
-The Moose Runtime is the execution environment that runs your analytical backend application. When you run `moose dev` or `moose prod`, the runtime starts up and automatically manages all the infrastructure your application needs - databases, streaming, API servers, and workflows. It also manages the processes (Node.js, Python) to run your server functions: streaming functions, query API route handlers, and workflow tasks.
+The Moose Runtime is the execution environment that runs your analytical backend application. When you run `moose dev` or `moose prod`, the runtime starts up and automatically manages all the infrastructure your application needs - databases, streaming, API servers, and workflows. 
+
+
+It also manages the processes (Node.js, Python) to run your server functions: streaming functions, query API route handlers, and workflow tasks.
 
 ## Core Components
 
-**Infrastructure Map**
+**Infrastructure Map (Redis)**
 - Stores the state of all your application components (tables, streams, views, APIs, functions, workflows)
 - Used as the source of truth when diffing code changes against the state of the infrastructure
 - Provides versioning and rollback capabilities
 
 **Web Server**
-- Main API server for data ingestion and queries (port 4000)
+- Main API server for all routes defined in your application code (port 4000)
 - Management server for administrative operations (port 5001)
 
-**<Python inline>Python</Python><TypeScript inline>Node.js</TypeScript> Runtime**
-
-
-Managed processes for running all variants of server functions defined in your application code:
+**<Python inline>Python</Python><TypeScript inline>Node.js</TypeScript> Runtime** for all server functions defined in your application code, including:
 - Streaming functions
-- Query API route handlers
+- API route handlers
 - Workflow tasks
 
-
-**Data Sync**
-- Automatically moves data between streaming and OLAP systems
-
+**Kafka to ClickHouse Data Sync (Rust)**
+- Rust-process that syncs data between streaming topics and OLAP tables
 
 ## Managed Infrastructure
 
@@ -58,31 +56,39 @@ workflows = true
 
 ## Development vs Production
 
-In **development mode**, the runtime manages everything locally using Docker containers. In **production mode**, you provide external infrastructure and the runtime connects to it.
+The Moose runtime behaves differently in development and production environments:
 
-<CTACards>
-  <CTACard 
-    title="Development Mode"
-    description="Local environment with hot reload, automatic Docker management, and debugging tools for rapid iteration."
-    ctaLink="/stack/runtime/dev"
-    ctaLabel="Learn Development Mode"
-    badge={{
-      variant: "moose",
-      text: "Local Dev",
-    }}
-  />
-  
-  <CTACard 
-    title="Production Mode" 
-    description="Hardened runtime optimized for performance, reliability, and horizontal scaling in production environments."
-    ctaLink="/stack/runtime/prod"
-    ctaLabel="Learn Production Mode"
-    badge={{
-      variant: "moose",
-      text: "Production",
-    }}
-  />
-</CTACards>
+### Development (`moose dev`)
+
+**What it does:**
+- Runs everything locally using Docker containers, no configuration needed
+- Automatically starts ClickHouse, Redpanda, Temporal, and Redis
+- Watches your code for changes and hot-reloads on save
+- Handles all container setup and networking
+- Designed for learning and prototyping quickly
+
+**How it works:**
+1. Reads your `moose.config.toml` to determine which services to start
+2. Spins up Docker containers for each enabled feature
+3. Monitors your `app/` directory for file changes
+4. Automatically rebuilds and redeploys when you save files
+
+### Production (`moose prod`)
+
+Unlike `moose dev`, `moose prod` requires that you have the underlying infrastructure services (Redis, ClickHouse, Redpanda, Temporal) already running somewhere else.
+
+**What it does:**
+- Connects to your existing external infrastructure
+- Compares your code with running services
+- Applies schema changes on startup
+- No hot-reloading or file watching
+
+**How it works:**
+1. Connects to external services using your environment variables
+2. Compares your current code with the running infrastructure
+3. Applies any necessary schema changes (new tables, columns, etc.)
+4. Starts your application with production settings
+
 
 ## Quick Start
 
@@ -128,3 +134,7 @@ moose prod
 1. Run `moose build` to create production artifacts
 2. Deploy infrastructure externally (or use `--start-include-dependencies`)
 3. Run `moose prod` to connect runtime to production infrastructure
+
+<Callout type="info">
+For detailed production deployment instructions including containerization, Kubernetes deployment, cloud configuration, and monitoring setup, see the [Self-Hosting Deployment Guide](/moose/deploying/self-hosting).
+</Callout>

@@ -25,11 +25,11 @@ The APIs capability provides standalone HTTP endpoints for data ingestion and co
   badge={{ variant: "moose", text: "Ingestion" }}
 />
 <CTACard
-  title="Egress Data"
-  description="Create HTTP GET endpoints for data consumption with query parameters"
-  ctaLink="/stack/apis/egress-data"
+  title="Expose Analytics"
+  description="Create HTTP GET endpoints for reading data from your OLAP database with query parameters"
+  ctaLink="/stack/apis/query-api"
   ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Consumption" }}
+  badge={{ variant: "moose", text: "Query" }}
 />
 </CTACards>
 
@@ -72,11 +72,11 @@ user_events_api = IngestApi[UserEvent]("user-events", IngestConfig(destination=e
 ```
 </Python>
 
-### Query API
+### Analytics API
 
 <TypeScript>
-```ts filename="QueryApi.ts" copy
-import { QueryApi } from "@514labs/moose-lib";
+```ts filename="AnalyticsApi.ts" copy
+import { ConsumptionApi } from "@514labs/moose-lib";
 
 interface Params {
   userId: string;
@@ -90,7 +90,7 @@ interface ResultData {
 }
 
 // Create a standalone consumption API
-const userDataApi = new QueryApi<Params, ResultData[]>("user-data", 
+const userDataApi = new ConsumptionApi<Params, ResultData[]>("user-data", 
   async ({ userId, limit }, { client, sql }) => {
     // Query external service or custom logic
     return [
@@ -102,7 +102,7 @@ const userDataApi = new QueryApi<Params, ResultData[]>("user-data",
 </TypeScript>
 
 <Python>
-```py filename="ConsumptionApi.py" copy
+```py filename="AnalyticsApi.py" copy
 from moose_lib import ConsumptionApi, MooseClient
 from pydantic import BaseModel
 
@@ -120,11 +120,11 @@ def query_function(client: MooseClient, params: QueryParams) -> list[UserData]:
     sql = f"SELECT * FROM user_data WHERE user_id = {params.user_id} LIMIT {params.limit}"
     return client.query.execute(sql)
 
-user_data_api = QueryApi[Params, ResultData]("get-data", query_function)
+user_data_api = ConsumptionApi[Params, ResultData]("get-data", query_function)
 ```
 </Python>
 
-## When to Use Moose APIs vs. Existing Backends
+{/* ## When to Use Moose APIs vs. Existing Backends
 
 If you already have a FastAPI, Fastify, or other REST API backend and are using Moose OLAP and streaming modules, here's when to use Moose APIs versus integrating Moose functions into your existing backend:
 
@@ -144,4 +144,4 @@ If you already have a FastAPI, Fastify, or other REST API backend and are using 
 ### Custom Webhook Authentication
 Moose Ingest APIs don't support custom authentication logic for third-party webhooks (e.g., GitHub webhooks with signature verification, Stripe webhooks with signing secrets).
 
-You can use your existing API framework to handle webhook authentication, then use MooseClient to insert validated data into ClickHouse. See the [Client Integrations](/stack/open-api) page for more information.
+You can use your existing API framework to handle webhook authentication, then use MooseClient to insert validated data into ClickHouse. See the [Client Integrations](/stack/open-api) page for more information. */}

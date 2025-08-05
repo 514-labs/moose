@@ -30,6 +30,7 @@ const rawMeta = {
   },
   "connect-cdc": {
     title: "From CDC Services",
+    display: "hidden",
   },
 };
 

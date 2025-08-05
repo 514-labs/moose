@@ -13,123 +13,27 @@ import { Tabs } from "nextra/components";
 
 The Streaming capability provides standalone real-time data processing with Kafka/Redpanda topics. You can use this capability independently to build event-driven architectures, data transformations, and real-time pipelines without requiring other MooseStack components.
 
-<BulletPointsCard
-  title="Working with Streaming"
-  bullets={[
-    {
-      title: "Type-safe transport layer",
-      description: "The schema of your Redpanda topic is derived from the data model you define"
-    },
-    {
-      title: "Buffer data from any source",
-      description: "Data is buffered in the stream to protect against data loss during high load or service disruptions"
-    },
-    {
-      title: "Chain transformations on the fly",
-      description: "Add transformations between streams to process, reshape, and enrich data in-flight"
-    },
-    {
-      title: "Standalone event processing",
-      description: "Process events independently of databases, APIs, or other components"
-    }
-  ]}
-/>
-
-## Core Capabilities
-
-<CTACards>
-<CTACard
-  title="Create Streams"
-  description="Define and create Kafka/Redpanda topics with type-safe schemas"
-  ctaLink="/moosestack/streaming/create-stream"
-  ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Streams" }}
-/>
-<CTACard
-  title="Publish Data"
-  description="Write data to streams from applications, APIs, or external sources"
-  ctaLink="/moosestack/streaming/publish-data"
-  ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Publishing" }}
-/>
-<CTACard
-  title="Consume Data"
-  description="Read and process data from streams with consumers and processors"
-  ctaLink="/moosestack/streaming/consume-data"
-  ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Consuming" }}
-/>
-<CTACard
-  title="Transform Data"
-  description="Process and transform data in-flight between streams"
-  ctaLink="/moosestack/streaming/transform-data"
-  ctaLabel="Learn More →"
-  badge={{ variant: "moose", text: "Transformation" }}
-/>
-</CTACards>
-
-## Standalone Usage
-
-The Streaming capability is designed to work independently. You can use it without requiring other MooseStack components:
-
-<BulletPointsCard
-  title="Independent Stream Processing"
-  bullets={[
-    {
-      title: "No database required",
-      description: "Process events and data transformations without storing to databases"
-    },
-    {
-      title: "Event-driven architecture",
-      description: "Build decoupled systems that communicate through streams"
-    },
-    {
-      title: "Real-time processing",
-      description: "Handle high-throughput data processing with low latency"
-    },
-    {
-      title: "Scalable messaging",
-      description: "Scale stream processing independently based on your workload"
-    }
-  ]}
-/>
-
-## Integration with Other Capabilities
-
-While the Streaming capability works standalone, it seamlessly integrates with other MooseStack capabilities:
-
-- **OLAP Database**: Sync data from streams to tables for analytics
-- **APIs**: Route API requests to streams for real-time processing
-- **Workflows**: Trigger workflows from stream events
-- **Runtime**: Deploy and manage streaming infrastructure
-
-## Creating Streams
-
-You can create streams in two ways:
-- **High-level**: Using the `IngestPipeline` class (recommended for complete pipelines)
-- **Low-level**: Manually configuring the `Stream` component (for standalone streaming)
-
-### Standalone Streams
+## Basic Usage
 
 <TypeScript>
-```ts filename="StandaloneStream.ts" copy
+```ts filename="Stream.ts" copy
 import { Stream } from "@514labs/moose-lib";
 
-interface UserEvent {
+interface ExampleEvent {
   id: string;
   userId: string;
   timestamp: Date;
   eventType: string;
 }
 
-// Create a standalone stream for user events
-const userEventsStream = new Stream<UserEvent>("user-events", {
+// Create a standalone stream for events
+const exampleStream = new Stream<ExampleEvent>("streaming-topic-name", {
   // Optional: specify destination table
-  destination: new OlapTable<UserEvent>("user_events")
+  destination: new OlapTable<ExampleEvent>("table-name")
 });
 
 // Add consumers for real-time processing
-userEventsStream.addConsumer((event) => {
+exampleStream.addConsumer((event) => {
   console.log("Processing event:", event);
   // Custom processing logic here
 });
@@ -137,65 +41,91 @@ userEventsStream.addConsumer((event) => {
 </TypeScript>
 
 <Python>
-```py filename="StandaloneStream.py" copy
+```py filename="Stream.py" copy
 from moose_lib import Stream
 from pydantic import BaseModel
 from datetime import datetime
 
-class UserEvent(BaseModel):
+class ExampleEvent(BaseModel):
     id: str
     user_id: str
     timestamp: datetime
     event_type: str
 
 # Create a standalone stream for user events
-user_events_stream = Stream[UserEvent]("user-events")
+example_stream = Stream[ExampleEvent]("streaming-topic-name")
 
 # Add consumers for real-time processing
-def process_event(event: UserEvent):
+def process_event(event: ExampleEvent):
     print(f"Processing event: {event}")
     # Custom processing logic here
 
-user_events_stream.add_consumer(process_event)
+example_stream.add_consumer(process_event)
 ```
 </Python>
 
-### Streams with Ingestion Pipelines
+### Enabling Streaming
 
-<TypeScript>
-```ts filename="IngestionStream.ts" copy
-import { IngestPipeline, Key } from "@514labs/moose-lib";
+To enable streaming, you need to ensure that the `streaming_engine` feature flag is set to `true` in your `moose.config.toml` file:
 
-interface RawData {
-  id: Key<string>;
-  value: number;
-}
-
-const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
-  ingest: true, // Creates an ingestion API endpoint at `POST /ingest/raw_data`
-  stream: true, // Buffers data between the ingestion API and the database table
-  table: true   // Creates an OLAP table named `raw_data`
-});
+```toml
+[features]
+streaming_engine = true
 ```
-</TypeScript>
 
-<Python>
-```py filename="IngestionStream.py" copy
-from moose_lib import IngestPipeline, Key
-from pydantic import BaseModel
 
-class RawData(BaseModel):
-    id: Key[str]
-    value: int
+## Core Capabilities
 
-raw_ingestion_stream = IngestPipeline[RawData]("raw_data", {
-  ingest: True, # Creates an ingestion API endpoint at `POST /ingest/raw_data`
-  stream: True, # Buffers data between the ingestion API and the database table
-  table: True   # Creates an OLAP table named `raw_data`
-})
-```
-</Python>
+<CTACards>
+<CTACard
+  title="Create Streams"
+  description="Define and create Kafka/Redpanda topics with type-safe schemas"
+  ctaLink="/stack/streaming/create-stream"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Streams" }}
+/>
+<CTACard
+  title="Publish Data"
+  description="Write data to streams from applications, APIs, or external sources"
+  ctaLink="/stack/streaming/from-your-code"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Publishing" }}
+/>
+<CTACard
+  title="Consumer Functions"
+  description="Read and process data from streams with consumers and processors"
+  ctaLink="/stack/streaming/consumer-functions"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Consuming" }}
+/>
+<CTACard
+  title="Streaming Transformations"
+  description="Process and transform data in-flight between streams"
+  ctaLink="/stack/streaming/transform-functions"
+  ctaLabel="Learn More →"
+  badge={{ variant: "moose", text: "Transformation" }}
+/>
+</CTACards>
 
-<Callout type="info">
-**Getting Started**: Begin with [Create Streams](/moosestack/streaming/create-stream) to understand how to define and create your first stream for real-time data processing.
-</Callout>
+## Integration with Other Capabilities
+
+The Streaming capability can be used independently, or in conjunction with other MooseStack modules:
+
+<CTACards>
+<CTACard
+  title="OLAP"
+  description="Sync data from streams to tables to persist data and enable fast analytical queries on top of it"
+  ctaLink="/stack/streaming/sync-to-table"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+  isMooseModule={true}
+/>
+<CTACard
+  title="APIs"
+  description="Create APIs to route data into streams from your other applications or webhooks"
+  ctaLink="/stack/streaming/from-your-code"
+  ctaLabel="Learn More →"
+  orientation="horizontal"
+  isMooseModule={true}
+/>
+</CTACards>

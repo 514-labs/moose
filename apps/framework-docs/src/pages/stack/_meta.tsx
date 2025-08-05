@@ -13,6 +13,7 @@ import {
   Workflow,
   Database,
   GanttChart,
+  ChartBar,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -28,10 +29,20 @@ const rawMeta = {
     title: "Getting Started",
     Icon: HandMetal,
   },
-  // '---core---': {
-  //   title: "Core Modules",
-  //   type: "separator",
-  // },
+  "---fundamentals---": {
+    title: "Fundamentals",
+    type: "separator",
+  },
+  runtime: {
+    title: "Runtime",
+    Icon: Rocket,
+    isMoose: true,
+  },
+  "data-modeling": {
+    title: "Data Models",
+    Icon: Database,
+    isMoose: true,
+  },
   // Builder's Guide - Task-oriented approach
   "---modules---": {
     title: "Modules",
@@ -61,11 +72,6 @@ const rawMeta = {
     title: "Tools",
     type: "separator",
   },
-  runtime: {
-    title: "Runtime",
-    Icon: Rocket,
-    isMoose: true,
-  },
   "moose-build": {
     title: "Build",
     Icon: Hammer,
@@ -74,6 +80,11 @@ const rawMeta = {
   plan: {
     title: "Plan",
     Icon: BookOpen,
+    isMoose: true,
+  },
+  metrics: {
+    title: "Metrics",
+    Icon: ChartBar,
     isMoose: true,
   },
   "---client-integrations---": {

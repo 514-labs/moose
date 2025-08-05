@@ -3,552 +3,118 @@ title: Production Mode
 description: Hardened runtime optimized for performance, reliability, and horizontal scaling
 ---
 
-import { TypeScript, Python, LanguageSwitcher } from "@/components";
-import { Callout } from "nextra/components";
+import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
 
 # Production Mode
 
 <LanguageSwitcher />
 
-Production mode (`moose prod`) provides a hardened runtime optimized for performance, reliability, and scalability. It's designed for high-throughput workloads with enterprise-grade security, monitoring, and multi-instance coordination.
+Production mode (`moose prod`) is the default mode for running your application in production. 
 
-## Getting Started
+Moose supports several deployment scenarios (across both containerized and non-containerized environments):
 
-<TypeScript>
+- **Kubernetes Deployment**: Deploy your application to Kubernetes clusters (GKE, EKS, AKS, or on-premises)
+- **Standard Server Deployment**: Deploy your application to a server with internet access
+- **Containerized Cloud Deployment**: Deploy to cloud services like AWS ECS or Google Cloud Run
+- **Offline Server Deployment**: Deploy to an environment without internet access
+
+## Infrastructure Management
+
+The primary difference between `moose dev` and `moose prod` is that `moose prod` requires access to hosted services that are required for your application to run:
+
+- **ClickHouse** (when `olap` feature is enabled)
+
+- **Kafka/Redpanda ** (when `streaming_engine` feature is enabled)
+
+- **Redis** (always required)
+
+- **Temporal** (when `workflows` feature is enabled)
+
+If self-hosting Moose, you can stand up open source versions of these infrastructure services within your environments or opt to use cloud-hosted versions available at:
+
+- [Redis Cloud](https://redis.com/try-free/)
+- [ClickHouse Cloud](https://clickhouse.com/cloud)
+- [Redpanda Cloud](https://redpanda.com/cloud)
+- [Temporal Cloud](https://temporal.io/cloud)
+
+### Environment Configuration
+For any type of deployment, you'll need to configure the following:
+
+- Runtime environment variables for logging, telemetry, and application settings
+- External service connections (Redis, ClickHouse, Redpanda, Temporal)
+- Network settings and security configurations
+- Application-specific configurations
+
 ```bash
-# Build production image
-moose build
+# Logger configuration
+MOOSE_LOGGER__LEVEL=Info
+MOOSE_LOGGER__STDOUT=true
+MOOSE_LOGGER__FORMAT=Json
+# Telemetry configuration
+MOOSE_TELEMETRY__ENABLED=false
+MOOSE_TELEMETRY__EXPORT_METRICS=true
+# For debugging
+RUST_BACKTRACE=1
 
-# Run in production mode (assumes external infrastructure)
-moose prod
+# HTTP Server Configuration
+export MOOSE_HTTP_SERVER_CONFIG__HOST=0.0.0.0
+export MOOSE_HTTP_SERVER_CONFIG__PORT=4000
 
-# Run with managed dependencies (includes containers)
-moose prod --start-include-dependencies
-```
-</TypeScript>
+# Redis Configuration (Required)
+export MOOSE_REDIS_CONFIG__URL=redis://user:password@redis.example.com:6379
+export MOOSE_REDIS_CONFIG__KEY_PREFIX=moose_production
 
-<Python>
-```bash
-# Build production image
-moose build
+# ClickHouse Configuration (Optional)
+export MOOSE_CLICKHOUSE_CONFIG__DB_NAME=moose_production
+export MOOSE_CLICKHOUSE_CONFIG__USER=moose_user
+export MOOSE_CLICKHOUSE_CONFIG__PASSWORD=your_clickhouse_password
+export MOOSE_CLICKHOUSE_CONFIG__HOST=clickhouse.example.com
+export MOOSE_CLICKHOUSE_CONFIG__HOST_PORT=8443
+export MOOSE_CLICKHOUSE_CONFIG__USE_SSL=1
+export MOOSE_CLICKHOUSE_CONFIG__NATIVE_PORT=9440
 
-# Run in production mode (assumes external infrastructure)
-moose prod
+# Redpanda Configuration (Optional)
+export MOOSE_REDPANDA_CONFIG__BROKER=kafka.example.com:9092
+export MOOSE_REDPANDA_CONFIG__NAMESPACE=moose_production
+export MOOSE_REDPANDA_CONFIG__MESSAGE_TIMEOUT_MS=10043
+export MOOSE_REDPANDA_CONFIG__SASL_USERNAME=redpanda_user
+export MOOSE_REDPANDA_CONFIG__SASL_PASSWORD=redpanda_password
+export MOOSE_REDPANDA_CONFIG__SASL_MECHANISM=SCRAM-SHA-256
+export MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL=SASL_SSL
+export MOOSE_REDPANDA_CONFIG__REPLICATION_FACTOR=3
 
-# Run with managed dependencies (includes containers)
-moose prod --start-include-dependencies
-```
-</Python>
-
-## Key Differences from Development
-
-### Performance Optimizations
-
-**Runtime Performance**
-- No file watching overhead
-- Optimized memory allocation and garbage collection
-- Connection pooling for database and streaming connections
-- Request batching and caching strategies
-- Reduced logging verbosity for better throughput
-
-**Infrastructure Efficiency**
-- Persistent connections to external services
-- Optimized query execution plans
-- Batch processing for high-volume operations
-- Automatic resource scaling based on load
-
-### Security Enhancements
-
-**Authentication & Authorization**
-- Enhanced JWT validation with configurable algorithms
-- Role-based access control (RBAC) for API endpoints
-- API key management for service-to-service communication
-- Rate limiting and request throttling
-
-**Data Protection**
-- Encryption in transit for all service communications
-- Secure configuration management via environment variables
-- Audit logging for compliance requirements
-- Input validation and sanitization
-
-**Network Security**
-- Configurable CORS policies
-- Request size limits and timeout controls
-- IP allowlisting and security headers
-- TLS/SSL enforcement
-
-### Infrastructure Management
-
-**External Services Integration**
-- Connects to managed cloud services by default
-- Support for high-availability database clusters
-- Integration with enterprise message brokers
-- Redis clustering for state management
-
-**Optional Container Management**
-- Use `--start-include-dependencies` for containerized deployments
-- Production-grade container configurations
-- Health monitoring and automatic restarts
-- Resource limits and quality of service controls
-
-## Multi-Instance Deployment
-
-Production deployments support horizontal scaling with sophisticated coordination:
-
-### Leadership Election
-
-**Distributed Leadership**
-- Uses Redis for distributed leadership election
-- Ensures singleton operations run only once across all instances
-- Automatic failover when the leader instance fails
-- Leadership transfer for maintenance scenarios
-
-**Leadership Responsibilities**
-- Schema migrations and infrastructure updates
-- Workflow scheduling and orchestration
-- Cleanup operations and maintenance tasks
-- Metrics aggregation and reporting
-
-### State Synchronization
-
-**Infrastructure State**
-- Complete infrastructure state stored in Redis
-- Consistent view across all running instances
-- Coordinated infrastructure updates and rollbacks
-- Version tracking for configuration changes
-
-**Process Coordination**
-- Distributed process registry for load balancing
-- Automatic failover for critical processes
-- Work distribution across available instances
-- Dead letter queue handling for failed operations
-
-### Load Distribution
-
-**Request Processing**
-- Multiple instances can serve API requests simultaneously
-- Automatic load balancing across healthy instances
-- Session affinity when required
-- Circuit breaker patterns for fault tolerance
-
-**Background Processing**
-- Data processing tasks distributed across instances
-- Queue-based work distribution
-- Parallel execution of independent operations
-- Backpressure handling for overload scenarios
-
-## Infrastructure Configuration
-
-### External Services
-
-Configure production infrastructure via environment variables and configuration files:
-
-<TypeScript>
-```toml
-# moose.config.toml for production
-[clickhouse]
-host = "your-clickhouse-cluster.com"
-port = 9440  # Use secure port
-database = "production_db"
-username = "moose_user"
-password_env = "CLICKHOUSE_PASSWORD"
-use_tls = true
-connection_pool_size = 20
-
-[redpanda]
-brokers = [
-  "kafka-1.your-cluster.com:9092",
-  "kafka-2.your-cluster.com:9092", 
-  "kafka-3.your-cluster.com:9092"
-]
-registry_url = "https://your-schema-registry.com"
-security_protocol = "SASL_SSL"
-sasl_mechanism = "PLAIN"
-sasl_username_env = "KAFKA_USERNAME"
-sasl_password_env = "KAFKA_PASSWORD"
-
-[redis]
-host = "your-redis-cluster.com"
-port = 6380  # Use secure port
-password_env = "REDIS_PASSWORD"
-use_tls = true
-connection_pool_size = 15
-```
-</TypeScript>
-
-<Python>
-```toml
-# moose.config.toml for production
-[clickhouse]
-host = "your-clickhouse-cluster.com"
-port = 9440
-database = "production_db"
-username = "moose_user"
-password_env = "CLICKHOUSE_PASSWORD"
-use_tls = true
-
-[redpanda]
-brokers = [
-  "kafka-1.your-cluster.com:9092",
-  "kafka-2.your-cluster.com:9092",
-  "kafka-3.your-cluster.com:9092"
-]
-registry_url = "https://your-schema-registry.com"
-security_protocol = "SASL_SSL"
-
-[redis]
-host = "your-redis-cluster.com"
-port = 6380
-password_env = "REDIS_PASSWORD"
-use_tls = true
-```
-</Python>
-
-### Environment Variables
-
-**Required Environment Variables**
-```bash
-# Database credentials
-CLICKHOUSE_PASSWORD=your-secure-password
-REDIS_PASSWORD=your-redis-password
-
-# Kafka credentials (if using SASL)
-KAFKA_USERNAME=your-kafka-user
-KAFKA_PASSWORD=your-kafka-password
-
-# Application configuration
-MOOSE_ENV=production
-MOOSE_LOG_LEVEL=INFO
+# Temporal Configuration (Optional)
+export MOOSE_TEMPORAL_CONFIG__CA_CERT=/etc/ssl/certs/ca-certificates.crt
+export MOOSE_TEMPORAL_CONFIG__API_KEY=temporal_api_key
+export MOOSE_TEMPORAL_CONFIG__TEMPORAL_HOST=your-namespace.tmprl.cloud
 ```
 
-**Optional Configuration**
-```bash
-# Performance tuning
-MOOSE_MAX_CONNECTIONS=100
-MOOSE_WORKER_THREADS=4
-MOOSE_MEMORY_LIMIT=2GB
-
-# Security
-MOOSE_CORS_ORIGINS=https://your-frontend.com
-MOOSE_API_RATE_LIMIT=1000
-MOOSE_ENABLE_METRICS=true
-```
-
-## Health Monitoring
-
-### Built-in Health Checks
-
-Production mode includes comprehensive health monitoring:
-
-```yaml
-# Health check configuration
-healthcheck:
-  interval: 30s
-  timeout: 3s
-  retries: 3
-  test: "curl -f http://localhost:4000/health || exit 1"
-```
-
-**Health Endpoints**
-- `/health`: Basic application health
-- `/health/detailed`: Comprehensive system status
-- `/health/ready`: Readiness probe for load balancers
-- `/health/live`: Liveness probe for orchestrators
-
-### Metrics and Observability
-
-**Built-in Metrics**
-- Request rate, latency, and error rates
-- Infrastructure component health and performance
-- Process execution statistics and queue depths
-- Custom business metrics defined in your application
-
-**Integration Points**
-- Prometheus metrics export on `/metrics` endpoint
-- Structured JSON logging for log aggregation
-- OpenTelemetry tracing support
-- Custom webhook notifications for alerts
-
-## Deployment Strategies
-
-### Kubernetes Deployment
-
-Moose includes production-ready Kubernetes manifests:
-
-```yaml
-# deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: moose-app
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: moose-app
-  template:
-    metadata:
-      labels:
-        app: moose-app
-    spec:
-      containers:
-      - name: moose
-        image: your-registry/moose-app:latest
-        ports:
-        - containerPort: 4000
-        - containerPort: 5001
-        env:
-        - name: MOOSE_ENV
-          value: "production"
-        - name: CLICKHOUSE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: moose-secrets
-              key: clickhouse-password
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 4000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 4000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
-
-### Container Orchestration
-
-**Docker Compose (Simple Production)**
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-services:
-  moose-app:
-    image: your-registry/moose-app:latest
-    ports:
-      - "4000:4000"
-      - "5001:5001"
-    environment:
-      - MOOSE_ENV=production
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-**Docker Swarm**
-- Multi-node container orchestration
-- Service discovery and load balancing
-- Rolling updates and rollback capabilities
-- Secrets management integration
-
-### Cloud Deployments
-
-**AWS ECS/Fargate**
-- Serverless container execution
-- Integration with AWS Application Load Balancer
-- CloudWatch logging and monitoring
-- Auto-scaling based on CPU/memory metrics
-
-**Google Cloud Run**
-- Fully managed serverless platform
-- Automatic HTTPS and custom domains
-- Built-in CI/CD integration
-- Pay-per-request pricing model
-
-**Azure Container Instances**
-- Quick container deployment
-- Integration with Azure Monitor
-- Virtual network connectivity
-- Managed identity support
-
-## Security Best Practices
-
-### Authentication Configuration
-
-**JWT Configuration**
-```toml
-[jwt]
-algorithm = "RS256"  # Use asymmetric algorithms in production
-public_key_env = "JWT_PUBLIC_KEY"
-issuer = "your-auth-service"
-audience = "moose-api"
-expiry_tolerance = 300  # 5 minutes
-```
-
-**API Key Management**
-```toml
-[api_keys]
-enabled = true
-header_name = "X-API-Key"
-rate_limit_per_key = 10000  # Requests per hour
-require_api_key_for_ingestion = true
-```
-
-### Network Security
-
-**CORS Configuration**
-```toml
-[cors]
-allowed_origins = [
-  "https://your-frontend.com",
-  "https://your-dashboard.com"
-]
-allowed_methods = ["GET", "POST", "OPTIONS"]
-allowed_headers = ["Content-Type", "Authorization"]
-max_age = 3600
-```
-
-**Rate Limiting**
-```toml
-[rate_limiting]
-requests_per_minute = 1000
-burst_size = 100
-key_strategy = "ip"  # Options: ip, user, api_key
-```
-
-## Performance Tuning
-
-### Resource Optimization
-
-**Memory Management**
-```bash
-# JVM tuning for TypeScript (Node.js)
-export NODE_OPTIONS="--max-old-space-size=2048"
-
-# Python memory optimization
-export PYTHONHASHSEED=0
-export PYTHONOPTIMIZE=1
-```
-
-**Connection Pooling**
-```toml
-[database_pools]
-clickhouse_pool_size = 20
-redis_pool_size = 15
-kafka_producer_pool_size = 10
-
-[timeouts]
-database_query_timeout = 30
-http_request_timeout = 60
-kafka_producer_timeout = 10
-```
-
-### Scaling Configuration
-
-**Horizontal Scaling**
-- Configure multiple instances with shared Redis state
-- Use load balancer health checks for automatic failover
-- Implement circuit breakers for dependency failures
-- Monitor resource usage and scale based on metrics
-
-**Vertical Scaling**
-- Increase memory limits for high-throughput workloads
-- Add CPU cores for compute-intensive transformations
-- Optimize database connections and query performance
-- Tune garbage collection settings for your runtime
-
-## Production Checklist
-
-Before deploying to production:
-
-### Infrastructure
-- [ ] Configure external managed services (ClickHouse, Kafka, Redis)
-- [ ] Set up SSL/TLS certificates and secure communication
-- [ ] Configure firewalls and network security groups
-- [ ] Set up monitoring and alerting systems
-- [ ] Implement backup and disaster recovery procedures
-
-### Application
-- [ ] Configure authentication and authorization
-- [ ] Set up rate limiting and security policies
-- [ ] Implement comprehensive logging strategy
-- [ ] Load test your application under expected traffic
-- [ ] Set up CI/CD pipelines for automated deployments
-
-### Operations
-- [ ] Configure log aggregation and analysis
-- [ ] Set up metrics collection and dashboards
-- [ ] Implement error tracking and alerting
-- [ ] Document runbooks for common operational tasks
-- [ ] Plan capacity and scaling strategies
-
-### Security
-- [ ] Implement security scanning in your CI/CD pipeline
-- [ ] Configure secrets management
-- [ ] Set up access controls and audit logging
-- [ ] Perform security testing and vulnerability assessment
-- [ ] Document incident response procedures
-
-<Callout type="warning">
-Production mode requires external infrastructure services unless using `--start-include-dependencies`. Ensure proper security, backup, monitoring, and capacity planning for production workloads.
+<Callout type="info" title="Self-Hosting">
+When deploying your Moose application, you’ll need to pass these configurations as environment variables. Refer to the deployment guides for your specific platform (Kubernetes, ECS, etc.) for details on how to securely provide these values to your application.
 </Callout>
 
-## Troubleshooting
+## Migration from Development
 
-### Common Production Issues
+### Pre-Production Checklist
 
-**High Memory Usage**
-```bash
-# Check memory usage
-docker stats
+**Infrastructure Setup**
+1. Provision external ClickHouse, Kafka, and Redis clusters
+2. Configure network security groups and firewalls
+3. Set up SSL certificates and key management
+4. Establish backup and disaster recovery procedures
 
-# Analyze heap dumps (Node.js)
-node --inspect app.js
+**Application Preparation**
+1. Build your moose application with `moose build`
+2. Configure production environment variables
+3. Set up monitoring and alerting systems
+4. Prepare deployment automation scripts
 
-# Monitor Python memory
-python -m memory_profiler your_script.py
-```
+**Security Configuration**
+1. Generate production JWT signing keys
+2. Configure RBAC roles and permissions
+3. Set up API key management
 
-**Database Connection Issues**
-```bash
-# Test ClickHouse connectivity
-curl -u user:password http://your-clickhouse:8123/ping
 
-# Check Redis connectivity
-redis-cli -h your-redis-host ping
-
-# Verify Kafka connectivity
-kafka-console-consumer --bootstrap-server your-kafka:9092 --topic test
-```
-
-**Performance Bottlenecks**
-```bash
-# Check system resources
-top
-iostat 1
-netstat -i
-
-# Application-level profiling
-curl http://localhost:5001/metrics/performance
-```
-
-### Monitoring and Alerting
-
-Set up alerts for:
-- High error rates (>1% of requests)
-- Increased response times (>500ms p95)
-- Memory usage above 80%
-- CPU usage above 70%
-- Database connection pool exhaustion
-- Kafka consumer lag increasing
-- Health check failures 
+<Callout type="info" title="Read the Self-Hosting Guide">
+For detailed deployment instructions including containerization, Kubernetes deployment, cloud configuration, and monitoring setup, see the [Self-Hosting Deployment Guide](/moose/deploying/self-hosting).
+</Callout>

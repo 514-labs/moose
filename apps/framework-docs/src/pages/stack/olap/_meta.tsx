@@ -5,11 +5,11 @@ const rawMeta = {
     title: "Schema",
     type: "separator",
   },
-  "create-table": {
-    title: "Creating Tables",
+  "model-table": {
+    title: "Modeling Tables",
   },
-  "create-materialized-view": {
-    title: "Creating Materialized Views",
+  "model-materialized-view": {
+    title: "Modeling Materialized Views",
   },
   "supported-types": {
     title: "Supported Types",
@@ -17,18 +17,29 @@ const rawMeta = {
   "schema-optimization": {
     title: "Schema Optimization",
   },
-  "schema-migrations": {
-    title: "Migrations & Schema Changes",
+  "---Migrations---": {
+    title: "Migrations",
+    type: "separator",
   },
-  "---Interacting with Your Database---": {
-    title: "Reading and Writing Data",
+  "apply-migrations": {
+    title: "Applying Migrations",
+  },
+  lifecycle: {
+    title: "Lifecycle Management",
+  },
+  "schema-change": {
+    title: "Schema Changes",
+    display: "hidden",
+  },
+  "---Accessing Data---": {
+    title: "Accessing Data",
     type: "separator",
   },
   "insert-data": {
     title: "Inserting Data",
   },
-  "query-data": {
-    title: "Querying Data",
+  "read-data": {
+    title: "Reading Data",
   },
 };
 

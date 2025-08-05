@@ -27,12 +27,12 @@ Moose's ingestion APIs are purpose-built for high-throughput data pipelines, off
 - **Rust-powered performance:** Far higher throughput and lower latency than typical Node.js or Python APIs.
 
 
-## How Moose Handles Data Integrity
-Moose validates all incoming data against your TypeScript interface or Python model, ensuring only well-formed, expected data enters your pipeline. If a record fails validation, Moose can automatically route it to a Dead Letter Queue (DLQ) for later inspection and recovery.
+## Validation
+Moose validates all incoming data against your <TypeScript inline>interface</TypeScript> or <Python inline>Pydantic model</Python>. If a record fails validation, Moose can automatically route it to a Dead Letter Queue (DLQ) for later inspection and recovery.
 
 <TypeScript>
 ```typescript filename="ValidationExample.ts" copy
-interface UserEvent {
+interface ExampleModel {
   id: string;
   userId: string;
   timestamp: Date;
@@ -42,9 +42,9 @@ interface UserEvent {
   }
 }
 
-const api = new IngestApi<UserEvent>("user-events", {
-  destination: new Stream<UserEvent>("user-events"),
-  deadLetterQueue: new DeadLetterQueue<UserEvent>("user-events-dlq")
+const api = new IngestApi<ExampleModel>("your-api-route", {
+  destination: new Stream<ExampleModel>("your-stream-name"),
+  deadLetterQueue: new DeadLetterQueue<ExampleModel>("your-dlq-name")
 });
 ```
 </TypeScript>
@@ -58,15 +58,15 @@ class Properties(BaseModel):
     device: Optional[str]
     version: Optional[int]
 
-class UserEvent(BaseModel):
+class ExampleModel(BaseModel):
     id: str
     userId: str
     timestamp: datetime
     properties: Properties
 
-api = IngestApi[UserEvent]("user-events", IngestConfig(
-    destination=Stream[UserEvent]("user-events"),
-    dead_letter_queue=DeadLetterQueue[UserEvent]("user-events-dlq")
+api = IngestApi[ExampleModel]("your-api-route", IngestConfig(
+    destination=Stream[ExampleModel]("your-stream-name"),
+    dead_letter_queue=DeadLetterQueue[ExampleModel]("your-dlq-name")
 ))
 ```
 </Python>
@@ -76,7 +76,7 @@ api = IngestApi[UserEvent]("user-events", IngestConfig(
 Send a valid event - routed to the destination stream
 <TypeScript>
 ```typescript filename="ValidEvent.ts" copy
-fetch("http://localhost:4000/ingest/user-events", {
+fetch("http://localhost:4000/ingest/your-api-route", {
   method: "POST",
   body: JSON.stringify({
     id: "event1",
@@ -90,7 +90,7 @@ fetch("http://localhost:4000/ingest/user-events", {
 </TypeScript>
 <Python>
 ```python filename="ValidEvent.py" copy
-requests.post("http://localhost:4000/ingest/user-events", json={
+requests.post("http://localhost:4000/ingest/your-api-route", json={
     "id": "event1",
     "userId": "user1",
     "timestamp": "2023-05-10T15:30:00Z"
@@ -106,7 +106,7 @@ requests.post("http://localhost:4000/ingest/user-events", json={
 Send an invalid event (missing required field) - routed to the DLQ
 <TypeScript>
 ```typescript filename="InvalidEventMissingField.ts" copy
-fetch("http://localhost:4000/ingest/user-events", {
+fetch("http://localhost:4000/ingest/your-api-route", {
   method: "POST",
   body: JSON.stringify({
     id: "event1"
@@ -118,7 +118,7 @@ fetch("http://localhost:4000/ingest/user-events", {
 </TypeScript>
 <Python>
 ```python filename="InvalidEventMissingField.py" copy
-requests.post("http://localhost:4000/ingest/user-events", json={
+requests.post("http://localhost:4000/ingest/your-api-route", json={
     "id": "event1",
   })
 # ❌ Routed to DLQ, because it's missing a required field
@@ -130,7 +130,7 @@ requests.post("http://localhost:4000/ingest/user-events", json={
 Send an invalid event (bad date format) - routed to the DLQ
 <TypeScript>
 ```typescript filename="InvalidEventBadDate.ts" copy
-fetch("http://localhost:4000/ingest/user-events", {
+fetch("http://localhost:4000/ingest/your-api-route", {
   method: "POST",
   body: JSON.stringify({
     id: "event1",
@@ -144,7 +144,7 @@ fetch("http://localhost:4000/ingest/user-events", {
 </TypeScript>
 <Python>
 ```python filename="InvalidEventBadDate.py" copy
-requests.post("http://localhost:4000/ingest/user-events", json={
+requests.post("http://localhost:4000/ingest/your-api-route", json={
     "id": "event1",
     "userId": "user1",
     "timestamp": "not-a-date"
@@ -168,14 +168,14 @@ The `IngestPipeline` class provides a convenient way to set up ingestion endpoin
 ```typescript filename="AnalyticsPipeline.ts" copy
 import { IngestPipeline } from "@514labs/moose-lib";
 
-interface ExampleSchema {
+interface ExampleModel {
   id: string;
   name: string;
   value: number;
   timestamp: Date;
 }
 
-const examplePipeline = new IngestPipeline<ExampleSchema>("example", {
+const examplePipeline = new IngestPipeline<ExampleModel>("example-name", {
   ingest: true, // Creates a REST API endpoint
   stream: true, // Connects to a stream
   table: true
@@ -194,7 +194,7 @@ class ExampleSchema(BaseModel):
     timestamp: datetime
 
 example_pipeline = IngestPipeline[ExampleSchema](
-    name="example",
+    name="example-name",
     config=IngestPipelineConfig(
         ingest=True,
         stream=True,
@@ -217,15 +217,15 @@ interface ExampleRecord {
 }
 
 // Create the ClickHouse table
-const exampleTable = new OlapTable<ExampleRecord>("example");
+const exampleTable = new OlapTable<ExampleRecord>("example-table-name");
 
 // Create the stream with specific settings
-const exampleStream = new Stream<ExampleRecord>("example", {
+const exampleStream = new Stream<ExampleRecord>("example-stream-name", {
   destination: exampleTable    // Connect stream to table
 });
 
 // Create the ingestion API
-const exampleApi = new IngestApi<ExampleRecord>("example", {
+const exampleApi = new IngestApi<ExampleRecord>("example-api-route", {
   destination: exampleStream,  // Connect API to stream
 });
 ```
@@ -313,89 +313,5 @@ class IngestConfigWithDestination[T: BaseModel]:
 </Tabs.Tab>
 </Tabs>
 
-### LifeCycle Management
-
-Control how Moose manages your pipeline resources when your code changes.
-See the [LifeCycle Management guide](./lifecycle) for detailed information.
-
-<TypeScript>
-```ts filename="LifeCyclePipeline.ts" copy
-import { IngestPipeline, LifeCycle, Key } from "@514labs/moose-lib";
-
-interface UserEvent {
-  id: Key<string>;
-  userId: string;
-  timestamp: Date;
-  action: string;
-}
-
-// pipeline with deletion protection
-const events = new IngestPipeline<UserEvent>("events", {
-  table: true,
-  stream: true,
-  ingest: true,
-  // automatically applied to the table and stream
-  lifeCycle: LifeCycle.DELETION_PROTECTED
-});
-```
-</TypeScript>
-
-<Python>
-```py filename="LifeCyclePipeline.py" copy
-from moose_lib import IngestPipeline, IngestPipelineConfig, Key, LifeCycle
-from pydantic import BaseModel
-from datetime import datetime
-
-class UserEvent(BaseModel):
-    id: Key[str]
-    user_id: str
-    timestamp: datetime
-    action: str
-
-# pipeline with deletion protection
-prod_pipeline = IngestPipeline[UserEvent]("events", IngestPipelineConfig(
-    table=True,
-    stream=True,
-    ingest=True,
-    # automatically applied to the table and stream
-    life_cycle=LifeCycle.DELETION_PROTECTED
-))
-```
-</Python>
-
----
-
-## Next Steps
-
-<CTACards columns={1}>
-<CTACard
-  title="API Reference"
-  description="Explore the full API reference for ingestion pipelines and APIs"
-  ctaLink={PathConfig.mooseLibrary.path}
-  Icon={PathConfig.mooseLibrary.icon}
-  orientation="horizontal"
-/>
-<CTACard
-  title="Dead Letter Queues"
-  description="Learn how to configure and use dead letter queues to handle failed records"
-  ctaLink={PathConfig.deadLetterQueues.path}
-  Icon={PathConfig.deadLetterQueues.icon}
-  orientation="horizontal"
-/>
-<CTACard
-  title="Streams"
-  description="Learn how to configure streams for ingestion"
-  ctaLink={PathConfig.streams.path}
-  Icon={PathConfig.streams.icon}
-  orientation="horizontal"
-/>
-<CTACard
-  title="OLAP Tables"
-  description="Learn how to use OLAP tables for ingestion"
-  ctaLink={PathConfig.olapTables.path}
-  Icon={PathConfig.olapTables.icon}
-  orientation="horizontal"
-/>
-</CTACards>
 
 

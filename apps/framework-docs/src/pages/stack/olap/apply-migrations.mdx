@@ -1,0 +1,31 @@
+---
+title: Applying Migrations
+description: How to apply migrations to your database
+---
+
+import { Callout, LanguageSwitcher, TypeScript, Python } from "@/components";
+
+
+# Applying Migrations
+
+<LanguageSwitcher />
+
+## Overview
+
+Moose dynamically works to keep your database schema in sync with your code. As long as:
+- You start the Moose runtime
+- All `OlapTable` and `MaterializedView` instances are exported from the root <TypeScript inline>index.ts</TypeScript> <Python inline>main.py</Python> file
+
+Moose will automatically apply the changes to your database.
+
+## Development Workflow
+
+When in local development, you can use the `moose dev` command to start the Moose runtime.
+
+All changes to your code will be automatically applied to your locally running database, not your production database.
+
+In 
+
+
+## Production Workflow
+When you deploy your code to production, Moose will compare your code with your production database schema, and apply the changes to your production database during the deployment process.

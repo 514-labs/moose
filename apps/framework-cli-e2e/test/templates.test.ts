@@ -562,7 +562,7 @@ describe("Moose Templates", () => {
       const responses = [];
 
       for (let i = 0; i < recordsToSend; i++) {
-        const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+        const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo/1`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -745,7 +745,7 @@ describe("Moose Templates", () => {
 
     it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo/1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

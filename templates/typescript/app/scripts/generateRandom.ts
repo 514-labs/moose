@@ -22,7 +22,7 @@ export const ingest = new Task<null, void>("ingest", {
       };
 
       try {
-        const response = await fetch("http://localhost:4000/ingest/Foo", {
+        const response = await fetch("http://localhost:4000/ingest/Foo/1", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

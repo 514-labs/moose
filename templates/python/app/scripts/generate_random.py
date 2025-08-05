@@ -25,7 +25,7 @@ def run_task() -> None:
  
         # POST record to Moose Ingest API
         req = requests.post(
-            "http://localhost:4000/ingest/Foo",
+            "http://localhost:4000/ingest/Foo/1",
             data=foo.model_dump_json().encode('utf-8'),
             headers={'Content-Type': 'application/json'}
         )

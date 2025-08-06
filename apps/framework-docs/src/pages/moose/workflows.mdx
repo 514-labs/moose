@@ -47,8 +47,7 @@ export const task2 = new Task<Bar, void>("task2", {
 });
 
 export const myworkflow = new Workflow("myworkflow", {
-  startingTask: task1,
-  nextTask: task2,
+  startingTask: task1
 });
 ```
 </TypeScript>
@@ -89,8 +88,7 @@ task2 = Task[Bar, None](
 
 myworkflow = Workflow(
     name="myworkflow",
-    config=WorkflowConfig(starting_task=task1, next_task=task2)
-)
+    config=WorkflowConfig(starting_task=task1)
 ```
 </Python>
 

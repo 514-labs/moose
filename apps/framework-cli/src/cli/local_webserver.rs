@@ -1181,8 +1181,18 @@ async fn router(
                 .as_deref()
                 .unwrap_or("consumption");
 
-            // Check if this is a consumption API route
-            if route_segments[0] == consumption_path.trim_start_matches('/') {
+            // Normalize consumption path by removing leading slash and splitting into segments
+            let consumption_segments: Vec<&str> = consumption_path
+                .trim_start_matches('/')
+                .split('/')
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            // Check if the route starts with all consumption path segments
+            let is_consumption_route = route_segments.len() >= consumption_segments.len()
+                && route_segments[..consumption_segments.len()] == consumption_segments;
+
+            if is_consumption_route {
                 println!("Route segments: {:?}", route_segments);
                 println!("Consumption APIs: {:?}", consumption_apis);
                 println!("Consumption path: {}", consumption_path);

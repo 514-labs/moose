@@ -9,6 +9,8 @@ import {
   Rocket,
   BookMarked,
   History,
+  Database,
+  Workflow,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -22,6 +24,21 @@ const rawMeta = {
   "getting-started": {
     title: "Getting Started",
     Icon: HandMetal,
+  },
+  migrate: {
+    title: "Migrate",
+    Icon: ArrowRight,
+    isMoose: true,
+  },
+  olap: {
+    title: "OLAP",
+    Icon: Database,
+    isMoose: true,
+  },
+  workflows: {
+    title: "Workflows",
+    Icon: Workflow,
+    isMoose: true,
   },
   // Builder's Guide - Task-oriented approach
   building: {
@@ -39,9 +56,6 @@ const rawMeta = {
   changelog: {
     title: "Changelog",
     Icon: History,
-  },
-  workflows: {
-    display: "hidden",
   },
 };
 

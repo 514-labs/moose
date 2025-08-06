@@ -1,0 +1,174 @@
+---
+title: External Tables
+description: Connect to externally managed database tables and CDC services
+---
+
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard } from "@/components";
+
+# External Tables
+
+<LanguageSwitcher />
+
+## Overview
+
+External tables allow you to connect Moose to database tables that are managed outside of your application. This is essential when working with:
+
+- **CDC (Change Data Capture) services** like ClickPipes, Debezium, or AWS DMS
+- **Legacy database tables** managed by other teams
+- **Third-party data sources** with controlled schema evolution
+
+## When to Use External Tables
+
+<BulletPointsCard
+  title="External Table Use Cases"
+  bullets={[
+    {
+      title: "CDC Services",
+      description: "When schema is controlled by services like ClickPipes, Debezium, or AWS DMS"
+    },
+    {
+      title: "Legacy Integration",
+      description: "Connecting to existing tables managed by other teams or systems"
+    },
+    {
+      title: "Third-party Data",
+      description: "Working with data sources where you don't control schema evolution"
+    },
+    {
+      title: "Strict Change Management",
+      description: "Environments with formal database change approval processes"
+    }
+  ]}
+/>
+
+## Configuration
+
+Set `lifeCycle: LifeCycle.EXTERNALLY_MANAGED` to tell Moose not to modify the table schema:
+
+<TypeScript>
+```ts filename="ExternalTableExample.ts" copy
+import { OlapTable, LifeCycle } from "@514labs/moose-lib";
+
+interface CdcUserData {
+  id: string;
+  name: string;
+  email: string;
+  updated_at: Date;
+}
+
+// Connect to CDC-managed table
+const cdcUserTable = new OlapTable<CdcUserData>("cdc_users", {
+  lifeCycle: LifeCycle.EXTERNALLY_MANAGED
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="ExternalTableExample.py" copy
+from moose_lib import OlapTable, OlapConfig, LifeCycle
+from pydantic import BaseModel
+from datetime import datetime
+
+class CdcUserData(BaseModel):
+    id: str
+    name: str
+    email: str
+    updated_at: datetime
+
+# Connect to CDC-managed table
+cdc_user_table = OlapTable[CdcUserData]("cdc_users", OlapConfig(
+    life_cycle=LifeCycle.EXTERNALLY_MANAGED
+))
+```
+</Python>
+
+## CDC Service Integration
+
+### ClickPipes Example
+
+When using ClickPipes or similar CDC services, the schema is managed by the CDC pipeline:
+
+<TypeScript>
+```ts filename="ClickPipesExample.ts" copy
+import { OlapTable, LifeCycle } from "@514labs/moose-lib";
+
+interface ClickPipesUserEvent {
+  user_id: string;
+  event_type: string;
+  event_data: Record<string, any>;
+  captured_at: Date;
+  source_table: string;
+}
+
+const clickPipesEvents = new OlapTable<ClickPipesUserEvent>("clickpipes_events", {
+  lifeCycle: LifeCycle.EXTERNALLY_MANAGED
+});
+```
+</TypeScript>
+
+<Python>
+```py filename="ClickPipesExample.py" copy
+from moose_lib import OlapTable, OlapConfig, LifeCycle
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Dict, Any
+
+class ClickPipesUserEvent(BaseModel):
+    user_id: str
+    event_type: str
+    event_data: Dict[str, Any]
+    captured_at: datetime
+    source_table: str
+
+clickpipes_events = OlapTable[ClickPipesUserEvent]("clickpipes_events", OlapConfig(
+    life_cycle=LifeCycle.EXTERNALLY_MANAGED
+))
+```
+</Python>
+
+## Important Considerations
+
+<Callout type="warning">
+**Schema Matching Required**: Your data model must exactly match the external table schema. Mismatches will cause runtime errors.
+</Callout>
+
+<Callout type="info">
+**No Automatic Migrations**: Moose will not apply any schema changes to externally managed tables. You must handle schema evolution through your CDC service or external processes.
+</Callout>
+
+## Schema Evolution
+
+When the external schema changes (e.g., new columns added by CDC service):
+
+1. **Update your data model** to match the new schema
+2. **Redeploy your application** to pick up the changes
+3. **No migration needed** - Moose will use the existing table structure
+
+<TypeScript>
+```ts filename="SchemaEvolutionExample.ts" copy
+// Original schema
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// After CDC service adds new column
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  created_at: Date; // New column added by CDC
+}
+
+const userTable = new OlapTable<UserData>("users", {
+  lifeCycle: LifeCycle.EXTERNALLY_MANAGED
+});
+```
+</TypeScript>
+
+## Related Documentation
+
+- **[Lifecycle Management](/moose/migrate/lifecycle)** - Detailed explanation of all lifecycle modes
+- **[Applying Migrations](/moose/olap/apply-migrations)** - How migrations work with managed tables
+- **[Schema Changes](/moose/olap/schema-change)** - Understanding schema evolution patterns

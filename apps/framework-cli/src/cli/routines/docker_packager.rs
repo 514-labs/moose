@@ -21,9 +21,8 @@ struct PackageInfo {
     name: String,
 }
 
-type RoutineResult = Result<RoutineSuccess, RoutineFailure>;
-
-/// Helper function to safely create directories
+/// Helper function to safely create directories without unwrap() calls.
+/// Replaces fs::create_dir_all(path.parent().unwrap()) pattern used throughout the codebase.
 fn ensure_directory_exists(path: &Path) -> Result<(), std::io::Error> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -190,9 +189,44 @@ CMD ["moose", "prod"]
 "#;
 
 /// Creates a Dockerfile for the given project, supporting both monorepo and standalone configurations.
-/// For TypeScript projects in monorepos, analyzes workspace structure and TypeScript path mappings
-/// to generate appropriate multi-stage Docker builds with proper dependency resolution.
-pub fn create_dockerfile(project: &Project, docker_client: &DockerClient) -> RoutineResult {
+///
+/// ## Monorepo Multi-Stage Docker Build Process
+///
+/// For TypeScript projects in monorepos, this function implements a sophisticated multi-stage Docker build:
+///
+/// **Stage 1: Full Monorepo Context (`monorepo-base`)**
+/// - Copies the entire workspace (pnpm-workspace.yaml, pnpm-lock.yaml, all packages)
+/// - Runs `pnpm install --frozen-lockfile` to install all dependencies across the workspace
+/// - This stage has access to all packages and their interdependencies
+///
+/// **Stage 2: Production Image**
+/// - Uses `pnpm deploy` to extract only production dependencies for the specific project
+/// - Copies the transformed tsconfig.json (with paths rewritten from relative to node_modules)
+/// - Applies the "TYPESCRIPT_FIX_PLACEHOLDER" replacement for path transformations
+///
+/// ## TypeScript Path Transformation Challenge
+///
+/// The core problem: Monorepo TypeScript projects use relative path mappings like:
+/// ```json
+/// { "paths": { "@shared/*": ["../shared/src/*"] } }
+/// ```
+///
+/// But in Docker's node_modules structure, these become:
+/// ```json  
+/// { "paths": { "@shared/*": ["./node_modules/@my-org/shared/*"] } }
+/// ```
+///
+/// This function analyzes the workspace, finds package.json files for each path mapping,
+/// and pre-transforms the tsconfig.json before copying it into the final image.
+///
+/// ## Fallback Behavior
+///
+/// If monorepo detection fails or path analysis encounters errors, gracefully falls back
+/// to standard single-project Docker build to ensure robustness.
+pub fn create_dockerfile(
+    project: &Project,
+    docker_client: &DockerClient,
+) -> Result<RoutineSuccess, RoutineFailure> {
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         RoutineFailure::new(
@@ -433,7 +467,7 @@ pub fn build_dockerfile(
     docker_client: &DockerClient,
     is_amd64: bool,
     is_arm64: bool,
-) -> RoutineResult {
+) -> Result<RoutineSuccess, RoutineFailure> {
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         RoutineFailure::new(
@@ -833,7 +867,28 @@ fn generate_workspace_copy_commands(workspace_root: &Path, patterns: &[String]) 
     copy_commands.join("\n")
 }
 
-/// Analyzes TypeScript paths in tsconfig.json and reads actual package.json files
+/// Analyzes TypeScript path mappings in tsconfig.json for monorepo Docker builds.
+///
+/// In monorepos, TypeScript projects often use path mappings like:
+/// ```json
+/// {
+///   "compilerOptions": {
+///     "paths": {
+///       "@shared/*": ["../shared/src/*"],
+///       "@utils/*": ["../../packages/utils/src/*"]
+///     }
+///   }
+/// }
+/// ```
+///
+/// These relative paths break in Docker because packages get installed to node_modules.
+/// This function:
+/// 1. Reads tsconfig.json from the project directory
+/// 2. Extracts all path mappings from compilerOptions.paths
+/// 3. For each path, traverses up the filesystem to find the corresponding package.json
+/// 4. Maps the original relative path to the package name for node_modules transformation
+///
+/// Returns PathMapping structs containing the alias, original path, package name, and directory.
 fn analyze_typescript_paths(
     workspace_root: &Path,
     relative_project_path: &str,

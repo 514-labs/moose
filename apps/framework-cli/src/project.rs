@@ -163,6 +163,10 @@ pub struct ProjectFeatures {
     /// Whether OLAP (ClickHouse) is enabled
     #[serde(default = "_true")]
     pub olap: bool,
+
+    /// Custom consumption API path
+    #[serde(default)]
+    pub consumption_path: Option<String>,
 }
 
 impl Default for ProjectFeatures {
@@ -172,6 +176,7 @@ impl Default for ProjectFeatures {
             workflows: false,
             data_model_v2: false,
             olap: true,
+            consumption_path: None,
         }
     }
 }

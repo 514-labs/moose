@@ -206,11 +206,11 @@ interface Event {
 ```
 
 | ClickHouse Type | TypeScript | Description |
-|------|------------|--------|
-| `Date` | `Date` | Date only |
-| `Date16` | `Date` | `Annotated[date, ClickhouseSize(2)]` | Compact date format |
-| `DateTime` | `Date` | `datetime` | Date and time |
-| `DateTime(P)` | `Date & ClickHousePrecision<P>` | `clickhouse_datetime64(P)` | DateTime with precision |
+|-----------------|------------|-------------|
+| `Date`          | `Date`     | Date only   |
+| `Date16`        | `Date`     | Compact date format |
+| `DateTime`      | `Date`     | Date and time |
+| `DateTime(P)`   | `Date & ClickHousePrecision<P>` | DateTime with precision |
 </TypeScript>
 
 <Python>

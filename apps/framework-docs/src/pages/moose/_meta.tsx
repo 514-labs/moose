@@ -18,6 +18,8 @@ import {
   ChartBar,
   Hammer,
   Terminal,
+  Database,
+  Workflow,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic

@@ -40,6 +40,9 @@ const rawMeta = {
     title: "Changelog",
     Icon: History,
   },
+  olap: {
+    display: "hidden",
+  },
 };
 
 // Process the raw meta object to generate the final meta object with proper rendering

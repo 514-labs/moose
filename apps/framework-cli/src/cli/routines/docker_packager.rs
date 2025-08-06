@@ -902,65 +902,36 @@ fn read_package_from_typescript_path(
     relative_project_path: &str,
     ts_path: &str,
 ) -> Option<(PackageInfo, String)> {
-    // Start from the project directory
     let project_dir = workspace_root.join(relative_project_path);
-
-    // Find the package directory by traversing up the path until we find package.json
-    let resolved_path = if ts_path.starts_with("/") {
+    let resolved_path = if ts_path.starts_with('/') {
         PathBuf::from(ts_path)
     } else {
         project_dir.join(ts_path)
     };
 
-    // Traverse up the resolved path to find package.json
+    // Traverse up the path to find package.json
     let mut current_path = resolved_path.as_path();
     while let Some(parent) = current_path.parent() {
         let package_json_path = parent.join("package.json");
 
-        debug!("Checking for package.json at: {:?}", package_json_path);
-
-        if package_json_path.exists() {
-            match fs::read_to_string(&package_json_path) {
-                Ok(content) => {
-                    match serde_json::from_str::<JsonValue>(&content) {
-                        Ok(package_json) => {
-                            if let Some(name) = package_json.get("name").and_then(|n| n.as_str()) {
-                                // Extract the directory name from the filesystem path
-                                let package_dir = parent
-                                    .file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("")
-                                    .to_string();
-
-                                debug!(
-                                    "Found package: {} in directory: {} at {:?}",
-                                    name, package_dir, package_json_path
-                                );
-                                return Some((
-                                    PackageInfo {
-                                        name: name.to_string(),
-                                    },
-                                    package_dir,
-                                ));
-                            }
-                        }
-                        Err(e) => debug!(
-                            "Failed to parse package.json at {:?}: {}",
-                            package_json_path, e
-                        ),
-                    }
-                }
-                Err(e) => debug!(
-                    "Failed to read package.json at {:?}: {}",
-                    package_json_path, e
-                ),
-            }
-
-            // Found package.json but couldn't parse it, stop searching
-            break;
+        if !package_json_path.exists() {
+            current_path = parent;
+            continue;
         }
 
-        current_path = parent;
+        let package_name = fs::read_to_string(&package_json_path)
+            .ok()
+            .and_then(|content| serde_json::from_str::<JsonValue>(&content).ok())
+            .and_then(|json| json.get("name")?.as_str().map(str::to_string))?;
+
+        let package_dir = parent.file_name()?.to_str()?.to_string();
+
+        debug!(
+            "Found package: {} in directory: {} at {:?}",
+            package_name, package_dir, package_json_path
+        );
+
+        return Some((PackageInfo { name: package_name }, package_dir));
     }
 
     None

@@ -13,6 +13,13 @@ const rawMeta = {
   auth: {
     title: "Securing API Endpoints",
   },
+  __client__: {
+    type: "separator",
+    title: "Client Libraries",
+  },
+  "openapi-sdk": {
+    title: "OpenAPI SDK",
+  },
   "admin-api": {
     title: "Admin APIs",
     display: "hidden",

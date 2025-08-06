@@ -12,6 +12,12 @@ import {
   Database,
   Workflow,
   Waves,
+  GitCompare,
+  HelpCircle,
+  Settings,
+  ChartBar,
+  Hammer,
+  Terminal,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -51,13 +57,43 @@ const rawMeta = {
     title: "Developing",
     Icon: Code,
   },
+  __deployment__: {
+    type: "separator",
+    title: "Deployment Tools & Guides",
+  },
+  planning: {
+    title: "Plan",
+    Icon: GitCompare,
+    isMoose: true,
+  },
+  metrics: {
+    title: "Metrics",
+    Icon: ChartBar,
+    isMoose: true,
+  },
   deploying: {
-    title: "Deploying",
-    Icon: Rocket,
+    title: "Self-Hosting",
+    Icon: Hammer,
+  },
+  __reference__: {
+    type: "separator",
+    title: "Reference",
   },
   reference: {
-    title: "Reference",
+    title: "API Reference",
     Icon: BookMarked,
+  },
+  "moose-cli": {
+    title: "CLI",
+    Icon: Terminal,
+  },
+  configuration: {
+    title: "Project Configuration",
+    Icon: Settings,
+  },
+  help: {
+    title: "Help",
+    Icon: HelpCircle,
   },
   changelog: {
     title: "Changelog",

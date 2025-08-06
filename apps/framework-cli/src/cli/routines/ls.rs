@@ -445,7 +445,10 @@ pub struct IngestionApiInfo {
     pub destination: String,
 }
 
-fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInfo> {
+fn to_info(
+    endpoint: &ApiEndpoint,
+    consumption_path: &str,
+) -> Either<IngestionApiInfo, ConsumptionApiInfo> {
     match &endpoint.api_type {
         APIType::INGRESS {
             target_topic_id,
@@ -465,8 +468,8 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
                 .map(|param| param.name.clone())
                 .collect(),
             path: match &endpoint.version {
-                Some(version) => format!("consumption/{}/{}", endpoint.name, version),
-                None => format!("consumption/{}", endpoint.name),
+                Some(version) => format!("{}/{}/{}", consumption_path, endpoint.name, version),
+                None => format!("{}/{}", consumption_path, endpoint.name),
             },
         }),
     }
@@ -651,11 +654,18 @@ pub async fn ls_dmv2(
             )
         })?;
 
+    // Get the consumption path from project features, defaulting to "consumption"
+    let consumption_path = project
+        .features
+        .consumption_path
+        .as_deref()
+        .unwrap_or("consumption");
+
     let (ingestion_apis, consumption_apis): (Vec<_>, Vec<_>) = infra_map
         .api_endpoints
         .values()
         .filter(|api| name.is_none_or(|name| api.name.contains(name)))
-        .partition_map(to_info);
+        .partition_map(|endpoint| to_info(endpoint, consumption_path));
     let resources = ResourceListing {
         tables: infra_map
             .tables

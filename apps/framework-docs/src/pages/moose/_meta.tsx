@@ -57,6 +57,9 @@ const rawMeta = {
     title: "Changelog",
     Icon: History,
   },
+  streaming: {
+    display: "hidden",
+  },
 };
 
 // Process the raw meta object to generate the final meta object with proper rendering

@@ -1,0 +1,229 @@
+# Coming Soo---
+title: Security & Authentication
+description: Security & Authentication for Moose
+---
+
+import { Callout } from "@/components";
+
+
+# Security & Authentication
+
+Moose provides standard mechanisms to secure your data ingestion, consumption, and administrative endpoints. Proper
+configuration of these settings is crucial for protecting your Moose deployment.
+
+## Ingest Endpoint Authentication
+
+Ingest endpoints are the primary way data enters your Moose system. When secured, they ensure that only authorized
+clients can send data. Moose supports several methods for authenticating requests to these endpoints.
+
+All ingest authentication methods expect an `Authorization` header with a `Bearer` token.
+
+### 1. JWT (JSON Web Tokens)
+
+You can secure your ingest endpoints using JWTs. This method is suitable when you have an existing identity provider
+or want to leverage standard token-based authentication.
+
+**Configuration:**
+
+To enable JWT authentication for ingest endpoints, configure the `jwt` table in your `moose.config.toml`
+project file:
+
+```toml filename=moose.config.toml copy
+# moose.config.toml
+
+# ... other project configurations ...
+
+[jwt]
+# This should be your JWT public key (often a PEM-formatted RSA public key)
+# Can also be set via MOOSE_JWT_PUBLIC_KEY environment variable
+secret = """
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy...
+-----END PUBLIC KEY-----
+"""
+# The expected issuer of the JWT
+# Can also be set via MOOSE_JWT_ISSUER environment variable
+issuer = "https://my-auth-server.com/"
+# The expected audience of the JWT
+# Can also be set via MOOSE_JWT_AUDIENCE environment variable
+audience = "my-moose-app"
+# (Optional) Set to true to enforce JWT on all ingest APIs.
+# Defaults to false. If false, JWT is checked if configured, but API Key can also be used.
+enforce_on_all_ingest_apis = false
+# (Optional) Set to true to enforce JWT on all consumption APIs.
+# Defaults to false.
+enforce_on_all_consumptions_apis = false
+```
+
+<Callout type="info">
+  The `secret` field for JWT configuration refers to the **public key** used to verify the JWT signature.
+  Environment variables (`MOOSE_JWT_PUBLIC_KEY`, `MOOSE_JWT_ISSUER`, `MOOSE_JWT_AUDIENCE`) can override these
+  `moose.config.toml` settings.
+</Callout>
+
+When JWT is configured, the Moose server will validate the Bearer token as a JWT against the provided public key,
+issuer, and audience, verifying the signature using the **RS256 algorithm**.
+
+### 2. API Key
+
+For simpler authentication scenarios, you can use a static API key.
+
+**Configuration:**
+
+The primary method for configuring the ingest API key is via an environment variable.
+
+1.  **Environment Variable (Recommended for Production):**
+    Set the `MOOSE_INGEST_API_KEY` environment variable to the **hashed** API key.
+    The hashing mechanism used is PBKDF2 HMAC SHA256.
+    ```bash
+    export MOOSE_INGEST_API_KEY=\'your_pbkdf2_hmac_sha256_hashed_key\'
+    ```
+
+<Callout type="warning">
+  While you might consider adding an `ingest_api_key` field to the `[authentication]` table in `moose.config.toml`, 
+  this is not a standardly recognized field for ingest endpoints according to the core `AuthenticationConfig` structure. 
+  Prefer the `MOOSE_INGEST_API_KEY` environment variable for clarity and adherence to supported configurations.
+</Callout>
+
+The server will validate the Bearer token against this configured API key, comparing it with the expected key derived
+using **PBKDF2 HMAC SHA256**.
+
+### Generating Tokens and Hashed Keys
+
+Moose CLI provides a utility to generate both a plain-text Bearer token and its corresponding hashed version for
+storage. The hashing is performed using **PBKDF2 HMAC SHA256**.
+
+```bash
+moose generate hash-token
+```
+
+This command will output:
+*   **ENV API Keys**: This is the **hashed key** (PBKDF2 HMAC SHA256). Use this value for `MOOSE_INGEST_API_KEY`,
+    `MOOSE_CONSUMPTION_API_KEY`, or `MOOSE_ADMIN_TOKEN` environment variables, or the `admin_api_key` field in
+    `moose.config.toml` (under the `[authentication]` table).
+*   **Bearer Token**: This is the **plain-text token**. Your client applications should send this token in the
+    `Authorization: Bearer <token>` header.
+
+<Callout type="info">
+  **Priority for Ingest:** If both JWT (configured in the `[jwt]` table) and an API key (via `MOOSE_INGEST_API_KEY`) are configured, and
+  `jwt.enforce_on_all_ingest_apis` is `false` (or not set), the system will first attempt JWT validation (RS256 signature check).
+  If that fails or is not applicable, it will then try to validate using the API key (PBKDF2 HMAC SHA256). If
+  `jwt.enforce_on_all_ingest_apis` is `true`, only JWT will be accepted if JWT is configured.
+</Callout>
+
+## Consumption API Authentication
+
+Consumption APIs, which expose your data to external systems or applications, can also be secured. The authentication
+mechanisms are similar to those for ingest endpoints.
+
+All consumption API authentication methods expect an `Authorization` header with a `Bearer` token.
+
+### 1. JWT (JSON Web Tokens)
+
+Secure your consumption APIs using JWTs, ideal for integration with existing identity providers or standard
+token-based flows.
+
+**Configuration:**
+
+JWT authentication for consumption APIs uses the same `[jwt]` table in your `moose.config.toml` project file as
+ingest endpoints. The signature of the JWT is verified using the **RS256 algorithm**. The
+`enforce_on_all_consumptions_apis` flag specifically controls JWT enforcement for consumption APIs.
+
+```toml filename=moose.config.toml copy
+# moose.config.toml
+
+# ... other project configurations ...
+
+[jwt]
+secret = """...public key..."""
+issuer = "https://my-auth-server.com/"
+audience = "my-moose-app"
+enforce_on_all_ingest_apis = false
+# Set to true to enforce JWT on all consumption APIs.
+# Defaults to false. If false, JWT is checked if configured, but an API Key can also be used.
+enforce_on_all_consumptions_apis = false
+```
+
+<Callout type="info">
+  Refer to the JWT section under Ingest Endpoint Authentication for details on `secret`, `issuer`, `audience`, and environment variable overrides.
+</Callout>
+
+### 2. API Key
+
+For simpler scenarios, a static API key can protect your consumption APIs.
+
+**Configuration:**
+
+The primary method for configuring the consumption API key is via an environment variable.
+
+1.  **Environment Variable (Recommended for Production):**
+    Set the `MOOSE_CONSUMPTION_API_KEY` environment variable to the **hashed** API key.
+    This key should be the output of `moose generate hash-token` (a PBKDF2 HMAC SHA256 hash).
+    ```bash
+    export MOOSE_CONSUMPTION_API_KEY=\'your_pbkdf2_hmac_sha256_hashed_key\'
+    ```
+
+<Callout type="warning">
+  The `AuthenticationConfig` structure in `project.rs` does not define a specific `consumption_api_key` field for `moose.config.toml`. 
+  Therefore, relying on the `MOOSE_CONSUMPTION_API_KEY` environment variable is the recommended and standard approach.
+</Callout>
+
+The server will validate the Bearer token against this configured API key using **PBKDF2 HMAC SHA256**.
+Use the `moose generate hash-token` command (as described in the Ingest section) to generate the plain-text token for 
+your clients and the hashed key for the environment variable.
+
+<Callout type="info">
+  **Priority for Consumption:** If both JWT (configured in `[jwt]`) and an API key (via `MOOSE_CONSUMPTION_API_KEY`) are configured, 
+  and `jwt.enforce_on_all_consumptions_apis` is `false` (or not set), the system attempts JWT validation (RS256 signature check) first. 
+  If that fails or isn't applicable, it then tries API key validation (PBKDF2 HMAC SHA256). If `jwt.enforce_on_all_consumptions_apis` is `true`, 
+  only JWT is accepted if JWT is configured.
+</Callout>
+
+## Admin Endpoint Authentication
+
+Administrative endpoints in Moose (e.g., for managing deployments, viewing plans) also require authentication to
+prevent unauthorized access.
+
+**Configuration:**
+
+Admin authentication relies on a token that can be supplied in the following order of precedence:
+
+1.  **`--token` CLI Parameter:**
+    When using Moose CLI commands that interact with a remote admin endpoint (e.g., `moose remote plan --token <value>`),
+    this parameter takes highest precedence. The value should be the **plain-text Bearer token**.
+
+2.  **`MOOSE_ADMIN_TOKEN` Environment Variable:**
+    You can set the `MOOSE_ADMIN_TOKEN` environment variable to the **plain-text Bearer token**.
+    ```bash
+    export MOOSE_ADMIN_TOKEN=\'your_generated_plain_text_token\'
+    ```
+    This is useful for CI/CD environments or scripts interacting with admin endpoints.
+
+3.  **Project Configuration File (`moose.config.toml`):**
+    You can specify a hashed admin API key in your `moose.config.toml` under the `[authentication]` table.
+    This key is expected to be a **PBKDF2 HMAC SHA256 hash**, obtainable from the `moose generate hash-token` command.
+    ```toml filename=moose.config.toml copy
+    # moose.config.toml
+
+    [authentication]
+    admin_api_key = "your_pbkdf2_hmac_sha256_hashed_key"
+    ```
+    <Callout type="info">
+      Storing the `admin_api_key` (which is a PBKDF2 HMAC SHA256 hash) in your `moose.config.toml` file is an
+      acceptable practice, even if the file is version-controlled. This is because the actual plain-text Bearer
+      token (the secret) is not stored. The hash is computationally expensive to reverse, ensuring that your
+      secret is not exposed in the codebase.
+    </Callout>
+    The Moose server running locally will use this key to protect its admin endpoints. Use the **hashed key**
+    output from `moose generate hash-token` here.
+
+**How it Works:**
+*   For CLI interactions with a remote server, the CLI will use the token from `--token` or `MOOSE_ADMIN_TOKEN`.
+*   The Moose server itself (when running `moose dev` or a deployed instance) protects its admin API routes
+    (e.g., `/admin/plan`, `/admin/integrate-changes`) using the `admin_api_key` (a PBKDF2 HMAC SHA256 hash) from
+    `moose.config.toml` (in the `[authentication]` table) or the `MOOSE_ADMIN_TOKEN` environment variable if the
+    `moose.config.toml` key is not set. The server expects the plain-text token in the `Authorization: Bearer <token>`
+    header and will verify it against the stored hashed key using PBKDF2 HMAC SHA256.
+
+Use the `moose generate hash-token` command as described above to generate the plain-text token and its
+corresponding **PBKDF2 HMAC SHA256 hashed version** for `admin_api_key`. 

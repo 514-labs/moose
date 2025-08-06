@@ -21,6 +21,12 @@ import {
   Database,
   Workflow,
   Waves,
+  GitCompare,
+  HelpCircle,
+  Settings,
+  ChartBar,
+  Hammer,
+  Terminal,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic

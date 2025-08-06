@@ -5,7 +5,7 @@ description: Detailed migration examples and advanced development topics
 
 import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
 
-# Migration Examples
+# Migration Types
 
 <LanguageSwitcher />
 
@@ -24,7 +24,7 @@ streaming_engine = true
 workflows = true
 ```
 
-### New OLAP Table
+### New OLAP Table or Materialized View
 
 <TypeScript>
 ```ts file="app/index.ts"
@@ -59,6 +59,7 @@ analytics_table = OlapTable[AnalyticsSchema]("Analytics")
 
 **Migration Result:** Creates ClickHouse table `Analytics` with all fields from `AnalyticsSchema`
 
+
 <Callout type="warning" title="Ensure OLAP is enabled">
 If you have not enabled the `olap` feature flag, you will not be able to create new OLAP tables.
 
@@ -69,7 +70,7 @@ olap = true
 </Callout>
 
 
-#### New Streaming Topic
+### New Stream
 
 <TypeScript>
 ```ts file="app/index.ts"
@@ -96,9 +97,9 @@ streaming_engine = true
 ```
 </Callout>
 
-### Schema Modifications
+## Schema Modifications
 
-#### Adding Fields
+### Adding Fields
 
 <TypeScript>
 ```ts file="app/index.ts"
@@ -142,7 +143,7 @@ class UserSchema(BaseModel):
 
 **Migration Result:** Adds `age`, `created_at`, and `is_active` columns to existing table
 
-#### Removing Fields
+### Removing Fields
 
 <TypeScript>
 ```ts file="app/index.ts"
@@ -186,7 +187,7 @@ class UserSchema(BaseModel):
 
 **Migration Result:** Drops `deprecated_field` column (data permanently lost)
 
-#### Type Changes
+### Type Changes
 
 <TypeScript>
 ```ts file="app/index.ts"
@@ -228,7 +229,7 @@ class UserSchema(BaseModel):
 
 **Migration Result:** Alters `score` column type (data converted if compatible)
 
-### Removing Infrastructure Components
+## Removing Infrastructure
 
 <TypeScript>
 ```ts file="app/index.ts"

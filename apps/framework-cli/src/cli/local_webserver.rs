@@ -75,7 +75,6 @@ use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
-use std::fs;
 use std::future::Future;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
@@ -629,7 +628,8 @@ async fn openapi_route(
     }
 
     if let Some(path) = openapi_path {
-        match fs::read_to_string(path) {
+        // Use async filesystem operations to avoid blocking
+        match tokio::fs::read_to_string(path).await {
             Ok(contents) => Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/yaml")
@@ -746,6 +746,18 @@ async fn handle_json_array_body(
     let jwt_claims = get_claims(auth_header, jwt_config);
 
     let number_of_bytes = req.body().size_hint().exact().unwrap_or(0);
+
+    // Check if the body size hint exceeds our limit
+    if number_of_bytes > MAX_REQUEST_BODY_SIZE as u64 {
+        return Response::builder()
+            .status(StatusCode::PAYLOAD_TOO_LARGE)
+            .body(Full::new(Bytes::from(format!(
+                "Request body too large. Maximum size is {} bytes",
+                MAX_REQUEST_BODY_SIZE
+            ))))
+            .unwrap();
+    }
+
     let body = req.collect().await.unwrap().to_bytes();
 
     debug!(
@@ -1148,23 +1160,19 @@ async fn router(
 }
 
 const METRICS_LOGS_PATH: &str = "metrics-logs";
+const MAX_REQUEST_BODY_SIZE: usize = 10 * 1024 * 1024; // 10MB limit for request bodies
 
 pub trait InfraMapProvider {
     fn serialize(&self) -> impl Future<Output = serde_json::error::Result<String>> + Send;
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>>;
+    fn serialize_proto(&self) -> impl Future<Output = Vec<u8>> + Send;
 }
 
 impl InfraMapProvider for &RwLock<InfrastructureMap> {
     async fn serialize(&self) -> serde_json::error::Result<String> {
         serde_json::to_string(self.read().await.deref())
     }
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
-        // This is a little hacky, but works for our use case
-        Some(Box::new(futures::executor::block_on(self.read())))
+    async fn serialize_proto(&self) -> Vec<u8> {
+        self.read().await.to_proto_bytes()
     }
 }
 
@@ -1172,10 +1180,8 @@ impl InfraMapProvider for &InfrastructureMap {
     async fn serialize(&self) -> serde_json::error::Result<String> {
         serde_json::to_string(self)
     }
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
-        Some(Box::new(*self))
+    async fn serialize_proto(&self) -> Vec<u8> {
+        self.to_proto_bytes()
     }
 }
 
@@ -1217,21 +1223,12 @@ async fn management_router<I: InfraMapProvider>(
                 .to_ascii_lowercase();
 
             if accept_header.contains("application/protobuf") {
-                if let Some(map_ref) = infra_map.as_infra_map() {
-                    let bytes = map_ref.to_proto_bytes();
-                    Ok(hyper::Response::builder()
-                        .status(StatusCode::OK)
-                        .header("Content-Type", "application/protobuf")
-                        .body(Full::new(Bytes::from(bytes)))
-                        .unwrap())
-                } else {
-                    Ok(hyper::Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from(
-                            "Failed to access infrastructure map",
-                        )))
-                        .unwrap())
-                }
+                let bytes = infra_map.serialize_proto().await;
+                Ok(hyper::Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "application/protobuf")
+                    .body(Full::new(Bytes::from(bytes)))
+                    .unwrap())
             } else {
                 match infra_map.serialize().await {
                     Ok(res) => Ok(hyper::Response::builder()
@@ -1451,7 +1448,13 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
-        let http_client = Arc::new(reqwest::Client::new());
+        // Create HTTP client with reasonable timeout for external requests
+        let http_client = Arc::new(
+            reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .expect("Failed to create HTTP client"),
+        );
 
         let redis_client = RedisClient::new(project.name(), project.redis_config.clone())
             .await

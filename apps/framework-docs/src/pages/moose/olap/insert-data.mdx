@@ -77,7 +77,7 @@ interface Event {
 
 const eventsTable = new OlapTable<Event>("user_events");
 
-cosnt etlTask = new Task<null, void>({
+const etlTask = new Task<null, void>({
     name: "ETL",
     run: async () => {
         const result = await eventsTable.insert([

@@ -12,14 +12,52 @@ use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 
 use log::{debug, error, info};
-use serde_json;
+use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 struct PackageInfo {
     name: String,
-    original_path: String,
+}
+
+type RoutineResult = Result<RoutineSuccess, RoutineFailure>;
+
+/// Helper function to safely create directories
+fn ensure_directory_exists(path: &Path) -> Result<(), std::io::Error> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+    } else {
+        Ok(())
+    }
+}
+
+/// Helper function to copy config files for monorepo builds
+fn copy_project_config_files(project_root: &Path, build_context: &Path, internal_dir: &Path) {
+    let temp_project_toml = build_context.join("project.toml");
+    let temp_moose_config = build_context.join("moose.config.toml");
+
+    // Copy project files
+    if project_root.join(PROJECT_CONFIG_FILE).exists() {
+        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
+    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
+        fs::copy(
+            project_root.join(OLD_PROJECT_CONFIG_FILE),
+            &temp_project_toml,
+        )
+        .ok();
+    }
+
+    // Copy moose config
+    if let Some(moose_config_src) = [
+        internal_dir.join("packager/moose.config.toml"),
+        project_root.join("moose.config.toml"),
+    ]
+    .iter()
+    .find(|p| p.exists())
+    {
+        fs::copy(moose_config_src, &temp_moose_config).ok();
+    }
 }
 
 #[derive(Debug)]
@@ -151,10 +189,10 @@ EXPOSE 4000
 CMD ["moose", "prod"]
 "#;
 
-pub fn create_dockerfile(
-    project: &Project,
-    docker_client: &DockerClient,
-) -> Result<RoutineSuccess, RoutineFailure> {
+/// Creates a Dockerfile for the given project, supporting both monorepo and standalone configurations.
+/// For TypeScript projects in monorepos, analyzes workspace structure and TypeScript path mappings
+/// to generate appropriate multi-stage Docker builds with proper dependency resolution.
+pub fn create_dockerfile(project: &Project, docker_client: &DockerClient) -> RoutineResult {
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         RoutineFailure::new(
@@ -166,20 +204,21 @@ pub fn create_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client).map_err(|e| {
+    ensure_docker_running(docker_client).map_err(|err| {
+        error!("Failed to ensure docker is running: {}", err);
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
                 "to ensure docker is running".to_string(),
             ),
-            e,
+            err,
         )
     })?;
 
     let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
 
     info!("Creating versions at: {:?}", versions_file_path);
-    fs::create_dir_all(versions_file_path.parent().unwrap()).map_err(|err| {
+    ensure_directory_exists(&versions_file_path).map_err(|err| {
         error!("Failed to create directory for app versions: {}", err);
         RoutineFailure::new(
             Message::new(
@@ -193,7 +232,7 @@ pub fn create_dockerfile(
     let file_path = internal_dir.join("packager/Dockerfile");
 
     info!("Creating Dockerfile at: {:?}", file_path);
-    fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
+    ensure_directory_exists(&file_path).map_err(|err| {
         error!("Failed to create directory for project packaging: {}", err);
         RoutineFailure::new(
             Message::new(
@@ -386,12 +425,15 @@ COPY --chown=moose:moose ./app ./app"#,
     )))
 }
 
+/// Builds Docker images from the generated Dockerfile for specified architectures.
+/// Handles both monorepo and standalone builds, copying necessary files and managing
+/// temporary build contexts appropriately for each build type.
 pub fn build_dockerfile(
     project: &Project,
     docker_client: &DockerClient,
     is_amd64: bool,
     is_arm64: bool,
-) -> Result<RoutineSuccess, RoutineFailure> {
+) -> RoutineResult {
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         RoutineFailure::new(
@@ -403,13 +445,14 @@ pub fn build_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client).map_err(|e| {
+    ensure_docker_running(docker_client).map_err(|err| {
+        error!("Failed to ensure docker is running: {}", err);
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
                 "to ensure docker is running".to_string(),
             ),
-            e,
+            err,
         )
     })?;
 
@@ -442,12 +485,12 @@ pub fn build_dockerfile(
     // Handle lock file copying for TypeScript projects only (may be from parent directories for monorepos)
     if project.language == SupportedLanguages::Typescript {
         if let Some(lock_file_path) = get_lock_file_path(&project_root_path) {
-            // Safely extract filename with proper error handling
-            let lock_file_name = match lock_file_path.file_name().and_then(|name| name.to_str()) {
-                Some(name) => name,
-                None => {
+            let lock_file_name = lock_file_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or_else(|| {
                     error!("Invalid lock file path: {:?}", lock_file_path);
-                    return Err(RoutineFailure::new(
+                    RoutineFailure::new(
                         Message::new(
                             "Failed".to_string(),
                             "to extract lock file name from path".to_string(),
@@ -456,9 +499,8 @@ pub fn build_dockerfile(
                             std::io::ErrorKind::InvalidInput,
                             "Invalid lock file path",
                         ),
-                    ));
-                }
-            };
+                    )
+                })?;
 
             let destination_path = internal_dir.join("packager").join(lock_file_name);
 
@@ -610,30 +652,11 @@ pub fn build_dockerfile(
             || {
                 // For monorepo builds, we need to copy config files to workspace root
                 if build_context != internal_dir.join("packager") {
-                    let project_root = project.project_location.clone();
-                    let temp_project_toml = build_context.join("project.toml");
-                    let temp_moose_config = build_context.join("moose.config.toml");
-
-                    // Copy project files
-                    if project_root.join(PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
-                    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(
-                            project_root.join(OLD_PROJECT_CONFIG_FILE),
-                            &temp_project_toml,
-                        )
-                        .ok();
-                    }
-
-                    if let Some(moose_config_src) = [
-                        internal_dir.join("packager/moose.config.toml"),
-                        project_root.join("moose.config.toml"),
-                    ]
-                    .iter()
-                    .find(|p| p.exists())
-                    {
-                        fs::copy(moose_config_src, &temp_moose_config).ok();
-                    }
+                    copy_project_config_files(
+                        &project.project_location,
+                        &build_context,
+                        &internal_dir,
+                    );
                 }
 
                 docker_client.buildx(
@@ -667,30 +690,11 @@ pub fn build_dockerfile(
             || {
                 // For monorepo builds, we need to copy config files to workspace root
                 if build_context != internal_dir.join("packager") {
-                    let project_root = project.project_location.clone();
-                    let temp_project_toml = build_context.join("project.toml");
-                    let temp_moose_config = build_context.join("moose.config.toml");
-
-                    // Copy project files
-                    if project_root.join(PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
-                    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(
-                            project_root.join(OLD_PROJECT_CONFIG_FILE),
-                            &temp_project_toml,
-                        )
-                        .ok();
-                    }
-
-                    if let Some(moose_config_src) = [
-                        internal_dir.join("packager/moose.config.toml"),
-                        project_root.join("moose.config.toml"),
-                    ]
-                    .iter()
-                    .find(|p| p.exists())
-                    {
-                        fs::copy(moose_config_src, &temp_moose_config).ok();
-                    }
+                    copy_project_config_files(
+                        &project.project_location,
+                        &build_context,
+                        &internal_dir,
+                    );
                 }
 
                 docker_client.buildx(
@@ -844,7 +848,7 @@ fn analyze_typescript_paths(
     }
 
     let content = fs::read_to_string(&tsconfig_path)?;
-    let tsconfig: serde_json::Value = match serde_json::from_str(&content) {
+    let tsconfig: JsonValue = match serde_json::from_str(&content) {
         Ok(config) => config,
         Err(e) => {
             debug!("Failed to parse tsconfig.json: {}", e);
@@ -918,7 +922,7 @@ fn read_package_from_typescript_path(
         if package_json_path.exists() {
             match fs::read_to_string(&package_json_path) {
                 Ok(content) => {
-                    match serde_json::from_str::<serde_json::Value>(&content) {
+                    match serde_json::from_str::<JsonValue>(&content) {
                         Ok(package_json) => {
                             if let Some(name) = package_json.get("name").and_then(|n| n.as_str()) {
                                 // Extract the directory name from the filesystem path
@@ -935,7 +939,6 @@ fn read_package_from_typescript_path(
                                 return Some((
                                     PackageInfo {
                                         name: name.to_string(),
-                                        original_path: ts_path.to_string(),
                                     },
                                     package_dir,
                                 ));
@@ -1002,7 +1005,7 @@ fn transform_tsconfig_for_docker(
     }
 
     let content = fs::read_to_string(&original_tsconfig_path)?;
-    let mut tsconfig: serde_json::Value = serde_json::from_str(&content)
+    let mut tsconfig: JsonValue = serde_json::from_str(&content)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     let mut transformation_count = 0;

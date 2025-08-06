@@ -725,7 +725,11 @@ async fn to_reader(
         Ok(collected) => Ok(collected.aggregate().reader()),
         Err(e) => {
             // Check if it's a size limit error
-            if e.to_string().contains("length limit exceeded") {
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
                 Err(Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)
                     .body(Full::new(Bytes::from(format!(
@@ -805,7 +809,11 @@ async fn handle_json_array_body(
         Ok(collected) => collected.to_bytes(),
         Err(e) => {
             // Check if it's a size limit error
-            if e.to_string().contains("length limit exceeded") {
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
                 warn!("Request body too large for topic {}", topic_name);
                 return Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)
@@ -2161,7 +2169,11 @@ async fn admin_plan_route(
         Ok(collected) => collected.to_bytes(),
         Err(e) => {
             // Check if it's a size limit error
-            if e.to_string().contains("length limit exceeded") {
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
                 error!("Request body too large for admin plan endpoint");
                 return Ok(Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)

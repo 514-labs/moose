@@ -3,7 +3,7 @@ title: Inserting Data
 description: Insert data into OLAP tables using various methods
 ---
 
-import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python } from "@/components";
+import { Callout, BulletPointsCard, CheckmarkBullets, LanguageSwitcher, TypeScript, Python, PathConfig } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Inserting Data
@@ -13,7 +13,7 @@ import { Tabs } from "nextra/components";
 Inserting data into your database is a common task. MooseStack provides a few different ways to insert data into your database.
 
 ## From a Stream (Streaming Ingest)
-When you need to stream data into your ClickHouse tables, you can set the `Stream.destination` as a reference to the `OlapTable` you want to insert into. This will automatically provision a synchronization process that intelligently batches and inserts data into the table.
+When you need to stream data into your ClickHouse tables, you can set the `Stream.destination` as a reference to the `OlapTable` you want to insert into. This will automatically provision a synchronization process that batches and inserts data into the table.  
 
 <TypeScript>
 ```ts filename="StreamInsert.ts" copy
@@ -57,7 +57,7 @@ events_pipeline = Stream[Event]("user_events", StreamConfig(
 </Python>
 
 <Callout type="info" title="ClickHouse Requires Batched Inserts">
-[ClickHouse inserts need to be batched for optimal performance](https://clickhouse.com/blog/asynchronous-data-inserts-in-clickhouse#data-needs-to-be-batched-for-optimal-performance). Moose automatically batches your data into ClickHouse-optimized batches of up to 100,000 records, with automatic flushing every second. It also handles exactly-once delivery and retries on connection errors to ensure your data is never lost.
+[ClickHouse inserts need to be batched for optimal performance](https://clickhouse.com/blog/asynchronous-data-inserts-in-clickhouse#data-needs-to-be-batched-for-optimal-performance). Moose automatically batches your data into ClickHouse-optimized batches of up to 100,000 records, with automatic flushing every second. It also handles at-least-once delivery and retries on connection errors to ensure your data is never lost.
 </Callout>
 
 ## From a Workflow (Batch Insert)
@@ -123,7 +123,7 @@ print(f"Failed: {result.failed} records")
 ## From a Client App 
 
 ### Via REST API
-You can leverage the built in MooseAPI module to place a `POST` REST API endpoint in front of your streams and tables to allow you to insert data from external applications.
+In your Moose code, you can leverage the built in [MooseAPI module](/moose/apis) to place a `POST` REST API endpoint in front of your streams and tables to allow you to insert data from external applications.  
 
 <Tabs items={["IngestApi", "IngestPipeline"]}>
 <Tabs.Tab>
@@ -180,13 +180,18 @@ ingest_pipeline = IngestPipeline[Event]("user_events", IngestConfig(
 </Tabs.Tab>
 </Tabs>
 
-<Callout type="info" title="OpenAPI Client Integration" >
-With these APIs you can leverage the built-in OpenAPI client integration to gemnerate API clients in your own language to connect to your pipelines from external applications.
+<Callout type="info" title="OpenAPI Client Integration" href={"../apis/openapi-sdk"} ctaLabel="Learn More">
+With these APIs you can leverage the built-in OpenAPI client integration to generate API clients in your own language to connect to your pipelines from external applications.
 </Callout>
 
 ### Coming Soon: MooseClient
-
 We're working on a new client library that you can use to interact with your Moose pipelines from external applications.
+
+<Callout type="info" title="Want to get involved?" href={PathConfig.slack.path} ctaLabel="Join Slack">
+Join the community slack to stay updated and let us know if you're interested in helping us build it. 
+</Callout>
+
+
 
 
 ## Direct Data Insertion

@@ -44,8 +44,8 @@ This is the default behavior where Moose has complete control over your database
 - Remove columns or tables that no longer exist in your code
 - Modify existing column types and constraints
 
-<Callout type="warning">
-**Warning:** This mode can perform destructive operations. Data may be lost if you remove fields from your data models.
+<Callout type="warning" title="Warning">
+This mode can perform destructive operations. Data may be lost if you remove fields from your data models or if you perform operations that require a destroy and recreate to be effective, like changing the <Python inline>`order_by_fields`</Python><TypeScript inline>`orderByFields`</TypeScript> field .  
 </Callout>
 
 <TypeScript>
@@ -71,7 +71,7 @@ const explicitTable = new OlapTable<UserData>("users", {
 
 <Python>
 ```py filename="FullyManagedExample.py" copy
-from moose_lib import OlapTable, OlapConfig, LifeCycle
+from moose_lib import OlapTable, OlapTableConfig, LifeCycle
 from pydantic import BaseModel
 
 class UserData(BaseModel):
@@ -83,7 +83,7 @@ class UserData(BaseModel):
 user_table = OlapTable[UserData]("users")
 
 # Explicit fully managed configuration
-explicit_table = OlapTable[UserData]("users", OlapConfig(
+explicit_table = OlapTable[UserData]("users", OlapTableConfig(
     order_by_fields=["id"],
     life_cycle=LifeCycle.FULLY_MANAGED
 ))
@@ -166,8 +166,8 @@ You become responsible for creating and managing the database schema. This is us
 - You're integrating with another system (e.g. PeerDB)
 - You have strict database change management processes
 
-<Callout type="info">
-**Note:** With externally managed resources, you must ensure your database schema matches your data models exactly, or you may encounter runtime errors.
+<Callout type="info" title="Note">
+With externally managed resources, you must ensure your database schema matches your data models exactly, or you may encounter runtime errors.
 </Callout>
 
 <TypeScript>

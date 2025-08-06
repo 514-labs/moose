@@ -111,8 +111,7 @@ interface SensorData {
 ```
 | ClickHouse Type | TypeScript | Description |
 |-----------------|------------|---------------------|
-| `Float32`       | `number & tags.Type<"float">` | 7 digits |
-| `Float64`       | `number` | 15-17 digits |
+| `Float64`       | `number` | floating point number |
 </TypeScript>
 
 <Python>
@@ -127,8 +126,7 @@ class SensorData(BaseModel):
 
 | ClickHouse Type | Python | Description |
 |------|------------|--------|
-| `Float32` | `Annotated[float, "float32"]` | 7 digits |
-| `Float64` | `float` | 15-17 digits |
+| `Float64` | `float` | floating point number |
 </Python>
 
 

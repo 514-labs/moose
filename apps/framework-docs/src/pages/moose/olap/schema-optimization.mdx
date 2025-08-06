@@ -15,7 +15,11 @@ Keep the following best practices in mind when defining your column types:
 
 ### Avoid Nullable Columns
 
-Nullable columns in ClickHouse have significant performance overhead. Use default values instead when possible.
+Nullable columns in ClickHouse have significant performance overhead. 
+
+<Callout type="info" title="Default Value API Coming Soon" href={PathConfig.slack.path} ctaLabel="Join Slack">
+We've got a new API in the works for setting default values on your columns that will make this a lot easier. Join our slack for updates as soon as it's ready.
+</Callout>
 
 <TypeScript>
 ```ts filename="AvoidNullable.ts"
@@ -73,6 +77,11 @@ user_events_table = OlapTable[UserEvent]("user_events", {
 })
 ```
 </Python>
+
+<Callout type="info" title="Default Value API Coming Soon" href={PathConfig.slack.path} ctaLabel="Join Slack">
+We've got a new API in the works for setting default values on your columns that will make this a lot easier. Join our slack for updates as soon as it's ready.
+</Callout>
+
 
 ### Use `LowCardinality` as much as possible
 
@@ -285,23 +294,23 @@ orders_table = OlapTable[Order]("orders", {
 
 <TypeScript>
 ```ts filename="NamedTupleOverNested.ts"
-import { OlapTable, NamedTuple } from "@514labs/moose-lib";
+import { OlapTable, ClickHouseNamedTuple } from "@514labs/moose-lib";
 
 interface UserEvent {
   id: string;
   userId: string;
   eventType: string;
-  location: NamedTuple<{
+  location: {
     latitude: number;
     longitude: number;
     city: string;
     country: string;
-  }>;
-  metadata: NamedTuple<{
+  } & ClickHouseNamedTuple;
+  metadata: {
     version: string;
     source: string;
     priority: number;
-  }>;
+  } & ClickHouseNamedTuple;
   createdAt: Date;
 }
 
@@ -325,18 +334,30 @@ const userEventsTable = new OlapTable<UserEvent>("user_events", {
 from moose_lib import OlapTable, NamedTuple
 from pydantic import BaseModel
 
+class Location(BaseModel):
+    latitude: float
+    longitude: float
+    city: str
+    country: str
+
+class Metadata(BaseModel):
+    version: str
+    source: str
+    priority: int
+
 class UserEvent(BaseModel):
     id: str
     user_id: str
     event_type: str
-    location: NamedTuple[float, float, str, str]  # lat, lon, city, country
-    metadata: NamedTuple[str, str, int]           # version, source, priority
+    location: Annotated[Location, "ClickHouseNamedTuple"]  # lat, lon, city, country
+    metadata: Annotated[Metadata, "ClickHouseNamedTuple"]           # version, source, priority
     created_at: Date
 
 # ❌ Bad: Using nested objects (less efficient)
 class BadUserEvent(BaseModel):
     id: str
-    location: dict  # Nested - less efficient
+    location: Location  # Nested - less efficient
+    metadata: Metadata  # Nested - less efficient
 
 user_events_table = OlapTable[UserEvent]("user_events", {
     "orderByFields": ["id", "created_at"]
@@ -400,9 +421,9 @@ user_events_table = OlapTable[UserEvent]("user_events", {
 ```
 </Python>
 
-### `orderByFields` should prioritize LowCardinality first
+### `ORDER BY` should prioritize LowCardinality columns first 
 
-Place `LowCardinality` columns first in your `orderByFields` for better compression and query performance.
+Place `LowCardinality` columns first in your <Python inline>`order_by_fields`</Python><TypeScript inline>`orderByFields`</TypeScript> for better compression and query performance.
 
 <TypeScript>
 ```ts filename="LowCardinalityOrdering.ts"
@@ -456,41 +477,6 @@ bad_user_events_table = OlapTable[UserEvent]("user_events", {
 ```
 </Python>
 
-## Best Practices Summary
-
-<BulletPointsCard
-  title="Data Modeling Best Practices"
-  bullets={[
-    {
-      title: "Avoid nullable columns",
-      description: "Use default values instead of nullable types for better performance"
-    },
-    {
-      title: "Use LowCardinality for limited values",
-      description: "Most efficient string type for columns with few unique values"
-    },
-    {
-      title: "Choose smallest integer type",
-      description: "Pick UInt8/Int16/etc. based on your data range to save storage"
-    },
-    {
-      title: "Use appropriate DateTime precision",
-      description: "Balance storage vs precision needs (seconds vs milliseconds)"
-    },
-    {
-      title: "Use Decimal for financial data",
-      description: "Avoid floating-point precision issues in calculations"
-    },
-    {
-      title: "Prefer NamedTuple over Nested",
-      description: "More efficient for structured data in ClickHouse"
-    },
-    {
-      title: "Optimize orderByFields",
-      description: "Prioritize columns used in WHERE/GROUP BY and put LowCardinality first"
-    }
-  ]}
-/>
 
 
 

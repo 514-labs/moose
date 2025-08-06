@@ -24,8 +24,8 @@ const rawMeta = {
   "apply-migrations": {
     title: "Applying Migrations",
   },
-  lifecycle: {
-    title: "Lifecycle Management",
+  "external-tables": {
+    title: "External Tables",
   },
   "schema-change": {
     title: "Schema Changes",

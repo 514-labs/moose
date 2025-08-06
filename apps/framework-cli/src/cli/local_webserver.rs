@@ -44,8 +44,8 @@ use crate::project::{JwtConfig, Project};
 use crate::utilities::docker::DockerClient;
 use bytes::Buf;
 use chrono::Utc;
-use http_body_util::BodyExt;
 use http_body_util::Full;
+use http_body_util::{BodyExt, Limited};
 use hyper::body::Body;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
@@ -541,7 +541,11 @@ async fn admin_reality_check_route(
 }
 
 async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes>> {
-    let body = to_reader(req).await;
+    let body = match to_reader(req).await {
+        Ok(reader) => reader,
+        Err(response) => return response,
+    };
+
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
         Ok(cli_message) => {
@@ -574,7 +578,11 @@ async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     trace!("Received metrics log route");
 
-    let body = to_reader(req).await;
+    let body = match to_reader(req).await {
+        Ok(reader) => reader,
+        Err(response) => return response,
+    };
+
     let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
     trace!("Parsed metrics log route: {:?}", parsed);
 
@@ -688,8 +696,32 @@ fn route_not_found_response() -> hyper::http::Result<Response<Full<Bytes>>> {
         .body(Full::new(Bytes::from("no match")))
 }
 
-async fn to_reader(req: Request<Incoming>) -> bytes::buf::Reader<impl Buf + Sized> {
-    req.collect().await.unwrap().aggregate().reader()
+async fn to_reader(
+    req: Request<Incoming>,
+) -> Result<bytes::buf::Reader<impl Buf + Sized>, Response<Full<Bytes>>> {
+    // Use Limited to enforce size limit during streaming
+    let limited_body = Limited::new(req.into_body(), MAX_REQUEST_BODY_SIZE);
+
+    match limited_body.collect().await {
+        Ok(collected) => Ok(collected.aggregate().reader()),
+        Err(e) => {
+            // Check if it's a size limit error
+            if e.to_string().contains("length limit exceeded") {
+                Err(Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {} bytes",
+                        MAX_REQUEST_BODY_SIZE
+                    ))))
+                    .unwrap())
+            } else {
+                Err(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Full::new(Bytes::from("Failed to read request body")))
+                    .unwrap())
+            }
+        }
+    }
 }
 
 async fn wait_for_batch_complete(
@@ -745,24 +777,40 @@ async fn handle_json_array_body(
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
     let jwt_claims = get_claims(auth_header, jwt_config);
 
-    let number_of_bytes = req.body().size_hint().exact().unwrap_or(0);
+    // Use Limited to enforce size limit during streaming
+    // This will automatically abort if the body exceeds the limit
+    let limited_body = Limited::new(req.into_body(), MAX_REQUEST_BODY_SIZE);
 
-    // Check if the body size hint exceeds our limit
-    if number_of_bytes > MAX_REQUEST_BODY_SIZE as u64 {
-        return Response::builder()
-            .status(StatusCode::PAYLOAD_TOO_LARGE)
-            .body(Full::new(Bytes::from(format!(
-                "Request body too large. Maximum size is {} bytes",
-                MAX_REQUEST_BODY_SIZE
-            ))))
-            .unwrap();
-    }
-
-    let body = req.collect().await.unwrap().to_bytes();
+    // Collect the body with size enforcement
+    let body = match limited_body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(e) => {
+            // Check if it's a size limit error
+            if e.to_string().contains("length limit exceeded") {
+                warn!("Request body too large for topic {}", topic_name);
+                return Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {} bytes",
+                        MAX_REQUEST_BODY_SIZE
+                    ))))
+                    .unwrap();
+            }
+            error!(
+                "Failed to read request body for topic {}: {}",
+                topic_name, e
+            );
+            return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from("Failed to read request body")))
+                .unwrap();
+        }
+    };
 
     debug!(
         "starting to parse json array with length {} for {}",
-        number_of_bytes, topic_name
+        body.len(),
+        topic_name
     );
     let parsed = JsonDeserializer::from_slice(&body).deserialize_any(&mut DataModelArrayVisitor {
         inner: DataModelVisitor::new(&data_model.columns, jwt_claims.as_ref()),
@@ -1950,7 +1998,11 @@ async fn admin_integrate_changes_route(
     }
 
     // Parse request body
-    let body = to_reader(req).await;
+    let body = match to_reader(req).await {
+        Ok(reader) => reader,
+        Err(response) => return Ok(response),
+    };
+
     let request: IntegrateChangesRequest =
         match serde_json::from_reader::<_, IntegrateChangesRequest>(body) {
             Ok(req) => {
@@ -2068,10 +2120,23 @@ async fn admin_plan_route(
         return e.to_response();
     }
     // Authentication successful, proceed with plan calculation
-    let body = req.into_body();
-    let bytes = match body.collect().await {
+    // Use Limited to enforce size limit during streaming
+    let limited_body = Limited::new(req.into_body(), MAX_REQUEST_BODY_SIZE);
+
+    let bytes = match limited_body.collect().await {
         Ok(collected) => collected.to_bytes(),
         Err(e) => {
+            // Check if it's a size limit error
+            if e.to_string().contains("length limit exceeded") {
+                error!("Request body too large for admin plan endpoint");
+                return Ok(Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {} bytes",
+                        MAX_REQUEST_BODY_SIZE
+                    ))))
+                    .unwrap());
+            }
             error!("Failed to read request body: {}", e);
             return Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)

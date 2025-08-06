@@ -710,8 +710,7 @@ async fn to_reader(
                 Err(Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)
                     .body(Full::new(Bytes::from(format!(
-                        "Request body too large. Maximum size is {} bytes",
-                        MAX_REQUEST_BODY_SIZE
+                        "Request body too large. Maximum size is {MAX_REQUEST_BODY_SIZE} bytes"
                     ))))
                     .unwrap())
             } else {
@@ -791,8 +790,7 @@ async fn handle_json_array_body(
                 return Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)
                     .body(Full::new(Bytes::from(format!(
-                        "Request body too large. Maximum size is {} bytes",
-                        MAX_REQUEST_BODY_SIZE
+                        "Request body too large. Maximum size is {MAX_REQUEST_BODY_SIZE} bytes"
                     ))))
                     .unwrap();
             }
@@ -2132,8 +2130,7 @@ async fn admin_plan_route(
                 return Ok(Response::builder()
                     .status(StatusCode::PAYLOAD_TOO_LARGE)
                     .body(Full::new(Bytes::from(format!(
-                        "Request body too large. Maximum size is {} bytes",
-                        MAX_REQUEST_BODY_SIZE
+                        "Request body too large. Maximum size is {MAX_REQUEST_BODY_SIZE} bytes"
                     ))))
                     .unwrap());
             }

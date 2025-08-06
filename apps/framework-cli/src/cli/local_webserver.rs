@@ -1085,6 +1085,7 @@ async fn router(
                         route_table,
                         is_prod,
                         jwt_config,
+                        project.http_server_config.max_request_body_size,
                     )
                     .await
                 } else {
@@ -1106,32 +1107,33 @@ async fn router(
                         }
                     }
 
-                match latest_version {
-                    // If latest version exists, use it
-                    Some(version) => {
-                        ingest_route(
-                            req,
-                            route.join(version.to_string()),
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                            project.http_server_config.max_request_body_size,
-                        )
-                        .await
-                    }
-                    None => {
-                        // Otherwise, try direct route
-                        ingest_route(
-                            req,
-                            route,
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                            project.http_server_config.max_request_body_size,
-                        )
-                        .await
+                    match latest_version {
+                        // If latest version exists, use it
+                        Some(version) => {
+                            ingest_route(
+                                req,
+                                route.join(version.to_string()),
+                                configured_producer,
+                                route_table,
+                                is_prod,
+                                jwt_config,
+                                project.http_server_config.max_request_body_size,
+                            )
+                            .await
+                        }
+                        None => {
+                            // Otherwise, try direct route
+                            ingest_route(
+                                req,
+                                route,
+                                configured_producer,
+                                route_table,
+                                is_prod,
+                                jwt_config,
+                                project.http_server_config.max_request_body_size,
+                            )
+                            .await
+                        }
                     }
                 }
             } else {

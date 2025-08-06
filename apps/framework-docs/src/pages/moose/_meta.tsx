@@ -40,7 +40,16 @@ const rawMeta = {
     title: "Changelog",
     Icon: History,
   },
+  workflows: {
+    display: "hidden",
+  },
+  streaming: {
+    display: "hidden",
+  },
   olap: {
+    display: "hidden",
+  },
+  apis: {
     display: "hidden",
   },
 };

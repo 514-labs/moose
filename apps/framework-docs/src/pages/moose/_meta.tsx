@@ -43,13 +43,7 @@ const rawMeta = {
   workflows: {
     display: "hidden",
   },
-  streaming: {
-    display: "hidden",
-  },
   olap: {
-    display: "hidden",
-  },
-  apis: {
     display: "hidden",
   },
 };

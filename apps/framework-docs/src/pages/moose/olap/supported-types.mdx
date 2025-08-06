@@ -472,24 +472,12 @@ class User(BaseModel):
 
 Moose supports all common ClickHouse table engines:
 
-<TypeScript>
-| Engine | TypeScript | Description |
-|--------|------------|-------------|
-| `MergeTree` | `ClickHouseEngines.MergeTree` | Default engine |
-| `ReplacingMergeTree` | `ClickHouseEngines.ReplacingMergeTree` | Deduplication |
-| `SummingMergeTree` | `ClickHouseEngines.SummingMergeTree` | Aggregates numeric columns |
-| `AggregatingMergeTree` | `ClickHouseEngines.AggregatingMergeTree` | Advanced aggregation |
-</TypeScript>
-
-<Python>
 | Engine | Python | Description |
 |--------|------------|-------------|
 | `MergeTree` | `ClickHouseEngines.MergeTree` | Default engine |
 | `ReplacingMergeTree` | `ClickHouseEngines.ReplacingMergeTree` | Deduplication |
 | `SummingMergeTree` | `ClickHouseEngines.SummingMergeTree` | Aggregates numeric columns |
 | `AggregatingMergeTree` | `ClickHouseEngines.AggregatingMergeTree` | Advanced aggregation |
-
-</Python>
 
 <TypeScript>
 ```typescript

@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn test_message_type_debug() {
         let msg_type = MessageType::Success;
-        let debug_str = format!("{:?}", msg_type);
+        let debug_str = format!("{msg_type:?}");
         assert_eq!(debug_str, "Success");
     }
 

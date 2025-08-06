@@ -44,8 +44,8 @@ use crate::project::{JwtConfig, Project};
 use crate::utilities::docker::DockerClient;
 use bytes::Buf;
 use chrono::Utc;
-use http_body_util::BodyExt;
 use http_body_util::Full;
+use http_body_util::{BodyExt, Limited};
 use hyper::body::Body;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
@@ -75,7 +75,6 @@ use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
-use std::fs;
 use std::future::Future;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
@@ -137,10 +136,17 @@ pub struct LocalWebserverConfig {
     pub proxy_port: u16,
     /// Optional path prefix for all routes
     pub path_prefix: Option<String>,
+    /// Maximum request body size in bytes (default: 10MB)
+    #[serde(default = "default_max_request_body_size")]
+    pub max_request_body_size: usize,
 }
 
 pub fn default_proxy_port() -> u16 {
     4001
+}
+
+fn default_max_request_body_size() -> usize {
+    10 * 1024 * 1024 // 10MB default
 }
 
 impl LocalWebserverConfig {
@@ -173,6 +179,7 @@ impl Default for LocalWebserverConfig {
             management_port: default_management_port(),
             proxy_port: default_proxy_port(),
             path_prefix: None,
+            max_request_body_size: default_max_request_body_size(),
         }
     }
 }
@@ -292,6 +299,7 @@ struct ManagementService<I: InfraMapProvider + Clone> {
     metrics: Arc<Metrics>,
     infra_map: I,
     openapi_path: Option<PathBuf>,
+    max_request_body_size: usize,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -335,6 +343,7 @@ impl<I: InfraMapProvider + Clone + Send + 'static> Service<Request<Incoming>>
             self.infra_map.clone(),
             self.openapi_path.clone(),
             req,
+            self.max_request_body_size,
         ))
     }
 }
@@ -541,8 +550,16 @@ async fn admin_reality_check_route(
         .body(Full::new(Bytes::from(response.to_string())))
 }
 
-async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes>> {
-    let body = to_reader(req).await;
+async fn log_route(
+    req: Request<Incoming>,
+    is_prod: bool,
+    max_request_body_size: usize,
+) -> Response<Full<Bytes>> {
+    let body = match to_reader(req, max_request_body_size).await {
+        Ok(reader) => reader,
+        Err(response) => return response,
+    };
+
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
         Ok(cli_message) => {
@@ -572,10 +589,18 @@ async fn log_route(req: Request<Incoming>, is_prod: bool) -> Response<Full<Bytes
         .unwrap()
 }
 
-async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
+async fn metrics_log_route(
+    req: Request<Incoming>,
+    metrics: Arc<Metrics>,
+    max_request_body_size: usize,
+) -> Response<Full<Bytes>> {
     trace!("Received metrics log route");
 
-    let body = to_reader(req).await;
+    let body = match to_reader(req, max_request_body_size).await {
+        Ok(reader) => reader,
+        Err(response) => return response,
+    };
+
     let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
     trace!("Parsed metrics log route: {:?}", parsed);
 
@@ -629,7 +654,8 @@ async fn openapi_route(
     }
 
     if let Some(path) = openapi_path {
-        match fs::read_to_string(path) {
+        // Use async filesystem operations to avoid blocking
+        match tokio::fs::read_to_string(path).await {
             Ok(contents) => Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/yaml")
@@ -688,8 +714,36 @@ fn route_not_found_response() -> hyper::http::Result<Response<Full<Bytes>>> {
         .body(Full::new(Bytes::from("no match")))
 }
 
-async fn to_reader(req: Request<Incoming>) -> bytes::buf::Reader<impl Buf + Sized> {
-    req.collect().await.unwrap().aggregate().reader()
+async fn to_reader(
+    req: Request<Incoming>,
+    max_request_body_size: usize,
+) -> Result<bytes::buf::Reader<impl Buf + Sized>, Response<Full<Bytes>>> {
+    // Use Limited to enforce size limit during streaming
+    let limited_body = Limited::new(req.into_body(), max_request_body_size);
+
+    match limited_body.collect().await {
+        Ok(collected) => Ok(collected.aggregate().reader()),
+        Err(e) => {
+            // Check if it's a size limit error
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
+                Err(Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {max_request_body_size} bytes"
+                    ))))
+                    .unwrap())
+            } else {
+                Err(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Full::new(Bytes::from("Failed to read request body")))
+                    .unwrap())
+            }
+        }
+    }
 }
 
 async fn wait_for_batch_complete(
@@ -741,16 +795,48 @@ async fn handle_json_array_body(
     dead_letter_queue: &Option<&str>,
     req: Request<Incoming>,
     jwt_config: &Option<JwtConfig>,
+    max_request_body_size: usize,
 ) -> Response<Full<Bytes>> {
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
     let jwt_claims = get_claims(auth_header, jwt_config);
 
-    let number_of_bytes = req.body().size_hint().exact().unwrap_or(0);
-    let body = req.collect().await.unwrap().to_bytes();
+    // Use Limited to enforce size limit during streaming
+    // This will automatically abort if the body exceeds the limit
+    let limited_body = Limited::new(req.into_body(), max_request_body_size);
+
+    // Collect the body with size enforcement
+    let body = match limited_body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(e) => {
+            // Check if it's a size limit error
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
+                warn!("Request body too large for topic {}", topic_name);
+                return Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {max_request_body_size} bytes"
+                    ))))
+                    .unwrap();
+            }
+            error!(
+                "Failed to read request body for topic {}: {}",
+                topic_name, e
+            );
+            return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from("Failed to read request body")))
+                .unwrap();
+        }
+    };
 
     debug!(
         "starting to parse json array with length {} for {}",
-        number_of_bytes, topic_name
+        body.len(),
+        topic_name
     );
     let parsed = JsonDeserializer::from_slice(&body).deserialize_any(&mut DataModelArrayVisitor {
         inner: DataModelVisitor::new(&data_model.columns, jwt_claims.as_ref()),
@@ -873,6 +959,7 @@ async fn ingest_route(
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     is_prod: bool,
     jwt_config: Option<JwtConfig>,
+    max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -910,6 +997,7 @@ async fn ingest_route(
             &route_meta.dead_letter_queue.as_deref(),
             req,
             &jwt_config,
+            max_request_body_size,
         )
         .await),
         None => {
@@ -1012,6 +1100,7 @@ async fn router(
                             route_table,
                             is_prod,
                             jwt_config,
+                            project.http_server_config.max_request_body_size,
                         )
                         .await
                     }
@@ -1024,6 +1113,7 @@ async fn router(
                             route_table,
                             is_prod,
                             jwt_config,
+                            project.http_server_config.max_request_body_size,
                         )
                         .await
                     }
@@ -1037,6 +1127,7 @@ async fn router(
                     route_table,
                     is_prod,
                     jwt_config,
+                    project.http_server_config.max_request_body_size,
                 )
                 .await
             }
@@ -1049,6 +1140,7 @@ async fn router(
                 route_table,
                 is_prod,
                 jwt_config,
+                project.http_server_config.max_request_body_size,
             )
             .await
         }
@@ -1058,11 +1150,18 @@ async fn router(
                 &project.authentication.admin_api_key,
                 &project,
                 &redis_client,
+                project.http_server_config.max_request_body_size,
             )
             .await
         }
         (_, &hyper::Method::POST, ["admin", "plan"]) => {
-            admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
+            admin_plan_route(
+                req,
+                &project.authentication.admin_api_key,
+                &redis_client,
+                project.http_server_config.max_request_body_size,
+            )
+            .await
         }
         (_, &hyper::Method::GET, route_segments)
             if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
@@ -1151,20 +1250,15 @@ const METRICS_LOGS_PATH: &str = "metrics-logs";
 
 pub trait InfraMapProvider {
     fn serialize(&self) -> impl Future<Output = serde_json::error::Result<String>> + Send;
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>>;
+    fn serialize_proto(&self) -> impl Future<Output = Vec<u8>> + Send;
 }
 
 impl InfraMapProvider for &RwLock<InfrastructureMap> {
     async fn serialize(&self) -> serde_json::error::Result<String> {
         serde_json::to_string(self.read().await.deref())
     }
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
-        // This is a little hacky, but works for our use case
-        Some(Box::new(futures::executor::block_on(self.read())))
+    async fn serialize_proto(&self) -> Vec<u8> {
+        self.read().await.to_proto_bytes()
     }
 }
 
@@ -1172,10 +1266,8 @@ impl InfraMapProvider for &InfrastructureMap {
     async fn serialize(&self) -> serde_json::error::Result<String> {
         serde_json::to_string(self)
     }
-    fn as_infra_map<'a>(
-        &'a self,
-    ) -> Option<Box<dyn std::ops::Deref<Target = InfrastructureMap> + 'a>> {
-        Some(Box::new(*self))
+    async fn serialize_proto(&self) -> Vec<u8> {
+        self.to_proto_bytes()
     }
 }
 
@@ -1186,6 +1278,7 @@ async fn management_router<I: InfraMapProvider>(
     infra_map: I,
     openapi_path: Option<PathBuf>,
     req: Request<Incoming>,
+    max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let level = if req.uri().path().ends_with(METRICS_LOGS_PATH) {
         Trace // too many lines of log created without user interaction
@@ -1202,9 +1295,9 @@ async fn management_router<I: InfraMapProvider>(
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
     let route = route.to_str().unwrap();
     let res = match (req.method(), route) {
-        (&hyper::Method::POST, "logs") => Ok(log_route(req, is_prod).await),
+        (&hyper::Method::POST, "logs") => Ok(log_route(req, is_prod, max_request_body_size).await),
         (&hyper::Method::POST, METRICS_LOGS_PATH) => {
-            Ok(metrics_log_route(req, metrics.clone()).await)
+            Ok(metrics_log_route(req, metrics.clone(), max_request_body_size).await)
         }
         (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
         // TODO: changes from admin/integrate-changes should apply here
@@ -1217,21 +1310,12 @@ async fn management_router<I: InfraMapProvider>(
                 .to_ascii_lowercase();
 
             if accept_header.contains("application/protobuf") {
-                if let Some(map_ref) = infra_map.as_infra_map() {
-                    let bytes = map_ref.to_proto_bytes();
-                    Ok(hyper::Response::builder()
-                        .status(StatusCode::OK)
-                        .header("Content-Type", "application/protobuf")
-                        .body(Full::new(Bytes::from(bytes)))
-                        .unwrap())
-                } else {
-                    Ok(hyper::Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from(
-                            "Failed to access infrastructure map",
-                        )))
-                        .unwrap())
-                }
+                let bytes = infra_map.serialize_proto().await;
+                Ok(hyper::Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "application/protobuf")
+                    .body(Full::new(Bytes::from(bytes)))
+                    .unwrap())
             } else {
                 match infra_map.serialize().await {
                     Ok(res) => Ok(hyper::Response::builder()
@@ -1451,7 +1535,13 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
-        let http_client = Arc::new(reqwest::Client::new());
+        // Create HTTP client with reasonable timeout for external requests
+        let http_client = Arc::new(
+            reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .expect("Failed to create HTTP client"),
+        );
 
         let redis_client = RedisClient::new(project.name(), project.redis_config.clone())
             .await
@@ -1478,6 +1568,7 @@ impl Webserver {
             metrics,
             infra_map,
             openapi_path,
+            max_request_body_size: project.http_server_config.max_request_body_size,
         };
 
         let graceful = GracefulShutdown::new();
@@ -1933,6 +2024,7 @@ async fn admin_integrate_changes_route(
     admin_api_key: &Option<String>,
     project: &Project,
     redis_client: &Arc<RedisClient>,
+    max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!("Starting admin_integrate_changes_route");
 
@@ -1947,7 +2039,11 @@ async fn admin_integrate_changes_route(
     }
 
     // Parse request body
-    let body = to_reader(req).await;
+    let body = match to_reader(req, max_request_body_size).await {
+        Ok(reader) => reader,
+        Err(response) => return Ok(response),
+    };
+
     let request: IntegrateChangesRequest =
         match serde_json::from_reader::<_, IntegrateChangesRequest>(body) {
             Ok(req) => {
@@ -2058,6 +2154,7 @@ async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     redis_client: &Arc<RedisClient>,
+    max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -2065,10 +2162,26 @@ async fn admin_plan_route(
         return e.to_response();
     }
     // Authentication successful, proceed with plan calculation
-    let body = req.into_body();
-    let bytes = match body.collect().await {
+    // Use Limited to enforce size limit during streaming
+    let limited_body = Limited::new(req.into_body(), max_request_body_size);
+
+    let bytes = match limited_body.collect().await {
         Ok(collected) => collected.to_bytes(),
         Err(e) => {
+            // Check if it's a size limit error
+            // Note: We use string comparison here because the error from collect() is opaque.
+            // The underlying LengthLimitError is wrapped and not directly accessible.
+            // This is a pragmatic approach that works reliably with the current http-body-util implementation.
+            let error_str = e.to_string();
+            if error_str.contains("length limit exceeded") || error_str.contains("body too large") {
+                error!("Request body too large for admin plan endpoint");
+                return Ok(Response::builder()
+                    .status(StatusCode::PAYLOAD_TOO_LARGE)
+                    .body(Full::new(Bytes::from(format!(
+                        "Request body too large. Maximum size is {max_request_body_size} bytes"
+                    ))))
+                    .unwrap());
+            }
             error!("Failed to read request body: {}", e);
             return Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)

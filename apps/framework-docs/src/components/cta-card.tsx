@@ -32,6 +32,7 @@ interface CTACardProps {
   cardName?: string;
   variant?: "default" | "gradient" | "aurora";
   orientation?: "vertical" | "horizontal";
+  isMooseModule?: boolean;
 }
 
 export function CTACard({
@@ -45,6 +46,7 @@ export function CTACard({
   className = "",
   variant = "default",
   orientation = "vertical",
+  isMooseModule = false,
 }: CTACardProps) {
   return orientation == "horizontal" ?
       <Link href={ctaLink} className={cn("w-full", className)}>
@@ -70,6 +72,9 @@ export function CTACard({
               className="text-primary mb-0 mt-0 pt-0 text-left"
               level={HeadingLevel.l5}
             >
+              {isMooseModule ?
+                <span className="text-muted-foreground">Moose </span>
+              : ""}
               {title}
             </Heading>
             <CardDescription className="mt-2 text-left">
@@ -101,6 +106,9 @@ export function CTACard({
         </CardHeader>
         <CardContent>
           <Heading className="text-primary mb-0" level={HeadingLevel.l5}>
+            {isMooseModule ?
+              <span className="text-muted-foreground">Moose </span>
+            : ""}
             {title}
           </Heading>
           <CardDescription className="mt-2">{description}</CardDescription>

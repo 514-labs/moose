@@ -10,6 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+export function StaggeredCards({ children }: { children: React.ReactNode }) {
+  return <Card className="space-y-8 my-8">{children}</Card>;
+}
+
 interface StaggeredCardProps {
   children: React.ReactNode;
   stagger?: "left" | "right";
@@ -39,6 +43,7 @@ export function StaggeredCard({
 }
 
 interface StaggeredContentProps {
+  isMooseModule?: boolean;
   title?: string;
   description?: string;
   cta?: {
@@ -49,6 +54,7 @@ interface StaggeredContentProps {
 }
 
 export function StaggeredContent({
+  isMooseModule = false,
   title,
   description,
   cta,
@@ -56,7 +62,12 @@ export function StaggeredContent({
   return (
     <div>
       <CardHeader className="px-0 pt-0">
-        <h3 className="text-2xl">{title}</h3>
+        <h3 className="text-2xl">
+          {isMooseModule ?
+            <span className="text-muted-foreground">Moose </span>
+          : ""}
+          {title}
+        </h3>
       </CardHeader>
       <CardContent className="px-0">
         <CardDescription>{description}</CardDescription>

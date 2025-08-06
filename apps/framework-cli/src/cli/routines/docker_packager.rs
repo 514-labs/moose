@@ -12,8 +12,60 @@ use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 
 use log::{debug, error, info};
+use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone)]
+struct PackageInfo {
+    name: String,
+}
+
+/// Helper function to safely create directories without unwrap() calls.
+/// Replaces fs::create_dir_all(path.parent().unwrap()) pattern used throughout the codebase.
+fn ensure_directory_exists(path: &Path) -> Result<(), std::io::Error> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+    } else {
+        Ok(())
+    }
+}
+
+/// Helper function to copy config files for monorepo builds
+fn copy_project_config_files(project_root: &Path, build_context: &Path, internal_dir: &Path) {
+    let temp_project_toml = build_context.join("project.toml");
+    let temp_moose_config = build_context.join("moose.config.toml");
+
+    // Copy project files
+    if project_root.join(PROJECT_CONFIG_FILE).exists() {
+        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
+    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
+        fs::copy(
+            project_root.join(OLD_PROJECT_CONFIG_FILE),
+            &temp_project_toml,
+        )
+        .ok();
+    }
+
+    // Copy moose config
+    if let Some(moose_config_src) = [
+        internal_dir.join("packager/moose.config.toml"),
+        project_root.join("moose.config.toml"),
+    ]
+    .iter()
+    .find(|p| p.exists())
+    {
+        fs::copy(moose_config_src, &temp_moose_config).ok();
+    }
+}
+
+#[derive(Debug)]
+struct PathMapping {
+    alias: String,
+    original_path: String,
+    package_name: String,
+    package_directory: String, // The directory name from the filesystem path
+}
 
 // Adapted from https://github.com/nodejs/docker-node/blob/2928850549388a57a33365302fc5ebac91f78ffe/20/bookworm-slim/Dockerfile
 // and removed yarn
@@ -136,6 +188,41 @@ EXPOSE 4000
 CMD ["moose", "prod"]
 "#;
 
+/// Creates a Dockerfile for the given project, supporting both monorepo and standalone configurations.
+///
+/// ## Monorepo Multi-Stage Docker Build Process
+///
+/// For TypeScript projects in monorepos, this function implements a sophisticated multi-stage Docker build:
+///
+/// **Stage 1: Full Monorepo Context (`monorepo-base`)**
+/// - Copies the entire workspace (pnpm-workspace.yaml, pnpm-lock.yaml, all packages)
+/// - Runs `pnpm install --frozen-lockfile` to install all dependencies across the workspace
+/// - This stage has access to all packages and their interdependencies
+///
+/// **Stage 2: Production Image**
+/// - Uses `pnpm deploy` to extract only production dependencies for the specific project
+/// - Copies the transformed tsconfig.json (with paths rewritten from relative to node_modules)
+/// - Applies the "TYPESCRIPT_FIX_PLACEHOLDER" replacement for path transformations
+///
+/// ## TypeScript Path Transformation Challenge
+///
+/// The core problem: Monorepo TypeScript projects use relative path mappings like:
+/// ```json
+/// { "paths": { "@shared/*": ["../shared/src/*"] } }
+/// ```
+///
+/// But in Docker's node_modules structure, these become:
+/// ```json  
+/// { "paths": { "@shared/*": ["./node_modules/@my-org/shared/*"] } }
+/// ```
+///
+/// This function analyzes the workspace, finds package.json files for each path mapping,
+/// and pre-transforms the tsconfig.json before copying it into the final image.
+///
+/// ## Fallback Behavior
+///
+/// If monorepo detection fails or path analysis encounters errors, gracefully falls back
+/// to standard single-project Docker build to ensure robustness.
 pub fn create_dockerfile(
     project: &Project,
     docker_client: &DockerClient,
@@ -151,20 +238,21 @@ pub fn create_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client).map_err(|e| {
+    ensure_docker_running(docker_client).map_err(|err| {
+        error!("Failed to ensure docker is running: {}", err);
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
                 "to ensure docker is running".to_string(),
             ),
-            e,
+            err,
         )
     })?;
 
     let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
 
     info!("Creating versions at: {:?}", versions_file_path);
-    fs::create_dir_all(versions_file_path.parent().unwrap()).map_err(|err| {
+    ensure_directory_exists(&versions_file_path).map_err(|err| {
         error!("Failed to create directory for app versions: {}", err);
         RoutineFailure::new(
             Message::new(
@@ -178,7 +266,7 @@ pub fn create_dockerfile(
     let file_path = internal_dir.join("packager/Dockerfile");
 
     info!("Creating Dockerfile at: {:?}", file_path);
-    fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
+    ensure_directory_exists(&file_path).map_err(|err| {
         error!("Failed to create directory for project packaging: {}", err);
         RoutineFailure::new(
             Message::new(
@@ -221,6 +309,29 @@ pub fn create_dockerfile(
                 let package_copies =
                     generate_workspace_copy_commands(&workspace_root, &workspace_config);
 
+                // Analyze TypeScript paths and transform tsconfig.json
+                let typescript_mappings = match analyze_typescript_paths(
+                    &workspace_root,
+                    &relative_project_path.to_string_lossy(),
+                ) {
+                    Ok(mappings) => {
+                        // Transform tsconfig.json for Docker with pre-computed paths
+                        if let Err(e) = transform_tsconfig_for_docker(
+                            &workspace_root,
+                            &relative_project_path.to_string_lossy(),
+                            &mappings,
+                            &internal_dir,
+                        ) {
+                            error!("Failed to transform tsconfig.json for Docker: {}", e);
+                        }
+                        mappings
+                    }
+                    Err(e) => {
+                        error!("Failed to analyze TypeScript paths: {}", e);
+                        Vec::new()
+                    }
+                };
+
                 // Build the monorepo Dockerfile
                 let mut dockerfile = TS_MONOREPO_DOCKER_FILE.to_string();
                 dockerfile = dockerfile.replace("MONOREPO_PACKAGE_COPIES", &package_copies);
@@ -253,10 +364,6 @@ COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/app ./app
 COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/package.json ./package.json
 COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/tsconfig.json ./tsconfig.json
 
-# Copy config files
-COPY --chown=moose:moose ./project.tom[l] ./project.toml
-COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
-
 # Use pnpm deploy from workspace context to create clean production dependencies
 USER root:root
 WORKDIR /temp-monorepo
@@ -269,9 +376,11 @@ COPY --from=monorepo-base /monorepo/{} ./{}
 RUN pnpm --filter "./{}" deploy /temp-deploy --prod --legacy
 RUN cp -r /temp-deploy/node_modules /application/node_modules
 RUN chown -R moose:moose /application/node_modules
-RUN rm -rf /temp-deploy
-# Clean up
-RUN rm -rf /temp-monorepo
+
+TYPESCRIPT_FIX_PLACEHOLDER
+USER root:root
+# Clean up temporary directories
+RUN rm -rf /temp-deploy /temp-monorepo
 
 RUN if [ -d "/application/node_modules/@514labs/moose-lib/dist/" ]; then ls -la /application/node_modules/@514labs/moose-lib/dist/; fi
 USER moose:moose
@@ -290,6 +399,14 @@ WORKDIR /application"#,
                     "INSTALL_COMMAND",
                     "# Dependencies copied from monorepo build stage",
                 );
+
+                // Replace the placeholder with a simple comment (tsconfig.json is pre-transformed)
+                let typescript_comment = if typescript_mappings.is_empty() {
+                    "# No TypeScript path transformations needed"
+                } else {
+                    "# TypeScript paths pre-transformed in tsconfig.json"
+                };
+                dockerfile = dockerfile.replace("TYPESCRIPT_FIX_PLACEHOLDER", typescript_comment);
 
                 // Store monorepo info for build phase
                 let monorepo_info_path = internal_dir.join("packager/.monorepo-info");
@@ -342,6 +459,9 @@ COPY --chown=moose:moose ./app ./app"#,
     )))
 }
 
+/// Builds Docker images from the generated Dockerfile for specified architectures.
+/// Handles both monorepo and standalone builds, copying necessary files and managing
+/// temporary build contexts appropriately for each build type.
 pub fn build_dockerfile(
     project: &Project,
     docker_client: &DockerClient,
@@ -359,13 +479,14 @@ pub fn build_dockerfile(
         )
     })?;
 
-    ensure_docker_running(docker_client).map_err(|e| {
+    ensure_docker_running(docker_client).map_err(|err| {
+        error!("Failed to ensure docker is running: {}", err);
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
                 "to ensure docker is running".to_string(),
             ),
-            e,
+            err,
         )
     })?;
 
@@ -398,12 +519,12 @@ pub fn build_dockerfile(
     // Handle lock file copying for TypeScript projects only (may be from parent directories for monorepos)
     if project.language == SupportedLanguages::Typescript {
         if let Some(lock_file_path) = get_lock_file_path(&project_root_path) {
-            // Safely extract filename with proper error handling
-            let lock_file_name = match lock_file_path.file_name().and_then(|name| name.to_str()) {
-                Some(name) => name,
-                None => {
+            let lock_file_name = lock_file_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or_else(|| {
                     error!("Invalid lock file path: {:?}", lock_file_path);
-                    return Err(RoutineFailure::new(
+                    RoutineFailure::new(
                         Message::new(
                             "Failed".to_string(),
                             "to extract lock file name from path".to_string(),
@@ -412,9 +533,8 @@ pub fn build_dockerfile(
                             std::io::ErrorKind::InvalidInput,
                             "Invalid lock file path",
                         ),
-                    ));
-                }
-            };
+                    )
+                })?;
 
             let destination_path = internal_dir.join("packager").join(lock_file_name);
 
@@ -566,30 +686,11 @@ pub fn build_dockerfile(
             || {
                 // For monorepo builds, we need to copy config files to workspace root
                 if build_context != internal_dir.join("packager") {
-                    let project_root = project.project_location.clone();
-                    let temp_project_toml = build_context.join("project.toml");
-                    let temp_moose_config = build_context.join("moose.config.toml");
-
-                    // Copy project files
-                    if project_root.join(PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
-                    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(
-                            project_root.join(OLD_PROJECT_CONFIG_FILE),
-                            &temp_project_toml,
-                        )
-                        .ok();
-                    }
-
-                    if let Some(moose_config_src) = [
-                        internal_dir.join("packager/moose.config.toml"),
-                        project_root.join("moose.config.toml"),
-                    ]
-                    .iter()
-                    .find(|p| p.exists())
-                    {
-                        fs::copy(moose_config_src, &temp_moose_config).ok();
-                    }
+                    copy_project_config_files(
+                        &project.project_location,
+                        &build_context,
+                        &internal_dir,
+                    );
                 }
 
                 docker_client.buildx(
@@ -623,30 +724,11 @@ pub fn build_dockerfile(
             || {
                 // For monorepo builds, we need to copy config files to workspace root
                 if build_context != internal_dir.join("packager") {
-                    let project_root = project.project_location.clone();
-                    let temp_project_toml = build_context.join("project.toml");
-                    let temp_moose_config = build_context.join("moose.config.toml");
-
-                    // Copy project files
-                    if project_root.join(PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(project_root.join(PROJECT_CONFIG_FILE), &temp_project_toml).ok();
-                    } else if project_root.join(OLD_PROJECT_CONFIG_FILE).exists() {
-                        fs::copy(
-                            project_root.join(OLD_PROJECT_CONFIG_FILE),
-                            &temp_project_toml,
-                        )
-                        .ok();
-                    }
-
-                    if let Some(moose_config_src) = [
-                        internal_dir.join("packager/moose.config.toml"),
-                        project_root.join("moose.config.toml"),
-                    ]
-                    .iter()
-                    .find(|p| p.exists())
-                    {
-                        fs::copy(moose_config_src, &temp_moose_config).ok();
-                    }
+                    copy_project_config_files(
+                        &project.project_location,
+                        &build_context,
+                        &internal_dir,
+                    );
                 }
 
                 docker_client.buildx(
@@ -783,6 +865,227 @@ fn generate_workspace_copy_commands(workspace_root: &Path, patterns: &[String]) 
     }
 
     copy_commands.join("\n")
+}
+
+/// Analyzes TypeScript path mappings in tsconfig.json for monorepo Docker builds.
+///
+/// In monorepos, TypeScript projects often use path mappings like:
+/// ```json
+/// {
+///   "compilerOptions": {
+///     "paths": {
+///       "@shared/*": ["../shared/src/*"],
+///       "@utils/*": ["../../packages/utils/src/*"]
+///     }
+///   }
+/// }
+/// ```
+///
+/// These relative paths break in Docker because packages get installed to node_modules.
+/// This function:
+/// 1. Reads tsconfig.json from the project directory
+/// 2. Extracts all path mappings from compilerOptions.paths
+/// 3. For each path, traverses up the filesystem to find the corresponding package.json
+/// 4. Maps the original relative path to the package name for node_modules transformation
+///
+/// Returns PathMapping structs containing the alias, original path, package name, and directory.
+fn analyze_typescript_paths(
+    workspace_root: &Path,
+    relative_project_path: &str,
+) -> Result<Vec<PathMapping>, std::io::Error> {
+    let tsconfig_path = workspace_root
+        .join(relative_project_path)
+        .join("tsconfig.json");
+
+    if !tsconfig_path.exists() {
+        debug!("No tsconfig.json found at {:?}", tsconfig_path);
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&tsconfig_path)?;
+    let tsconfig: JsonValue = match serde_json::from_str(&content) {
+        Ok(config) => config,
+        Err(e) => {
+            debug!("Failed to parse tsconfig.json: {}", e);
+            return Ok(Vec::new());
+        }
+    };
+
+    let mut mappings = Vec::new();
+
+    if let Some(paths) = tsconfig
+        .get("compilerOptions")
+        .and_then(|co| co.get("paths"))
+        .and_then(|p| p.as_object())
+    {
+        for (alias, path_array) in paths {
+            if let Some(paths) = path_array.as_array() {
+                for path in paths {
+                    if let Some(path_str) = path.as_str() {
+                        if let Some((package_info, package_dir)) = read_package_from_typescript_path(
+                            workspace_root,
+                            relative_project_path,
+                            path_str,
+                        ) {
+                            mappings.push(PathMapping {
+                                alias: alias.clone(),
+                                original_path: path_str.to_string(),
+                                package_name: package_info.name,
+                                package_directory: package_dir,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    debug!("Found {} TypeScript path mappings", mappings.len());
+    for mapping in &mappings {
+        debug!(
+            "  {} -> {} (package: {}, dir: {})",
+            mapping.alias, mapping.original_path, mapping.package_name, mapping.package_directory
+        );
+    }
+
+    Ok(mappings)
+}
+
+/// Reads package.json from a TypeScript path and returns the package name and directory
+fn read_package_from_typescript_path(
+    workspace_root: &Path,
+    relative_project_path: &str,
+    ts_path: &str,
+) -> Option<(PackageInfo, String)> {
+    let project_dir = workspace_root.join(relative_project_path);
+    let resolved_path = if ts_path.starts_with('/') {
+        PathBuf::from(ts_path)
+    } else {
+        project_dir.join(ts_path)
+    };
+
+    // Traverse up the path to find package.json
+    let mut current_path = resolved_path.as_path();
+    while let Some(parent) = current_path.parent() {
+        let package_json_path = parent.join("package.json");
+
+        if !package_json_path.exists() {
+            current_path = parent;
+            continue;
+        }
+
+        let package_name = fs::read_to_string(&package_json_path)
+            .ok()
+            .and_then(|content| serde_json::from_str::<JsonValue>(&content).ok())
+            .and_then(|json| json.get("name")?.as_str().map(str::to_string))?;
+
+        let package_dir = parent.file_name()?.to_str()?.to_string();
+
+        debug!(
+            "Found package: {} in directory: {} at {:?}",
+            package_name, package_dir, package_json_path
+        );
+
+        return Some((PackageInfo { name: package_name }, package_dir));
+    }
+
+    None
+}
+
+/// Extracts the path suffix after the package directory (generic approach)
+fn extract_path_suffix(original_path: &str, package_directory: &str) -> String {
+    // Find the last occurrence of the package directory in the path
+    if let Some(package_pos) = original_path.rfind(package_directory) {
+        let after_package_pos = package_pos + package_directory.len();
+        if after_package_pos < original_path.len() {
+            original_path[after_package_pos..].to_string()
+        } else {
+            String::new()
+        }
+    } else {
+        // If package directory not found, preserve the whole path as suffix
+        original_path.to_string()
+    }
+}
+
+/// Transforms tsconfig.json for Docker by pre-computing node_modules paths
+fn transform_tsconfig_for_docker(
+    workspace_root: &Path,
+    relative_project_path: &str,
+    mappings: &[PathMapping],
+    internal_dir: &Path,
+) -> Result<(), std::io::Error> {
+    if mappings.is_empty() {
+        debug!("No TypeScript path mappings to transform");
+        return Ok(());
+    }
+
+    let original_tsconfig_path = workspace_root
+        .join(relative_project_path)
+        .join("tsconfig.json");
+    let packager_tsconfig_path = internal_dir.join("packager/tsconfig.json");
+
+    if !original_tsconfig_path.exists() {
+        debug!("No tsconfig.json found at {:?}", original_tsconfig_path);
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(&original_tsconfig_path)?;
+    let mut tsconfig: JsonValue = serde_json::from_str(&content)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+    let mut transformation_count = 0;
+
+    // Transform paths directly in Rust
+    if let Some(paths) = tsconfig
+        .get_mut("compilerOptions")
+        .and_then(|co| co.get_mut("paths"))
+        .and_then(|p| p.as_object_mut())
+    {
+        for (_alias, path_array) in paths.iter_mut() {
+            if let Some(paths) = path_array.as_array_mut() {
+                for path in paths.iter_mut() {
+                    if let Some(path_str) = path.as_str() {
+                        // Find the mapping for this path
+                        if let Some(mapping) = mappings.iter().find(|m| m.original_path == path_str)
+                        {
+                            // Extract the suffix after the package directory
+                            let suffix = extract_path_suffix(path_str, &mapping.package_directory);
+
+                            // Transform to node_modules path with the discovered package name
+                            let new_path =
+                                format!("./node_modules/{}{}", mapping.package_name, suffix);
+
+                            info!("Transforming TypeScript path: {} -> {}", path_str, new_path);
+                            *path = serde_json::Value::String(new_path);
+                            transformation_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if transformation_count > 0 {
+        // Write the transformed tsconfig.json to packager directory
+        let transformed_content = serde_json::to_string_pretty(&tsconfig)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+        // Ensure the packager directory exists
+        if let Some(parent) = packager_tsconfig_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(&packager_tsconfig_path, transformed_content)?;
+        info!(
+            "Created transformed tsconfig.json with {} path updates at {:?}",
+            transformation_count, packager_tsconfig_path
+        );
+    } else {
+        info!("No TypeScript paths needed transformation");
+    }
+
+    Ok(())
 }
 
 /// Creates standard TypeScript Dockerfile content (non-monorepo)

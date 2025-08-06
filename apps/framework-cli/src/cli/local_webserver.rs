@@ -226,7 +226,7 @@ async fn get_consumption_api_res(
         let consumption_prefix = if consumption_path.ends_with('/') {
             consumption_path
         } else {
-            &format!("{}/", consumption_path)
+            &format!("{consumption_path}/")
         };
 
         let consumption_name = req
@@ -1193,13 +1193,10 @@ async fn router(
                 && route_segments[..consumption_segments.len()] == consumption_segments;
 
             if is_consumption_route {
-                println!("Route segments: {:?}", route_segments);
-                println!("Consumption APIs: {:?}", consumption_apis);
-                println!("Consumption path: {}", consumption_path);
                 let consumption_prefix = if consumption_path.starts_with('/') {
                     consumption_path.to_string()
                 } else {
-                    format!("/{}", consumption_path)
+                    format!("/{consumption_path}")
                 };
                 match get_consumption_api_res(
                     http_client,

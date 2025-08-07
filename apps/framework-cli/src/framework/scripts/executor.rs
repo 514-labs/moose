@@ -8,7 +8,6 @@ use super::{config::WorkflowConfig, Workflow};
 use crate::framework::{
     languages::SupportedLanguages,
     scripts::utils::{parse_schedule, parse_timeout_to_seconds, TemporalExecutionError},
-    scripts::Workflows,
 };
 use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::orchestration::temporal_client::TemporalClientManager;
@@ -119,36 +118,21 @@ async fn execute_workflow_for_language(
 /// * `Result<(), WorkflowExecutionError>` - Success or an error if workflow startup fails
 pub(crate) async fn execute_scheduled_workflows(
     project: &Project,
-    dmv2_workflows: &HashMap<String, Workflow>,
+    workflows: &HashMap<String, Workflow>,
 ) {
     if !project.features.workflows {
         info!("Workflows are not enabled for this project. Not auto-starting scheduled workflows");
         return;
     }
 
-    let workflows = match Workflows::from_dir(project.scripts_dir()) {
-        Ok(w) => w,
-        Err(e) => {
-            log::error!("Failed to read workflows during auto-start: {}", e);
-            return;
-        }
-    };
-
-    info!(
-        "Auto-start workflows found {} workflows",
-        workflows.get_defined_workflows().len() + dmv2_workflows.len()
-    );
+    info!("Auto-start workflows found {} workflows", workflows.len());
 
     let running_workflows = list_running_workflows(project).await;
     info!("Found {} running workflow IDs", running_workflows.len());
 
-    async fn handle_workflow(
-        workflow: &Workflow,
-        running_workflows: &HashSet<String>,
-        project: &Project,
-    ) {
+    for workflow in workflows.values() {
         if workflow.config.schedule.is_empty() {
-            return;
+            continue;
         }
 
         if running_workflows.contains(&workflow.name) {
@@ -156,23 +140,13 @@ pub(crate) async fn execute_scheduled_workflows(
                 "Workflow {} is already running. Skipping auto-start",
                 workflow.name
             );
-            return;
+            continue;
         }
 
         match workflow.start(&project.temporal_config, None).await {
             Ok(_) => info!("Auto-started workflow: {}", workflow.name),
             Err(e) => log::error!("Failed to auto-start workflow {}: {}", workflow.name, e),
         }
-    }
-
-    // Handle regular workflows
-    for workflow in workflows.get_defined_workflows() {
-        handle_workflow(workflow, &running_workflows, project).await;
-    }
-
-    // Handle dmv2 workflows
-    for workflow in dmv2_workflows.values() {
-        handle_workflow(workflow, &running_workflows, project).await;
     }
 }
 

@@ -678,7 +678,6 @@ pub async fn top_command_handler(
             }
 
             let activity_type = match &workflow_args.command {
-                Some(WorkflowCommands::Init { .. }) => ActivityType::WorkflowInitCommand,
                 Some(WorkflowCommands::Run { .. }) => ActivityType::WorkflowRunCommand,
                 Some(WorkflowCommands::List { .. }) => ActivityType::WorkflowListCommand,
                 Some(WorkflowCommands::History { .. }) => ActivityType::WorkflowListCommand,
@@ -699,9 +698,6 @@ pub async fn top_command_handler(
             );
 
             let result = match &workflow_args.command {
-                Some(WorkflowCommands::Init { name, tasks, task }) => {
-                    init_workflow(&project, name, tasks.clone(), task.clone()).await
-                }
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }

@@ -106,3 +106,6 @@ pub const WORKFLOW_TYPE: &str = "ScriptWorkflow";
 pub const PYTHON_TASK_QUEUE: &str = "python-script-queue";
 pub const TYPESCRIPT_TASK_QUEUE: &str = "typescript-script-queue";
 pub const MOOSE_CLI_IDENTITY: &str = "moose-cli";
+
+/// Default path for migration plan files
+pub const DEFAULT_PLAN_PATH: &str = ".moose/migration-plan.yaml";

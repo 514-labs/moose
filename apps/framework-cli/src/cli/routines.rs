@@ -92,7 +92,7 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -111,9 +111,11 @@ use super::settings::Settings;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
+use crate::framework::core::migration_plan::MigrationPlan;
 use crate::framework::core::plan::plan_changes;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::utilities::constants::DEFAULT_PLAN_PATH;
 
 pub mod auth;
 pub mod build;
@@ -126,6 +128,7 @@ pub mod ls;
 pub mod metrics_console;
 pub mod openapi;
 pub mod peek;
+pub mod plan_generate;
 pub mod ps;
 pub mod scripts;
 pub mod seed_data;
@@ -350,7 +353,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (_, plan) = plan_changes(&redis_client, &project).await?;
 
     plan_validator::validate(&project, &plan)?;
 
@@ -408,6 +411,10 @@ pub async fn start_development_mode(
 /// Starts the application in production mode.
 /// This mode is optimized for production use with appropriate security and performance settings.
 ///
+/// The function now supports both auto-approval and manual approval workflows:
+/// - If MOOSE_AUTO_APPROVE_MIGRATIONS=true: behaves like before (automatic execution)
+/// - otherwise looks for approved migration plan file
+///
 /// # Arguments
 /// * `settings` - Reference to application Settings
 /// * `project` - Arc wrapped Project instance containing configuration
@@ -453,7 +460,60 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (current_state, mut plan) = plan_changes(&redis_client, &project).await?;
+
+    // Check auto-approval setting
+    let auto_approve_db = !project.features.ddl_plan
+        || std::env::var("MOOSE_AUTO_APPROVE_MIGRATIONS")
+            .unwrap_or_default()
+            .to_lowercase()
+            == "true";
+
+    if !auto_approve_db {
+        info!("Auto-approval disabled - looking for approved migration plan");
+
+        let plan_path: &Path = DEFAULT_PLAN_PATH.as_ref();
+        if !plan_path.exists() {
+            return Err(anyhow::anyhow!(
+                "No approved migration plan found at {}. \
+                 Generate a plan with 'moose plan-generate' and inject it into the production environment, \
+                 or set MOOSE_AUTO_APPROVE_MIGRATIONS=true for automatic approval.",
+                plan_path.display()
+            ));
+        }
+
+        // Load and validate the approved migration plan
+        let plan_content = std::fs::read_to_string(plan_path)?;
+        let migration_plan: MigrationPlan = serde_yaml::from_str(&plan_content)?;
+
+        info!("Loaded approved migration plan from {:?}", plan_path);
+        info!("Plan created: {}", migration_plan.created_at);
+        info!("Total operations: {}", migration_plan.total_operations());
+
+        let state_when_planned: InfrastructureMap =
+            serde_json::from_str(&migration_plan.source_infra_map)?;
+
+        if current_state.tables == state_when_planned.tables {
+            info!("DB state matches.");
+        } else {
+            panic!("The DB state has changed. Plan is no longer valid.");
+        }
+
+        // Execute the migration plan directly using OLAP operations
+        if project.features.olap && !migration_plan.operations.is_empty() {
+            info!("Executing approved migration plan...");
+
+            crate::infrastructure::olap::clickhouse::execute_serializable_operations(
+                &project,
+                &migration_plan.operations,
+            )
+            .await?;
+
+            info!("✓ Migration plan executed successfully");
+        }
+
+        plan.changes.olap_changes = Vec::new();
+    };
 
     plan_validator::validate(&project, &plan)?;
 

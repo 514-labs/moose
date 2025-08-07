@@ -23,6 +23,7 @@ use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::peek::peek;
+use routines::plan_generate::generate_migration_plan;
 use routines::ps::show_processes;
 use routines::scripts::{
     cancel_workflow, get_workflow_status, init_workflow, list_workflows_history, pause_workflow,
@@ -509,6 +510,41 @@ pub async fn top_command_handler(
                 "Plan".to_string(),
                 "Successfully planned changes to the infrastructure".to_string(),
             )))
+        }
+        Commands::PlanGenerate { force } => {
+            info!("Running plan-generate command");
+
+            let mut project = load_project()?;
+            project.set_is_production_env(true);
+            let project = Arc::new(project);
+            let redis_client = setup_redis_client(project.clone()).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Plan".to_string(),
+                    details: format!("Failed to setup redis client: {e:?}"),
+                })
+            })?;
+
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::PlanCommand,
+                Some(project.name()),
+                &settings,
+                machine_id.clone(),
+            );
+
+            check_project_name(&project.name())?;
+
+            let result = generate_migration_plan(&project, &redis_client, *force).await;
+
+            let routine_result = result.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Plan Generate".to_string(),
+                    details: format!("Failed to generate migration plan: {e:?}"),
+                })
+            })?;
+
+            wait_for_usage_capture(capture_handle).await;
+
+            Ok(routine_result)
         }
         Commands::Clean {} => {
             let project = load_project()?;

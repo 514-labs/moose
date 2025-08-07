@@ -4,6 +4,7 @@ use crate::framework::core::infrastructure::view::View;
 use crate::framework::core::infrastructure::DataLineage;
 use crate::framework::core::infrastructure::InfrastructureSignature;
 use crate::framework::core::infrastructure_map::{Change, ColumnChange, OlapChange, TableChange};
+use crate::infrastructure::olap::clickhouse::SerializableOlapOperation;
 use petgraph::algo::toposort;
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
@@ -27,172 +28,21 @@ pub struct DependencyInfo {
     pub pushes_data_to: Vec<InfrastructureSignature>,
 }
 
-/// Represents atomic DDL operations for OLAP resources.
-/// These are the smallest operational units that can be executed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum AtomicOlapOperation {
-    /// Create a new table
-    CreateTable {
-        /// The table to create
-        table: Table,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Drop an existing table
-    DropTable {
-        /// The table to drop
-        table: Table,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Add a column to a table
-    AddTableColumn {
-        /// The table to add the column to
-        table: Table,
-        /// Column to add
-        column: Column,
-        /// The column after which to add this column (None means adding as first column)
-        after_column: Option<String>,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Drop a column from a table
-    DropTableColumn {
-        /// The table to drop the column from
-        table: Table,
-        /// Name of the column to drop
-        column_name: String,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Modify a column in a table
-    ModifyTableColumn {
-        /// The table containing the column
-        table: Table,
-        /// Name of the column
-        column_name: String,
-        /// The data type before modification
-        before_data_type: ColumnType,
-        /// The data type after modification
-        after_data_type: ColumnType,
-        /// Whether the column was required before modification
-        before_required: bool,
-        /// Whether the column is required after modification
-        after_required: bool,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Create a new view
-    CreateView {
-        /// The view to create
-        view: View,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Drop an existing view
-    DropView {
-        /// The view to drop
-        view: View,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Run SQL setup script
-    RunSetupSql {
-        /// The SQL resource to run
-        resource: SqlResource,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
-    /// Run SQL teardown script
-    RunTeardownSql {
-        /// The SQL resource to run
-        resource: SqlResource,
-        /// Dependency information
-        dependency_info: DependencyInfo,
-    },
+pub struct OrderedAtomicOlapOperation {
+    pub operation: AtomicOlapOperation,
+    pub dependency_info: DependencyInfo,
 }
 
-impl AtomicOlapOperation {
-    /// Returns the infrastructure signature associated with this operation
-    pub fn resource_signature(&self) -> InfrastructureSignature {
-        match self {
-            AtomicOlapOperation::CreateTable { table, .. } => {
-                InfrastructureSignature::Table { id: table.id() }
-            }
-            AtomicOlapOperation::DropTable { table, .. } => {
-                InfrastructureSignature::Table { id: table.id() }
-            }
-            AtomicOlapOperation::AddTableColumn { table, .. } => {
-                InfrastructureSignature::Table { id: table.id() }
-            }
-            AtomicOlapOperation::DropTableColumn { table, .. } => {
-                InfrastructureSignature::Table { id: table.id() }
-            }
-            AtomicOlapOperation::ModifyTableColumn { table, .. } => {
-                InfrastructureSignature::Table { id: table.id() }
-            }
-            AtomicOlapOperation::CreateView { view, .. } => {
-                InfrastructureSignature::View { id: view.id() }
-            }
-            AtomicOlapOperation::DropView { view, .. } => {
-                InfrastructureSignature::View { id: view.id() }
-            }
-            AtomicOlapOperation::RunSetupSql { resource, .. } => {
-                InfrastructureSignature::SqlResource {
-                    id: resource.name.clone(),
-                }
-            }
-            AtomicOlapOperation::RunTeardownSql { resource, .. } => {
-                InfrastructureSignature::SqlResource {
-                    id: resource.name.clone(),
-                }
-            }
-        }
-    }
-
-    /// Returns a reference to the dependency info for this operation
-    pub fn dependency_info(&self) -> Option<&DependencyInfo> {
-        match self {
-            AtomicOlapOperation::CreateTable {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::DropTable {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::AddTableColumn {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::DropTableColumn {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::ModifyTableColumn {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::CreateView {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::DropView {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::RunSetupSql {
-                dependency_info, ..
-            }
-            | AtomicOlapOperation::RunTeardownSql {
-                dependency_info, ..
-            } => Some(dependency_info),
-        }
-    }
-
+impl OrderedAtomicOlapOperation {
     /// Returns edges representing setup dependencies (dependency → dependent)
     ///
     /// These edges indicate that the dependency must be created before the dependent.
     fn get_setup_edges(&self) -> Vec<DependencyEdge> {
-        // No dependency info for NoOp
-        let default_dependency_info = DependencyInfo::default();
-        let dependency_info = self.dependency_info().unwrap_or(&default_dependency_info);
+        let dependency_info = &self.dependency_info;
 
         // Get this operation's resource signature
-        let this_sig = self.resource_signature();
+        let this_sig = self.operation.resource_signature();
 
         let mut edges = vec![];
 
@@ -229,14 +79,10 @@ impl AtomicOlapOperation {
     ///
     /// These edges indicate that the dependent must be dropped before the dependency.
     fn get_teardown_edges(&self) -> Vec<DependencyEdge> {
-        // No dependency info for NoOp
-        let dependency_info = match self.dependency_info() {
-            Some(info) => info,
-            None => return vec![],
-        };
+        let dependency_info = &self.dependency_info;
 
         // Get this operation's resource signature
-        let this_sig = self.resource_signature();
+        let this_sig = self.operation.resource_signature();
 
         let mut edges = vec![];
 
@@ -246,7 +92,7 @@ impl AtomicOlapOperation {
 
         // Special cases for views and materialized views:
         // In teardown, we want views and materialized views to be dropped before their source and target tables
-        match self {
+        match self.operation {
             AtomicOlapOperation::RunTeardownSql { .. } | AtomicOlapOperation::DropView { .. } => {
                 // For a view or materialized view, we reverse the normal dependency direction
                 // Both pushes_data_to and pulls_data_from tables should depend on the view being gone first
@@ -312,6 +158,177 @@ impl AtomicOlapOperation {
     }
 }
 
+/// Represents atomic DDL operations for OLAP resources.
+/// These are the smallest operational units that can be executed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum AtomicOlapOperation {
+    /// Create a new table
+    CreateTable {
+        /// The table to create
+        table: Table,
+    },
+    /// Drop an existing table
+    DropTable {
+        /// The table to drop
+        table: Table,
+    },
+    /// Add a column to a table
+    AddTableColumn {
+        /// The table to add the column to
+        table: Table,
+        /// Column to add
+        column: Column,
+        /// The column after which to add this column (None means adding as first column)
+        after_column: Option<String>,
+    },
+    /// Drop a column from a table
+    DropTableColumn {
+        /// The table to drop the column from
+        table: Table,
+        /// Name of the column to drop
+        column_name: String,
+    },
+    /// Modify a column in a table
+    ModifyTableColumn {
+        /// The table containing the column
+        table: Table,
+        /// Name of the column
+        column_name: String,
+        /// The data type before modification
+        before_data_type: ColumnType,
+        /// The data type after modification
+        after_data_type: ColumnType,
+        /// Whether the column was required before modification
+        before_required: bool,
+        /// Whether the column is required after modification
+        after_required: bool,
+    },
+    /// Create a new view
+    CreateView {
+        /// The view to create
+        view: View,
+    },
+    /// Drop an existing view
+    DropView {
+        /// The view to drop
+        view: View,
+    },
+    /// Run SQL setup script
+    RunSetupSql {
+        /// The SQL resource to run
+        resource: SqlResource,
+    },
+    /// Run SQL teardown script
+    RunTeardownSql {
+        /// The SQL resource to run
+        resource: SqlResource,
+    },
+}
+
+impl AtomicOlapOperation {
+    /// Returns the infrastructure signature associated with this operation
+    pub fn resource_signature(&self) -> InfrastructureSignature {
+        match self {
+            AtomicOlapOperation::CreateTable { table, .. } => {
+                InfrastructureSignature::Table { id: table.id() }
+            }
+            AtomicOlapOperation::DropTable { table, .. } => {
+                InfrastructureSignature::Table { id: table.id() }
+            }
+            AtomicOlapOperation::AddTableColumn { table, .. } => {
+                InfrastructureSignature::Table { id: table.id() }
+            }
+            AtomicOlapOperation::DropTableColumn { table, .. } => {
+                InfrastructureSignature::Table { id: table.id() }
+            }
+            AtomicOlapOperation::ModifyTableColumn { table, .. } => {
+                InfrastructureSignature::Table { id: table.id() }
+            }
+            AtomicOlapOperation::CreateView { view, .. } => {
+                InfrastructureSignature::View { id: view.id() }
+            }
+            AtomicOlapOperation::DropView { view, .. } => {
+                InfrastructureSignature::View { id: view.id() }
+            }
+            AtomicOlapOperation::RunSetupSql { resource, .. } => {
+                InfrastructureSignature::SqlResource {
+                    id: resource.name.clone(),
+                }
+            }
+            AtomicOlapOperation::RunTeardownSql { resource, .. } => {
+                InfrastructureSignature::SqlResource {
+                    id: resource.name.clone(),
+                }
+            }
+        }
+    }
+
+    pub fn to_minimal(&self) -> SerializableOlapOperation {
+        match self {
+            AtomicOlapOperation::CreateTable { table } => SerializableOlapOperation::CreateTable {
+                table: table.clone(),
+            },
+            AtomicOlapOperation::DropTable { table } => SerializableOlapOperation::DropTable {
+                table: table.name.clone(),
+            },
+            AtomicOlapOperation::AddTableColumn {
+                table,
+                column,
+                after_column,
+            } => SerializableOlapOperation::AddTableColumn {
+                table: table.name.clone(),
+                column: column.clone(),
+                after_column: after_column.clone(),
+            },
+            AtomicOlapOperation::DropTableColumn { table, column_name } => {
+                SerializableOlapOperation::DropTableColumn {
+                    table: table.name.clone(),
+                    column_name: column_name.clone(),
+                }
+            }
+            AtomicOlapOperation::ModifyTableColumn {
+                table,
+                column_name,
+                before_data_type,
+                after_data_type,
+                before_required,
+                after_required,
+            } => SerializableOlapOperation::ModifyTableColumn {
+                table: table.name.clone(),
+                column_name: column_name.clone(),
+                before_data_type: before_data_type.clone(),
+                after_data_type: after_data_type.clone(),
+                before_required: *before_required,
+                after_required: *after_required,
+            },
+            AtomicOlapOperation::CreateView { view } => {
+                SerializableOlapOperation::CreateView { view: view.clone() }
+            }
+            AtomicOlapOperation::DropView { view } => {
+                // MinimalOlapOperation doesn't have DropView, convert to raw SQL
+                SerializableOlapOperation::RawSql {
+                    sql: vec![format!("DROP VIEW {}", view.name)],
+                    description: format!("Dropping view {}", view.name),
+                }
+            }
+            AtomicOlapOperation::RunSetupSql { resource } => {
+                // Convert to raw SQL by using setup commands as vector
+                SerializableOlapOperation::RawSql {
+                    sql: resource.setup.clone(),
+                    description: format!("Running setup SQL for resource {}", resource.name),
+                }
+            }
+            AtomicOlapOperation::RunTeardownSql { resource } => {
+                // Convert to raw SQL by using teardown commands as vector
+                SerializableOlapOperation::RawSql {
+                    sql: resource.teardown.clone(),
+                    description: format!("Running teardown SQL for resource {}", resource.name),
+                }
+            }
+        }
+    }
+}
+
 /// Errors that can occur during plan ordering.
 #[derive(Debug, thiserror::Error)]
 pub enum PlanOrderingError {
@@ -327,9 +344,9 @@ pub enum PlanOrderingError {
 #[derive(Debug, Clone, Default)]
 struct OperationPlan {
     /// Operations for tearing down resources
-    teardown_ops: Vec<AtomicOlapOperation>,
+    teardown_ops: Vec<OrderedAtomicOlapOperation>,
     /// Operations for setting up resources
-    setup_ops: Vec<AtomicOlapOperation>,
+    setup_ops: Vec<OrderedAtomicOlapOperation>,
 }
 
 impl OperationPlan {
@@ -342,7 +359,7 @@ impl OperationPlan {
     }
 
     /// Creates a plan with only setup operations
-    fn setup(ops: Vec<AtomicOlapOperation>) -> Self {
+    fn setup(ops: Vec<OrderedAtomicOlapOperation>) -> Self {
         Self {
             teardown_ops: Vec::new(),
             setup_ops: ops,
@@ -350,7 +367,7 @@ impl OperationPlan {
     }
 
     /// Creates a plan with only teardown operations
-    fn teardown(ops: Vec<AtomicOlapOperation>) -> Self {
+    fn teardown(ops: Vec<OrderedAtomicOlapOperation>) -> Self {
         Self {
             teardown_ops: ops,
             setup_ops: Vec::new(),
@@ -378,16 +395,20 @@ fn create_empty_dependency_info() -> DependencyInfo {
     create_dependency_info(vec![], vec![])
 }
 
-fn create_table_operation(table: &Table) -> AtomicOlapOperation {
-    AtomicOlapOperation::CreateTable {
-        table: table.clone(),
+fn create_table_operation(table: &Table) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::CreateTable {
+            table: table.clone(),
+        },
         dependency_info: create_empty_dependency_info(),
     }
 }
 
-fn drop_table_operation(table: &Table) -> AtomicOlapOperation {
-    AtomicOlapOperation::DropTable {
-        table: table.clone(),
+fn drop_table_operation(table: &Table) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::DropTable {
+            table: table.clone(),
+        },
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -430,20 +451,24 @@ fn process_column_addition(
     after: &Table,
     column: &Column,
     after_column: Option<&str>,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::AddTableColumn {
-        table: after.clone(),
-        column: column.clone(),
-        after_column: after_column.map(ToOwned::to_owned),
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::AddTableColumn {
+            table: after.clone(),
+            column: column.clone(),
+            after_column: after_column.map(ToOwned::to_owned),
+        },
         dependency_info: create_empty_dependency_info(),
     }
 }
 
 /// Process a column removal
-fn process_column_removal(before: &Table, column_name: &str) -> AtomicOlapOperation {
-    AtomicOlapOperation::DropTableColumn {
-        table: before.clone(),
-        column_name: column_name.to_string(),
+fn process_column_removal(before: &Table, column_name: &str) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::DropTableColumn {
+            table: before.clone(),
+            column_name: column_name.to_string(),
+        },
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -456,14 +481,16 @@ fn process_column_modification(
     after_data_type: &ColumnType,
     before_required: bool,
     after_required: bool,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::ModifyTableColumn {
-        table: after.clone(),
-        column_name: column_name.to_string(),
-        before_data_type: before_data_type.clone(),
-        after_data_type: after_data_type.clone(),
-        before_required,
-        after_required,
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::ModifyTableColumn {
+            table: after.clone(),
+            column_name: column_name.to_string(),
+            before_data_type: before_data_type.clone(),
+            after_data_type: after_data_type.clone(),
+            before_required,
+            after_required,
+        },
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -515,9 +542,9 @@ fn process_column_changes(
 fn create_view_operation(
     view: &View,
     pulls_from: Vec<InfrastructureSignature>,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::CreateView {
-        view: view.clone(),
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::CreateView { view: view.clone() },
         dependency_info: create_dependency_info(pulls_from, vec![]),
     }
 }
@@ -526,9 +553,9 @@ fn create_view_operation(
 fn drop_view_operation(
     view: &View,
     pushes_to: Vec<InfrastructureSignature>,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::DropView {
-        view: view.clone(),
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::DropView { view: view.clone() },
         dependency_info: create_dependency_info(vec![], pushes_to),
     }
 }
@@ -538,9 +565,11 @@ fn run_setup_sql_operation(
     resource: &SqlResource,
     pulls_from: Vec<InfrastructureSignature>,
     pushes_to: Vec<InfrastructureSignature>,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::RunSetupSql {
-        resource: resource.clone(),
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::RunSetupSql {
+            resource: resource.clone(),
+        },
         dependency_info: create_dependency_info(pulls_from, pushes_to),
     }
 }
@@ -550,9 +579,11 @@ fn run_teardown_sql_operation(
     resource: &SqlResource,
     pulls_from: Vec<InfrastructureSignature>,
     pushes_to: Vec<InfrastructureSignature>,
-) -> AtomicOlapOperation {
-    AtomicOlapOperation::RunTeardownSql {
-        resource: resource.clone(),
+) -> OrderedAtomicOlapOperation {
+    OrderedAtomicOlapOperation {
+        operation: AtomicOlapOperation::RunTeardownSql {
+            resource: resource.clone(),
+        },
         dependency_info: create_dependency_info(pulls_from, pushes_to),
     }
 }
@@ -633,7 +664,13 @@ fn handle_sql_resource_update(before: &SqlResource, after: &SqlResource) -> Oper
 ///   Tuple containing ordered teardown and setup operations
 pub fn order_olap_changes(
     changes: &[OlapChange],
-) -> Result<(Vec<AtomicOlapOperation>, Vec<AtomicOlapOperation>), PlanOrderingError> {
+) -> Result<
+    (
+        Vec<OrderedAtomicOlapOperation>,
+        Vec<OrderedAtomicOlapOperation>,
+    ),
+    PlanOrderingError,
+> {
     // Process each change to get atomic operations
     let mut plan = OperationPlan::new();
 
@@ -683,9 +720,9 @@ pub fn order_olap_changes(
 /// # Returns
 /// * `Result<Vec<AtomicOlapOperation>, PlanOrderingError>` - Ordered list of operations
 fn order_operations_by_dependencies(
-    operations: &[AtomicOlapOperation],
+    operations: &[OrderedAtomicOlapOperation],
     is_teardown: bool,
-) -> Result<Vec<AtomicOlapOperation>, PlanOrderingError> {
+) -> Result<Vec<OrderedAtomicOlapOperation>, PlanOrderingError> {
     if operations.is_empty() {
         return Ok(Vec::new());
     }
@@ -699,14 +736,14 @@ fn order_operations_by_dependencies(
     let mut previous_idx: Option<NodeIndex> = None;
     // First pass: Create nodes for all operations
     for (i, op) in operations.iter().enumerate() {
-        let signature = op.resource_signature();
+        let signature = op.operation.resource_signature();
 
         let node_idx = graph.add_node(i);
 
         let previous_signature = if i == 0 {
             None
         } else {
-            Some(operations[i - 1].resource_signature())
+            Some(operations[i - 1].operation.resource_signature())
         };
         if previous_signature.as_ref() == Some(&signature) {
             // retain stable ordering within the same signature
@@ -847,32 +884,38 @@ mod tests {
         };
 
         // Create some atomic operations
-        let create_op = AtomicOlapOperation::CreateTable {
-            table: table.clone(),
+        let create_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
-        let drop_op = AtomicOlapOperation::DropTable {
-            table: table.clone(),
+        let drop_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
-        let add_columns_op = AtomicOlapOperation::AddTableColumn {
-            table: table.clone(),
-            column: Column {
-                name: "new_col".to_string(),
-                data_type: crate::framework::core::infrastructure::table::ColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-                annotations: vec![],
+        let add_columns_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::AddTableColumn {
+                table: table.clone(),
+                column: Column {
+                    name: "new_col".to_string(),
+                    data_type: crate::framework::core::infrastructure::table::ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                },
+                after_column: None,
             },
-            after_column: None,
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -881,7 +924,8 @@ mod tests {
 
         // Verify they can be serialized and deserialized
         let create_json = serde_json::to_string(&create_op).unwrap();
-        let _op_deserialized: AtomicOlapOperation = serde_json::from_str(&create_json).unwrap();
+        let _op_deserialized: OrderedAtomicOlapOperation =
+            serde_json::from_str(&create_json).unwrap();
 
         // Basic test of operation equality
         assert_ne!(create_op, drop_op);
@@ -938,16 +982,20 @@ mod tests {
         };
 
         // Create operations with explicit dependencies
-        let op_create_a = AtomicOlapOperation::CreateTable {
-            table: table_a.clone(),
+        let op_create_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
 
-        let op_create_b = AtomicOlapOperation::CreateTable {
-            table: table_b.clone(),
+        let op_create_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_a".to_string(),
@@ -956,8 +1004,10 @@ mod tests {
             },
         };
 
-        let op_create_c = AtomicOlapOperation::CreateView {
-            view: view_c.clone(),
+        let op_create_c = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateView {
+                view: view_c.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_b".to_string(),
@@ -978,17 +1028,21 @@ mod tests {
 
         // Check that the order is correct: A, B, C
         assert_eq!(ordered.len(), 3);
-        match &ordered[0] {
-            AtomicOlapOperation::CreateTable { table, .. } => assert_eq!(table.name, "table_a"),
+        match &ordered[0].operation {
+            AtomicOlapOperation::CreateTable { table, .. } => {
+                assert_eq!(table.name, "table_a")
+            }
             _ => panic!("Expected CreateTable for table_a as first operation"),
         }
 
-        match &ordered[1] {
-            AtomicOlapOperation::CreateTable { table, .. } => assert_eq!(table.name, "table_b"),
+        match &ordered[1].operation {
+            AtomicOlapOperation::CreateTable { table, .. } => {
+                assert_eq!(table.name, "table_b")
+            }
             _ => panic!("Expected CreateTable for table_b as second operation"),
         }
 
-        match &ordered[2] {
+        match &ordered[2].operation {
             AtomicOlapOperation::CreateView { view, .. } => assert_eq!(view.name, "view_c"),
             _ => panic!("Expected CreateView for view_c as third operation"),
         }
@@ -1041,8 +1095,10 @@ mod tests {
         };
 
         // For table A (B depends on A)
-        let op_drop_a = AtomicOlapOperation::DropTable {
-            table: table_a.clone(),
+        let op_drop_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 // Table A doesn't depend on anything
                 pulls_data_from: vec![],
@@ -1054,8 +1110,10 @@ mod tests {
         };
 
         // For table B (C depends on B, B depends on A)
-        let op_drop_b = AtomicOlapOperation::DropTable {
-            table: table_b.clone(),
+        let op_drop_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 // Table B depends on Table A
                 pulls_data_from: vec![InfrastructureSignature::Table {
@@ -1069,8 +1127,10 @@ mod tests {
         };
 
         // For view C (depends on B)
-        let op_drop_c = AtomicOlapOperation::DropView {
-            view: view_c.clone(),
+        let op_drop_c = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropView {
+                view: view_c.clone(),
+            },
             dependency_info: DependencyInfo {
                 // View C depends on Table B
                 pulls_data_from: vec![InfrastructureSignature::Table {
@@ -1090,8 +1150,10 @@ mod tests {
         // Print the actual order for debugging
         let actual_order: Vec<String> = ordered
             .iter()
-            .map(|op| match op {
-                AtomicOlapOperation::DropTable { table, .. } => format!("table {}", table.name),
+            .map(|op| match &op.operation {
+                AtomicOlapOperation::DropTable { table, .. } => {
+                    format!("table {}", table.name)
+                }
                 AtomicOlapOperation::DropView { view, .. } => format!("view {}", view.name),
                 _ => "other".to_string(),
             })
@@ -1102,20 +1164,24 @@ mod tests {
         assert_eq!(ordered.len(), 3);
 
         // First operation should be to drop view C
-        match &ordered[0] {
+        match &ordered[0].operation {
             AtomicOlapOperation::DropView { view, .. } => assert_eq!(view.name, "view_c"),
             _ => panic!("Expected DropView for view_c as first operation"),
         }
 
         // Second operation should be to drop table B
-        match &ordered[1] {
-            AtomicOlapOperation::DropTable { table, .. } => assert_eq!(table.name, "table_b"),
+        match &ordered[1].operation {
+            AtomicOlapOperation::DropTable { table, .. } => {
+                assert_eq!(table.name, "table_b")
+            }
             _ => panic!("Expected DropTable for table_b as second operation"),
         }
 
         // Third operation should be to drop table A
-        match &ordered[2] {
-            AtomicOlapOperation::DropTable { table, .. } => assert_eq!(table.name, "table_a"),
+        match &ordered[2].operation {
+            AtomicOlapOperation::DropTable { table, .. } => {
+                assert_eq!(table.name, "table_a")
+            }
             _ => panic!("Expected DropTable for table_a as third operation"),
         }
     }
@@ -1159,8 +1225,10 @@ mod tests {
         // Create operations with correct dependencies
 
         // Create table first (no dependencies)
-        let op_create_table = AtomicOlapOperation::CreateTable {
-            table: table.clone(),
+        let op_create_table = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -1172,10 +1240,12 @@ mod tests {
             id: format!("{}.{}", table.name, column.name),
         };
 
-        let op_add_column = AtomicOlapOperation::AddTableColumn {
-            table: table.clone(),
-            column: column.clone(),
-            after_column: None,
+        let op_add_column = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::AddTableColumn {
+                table: table.clone(),
+                column: column.clone(),
+                after_column: None,
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: table.name.clone(),
@@ -1185,8 +1255,8 @@ mod tests {
         };
 
         // Create view (depends on table)
-        let op_create_view = AtomicOlapOperation::CreateView {
-            view: view.clone(),
+        let op_create_view = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateView { view: view.clone() },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: table.name.clone(),
@@ -1226,7 +1296,7 @@ mod tests {
             Ok(ordered) => {
                 // Success! Verify the table is first
                 assert_eq!(ordered.len(), 3);
-                match &ordered[0] {
+                match &ordered[0].operation {
                     AtomicOlapOperation::CreateTable { table, .. } => {
                         assert_eq!(table.name, "test_table");
                     }
@@ -1236,7 +1306,7 @@ mod tests {
                 // Other operations should be present in some order
                 let has_add_column = ordered
                     .iter()
-                    .any(|op| matches!(op, AtomicOlapOperation::AddTableColumn { .. }));
+                    .any(|op| matches!(op.operation, AtomicOlapOperation::AddTableColumn { .. }));
                 assert!(
                     has_add_column,
                     "Expected AddTableColumn operation in result"
@@ -1244,7 +1314,7 @@ mod tests {
 
                 let has_create_view = ordered
                     .iter()
-                    .any(|op| matches!(op, AtomicOlapOperation::CreateView { .. }));
+                    .any(|op| matches!(op.operation, AtomicOlapOperation::CreateView { .. }));
                 assert!(has_create_view, "Expected CreateView operation in result");
             }
             Err(err) => {
@@ -1318,8 +1388,10 @@ mod tests {
 
         // Test operations
         let operations = vec![
-            AtomicOlapOperation::CreateTable {
-                table: table_a.clone(),
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::CreateTable {
+                    table: table_a.clone(),
+                },
                 dependency_info: DependencyInfo {
                     pulls_data_from: vec![InfrastructureSignature::Table {
                         id: "table_c".to_string(),
@@ -1329,8 +1401,10 @@ mod tests {
                     }],
                 },
             },
-            AtomicOlapOperation::CreateTable {
-                table: table_b.clone(),
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::CreateTable {
+                    table: table_b.clone(),
+                },
                 dependency_info: DependencyInfo {
                     pulls_data_from: vec![InfrastructureSignature::Table {
                         id: "table_a".to_string(),
@@ -1340,8 +1414,10 @@ mod tests {
                     }],
                 },
             },
-            AtomicOlapOperation::CreateTable {
-                table: table_c.clone(),
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::CreateTable {
+                    table: table_c.clone(),
+                },
                 dependency_info: DependencyInfo {
                     pulls_data_from: vec![InfrastructureSignature::Table {
                         id: "table_b".to_string(),
@@ -1459,16 +1535,20 @@ mod tests {
             life_cycle: LifeCycle::FullyManaged,
         };
 
-        let op_create_a = AtomicOlapOperation::CreateTable {
-            table: table_a.clone(),
+        let op_create_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
 
-        let op_create_b = AtomicOlapOperation::CreateTable {
-            table: table_b.clone(),
+        let op_create_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_a".to_string(),
@@ -1477,8 +1557,10 @@ mod tests {
             },
         };
 
-        let op_create_c = AtomicOlapOperation::CreateTable {
-            table: table_c.clone(),
+        let op_create_c = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_c.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_a".to_string(),
@@ -1487,8 +1569,10 @@ mod tests {
             },
         };
 
-        let op_create_d = AtomicOlapOperation::CreateTable {
-            table: table_d.clone(),
+        let op_create_d = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_d.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![
                     InfrastructureSignature::Table {
@@ -1502,8 +1586,10 @@ mod tests {
             },
         };
 
-        let op_create_e = AtomicOlapOperation::CreateTable {
-            table: table_e.clone(),
+        let op_create_e = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_e.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_d".to_string(),
@@ -1530,7 +1616,7 @@ mod tests {
         // D must come before E
         let position_a = ordered
             .iter()
-            .position(|op| match op {
+            .position(|op| match &op.operation {
                 AtomicOlapOperation::CreateTable { table, .. } => table.name == "table_a",
                 _ => false,
             })
@@ -1538,7 +1624,7 @@ mod tests {
 
         let position_b = ordered
             .iter()
-            .position(|op| match op {
+            .position(|op| match &op.operation {
                 AtomicOlapOperation::CreateTable { table, .. } => table.name == "table_b",
                 _ => false,
             })
@@ -1546,7 +1632,7 @@ mod tests {
 
         let position_c = ordered
             .iter()
-            .position(|op| match op {
+            .position(|op| match &op.operation {
                 AtomicOlapOperation::CreateTable { table, .. } => table.name == "table_c",
                 _ => false,
             })
@@ -1554,7 +1640,7 @@ mod tests {
 
         let position_d = ordered
             .iter()
-            .position(|op| match op {
+            .position(|op| match &op.operation {
                 AtomicOlapOperation::CreateTable { table, .. } => table.name == "table_d",
                 _ => false,
             })
@@ -1562,7 +1648,7 @@ mod tests {
 
         let position_e = ordered
             .iter()
-            .position(|op| match op {
+            .position(|op| match &op.operation {
                 AtomicOlapOperation::CreateTable { table, .. } => table.name == "table_e",
                 _ => false,
             })
@@ -1638,24 +1724,30 @@ mod tests {
         };
 
         // Create operations
-        let op_create_a = AtomicOlapOperation::CreateTable {
-            table: table_a.clone(),
+        let op_create_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
 
-        let op_create_b = AtomicOlapOperation::CreateTable {
-            table: table_b.clone(),
+        let op_create_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
 
-        let op_setup_mv = AtomicOlapOperation::RunSetupSql {
-            resource: mv_sql_resource.clone(),
+        let op_setup_mv = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::RunSetupSql {
+                resource: mv_sql_resource.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_a".to_string(),
@@ -1681,7 +1773,10 @@ mod tests {
 
         // First should be either table_a or table_b (both need to be before MV)
         match &ordered[0] {
-            AtomicOlapOperation::CreateTable { table, .. } => {
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::CreateTable { table, .. },
+                ..
+            } => {
                 assert!(table.name == "table_a" || table.name == "table_b");
             }
             _ => panic!("Expected CreateTable as first operation"),
@@ -1689,12 +1784,19 @@ mod tests {
 
         // Second should be the other table
         match &ordered[1] {
-            AtomicOlapOperation::CreateTable { table, .. } => {
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::CreateTable { table, .. },
+                ..
+            } => {
                 assert!(table.name == "table_a" || table.name == "table_b");
                 // Make sure first and second are different tables
                 match &ordered[0] {
-                    AtomicOlapOperation::CreateTable {
-                        table: first_table, ..
+                    OrderedAtomicOlapOperation {
+                        operation:
+                            AtomicOlapOperation::CreateTable {
+                                table: first_table, ..
+                            },
+                        ..
                     } => {
                         assert_ne!(first_table.name, table.name);
                     }
@@ -1706,7 +1808,10 @@ mod tests {
 
         // Last should be the materialized view setup
         match &ordered[2] {
-            AtomicOlapOperation::RunSetupSql { .. } => {
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::RunSetupSql { .. },
+                ..
+            } => {
                 // This is the expected operation
             }
             _ => panic!("Expected RunSetupSql as third operation"),
@@ -1768,8 +1873,10 @@ mod tests {
         };
 
         // MV - no dependencies for teardown (it should be removed first)
-        let op_teardown_mv = AtomicOlapOperation::RunTeardownSql {
-            resource: mv_sql_resource.clone(),
+        let op_teardown_mv = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::RunTeardownSql {
+                resource: mv_sql_resource.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -1777,8 +1884,10 @@ mod tests {
         };
 
         // Table A - depends on MV being gone first
-        let op_drop_a = AtomicOlapOperation::DropTable {
-            table: table_a.clone(),
+        let op_drop_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 // For teardown: Table A depends on MV being gone first
                 pulls_data_from: vec![InfrastructureSignature::SqlResource {
@@ -1789,8 +1898,10 @@ mod tests {
         };
 
         // Table B - depends on MV being gone first
-        let op_drop_b = AtomicOlapOperation::DropTable {
-            table: table_b.clone(),
+        let op_drop_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 // For teardown: Table B depends on MV being gone first
                 pulls_data_from: vec![InfrastructureSignature::SqlResource {
@@ -1811,7 +1922,10 @@ mod tests {
 
         // First should be the materialized view teardown
         match &ordered[0] {
-            AtomicOlapOperation::RunTeardownSql { resource, .. } => {
+            OrderedAtomicOlapOperation {
+                operation: AtomicOlapOperation::RunTeardownSql { resource, .. },
+                ..
+            } => {
                 assert_eq!(
                     resource.name, "mv_a_to_b",
                     "MV should be torn down first before its target and source tables"
@@ -1822,12 +1936,12 @@ mod tests {
 
         // Second and third should be tables in any order
         // We don't require a specific order between the tables after the view is gone
-        let has_table_a_after_mv = ordered.iter().skip(1).any(|op| match op {
+        let has_table_a_after_mv = ordered.iter().skip(1).any(|op| match &op.operation {
             AtomicOlapOperation::DropTable { table, .. } => table.name == "table_a",
             _ => false,
         });
 
-        let has_table_b_after_mv = ordered.iter().skip(1).any(|op| match op {
+        let has_table_b_after_mv = ordered.iter().skip(1).any(|op| match &op.operation {
             AtomicOlapOperation::DropTable { table, .. } => table.name == "table_b",
             _ => false,
         });
@@ -1903,8 +2017,10 @@ mod tests {
 
         // Create setup operations
         // Table A - no dependencies
-        let op_create_a = AtomicOlapOperation::CreateTable {
-            table: table_a.clone(),
+        let op_create_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -1912,8 +2028,10 @@ mod tests {
         };
 
         // Table B - no direct dependencies
-        let op_create_b = AtomicOlapOperation::CreateTable {
-            table: table_b.clone(),
+        let op_create_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -1921,8 +2039,10 @@ mod tests {
         };
 
         // MV - reads from A, writes to B
-        let op_create_mv = AtomicOlapOperation::RunSetupSql {
-            resource: resource.clone(),
+        let op_create_mv = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::RunSetupSql {
+                resource: resource.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: "table_a".to_string(),
@@ -1948,7 +2068,7 @@ mod tests {
             "Actual setup order: {:?}",
             ordered_setup
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::RunSetupSql { resource, .. } =>
                         format!("setup resource {}", resource.name),
                     AtomicOlapOperation::CreateTable { table, .. } =>
@@ -1961,17 +2081,17 @@ mod tests {
         // MV must come after both tables
         let pos_a = ordered_setup
             .iter()
-            .position(|op| matches!(op, AtomicOlapOperation::CreateTable { table, .. } if table.name == "table_a"))
+            .position(|op| matches!(&op.operation, AtomicOlapOperation::CreateTable { table, .. } if table.name == "table_a"))
             .unwrap();
 
         let pos_b = ordered_setup
             .iter()
-            .position(|op| matches!(op, AtomicOlapOperation::CreateTable { table, .. } if table.name == "table_b"))
+            .position(|op| matches!(&op.operation, AtomicOlapOperation::CreateTable { table, .. } if table.name == "table_b"))
             .unwrap();
 
         let pos_mv = ordered_setup
             .iter()
-            .position(|op| matches!(op, AtomicOlapOperation::RunSetupSql { .. }))
+            .position(|op| matches!(op.operation, AtomicOlapOperation::RunSetupSql { .. }))
             .unwrap();
 
         // MV must come after both tables
@@ -1979,8 +2099,10 @@ mod tests {
         assert!(pos_b < pos_mv, "Table B must be created before the MV");
 
         // Now test teardown ordering
-        let op_drop_mv = AtomicOlapOperation::RunTeardownSql {
-            resource: resource.clone(),
+        let op_drop_mv = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::RunTeardownSql {
+                resource: resource.clone(),
+            },
             dependency_info: DependencyInfo {
                 // For teardown, MV doesn't depend on anything (it should be removed first)
                 pulls_data_from: vec![],
@@ -1988,8 +2110,10 @@ mod tests {
             },
         };
 
-        let op_drop_a = AtomicOlapOperation::DropTable {
-            table: table_a.clone(),
+        let op_drop_a = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_a.clone(),
+            },
             dependency_info: DependencyInfo {
                 // For teardown: Table A depends on MV being gone first
                 pulls_data_from: vec![InfrastructureSignature::SqlResource {
@@ -1999,8 +2123,10 @@ mod tests {
             },
         };
 
-        let op_drop_b = AtomicOlapOperation::DropTable {
-            table: table_b.clone(),
+        let op_drop_b = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table_b.clone(),
+            },
             dependency_info: DependencyInfo {
                 // For teardown: Table B depends on MV being gone first
                 pulls_data_from: vec![InfrastructureSignature::SqlResource {
@@ -2022,7 +2148,7 @@ mod tests {
             "Actual teardown order: {:?}",
             ordered_teardown
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::RunTeardownSql { resource, .. } =>
                         format!("teardown resource {}", resource.name),
                     AtomicOlapOperation::DropTable { table, .. } =>
@@ -2035,22 +2161,28 @@ mod tests {
         // MV must be torn down first
         let pos_mv_teardown = ordered_teardown
             .iter()
-            .position(|op| matches!(op, AtomicOlapOperation::RunTeardownSql { .. }))
+            .position(|op| matches!(op.operation, AtomicOlapOperation::RunTeardownSql { .. }))
             .unwrap();
 
         // Check that MV is first
         assert_eq!(pos_mv_teardown, 0, "MV should be torn down first");
 
         // Both tables should be after the MV
-        let has_table_a_after_mv = ordered_teardown.iter().skip(1).any(|op| match op {
-            AtomicOlapOperation::DropTable { table, .. } => table.name == "table_a",
-            _ => false,
-        });
+        let has_table_a_after_mv = ordered_teardown
+            .iter()
+            .skip(1)
+            .any(|op| match &op.operation {
+                AtomicOlapOperation::DropTable { table, .. } => table.name == "table_a",
+                _ => false,
+            });
 
-        let has_table_b_after_mv = ordered_teardown.iter().skip(1).any(|op| match op {
-            AtomicOlapOperation::DropTable { table, .. } => table.name == "table_b",
-            _ => false,
-        });
+        let has_table_b_after_mv = ordered_teardown
+            .iter()
+            .skip(1)
+            .any(|op| match &op.operation {
+                AtomicOlapOperation::DropTable { table, .. } => table.name == "table_b",
+                _ => false,
+            });
 
         assert!(
             has_table_a_after_mv,
@@ -2095,8 +2227,10 @@ mod tests {
         };
 
         // Create operations with signatures that work with the current implementation
-        let create_table_op = AtomicOlapOperation::CreateTable {
-            table: table.clone(),
+        let create_table_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::CreateTable {
+                table: table.clone(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
@@ -2109,10 +2243,12 @@ mod tests {
             id: format!("{}.{}", table.name, column.name),
         };
 
-        let op_add_column = AtomicOlapOperation::AddTableColumn {
-            table: table.clone(),
-            column: column.clone(),
-            after_column: None,
+        let op_add_column = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::AddTableColumn {
+                table: table.clone(),
+                column: column.clone(),
+                after_column: None,
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![InfrastructureSignature::Table {
                     id: table.name.clone(),
@@ -2134,7 +2270,7 @@ mod tests {
             "Ordered setup 1: {:?}",
             ordered_setup_1
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::CreateTable { .. } => "CreateTable",
                     AtomicOlapOperation::AddTableColumn { .. } => "AddTableColumn",
                     _ => "Other",
@@ -2146,7 +2282,7 @@ mod tests {
             "Ordered setup 2: {:?}",
             ordered_setup_2
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::CreateTable { .. } => "CreateTable",
                     AtomicOlapOperation::AddTableColumn { .. } => "AddTableColumn",
                     _ => "Other",
@@ -2186,17 +2322,21 @@ mod tests {
             id: format!("{}.{}", table.name, "test_column"),
         };
 
-        let drop_column_op = AtomicOlapOperation::DropTableColumn {
-            table: table.clone(),
-            column_name: "test_column".to_string(),
+        let drop_column_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTableColumn {
+                table: table.clone(),
+                column_name: "test_column".to_string(),
+            },
             dependency_info: DependencyInfo {
                 pulls_data_from: vec![],
                 pushes_data_to: vec![],
             },
         };
 
-        let drop_table_op = AtomicOlapOperation::DropTable {
-            table: table.clone(),
+        let drop_table_op = OrderedAtomicOlapOperation {
+            operation: AtomicOlapOperation::DropTable {
+                table: table.clone(),
+            },
             dependency_info: DependencyInfo {
                 // Table depends on column being dropped first
                 pulls_data_from: vec![InfrastructureSignature::Table {
@@ -2221,7 +2361,7 @@ mod tests {
             "Ordered teardown 1: {:?}",
             ordered_teardown_1
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::DropTable { .. } => "DropTable",
                     AtomicOlapOperation::DropTableColumn { .. } => "DropTableColumn",
                     _ => "Other",
@@ -2233,7 +2373,7 @@ mod tests {
             "Ordered teardown 2: {:?}",
             ordered_teardown_2
                 .iter()
-                .map(|op| match op {
+                .map(|op| match &op.operation {
                     AtomicOlapOperation::DropTable { .. } => "DropTable",
                     AtomicOlapOperation::DropTableColumn { .. } => "DropTableColumn",
                     _ => "Other",
@@ -2361,7 +2501,7 @@ mod tests {
             "Should have one setup operation for column addition"
         );
 
-        match &plan.teardown_ops[0] {
+        match &plan.teardown_ops[0].operation {
             AtomicOlapOperation::DropTableColumn {
                 table, column_name, ..
             } => {
@@ -2374,7 +2514,7 @@ mod tests {
             _ => panic!("Expected DropTableColumn operation"),
         }
 
-        match &plan.setup_ops[0] {
+        match &plan.setup_ops[0].operation {
             AtomicOlapOperation::AddTableColumn {
                 table,
                 column,

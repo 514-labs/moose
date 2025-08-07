@@ -160,6 +160,10 @@ pub struct ProjectFeatures {
     #[serde(default)]
     pub data_model_v2: bool,
 
+    /// Execute planned DDL file unless MOOSE_AUTO_APPROVE_MIGRATIONS=true
+    #[serde(default)]
+    pub ddl_plan: bool,
+
     /// Whether OLAP (ClickHouse) is enabled
     #[serde(default = "_true")]
     pub olap: bool,
@@ -171,6 +175,7 @@ impl Default for ProjectFeatures {
             streaming_engine: true,
             workflows: false,
             data_model_v2: false,
+            ddl_plan: false,
             olap: true,
         }
     }

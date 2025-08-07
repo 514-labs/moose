@@ -1,1 +1,0 @@
-(id, project, activityType, sequenceId, timestamp, cliVersion, isMooseDeveloper) -> (id, project, activityType, sequenceId, timestamp, cliVersion, isMooseDeveloper, 'noMachineId')

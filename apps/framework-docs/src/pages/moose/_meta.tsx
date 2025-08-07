@@ -20,6 +20,7 @@ import {
   Terminal,
   Database,
   Workflow,
+  Waves,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic

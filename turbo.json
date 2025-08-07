@@ -16,6 +16,9 @@
         "NEXT_PUBLIC_RELEASE_VERSION"
       ]
     },
+    "@514labs/moose-proto#build": {
+      "dependsOn": ["@514labs/moose-proto#gen"]
+    },
     "lint": {},
     "check-types": {},
     "dev": {
@@ -24,6 +27,10 @@
     },
     "clean": {
       "cache": false
+    },
+    "@514labs/moose-proto#gen": {
+      "cache": false,
+      "outputs": ["generated/**"]
     }
   }
 }

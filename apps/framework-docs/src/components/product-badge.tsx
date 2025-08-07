@@ -7,11 +7,11 @@ interface CustomBadgeProps {
   className?: string;
 }
 
-export function ProductBadge({
+export const ProductBadge: React.FC<CustomBadgeProps> = ({
   variant = "default",
   children,
   className = "",
-}: CustomBadgeProps): JSX.Element {
+}) => {
   const variantClasses = {
     moose:
       "bg-moose-purple hover:bg-moose-purple-dark text-moose-purple-foreground",
@@ -26,4 +26,4 @@ export function ProductBadge({
       {children}
     </Badge>
   );
-}
+};

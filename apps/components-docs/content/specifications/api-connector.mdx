@@ -1,0 +1,378 @@
+export const metadata = {
+  title: "API Connector Specification",
+  description: "Complete specification for implementing robust, production-ready API connectors"
+}
+
+## API Connector Specification
+
+This specification defines the requirements for implementing a robust, production-ready API connector.
+The connector should be language-agnostic and follow these guidelines to ensure reliability, maintainability, and extensibility.
+
+### Core Methods
+
+Every API connector must implement the following core functionality:
+
+#### Initialization and Lifecycle
+
+- **initialize(configuration)**  
+  Sets up the connector with the provided configuration. Should validate the configuration and prepare any internal state.
+
+- **connect()**  
+  Establishes connection to the API service. May include authentication, session creation, or connection pooling.
+
+- **disconnect()**  
+  Gracefully closes the connection and cleans up resources. Should complete any pending requests before disconnecting.
+
+- **isConnected()**  
+  Returns true if the connector is currently connected and ready to make requests, false otherwise.
+
+#### Request Methods
+
+- **request(options)**  
+  Core method for making HTTP requests. All other HTTP methods should internally use this method.  
+  Options should include: method, path, headers, query parameters, body, timeout, and any method-specific settings.
+
+- **get(path, options)**  
+  Performs an HTTP GET request to the specified path.
+
+- **post(path, data, options)**  
+  Performs an HTTP POST request with the provided data payload.
+
+- **put(path, data, options)**  
+  Performs an HTTP PUT request to update a resource.
+
+- **patch(path, data, options)**  
+  Performs an HTTP PATCH request for partial updates.
+
+- **delete(path, options)**  
+  Performs an HTTP DELETE request to remove a resource.
+
+#### Advanced Operations
+
+- **batch(requests)**  
+  Executes multiple requests in a single operation where supported by the API. Should handle partial failures gracefully.
+
+- **paginate(options)**  
+  Returns an iterator that automatically handles pagination, fetching subsequent pages as needed. Should support different pagination strategies.
+
+### Configuration Structure
+
+The connector configuration should support the following settings:
+
+#### Base Configuration
+
+- **baseUrl** - The base URL for all API requests
+- **timeout** - Request timeout in milliseconds (default: 30000)
+
+#### Authentication Configuration
+
+Support for multiple authentication types:
+
+- **type** - One of: api_key, bearer, basic, oauth2, or custom
+- **credentials** - Authentication credentials specific to the chosen type
+
+#### Retry Configuration
+
+- **maxAttempts** - Maximum number of retry attempts (default: 3)
+- **initialDelay** - Initial retry delay in milliseconds (default: 1000)
+- **maxDelay** - Maximum retry delay in milliseconds (default: 30000)
+- **backoffMultiplier** - Multiplier for exponential backoff (default: 2)
+- **retryableStatusCodes** - HTTP status codes that trigger retries (default: [429, 500, 502, 503, 504])
+- **retryableErrors** - Error types/codes that should trigger retries
+
+#### Rate Limiting Configuration
+
+- **requestsPerSecond** - Maximum requests per second
+- **requestsPerMinute** - Maximum requests per minute
+- **requestsPerHour** - Maximum requests per hour
+- **concurrentRequests** - Maximum concurrent requests (default: 10)
+
+#### Default Settings
+
+- **defaultHeaders** - Headers to include with every request
+- **defaultQueryParams** - Query parameters to include with every request
+
+#### Hooks Configuration
+
+Arrays of hooks to execute at different stages:
+
+- **beforeRequest** - Executed before sending a request
+- **afterResponse** - Executed after receiving a response
+- **onError** - Executed when an error occurs
+- **onRetry** - Executed before retrying a request
+
+### Retry Mechanism
+
+The connector must implement a robust retry strategy with the following requirements:
+
+#### Retry Strategy Methods
+
+- **shouldRetry(error, attemptNumber)**  
+  Determines whether a request should be retried based on the error and current attempt count.
+
+- **calculateDelay(attemptNumber)**  
+  Calculates the delay before the next retry attempt.
+
+- **onRetry(error, attemptNumber)**  
+  Hook called before each retry attempt for logging or state updates.
+
+#### Implementation Requirements
+
+1. **Exponential Backoff**  
+   Calculate delay as: minimum(initialDelay × (backoffMultiplier ^ attemptNumber), maxDelay)
+
+2. **Jitter**  
+   Add randomization to prevent thundering herd: actualDelay = delay × (0.5 + random(0 to 0.5))
+
+3. **Respect Server Hints**  
+   Honor "Retry-After" headers when present
+
+4. **Circuit Breaker**  
+   Implement circuit breaker pattern to prevent cascading failures
+
+### Hook System
+
+Hooks provide extension points for customizing connector behavior without modifying core logic:
+
+#### Hook Structure
+
+- **name** - Unique identifier for the hook
+- **priority** - Execution order (lower numbers execute first)
+- **execute(context)** - The hook's main function
+
+#### Hook Context
+
+Each hook receives a context object containing:
+
+- **type** - The hook type: beforeRequest, afterResponse, onError, or onRetry
+- **request** - The request options (when applicable)
+- **response** - The response object (when applicable)
+- **error** - The error object (when applicable)
+- **metadata** - Additional context data
+
+#### Context Methods
+
+- **modifyRequest(updates)** - Modify the outgoing request
+- **modifyResponse(updates)** - Modify the incoming response
+- **abort(reason)** - Cancel the request with a reason
+
+#### Common Hook Use Cases
+
+- Adding authentication headers
+- Request/response logging
+- Metrics collection
+- Request signing
+- Response transformation
+- Error enrichment
+
+### Type and Data Model Management
+
+#### Response Structure
+
+All responses should be wrapped in a consistent structure containing:
+
+- **data** - The actual response payload
+- **status** - HTTP status code
+- **headers** - Response headers as key-value pairs
+- **meta** - Optional metadata including:
+  - **timestamp** - When the response was received
+  - **duration** - Request duration in milliseconds
+  - **retryCount** - Number of retry attempts made
+  - **rateLimit** - Current rate limit status
+
+#### Data Transformation
+
+The connector should provide methods for data transformation:
+
+- **deserialize(data, schema)**  
+  Transform API response data into internal application models
+
+- **serialize(data, schema)**  
+  Transform internal models into API-compatible format
+
+- **validate(data, schema)**  
+  Validate data against a schema definition
+
+#### Schema Definition
+
+Schemas should support:
+
+- **type** - Data type: object, array, string, number, or boolean
+- **properties** - For objects, defines nested properties
+- **items** - For arrays, defines the schema of array elements
+- **required** - List of required property names
+- **format** - Specific format constraints (e.g., date-time, email, uri)
+- **transform** - Custom transformation function
+
+### Error Handling
+
+#### Error Structure
+
+All connector errors should include:
+
+- **message** - Human-readable error description
+- **code** - Machine-readable error code
+- **statusCode** - HTTP status code (if applicable)
+- **details** - Additional error context or data
+- **retryable** - Boolean indicating if the request can be retried
+
+#### Standard Error Codes
+
+Connectors should use these standardized error codes:
+
+- **NETWORK_ERROR** - Network connectivity issues
+- **TIMEOUT** - Request exceeded timeout limit
+- **AUTH_FAILED** - Authentication or authorization failure
+- **RATE_LIMIT** - Rate limit exceeded
+- **INVALID_REQUEST** - Malformed or invalid request
+- **SERVER_ERROR** - Server-side error (5xx status codes)
+- **PARSING_ERROR** - Failed to parse response
+- **VALIDATION_ERROR** - Data validation failed
+
+#### Error Handling Best Practices
+
+- Preserve original error information for debugging
+- Provide actionable error messages
+- Include request context in error details
+- Differentiate between retryable and non-retryable errors
+- Log errors with appropriate severity levels
+
+### Pagination Support
+
+#### Pagination Configuration
+
+The paginate method should accept options including:
+
+- **pageSize** - Number of items per page
+- **startCursor** - Initial cursor for cursor-based pagination
+- **startPage** - Initial page number for page-based pagination
+- **strategy** - Pagination type: cursor, offset, page, or link-header
+
+#### Custom Extraction Functions
+
+Allow customization of pagination logic through:
+
+- **extractNextCursor(response)** - Extract the next page cursor from response
+- **extractItems(response)** - Extract items array from response
+- **hasNextPage(response)** - Determine if more pages exist
+
+#### Pagination Implementation
+
+The paginate method should:
+
+1. Return an iterator for memory-efficient processing
+2. Automatically fetch subsequent pages as needed
+3. Handle different pagination strategies transparently
+4. Yield arrays of items for each page
+5. Stop when no more pages are available
+
+```text
+PSEUDOCODE for paginate method:
+1. Initialize cursor/page from options
+2. Set hasMore = true
+3. WHILE hasMore:
+   a. Make request with current cursor/page
+   b. Extract items from response
+   c. Yield items to caller
+   d. Extract next cursor/page
+   e. Check if more pages exist
+   f. Update hasMore flag
+4. End iteration when no more pages
+```
+
+### Rate Limiting
+
+#### Rate Limiter Methods
+
+The rate limiter should implement:
+
+- **canProceed()**  
+  Returns true if a request can be made immediately without exceeding rate limits
+
+- **waitForSlot()**  
+  Blocks/waits until a request slot becomes available
+
+- **updateFromResponse(headers)**  
+  Updates rate limit state based on response headers (e.g., X-RateLimit-Remaining)
+
+- **getStatus()**  
+  Returns current rate limit status information
+
+#### Rate Limit Status
+
+Status information should include:
+
+- **limit** - Maximum requests allowed in the window
+- **remaining** - Requests remaining in current window
+- **reset** - Timestamp when the limit resets
+- **retryAfter** - Seconds to wait before retrying (if provided)
+
+#### Implementation Strategies
+
+- **Token Bucket** - Smooth rate limiting with burst capacity
+- **Sliding Window** - Precise rate limiting over time windows
+- **Fixed Window** - Simple reset at specific intervals
+- **Adaptive** - Adjust based on server feedback
+
+### Authentication Strategies
+
+#### Authentication Methods
+
+Each authentication strategy should implement:
+
+- **authenticate(request)**  
+  Apply authentication credentials to the outgoing request
+
+- **refresh()**  
+  Refresh expired credentials (optional, for token-based auth)
+
+- **isValid()**  
+  Check if current authentication credentials are still valid
+
+#### Required Authentication Types
+
+- **API Key**  
+  Support for API keys in headers, query parameters, or custom locations
+
+- **Bearer Token**  
+  JWT or opaque tokens with optional refresh mechanism
+
+- **Basic Authentication**  
+  Username and password encoded in Authorization header
+
+- **OAuth 2.0**  
+  Full OAuth flow with token refresh support
+
+- **Custom Authentication**  
+  Signature-based auth, HMAC, or other custom schemes
+
+#### Authentication Best Practices
+
+- Store credentials securely (never in plain text)
+- Implement automatic token refresh before expiration
+- Handle authentication failures gracefully
+- Support multiple authentication methods per connector
+- Allow authentication method switching at runtime
+
+### Best Practices
+
+- **Connection Pooling:** Reuse connections when possible
+- **Request Deduplication:** Prevent duplicate requests for the same resource
+- **Caching:** Implement cache headers respect (ETag, Last-Modified)
+- **Compression:** Support gzip/deflate compression
+- **Logging:** Structured logging with request IDs for tracing
+- **Metrics:** Track request count, latency, error rates
+- **Graceful Shutdown:** Complete in-flight requests before disconnecting
+- **Resource Cleanup:** Properly clean up timers, connections, and listeners
+
+### Testing Requirements
+
+Connectors must include:
+
+- Unit tests for all public methods
+- Integration tests with mock servers
+- Retry logic testing with various failure scenarios
+- Rate limit testing
+- Authentication flow testing
+- Error handling and recovery testing
+- Performance benchmarks

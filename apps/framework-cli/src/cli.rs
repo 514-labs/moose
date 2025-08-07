@@ -25,8 +25,8 @@ use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
-    cancel_workflow, get_workflow_status, init_workflow, list_workflows_history, pause_workflow,
-    run_workflow, terminate_workflow, unpause_workflow,
+    cancel_workflow, get_workflow_status, list_workflows_history, pause_workflow, run_workflow,
+    terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
 

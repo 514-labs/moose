@@ -38,7 +38,7 @@ const rawMeta = {
   },
   streaming: {
     title: "Streaming",
-    Icon: Wave,
+    Icon: Waves,
     isMoose: true,
   },
   workflows: {

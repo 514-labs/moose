@@ -11,7 +11,7 @@ import {
   History,
   Database,
   Workflow,
-  Rss,
+  Waves,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -38,7 +38,7 @@ const rawMeta = {
   },
   streaming: {
     title: "Streaming",
-    Icon: Rss,
+    Icon: Wave,
     isMoose: true,
   },
   workflows: {

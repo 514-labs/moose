@@ -3,7 +3,7 @@ title: Sync to Table
 description: Automatically sync stream data to OLAP tables with intelligent batching
 ---
 
-import { Callout, BulletPointsCard, LanguageSwitcher, TypeScript, Python, ToggleBlock } from "@/components";
+import { Callout, BulletPointsCard, LanguageSwitcher, TypeScript, Python, ToggleBlock, PathConfig } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Sync to Table
@@ -200,6 +200,9 @@ Default batching parameters:
 | `MAX_BATCH_SIZE` | 100,000 records | Maximum records per batch insert |
 | `FLUSH_INTERVAL` | 1 second | Automatic flush regardless of batch size |
 
+<Callout type="info" title="Paramters are not configurable" href={PathConfig.slack.path} ctaLabel="Join Slack">
+Currently, you cannot configure the batching parameters, but we're interested in adding this feature. If you need this capability, let us know on slack!
+</Callout>
 
 </ToggleBlock>
 

@@ -173,10 +173,10 @@ The key idea is leveraging Union Types to extend base TypeScript types with "met
 - validate the data at runtime
 
 ```ts
-interface Transaction {
+interface Event {
   // Base type: string
   // ClickHouse: String with primary key
-  transactionId: Key<string>;
+  id: Key<string>;
   
   // Base type: string
   // ClickHouse: Decimal(10,2) for precise money
@@ -192,16 +192,16 @@ interface Transaction {
 }
 
 // In your application code:
-const tx: Transaction = {
-  transactionId: "tx_123",
+const event: Event = {
+  id: "id_123",
   amount: "99.99",        // Just a string in TypeScript
   status: "completed",    // Just a string in TypeScript
   createdAt: new Date()
 };
 
 // In ClickHouse:
-// CREATE TABLE transactions (
-//   transaction_id String,
+// CREATE TABLE events (
+//   id String,
 //   amount Decimal(10,2),
 //   status LowCardinality(String),
 //   created_at DateTime
@@ -217,10 +217,10 @@ The key idea is leveraging Annotated types to extend base Python types with "met
 from moose_lib import Key, clickhouse_decimal
 from typing import Annotated
 
-class Transaction(BaseModel):
+class Model(BaseModel):
     # Base type: str
     # ClickHouse: String with primary key
-    transaction_id: Key[str]
+    id: Key[str]
     
     # Base type: Decimal
     # ClickHouse: Decimal(10,2) for precise money
@@ -234,17 +234,19 @@ class Transaction(BaseModel):
     # ClickHouse: DateTime
     created_at: datetime
 
+events = OlapTable[Event]("events")
+
 # In your application code:
-tx = Transaction(
-    transaction_id="tx_123",
+tx = Event(
+    id="id_123",
     amount=Decimal("99.99"),     # Regular Decimal in Python
     status="completed",          # Regular string in Python
     created_at=datetime.now()
 )
 
 # In ClickHouse:
-# CREATE TABLE transactions (
-#   transaction_id String,
+# CREATE TABLE events (
+#   id String,
 #   amount Decimal(10,2),
 #   status LowCardinality(String),
 #   created_at DateTime
@@ -259,7 +261,7 @@ tx = Transaction(
 
 Let's walk through how to model data for different infrastructure components and see how types behave across them.
 
-### Use Case 1: Simple Data Model Shared Across Infrastructure
+### Simple Data Model Shared Across Infrastructure
 
 A basic data model that works identically across all infrastructure components:
 
@@ -313,7 +315,7 @@ pipeline = IngestPipeline[SimpleShared]("simple_shared", IngestPipelineConfig(
 
 **Key Point**: One model definition creates consistent schemas across all systems.
 
-### Use Case 2: Composite Types Shared Across Infrastructure
+### Composite Types Shared Across Infrastructure
 
 Complex types including nested objects, arrays, and enums work seamlessly across all components:
 
@@ -412,7 +414,7 @@ pipeline = IngestPipeline[CompositeShared]("composite_shared", IngestPipelineCon
 
 **Key Point**: Complex types including nested objects and arrays work consistently across all infrastructure.
 
-### Use Case 3: ClickHouse-Specific Types (Standalone vs IngestPipeline)
+### ClickHouse-Specific Types (Standalone vs IngestPipeline)
 
 ClickHouse type annotations optimize database performance but are **transparent to other infrastructure**:
 
@@ -517,9 +519,9 @@ pipeline = IngestPipeline[ClickHouseOptimized]("optimized_pipeline", IngestPipel
 
 **Key Point**: ClickHouse annotations are metadata that ONLY affect the database schema. Your application code and other infrastructure components see regular TypeScript/Python types.
 
-### Use Case 4: ConsumptionAPI with Runtime Validators
+### API Contracts with Runtime Validators
 
-ConsumptionAPIs use runtime validation to ensure query parameters meet your requirements:
+APIs use runtime validation to ensure query parameters meet your requirements:
 
 <TypeScript>
 ```ts filename="app/apis/consumption_with_validation.ts"

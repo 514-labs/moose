@@ -2,11 +2,8 @@ import { render } from "@/components";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { SmallText } from "@/components/typography";
 import {
-  ArrowRight,
   HandMetal,
   Code,
-  BookOpen,
-  Rocket,
   BookMarked,
   History,
   Database,
@@ -18,9 +15,6 @@ import {
   ChartBar,
   Hammer,
   Terminal,
-  Database,
-  Workflow,
-  Waves,
   GanttChart,
 } from "lucide-react";
 

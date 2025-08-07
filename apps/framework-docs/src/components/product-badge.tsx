@@ -1,8 +1,9 @@
+import * as React from "react";
 import { Badge } from "@/components/ui";
 
 interface CustomBadgeProps {
   variant?: "moose" | "boreal" | "aurora" | "default";
-  children: React.ReactNode;
+  children: string | JSX.Element | JSX.Element[];
   className?: string;
 }
 
@@ -10,7 +11,7 @@ export function ProductBadge({
   variant = "default",
   children,
   className = "",
-}: CustomBadgeProps) {
+}: CustomBadgeProps): JSX.Element {
   const variantClasses = {
     moose:
       "bg-moose-purple hover:bg-moose-purple-dark text-moose-purple-foreground",

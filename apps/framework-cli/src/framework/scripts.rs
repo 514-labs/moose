@@ -11,11 +11,6 @@ use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-// A worklfow is a collection of scripts that are executed in order
-//
-// Workflows are simply a file with a list of scripts within them.
-//
-// A workflow's name is the name of the folder that contains the scripts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workflow {
     name: String,

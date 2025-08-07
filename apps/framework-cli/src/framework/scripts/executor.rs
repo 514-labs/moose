@@ -95,6 +95,7 @@ async fn execute_workflow_for_language(
     client_manager
         .execute(|mut client| async move {
             let request = create_workflow_execution_request(namespace, &params)?;
+            info!("Starting workflow execution: {:?}", request);
             client
                 .start_workflow_execution(request)
                 .await
@@ -241,10 +242,16 @@ fn create_workflow_execution_request(
             normal_name: params.task_queue_name.to_string(),
         }),
         input: Some(Payloads { payloads }),
-        workflow_run_timeout: Some(prost_wkt_types::Duration {
-            seconds: parse_timeout_to_seconds(&params.config.timeout)?,
-            nanos: 0,
-        }),
+        workflow_run_timeout: {
+            if params.config.timeout == "none" {
+                None
+            } else {
+                Some(prost_wkt_types::Duration {
+                    seconds: parse_timeout_to_seconds(&params.config.timeout)?,
+                    nanos: 0,
+                })
+            }
+        },
         identity: MOOSE_CLI_IDENTITY.to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
         // Allow duplicate doesn't actually allow concurrent runs of the same workflow ID

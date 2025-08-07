@@ -1,5 +1,6 @@
 import {
   log as logger,
+  ActivityOptions,
   proxyActivities,
   workflowInfo,
   continueAsNew,
@@ -64,19 +65,46 @@ async function handleDmv2Task(
   task: Task<any, any>,
   inputData: any,
 ): Promise<any[]> {
-  const taskTimeout = (task.config.timeout || "1h") as Duration;
+  // Handle timeout configuration
+  const configTimeout = task.config.timeout;
+  let taskTimeout: Duration | undefined;
+
+  if (!configTimeout) {
+    taskTimeout = "1h";
+  } else if (configTimeout === "none") {
+    taskTimeout = undefined;
+  } else {
+    taskTimeout = configTimeout as Duration;
+  }
+
   const taskRetries = task.config.retries ?? 3;
+
+  const timeoutMessage =
+    taskTimeout ? `with timeout ${taskTimeout}` : "with no timeout (unlimited)";
   logger.info(
-    `Handling task ${task.name} with timeout ${taskTimeout} and retries ${taskRetries}`,
+    `Handling task ${task.name} ${timeoutMessage} and retries ${taskRetries}`,
   );
 
-  const { executeDmv2Task } = proxyActivities({
-    startToCloseTimeout: taskTimeout,
+  const activityOptions: ActivityOptions = {
     heartbeatTimeout: "10s",
     retry: {
       maximumAttempts: taskRetries,
     },
-  });
+  };
+
+  // Temporal requires either startToCloseTimeout OR scheduleToCloseTimeout to be set
+  // For unlimited timeout (timeout = "none"), we use scheduleToCloseTimeout with a very large value
+  // For normal timeouts, we use startToCloseTimeout for single execution timeout
+  if (taskTimeout) {
+    // Normal timeout - limit each individual execution attempt
+    activityOptions.startToCloseTimeout = taskTimeout;
+  } else {
+    // Unlimited timeout - set scheduleToCloseTimeout to a very large value (10 years)
+    // This satisfies Temporal's requirement while effectively allowing unlimited execution
+    activityOptions.scheduleToCloseTimeout = "87600h"; // 10 years
+  }
+
+  const { executeDmv2Task } = proxyActivities(activityOptions);
 
   const monitorTask = async () => {
     logger.info(`Monitor task starting for ${task.name}`);
@@ -85,6 +113,7 @@ async function handleDmv2Task(
 
       // TODO: remove historyLimitChecks >= 10. This is just to test the continue as new functionality
       if (
+        info.continueAsNewSuggested ||
         info.historyLength >= 800 ||
         info.historySize >= 1048576 ||
         historyLimitChecks >= 10

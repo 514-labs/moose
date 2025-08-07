@@ -11,6 +11,7 @@ import {
   History,
   Database,
   Workflow,
+  Waves,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -33,6 +34,11 @@ const rawMeta = {
   olap: {
     title: "OLAP",
     Icon: Database,
+    isMoose: true,
+  },
+  streaming: {
+    title: "Streaming",
+    Icon: Waves,
     isMoose: true,
   },
   workflows: {

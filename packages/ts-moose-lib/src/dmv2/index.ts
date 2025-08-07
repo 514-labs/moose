@@ -41,6 +41,10 @@ export { ETLPipeline, ETLPipelineConfig } from "./sdk/etlPipeline";
 export {
   MaterializedView,
   MaterializedViewConfig,
+  RefreshableMaterializedView,
+  RefreshableMaterializedViewConfig,
+  RefreshInterval,
+  duration,
 } from "./sdk/materializedView";
 export { SqlResource } from "./sdk/sqlResource";
 export { View } from "./sdk/view";

@@ -373,7 +373,7 @@ COPY --from=monorepo-base /monorepo/{} ./{}
 # Copy all workspace directories that exist
 {}
 # Use pnpm deploy from workspace to install only production dependencies
-RUN pnpm --filter "./{}" deploy /temp-deploy --prod --legacy
+RUN pnpm --filter "./{}" deploy /temp-deploy
 RUN cp -r /temp-deploy/node_modules /application/node_modules
 RUN chown -R moose:moose /application/node_modules
 

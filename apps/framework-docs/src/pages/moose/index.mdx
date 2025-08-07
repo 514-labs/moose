@@ -1,47 +1,21 @@
 ---
-title: Moose - Backend Framework for the Analytics Stack
-description: Open source TypeScript/Python framework for building analytical backends with real-time streaming, API generation, and type-safe data models
-image: /moose-og-image.png
+title: Overview
+description: Modular toolkit for building real-time analytical backends
 ---
 
-import {
-  CTACard,
-  CTACards,
-  ZoomImg,
-  ChipButton,
-  Columns,
-  Column,
-  FeatureCard,
-  FeatureGrid,
-  BulletPointsCard,
-  Callout,
-  QnABullets,
-  CheckmarkBullets,
-  Contact,
-  InlineProps,
-  StaggeredCard,
-  StaggeredContent,
-  StaggeredCode,
-  CompareBulletPointsCard,
-  IconBadge,
-  PathConfig,
-  Icons,
-} from "@/components";
-import { Button } from "@/components/ui";
-import { SmallTextEmbed } from "@/components/typography";
-import Link from "next/link";
-import { Tabs, Tab } from "nextra/components";
-import { Card, CardContent } from "@/components/ui/card";
-import { Code, Database, Laptop, Warehouse, Rocket } from "lucide-react";
+import { Callout, CTACards, CTACard, BulletPointsCard, IconBadge, PathConfig, StaggeredCards, StaggeredCard, StaggeredContent, StaggeredCode, TypeScript, Python } from "@/components";
+import { Database, Laptop, Rocket, Package, FileText, Info, Github } from "lucide-react";
+import { Tabs } from "nextra/components";
 
-
-# Welcome to Moose
+# MooseStack
 
 <div className="flex items-center gap-4 my-8 flex-wrap">
-  <IconBadge Icon={Icons.quickstart} label="5 minute setup" variant="moose" />
+  <IconBadge Icon={PathConfig.quickstart.icon} label="5 minute setup" variant="moose" />
   <IconBadge Icon={Database} label="Pre-integrated ClickHouse, Redpanda, Temporal" variant="moose" />
   <IconBadge Icon={Laptop} label="Hot-reload development" variant="moose" />
 </div>
+
+Type-safe, code-first tooling for building real-time analytical backends--OLAP Databases, Data Streaming, ETL Workflows, Query APIs, and more.
 
 ## Get Started
 ```bash filename="Install Moose" copy
@@ -68,20 +42,21 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
     orientation="horizontal"
   />
   <CTACard
-    title="Star on GitHub"
-    description="250+ developers building with Moose"
-    ctaLink={PathConfig.github.path}
+    title="Bootstrap with Area Code"
+    description="Start with a template for integrating Moose with complex microservices architectures"
+    ctaLink="https://github.com/514-labs/area-code"
     ctaLabel="Star on GitHub"
-    Icon={PathConfig.github.icon}
+    Icon={Github}
     variant="default"
     orientation="horizontal"
   />
 </CTACards>
 
----
+<br />
 
-## What is Moose?
-Open source TypeScript/Python framework for building analytical backends—streaming, storage, and APIs in TypeScript or Python.
+## Everything as Code
+
+Declare all infrastructure (e.g. ClickHouse tables, Redpanda streams, APIs, etc.) and pipelines in pure TypeScript or Python. Your code auto-wires everything together, so no integration boilerplate needed.
 
 <Tabs items={["TypeScript", "Python"]}>
 <Tabs.Tab>
@@ -153,109 +128,19 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
 ``` 
 </Tabs.Tab>
 </Tabs>
-<BulletPointsCard
-  title="Why Devs Choose Moose"
-  bulletStyle="none"
-  compact={true}
-  bullets={[
-    { title: "Define everything in code", description: "Data models, pipelines, and insights are all in a single codebase." },
-    { title: "Integrated analytics infrastructure", description: "Get ClickHouse tables, Kafka/Redpanda streams, and HTTP APIs, all auto-wired and type-safe." },
-    { title: "Fast setup and local-first development", description: "Zero boilerplate, instant feedback, and no context switching." },
-  ]}
-/>
----
 
-## Why Moose Exists & Who It's For
+<br />
 
-Moose is for developers who want to move fast and treat analytics as real software—not a patchwork of YAML, SQL, and fragile connectors. 
+## Core Concepts
 
-  <CompareBulletPointsCard
-    title="Current State: Web DX vs. Analytics DX"
-    compact={true}
-    rightColumn={{
-      title: "Web DX: Fast & Integrated",
-      bulletStyle: "check",
-      bullets: [
-      { title: "Frameworks out of the box", description: "Next, Django, Rails" },
-      { title: "Integrated database", description: "Postgres/MySQL built-in" },
-      { title: "Built-in HTTP APIs", description: "Routing & endpoints included" },
-      { title: "Type-safe data models", description: "ORMs and dev time validation" },
-      { title: "Hot-reload local development", description: "Instant feedback on changes" },
-      { title: "One codebase, one deployment", description: "Get to production in minutes" }
-      ]
-    }}
-    leftColumn={{
-      title: "Analytics DX: Slow & Fragmented",
-      bulletStyle: "x",
-      compact: true,
-      bullets: [
-      { title: "No frameworks", description: "Manual tool integration" },
-      { title: "Separate database setup", description: "Manual ClickHouse configuration" },
-      { title: "Custom API boilerplate", description: "FastAPI/Express from scratch" },
-      { title: "Manual schema management", description: "Write DDL scripts by hand" },
-      { title: "No hot-reload dev", description: "Wait for deploys to see errors" },
-      { title: "Multiple codebases and deployments", description: "5+ separate systems to manage" }
-      ]
-    }}
-  />
-
-### Without Moose vs. With Moose
-Moose gives you a unified, code-first experience to build, test, and ship analytics features with the same speed and confidence as web apps.
-
-<Tabs items={["Without Moose", "With Moose"]}>
-<Tabs.Tab>
-    ```txt
-    Kafka Config     (300 lines of YAML)
-    + ClickHouse     (Manual schema management)  
-    + dbt            (SQL-only transformations)
-    + Airflow        (Workflow orchestration)
-    + Custom APIs    (Boilerplate code)
-    + ...
-    ```
-   <BulletPointsCard
-      title="Manual config & integration = constant context switching"
-      bulletStyle="x"
-      compact={true}
-      bullets={[
-        "Does my Database table use snake_case or camelCase?",
-        "Did I add the new field to both the model AND the table?",
-        "Which database field was nullable again?",
-      ]}
-    />
-  </Tabs.Tab>
-  <Tabs.Tab>
-    ```ts
-    const pipeline = new IngestPipeline<DataModel>("pipeline", {
-      ingest: true, // HTTP API w/ validation
-      stream: true, // Redpanda/Kafka topic
-      table: true, // ClickHouse table
-    });
-    ```
-   <BulletPointsCard
-      title="Unified codebase = zero context switching"
-      bulletStyle="check"
-      compact={true}
-      bullets={[
-        "Models are defined once, shared everywhere",
-        "Type-safe from end-to-end",
-        "Hot-reload your entire analytics stack",
-      ]}
-    />
-  </Tabs.Tab>
-</Tabs>
----
-
-## Core Capabilities
-
-<Card className="space-y-8 my-8 p-6">
-  {/* Type-Safe Data Models */}
-  <StaggeredCard>
-    <StaggeredContent
-      title="Type-Safe Data Models"
-      description="Define your schema once, get validation everywhere—catch errors at dev time, not in production."
+<StaggeredCards>
+<StaggeredCard>
+ <StaggeredContent
+      title="Data Modeling"
+      description="Model all of your infrastructure in native TypeScript or Python. Share the same types across all components."
       cta={{
         label: "Learn more",
-        href: PathConfig.dataModels.path,
+        href: PathConfig.dataModeling.path,
         variant: "outline",
       }}
     />
@@ -275,44 +160,78 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
     </StaggeredCode>
   </StaggeredCard>
 
-  {/* HTTP APIs */}
   <StaggeredCard className="border-t">
     <StaggeredContent
-      title="HTTP APIs"
-      description="Expose data ingestion and analytics endpoints-get type-safe validation and auto-generated docs for free."
+      title="Local Development Environment"
+      description="Run your entire analytical backend on your laptop, hot reloading schema migrations as you work."
       cta={{
-        label: "Explore ingest APIs →",
-        href: PathConfig.ingestion.path,
+        label: "Learn more",
+        href: PathConfig.localDev.path,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode>
+      ```bash
+      # Start local dev server
+      moose dev
+
+      ⡏ Starting local infrastructure
+        Successfully started containers
+        Validated clickhousedb-1 docker container
+        Validated redpanda-1 docker container
+        Successfully validated red panda cluster
+        Validated temporal docker container
+        Successfully ran local infrastructure
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+</StaggeredCards>
+
+
+## Modules
+<StaggeredCards>
+  
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      isMooseModule={true}
+      title="OLAP"
+      description="Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics. Manage tables, materialized views, and data migrations in code."
+      cta={{
+        label: "Learn more",
+        href: PathConfig.olap.path,
         variant: "outline",
       }}
     />
     <StaggeredCode>
       ```ts
-      const postEvent = new IngestApi<Event>("post-event", {
-        destination: stream,
+      const table = new OlapTable<Event>("events");
+
+      const mv = new MaterializedView<AggregatedEvent>({
+        selectStatement: sql`
+          SELECT count(*) as count, name
+          FROM ${table}
+          GROUP BY name
+        `,
+        selectTables: [table],
+        tableName: "events",
+        materializedViewName: "aggregated_events"
       });
-     
-     const getEvents = new ConsumptionApi<Params, Event>("get-events", {
-      async handler({limit = 10}, {client, sql}) {
-        // query database and return results
-      }
-     });
       ```
     </StaggeredCode>
   </StaggeredCard>
 
-  {/* Real-Time Streaming */}
   <StaggeredCard className="border-t">
     <StaggeredContent
-      title="Real-Time Streaming"
-      description="Process events as they arrive with built-in Kafka/Redpanda—no separate streaming infrastructure to manage."
+      isMooseModule={true}
+      title="Streaming"
+      description="Build real-time data pipelines with Kafka/Redpanda streams and transformations in code"
       cta={{
-        label: "Explore streaming →",
-        href: PathConfig.streams.path,
+        label: "Learn more",
+        href: PathConfig.streaming.path,
         variant: "outline",
       }}
     />
-    <StaggeredCode className="border-t">
+    <StaggeredCode>
       ```ts
       const stream = new Stream<Event>("events", {
         destination: table,
@@ -325,41 +244,13 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
     </StaggeredCode>
   </StaggeredCard>
 
-  {/* Analytical Database */}
   <StaggeredCard className="border-t">
     <StaggeredContent
-      title="Analytical Database"
-      description="Store and query data with ClickHouse's columnar engine—100x faster than traditional databases for analytics."
+      isMooseModule={true}
+      title="Workflows"
+      description="Build ETL pipelines and task orchestration with in-memory workflow code"
       cta={{
-        label: "Learn about OLAP tables →",
-        href: PathConfig.olapTables.path,
-        variant: "outline",
-      }}
-    />
-    <StaggeredCode className="border-t">
-      ```ts
-    const table = new OlapTable<Event>("events");
-
-     const mv = new MaterializedView<AggregatedEvent>({
-        selectStatement: sql`
-          SELECT count(*) as count, name
-          FROM ${table}
-          GROUP BY name
-        `,
-        selectTables: [table],
-        //...
-      });
-      ```
-    </StaggeredCode>
-  </StaggeredCard>
-
-  {/* Data Movement Workflows */}
-  <StaggeredCard className="border-t">
-    <StaggeredContent
-      title="Workflow Orchestration"
-      description="Schedule or trigger background jobs to move data between your analytical database and other source or destination systems."
-      cta={{
-        label: "Learn about workflows →",
+        label: "Learn more",
         href: PathConfig.workflows.path,
         variant: "outline",
       }}
@@ -370,83 +261,112 @@ Moose gives you a unified, code-first experience to build, test, and ship analyt
         startingTask: startEtl,
         schedule: "@every 1h",
         retries: 3,
-      })
+      });
       ```
     </StaggeredCode>
   </StaggeredCard>
-</Card>
-
----
-
-## Zero-Config Local Development
-
-Spin up an exact replica of your production stack on your laptop with one command (you don't need to configure anything, it's all pre-configured):
-
-```bash copy
-$ moose dev
 
 
-⡏ Starting local infrastructure
-  Successfully started containers
-     Validated clickhousedb-1 docker container
-     Validated redpanda-1 docker container
-  Successfully validated red panda cluster
-     Validated temporal docker container
-  Successfully ran local infrastructure
-```
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      isMooseModule={true}
+      title="APIs"
+      description="Type-safe ingestion and query endpoints with auto-generated OpenAPI docs."
+      cta={{
+        label: "Learn more",
+        href: PathConfig.apis.path,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode>
+      ```ts
+      const postEvent = new IngestApi<Event>("post-event", {
+        destination: stream,
+      });
+     
+      const getEvents = new ConsumptionApi<Params, Event>("get-events", {
+        async handler({limit = 10}, {client, sql}) {
+          // query database and return results
+          return await client.query.execute(sql`
+            SELECT * FROM events LIMIT ${limit}
+          `);
+        }
+      });
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
 
-### Hot-Reload
+</StaggeredCards>
 
-Moose automatically reloads your application on save, just like web frameworks. Add a field to your data model, and all dependent components update instantly:
 
-```ts {5} copy
-interface Event {
-  id: Key<string>;
-  name: string;
-  createdAt: Date;
-  status: string; // New field
-}
-```
-```txt {3}
-⢹ Processing Infrastructure changes from file watcher
-             ~ Topic: events - Version: 0.0 - Retention Period: 604800s - Partition Count: 1
-             ~ Table events with column changes: [Added(Column { name: "status", data_type: String, required: true, unique: false, primary_key: false, default: None })] and order by changes: OrderByChange { before: [], after: [] }
-             ~ Topic to Table Sync Process: events_0_0 -> events
-             ~ API Endpoint: events - Version: 0.0 - Path: ingest/events - Method: POST - Format: Some(Json)
-```
+<Callout title="Modular Design" type="info" icon={Info}>
+Each module is independent and can be used on its own. You can start with one capability and incrementally adopt more over time. 
+</Callout>
 
-Learn more in the [5-minute tutorial](/moose/getting-started/quickstart).
 
----
+## Tooling
 
-## Common Use Cases
+<StaggeredCards>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      isMooseModule={true}
+      title="Build"
+      description="Easily package up your application for deploying to production"
+      cta={{
+        label: "Learn more",
+        href: PathConfig.deploying.path,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode>
+      ```bash
+      # Build for production
+      moose build
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
+  <StaggeredCard className="border-t">
+    <StaggeredContent
+      isMooseModule={true}
+      title="Migrate"
+      description="Preview and validate infrastructure changes before deployment with detailed schema diffs, migration planning, and rollback capabilities"
+      cta={{
+        label: "Learn more",
+        href: PathConfig.migrate.path,
+        variant: "outline",
+      }}
+    />
+    <StaggeredCode>
+      ```bash
+      # Create a plan
+      moose plan
 
-<CTACards columns={2} rows={2}>
-<CTACard
-  title="User-Facing Analytics"
-  description="Embed real-time dashboards and metrics in your product. Moose handles event ingestion, streaming, aggregation, and exposes APIs for your frontend."
-  ctaLink={`${PathConfig.architecture.path}#user-facing-analytics`}
-  ctaLabel="Learn More →"
-  Icon={Code}
-  className="md:col-span-2"
-/>
-<CTACard
-  title="Operational Data Warehouse"
-  description="Centralize business data from SaaS, databases, and apps. Moose orchestrates ingestion, transformation, and storage in ClickHouse for BI tools."
-  ctaLink={`${PathConfig.architecture.path}#operational-data-warehouse`}
-  ctaLabel="Learn More →"
-  Icon={Warehouse}
-/>
-<CTACard
-  title="Observability"
-  description="Monitor application and infrastructure metrics/logs at scale. Moose ingests telemetry, processes streams, and exposes data for monitoring platforms."
-  ctaLink={`${PathConfig.architecture.path}#observability`}
-  ctaLabel="Learn More →"
-  Icon={Rocket}
-/>
-</CTACards>
+      # Example plan output:
+        ~ Table events with column changes: [
+          Added(
+            Column { 
+              name: "status", 
+              data_type: String,
+              required: true, 
+              unique: false, 
+              primary_key: false, 
+              default: None 
+            })] 
+          and order by changes: OrderByChange { 
+            before: [], after: [] 
+          }
+      
+      ```
+    </StaggeredCode>
+  </StaggeredCard>
 
----
+</StaggeredCards>
 
-## Community & Support
-<Contact />
+
+## Technology Partners
+
+- [ClickHouse](https://clickhouse.com/) (Online Analytical Processing (OLAP) Database)
+- [Redpanda](https://redpanda.com/) (Streaming)
+- [Temporal](https://temporal.io/) (Workflow Orchestration)
+- [Redis](https://redis.io/) (Internal State Management) 
+

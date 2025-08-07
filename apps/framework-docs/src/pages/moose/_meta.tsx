@@ -21,30 +21,25 @@ import {
   Database,
   Workflow,
   Waves,
-  GitCompare,
-  HelpCircle,
-  Settings,
-  ChartBar,
-  Hammer,
-  Terminal,
+  GanttChart,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
 const rawMeta = {
   index: {
-    title: "Welcome to Moose",
+    title: "Overview",
     theme: {
       breadcrumb: false,
     },
+    Icon: GanttChart,
   },
   "getting-started": {
     title: "Getting Started",
     Icon: HandMetal,
   },
-  migrate: {
-    title: "Migrate",
-    Icon: ArrowRight,
-    isMoose: true,
+  __modules__: {
+    type: "separator",
+    title: "Modules",
   },
   olap: {
     title: "OLAP",
@@ -61,17 +56,17 @@ const rawMeta = {
     Icon: Workflow,
     isMoose: true,
   },
-  // Builder's Guide - Task-oriented approach
-  building: {
-    title: "Developing",
+  apis: {
+    title: "APIs",
     Icon: Code,
+    isMoose: true,
   },
   __deployment__: {
     type: "separator",
     title: "Deployment Tools & Guides",
   },
-  planning: {
-    title: "Plan",
+  migrate: {
+    title: "Migrate",
     Icon: GitCompare,
     isMoose: true,
   },

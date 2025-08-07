@@ -1,12 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Check, X } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import React from "react";
 

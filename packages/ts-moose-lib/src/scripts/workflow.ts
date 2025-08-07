@@ -1,19 +1,29 @@
-import { log as logger, proxyActivities } from "@temporalio/workflow";
+import {
+  log as logger,
+  proxyActivities,
+  workflowInfo,
+  continueAsNew,
+  sleep,
+} from "@temporalio/workflow";
 import { Duration } from "@temporalio/common";
 import { Task, Workflow } from "../dmv2";
 import { WorkflowState } from "./types";
 import { mooseJsonEncode } from "./serialization";
 
-const { getActivityRetry, getDmv2Workflow, hasDmv2Workflow, readDirectory } =
-  proxyActivities({
-    startToCloseTimeout: "1 minutes",
-    retry: {
-      maximumAttempts: 1,
-    },
-  });
+interface ContinueAsNewParams {
+  currentWorkflow: string;
+  currentTask: string;
+}
+
+const { getDmv2Workflow } = proxyActivities({
+  startToCloseTimeout: "1 minutes",
+  retry: {
+    maximumAttempts: 1,
+  },
+});
 
 export async function ScriptWorkflow(
-  path: string,
+  params: string | ContinueAsNewParams,
   inputData?: any,
 ): Promise<any[]> {
   const state: WorkflowState = {
@@ -25,6 +35,7 @@ export async function ScriptWorkflow(
   };
 
   const results: any[] = [];
+  const path = typeof params === "string" ? params : params.currentWorkflow;
   let currentData = inputData?.data || inputData || {};
 
   logger.info(
@@ -32,109 +43,20 @@ export async function ScriptWorkflow(
   );
 
   try {
-    const isDmv2Workflow = await hasDmv2Workflow(path);
-    if (isDmv2Workflow) {
-      currentData = JSON.parse(mooseJsonEncode(currentData));
-      const workflow = await getDmv2Workflow(path);
-      const result = await handleDmv2Task(
-        workflow,
-        workflow.config.startingTask,
-        currentData,
-      );
-      results.push(...result);
-    } else {
-      if (path.endsWith(".ts")) {
-        currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
-        const maximumAttempts = await getActivityRetry(path);
-
-        const { executeScript } = proxyActivities({
-          startToCloseTimeout: "10 minutes",
-          retry: {
-            maximumAttempts,
-          },
-        });
-
-        const result = await executeScript({
-          scriptPath: path,
-          inputData: currentData,
-        });
-        return [result];
-      } else {
-        // Sequential execution
-        currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
-        const items = await readDirectory(path);
-        for (const item of items.sort()) {
-          const fullPath = `${path}/${item}`;
-
-          if (item.endsWith(".ts")) {
-            const maximumAttempts = await getActivityRetry(fullPath);
-            const { executeScript } = proxyActivities({
-              startToCloseTimeout: "10 minutes",
-              retry: {
-                maximumAttempts,
-              },
-            });
-
-            const result = await executeScript({
-              scriptPath: fullPath,
-              inputData: currentData,
-            });
-            results.push(result);
-            currentData = result;
-          } else if (item.includes("parallel")) {
-            const parallelResults = await handleParallelExecution(
-              path,
-              item,
-              currentData,
-            );
-            results.push(...parallelResults);
-            currentData = {
-              data: parallelResults.reduce(
-                (acc, result) => ({ ...acc, ...result.data }),
-                {},
-              ),
-            };
-          }
-        }
-      }
-    }
+    currentData = JSON.parse(mooseJsonEncode(currentData));
+    const workflow = await getDmv2Workflow(path);
+    const task =
+      typeof params === "string" ?
+        workflow.config.startingTask
+      : params.currentTask;
+    const result = await handleDmv2Task(workflow, task, currentData);
+    results.push(...result);
 
     return results;
   } catch (error) {
     state.failedStep = path;
     throw error;
   }
-}
-
-async function handleParallelExecution(
-  path: string,
-  item: string,
-  currentData: any,
-): Promise<any[]> {
-  const parallelTasks = [];
-  const parallelFiles = await readDirectory(path);
-
-  for (const scriptFile of parallelFiles.sort()) {
-    if (scriptFile.endsWith(".ts")) {
-      const scriptPath = `${path}/${item}/${scriptFile}`;
-      const maximumAttempts = await getActivityRetry(scriptPath);
-
-      const { executeScript } = proxyActivities({
-        startToCloseTimeout: "10 minutes",
-        retry: {
-          maximumAttempts,
-        },
-      });
-      parallelTasks.push(
-        executeScript({
-          scriptPath,
-          inputData: currentData,
-        }),
-      );
-    }
-  }
-
-  return parallelTasks.length > 0 ? Promise.all(parallelTasks) : [];
 }
 
 async function handleDmv2Task(
@@ -145,7 +67,7 @@ async function handleDmv2Task(
   const taskTimeout = (task.config.timeout || "1h") as Duration;
   const taskRetries = task.config.retries ?? 3;
   logger.info(
-    `<DMV2WF> Handling task ${task.name} with timeout ${taskTimeout} and retries ${taskRetries}`,
+    `Handling task ${task.name} with timeout ${taskTimeout} and retries ${taskRetries}`,
   );
 
   const { executeDmv2Task } = proxyActivities({
@@ -156,8 +78,51 @@ async function handleDmv2Task(
     },
   });
 
-  const result = await executeDmv2Task(workflow, task, inputData);
-  const results = [result];
+  const monitorTask = async () => {
+    logger.info(`Monitor task starting for ${task.name}`);
+    for (let historyLimitChecks = 0; ; historyLimitChecks++) {
+      const info = workflowInfo();
+
+      // TODO: remove historyLimitChecks >= 10. This is just to test the continue as new functionality
+      if (
+        info.historyLength >= 800 ||
+        info.historySize >= 1048576 ||
+        historyLimitChecks >= 10
+      ) {
+        logger.info(
+          `History limits approaching after ${historyLimitChecks} checks`,
+        );
+        logger.info(
+          `Events: ${info.historyLength} | Size: ${info.historySize}`,
+        );
+
+        return await continueAsNew({
+          currentWorkflow: workflow.name,
+          currentTask: task,
+        });
+      }
+
+      await sleep(100);
+    }
+  };
+
+  const result = await Promise.race([
+    executeDmv2Task(workflow, task, inputData).then((taskResult) => ({
+      type: "task_completed",
+      data: taskResult,
+    })),
+    monitorTask().then((continueResult) => ({
+      type: "continue_as_new",
+      data: continueResult,
+    })),
+  ]);
+
+  if (result.type === "continue_as_new") {
+    logger.info(`Workflow continuing as new due to history limits`);
+    return result.data;
+  }
+
+  const results = [result.data];
   if (!task.config.onComplete?.length) {
     return results;
   }
@@ -176,9 +141,7 @@ async function handleDmv2Task(
     "hasMore" in result &&
     result.hasMore === true
   ) {
-    logger.info(
-      `<DMV2WF> Extract task ${task.name} has more data, restarting chain...`,
-    );
+    logger.info(`Extract task ${task.name} has more data, restarting chain...`);
 
     // Recursively call the extract task again to get the next batch
     const nextBatchResults = await handleDmv2Task(workflow, task, null);

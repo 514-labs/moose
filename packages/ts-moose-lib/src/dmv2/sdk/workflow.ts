@@ -9,7 +9,8 @@ import { getMooseInternal } from "../internal";
  * @returns A promise that resolves to the processed result or void
  */
 type TaskHandler<T, R> =
-  T extends null ? () => Promise<R> : (input: T) => Promise<R>;
+  T extends null ? (taskState?: any) => Promise<R>
+  : (input: T, taskState?: any) => Promise<R>;
 
 /**
  * Configuration options for defining a task within a workflow.
@@ -35,7 +36,7 @@ export interface TaskConfig<T, R> {
   /**
    * Optional function that is called when the task is cancelled.
    */
-  onCancel?: () => Promise<void>;
+  onCancel?: (taskState?: any) => Promise<void>;
 
   /** Optional timeout duration for the task execution (e.g., "30s", "5m") */
   timeout?: string;

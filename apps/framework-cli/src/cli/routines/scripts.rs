@@ -154,37 +154,13 @@ pub async fn run_workflow(
             )
         })?;
 
-    // Check if workflow exists in infra map, otherwise check if it's a folder-based workflow
     let workflow = if infra_map.workflows.contains_key(name) {
         infra_map.workflows.get(name).unwrap().clone()
     } else {
-        let workflow_dir = project.scripts_dir().join(name);
-        // Check if workflow directory exists
-        if !workflow_dir.exists() {
-            return Err(RoutineFailure::error(Message {
-                action: "Workflow".to_string(),
-                details: format!(
-                    "'{}' not found. Add to directory {} or use Workflow & Task from moose-lib\n",
-                    name,
-                    workflow_dir.display()
-                ),
-            }));
-        }
-
-        Workflow::from_dir(workflow_dir.clone()).map_err(|e| {
-            RoutineFailure::new(
-                Message {
-                    action: "Workflow".to_string(),
-                    details: format!(
-                        "Could not create workflow '{}' from directory {}: {}\n",
-                        name,
-                        workflow_dir.display(),
-                        e
-                    ),
-                },
-                e,
-            )
-        })?
+        return Err(RoutineFailure::error(Message {
+            action: "Workflow".to_string(),
+            details: format!("Could not find workflow '{name}'"),
+        }));
     };
 
     let run_id: String = workflow
@@ -202,13 +178,10 @@ pub async fn run_workflow(
 
     // Check if run_id is empty or invalid
     if run_id.is_empty() {
-        return Err(RoutineFailure::new(
-            Message {
-                action: "Workflow".to_string(),
-                details: format!("'{name}' failed to start: Invalid run ID\n"),
-            },
-            anyhow::anyhow!("Invalid run ID"),
-        ));
+        return Err(RoutineFailure::error(Message {
+            action: "Workflow".to_string(),
+            details: format!("'{name}' failed to start: Invalid run ID\n"),
+        }));
     }
 
     let dashboard_url =

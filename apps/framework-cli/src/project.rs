@@ -342,6 +342,9 @@ impl Project {
 
         DATA_MODEL_V2_ENABLED.store(project_config.features.data_model_v2, Ordering::SeqCst);
 
+        // Show Redis configuration warnings for mixed configurations
+        project_config.redis_config.show_config_warnings();
+
         Ok(project_config)
     }
 

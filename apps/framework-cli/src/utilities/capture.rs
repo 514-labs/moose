@@ -10,6 +10,19 @@ use serde_json::json;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+fn collect_cli_flags() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter_map(|arg| {
+            if arg.starts_with('-') {
+                Some(arg.split('=').next().unwrap_or("").to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub enum ActivityType {
     #[serde(rename = "buildCommand")]
@@ -94,6 +107,12 @@ pub fn capture_usage(
     context.insert("command".into(), json!(activity_type));
     context.insert("sequence_id".into(), sequence_id.into());
     context.insert("project".into(), project.into());
+
+    // Add list of flags used on the CLI invocation, if any
+    let flags = collect_cli_flags();
+    if !flags.is_empty() {
+        context.insert("flags".into(), json!(flags));
+    }
 
     // Create PostHog client
     let client = match PostHog514Client::from_env(machine_id) {

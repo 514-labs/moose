@@ -264,7 +264,7 @@ export const ConsumptionHelpers = {
   table: (value: string) => ["Identifier", value] as [string, string],
 };
 
-export function join_queries({
+export function joinQueries({
   values,
   separator = ",",
   prefix = "",

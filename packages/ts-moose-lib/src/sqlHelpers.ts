@@ -30,8 +30,10 @@ export function sql(
   return new Sql(strings, values);
 }
 
-const instanceofSql = (value: any): value is Sql =>
-  "values" in value && "strings" in value;
+const instanceofSql = (
+  value: RawValue | Column | OlapTable<any>,
+): value is Sql =>
+  typeof value === "object" && "values" in value && "strings" in value;
 
 /**
  * A SQL instance can be nested within each other to build SQL strings.

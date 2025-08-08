@@ -19,7 +19,7 @@ from urllib.parse import urlparse, parse_qs
 from moose_lib import MooseClient
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
-from moose_lib.dmv2 import get_consumption_api, get_workflow
+from moose_lib.dmv2 import get_consumption_api, get_consumption_apis, get_workflow
 from pydantic import BaseModel, ValidationError
 
 import jwt
@@ -128,7 +128,16 @@ def handler_with_client(moose_client):
                 query_params = parse_qs(parsed_path.query)
 
                 if is_dmv2:
+                    # Attempt direct lookup first (versioned if provided, else unversioned)
                     user_api = get_consumption_api(f"{module_name}:{version_from_path}" if version_from_path else module_name)
+
+                    # Fallback: if unversioned was requested and not found, and exactly one versioned
+                    # API exists for this name, use that sole versioned API.
+                    if user_api is None and not version_from_path:
+                        all_apis = get_consumption_apis()
+                        versioned_matches = [api for key, api in all_apis.items() if key.startswith(f"{module_name}:")]
+                        if len(versioned_matches) == 1:
+                            user_api = versioned_matches[0]
                     if user_api is not None:
                         query_fields = convert_pydantic_definition(user_api.model_type)
                         try:

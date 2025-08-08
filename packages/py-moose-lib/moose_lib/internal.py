@@ -244,7 +244,7 @@ def _map_sql_resource_ref(r: Any) -> InfrastructureSignatureJson:
         if r.kind == "OlapTable":
             # Explicitly cast for type hint checking if needed, though Python is dynamic
             table = r # type: OlapTable
-            res_id = f"{table.name}_{table.config.version.replace('.', '_')}" if table.config.version else table.name
+            res_id = generate_versioned_key(table.name, table.config.version) if table.config.version else table.name
             return InfrastructureSignatureJson(id=res_id, kind="Table")
         elif r.kind == "SqlResource":
             # Explicitly cast for type hint checking if needed

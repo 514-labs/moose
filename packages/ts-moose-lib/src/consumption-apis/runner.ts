@@ -149,29 +149,12 @@ const apiHandler =
             }
           }
 
-          // Try versioned lookup first if version is available
+          // Try versioned lookup first if version is available; otherwise rely on aliasing
           if (version) {
             const versionedKey = `${apiName}:${version}`;
             userFuncModule = egressApis.get(versionedKey);
           } else {
-            // First, try unversioned lookup
             userFuncModule = egressApis.get(apiName);
-
-            // Fallback: if unversioned lookup failed, and exactly one versioned API exists for this name,
-            // resolve to that sole versioned API.
-            if (!userFuncModule) {
-              const versionedCandidates: Array<
-                [string, (params: unknown, utils: ConsumptionUtil) => unknown]
-              > = [];
-              for (const [key, fn] of egressApis.entries()) {
-                if (key.startsWith(`${apiName}:`)) {
-                  versionedCandidates.push([key, fn]);
-                }
-              }
-              if (versionedCandidates.length === 1) {
-                userFuncModule = versionedCandidates[0][1];
-              }
-            }
           }
           if (!userFuncModule) {
             const errorMessage =

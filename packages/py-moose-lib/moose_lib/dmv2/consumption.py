@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaValue
 
 from .types import BaseTypedResource, T, U
-from ._registry import _egress_apis
+from ._registry import _egress_apis, _egress_api_name_aliases
 
 # Global base URL configuration
 _global_base_url: Optional[str] = None
@@ -116,7 +116,38 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
             
         self.query_function = query_function
         self.metadata = getattr(self.config, 'metadata', {}) or {}
-        _egress_apis[_generate_api_key(name, self.config.version)] = self
+        key = _generate_api_key(name, self.config.version)
+        _egress_apis[key] = self
+
+        # Maintain alias for base name:
+        # - If explicit unversioned registered, alias -> that
+        # - Else, if exactly one versioned exists, alias -> that
+        base = name
+        if self.config.version is None:
+            _egress_api_name_aliases[base] = self
+            return
+
+        # Versioned registration: only adjust alias if no explicit unversioned exists
+        if base in _egress_apis:
+            # Explicit unversioned present, ensure alias points to it
+            _egress_api_name_aliases[base] = _egress_apis[base]
+            return
+
+        # Determine if there is exactly one versioned API
+        prefix = f"{base}:"
+        # Early exit on 2 matches to avoid O(n) counting
+        match_count = 0
+        sole = None
+        for k in _egress_apis.keys():
+            if k.startswith(prefix):
+                match_count += 1
+                sole = _egress_apis[k]
+                if match_count > 1:
+                    break
+        if match_count == 1 and sole is not None:
+            _egress_api_name_aliases[base] = sole
+        else:
+            _egress_api_name_aliases.pop(base, None)
 
     @classmethod
     def _get_type(cls, keyword_args: dict):

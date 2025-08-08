@@ -225,35 +225,20 @@ async fn get_consumption_api_res(
             .strip_prefix("/consumption/")
             .unwrap_or(req.uri().path());
 
-        // Check for exact match first; if missing, allow a fallback:
-        // if exactly one versioned API exists for this name (prefix "name/"), allow forwarding.
-        if !consumption_apis.contains(consumption_name) {
-            let versioned_matches = consumption_apis
-                .iter()
-                .filter(|p| p.starts_with(&format!("{}/", consumption_name)))
-                .count();
-
-            if versioned_matches != 1 {
-                if !is_prod {
-                    use crossterm::{execute, style::Print};
-                    let msg = format!(
-                        "Consumption API {} not found. Available consumption paths: {}",
-                        consumption_name,
-                        consumption_apis
-                            .iter()
-                            .map(|p| p.as_str())
-                            .collect::<Vec<&str>>()
-                            .join(", ")
-                    );
-                    let _ = execute!(std::io::stdout(), Print(msg + "\n"));
-                }
-
-                return Ok(Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(Full::new(Bytes::from("Consumption API not found.")))
-                    .unwrap());
-            }
-            // else: exactly one versioned match exists; proceed to proxy request as-is.
+        // Allow forwarding even if not an exact match; the proxy layer (runner) will
+        // handle aliasing (unversioned -> sole versioned) or return 404.
+        if !consumption_apis.contains(consumption_name) && !is_prod {
+            use crossterm::{execute, style::Print};
+            let msg = format!(
+                "Exact match for Consumption API {} not found. Looking for fallback API. Known consumption paths: {}",
+                consumption_name,
+                consumption_apis
+                    .iter()
+                    .map(|p| p.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
+            );
+            let _ = execute!(std::io::stdout(), Print(msg + "\n"));
         }
     }
 

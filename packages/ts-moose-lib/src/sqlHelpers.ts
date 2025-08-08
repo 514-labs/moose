@@ -30,6 +30,11 @@ export function sql(
   return new Sql(strings, values);
 }
 
+const instanceofSql = (
+  value: RawValue | Column | OlapTable<any>,
+): value is Sql =>
+  typeof value === "object" && "values" in value && "strings" in value;
+
 /**
  * A SQL instance can be nested within each other to build SQL strings.
  */
@@ -56,7 +61,7 @@ export class Sql {
     const valuesLength = rawValues.reduce<number>(
       (len: number, value: RawValue | Column | OlapTable<any>) =>
         len +
-        (value instanceof Sql ? value.values.length
+        (instanceofSql(value) ? value.values.length
         : isColumn(value) || isTable(value) ? 0
         : 1),
       0,
@@ -76,7 +81,7 @@ export class Sql {
       const rawString = rawStrings[i];
 
       // Check for nested `sql` queries.
-      if (child instanceof Sql) {
+      if (instanceofSql(child)) {
         // Append child prefix text to current string.
         this.strings[pos] += child.strings[0];
 

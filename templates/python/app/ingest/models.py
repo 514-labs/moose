@@ -12,13 +12,18 @@ class Baz(StringToEnumMixin, IntEnum):
     QUX = auto()
     QUUX = auto()
 
-
 class Foo(BaseModel):
+    id: Key[str]
+    timestamp: float
+    message: str
+    category: Optional[str] = None
+    priority: Optional[int] = None
+
+class FooV1(BaseModel):
     primary_key: Key[str]
     timestamp: float
     baz: Baz
     optional_text: Optional[str] = None
-
 
 class Bar(BaseModel):
     primary_key: Key[str]
@@ -27,13 +32,21 @@ class Bar(BaseModel):
     has_text: bool
     text_length: int
 
-
 fooModel = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=False,
-    dead_letter_queue=True
+    table=True,
 ))
+
+# Versioned ingest API v1 for Foo data
+fooModelV1 = IngestPipeline[FooV1]("Foo", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=False,
+    dead_letter_queue=True,
+    version="1",  # Version string for schema versioning
+))
+
 
 barModel = IngestPipeline[Bar]("Bar", IngestPipelineConfig(
     ingest=False,

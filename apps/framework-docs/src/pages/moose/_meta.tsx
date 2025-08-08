@@ -70,8 +70,9 @@ const rawMeta = {
     isMoose: true,
   },
   deploying: {
-    title: "Self-Hosting",
+    title: "Build",
     Icon: Hammer,
+    isMoose: true,
   },
   __reference__: {
     type: "separator",

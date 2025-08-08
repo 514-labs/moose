@@ -14,12 +14,11 @@ import { Python, TypeScript, Callout, LanguageSwitcher, BulletPointsCard } from 
 
 You can create APIs to initiate workflows, data processing jobs, or other automated processes.
 
-
 ## Basic Usage
 
 <TypeScript>
 ```typescript filename="app/apis/trigger_workflow.ts" copy
-import { ConsumptionAPI } from "@514labs/moose-lib";
+import { ConsumptionApi } from "@514labs/moose-lib";
 
 interface WorkflowParams {
   inputValue: string;
@@ -31,7 +30,7 @@ interface WorkflowResponse {
   status: string;
 }
 
-const triggerApi = new ConsumptionAPI<WorkflowParams, WorkflowResponse>(
+const triggerApi = new ConsumptionApi<WorkflowParams, WorkflowResponse>(
   "trigger-workflow",
   async ({ inputValue, priority = "normal" }: WorkflowParams, { client }) => {
     // Trigger the workflow with input parameters
@@ -55,7 +54,7 @@ export default triggerApi;
 
 <Python>
 ```python filename="app/apis/trigger_workflow.py" copy
-from moose_lib import MooseClient, ConsumptionAPI
+from moose_lib import MooseClient, ConsumptionApi
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -83,7 +82,7 @@ def run(params: WorkflowParams, client: MooseClient) -> WorkflowResponse:
         status="started"
     )
 
-api = ConsumptionAPI[WorkflowParams, WorkflowResponse]("trigger-workflow", run)
+api = ConsumptionApi[WorkflowParams, WorkflowResponse]("trigger-workflow", run)
 ```
 </Python>
 
@@ -92,12 +91,7 @@ api = ConsumptionAPI[WorkflowParams, WorkflowResponse]("trigger-workflow", run)
 Once deployed, you can trigger workflows via HTTP requests:
 
 ```bash filename="Terminal" copy
-curl -X POST http://localhost:4000/consumption/trigger-workflow \
-  -H "Content-Type: application/json" \
-  -d '{
-    "inputValue": "process-user-data",
-    "priority": "high"
-  }'
+curl "http://localhost:4000/consumption/trigger-workflow?inputValue=process-user-data&priority=high"
 ```
 
 Response:

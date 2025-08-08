@@ -243,7 +243,7 @@ fn create_workflow_execution_request(
         }),
         input: Some(Payloads { payloads }),
         workflow_run_timeout: {
-            if params.config.timeout == "none" {
+            if params.config.timeout == "never" {
                 None
             } else {
                 Some(prost_wkt_types::Duration {

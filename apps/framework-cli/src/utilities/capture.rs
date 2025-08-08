@@ -15,7 +15,7 @@ fn collect_cli_flags() -> Vec<String> {
         .skip(1)
         .filter_map(|arg| {
             if arg.starts_with('-') {
-                Some(arg.splitn(2, '=').next().unwrap_or("").to_string())
+                Some(arg.split('=').next().unwrap_or("").to_string())
             } else {
                 None
             }

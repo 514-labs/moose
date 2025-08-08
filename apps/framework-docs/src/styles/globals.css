@@ -425,6 +425,12 @@ pre.nextra-focus {
   word-wrap: break-word !important;
   width: auto !important;
   max-width: 100% !important;
+  padding-top: 0.5rem !important;
+}
+
+div.nextra-code {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
 }
 
 code.nextra-code {
@@ -453,6 +459,10 @@ code.nextra-code {
   border-radius: 0.75rem !important;
   width: auto !important;
   overflow: hidden !important;
+}
+
+li:not(:first-child) {
+  margin-top: 0 !important;
 }
 
 /* Mobile Safari Border Fixes */

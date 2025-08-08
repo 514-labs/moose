@@ -11,7 +11,7 @@ export default render({
   },
   moose: {
     type: "page",
-    title: "Moose",
+    title: "Moose Stack",
     href: "/moose",
   },
   aurora: {
@@ -25,10 +25,11 @@ export default render({
     href: "https://www.fiveonefour.com/blog",
     newWindow: true,
   },
-  templates: {
+  "area-code": {
     type: "page",
-    title: "Templates",
-    href: "/templates",
+    title: "Area Code",
+    href: "https://github.com/514-labs/area-code",
+    newWindow: true,
   },
   "release-notes": {
     type: "page",
@@ -36,6 +37,9 @@ export default render({
     href: "/release-notes",
   },
   "usage-data": {
+    display: "hidden",
+  },
+  templates: {
     display: "hidden",
   },
 });

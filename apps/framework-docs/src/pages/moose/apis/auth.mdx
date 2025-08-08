@@ -1,0 +1,221 @@
+---
+title: API Authentication & Security
+description: Secure your Moose API endpoints with JWT tokens or API keys
+---
+
+import { Callout } from "@/components";
+
+# API Authentication & Security
+
+Secure your Moose deployment by configuring authentication for your API endpoints. Moose supports two authentication methods:
+
+- [JWT (JSON Web Tokens)](#jwt-authentication) - For integration with existing identity providers
+- [API Keys](#api-key-authentication) - For simple, static authentication
+
+## Getting Started
+
+1. Choose your authentication method
+2. Generate tokens using `moose generate hash-token`
+3. Configure your authentication in `moose.config.toml` or with environment variables
+4. Send requests with `Authorization: Bearer <token>` header
+
+## Authentication Methods
+
+### JWT Authentication
+
+Use JWT when you have an existing identity provider or want standard token-based authentication.
+
+#### Configure in `moose.config.toml`
+
+```toml filename=moose.config.toml
+[jwt]
+# Your JWT public key (PEM-formatted RSA public key)
+secret = """
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy...
+-----END PUBLIC KEY-----
+"""
+# Expected JWT issuer
+issuer = "https://my-auth-server.com/"
+# Expected JWT audience  
+audience = "my-moose-app"
+# Optional: Enforce JWT on all ingest APIs (default: false)
+enforce_on_all_ingest_apis = false
+# Optional: Enforce JWT on all consumption APIs (default: false)
+enforce_on_all_consumptions_apis = false
+```
+
+#### Configure with Environment Variables
+
+You can also set these values as environment variables:
+
+```bash filename=".env" copy
+MOOSE_JWT_PUBLIC_KEY=your_jwt_public_key # PEM-formatted RSA public key (overrides `secret` in `moose.config.toml`)
+MOOSE_JWT_ISSUER=your_jwt_issuer # Expected JWT issuer (overrides `issuer` in `moose.config.toml`)
+MOOSE_JWT_AUDIENCE=your_jwt_audience # Expected JWT audience (overrides `audience` in `moose.config.toml`)
+```
+
+<Callout type="info">
+  The `secret` field should contain your JWT **public key** used to verify signatures using RS256 algorithm.
+</Callout>
+
+### API Key Authentication
+
+Use API keys for simple, static authentication scenarios.
+
+#### Configure with Environment Variables
+
+Set environment variables with **hashed** API keys:
+```bash
+# For ingest endpoints
+export MOOSE_INGEST_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+
+# For consumption endpoints  
+export MOOSE_CONSUMPTION_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+
+# For admin endpoints
+export MOOSE_ADMIN_TOKEN='your_plain_text_token'
+```
+
+## Endpoint Types and Authentication Priority
+
+
+### Ingest Endpoints
+
+If both JWT (in the `[jwt]` table) and an API (`MOOSE_INGEST_API_KEY`) are configured, and you have `jwt.enforce_on_all_ingest_apis` set to `false` in your `moose.config.toml` (or its not set):
+
+```toml filename="moose.config.toml"
+[jwt]
+enforce_on_all_ingest_apis = false
+```
+
+```env filename=".env" copy
+MOOSE_INGEST_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+```
+
+Then, when a request is made to an `/ingest` endpoint, the server will:
+
+- First attempt JWT validation (RS256 signature check). 
+- If that fails or is not applicable, it will then try to validate using the API key (PBKDF2 HMAC SHA256). 
+
+
+If you have `enforce_on_all_ingest_apis` set to true in your `moose.config.toml`:
+
+```toml filename="moose.config.toml"
+[jwt]
+enforce_on_all_ingest_apis = true
+```
+
+Then, only JWT will be accepted if JWT is configured.
+
+
+### Consumption Endpoints
+
+(Same as Ingest Endpoints, but for `/consumption` endpoints)
+
+If both JWT (in the `[jwt]` table) and an API (`MOOSE_CONSUMPTION_API_KEY`) are configured, and you have `jwt.enforce_on_all_consumptions_apis` set to `false` in your `moose.config.toml` (or its not set):
+
+```toml filename="moose.config.toml"
+[jwt]
+enforce_on_all_consumptions_apis = false
+```
+
+```bash filename=".env" copy
+MOOSE_CONSUMPTION_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+```
+
+Then, when a request is made to an `/consumption` endpoint, the server will:
+
+- First attempt JWT validation (RS256 signature check). 
+- If that fails or is not applicable, it will then try to validate using the API key (PBKDF2 HMAC SHA256). 
+
+If you have `enforce_on_all_consumptions_apis` set to true in your `moose.config.toml`:
+
+```toml filename="moose.config.toml"
+[jwt]
+enforce_on_all_consumptions_apis = true
+```
+
+Then, only JWT will be accepted if JWT is configured.
+
+
+### Admin Endpoints
+Admin Endpoint Authentication
+Administrative endpoints in Moose (e.g., for managing deployments, viewing plans) also require authentication to prevent unauthorized access.
+
+#### Configuration:
+
+Admin authentication relies on a token that can be supplied in the following order of precedence:
+- `--token` CLI Parameter: When using Moose CLI commands that interact with a remote admin endpoint (e.g., `moose remote plan --token <value>`), this parameter takes highest precedence. The value should be the plain-text Bearer token.
+- `MOOSE_ADMIN_TOKEN` Environment Variable: You can set the `MOOSE_ADMIN_TOKEN` environment variable to the plain-text Bearer token.
+
+```bash copy
+MOOSE_ADMIN_TOKEN='your_generated_plain_text_token'
+```
+
+This is useful for CI/CD environments or scripts interacting with admin endpoints.
+
+- Project Configuration File (moose.config.toml): You can specify a hashed admin API key in your `moose.config.toml` under the [authentication] table. This key is expected to be a PBKDF2 HMAC SHA256 hash, obtainable from the `moose generate hash-token` command.
+
+```toml filename="moose.config.toml"
+ 
+[authentication]
+admin_api_key = "your_pbkdf2_hmac_sha256_hashed_key"
+```
+<Callout type="info" title="Storing Admin API Keys in Project Configuration File">
+  Storing the `admin_api_key` (which is a PBKDF2 HMAC SHA256 hash) in your `moose.config.toml` file is an acceptable practice, even if the file is version-controlled. This is because the actual plain-text Bearer token (the secret) is not stored. The hash is computationally expensive to reverse, ensuring that your secret is not exposed in the codebase.
+</Callout>
+
+The Moose server running locally will use this key to protect its admin endpoints. Use the hashed key output from `moose generate hash-token` here.
+
+#### How it Works:
+
+- For CLI interactions with a remote server, the CLI will use the token from `--token` or `MOOSE_ADMIN_TOKEN`.
+- The Moose server itself (when running `moose dev` or a deployed instance) protects its admin API routes (e.g., `/admin/plan`, `/admin/integrate-changes`) using the `admin_api_key` (a PBKDF2 HMAC SHA256 hash) from `moose.config.toml` (in the `[authentication]` table) or the `MOOSE_ADMIN_TOKEN` environment variable if the `moose.config.toml` key is not set. 
+- The server expects the plain-text token in the `Authorization: Bearer <token>` header and will verify it against the stored hashed key using PBKDF2 HMAC SHA256.
+- Use the `moose generate hash-token` command as described above to generate the plain-text token and its corresponding PBKDF2 HMAC SHA256 hashed version for `admin_api_key`.
+
+## Token Generation
+
+Generate tokens and hashed keys using the Moose CLI:
+
+```bash
+moose generate hash-token
+```
+
+**Output:**
+- **ENV API Keys**: Hashed key for environment variables (e.g., `MOOSE_INGEST_API_KEY`, `MOOSE_CONSUMPTION_API_KEY`, `MOOSE_ADMIN_TOKEN`)
+- **Bearer Token**: Plain-text token for client applications (e.g., `Authorization: Bearer <token>`)
+
+<Callout type="info">
+  Use the **hashed key** for environment variables and `moose.config.toml`. Use the **plain-text token** in your `Authorization: Bearer token` headers.
+</Callout>
+
+## Making Authenticated Requests
+
+All authenticated requests require the `Authorization` header:
+
+```bash
+# Using curl
+curl -H "Authorization: Bearer your_token_here" \
+     https://your-moose-instance.com/api/endpoint
+
+# Using JavaScript
+fetch('https://your-moose-instance.com/api/endpoint', {
+  headers: {
+    'Authorization': 'Bearer your_token_here'
+  }
+})
+```
+
+## Security Best Practices
+
+- **Use environment variables** for production deployments
+- **Generate unique tokens** for different environments
+- **Rotate tokens regularly** for enhanced security
+- **Use JWT** when integrating with existing identity providers
+- **Use API keys** for simple, internal applications
+
+<Callout type="warning">
+  Never commit plain-text tokens to version control. Use hashed keys in configuration files and environment variables for production.
+</Callout> 

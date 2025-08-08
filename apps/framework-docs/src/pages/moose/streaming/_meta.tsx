@@ -11,6 +11,9 @@ const rawMeta = {
   "sync-to-table": {
     title: "Syncing Streams to Tables",
   },
+  "dead-letter-queues": {
+    title: "Configuring Dead Letter Queues",
+  },
   "---Functions---": {
     title: "Functions",
     type: "separator",

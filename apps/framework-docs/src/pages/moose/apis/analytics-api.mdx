@@ -1,40 +1,27 @@
 ---
-title: Consumption APIs
-description: Consumption APIs for Moose
+title: APIs
+description: APIs for Moose
 ---
 
 import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python , ToggleBlock, CTACards, CTACard } from "@/components";
 import { Tabs } from "nextra/components";
 
-# Consumption APIs
+# APIs
 <LanguageSwitcher />
 
 ## Overview
-Consumption APIs make it easy to build type-safe HTTP `GET` endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
+APIs are functions that run on your server and automaticallly exposed as HTTP `GET` endpoints. They are designed to read data from your OLAP database. Out of the box, these APIs provide:
 
-<BulletPointsCard
-  title="Working with Consumption APIs"
-  bullets={[
-    {
-      title: "Model your API parameters",
-      description: "Define the names and types of the parameters your API will accept"
-    },
-    {
-      title: "Write a route handler function",
-      description: "Write a simple, strongly-typed function that constructs a SQL query and returns the results"
-    },
-    {
-      title: "Moose Generates Validation & Docs",
-      description: "Moose automatically generates validation, type conversion, and OpenAPI documentation for your API request parameters and response body"
-    },
-    {
-      title: "Integrate with your API client",
-      description: "Use the generated API spec for your frontend applications or use other tools to interact with your API"
-    },
-  ]}
-/>
+- Automatic type validation and type conversion for your query parameters, which are sent in the URL, and response body
+- Managed database client connection
+- Automatic OpenAPI documentation generation
 
-## Creating API Endpoints
+Common use cases include:
+- Powering user-facing analytics, dashboards and other front-end components
+- Enabling AI tools to interact with your data
+- Building custom APIs for your internal tools
+
+### Basic Usage
 
 <TypeScript>
 ```ts filename="ExampleApi.ts" copy
@@ -75,9 +62,7 @@ const exampleApi = new ConsumptionApi<QueryParams, ResultItem[]>("example_endpoi
 
         // Return the result set as an array of the result item type
         return await resultSet.json();
-    },
-    { version: "1" }, // Optional version config
-  );
+    });
 ```
 <ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
 ```ts filename="SourcePipeline.ts" copy
@@ -136,7 +121,7 @@ def run(client: MooseClient, params: QueryParams) -> list[ResponseBody]:
     return client.query.execute(query, {"table": SourceTable.name, "filterField": params.filterField, "maxResults": params.maxResults})
 
 # Create the API
-example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run, version="1") # Version config is optional
+example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
 ```
 <ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
 ```python filename="SourcePipeline.py" copy
@@ -182,8 +167,10 @@ You can name these types anything you want. The first type generates validation 
   ]}
 />
 
+## Type Validation
+You can also model the query parameters and response body as <TypeScript inline>interfaces</TypeScript><Python inline>Pydantic models</Python>, which Moose will use to provide automatic type validation and type conversion for your query parameters, which are sent in the URL, and response body.
 
-## Defining Query Parameters
+### Modeling Query Parameters
 
 <TypeScript>
 Define your API's parameters as a TypeScript interface:
@@ -347,130 +334,10 @@ class QueryParams(BaseModel):
 
 ## Implementing Route Handler
 
-Consunmption API route handlers are regular functions, so you can implement whatever arbitrary logic you want inside these functions. The primary purpose of the handler function is to construct a SQL query and return the results to the client:
-
-<TypeScript>
-```ts filename="/apis/getBar.ts" copy {33}{38}
-import { ConsumptionApi } from "@514labs/moose-lib";
-import { BarAggregatedMV } from "../views/barAggregated";
-import { tags } from "typia";
-
-// This file is where you can define your APIs to consume your data
-interface QueryParams {
-  orderBy?: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
-  limit?: number;
-  startDay?: number & tags.Type<"int32">;
-  endDay?: number & tags.Type<"int32">;
-}
-
-interface ResponseData {
-  dayOfMonth: number;
-  totalRows?: number;
-  rowsWithText?: number;
-  maxTextLength?: number;
-  totalTextLength?: number;
-}
-
-// Utility to get the columns of the target table
-const cols = BarAggregatedMV.targetTable.columns
-
-export const BarApi = new ConsumptionApi<QueryParams, ResponseData[]>(
-  "bar",
-  async (
-    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
-    { client, sql },
-  ) => {
-    const query = sql`
-        SELECT 
-          ${cols.dayOfMonth},
-          ${cols[orderBy]}
-        FROM ${BarAggregatedMV.targetTable}
-        WHERE 
-          dayOfMonth >= ${startDay} 
-          AND dayOfMonth <= ${endDay}
-        ORDER BY ${cols[orderBy]} DESC
-        LIMIT ${limit}
-      `;
-
-    const data = await client.query.execute<ResponseData>(query);
-    return await data.json();
-  },
-);
-
-```
-</TypeScript>
-
-<Python>
-```python filename="/apis/get-bar.py" copy
-
-from moose_lib import MooseClient, ConsumptionApi
-from pydantic import BaseModel, Field
-from typing import Optional
-from app.views.bar_aggregated import barAggregatedMV
-
-# Query params are defined as Pydantic models and are validated automatically
-class QueryParams(BaseModel):
-    order_by: Optional[str] = Field(
-        default="total_rows",
-        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
-        description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
-    )
-    limit: Optional[int] = Field(
-        default=5,
-        gt=0,
-        le=100,
-        description="Must be between 1 and 100"
-    )
-    start_day: Optional[int] = Field(
-        default=1,
-        gt=0,
-        le=31,
-        description="Must be between 1 and 31"
-    )
-    end_day: Optional[int] = Field(
-        default=31,
-        gt=0,
-        le=31,
-        description="Must be between 1 and 31"
-    )
-
-class QueryResult(BaseModel):
-    day_of_month: int
-    total_rows: int
-    rows_with_text: int
-    max_text_length: int
-    total_text_length: int
-    
-    
-## The run function is where you can define your API logic
-def run(client: MooseClient, params: QueryParams):
-    
-    start_day = params.start_day
-    end_day = params.end_day
-    limit = params.limit
-    order_by = params.order_by
-    
-    query = f"""
-    SELECT 
-        day_of_month,
-        {order_by}
-    FROM {barAggregatedMV.target_table.name} 
-    WHERE day_of_month >= {start_day} 
-    AND day_of_month <= {end_day} 
-    ORDER BY {order_by} DESC
-    LIMIT {limit}
-    """    
-   
-    return client.query.execute(query, {})
-
-
-bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
-```
-</Python>
-
+API route handlers are regular functions, so you can implement whatever arbitrary logic you want inside these functions. Most of the time you will be use APIs to expose your data to your front-end applications or other tools:
 
 ### Connecting to the Database
-Moose provides an instance of a `MooseClient` to your route handler function. This client provides access to the database and other Moose resources:
+Moose provides a managed `MooseClient` to your function execution context. This client provides access to the database and other Moose resources, and handles connection pooling/lifecycle management for you:
 
 <TypeScript>
 ```ts filename="ExampleApi.ts" copy {1}
@@ -501,7 +368,6 @@ export const UserTable = new OlapTable<UserSchema>("users")
 </TypeScript>
 
 <Python>
-Moose provides an instance of a `MooseClient` to your route handler function. This client provides access to the database and other Moose resources:
 
 ```python filename="ExampleApi.py" copy
 from moose_lib import MooseClient
@@ -1306,24 +1172,8 @@ process_data_api = ConsumptionApi[QueryParams, ResponseItem](name="process_data_
 While post-processing gives you flexibility, remember that database operations are typically more efficient for heavy data manipulation. Reserve post-processing for transformations that are difficult to express in SQL or that involve application-specific logic.
 </Callout>
 
-## Next Steps: Frontend Integration Examples
+## Client Integration
 
-Ready to integrate your Consumption APIs with frontend applications? Check out our [Templates](/templates) page for examples of how to integrate Moose Consumption APIs with frontend applications.
+By default, all API endpoints are automatically integrated with OpenAPI/Swagger documentation. You can integrate your OpenAPI SDK generator of choice to generate client libraries for your APIs.
 
-### Explore Templates
-<CTACards>
-<CTACard
-  title="Github Analytics Dashboard"
-  description="Trending repository analysis with Next.js charts and data tables"
-  ctaLink="/templates/github"
-  ctaLabel="View Template →"
-  badge={{ variant: "moose", text: "Moose + Next.js" }}
-/>
-<CTACard
-  title="Live Heart Rate Monitoring"
-  description="Continuous data ingestion from IoT sensors with real-time charts"
-  ctaLink="/templates/heartrate"
-  ctaLabel="View Template →"
-  badge={{ variant: "moose", text: "Moose + Streamlit" }}
-/>
-</CTACards>
+Please refer to the [OpenAPI](/moose/apis/open-api-sdk) page for more information on how to integrate your APIs with OpenAPI.

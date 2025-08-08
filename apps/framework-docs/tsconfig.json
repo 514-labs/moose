@@ -19,7 +19,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "**/*.jsx"
+    "**/*.jsx",
+    "src/pages/moose/apis/admin-api.mdx",
+    "src/pages/moose/apis/trigger-api.mdx"
   ],
   "exclude": ["node_modules"]
 }

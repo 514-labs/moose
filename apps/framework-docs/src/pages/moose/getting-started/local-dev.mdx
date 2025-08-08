@@ -1,0 +1,201 @@
+---
+title: Development Mode
+description: Local development environment with hot reload and automatic infrastructure management
+---
+
+import { TypeScript, Python, LanguageSwitcher, Callout, PathConfig } from "@/components";
+import { FileTree } from "nextra/components";
+
+# Setting Up Your Development Environment
+
+<LanguageSwitcher />
+
+Development mode (`moose dev`) provides a full-featured local environment optimized for rapid iteration and debugging. It automatically manages Docker containers, provides hot reload capabilities, and includes enhanced debugging features.
+
+## Getting Started
+
+<TypeScript>
+```bash
+# Start development environment
+moose dev
+
+# View your running infrastructure
+moose ls
+```
+</TypeScript>
+
+<Python>
+```bash
+# Start development environment
+moose dev
+
+# View your running infrastructure
+moose ls
+```
+</Python>
+
+## Container Management
+
+Development mode automatically manages Docker containers for your infrastructure:
+
+- **ClickHouse** (when `olap` feature is enabled)
+- **Redpanda** (when `streaming_engine` feature is enabled)
+- **Temporal** (when `workflows` feature is enabled)
+- **Redis** (always enabled)
+
+### Container Configuration
+
+Control which containers start with feature flags:
+
+```toml copy
+# moose.config.toml
+[features]
+olap = true              # Enables ClickHouse
+streaming_engine = true  # Enables Redpanda
+workflows = false        # Controls Temporal startup
+```
+
+## Hot Reloading Development
+
+The development runtime includes a file watcher that provides near-instantaneous feedback when you save code changes.
+
+### Watched Files
+
+The file watcher recursively monitors your entire `app/` directory structure and only rebuilds the components that actually changed.
+
+<TypeScript>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="index.ts" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.File name="main.py" />
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+</Python>
+
+<Callout type="info" title="Only Runs Your Root File">
+Only the root file in your `app/` directory is run when changes are detected. In order for your tables/streams/apis/workflows to be detected, you must export them from your root file. If you change a file in your app directory and it is a dependency of your root file, then those changes WILL be detected.
+</Callout>
+
+## Quick Example
+
+**❌ Doesn't work - No export from root:**
+```ts file="app/tables/users.ts"
+import { UserSchema } from './schemas/user';
+
+const usersTable = new OlapTable<UserSchema>("Users");
+// Moose can't see this - not exported from root
+```
+
+**✅ Works - Export from root file:**
+```ts file="app/tables/users.ts" {5}
+import { UserSchema } from './schemas/user';
+
+const usersTable = new OlapTable<UserSchema>("Users");
+
+export { usersTable }; // add this line to export the table
+```
+
+```ts file="app/index.ts"
+import { usersTable } from './tables/users';
+export { usersTable };  // Moose sees this
+```
+
+Now because we exported the table from the root file, Moose will detect the change and rebuild the table.
+
+
+**✅ Works - Change dependency:**
+```ts file="app/schemas/user.ts" {5}
+export interface UserSchema {
+  id: string;
+  name: string;
+  email: string;
+  age: number;  // Adding this triggers migration
+}
+```
+*Moose detects this because `UserSchema` is imported in the root file via the dependency chain.*
+
+<Callout type="info" title="Migrations" href={PathConfig.migrate.path} ctaLabel="Learn more">
+Learn more about how Moose handles migrations.
+</Callout>
+
+## Local Infrastructure
+
+### Port Allocation
+
+Development mode uses the following default ports:
+
+- **4000**: Main API server
+- **5001**: Management API (health checks, metrics, admin, OpenAPI docs)
+
+### Service URLs
+
+Access your development services at:
+
+<TypeScript>
+```bash
+# Main application
+http://localhost:4000
+
+# Management interface
+http://localhost:5001/metrics
+
+# OpenAPI documentation
+http://localhost:5001/openapi.yaml
+```
+</TypeScript>
+
+<Python>
+```bash
+# Main application
+http://localhost:4000
+
+# Management interface  
+curl http://localhost:5001/metrics
+
+# OpenAPI documentation
+http://localhost:5001/openapi.yaml
+```
+</Python>
+
+### Container Networking
+
+All containers run in an isolated Docker network with automatic service discovery:
+
+- Containers communicate using service names
+- Port mapping only for external access
+- Automatic DNS resolution between services
+
+## Troubleshooting
+
+### Common Issues
+
+**Container Startup Failures**
+```bash
+# Check Docker is running
+docker info
+
+# View container logs
+moose logs
+
+```
+
+**Port Conflicts**
+```bash
+# Check what's using your ports
+lsof -i :4000
+lsof -i :5001
+
+# Use custom ports
+export MOOSE_HTTP_PORT=4040
+export MOOSE_MANAGEMENT_PORT=5010
+moose dev
+```

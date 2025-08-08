@@ -157,7 +157,7 @@ async function handleDmv2Task(
   }
 
   for (const childTask of task.config.onComplete) {
-    const childResult = await handleDmv2Task(workflow, childTask, result);
+    const childResult = await handleDmv2Task(workflow, childTask, result.data);
     results.push(...childResult);
   }
 

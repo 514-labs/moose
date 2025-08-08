@@ -95,7 +95,6 @@ export const activities = {
       // Data between temporal workflow & activities are serialized so we
       // have to get it again to access the user's run function
       const fullTask = await getTaskForWorkflow(workflow.name, task.name);
-      const runFunctionParamCount = fullTask.config.run.length;
 
       // Revive any JSON serialized dates in the input data
       const revivedInputData =
@@ -111,9 +110,7 @@ export const activities = {
         // - This allows immediate cancellation detection rather than waiting for user code to finish
         // - If cancellation happens first, we catch it below and call onCancel cleanup
         const result = await Promise.race([
-          runFunctionParamCount === 1 ?
-            fullTask.config.run(taskState)
-          : fullTask.config.run(revivedInputData, taskState),
+          fullTask.config.run(taskState, revivedInputData),
           context.cancelled,
         ]);
         return result;

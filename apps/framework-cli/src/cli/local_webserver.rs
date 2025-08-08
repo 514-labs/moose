@@ -192,6 +192,7 @@ async fn get_consumption_api_res(
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
     proxy_port: u16,
+    consumption_path: &str,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -209,7 +210,10 @@ async fn get_consumption_api_res(
         "http://{}:{}{}{}",
         host,
         proxy_port,
-        req.uri().path().strip_prefix("/consumption").unwrap_or(""),
+        req.uri()
+            .path()
+            .strip_prefix(consumption_path)
+            .unwrap_or(""),
         req.uri()
             .query()
             .map_or("".to_string(), |q| format!("?{q}"))
@@ -219,10 +223,16 @@ async fn get_consumption_api_res(
     {
         let consumption_apis = consumption_apis.read().await;
 
+        let consumption_prefix = if consumption_path.ends_with('/') {
+            consumption_path
+        } else {
+            &format!("{consumption_path}/")
+        };
+
         let consumption_name = req
             .uri()
             .path()
-            .strip_prefix("/consumption/")
+            .strip_prefix(consumption_prefix)
             .unwrap_or(req.uri().path());
 
         // Check for exact match first
@@ -1163,26 +1173,52 @@ async fn router(
             )
             .await
         }
-        (_, &hyper::Method::GET, route_segments)
-            if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
-        {
-            match get_consumption_api_res(
-                http_client,
-                req,
-                host,
-                consumption_apis,
-                is_prod,
-                project.http_server_config.proxy_port,
-            )
-            .await
-            {
-                Ok(response) => Ok(response),
-                Err(e) => {
-                    debug!("Error: {:?}", e);
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from("Error")))
+        (_, &hyper::Method::GET, route_segments) if route_segments.len() >= 2 => {
+            // Get the consumption path from project features, defaulting to "consumption"
+            let consumption_path = project
+                .features
+                .consumption_path
+                .as_deref()
+                .unwrap_or("consumption");
+
+            // Normalize consumption path by removing leading slash and splitting into segments
+            let consumption_segments: Vec<&str> = consumption_path
+                .trim_start_matches('/')
+                .split('/')
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            // Check if the route starts with all consumption path segments
+            let is_consumption_route = route_segments.len() >= consumption_segments.len()
+                && route_segments[..consumption_segments.len()] == consumption_segments;
+
+            if is_consumption_route {
+                let consumption_prefix = if consumption_path.starts_with('/') {
+                    consumption_path.to_string()
+                } else {
+                    format!("/{consumption_path}")
+                };
+                match get_consumption_api_res(
+                    http_client,
+                    req,
+                    host,
+                    consumption_apis,
+                    is_prod,
+                    project.http_server_config.proxy_port,
+                    &consumption_prefix,
+                )
+                .await
+                {
+                    Ok(response) => Ok(response),
+                    Err(e) => {
+                        debug!("Error: {:?}", e);
+                        Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Full::new(Bytes::from("Error")))
+                    }
                 }
+            } else {
+                route_not_found_response()
             }
         }
         (_, &hyper::Method::GET, ["health"]) => health_route(&project, &redis_client).await,

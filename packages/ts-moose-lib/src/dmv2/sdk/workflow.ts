@@ -9,8 +9,8 @@ import { getMooseInternal } from "../internal";
  * @returns A promise that resolves to the processed result or void
  */
 type TaskHandler<T, R> =
-  T extends null ? (taskState?: any) => Promise<R>
-  : (input: T, taskState?: any) => Promise<R>;
+  T extends null ? (taskState: any) => Promise<R>
+  : (taskState: any, input: T) => Promise<R>;
 
 /**
  * Configuration options for defining a task within a workflow.

@@ -71,7 +71,7 @@ async function handleDmv2Task(
 
   if (!configTimeout) {
     taskTimeout = "1h";
-  } else if (configTimeout === "none") {
+  } else if (configTimeout === "never") {
     taskTimeout = undefined;
   } else {
     taskTimeout = configTimeout as Duration;
@@ -121,9 +121,9 @@ async function handleDmv2Task(
         logger.info(
           `History limits approaching after ${historyLimitChecks} checks`,
         );
-        logger.info(
-          `Events: ${info.historyLength} | Size: ${info.historySize}`,
-        );
+        // logger.info(
+        //   `Events: ${info.historyLength} | Size: ${info.historySize}`,
+        // );
 
         return await continueAsNew({
           currentWorkflow: workflow.name,

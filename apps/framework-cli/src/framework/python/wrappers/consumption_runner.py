@@ -155,7 +155,12 @@ def handler_with_client(moose_client):
                     else:
                         self.send_response(404)
                         self.end_headers()
-                        self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
+                        available_apis = list(get_consumption_apis().keys())
+                        error_message = f"Consumption API {module_name}"
+                        if version_from_path:
+                            error_message += f" with version {version_from_path}"
+                        error_message += f" not found. Available APIs: {', '.join(available_apis).replace(':', '/')}"
+                        self.wfile.write(bytes(json.dumps({"error": error_message}), 'utf-8'))
                         return
                 else:
                     module = import_module(module_name)

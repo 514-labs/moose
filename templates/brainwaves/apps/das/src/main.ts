@@ -1,6 +1,6 @@
 import fs from "fs";
 import fetch from "node-fetch";
-import { config } from "dotenv";
+import { MOOSE_INGEST_URL, DAS_PORT } from "./config.js";
 import { BrainwaveData } from "./types.js";
 import { createScreen } from "./blessed-setup.js";
 import { Logger } from "./logger.js";
@@ -13,8 +13,7 @@ import { UDPServer } from "./udp-server.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-config({ path: "../.env.local" });
-console.log("MOOSE_INGEST_URL:", process.env.MOOSE_INGEST_URL);
+console.log("MOOSE_INGEST_URL:", MOOSE_INGEST_URL);
 
 interface Args {
   sessionId: string;
@@ -45,6 +44,8 @@ const displayManager = new DisplayManager(screen, line, table, bpmBox);
 let lastBPMDisplayTime = 0;
 const BPM_DISPLAY_INTERVAL = 5000; // 5 seconds
 let latestCalculatedBPM: number | null = null;
+
+let hasWarnedMissingIngestUrl = false;
 
 const sessionFileName = `./brain_data_${argv.sessionId}-ingest.csv`;
 const s = fs.createWriteStream(sessionFileName, { flags: "a" });
@@ -85,18 +86,23 @@ function writeFile(fileName: string, document: BrainwaveData): void {
   }
 
   document.sessionId = `${argv.sessionId}`;
-  if (!process.env.MOOSE_INGEST_URL) {
-    throw new Error("MOOSE_INGEST_URL is not defined in environment variables");
+  const ingestUrl = MOOSE_INGEST_URL;
+  if (ingestUrl) {
+    fetch(ingestUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(document),
+    }).catch((error) => {
+      Logger.error(`Failed to send data to server: ${error.message}`);
+    });
+  } else if (!hasWarnedMissingIngestUrl) {
+    Logger.warn(
+      "MOOSE_INGEST_URL is not set; ingestion is disabled. Set it in .env.local or environment to enable.",
+    );
+    hasWarnedMissingIngestUrl = true;
   }
-  fetch(process.env.MOOSE_INGEST_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(document),
-  }).catch((error) => {
-    Logger.error(`Failed to send data to server: ${error.message}`);
-  });
 
   // Check relaxation state
   const relaxationState = analyzeRelaxationState(document);
@@ -177,7 +183,7 @@ async function main(): Promise<void> {
     checkExcessiveMovement(data);
   });
 
-  server.start(Number(process.env.DAS_PORT) || 43134);
+  server.start(Number(DAS_PORT));
 }
 
 function cleanup() {

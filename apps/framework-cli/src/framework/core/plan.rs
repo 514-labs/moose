@@ -330,6 +330,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }],
             order_by: vec!["id".to_string()],
             engine: None,
@@ -504,6 +505,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         // Create mock OLAP client with the actual table

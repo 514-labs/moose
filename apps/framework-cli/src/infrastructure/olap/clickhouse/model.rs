@@ -164,6 +164,7 @@ impl ClickHouseColumnType {
                             primary_key: col.primary_key,
                             default: None,
                             annotations: Default::default(),
+                            comment: None,
                         }
                     })
                     .collect(),
@@ -422,6 +423,7 @@ pub struct ClickHouseColumn {
     pub unique: bool,
     pub primary_key: bool,
     pub default: Option<ClickHouseColumnDefaults>,
+    pub comment: Option<String>, // Column comment for metadata storage
 }
 
 impl ClickHouseColumn {

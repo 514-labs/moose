@@ -44,7 +44,10 @@ use serde::{Deserialize, Serialize};
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
-use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+use crate::framework::core::infrastructure::table::{
+    Column, ColumnMetadata, ColumnType, DataEnum, EnumMember, EnumValue, EnumValueMetadata, Table,
+    METADATA_PREFIX,
+};
 use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::core::partial_infrastructure_map::LifeCycle;
@@ -355,15 +358,27 @@ async fn execute_modify_table_column(
         primary_key: false,
         default: None,
         annotations: vec![],
+        comment: None,
     };
 
     let clickhouse_column = std_column_to_clickhouse_column(reconstructed_after_column)?;
     let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
-    // TODO: Fix the string conversion issue here - expected String, found &str
-    let modify_column_query = format!(
-        "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
-        db_name, table.name, clickhouse_column.name, column_type_string
-    );
+
+    // Build the MODIFY COLUMN query with optional comment
+    let modify_column_query = if let Some(ref comment) = clickhouse_column.comment {
+        // Escape single quotes in the comment for SQL safety
+        let escaped_comment = comment.replace('\'', "''");
+        format!(
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {} COMMENT '{}'",
+            db_name, table.name, clickhouse_column.name, column_type_string, escaped_comment
+        )
+    } else {
+        format!(
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
+            db_name, table.name, clickhouse_column.name, column_type_string
+        )
+    };
+
     log::debug!("Modifying column: {}", modify_column_query);
     run_query(&modify_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
@@ -371,6 +386,46 @@ async fn execute_modify_table_column(
             resource: Some(table.name.clone()),
         }
     })?;
+    Ok(())
+}
+
+/// Execute a ModifyColumnComment operation
+///
+/// This is used to add or update metadata comments on columns, particularly
+/// for enum columns that need to store their original TypeScript definition.
+async fn execute_modify_column_comment(
+    db_name: &str,
+    table: &Table,
+    column: &Column,
+    comment: &str,
+    client: &ConfiguredDBClient,
+) -> Result<(), ClickhouseChangesError> {
+    log::info!(
+        "Executing ModifyColumnComment for table: {}, column: {}",
+        table.id(),
+        column.name
+    );
+
+    // Get the ClickHouse column type for the ALTER statement
+    let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
+    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
+
+    // Escape single quotes in the comment for SQL safety
+    let escaped_comment = comment.replace('\'', "''");
+
+    // ClickHouse requires MODIFY COLUMN with the full column definition when changing comment
+    let modify_comment_query = format!(
+        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {} COMMENT '{}'",
+        db_name, table.name, column.name, column_type_string, escaped_comment
+    );
+
+    log::debug!("Modifying column comment: {}", modify_comment_query);
+    run_query(&modify_comment_query, client)
+        .await
+        .map_err(|e| ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table.name.clone()),
+        })?;
     Ok(())
 }
 
@@ -770,6 +825,116 @@ pub struct TableWithUnsupportedType {
     pub col_type: String,
 }
 
+/// Parses column metadata from a comment string
+fn parse_column_metadata(comment: &str) -> Option<ColumnMetadata> {
+    if !comment.starts_with(METADATA_PREFIX) {
+        return None;
+    }
+
+    let json_str = comment.strip_prefix(METADATA_PREFIX)?;
+
+    match serde_json::from_str::<ColumnMetadata>(json_str) {
+        Ok(metadata) => Some(metadata),
+        Err(e) => {
+            log::warn!("Failed to parse column metadata JSON: {}", e);
+            None
+        }
+    }
+}
+
+/// Parses an enum definition from metadata comment
+fn parse_enum_from_metadata(comment: &str) -> Option<DataEnum> {
+    let metadata = parse_column_metadata(comment)?;
+
+    let values = metadata
+        .enum_def
+        .members
+        .into_iter()
+        .map(|member| {
+            let value = match member.value {
+                EnumValueMetadata::Int(i) => EnumValue::Int(i),
+                EnumValueMetadata::String(s) => EnumValue::String(s),
+            };
+
+            EnumMember {
+                name: member.name,
+                value,
+            }
+        })
+        .collect();
+
+    Some(DataEnum {
+        name: metadata.enum_def.name,
+        values,
+    })
+}
+
+/// Checks if a column needs to have enum metadata added as a comment
+///
+/// This is used during migrations to automatically add metadata to existing
+/// enum columns that were created before the metadata feature was added.
+pub fn column_needs_enum_metadata(column: &Column, actual_column: &Column) -> bool {
+    match (&column.data_type, &actual_column.data_type) {
+        (ColumnType::Enum(target_enum), ColumnType::Enum(_)) => {
+            // Check if this is a TypeScript string enum
+            let is_string_enum = target_enum
+                .values
+                .iter()
+                .any(|m| matches!(m.value, EnumValue::String(_)));
+
+            if is_string_enum {
+                // Check if the actual column has metadata
+                if let Some(ref comment) = actual_column.comment {
+                    // If there's already metadata, we don't need to add it
+                    !comment.starts_with(METADATA_PREFIX)
+                } else {
+                    // No comment, needs metadata
+                    true
+                }
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
+}
+
+/// Updates enum columns to add metadata comments when needed
+///
+/// This function is called during the normal deployment process to automatically
+/// add metadata comments to existing enum columns that were created before the
+/// metadata feature was added.
+pub async fn update_enum_metadata_for_table(
+    project: &Project,
+    table: &Table,
+    actual_table: &Table,
+) -> Result<(), ClickhouseChangesError> {
+    let client = create_client(project.clickhouse_config.clone());
+    let db_name = &project.clickhouse_config.db_name;
+
+    // Check each column to see if it needs metadata
+    for (column, actual_column) in table.columns.iter().zip(actual_table.columns.iter()) {
+        if column_needs_enum_metadata(column, actual_column) {
+            log::info!(
+                "Adding enum metadata to column {} in table {}",
+                column.name,
+                table.name
+            );
+
+            // Generate the metadata comment for the enum
+            if let ColumnType::Enum(ref enum_def) = column.data_type {
+                let metadata_comment = mapper::build_enum_metadata_comment(enum_def)?;
+
+                // Execute the ALTER TABLE to add the comment
+                execute_modify_column_comment(db_name, table, column, &metadata_comment, &client)
+                    .await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl OlapOperations for ConfiguredDBClient {
     /// Retrieves all tables from the ClickHouse database and converts them to framework Table objects
@@ -857,6 +1022,7 @@ impl OlapOperations for ConfiguredDBClient {
                 SELECT
                     name,
                     type,
+                    comment,
                     is_in_primary_key,
                     is_in_sorting_key
                 FROM system.columns
@@ -873,7 +1039,7 @@ impl OlapOperations for ConfiguredDBClient {
             let mut columns_cursor = self
                 .client
                 .query(&columns_query)
-                .fetch::<(String, String, u8, u8)>()
+                .fetch::<(String, String, String, u8, u8)>()
                 .map_err(|e| {
                     debug!("Error fetching columns for table {}: {}", table_name, e);
                     OlapChangesError::DatabaseError(e.to_string())
@@ -881,30 +1047,61 @@ impl OlapOperations for ConfiguredDBClient {
 
             let mut columns = Vec::new();
 
-            while let Some((col_name, col_type, is_primary, is_sorting)) = columns_cursor
+            while let Some((col_name, col_type, comment, is_primary, is_sorting)) = columns_cursor
                 .next()
                 .await
                 .map_err(|e| OlapChangesError::DatabaseError(e.to_string()))?
             {
                 debug!(
-                    "Processing column: {} (type: {}, primary: {}, sorting: {})",
-                    col_name, col_type, is_primary, is_sorting
+                    "Processing column: {} (type: {}, comment: {}, primary: {}, sorting: {})",
+                    col_name, col_type, comment, is_primary, is_sorting
                 );
 
+                // Try to parse enum from metadata comment first if it's an enum type
                 let (data_type, is_nullable) =
-                    match type_parser::convert_clickhouse_type_to_column_type(&col_type) {
-                        Ok(pair) => pair,
-                        Err(_) => {
+                    if col_type.starts_with("Enum") && !comment.is_empty() {
+                        // Try to parse from metadata comment
+                        if let Some(enum_def) = parse_enum_from_metadata(&comment) {
+                            debug!("Successfully parsed enum metadata for column {}", col_name);
+                            (ColumnType::Enum(enum_def), false)
+                        } else {
+                            // Fall back to type string parsing if no valid metadata
                             debug!(
-                                "Column type not recognized: {} of field {} in table {}",
-                                col_type, col_name, table_name
-                            );
-                            unsupported_tables.push(TableWithUnsupportedType {
-                                name: table_name,
-                                col_name,
-                                col_type,
-                            });
-                            continue 'table_loop;
+                            "No valid metadata for enum column {}, falling back to type parsing",
+                            col_name
+                        );
+                            match type_parser::convert_clickhouse_type_to_column_type(&col_type) {
+                                Ok(pair) => pair,
+                                Err(_) => {
+                                    debug!(
+                                        "Column type not recognized: {} of field {} in table {}",
+                                        col_type, col_name, table_name
+                                    );
+                                    unsupported_tables.push(TableWithUnsupportedType {
+                                        name: table_name,
+                                        col_name,
+                                        col_type,
+                                    });
+                                    continue 'table_loop;
+                                }
+                            }
+                        }
+                    } else {
+                        // Parse non-enum types as before
+                        match type_parser::convert_clickhouse_type_to_column_type(&col_type) {
+                            Ok(pair) => pair,
+                            Err(_) => {
+                                debug!(
+                                    "Column type not recognized: {} of field {} in table {}",
+                                    col_type, col_name, table_name
+                                );
+                                unsupported_tables.push(TableWithUnsupportedType {
+                                    name: table_name,
+                                    col_name,
+                                    col_type,
+                                });
+                                continue 'table_loop;
+                            }
                         }
                     };
 
@@ -914,6 +1111,14 @@ impl OlapOperations for ConfiguredDBClient {
                 // since they come from orderByFields configuration, not Key<T> annotations
                 let is_actual_primary_key = has_explicit_primary_key && is_primary == 1;
 
+                // Preserve non-metadata comments
+                let column_comment = if !comment.starts_with(METADATA_PREFIX) && !comment.is_empty()
+                {
+                    Some(comment.clone())
+                } else {
+                    None
+                };
+
                 let column = Column {
                     name: col_name.clone(),
                     data_type,
@@ -922,6 +1127,7 @@ impl OlapOperations for ConfiguredDBClient {
                     primary_key: is_actual_primary_key,
                     default: None,
                     annotations: Default::default(),
+                    comment: column_comment,
                 };
 
                 columns.push(column);

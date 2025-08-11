@@ -1377,6 +1377,7 @@ pub fn convert_ast_to_column_type(
                             primary_key: false,
                             default: None,
                             annotations: Vec::new(),
+                            comment: None,
                         });
                     }
                     TupleElement::Unnamed(_) => {

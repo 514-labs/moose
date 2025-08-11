@@ -372,6 +372,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "timestamp".to_string(),
@@ -381,6 +382,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "optional_text".to_string(),
@@ -390,6 +392,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["primary_key".to_string()],
@@ -441,6 +444,7 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "numbers".to_string(),
@@ -453,6 +457,7 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "nested_numbers".to_string(),
@@ -468,6 +473,7 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -510,6 +516,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "city".to_string(),
@@ -519,6 +526,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "zipCode".to_string(),
@@ -528,6 +536,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             jwt: false,
@@ -544,6 +553,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "address".to_string(),
@@ -553,6 +563,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "addresses".to_string(),
@@ -565,6 +576,7 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -612,6 +624,7 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "coordinates".to_string(),
@@ -624,6 +637,7 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "metadata".to_string(),
@@ -636,6 +650,7 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],

@@ -26,6 +26,38 @@ pub struct Metadata {
     pub description: Option<String>,
 }
 
+// Constants for metadata format
+pub const METADATA_PREFIX: &str = "[MOOSE_METADATA:DO_NOT_MODIFY] ";
+pub const METADATA_VERSION: u32 = 1;
+
+// Metadata structures for column comments - Minimal version for enum support
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ColumnMetadata {
+    pub version: u32,
+    #[serde(rename = "enum")]
+    pub enum_def: EnumMetadata,
+    // Future fields can be added here with #[serde(skip_serializing_if = "Option::is_none")]
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnumMetadata {
+    pub name: String,
+    pub members: Vec<EnumMemberMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnumMemberMetadata {
+    pub name: String,
+    pub value: EnumValueMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum EnumValueMetadata {
+    Int(u8),
+    String(String),
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
@@ -168,6 +200,8 @@ pub struct Column {
     pub default: Option<ColumnDefaults>,
     #[serde(default)]
     pub annotations: Vec<(String, Value)>, // workaround for needing to Hash
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub comment: Option<String>, // Column comment for metadata storage
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -626,6 +660,7 @@ impl Column {
                 default => Some(ColumnDefaults::from_proto(default)),
             },
             annotations,
+            comment: None, // Proto doesn't have comment field yet
         }
     }
 }
@@ -970,6 +1005,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();

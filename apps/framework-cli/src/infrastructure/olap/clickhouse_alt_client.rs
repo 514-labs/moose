@@ -426,6 +426,7 @@ pub async fn check_table(
                     unique: false,
                     primary_key: false,
                     default: None,
+                    comment: None,
                 })
             }
             Some((nested, nested_inner)) => {
@@ -438,6 +439,7 @@ pub async fn check_table(
                             unique: false,
                             primary_key: false,
                             default: None,
+                            comment: None,
                         });
                         existing_columns.last_mut().unwrap()
                     }
@@ -509,6 +511,7 @@ pub async fn check_table(
                 primary_key: false,
                 default: None,
                 annotations: Default::default(),
+                comment: None,
             })
         })
     }

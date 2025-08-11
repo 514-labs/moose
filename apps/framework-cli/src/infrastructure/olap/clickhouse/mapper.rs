@@ -1,5 +1,6 @@
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, FloatType, IntType, Table,
+    Column, ColumnMetadata, ColumnType, DataEnum, EnumMemberMetadata, EnumMetadata, EnumValue,
+    EnumValueMetadata, FloatType, IntType, Table, METADATA_PREFIX, METADATA_VERSION,
 };
 use serde_json::Value;
 
@@ -15,6 +16,13 @@ use super::queries::ClickhouseEngine;
 pub fn std_column_to_clickhouse_column(
     column: Column,
 ) -> Result<ClickHouseColumn, ClickhouseError> {
+    // Generate comment for enum types
+    let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
+        Some(build_enum_metadata_comment(data_enum)?)
+    } else {
+        column.comment // Pass through any existing comment for non-enum types
+    };
+
     let clickhouse_column = ClickHouseColumn {
         name: sanitize_column_name(column.name),
         column_type: std_field_type_to_clickhouse_type_mapper(
@@ -25,9 +33,36 @@ pub fn std_column_to_clickhouse_column(
         unique: column.unique,
         primary_key: column.primary_key,
         default: None, // TODO: Implement the default mapper
+        comment,
     };
 
     Ok(clickhouse_column)
+}
+
+pub fn build_enum_metadata_comment(data_enum: &DataEnum) -> Result<String, ClickhouseError> {
+    let metadata = ColumnMetadata {
+        version: METADATA_VERSION,
+        enum_def: EnumMetadata {
+            name: data_enum.name.clone(),
+            members: data_enum
+                .values
+                .iter()
+                .map(|m| EnumMemberMetadata {
+                    name: m.name.clone(),
+                    value: match &m.value {
+                        EnumValue::String(s) => EnumValueMetadata::String(s.clone()),
+                        EnumValue::Int(i) => EnumValueMetadata::Int(*i),
+                    },
+                })
+                .collect(),
+        },
+    };
+
+    let json =
+        serde_json::to_string(&metadata).map_err(|e| ClickhouseError::InvalidParameters {
+            message: format!("Failed to serialize enum metadata: {}", e),
+        })?;
+    Ok(format!("{}{}", METADATA_PREFIX, json))
 }
 
 pub fn std_field_type_to_clickhouse_type_mapper(
@@ -184,6 +219,13 @@ pub fn std_columns_to_clickhouse_columns(
 ) -> Result<Vec<ClickHouseColumn>, ClickhouseError> {
     let mut clickhouse_columns: Vec<ClickHouseColumn> = Vec::new();
     for column in columns {
+        // Generate comment for enum types
+        let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
+            Some(build_enum_metadata_comment(data_enum)?)
+        } else {
+            column.comment.clone() // Pass through any existing comment for non-enum types
+        };
+
         let clickhouse_column = ClickHouseColumn {
             name: sanitize_column_name(column.name.clone()),
             column_type: std_field_type_to_clickhouse_type_mapper(
@@ -194,6 +236,7 @@ pub fn std_columns_to_clickhouse_columns(
             unique: column.unique,
             primary_key: column.primary_key,
             default: None, // TODO: Implement the default mapper
+            comment,
         };
         clickhouse_columns.push(clickhouse_column);
     }
@@ -221,4 +264,90 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
         order_by: table.order_by.clone(),
         engine: clickhouse_engine,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
+
+    #[test]
+    fn test_enum_metadata_roundtrip() {
+        // Create a test enum
+        let enum_def = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "TEXT".to_string(),
+                    value: EnumValue::String("text".to_string()),
+                },
+                EnumMember {
+                    name: "EMAIL".to_string(),
+                    value: EnumValue::String("email".to_string()),
+                },
+                EnumMember {
+                    name: "CALL".to_string(),
+                    value: EnumValue::String("call".to_string()),
+                },
+            ],
+        };
+
+        // Generate metadata comment
+        let comment = build_enum_metadata_comment(&enum_def).unwrap();
+
+        // Verify it has the correct prefix
+        assert!(comment.starts_with(METADATA_PREFIX));
+
+        // Parse it back (we need to import the parsing functions from clickhouse.rs for full test)
+        // For now, let's at least verify the JSON structure
+        let json_str = comment.strip_prefix(METADATA_PREFIX).unwrap();
+        let metadata: ColumnMetadata = serde_json::from_str(json_str).unwrap();
+
+        // Verify the metadata
+        assert_eq!(metadata.version, METADATA_VERSION);
+        assert_eq!(metadata.enum_def.name, "RecordType");
+        assert_eq!(metadata.enum_def.members.len(), 3);
+
+        // Verify first member
+        assert_eq!(metadata.enum_def.members[0].name, "TEXT");
+        match &metadata.enum_def.members[0].value {
+            EnumValueMetadata::String(s) => assert_eq!(s, "text"),
+            _ => panic!("Expected string value"),
+        }
+    }
+
+    #[test]
+    fn test_enum_metadata_with_int_values() {
+        // Create a test enum with integer values
+        let enum_def = DataEnum {
+            name: "Status".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "ACTIVE".to_string(),
+                    value: EnumValue::Int(1),
+                },
+                EnumMember {
+                    name: "INACTIVE".to_string(),
+                    value: EnumValue::Int(2),
+                },
+            ],
+        };
+
+        // Generate metadata comment
+        let comment = build_enum_metadata_comment(&enum_def).unwrap();
+
+        // Parse it back
+        let json_str = comment.strip_prefix(METADATA_PREFIX).unwrap();
+        let metadata: ColumnMetadata = serde_json::from_str(json_str).unwrap();
+
+        // Verify the metadata
+        assert_eq!(metadata.enum_def.name, "Status");
+        assert_eq!(metadata.enum_def.members.len(), 2);
+
+        // Verify integer values
+        match &metadata.enum_def.members[0].value {
+            EnumValueMetadata::Int(i) => assert_eq!(*i, 1),
+            _ => panic!("Expected int value"),
+        }
+    }
 }

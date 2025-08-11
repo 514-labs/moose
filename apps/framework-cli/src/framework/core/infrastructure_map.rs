@@ -2129,6 +2129,35 @@ impl InfrastructureMap {
 ///
 /// # Returns
 /// A vector of `ColumnChange` objects describing the differences
+/// Check if two columns are semantically equivalent
+///
+/// This handles special cases like enum types where ClickHouse's representation
+/// may differ from the source TypeScript but is semantically the same.
+fn columns_are_equivalent(before: &Column, after: &Column) -> bool {
+    // Check all non-data_type fields first
+    if before.name != after.name
+        || before.required != after.required
+        || before.unique != after.unique
+        || before.primary_key != after.primary_key
+        || before.default != after.default
+        || before.annotations != after.annotations
+    {
+        return false;
+    }
+
+    // Special handling for enum types
+    use crate::framework::core::infrastructure::table::ColumnType;
+    match (&before.data_type, &after.data_type) {
+        (ColumnType::Enum(before_enum), ColumnType::Enum(after_enum)) => {
+            // Try to use ClickHouse-specific enum comparison for string enums
+            use crate::infrastructure::olap::clickhouse::diff_strategy::enums_are_equivalent;
+            enums_are_equivalent(before_enum, after_enum)
+        }
+        // For all other types, use standard equality
+        _ => before.data_type == after.data_type,
+    }
+}
+
 fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
     let mut diff = Vec::new();
 
@@ -2143,7 +2172,7 @@ fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange
     // Process additions and updates: O(n)
     for (i, after_col) in after.columns.iter().enumerate() {
         if let Some(&before_col) = before_columns.get(&after_col.name) {
-            if before_col != after_col {
+            if !columns_are_equivalent(before_col, after_col) {
                 log::debug!(
                     "Column '{}' modified from {:?} to {:?}",
                     after_col.name,
@@ -2237,6 +2266,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "name".to_string(),
@@ -2246,6 +2276,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "to_be_removed".to_string(),
@@ -2255,6 +2286,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2280,6 +2312,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "name".to_string(),
@@ -2289,6 +2322,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "age".to_string(), // New column
@@ -2298,6 +2332,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
@@ -2336,6 +2371,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_remove".to_string(),
@@ -2345,6 +2381,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ];
 
@@ -2359,6 +2396,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "new_column".to_string(),
@@ -2368,6 +2406,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ];
 
@@ -2494,6 +2533,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2523,6 +2563,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2549,6 +2590,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2559,6 +2601,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2591,6 +2634,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_remove".to_string(),
@@ -2600,6 +2644,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_modify".to_string(),
@@ -2609,6 +2654,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2622,6 +2668,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_modify".to_string(), // modified
@@ -2631,6 +2678,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "new_column".to_string(), // added
@@ -2640,6 +2688,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2752,6 +2801,7 @@ mod diff_tests {
             primary_key: false,
             default: Some(ColumnDefaults::AutoIncrement),
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2762,6 +2812,7 @@ mod diff_tests {
             primary_key: false,
             default: Some(ColumnDefaults::Now),
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2793,6 +2844,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "name".to_string(),
@@ -2802,6 +2854,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2815,6 +2868,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "id".to_string(),
@@ -2824,6 +2878,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2849,6 +2904,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             };
             before.columns.push(col.clone());
             after.columns.push(col);
@@ -2888,6 +2944,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             });
 
             // Change every other column type in the after table
@@ -2919,6 +2976,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             });
         }
 
@@ -2947,6 +3005,7 @@ mod diff_tests {
                 ("index".to_string(), JsonValue::Bool(true)),
                 ("deprecated".to_string(), JsonValue::Bool(true)),
             ],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2960,6 +3019,7 @@ mod diff_tests {
                 ("index".to_string(), JsonValue::Bool(true)),
                 ("new_annotation".to_string(), JsonValue::Bool(true)),
             ],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2998,6 +3058,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -3008,6 +3069,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         // Test special characters in column name
@@ -3019,6 +3081,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -3029,6 +3092,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -3284,6 +3348,7 @@ mod diff_topic_tests {
                 primary_key: false,
                 default: None,
                 annotations: Vec::new(),
+                comment: None,
             }],
             metadata: None,
             life_cycle: LifeCycle::FullyManaged,
@@ -3563,6 +3628,7 @@ mod diff_topic_to_table_sync_process_tests {
                 primary_key: false,
                 default: None,
                 annotations: Vec::new(),
+                comment: None,
             }],
             version: Some(version.clone()),
             source_primitive: PrimitiveSignature {
@@ -3681,6 +3747,7 @@ mod diff_topic_to_table_sync_process_tests {
             primary_key: true,
             default: None,
             annotations: vec![("note".to_string(), Value::String("changed".to_string()))],
+            comment: None,
         }];
 
         assert_eq!(

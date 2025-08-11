@@ -506,6 +506,7 @@ my_function = StreamingFunction(
                 primary_key: is_key,
                 default: None,
                 annotations: vec![],
+                comment: None,
             })
             .collect()
     }

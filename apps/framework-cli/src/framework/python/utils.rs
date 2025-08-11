@@ -49,6 +49,7 @@ impl ColumnBuilder {
             primary_key,
             default: self.default,
             annotations: Default::default(),
+            comment: None,
         })
     }
 }

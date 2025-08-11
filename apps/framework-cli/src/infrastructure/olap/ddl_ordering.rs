@@ -871,6 +871,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             after_column: None,
             dependency_info: DependencyInfo {
@@ -1154,6 +1155,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with correct dependencies
@@ -2092,6 +2094,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with signatures that work with the current implementation
@@ -2264,6 +2267,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "old_column".to_string(),
@@ -2273,6 +2277,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2298,6 +2303,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "new_column".to_string(),
@@ -2307,6 +2313,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()], // Same ORDER BY
@@ -2331,6 +2338,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }),
             ColumnChange::Added {
                 column: Column {
@@ -2341,6 +2349,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 position_after: Some("id".to_string()),
             },

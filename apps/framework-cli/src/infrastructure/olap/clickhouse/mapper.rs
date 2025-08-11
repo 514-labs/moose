@@ -13,11 +13,9 @@ use super::errors::ClickhouseError;
 use super::model::sanitize_column_name;
 use super::queries::ClickhouseEngine;
 
-pub fn std_column_to_clickhouse_column(
-    column: Column,
-) -> Result<ClickHouseColumn, ClickhouseError> {
-    // Generate comment for enum types, preserving any existing user comment
-    let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
+/// Generates a column comment, preserving any existing user comment and adding/updating metadata for enums
+fn generate_column_comment(column: &Column) -> Result<Option<String>, ClickhouseError> {
+    if let ColumnType::Enum(ref data_enum) = column.data_type {
         let metadata_comment = build_enum_metadata_comment(data_enum)?;
 
         // Extract user comment from existing comment (if any)
@@ -46,13 +44,19 @@ pub fn std_column_to_clickhouse_column(
         };
 
         // Combine user comment with new metadata
-        match user_comment {
+        Ok(match user_comment {
             Some(user_text) => Some(format!("{} {}", user_text, metadata_comment)),
             None => Some(metadata_comment),
-        }
+        })
     } else {
-        column.comment // Pass through any existing comment for non-enum types
-    };
+        Ok(column.comment.clone()) // Pass through any existing comment for non-enum types
+    }
+}
+
+pub fn std_column_to_clickhouse_column(
+    column: Column,
+) -> Result<ClickHouseColumn, ClickhouseError> {
+    let comment = generate_column_comment(&column)?;
 
     let clickhouse_column = ClickHouseColumn {
         name: sanitize_column_name(column.name),
@@ -250,43 +254,7 @@ pub fn std_columns_to_clickhouse_columns(
 ) -> Result<Vec<ClickHouseColumn>, ClickhouseError> {
     let mut clickhouse_columns: Vec<ClickHouseColumn> = Vec::new();
     for column in columns {
-        // Generate comment for enum types, preserving any existing user comment
-        let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
-            let metadata_comment = build_enum_metadata_comment(data_enum)?;
-
-            // Extract user comment from existing comment (if any)
-            // The existing comment might be:
-            // 1. Just a user comment
-            // 2. Just metadata (starts with METADATA_PREFIX)
-            // 3. User comment + metadata
-            let user_comment = match &column.comment {
-                Some(existing) => {
-                    if let Some(metadata_pos) = existing.find(METADATA_PREFIX) {
-                        // Has metadata - extract the user comment part before it
-                        let user_part = existing[..metadata_pos].trim();
-                        if !user_part.is_empty() {
-                            Some(user_part.to_string())
-                        } else {
-                            None
-                        }
-                    } else if !existing.is_empty() {
-                        // No metadata, entire comment is user comment
-                        Some(existing.clone())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            };
-
-            // Combine user comment with new metadata
-            match user_comment {
-                Some(user_text) => Some(format!("{} {}", user_text, metadata_comment)),
-                None => Some(metadata_comment),
-            }
-        } else {
-            column.comment.clone() // Pass through any existing comment for non-enum types
-        };
+        let comment = generate_column_comment(column)?;
 
         let clickhouse_column = ClickHouseColumn {
             name: sanitize_column_name(column.name.clone()),

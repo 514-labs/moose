@@ -827,11 +827,15 @@ pub struct TableWithUnsupportedType {
 
 /// Parses column metadata from a comment string
 fn parse_column_metadata(comment: &str) -> Option<ColumnMetadata> {
-    if !comment.starts_with(METADATA_PREFIX) {
-        return None;
-    }
+    // Check if metadata exists in the comment (could be at the beginning or after user comment)
+    let metadata_start = comment.find(METADATA_PREFIX)?;
 
-    let json_str = comment.strip_prefix(METADATA_PREFIX)?;
+    // Extract the JSON part starting from the metadata prefix
+    let json_part = &comment[metadata_start + METADATA_PREFIX.len()..];
+
+    // The metadata JSON should be everything from the prefix to the end
+    // or to the next space if there's content after it (though that shouldn't happen)
+    let json_str = json_part.trim();
 
     match serde_json::from_str::<ColumnMetadata>(json_str) {
         Ok(metadata) => Some(metadata),
@@ -1111,10 +1115,20 @@ impl OlapOperations for ConfiguredDBClient {
                 // since they come from orderByFields configuration, not Key<T> annotations
                 let is_actual_primary_key = has_explicit_primary_key && is_primary == 1;
 
-                // Preserve non-metadata comments
-                let column_comment = if !comment.starts_with(METADATA_PREFIX) && !comment.is_empty()
-                {
-                    Some(comment.clone())
+                // Preserve user comments (strip metadata if present)
+                let column_comment = if !comment.is_empty() {
+                    if let Some(metadata_pos) = comment.find(METADATA_PREFIX) {
+                        // Extract the user comment part (before metadata)
+                        let user_comment = comment[..metadata_pos].trim();
+                        if !user_comment.is_empty() {
+                            Some(user_comment.to_string())
+                        } else {
+                            None
+                        }
+                    } else {
+                        // No metadata, entire comment is user comment
+                        Some(comment.clone())
+                    }
                 } else {
                     None
                 };

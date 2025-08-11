@@ -16,9 +16,16 @@ use super::queries::ClickhouseEngine;
 pub fn std_column_to_clickhouse_column(
     column: Column,
 ) -> Result<ClickHouseColumn, ClickhouseError> {
-    // Generate comment for enum types
+    // Generate comment for enum types, preserving any existing user comment
     let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
-        Some(build_enum_metadata_comment(data_enum)?)
+        let metadata_comment = build_enum_metadata_comment(data_enum)?;
+        // If there's an existing user comment, preserve it and append the metadata
+        match column.comment {
+            Some(existing) if !existing.starts_with(METADATA_PREFIX) => {
+                Some(format!("{} {}", existing, metadata_comment))
+            }
+            _ => Some(metadata_comment),
+        }
     } else {
         column.comment // Pass through any existing comment for non-enum types
     };
@@ -219,9 +226,16 @@ pub fn std_columns_to_clickhouse_columns(
 ) -> Result<Vec<ClickHouseColumn>, ClickhouseError> {
     let mut clickhouse_columns: Vec<ClickHouseColumn> = Vec::new();
     for column in columns {
-        // Generate comment for enum types
+        // Generate comment for enum types, preserving any existing user comment
         let comment = if let ColumnType::Enum(ref data_enum) = column.data_type {
-            Some(build_enum_metadata_comment(data_enum)?)
+            let metadata_comment = build_enum_metadata_comment(data_enum)?;
+            // If there's an existing user comment, preserve it and append the metadata
+            match &column.comment {
+                Some(existing) if !existing.starts_with(METADATA_PREFIX) => {
+                    Some(format!("{} {}", existing, metadata_comment))
+                }
+                _ => Some(metadata_comment),
+            }
         } else {
             column.comment.clone() // Pass through any existing comment for non-enum types
         };
@@ -314,6 +328,43 @@ mod tests {
             EnumValueMetadata::String(s) => assert_eq!(s, "text"),
             _ => panic!("Expected string value"),
         }
+    }
+
+    #[test]
+    fn test_comment_preservation_with_enum_metadata() {
+        // Test that user comments are preserved when adding enum metadata
+        let enum_def = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![EnumMember {
+                name: "TEXT".to_string(),
+                value: EnumValue::String("text".to_string()),
+            }],
+        };
+
+        let column_with_user_comment = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(enum_def.clone()),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: Some("This is a user comment about the record type".to_string()),
+        };
+
+        // Convert to ClickHouse column
+        let clickhouse_column = std_column_to_clickhouse_column(column_with_user_comment).unwrap();
+
+        // Verify the comment contains both user comment and metadata
+        let comment = clickhouse_column.comment.unwrap();
+        assert!(comment.starts_with("This is a user comment about the record type"));
+        assert!(comment.contains(METADATA_PREFIX));
+
+        // Verify metadata is still parseable
+        let metadata_start = comment.find(METADATA_PREFIX).unwrap();
+        let json_str = &comment[metadata_start + METADATA_PREFIX.len()..];
+        let metadata: ColumnMetadata = serde_json::from_str(json_str.trim()).unwrap();
+        assert_eq!(metadata.enum_def.name, "RecordType");
     }
 
     #[test]

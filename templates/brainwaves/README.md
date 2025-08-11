@@ -21,7 +21,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 **Brainwaves** is a comprehensive demo platform for brain mapping and movement analytics, built with [Moose](https://docs.fiveonefour.com/moose) and designed to work with the [Muse Headband](https://choosemuse.com) EEG device. The project consists of two main applications:
 
 - **DAS (Data Acquisition Server):** Real-time collection, analysis, visualization, and logging of brainwave and movement data from a Muse device or simulator.
-- **Brainmoose:** A Moose-powered backend for data ingestion, storage, analytics, and API access, with optional OpenAI-powered insights.
+- **Brainmoose:** A Moose-powered backend for data ingestion, storage, analytics, and API access.
 
 The platform supports both live device streaming and simulation using freely available datasets, making it ideal for experimentation, research, and educational use.
 
@@ -56,7 +56,7 @@ The platform supports both live device streaming and simulation using freely ava
   npm install
   moose dev
   ```
-- (Optional) Enable OpenAI analysis by adding your API key to `.env.local` in `apps/brainmoose`.
+
 
 ### Listen to ~15 minute podcasts
 > Generated using NotebookLM
@@ -115,16 +115,11 @@ The platform supports both live device streaming and simulation using freely ava
 - Modular architecture for data models, serverless functions, analytics blocks, and APIs
 - Ingests and stores data from DAS
 - Provides APIs for querying session insights and movement scores
-- Optional OpenAI GPT-4o integration for advanced analysis
 
 ### Setup
 - Install dependencies:
   ```sh
   npm install
-  ```
-- (Optional) Enable OpenAI analysis by adding your API key to `.env.local`:
-  ```
-  OPENAI_API_KEY=your-key-here
   ```
 - Start the backend:
   ```sh

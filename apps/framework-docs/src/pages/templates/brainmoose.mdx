@@ -81,25 +81,23 @@ npm install
 3. Start with simulation (no device required):
 ```bash
 # Download sample data
-cd apps/das
+cd ../das
 ./download.sh
 
-# Run simulation
-./sim.sh brain_data_coding.csv
-
-# In another terminal, start DAS
+# Start DAS
 npm run dev -- --sessionId=MyTestSession
 ```
 
-4. Start the Moose analytics backend:
+4. In another terminal start the Moose analytics backend:
 ```bash
-cd ../brainmoose
+cd {project_root}/apps/brainmoose
 moose dev
 ```
 
-5. (Optional) Enable OpenAI analysis by adding your API key to `.env.local`:
-```env
-OPENAI_API_KEY=your-key-here
+5. In another terminal run the simulation (no device required):
+```bash
+cd {project_root}/apps/das
+./sim.sh brain_data_coding.csv
 ```
 
 ## API Endpoints

@@ -38,8 +38,9 @@ export default function App({ Component, pageProps }: AppProps) {
         api_host:
           process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
         ui_host: "https://us.posthog.com",
-        bootstrap: bootstrapData, // Bootstrap with IDs from the URL if provided.
-        // Enable debug mode in development
+        capture_pageview: false,
+        capture_pageleave: true,
+        bootstrap: bootstrapData,
         loaded: (posthogInstance) => {
           if (process.env.NODE_ENV === "development") posthogInstance.debug();
         },

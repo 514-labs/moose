@@ -467,9 +467,9 @@ impl DockerClient {
                 return Ok(String::from_utf8_lossy(&output.stdout).to_string());
             }
 
-            return Err(std::io::Error::other(String::from_utf8_lossy(
+            Err(std::io::Error::other(String::from_utf8_lossy(
                 &output.stdout,
-            )));
+            )))
         } else {
             Err(std::io::Error::other(format!(
                 "stdout: {}, stderr: {}",

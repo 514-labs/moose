@@ -62,6 +62,8 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
+use crate::cli::display::{Message, MessageType};
+
 // Import the modules
 use super::connection::ConnectionManagerWrapper;
 use super::leadership::LeadershipManager;
@@ -193,51 +195,51 @@ impl RedisConfig {
         false
     }
 
-    /// Validates the configuration to ensure either URL or new fields are used, but not both.
+    /// Shows configuration warnings for mixed Redis configuration scenarios.
     ///
-    /// # Returns
-    ///
-    /// `Result<(), String>` - Ok if valid, Err with error message if invalid
-    pub fn validate(&self) -> Result<(), String> {
+    /// This displays a warning when both URL and individual fields are set,
+    /// which represents a transition scenario during the URL field deprecation.
+    pub fn show_config_warnings(&self) {
         let using_new_fields = self.hostname != Self::default_hostname()
             || self.tls != Self::default_tls()
             || self.port != Self::default_port();
         let using_url = self.url != Self::default_url();
 
         if using_new_fields && using_url {
-            return Err(
-                "Cannot use both 'url' and new fields (hostname, tls, port) in Redis configuration. Please use either 'url' for backwards compatibility or 'hostname'+'tls'+'port' for the new format.".to_string()
+            show_message!(
+                MessageType::Error,
+                Message {
+                    action: "Redis Config".to_string(),
+                    details: "Redis configuration has both 'url' and individual fields (hostname, tls, port) set. The 'url' field takes precedence. Consider migrating to individual fields as 'url' will be deprecated.".to_string(),
+                }
             );
         }
-
-        Ok(())
     }
 
-    /// Returns the effective Redis URL, using either the new fields (tls, hostname, port)
-    /// or the legacy URL field.
+    /// Returns the effective Redis URL, prioritizing URL field over individual fields.
+    ///
+    /// This method prioritizes the URL field when both URL and individual fields are set,
+    /// which handles production scenarios where the URL is configured via environment variables
+    /// while individual fields might be present in config files.
     ///
     /// # Returns
     ///
     /// A string containing the effective Redis URL
-    ///
-    /// # Panics
-    ///
-    /// Panics if both URL and new fields are configured (call validate() first)
     pub fn effective_url(&self) -> String {
-        // Validate configuration
-        if let Err(e) = self.validate() {
-            panic!("Invalid Redis configuration: {e}");
-        }
-
-        // Use new fields if any differ from defaults (indicating explicit configuration)
-        if self.hostname != Self::default_hostname()
+        let using_url = self.url != Self::default_url();
+        let using_new_fields = self.hostname != Self::default_hostname()
             || self.tls != Self::default_tls()
-            || self.port != Self::default_port()
-        {
+            || self.port != Self::default_port();
+
+        // Prioritize URL field when both are set (production case)
+        if using_url {
+            self.url.clone()
+        } else if using_new_fields {
+            // Use new fields when URL is not explicitly set
             let scheme = if self.tls { "rediss" } else { "redis" };
             format!("{}://{}:{}", scheme, self.hostname, self.port)
         } else {
-            // Use legacy URL
+            // Neither explicitly configured, use default URL
             self.url.clone()
         }
     }

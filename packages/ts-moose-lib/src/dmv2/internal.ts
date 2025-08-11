@@ -529,15 +529,40 @@ export const getEgressApis = async () => {
   >();
 
   const registry = getMooseInternal();
-  registry.egressApis.forEach((api, key) => {
-    // Use the full key (name:version) for storage
-    egressFunctions.set(key, api.getHandler());
+  // Single pass: store full keys, track aliasing decisions
+  const versionCountByName = new Map<string, number>();
+  const nameToSoleVersionHandler = new Map<
+    string,
+    (params: unknown, utils: ConsumptionUtil) => unknown
+  >();
 
-    // For backward compatibility, also store under just the name if no version is specified
-    // Only set the name-only key if this API has no version (making it the default)
-    const nameOnly = api.name;
-    if (!api.config.version && !egressFunctions.has(nameOnly)) {
-      egressFunctions.set(nameOnly, api.getHandler());
+  registry.egressApis.forEach((api, key) => {
+    const handler = api.getHandler();
+    egressFunctions.set(key, handler);
+
+    if (!api.config.version) {
+      // Explicit unversioned takes precedence for alias
+      if (!egressFunctions.has(api.name)) {
+        egressFunctions.set(api.name, handler);
+      }
+      nameToSoleVersionHandler.delete(api.name);
+      versionCountByName.delete(api.name);
+    } else if (!egressFunctions.has(api.name)) {
+      // Only track versioned for alias if no explicit unversioned present
+      const count = (versionCountByName.get(api.name) ?? 0) + 1;
+      versionCountByName.set(api.name, count);
+      if (count === 1) {
+        nameToSoleVersionHandler.set(api.name, handler);
+      } else {
+        nameToSoleVersionHandler.delete(api.name);
+      }
+    }
+  });
+
+  // Finalize aliases for names that have exactly one versioned API and no unversioned
+  nameToSoleVersionHandler.forEach((handler, name) => {
+    if (!egressFunctions.has(name)) {
+      egressFunctions.set(name, handler);
     }
   });
 

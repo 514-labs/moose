@@ -149,7 +149,7 @@ const apiHandler =
             }
           }
 
-          // Try versioned lookup first if version is available
+          // Try versioned lookup first if version is available; otherwise rely on aliasing
           if (version) {
             const versionedKey = `${apiName}:${version}`;
             userFuncModule = egressApis.get(versionedKey);
@@ -157,10 +157,13 @@ const apiHandler =
             userFuncModule = egressApis.get(apiName);
           }
           if (!userFuncModule) {
+            const availableApis = Array.from(egressApis.keys()).map((key) =>
+              key.replace(":", "/"),
+            );
             const errorMessage =
               version ?
-                `Consumption API ${apiName} with version ${version} not found in egress APIs.`
-              : `Consumption API ${apiName} not found in consumption APIs.`;
+                `Consumption API ${apiName} with version ${version} not found. Available APIs: ${availableApis.join(", ")}`
+              : `Consumption API ${apiName} not found. Available APIs: ${availableApis.join(", ")}`;
             throw new Error(errorMessage);
           }
 

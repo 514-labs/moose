@@ -6,7 +6,7 @@ import { PathConfig, Icons } from "@/components";
 # Use Moose with Existing ClickHouse
 
 <div className="flex flex-wrap md:flex-nowrap gap-4 my-4">
-<IconBadge Icon={Icons.workflows} label="5 min setup" variant="moose" />
+<IconBadge Icon={Clock} label="5 min setup" variant="moose" />
 <IconBadge Icon={CheckCircle} label="Zero disruption to prod" variant="moose" />
 <IconBadge Icon={Laptop} label="Code-first, local dev" variant="moose" />
 </div>
@@ -310,9 +310,9 @@ const api = new ConsumptionApi<QueryParams, TargetSchema>("get-aggregated-data",
 ```
 </TypeScript>
 
-**Learn more:**
-- [Consumption APIs documentation](/moose/building/consumption-apis)
-
+<Callout type="info" title="Building APIs with Moose" href={PathConfig.apis.path} ctaLabel="Learn more">
+Check out the MooseAPI module for more information on building APIs with Moose.
+</Callout>
 
 ### Build Materialized Views 
 Build materialized views on top of your existing tables to improve query performance. If you have Materialized Views in your ClickHouse, you can use Moose to build new Materialized Views on top of your existing tables, or to migrate your existing Materialized Views to Moose.
@@ -338,12 +338,11 @@ export const materializedView = new MaterializedView<TargetSchema>({
 
 </TypeScript>
 
-**Learn more:**
-- [Blog post on Materialized Views](https://www.fiveonefour.com/blog/Moose-SQL-Getting-DDL-Dependencies-in-Order)
-- [Official Materialized Views documentation](/moose/building/materialized-views)
 
-### Add New Data Sources
-For new data sources, use Moose's IngestPipelines to stream new data into your ClickHouse—while your legacy flows keep running. You can also use Workflows to run custom ETL pipelines if you have batch workloads.
+<Callout type="info" title="Building Materialized Views with Moose" href={`${PathConfig.olap.path}/model-materialized-view`} ctaLabel="Learn more">
+Check out the MooseOLAP module for more information on building Materialized Views with Moose.
+</Callout>
+
 
 </Steps>
 

@@ -19,7 +19,7 @@ from urllib.parse import urlparse, parse_qs
 from moose_lib import MooseClient
 from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
-from moose_lib.dmv2 import get_consumption_api, get_workflow
+from moose_lib.dmv2 import get_consumption_api, get_consumption_apis, get_workflow
 from pydantic import BaseModel, ValidationError
 
 import jwt
@@ -128,7 +128,13 @@ def handler_with_client(moose_client):
                 query_params = parse_qs(parsed_path.query)
 
                 if is_dmv2:
-                    user_api = get_consumption_api(f"{module_name}:{version_from_path}" if version_from_path else module_name)
+                    # Use alias-aware lookup: unversioned name resolves to explicit unversioned
+                    # or the sole versioned API if exactly one exists
+                    user_api = (
+                        get_consumption_api(f"{module_name}:{version_from_path}")
+                        if version_from_path
+                        else get_consumption_api(module_name)
+                    )
                     if user_api is not None:
                         query_fields = convert_pydantic_definition(user_api.model_type)
                         try:
@@ -149,7 +155,12 @@ def handler_with_client(moose_client):
                     else:
                         self.send_response(404)
                         self.end_headers()
-                        self.wfile.write(bytes(json.dumps({"error": "API not found"}), 'utf-8'))
+                        available_apis = list(get_consumption_apis().keys())
+                        error_message = f"Consumption API {module_name}"
+                        if version_from_path:
+                            error_message += f" with version {version_from_path}"
+                        error_message += f" not found. Available APIs: {', '.join(available_apis).replace(':', '/')}"
+                        self.wfile.write(bytes(json.dumps({"error": error_message}), 'utf-8'))
                         return
                 else:
                     module = import_module(module_name)

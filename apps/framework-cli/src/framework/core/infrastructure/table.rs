@@ -652,6 +652,7 @@ impl Column {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
+            comment: self.comment.clone(),
             special_fields: Default::default(),
         }
     }
@@ -679,7 +680,7 @@ impl Column {
                 default => Some(ColumnDefaults::from_proto(default)),
             },
             annotations,
-            comment: None, // Proto doesn't have comment field yet
+            comment: proto.comment,
         }
     }
 }
@@ -1030,5 +1031,48 @@ mod tests {
         let json = serde_json::to_string(&nested_column).unwrap();
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
+    }
+
+    #[test]
+    fn test_column_proto_with_comment() {
+        // Test that comment field is properly serialized/deserialized through proto
+        let column_with_comment = Column {
+            name: "test_column".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: Some("[MOOSE_METADATA:DO_NOT_MODIFY] {\"version\":1,\"enum\":{\"name\":\"TestEnum\",\"members\":[]}}".to_string()),
+        };
+
+        // Convert to proto and back
+        let proto = column_with_comment.to_proto();
+        let reconstructed = Column::from_proto(proto);
+
+        assert_eq!(column_with_comment, reconstructed);
+        assert_eq!(
+            reconstructed.comment,
+            Some("[MOOSE_METADATA:DO_NOT_MODIFY] {\"version\":1,\"enum\":{\"name\":\"TestEnum\",\"members\":[]}}".to_string())
+        );
+
+        // Test without comment
+        let column_without_comment = Column {
+            name: "test_column".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let proto = column_without_comment.to_proto();
+        let reconstructed = Column::from_proto(proto);
+
+        assert_eq!(column_without_comment, reconstructed);
+        assert_eq!(reconstructed.comment, None);
     }
 }

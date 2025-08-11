@@ -82,6 +82,14 @@ class KafkaTopicConfig:
 
         return name
 
+    def topic_name_to_stream_key(self) -> str:
+        """Returns the stream registry key, including version suffix if present."""
+        stream_name = self.topic_name_to_stream_name()
+        if self.version is not None:
+            version_suffix = self.version.replace(".", "_")
+            return f"{stream_name}_{version_suffix}"
+        return stream_name
+
 
 def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str) -> Tuple[type, Callable]:
     """
@@ -160,8 +168,8 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
 
     # Find the stream that has a transformation matching our source/destination
     for source_py_stream_name, stream in get_streams().items():
-        # Compare the stream name (without version) with the topic's stream name
-        if stream.name != source_topic.topic_name_to_stream_name():
+        # Compare registry key with topic's expected stream key (handles both versioned and unversioned)
+        if source_py_stream_name != source_topic.topic_name_to_stream_key():
             continue
 
         if stream.has_consumers() and target_topic is None:

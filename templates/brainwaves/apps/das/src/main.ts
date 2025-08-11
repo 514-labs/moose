@@ -45,8 +45,6 @@ let lastBPMDisplayTime = 0;
 const BPM_DISPLAY_INTERVAL = 5000; // 5 seconds
 let latestCalculatedBPM: number | null = null;
 
-let hasWarnedMissingIngestUrl = false;
-
 const sessionFileName = `./brain_data_${argv.sessionId}-ingest.csv`;
 const s = fs.createWriteStream(sessionFileName, { flags: "a" });
 
@@ -86,23 +84,15 @@ function writeFile(fileName: string, document: BrainwaveData): void {
   }
 
   document.sessionId = `${argv.sessionId}`;
-  const ingestUrl = MOOSE_INGEST_URL;
-  if (ingestUrl) {
-    fetch(ingestUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(document),
-    }).catch((error) => {
-      Logger.error(`Failed to send data to server: ${error.message}`);
-    });
-  } else if (!hasWarnedMissingIngestUrl) {
-    Logger.warn(
-      "MOOSE_INGEST_URL is not set; ingestion is disabled. Set it in .env.local or environment to enable.",
-    );
-    hasWarnedMissingIngestUrl = true;
-  }
+  fetch(MOOSE_INGEST_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(document),
+  }).catch((error) => {
+    Logger.error(`Failed to send data to server: ${error.message}`);
+  });
 
   // Check relaxation state
   const relaxationState = analyzeRelaxationState(document);

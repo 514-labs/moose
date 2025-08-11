@@ -41,6 +41,22 @@ pub fn enums_are_equivalent(actual: &DataEnum, target: &DataEnum) -> bool {
         return false;
     }
 
+    // Check if both enums have string values (both from TypeScript)
+    // In this case, the names must match
+    let actual_has_string_values = actual
+        .values
+        .iter()
+        .any(|m| matches!(m.value, EnumValue::String(_)));
+    let target_has_string_values = target
+        .values
+        .iter()
+        .any(|m| matches!(m.value, EnumValue::String(_)));
+
+    if actual_has_string_values && target_has_string_values && actual.name != target.name {
+        // Both are TypeScript enums but with different names
+        return false;
+    }
+
     // Check each member
     for (idx, target_member) in target.values.iter().enumerate() {
         match &target_member.value {
@@ -578,5 +594,96 @@ mod tests {
         };
 
         assert!(!should_add_enum_metadata(&enum_with_metadata));
+    }
+
+    #[test]
+    fn test_enums_not_equivalent_different_names() {
+        // Test that enums with different names are not equivalent
+        let enum1 = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![EnumMember {
+                name: "TEXT".to_string(),
+                value: EnumValue::String("text".to_string()),
+            }],
+        };
+
+        let enum2 = DataEnum {
+            name: "DifferentType".to_string(),
+            values: vec![EnumMember {
+                name: "TEXT".to_string(),
+                value: EnumValue::String("text".to_string()),
+            }],
+        };
+
+        // Even though values match, different names should mean not equivalent
+        assert!(!enums_are_equivalent(&enum1, &enum2));
+    }
+
+    #[test]
+    fn test_enums_not_equivalent_different_member_count() {
+        // Test that enums with different member counts are not equivalent
+        let enum1 = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![EnumMember {
+                name: "TEXT".to_string(),
+                value: EnumValue::String("text".to_string()),
+            }],
+        };
+
+        let enum2 = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "TEXT".to_string(),
+                    value: EnumValue::String("text".to_string()),
+                },
+                EnumMember {
+                    name: "EMAIL".to_string(),
+                    value: EnumValue::String("email".to_string()),
+                },
+            ],
+        };
+
+        assert!(!enums_are_equivalent(&enum1, &enum2));
+    }
+
+    #[test]
+    fn test_enums_equivalent_mixed_cases() {
+        // Test Case: TypeScript string enum vs ClickHouse after metadata applied
+        let typescript_enum = DataEnum {
+            name: "RecordType".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "TEXT".to_string(),
+                    value: EnumValue::String("text".to_string()),
+                },
+                EnumMember {
+                    name: "EMAIL".to_string(),
+                    value: EnumValue::String("email".to_string()),
+                },
+            ],
+        };
+
+        // After metadata is applied and read back
+        let metadata_enum = typescript_enum.clone();
+        assert!(enums_are_equivalent(&metadata_enum, &typescript_enum));
+
+        // ClickHouse representation without metadata
+        let clickhouse_enum = DataEnum {
+            name: "Enum8".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "text".to_string(),
+                    value: EnumValue::Int(1),
+                },
+                EnumMember {
+                    name: "email".to_string(),
+                    value: EnumValue::Int(2),
+                },
+            ],
+        };
+
+        // This is the core fix - TypeScript enum should be equivalent to ClickHouse representation
+        assert!(enums_are_equivalent(&clickhouse_enum, &typescript_enum));
     }
 }

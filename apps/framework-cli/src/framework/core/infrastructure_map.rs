@@ -2117,22 +2117,17 @@ impl InfrastructureMap {
     }
 }
 
-/// Computes the detailed differences between two table versions
-///
-/// This function performs a column-by-column comparison between two tables
-/// and identifies added, removed, and modified columns. For modified columns,
-/// it logs the specific attributes that have changed.
-///
-/// # Arguments
-/// * `before` - The original table
-/// * `after` - The modified table
-///
-/// # Returns
-/// A vector of `ColumnChange` objects describing the differences
 /// Check if two columns are semantically equivalent
 ///
 /// This handles special cases like enum types where ClickHouse's representation
 /// may differ from the source TypeScript but is semantically the same.
+///
+/// # Arguments
+/// * `before` - The first column to compare
+/// * `after` - The second column to compare
+///
+/// # Returns
+/// `true` if the columns are semantically equivalent, `false` otherwise
 fn columns_are_equivalent(before: &Column, after: &Column) -> bool {
     // Check all non-data_type fields first
     if before.name != after.name
@@ -2158,6 +2153,18 @@ fn columns_are_equivalent(before: &Column, after: &Column) -> bool {
     }
 }
 
+/// Computes the detailed differences between two table versions
+///
+/// This function performs a column-by-column comparison between two tables
+/// and identifies added, removed, and modified columns. For modified columns,
+/// it logs the specific attributes that have changed.
+///
+/// # Arguments
+/// * `before` - The original table
+/// * `after` - The modified table
+///
+/// # Returns
+/// A vector of `ColumnChange` objects describing the differences
 fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
     let mut diff = Vec::new();
 
@@ -3097,6 +3104,134 @@ mod diff_tests {
 
         let diff = compute_table_columns_diff(&before, &after);
         assert_eq!(diff.len(), 2, "Expected changes for edge case columns");
+    }
+
+    #[test]
+    fn test_columns_are_equivalent_with_enums() {
+        use crate::framework::core::infrastructure::table::IntType;
+        use crate::framework::core::infrastructure::table::{
+            Column, ColumnType, DataEnum, EnumMember, EnumValue,
+        };
+
+        // Test 1: Identical columns should be equivalent
+        let col1 = Column {
+            name: "status".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+        let col2 = col1.clone();
+        assert!(columns_are_equivalent(&col1, &col2));
+
+        // Test 2: Different names should not be equivalent
+        let mut col3 = col1.clone();
+        col3.name = "different".to_string();
+        assert!(!columns_are_equivalent(&col1, &col3));
+
+        // Test 3: String enum from TypeScript vs integer enum from ClickHouse
+        let typescript_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "RecordType".to_string(),
+                values: vec![
+                    EnumMember {
+                        name: "TEXT".to_string(),
+                        value: EnumValue::String("text".to_string()),
+                    },
+                    EnumMember {
+                        name: "EMAIL".to_string(),
+                        value: EnumValue::String("email".to_string()),
+                    },
+                ],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let clickhouse_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "Enum8".to_string(),
+                values: vec![
+                    EnumMember {
+                        name: "text".to_string(),
+                        value: EnumValue::Int(1),
+                    },
+                    EnumMember {
+                        name: "email".to_string(),
+                        value: EnumValue::Int(2),
+                    },
+                ],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        // These should be equivalent due to the enum semantic comparison
+        assert!(columns_are_equivalent(
+            &clickhouse_enum_col,
+            &typescript_enum_col
+        ));
+
+        // Test 4: Different enum values should not be equivalent
+        let different_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "RecordType".to_string(),
+                values: vec![EnumMember {
+                    name: "TEXT".to_string(),
+                    value: EnumValue::String("different".to_string()),
+                }],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        assert!(!columns_are_equivalent(
+            &typescript_enum_col,
+            &different_enum_col
+        ));
+
+        // Test 5: Non-enum types should use standard equality
+        let int_col1 = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int64),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let int_col2 = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int32),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        assert!(!columns_are_equivalent(&int_col1, &int_col2));
     }
 }
 

@@ -26,35 +26,54 @@ pub struct Metadata {
     pub description: Option<String>,
 }
 
-// Constants for metadata format
+/// Prefix for Moose-managed metadata in column comments.
+/// This prefix ensures users don't accidentally modify the metadata.
 pub const METADATA_PREFIX: &str = "[MOOSE_METADATA:DO_NOT_MODIFY] ";
+
+/// Version number for the metadata format.
+/// This allows for future format changes while maintaining backward compatibility.
 pub const METADATA_VERSION: u32 = 1;
 
-// Metadata structures for column comments - Minimal version for enum support
+/// Root structure for column metadata stored in ClickHouse column comments.
+///
+/// This metadata preserves the original TypeScript enum definitions to solve
+/// the false positive diff issue where TypeScript string enums (e.g., `TEXT = 'text'`)
+/// get converted to ClickHouse integer enums (e.g., `'text' = 1`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ColumnMetadata {
+    /// Version of the metadata format
     pub version: u32,
+    /// Enum definition (currently the only supported metadata type)
     #[serde(rename = "enum")]
     pub enum_def: EnumMetadata,
     // Future fields can be added here with #[serde(skip_serializing_if = "Option::is_none")]
 }
 
+/// Metadata for an enum type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EnumMetadata {
+    /// Original enum name from TypeScript
     pub name: String,
+    /// List of enum members with their values
     pub members: Vec<EnumMemberMetadata>,
 }
 
+/// Metadata for a single enum member
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EnumMemberMetadata {
+    /// Member name (e.g., "TEXT")
     pub name: String,
+    /// Member value (either integer or string)
     pub value: EnumValueMetadata,
 }
 
+/// Value of an enum member, supporting both integer and string values
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum EnumValueMetadata {
+    /// Integer value for numeric enums
     Int(u8),
+    /// String value for string enums
     String(String),
 }
 

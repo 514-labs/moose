@@ -2136,6 +2136,7 @@ fn columns_are_equivalent(before: &Column, after: &Column) -> bool {
         || before.primary_key != after.primary_key
         || before.default != after.default
         || before.annotations != after.annotations
+        || before.comment != after.comment
     {
         return false;
     }
@@ -3131,6 +3132,11 @@ mod diff_tests {
         let mut col3 = col1.clone();
         col3.name = "different".to_string();
         assert!(!columns_are_equivalent(&col1, &col3));
+
+        // Test 2b: Different comments should not be equivalent
+        let mut col_with_comment = col1.clone();
+        col_with_comment.comment = Some("User documentation".to_string());
+        assert!(!columns_are_equivalent(&col1, &col_with_comment));
 
         // Test 3: String enum from TypeScript vs integer enum from ClickHouse
         let typescript_enum_col = Column {

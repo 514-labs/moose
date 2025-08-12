@@ -325,7 +325,8 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       writeTo: {
         kind: "stream",
         name: api.config.destination.name,
-        version: api.config.version,
+        // Use the destination stream's version so the Rust loader can resolve the topic key
+        version: api.config.destination.config.version,
       },
       deadLetterQueue: deadLetterQueueName,
       metadata,

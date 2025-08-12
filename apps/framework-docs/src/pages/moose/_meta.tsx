@@ -16,6 +16,9 @@ import {
   Hammer,
   Terminal,
   GanttChart,
+  FileCode,
+  Laptop,
+  FolderPlus,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -27,9 +30,21 @@ const rawMeta = {
     },
     Icon: GanttChart,
   },
-  "getting-started": {
+  __fundamentals__: {
     title: "Getting Started",
-    Icon: HandMetal,
+    type: "separator",
+  },
+  "getting-started": {
+    title: "Create Project",
+    Icon: FolderPlus,
+  },
+  "local-dev": {
+    title: "Local Dev Environment",
+    Icon: Laptop,
+  },
+  "data-modeling": {
+    title: "Data Modeling",
+    Icon: FileCode,
   },
   __modules__: {
     type: "separator",

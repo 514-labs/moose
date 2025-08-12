@@ -1083,51 +1083,47 @@ async fn router(
                     )
                     .await
                 } else {
-                    // No exact match, look for the latest versioned route
+                    // No exact match, look for versioned routes that share the same base path
+                    // If there is exactly ONE such versioned route, use it. Otherwise, return not found.
                     let base_path = route.to_str().unwrap();
-                    let mut latest_version: Option<&Version> = None;
 
-                    for (path, meta) in route_table_read.iter() {
-                        let path_str = path.to_str().unwrap();
-                        // Only consider versioned routes that match the pattern
-                        if let Some(version) = &meta.version {
-                            // Check if this is a versioned route for the same base path
-                            // e.g., "ingest/Foo/1" for base path "ingest/Foo"
-                            if path_str.starts_with(&format!("{base_path}/"))
-                                && (latest_version.is_none() || version > latest_version.unwrap())
+                    let matching_versioned_paths: Vec<PathBuf> = route_table_read
+                        .iter()
+                        .filter_map(|(path, meta)| {
+                            let path_str = path.to_str().unwrap();
+                            if meta.version.is_some()
+                                && path_str.starts_with(&format!("{base_path}/"))
                             {
-                                latest_version = Some(version);
+                                Some(path.clone())
+                            } else {
+                                None
                             }
-                        }
-                    }
+                        })
+                        .collect();
 
-                    match latest_version {
-                        // If latest version exists, use it
-                        Some(version) => {
-                            ingest_route(
-                                req,
-                                route.join(version.to_string()),
-                                configured_producer,
-                                route_table,
-                                is_prod,
-                                jwt_config,
-                                project.http_server_config.max_request_body_size,
-                            )
-                            .await
-                        }
-                        None => {
-                            // Otherwise, try direct route
-                            ingest_route(
-                                req,
-                                route,
-                                configured_producer,
-                                route_table,
-                                is_prod,
-                                jwt_config,
-                                project.http_server_config.max_request_body_size,
-                            )
-                            .await
-                        }
+                    if matching_versioned_paths.len() == 1 {
+                        ingest_route(
+                            req,
+                            matching_versioned_paths[0].clone(),
+                            configured_producer,
+                            route_table,
+                            is_prod,
+                            jwt_config,
+                            project.http_server_config.max_request_body_size,
+                        )
+                        .await
+                    } else {
+                        // Either none or multiple versioned routes exist for this base path; return not found
+                        ingest_route(
+                            req,
+                            route,
+                            configured_producer,
+                            route_table,
+                            is_prod,
+                            jwt_config,
+                            project.http_server_config.max_request_body_size,
+                        )
+                        .await
                     }
                 }
             } else {

@@ -426,6 +426,8 @@ pub async fn check_table(
                     unique: false,
                     primary_key: false,
                     default: None,
+                    // Comment is None because check_table doesn't query comment field
+                    // This function is used for data exploration/validation, not infrastructure mapping
                     comment: None,
                 })
             }
@@ -439,6 +441,7 @@ pub async fn check_table(
                             unique: false,
                             primary_key: false,
                             default: None,
+                            // Comment is None - see explanation above
                             comment: None,
                         });
                         existing_columns.last_mut().unwrap()
@@ -511,6 +514,8 @@ pub async fn check_table(
                 primary_key: false,
                 default: None,
                 annotations: Default::default(),
+                // Comment is None because check_table doesn't query comment field
+                // This function is used for data exploration/validation, not infrastructure mapping
                 comment: None,
             })
         })

@@ -1087,24 +1087,23 @@ async fn router(
                     // If there is exactly ONE such versioned route, use it. Otherwise, return not found.
                     let base_path = route.to_str().unwrap();
 
-                    let matching_versioned_paths: Vec<PathBuf> = route_table_read
+                    // Concise early-exit: collect up to 2 matches only
+                    let matches: Vec<PathBuf> = route_table_read
                         .iter()
-                        .filter_map(|(path, meta)| {
-                            let path_str = path.to_str().unwrap();
-                            if meta.version.is_some()
-                                && path_str.starts_with(&format!("{base_path}/"))
-                            {
-                                Some(path.clone())
-                            } else {
-                                None
-                            }
+                        .filter(|(path, meta)| {
+                            meta.version.is_some()
+                                && path
+                                    .to_str()
+                                    .map_or(false, |s| s.starts_with(&format!("{base_path}/")))
                         })
+                        .map(|(path, _)| path.clone())
+                        .take(2)
                         .collect();
 
-                    if matching_versioned_paths.len() == 1 {
+                    if matches.len() == 1 {
                         ingest_route(
                             req,
-                            matching_versioned_paths[0].clone(),
+                            matches[0].clone(),
                             configured_producer,
                             route_table,
                             is_prod,

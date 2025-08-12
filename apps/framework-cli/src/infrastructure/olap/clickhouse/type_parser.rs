@@ -1377,6 +1377,9 @@ pub fn convert_ast_to_column_type(
                             primary_key: false,
                             default: None,
                             annotations: Vec::new(),
+                            // Comment is None here because we're parsing type strings only.
+                            // Actual column comments (including enum metadata) come from
+                            // system.columns queries, not from type string parsing.
                             comment: None,
                         });
                     }

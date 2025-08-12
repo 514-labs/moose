@@ -325,7 +325,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       writeTo: {
         kind: "stream",
         name: api.config.destination.name,
-        version: api.config.destination.config.version,
+        version: api.config.version,
       },
       deadLetterQueue: deadLetterQueueName,
       metadata,

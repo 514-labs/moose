@@ -124,8 +124,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Update the package lists for upgrades for security purposes
 RUN apt-get update && apt-get upgrade -y
 
-# Install tail and locales package
-RUN apt-get install -y locales coreutils curl
+# Install ca-certificates, tail and locales package
+RUN apt-get install -y ca-certificates locales coreutils curl && update-ca-certificates
 
 # moose depends on libc 2.40+, not available in stable
 # This uses unstable, but unpinned because they delete older versions

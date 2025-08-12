@@ -180,16 +180,20 @@ struct PartialEgressApi {
 pub struct WriteTo {
     pub kind: WriteToKind,
     pub name: String,
+    pub version: Option<String>,
 }
 
 /// Specifies a transformation target for topic data.
 ///
 /// Used to define where transformed data should be written and optionally specify a version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
     pub version: Option<String>,
+    /// Version of the target topic, if any
+    pub topic_version: Option<String>,
     pub metadata: Option<Metadata>,
 }
 
@@ -491,27 +495,17 @@ impl PartialInfrastructureMap {
         let mut api_endpoints = HashMap::new();
 
         for partial_api in self.ingest_apis.values() {
-            let target_topic_name = match &partial_api.write_to.kind {
-                WriteToKind::Stream => partial_api.write_to.name.clone(),
+            // Build the concrete topic key from base name + optional version
+            let topic_key = match &partial_api.write_to.kind {
+                WriteToKind::Stream => match &partial_api.write_to.version {
+                    Some(v) => format!(
+                        "{}_{}",
+                        partial_api.write_to.name,
+                        Version::from_string(v.clone()).as_suffix()
+                    ),
+                    None => partial_api.write_to.name.clone(),
+                },
             };
-
-            let partial_topic = self
-                .topics
-                .get(&target_topic_name)
-                .unwrap_or_else(|| panic!("Partial topic '{target_topic_name}' not found"));
-
-            // Construct the versioned key
-            let topic_key =
-                partial_topic
-                    .version
-                    .as_ref()
-                    .map_or(partial_topic.name.clone(), |v| {
-                        format!(
-                            "{}_{}",
-                            partial_topic.name,
-                            Version::from_string(v.clone()).as_suffix()
-                        )
-                    });
 
             let not_found = &format!("Target topic '{topic_key}' not found");
             let target_topic = topics.get(&topic_key).expect(not_found);
@@ -697,17 +691,41 @@ impl PartialInfrastructureMap {
                 source_partial_topic, topic_name
             );
 
-            let not_found = &format!("Source topic '{topic_name}' not found");
-            let source_topic = topics.get(topic_name).expect(not_found);
+            // Resolve source topic by base name + optional version
+            let source_key = source_partial_topic.version.as_ref().map_or(
+                source_partial_topic.name.clone(),
+                |v| {
+                    format!(
+                        "{}_{}",
+                        source_partial_topic.name,
+                        Version::from_string(v.clone()).as_suffix()
+                    )
+                },
+            );
+
+            let not_found = &format!("Source topic '{source_key}' not found");
+            let source_topic = topics.get(&source_key).expect(not_found);
 
             for transformation_target in &source_partial_topic.transformation_targets {
                 debug!("transformation_target: {:?}", transformation_target);
 
-                // In dmv1, the process name was the file name which had double underscores
-                let process_name = format!("{}__{}", topic_name, transformation_target.name);
+                // Resolve target topic by base name + optional version
+                let target_key = transformation_target.topic_version.as_ref().map_or(
+                    transformation_target.name.clone(),
+                    |v| {
+                        format!(
+                            "{}_{}",
+                            transformation_target.name,
+                            Version::from_string(v.clone()).as_suffix()
+                        )
+                    },
+                );
 
-                let not_found = &format!("Target topic '{}' not found", transformation_target.name);
-                let target_topic = topics.get(&transformation_target.name).expect(not_found);
+                // In dmv1, the process name was the file name which had double underscores
+                let process_name = format!("{}__{}", source_key, target_key);
+
+                let not_found = &format!("Target topic '{}' not found", target_key);
+                let target_topic = topics.get(&target_key).expect(not_found);
 
                 let function_process = FunctionProcess {
                     name: process_name.clone(),

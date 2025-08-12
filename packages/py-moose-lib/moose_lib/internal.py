@@ -47,9 +47,14 @@ class Target(BaseModel):
         version: Optional version of the target stream configuration.
         metadata: Optional metadata for the target stream.
     """
+    model_config = model_config
+
     kind: Literal["stream"]
     name: str
     version: Optional[str] = None
+    # For transformation targets, this carries the destination topic's version.
+    # For ingest APIs, this may be None as `version` already represents the topic version.
+    topic_version: Optional[str] = None
     metadata: Optional[dict] = None
 
 class Consumer(BaseModel):
@@ -292,8 +297,9 @@ def to_infra_map() -> dict:
         transformation_targets = [
             Target(
                 kind="stream",
-                name=transform.destination.generate_topic_id(),
+                name=transform.destination.name,
                 version=transform.config.version,
+                topic_version=transform.destination.config.version,
                 metadata=getattr(transform.config, "metadata", None),
             )
             for dest_name, transforms in stream.transformations.items()
@@ -332,7 +338,7 @@ def to_infra_map() -> dict:
             version=api.config.version,
             write_to=Target(
                 kind="stream",
-                name=api.config.destination.generate_topic_id(),
+                name=api.config.destination.name,
                 version=api.config.destination.config.version,
             ),
             metadata=getattr(api, "metadata", None),

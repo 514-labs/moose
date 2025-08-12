@@ -85,6 +85,8 @@ interface Target {
   kind: "stream"; // may add `| "table"` in the future
   /** Optional version string of the target resource's configuration. */
   version?: string;
+  /** Optional version of the target topic (separate from transformation version). */
+  topicVersion?: string;
   /** Optional metadata for the target (e.g., description for function processes). */
   metadata?: { description?: string };
 }
@@ -250,17 +252,15 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     const transformationTargets: Target[] = [];
     const consumers: Consumer[] = [];
 
-    stream._transformations.forEach((transforms, destinationName) => {
+    stream._transformations.forEach((transforms, _destinationName) => {
       transforms.forEach(([destination, _, config]) => {
-        // Use the destination stream's version, not the transformation config's version
-        const destinationKey =
-          destination.config.version ?
-            `${destinationName}_${formatVersionForKey(destination.config.version)}`
-          : destinationName;
         transformationTargets.push({
           kind: "stream",
-          name: destinationKey,
+          name: destination.name,
+          // transformation function version
           version: config.version,
+          // topic version provided separately
+          topicVersion: destination.config.version,
           metadata: config.metadata,
         });
       });
@@ -314,19 +314,6 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       }
     }
 
-    // Find the correct key for the destination stream in the streams registry and convert to Rust format
-    let destinationStreamName = api.config.destination.name;
-    for (const [streamKey, stream] of registry.streams) {
-      if (stream === api.config.destination) {
-        // Convert to Rust format
-        destinationStreamName =
-          stream.config.version ?
-            `${stream.name}_${formatVersionForKey(stream.config.version)}`
-          : stream.name;
-        break;
-      }
-    }
-
     const rustKey =
       api.config.version ?
         `${api.name}_${formatVersionForKey(api.config.version)}`
@@ -337,7 +324,8 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       version: api.config.version,
       writeTo: {
         kind: "stream",
-        name: destinationStreamName,
+        name: api.config.destination.name,
+        version: api.config.destination.config.version,
       },
       deadLetterQueue: deadLetterQueueName,
       metadata,

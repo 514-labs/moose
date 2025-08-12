@@ -1069,12 +1069,18 @@ async fn router(
             if project.features.data_model_v2 {
                 let route_table_read = route_table.read().await;
 
-                // First, try to find an exact match for the unversioned route
-                if route_table_read.contains_key(&route) {
-                    // Exact match found for unversioned route
+                let incoming_route_str = route.to_str().unwrap_or("");
+                let incoming_lower = incoming_route_str.to_ascii_lowercase();
+
+                // 1) Try to find an exact (case-insensitive) unversioned match
+                if let Some((matched_path, _)) = route_table_read.iter().find(|(p, _)| {
+                    p.to_str()
+                        .map(|s| s.eq_ignore_ascii_case(incoming_route_str))
+                        .unwrap_or(false)
+                }) {
                     ingest_route(
                         req,
-                        route,
+                        matched_path.clone(),
                         configured_producer,
                         route_table,
                         is_prod,
@@ -1083,18 +1089,18 @@ async fn router(
                     )
                     .await
                 } else {
-                    // No exact match, look for versioned routes that share the same base path
-                    // If there is exactly ONE such versioned route, use it. Otherwise, return not found.
-                    let base_path = route.to_str().unwrap();
+                    // 2) No direct match. Look for exactly one versioned match that shares the same base path
+                    //    Case-insensitive prefix match: {base}/<version>
+                    let base_lower = format!("{}/", incoming_lower);
 
-                    // Concise early-exit: collect up to 2 matches only
                     let matches: Vec<PathBuf> = route_table_read
                         .iter()
                         .filter(|(path, meta)| {
                             meta.version.is_some()
                                 && path
                                     .to_str()
-                                    .map_or(false, |s| s.starts_with(&format!("{base_path}/")))
+                                    .map(|s| s.to_ascii_lowercase().starts_with(&base_lower))
+                                    .unwrap_or(false)
                         })
                         .map(|(path, _)| path.clone())
                         .take(2)
@@ -1112,7 +1118,7 @@ async fn router(
                         )
                         .await
                     } else {
-                        // Either none or multiple versioned routes exist for this base path; return not found
+                        // Either none or multiple versioned routes exist; let ingest_route return 404 with guidance
                         ingest_route(
                             req,
                             route,

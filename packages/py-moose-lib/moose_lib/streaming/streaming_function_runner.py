@@ -179,20 +179,36 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
             return stream.model_type, consumers
 
         # Check each transformation in the stream
-        for dest_stream_py_name, transform_entries in stream.transformations.items():
-            # The destination stream name should match the target topic's stream name
-            if dest_stream_py_name == target_topic.topic_name_to_stream_name():
-                # Found the matching transformation
-                transformations = [(entry.transformation, entry.config.dead_letter_queue) for entry in
-                                   transform_entries]
-                if not transformations:
-                    continue
-                return stream.model_type, transformations
+        # Match by destination stream registry key (includes version) vs. target topic's expected stream key
+        # Flatten all transform entries and select only those whose destination matches the exact target stream key
+        target_stream_key = target_topic.topic_name_to_stream_key() if target_topic is not None else None
+        if target_stream_key is not None:
+            matching_transformations: list[tuple[Callable, Optional[DeadLetterQueue]]] = []
+            for _dest_name, transform_entries in stream.transformations.items():
+                for entry in transform_entries:
+                    # The destination is a Stream; generate its registry key including version
+                    try:
+                        dest_stream_key = entry.destination.generate_topic_id()
+                    except Exception:
+                        # Fallback: use destination name if method unavailable
+                        dest_stream_key = getattr(entry.destination, 'name', None)
+
+                    if dest_stream_key == target_stream_key:
+                        matching_transformations.append((entry.transformation, entry.config.dead_letter_queue))
+
+            if matching_transformations:
+                return stream.model_type, matching_transformations
 
     # If we get here, no matching transformation was found
+    expected_key = None
+    try:
+        expected_key = target_topic.topic_name_to_stream_key() if target_topic is not None else None
+    except Exception:
+        expected_key = None
+    detail = f" (expected destination key: {expected_key})" if expected_key else ""
     cli_log(CliLogData(
         action="Function",
-        message=f"No transformation found from {source_topic.name} to {target_topic.name}",
+        message=f"No transformation found from {source_topic.name} to {getattr(target_topic, 'name', None)}{detail}",
         message_type="Error"
     ))
     sys.exit(1)

@@ -299,7 +299,7 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
+    use crate::framework::core::infrastructure::table::{EnumMember, Nested};
 
     #[test]
     fn test_enum_metadata_roundtrip() {
@@ -425,6 +425,72 @@ mod tests {
         let metadata: ColumnMetadata =
             serde_json::from_str(comment.strip_prefix(METADATA_PREFIX).unwrap().trim()).unwrap();
         assert_eq!(metadata.enum_def.name, "RecordType");
+    }
+
+    #[test]
+    fn test_nested_column_with_enum() {
+        // Test that nested columns with enum fields get metadata comments
+        let enum_def = DataEnum {
+            name: "Status".to_string(),
+            values: vec![
+                EnumMember {
+                    name: "ACTIVE".to_string(),
+                    value: EnumValue::String("active".to_string()),
+                },
+                EnumMember {
+                    name: "INACTIVE".to_string(),
+                    value: EnumValue::String("inactive".to_string()),
+                },
+            ],
+        };
+
+        let nested = Nested {
+            name: "UserInfo".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::Int(IntType::Int32),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "status".to_string(),
+                    data_type: ColumnType::Enum(enum_def.clone()),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: Some("User status field".to_string()), // User comment
+                },
+            ],
+            jwt: false,
+        };
+
+        // Convert nested type to ClickHouse
+        let clickhouse_type =
+            std_field_type_to_clickhouse_type_mapper(ColumnType::Nested(nested.clone()), &[])
+                .unwrap();
+
+        // Verify it's a nested type
+        if let ClickHouseColumnType::Nested(columns) = clickhouse_type {
+            assert_eq!(columns.len(), 2);
+
+            // Check the enum column has the metadata comment
+            let status_col = columns.iter().find(|c| c.name == "status").unwrap();
+            assert!(status_col.comment.is_some());
+            let comment = status_col.comment.as_ref().unwrap();
+
+            // Should have both user comment and metadata
+            assert!(comment.starts_with("User status field"));
+            assert!(comment.contains(METADATA_PREFIX));
+        } else {
+            panic!("Expected Nested type");
+        }
     }
 
     #[test]

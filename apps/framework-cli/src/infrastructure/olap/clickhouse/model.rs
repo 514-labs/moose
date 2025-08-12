@@ -164,7 +164,7 @@ impl ClickHouseColumnType {
                             primary_key: col.primary_key,
                             default: None,
                             annotations: Default::default(),
-                            comment: None,
+                            comment: col.comment.clone(), // Preserve comment (e.g., enum metadata)
                         }
                     })
                     .collect(),

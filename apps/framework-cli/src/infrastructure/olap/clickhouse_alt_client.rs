@@ -1,16 +1,13 @@
 /// # ClickHouse Alternative Client Module
 ///
 /// This module provides an alternative client implementation for interacting with ClickHouse.
-/// It focuses on JSON serialization of query results and table structure inspection.
+/// It focuses on JSON serialization of query results.
 ///
 /// The module includes functionality for:
 /// - Converting ClickHouse data types to JSON
 /// - Querying tables and returning results as JSON
-/// - Inspecting table structures
-/// - Converting between ClickHouse and standard column types
 ///
-/// This client is used primarily for data exploration and infrastructure validation.
-use std::collections::HashMap;
+/// This client is used primarily for data exploration (e.g., the peek command).
 use std::num::TryFromIntError;
 use std::str::FromStr;
 use std::time::Duration;
@@ -28,10 +25,10 @@ use serde::Serialize;
 use serde::__private::from_utf8_lossy;
 use serde_json::{json, Map, Value};
 
-use crate::framework::core::infrastructure::table::{Column, EnumValue, Table};
+use crate::framework::core::infrastructure::table::EnumValue;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{
-    wrap_and_join_column_names, ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
+    wrap_and_join_column_names, ClickHouseColumnType, ClickHouseTable,
 };
 
 /// Creates a ClickHouse connection pool with the provided configuration.
@@ -334,26 +331,6 @@ async fn select_as_json<'a>(
     Ok(Box::pin(stream))
 }
 
-/// Executes a SELECT query with an OFFSET clause and returns the results as a stream of JSON objects.
-///
-/// # Arguments
-/// * `db_name` - Database name
-/// * `table` - Table to query
-/// * `client` - ClickHouse client
-/// * `offset` - Offset for the query
-///
-/// # Returns
-/// * `Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>` - Stream of JSON objects or error
-pub async fn select_all_as_json<'a>(
-    db_name: &str,
-    table: &'a ClickHouseTable,
-    client: &'a mut ClientHandle,
-    offset: i64,
-) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
-{
-    select_as_json(db_name, table, client, &format!("offset {offset}")).await
-}
-
 /// Executes a SELECT query with a LIMIT clause and returns the results as a stream of JSON objects.
 ///
 /// # Arguments
@@ -372,146 +349,4 @@ pub async fn select_some_as_json<'a>(
 ) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
 {
     select_as_json(db_name, table, client, &format!("limit {limit}")).await
-}
-
-/// Checks the structure of tables in the database and compares them with the expected structure.
-///
-/// This function queries the system.columns table to get information about the columns
-/// in the specified database, then compares them with the expected structure.
-///
-/// # Arguments
-/// * `client` - ClickHouse client
-/// * `db_name` - Database name
-/// * `tables` - Expected table structures
-///
-/// # Returns
-/// * `Result<HashMap<String, Table>, clickhouse_rs::errors::Error>` - Actual table structures or error
-pub async fn check_table(
-    client: &mut ClientHandle,
-    db_name: &str,
-    tables: &HashMap<String, Table>,
-) -> Result<HashMap<String, Table>, clickhouse_rs::errors::Error> {
-    let columns_query = format!(
-        r#"
-        SELECT
-            table,
-            name,
-            type,
-            is_in_primary_key
-        FROM system.columns 
-        WHERE database = '{db_name}'
-        "#
-    );
-
-    let block = client.query(&columns_query).fetch_all().await?;
-
-    let mut table_columns = HashMap::<String, HashMap<String, ClickHouseColumnType>>::new();
-
-    fn add_to_nested(
-        existing_columns: &mut Vec<ClickHouseColumn>,
-        inner_name: &str,
-        t: ClickHouseColumnType,
-    ) {
-        match inner_name.split_once('.') {
-            None => {
-                let (column_type, required) = if let ClickHouseColumnType::Nullable(inner) = t {
-                    (*inner, false)
-                } else {
-                    (t, true)
-                };
-                existing_columns.push(ClickHouseColumn {
-                    name: inner_name.to_string(),
-                    column_type,
-                    required,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                })
-            }
-            Some((nested, nested_inner)) => {
-                let existing_nested = match existing_columns.iter_mut().find(|c| c.name == nested) {
-                    None => {
-                        existing_columns.push(ClickHouseColumn {
-                            name: nested.to_string(),
-                            column_type: ClickHouseColumnType::Nested(vec![]),
-                            required: true,
-                            unique: false,
-                            primary_key: false,
-                            default: None,
-                        });
-                        existing_columns.last_mut().unwrap()
-                    }
-                    Some(nested_column) => nested_column,
-                };
-                if let ClickHouseColumnType::Nested(v) = &mut existing_nested.column_type {
-                    add_to_nested(v, nested_inner, t);
-                } else {
-                    unreachable!()
-                }
-            }
-        }
-    }
-
-    for row in block.rows() {
-        let table: String = row.get("table")?;
-
-        let name: String = row.get("name")?;
-        let type_str: String = row.get("type")?;
-
-        if let Some(t) = ClickHouseColumnType::from_type_str(&type_str) {
-            let columns = table_columns.entry(table).or_default();
-
-            match name.split_once('.') {
-                None => {
-                    columns.insert(name, t);
-                }
-                Some((nested, nested_inner)) => {
-                    let nested = columns
-                        .entry(nested.to_string())
-                        .or_insert(ClickHouseColumnType::Nested(vec![]));
-                    if let ClickHouseColumnType::Nested(v) = nested {
-                        add_to_nested(v, nested_inner, t)
-                    }
-                }
-            }
-        }
-    }
-
-    let mut existing_tables = tables.clone();
-
-    for table in tables.values() {
-        let mut db_columns = match table_columns.remove(&table.name) {
-            None => {
-                existing_tables.remove(&table.id());
-                continue;
-            }
-            Some(columns) => columns,
-        };
-        let existing_table = existing_tables.get_mut(&table.id()).unwrap();
-        existing_table
-            .columns
-            .retain_mut(|column| match db_columns.remove(&column.name) {
-                None => false,
-                Some(t) => {
-                    let (data_type, required) = t.to_std_column_type();
-                    column.required = required;
-                    column.data_type = data_type;
-                    true
-                }
-            });
-        db_columns.into_iter().for_each(|(col_name, t)| {
-            let (data_type, required) = t.to_std_column_type();
-            existing_table.columns.push(Column {
-                name: col_name,
-                data_type,
-                required,
-                unique: false,
-                primary_key: false,
-                default: None,
-                annotations: Default::default(),
-            })
-        })
-    }
-
-    Ok(existing_tables)
 }

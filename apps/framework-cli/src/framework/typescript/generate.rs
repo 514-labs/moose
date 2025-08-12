@@ -255,6 +255,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "city".to_string(),
@@ -264,6 +265,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "zip_code".to_string(),
@@ -273,6 +275,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             jwt: false,
@@ -289,6 +292,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "address".to_string(),
@@ -298,6 +302,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "addresses".to_string(),
@@ -310,6 +315,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -374,6 +380,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "status".to_string(),
@@ -383,6 +390,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],

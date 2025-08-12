@@ -1,5 +1,5 @@
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
-use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+use crate::framework::core::infrastructure::table::{Column, Table};
 use crate::framework::core::infrastructure::view::View;
 use crate::framework::core::infrastructure::DataLineage;
 use crate::framework::core::infrastructure::InfrastructureSignature;
@@ -69,16 +69,10 @@ pub enum AtomicOlapOperation {
     ModifyTableColumn {
         /// The table containing the column
         table: Table,
-        /// Name of the column
-        column_name: String,
-        /// The data type before modification
-        before_data_type: ColumnType,
-        /// The data type after modification
-        after_data_type: ColumnType,
-        /// Whether the column was required before modification
-        before_required: bool,
-        /// Whether the column is required after modification
-        after_required: bool,
+        /// The column before modification
+        before_column: Column,
+        /// The column after modification
+        after_column: Column,
         /// Dependency information
         dependency_info: DependencyInfo,
     },
@@ -451,19 +445,13 @@ fn process_column_removal(before: &Table, column_name: &str) -> AtomicOlapOperat
 /// Process a column modification
 fn process_column_modification(
     after: &Table,
-    column_name: &str,
-    before_data_type: &ColumnType,
-    after_data_type: &ColumnType,
-    before_required: bool,
-    after_required: bool,
+    before_column: &Column,
+    after_column: &Column,
 ) -> AtomicOlapOperation {
     AtomicOlapOperation::ModifyTableColumn {
         table: after.clone(),
-        column_name: column_name.to_string(),
-        before_data_type: before_data_type.clone(),
-        after_data_type: after_data_type.clone(),
-        before_required,
-        after_required,
+        before_column: before_column.clone(),
+        after_column: after_column.clone(),
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -496,14 +484,8 @@ fn process_column_changes(
                 before: before_col,
                 after: after_col,
             } => {
-                plan.setup_ops.push(process_column_modification(
-                    after,
-                    &after_col.name,
-                    &before_col.data_type,
-                    &after_col.data_type,
-                    before_col.required,
-                    after_col.required,
-                ));
+                plan.setup_ops
+                    .push(process_column_modification(after, before_col, after_col));
             }
         }
     }
@@ -818,6 +800,7 @@ fn path_exists(graph: &DiGraph<usize, ()>, start: NodeIndex, end: NodeIndex) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::framework::core::infrastructure::table::ColumnType;
     use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
@@ -871,6 +854,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             after_column: None,
             dependency_info: DependencyInfo {
@@ -1154,6 +1138,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with correct dependencies
@@ -2092,6 +2077,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with signatures that work with the current implementation
@@ -2264,6 +2250,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "old_column".to_string(),
@@ -2273,6 +2260,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2298,6 +2286,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "new_column".to_string(),
@@ -2307,6 +2296,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()], // Same ORDER BY
@@ -2331,6 +2321,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }),
             ColumnChange::Added {
                 column: Column {
@@ -2341,6 +2332,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 position_after: Some("id".to_string()),
             },

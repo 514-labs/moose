@@ -132,6 +132,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
             .into_iter()
             .map(|t| (t.name.clone(), t))
             .collect();
+
         debug!("Actual table names: {:?}", actual_table_map.keys());
 
         let mapped_table_map: HashMap<_, _> = infra_map
@@ -139,6 +140,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
             .values()
             .map(|t| (t.name.clone(), t.clone()))
             .collect();
+
         debug!(
             "Infrastructure map table names: {:?}",
             mapped_table_map.keys()
@@ -150,6 +152,7 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
             .filter(|table| !mapped_table_map.contains_key(&table.name))
             .cloned()
             .collect();
+
         debug!(
             "Found {} unmapped tables: {:?}",
             unmapped_tables.len(),
@@ -306,6 +309,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }],
             order_by: vec!["id".to_string()],
             engine: None,
@@ -384,6 +388,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let mock_client = MockOlapClient {
@@ -445,6 +450,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
         actual_table.columns.push(timestamp_col.clone());
         infra_table.columns.push(timestamp_col);

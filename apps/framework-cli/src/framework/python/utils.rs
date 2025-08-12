@@ -49,6 +49,9 @@ impl ColumnBuilder {
             primary_key,
             default: self.default,
             annotations: Default::default(),
+            // Comment is None at parsing stage - metadata comments for enum handling
+            // are generated later when converting to ClickHouse columns
+            comment: None,
         })
     }
 }

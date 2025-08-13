@@ -680,7 +680,7 @@ async fn legacy_remote_plan_logic(
     display::show_message_wrapper(
         MessageType::Success,
         Message {
-            action: "Remote Plan (Legacy)".to_string(),
+            action: "Legacy Plan".to_string(),
             details: "Retrieved plan from remote instance using legacy endpoint".to_string(),
         },
     );
@@ -758,7 +758,7 @@ pub async fn remote_plan(
             display::show_message_wrapper(
                 MessageType::Info,
                 Message {
-                    action: "Using New Endpoint".to_string(),
+                    action: "New Endpoint".to_string(),
                     details: "Successfully retrieved infrastructure map from /admin/inframap"
                         .to_string(),
                 },
@@ -799,7 +799,7 @@ pub async fn remote_plan(
             display::show_message_wrapper(
                 MessageType::Info,
                 Message {
-                    action: "Fallback to Legacy".to_string(),
+                    action: "Legacy Fallback".to_string(),
                     details: "New endpoint not available, using legacy /admin/plan endpoint"
                         .to_string(),
                 },
@@ -925,7 +925,7 @@ pub async fn remote_refresh(
     display::show_message_wrapper(
         MessageType::Info,
         Message {
-            action: "Integrating Changes".to_string(),
+            action: "Integrating".to_string(),
             details: format!(
                 "Integrating {} table(s) into remote instance: {}",
                 tables_to_integrate.len(),

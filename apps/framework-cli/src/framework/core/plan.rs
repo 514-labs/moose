@@ -74,7 +74,7 @@ pub enum PlanningError {
 ///
 /// # Returns
 /// * `Result<InfrastructureMap, PlanningError>` - The reconciled infrastructure map or an error
-async fn reconcile_with_reality<T: OlapOperations>(
+pub async fn reconcile_with_reality<T: OlapOperations>(
     project: &Project,
     current_infra_map: &InfrastructureMap,
     target_table_names: &HashSet<String>,

@@ -1153,12 +1153,19 @@ async fn router(
                 req,
                 &project.authentication.admin_api_key,
                 &redis_client,
+                &project,
                 project.http_server_config.max_request_body_size,
             )
             .await
         }
         (_, &hyper::Method::GET, ["admin", "inframap"]) => {
-            admin_inframap_route(req, &project.authentication.admin_api_key, &redis_client).await
+            admin_inframap_route(
+                req,
+                &project.authentication.admin_api_key,
+                &redis_client,
+                &project,
+            )
+            .await
         }
         (_, &hyper::Method::GET, route_segments)
             if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
@@ -2153,12 +2160,66 @@ pub struct InfraMapResponse {
     pub infra_map: InfrastructureMap,
 }
 
+/// Helper function for admin endpoints to get reconciled inframap with all tables included.
+/// This is simpler than the plan version because admin endpoints want ALL tables (Redis + reality).
+async fn get_admin_reconciled_inframap(
+    redis_client: &Arc<RedisClient>,
+    project: &Project,
+) -> Result<InfrastructureMap, crate::framework::core::plan::PlanningError> {
+    use crate::framework::core::infra_reality_checker::InfraRealityChecker;
+    use crate::infrastructure::olap::clickhouse;
+    use std::collections::HashSet;
+
+    // Load current map from Redis
+    let current_map = match InfrastructureMap::load_from_redis(redis_client).await {
+        Ok(Some(infra_map)) => infra_map,
+        Ok(None) => InfrastructureMap::default(),
+        Err(e) => {
+            return Err(crate::framework::core::plan::PlanningError::Other(
+                anyhow::anyhow!("Failed to load infrastructure map from Redis: {e}"),
+            ));
+        }
+    };
+
+    if !project.features.olap {
+        return Ok(current_map);
+    }
+
+    // For admin endpoints, we want ALL tables (including unmapped ones)
+    // So first do a reality check to discover unmapped table names
+    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+    let reality_checker =
+        InfraRealityChecker::new(clickhouse::create_client(project.clickhouse_config.clone()));
+    let discrepancies = reality_checker.check_reality(project, &current_map).await?;
+
+    // Build complete target table list: Redis tables + unmapped tables
+    let mut all_table_names: HashSet<String> = current_map
+        .tables
+        .values()
+        .map(|t| t.name.clone())
+        .collect();
+
+    for unmapped_table in &discrepancies.unmapped_tables {
+        all_table_names.insert(unmapped_table.name.clone());
+    }
+
+    // Now reconcile with complete table list using the public function
+    crate::framework::core::plan::reconcile_with_reality(
+        project,
+        &current_map,
+        &all_table_names,
+        olap_client,
+    )
+    .await
+}
+
 /// Handles the admin plan endpoint, which compares a submitted infrastructure map
 /// with the server's current state and returns the changes that would be applied
 async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     redis_client: &Arc<RedisClient>,
+    project: &Project,
     max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
@@ -2209,16 +2270,17 @@ async fn admin_plan_route(
         }
     };
 
-    let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
-        Ok(Some(infra_map)) => infra_map,
-        Ok(None) => InfrastructureMap::default(),
+    // Get the reconciled infrastructure map (combines Redis + reality check)
+    // This ensures we're diffing against the true current state of the world
+    let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
+        Ok(infra_map) => infra_map,
         Err(e) => {
-            error!("Failed to retrieve infrastructure map from Redis: {}", e);
+            error!("Failed to get reconciled infrastructure map: {}", e);
             return Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::new(Bytes::from(
-                    "Failed to acquire lock on Redis client",
-                )))
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get current infrastructure state: {e}"
+                ))))
                 .unwrap());
         }
     };
@@ -2257,11 +2319,14 @@ async fn admin_plan_route(
 }
 
 /// Handles the admin inframap endpoint, which returns the server's current infrastructure map
+/// reconciled with the actual database state. This ensures the returned inframap reflects
+/// the true current state of the world, not just what's stored in Redis.
 /// Supports both JSON and protobuf formats based on Accept header
 async fn admin_inframap_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     redis_client: &Arc<RedisClient>,
+    project: &Project,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -2269,17 +2334,17 @@ async fn admin_inframap_route(
         return e.to_response();
     }
 
-    // Get current infrastructure map from Redis
-    let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
-        Ok(Some(infra_map)) => infra_map,
-        Ok(None) => InfrastructureMap::default(),
+    // Get the reconciled infrastructure map (combines Redis + reality check)
+    // This ensures we return the true current state of the world
+    let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
+        Ok(infra_map) => infra_map,
         Err(e) => {
-            error!("Failed to retrieve infrastructure map from Redis: {}", e);
+            error!("Failed to get reconciled infrastructure map: {}", e);
             return Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::new(Bytes::from(
-                    "Failed to load infrastructure map from Redis",
-                )))
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get current infrastructure state: {e}"
+                ))))
                 .unwrap());
         }
     };

@@ -2160,16 +2160,20 @@ pub struct InfraMapResponse {
     pub infra_map: InfrastructureMap,
 }
 
-/// Helper function for admin endpoints to get reconciled inframap for managed tables.
+/// Helper function for admin endpoints to get reconciled inframap for managed tables only.
 ///
 /// This function:
 /// 1. Loads the current inframap from Redis (tables under Moose management)
-/// 2. Reconciles with database reality to get the true current state
-/// 3. Includes unmapped tables that match managed table names (in case managed tables
-///    exist in DB but are missing from Redis due to incomplete deployments)
-/// 4. Updates managed tables to reflect any structural changes in the database
+/// 2. Reconciles ONLY the managed tables with database reality to get their true current state
+/// 3. Updates managed table structures to reflect any schema changes in the database
+/// 4. Removes managed tables that no longer exist in the database
 ///
-/// This ensures admin endpoints work with the actual current state, not just what's documented in Redis.
+/// IMPORTANT: This function INTENTIONALLY EXCLUDES unmapped tables (tables that exist in the
+/// database but are not managed by Moose). Only tables present in the Redis inframap are
+/// considered for reconciliation. This is by design - admin endpoints only work with
+/// infrastructure that is explicitly managed by Moose.
+///
+/// This ensures admin endpoints work with the actual current state of managed infrastructure only.
 async fn get_admin_reconciled_inframap(
     redis_client: &Arc<RedisClient>,
     project: &Project,
@@ -2192,9 +2196,9 @@ async fn get_admin_reconciled_inframap(
         return Ok(current_map);
     }
 
-    // For admin endpoints, reconcile all currently managed tables
-    // Pass the managed table names as target_table_names to ensure unmapped tables
-    // with matching names get included if they should be managed
+    // For admin endpoints, reconcile all currently managed tables only
+    // Pass the managed table names as target_table_names - this ensures that
+    // reconcile_with_reality only operates on tables that are already managed by Moose
     let target_table_names: HashSet<String> = current_map
         .tables
         .values()
@@ -2213,10 +2217,10 @@ async fn get_admin_reconciled_inframap(
 }
 
 /// Handles the admin plan endpoint, which compares a submitted infrastructure map
-/// with the server's reconciled current state and returns the changes that would be applied.
+/// with the server's reconciled managed infrastructure state and returns the changes that would be applied.
 ///
-/// The server's current state is reconciled with database reality to ensure accurate planning,
-/// so the diff reflects changes against the true current state, not just what's in Redis.
+/// The server's managed infrastructure state is reconciled with database reality to ensure accurate planning.
+/// The diff reflects changes against the true current state of managed tables only (excludes unmapped tables by design).
 async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
@@ -2272,8 +2276,8 @@ async fn admin_plan_route(
         }
     };
 
-    // Get the reconciled infrastructure map (combines Redis + reality check)
-    // This ensures we're diffing against the true current state of the world
+    // Get the reconciled infrastructure map (combines Redis + reality check for managed tables)
+    // This ensures we're diffing against the true current state of managed infrastructure only
     let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
         Ok(infra_map) => infra_map,
         Err(e) => {
@@ -2320,9 +2324,10 @@ async fn admin_plan_route(
         .unwrap())
 }
 
-/// Handles the admin inframap endpoint, which returns the server's current infrastructure map
+/// Handles the admin inframap endpoint, which returns the server's managed infrastructure map
 /// reconciled with the actual database state. This ensures the returned inframap reflects
-/// the true current state of the world, not just what's stored in Redis.
+/// the true current state of managed tables only, with up-to-date schema information from the database.
+/// EXCLUDES unmapped tables (tables in DB but not managed by Moose) by design.
 /// Supports both JSON and protobuf formats based on Accept header
 async fn admin_inframap_route(
     req: Request<hyper::body::Incoming>,
@@ -2336,8 +2341,8 @@ async fn admin_inframap_route(
         return e.to_response();
     }
 
-    // Get the reconciled infrastructure map (combines Redis + reality check)
-    // This ensures we return the true current state of the world
+    // Get the reconciled infrastructure map (combines Redis + reality check for managed tables)
+    // This ensures we return the true current state of managed infrastructure only
     let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
         Ok(infra_map) => infra_map,
         Err(e) => {

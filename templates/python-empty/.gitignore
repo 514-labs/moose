@@ -1,6 +1,6 @@
 # Moose specific
 .moose
-.aurora
+.sloan
 
 # Python bytecode and cache
 __pycache__

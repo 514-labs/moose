@@ -1157,6 +1157,9 @@ async fn router(
             )
             .await
         }
+        (_, &hyper::Method::GET, ["admin", "inframap"]) => {
+            admin_inframap_route(req, &project.authentication.admin_api_key, &redis_client).await
+        }
         (_, &hyper::Method::GET, route_segments)
             if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
         {
@@ -2142,6 +2145,14 @@ pub struct PlanResponse {
     pub changes: InfraChanges,
 }
 
+/// Response structure for the admin inframap endpoint
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InfraMapResponse {
+    pub status: String,
+    // The current infrastructure map from the server
+    pub infra_map: InfrastructureMap,
+}
+
 /// Handles the admin plan endpoint, which compares a submitted infrastructure map
 /// with the server's current state and returns the changes that would be applied
 async fn admin_plan_route(
@@ -2243,6 +2254,76 @@ async fn admin_plan_route(
         .header("Content-Type", "application/json")
         .body(Full::new(Bytes::from(json_response)))
         .unwrap())
+}
+
+/// Handles the admin inframap endpoint, which returns the server's current infrastructure map
+/// Supports both JSON and protobuf formats based on Accept header
+async fn admin_inframap_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    redis_client: &Arc<RedisClient>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // Validate admin authentication
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    if let Err(e) = validate_admin_auth(auth_header, admin_api_key).await {
+        return e.to_response();
+    }
+
+    // Get current infrastructure map from Redis
+    let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
+        Ok(Some(infra_map)) => infra_map,
+        Ok(None) => InfrastructureMap::default(),
+        Err(e) => {
+            error!("Failed to retrieve infrastructure map from Redis: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(
+                    "Failed to load infrastructure map from Redis",
+                )))
+                .unwrap());
+        }
+    };
+
+    // Check Accept header to determine response format
+    let accept_header = req
+        .headers()
+        .get(hyper::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    if accept_header.contains("application/protobuf") {
+        // Return protobuf format
+        let proto_bytes = current_infra_map.to_proto_bytes();
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/protobuf")
+            .body(Full::new(Bytes::from(proto_bytes)))
+            .unwrap())
+    } else {
+        // Return JSON format
+        let response = InfraMapResponse {
+            status: "success".to_string(),
+            infra_map: current_infra_map,
+        };
+
+        let json_response = match serde_json::to_string(&response) {
+            Ok(json) => json,
+            Err(e) => {
+                error!("Failed to serialize inframap response: {}", e);
+                return Ok(Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from("Internal server error")))
+                    .unwrap());
+            }
+        };
+
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(json_response)))
+            .unwrap())
+    }
 }
 
 #[cfg(test)]
@@ -2350,5 +2431,36 @@ mod tests {
             infra_map.tables.get(&test_table.id()).unwrap().name,
             table_name
         );
+    }
+
+    #[tokio::test]
+    async fn test_admin_inframap_response_structure() {
+        let test_infra_map = InfrastructureMap::default();
+
+        let response = InfraMapResponse {
+            status: "success".to_string(),
+            infra_map: test_infra_map.clone(),
+        };
+
+        // Test JSON serialization
+        let json_result = serde_json::to_string(&response);
+        assert!(
+            json_result.is_ok(),
+            "InfraMapResponse should serialize to JSON"
+        );
+
+        let json_str = json_result.unwrap();
+        assert!(json_str.contains("\"status\":\"success\""));
+        assert!(json_str.contains("\"infra_map\":"));
+
+        // Test JSON deserialization
+        let deserialized: Result<InfraMapResponse, _> = serde_json::from_str(&json_str);
+        assert!(
+            deserialized.is_ok(),
+            "InfraMapResponse should deserialize from JSON"
+        );
+
+        let deserialized_response = deserialized.unwrap();
+        assert_eq!(deserialized_response.status, "success");
     }
 }

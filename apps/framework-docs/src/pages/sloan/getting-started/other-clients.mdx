@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Getting started guide for Aurora
+description: Getting started guide for Sloan
 ---
 
 import { Callout } from "@/components";
@@ -23,13 +23,13 @@ import { ArgTable } from "@/components/ArgTable";
 
 ### Other clients
 
-We are working on adding MCP support for other clients. If you are interested in using other clients, please [contact us](mailto:aurora@fiveonefour.com).
+We are working on adding MCP support for other clients. If you are interested in using other clients, please [contact us](mailto:sloan@fiveonefour.com).
 
-To try set up your client with Aurora MCP, use the MCP.JSON file within your client of choice.
+To try set up your client with Sloan MCP, use the MCP.JSON file within your client of choice.
 
 <Steps>
 
-### Configure Aurora MCP
+### Configure Sloan MCP
 
 <Callout type="warning">
 **Configuration Object Naming**: Different MCP clients use different naming conventions for the server configuration object:
@@ -44,9 +44,9 @@ Make sure to check your specific client's documentation for the correct naming c
 ```json filename="MCP configuration" copy
 {
   "mcpServers": {
-    "aurora": {
+    "sloan": {
       "args": [
-        "@514labs/aurora-mcp@latest",
+        "@514labs/sloan-mcp@latest",
         "--moose-read-tools",
         "path/to/your/moose/project"
       ],
@@ -66,9 +66,9 @@ Make sure to check your specific client's documentation for the correct naming c
 ```json filename="MCP configuration" copy
 {
   "servers": {
-    "aurora": {
+    "sloan": {
       "args": [
-        "@514labs/aurora-mcp@latest",
+        "@514labs/sloan-mcp@latest",
         "--moose-read-tools",
         "path/to/your/moose/project"
       ],
@@ -88,10 +88,10 @@ Make sure to check your specific client's documentation for the correct naming c
 
 ### Adding other toolsets
 
-For more information on available toolsets, see [Aurora MCP toolsets](/aurora/reference/tool-reference). If the client you are using is a chat client, we recommend the following toolsets:
+For more information on available toolsets, see [Sloan MCP toolsets](/sloan/reference/tool-reference). If the client you are using is a chat client, we recommend the following toolsets:
 
-* [Moose Read Tools](../aurora/reference/tool-reference#moose-read-tools): gives you chat access to your Moose project and the data within it (enabled by default)
-* [Remote ClickHouse Tools](../aurora/reference/tool-reference#remote-clickhouse) (read only): gives you chat access to your remote ClickHouse data
+* [Moose Read Tools](../sloan/reference/tool-reference#moose-read-tools): gives you chat access to your Moose project and the data within it (enabled by default)
+* [Remote ClickHouse Tools](../sloan/reference/tool-reference#remote-clickhouse) (read only): gives you chat access to your remote ClickHouse data
 
 If it is an IDE type client, all toolsets are available.
 
@@ -111,27 +111,27 @@ If it is an IDE type client, all toolsets are available.
 <FeatureGrid columns={3}>
   
   <FeatureCard
-    href="/aurora/reference/cli-reference"
+    href="/sloan/reference/cli-reference"
     title="CLI reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/mcp-json-reference"
+    href="/sloan/reference/mcp-json-reference"
     title="MCP.json reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/tool-reference"
+    href="/sloan/reference/tool-reference"
     title="Tools reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

@@ -33,12 +33,12 @@ Before getting started, make sure you have the following installed:
 </Callout>
 
 <Steps>
-### Install Moose and Aurora
+### Install Moose and Sloan
 
-To get started, install Moose (open source developer platform for data engineering) and Aurora (AI data engineering product).
+To get started, install Moose (open source developer platform for data engineering) and Sloan (AI data engineering product).
 
 ```bash filename="terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,sloan
 ```
 
 <Callout type="info" title="Anthropic API Key">
@@ -122,18 +122,18 @@ FROM aircraft_tracking_data;
 
 ## Explore the Data
 
-Using Aurora's MCP tools, you can explore the ingested aircraft data using AI tools like Claude Desktop or Cursor. We recommend using Claude for exploring your data and ad-hoc analytics, and Cursor for productionizing your results.
+Using Sloan's MCP tools, you can explore the ingested aircraft data using AI tools like Claude Desktop or Cursor. We recommend using Claude for exploring your data and ad-hoc analytics, and Cursor for productionizing your results.
 
 ### Explore with Claude Desktop
 
 Claude Desktop can help you analyze the data through natural language queries.
 
 <Steps>
-#### Initialize the Aurora MCP for your project with the Claude Client
+#### Initialize the Sloan MCP for your project with the Claude Client
 
 ```
 cd /path/to/your/project/moose
-aurora setup --mcp claude-desktop
+sloan setup --mcp claude-desktop
 ```
 
 </Steps>
@@ -154,17 +154,17 @@ For a code-forward workflow, Cursor provides a great environment to productioniz
 
 <Steps>
 
-#### Initialize the Aurora MCP for your project with the Claude Client
+#### Initialize the Sloan MCP for your project with the Claude Client
 
 ```bash filename="terminal" copy
-aurora setup --mcp cursor-global
+sloan setup --mcp cursor-global
 ```
 
-This will create a `/.cursor/mcp.json` file with Aurora's MCP configuration.
+This will create a `/.cursor/mcp.json` file with Sloan's MCP configuration.
 
 </Steps>
 
-#### Enable the Aurora Cursor MCP
+#### Enable the Sloan Cursor MCP
 Enable the MCP in Cursor by going to:
 `cursor > settings > cursor settings > MCP` and clicking `enable` and `refresh`.
 

@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Getting started guide for Aurora
+description: Getting started guide for Sloan
 ---
 
 import { Callout } from "@/components";
@@ -29,33 +29,33 @@ import { ArgTable } from "@/components/ArgTable";
 ### Install 
 [Install Cursor here](https://www.cursor.com/).
 
-### Install Moose and Aurora CLI
+### Install Moose and Sloan CLI
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan,moose
 ```
 
-### Configure Aurora MCP
+### Configure Sloan MCP
 
-<Tabs items={['Aurora CLI', 'MCP.json']}>
+<Tabs items={['Sloan CLI', 'MCP.json']}>
   <Tabs.Tab>
     Create a new project with Cursor MCP preconfigured: 
 
     ```bash filename="Terminal" copy
-    aurora init <project-name> <template-name> --mcp cursor-project
+    sloan init <project-name> <template-name> --mcp cursor-project
     ```
 
     If you want to use this as a global Cursor MCP, use `cursor-global` instead of `cursor-project`.
 
-    For other options, see [Aurora CLI docs](/aurora/getting-started/aurora-cli).
+    For other options, see [Sloan CLI docs](/sloan/getting-started/sloan-cli).
   </Tabs.Tab>
   <Tabs.Tab>
     ```json filename="/path/to/your/project/.cursor/mcp.json" copy
     {
       "mcpServers": {
-        "aurora": {
+        "sloan": {
           "args": [
-            "@514labs/aurora-mcp@latest",
+            "@514labs/sloan-mcp@latest",
             "--moose-read-tools",
             "path/to/your/moose/project"
           ],
@@ -75,7 +75,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 
 ### Adding other toolsets
 
-For more information on available toolsets, see [Aurora MCP toolsets](/aurora/reference/tool-reference). All toolsets are available for Cursor.
+For more information on available toolsets, see [Sloan MCP toolsets](/sloan/reference/tool-reference). All toolsets are available for Cursor.
 
 ### Using the MCP
 
@@ -88,7 +88,7 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 ### Warnings / Peculiarities
 
 * Every time you add an MCP or change its configuration, you will need to reload the MCP. You can do this by going to `cursor > settings > cursor settings > tools and integrations` and toggling the MCP off and on. If this doesn't work, you can also restart the Cursor application.
-* If you have configured the MCP globally, and want to change the Moose Project that the Aurora MCP is referring to, manually edit the MCP.JSON file or run `aurora config focus` and select a new project.
+* If you have configured the MCP globally, and want to change the Moose Project that the Sloan MCP is referring to, manually edit the MCP.JSON file or run `sloan config focus` and select a new project.
 
 ### Common issues / troubleshooting
 
@@ -99,27 +99,27 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 <FeatureGrid columns={3}>
   
   <FeatureCard
-    href="/aurora/reference/cli-reference"
+    href="/sloan/reference/cli-reference"
     title="CLI reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/mcp-json-reference"
+    href="/sloan/reference/mcp-json-reference"
     title="MCP.json reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/tool-reference"
+    href="/sloan/reference/tool-reference"
     title="Tools reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

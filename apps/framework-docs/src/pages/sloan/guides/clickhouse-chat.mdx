@@ -2,9 +2,9 @@ import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg, ToggleBlock } from "
 import { Steps, Tabs } from "nextra/components";
 
 ## Quickstart: AI Chat with ClickHouse
-*Use your LLM client to explore your ClickHouse with Aurora MCP tools.*
+*Use your LLM client to explore your ClickHouse with Sloan MCP tools.*
 
-This will walk you through using Aurora CLI to connect Aurora MCP tools to your ClickHouse database, allowing you to chat with your data in your client of choice. We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
+This will walk you through using Sloan CLI to connect Sloan MCP tools to your ClickHouse database, allowing you to chat with your data in your client of choice. We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -13,16 +13,16 @@ This will walk you through using Aurora CLI to connect Aurora MCP tools to your 
 </Callout>
 
 <Steps>
-### Install Aurora CLI
+### Install Sloan CLI
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan
 ```
 
-### Configure your Aurora MCP
+### Configure your Sloan MCP
 
 ```bash filename="Terminal" copy
-aurora connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp cursor-project
+sloan connect clickhouse --connection-string "https://explorer:@play.clickhouse.com:443/?database=default" --mcp cursor-project
 ```
 
 You need a ClickHouse connection URL. Format looks like this:
@@ -78,18 +78,18 @@ https://explorer:@play.clickhouse.com:443/?database=default
 
 Open your Claude Desktop client. We recommend starting the chat with a context setting question like "tell me about the data I have available to me in ClickHouse".
 
-You can check that the MCP is correctly configured by looking at `claude > settings > developer > aurora`. It should say "running".
+You can check that the MCP is correctly configured by looking at `claude > settings > developer > sloan`. It should say "running".
 
 <ZoomImg light="/claude-settings.png" dark="/claude-settings.png" alt="Claude settings, MCP running" />
 
-You can can also look at `search and tools` beneath the chat window, you should see `aurora` in the list of MCPs—if you click into it, you should see the tools that are enabled.
+You can can also look at `search and tools` beneath the chat window, you should see `sloan` in the list of MCPs—if you click into it, you should see the tools that are enabled.
 
 <ZoomImg light="/claude-search-and-tools.png" dark="/claude-search-and-tools.png" alt="Claude search and tools, MCP running" />
 
 ### What's next?
 
 
-Try [creating a Moose Project from your ClickHouse database](https://docs.fiveonefour.com/aurora/quickstart/clickhouse-proj). That way, you can use Aurora MCP tools to create new primitives, like ingestion paths, data models, egress APIs, and more!
+Try [creating a Moose Project from your ClickHouse database](https://docs.fiveonefour.com/sloan/quickstart/clickhouse-proj). That way, you can use Sloan MCP tools to create new primitives, like ingestion paths, data models, egress APIs, and more!
 
 Or try [deploying your project to Boreal](https://www.fiveonefour.com/boreal), our hosting platform for Moose projects.
 
@@ -100,21 +100,21 @@ Or try [deploying your project to Boreal](https://www.fiveonefour.com/boreal), o
 <FeatureGrid>
 
   <FeatureCard
-    href="/aurora/guides/clickhouse-proj"
+    href="/sloan/guides/clickhouse-proj"
     Icon={Icons.contact}
     title="AI analytics engineering from your ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/guides/from-template"
+    href="/sloan/guides/from-template"
     Icon={Icons.db}
     title="AI powered OLAP templates"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

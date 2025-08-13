@@ -14,10 +14,10 @@ export default render({
     title: "Moose Stack",
     href: "/moose",
   },
-  aurora: {
+  sloan: {
     type: "page",
-    title: "Aurora",
-    href: "/aurora",
+    title: "Sloan",
+    href: "/sloan",
   },
   blog: {
     title: "Blog",

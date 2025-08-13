@@ -12,8 +12,8 @@ Prerequisites
 * [An Anthropic API Key](https://docs.anthropic.com/en/api/getting-started)
 * [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download)
 
-1. Install Moose / Aurora: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora`
-2. Create project `aurora init aircraft ads-b`
+1. Install Moose / Sloan: `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,sloan`
+2. Create project `sloan init aircraft ads-b`
 3. Install dependencies: `cd aircraft && npm install`
 4. Run Moose: `moose dev`
 5. Run Workflows: `moose workflow run militaryAircraftETL & moose workflow run laddAircraftETL & wait`
@@ -24,7 +24,7 @@ You are ready to go!
 
 * Add another source from [adsb.lol](https://api.adsb.lol/docs) to this project.
 * You have an API you like? Modify `/app/datamodels/models.ts` with the data model you want to land; `/app/scripts/fetch_from_API` to point to the API you want, and to do any transformations you might need; edit `/app/functions/process_stream` to change any stream processing you need to do.
-* try ask Aurora in Claude or Cursor about your data. Get it to create egress APIs for you.
+* try ask Sloan in Claude or Cursor about your data. Get it to create egress APIs for you.
 
 
 ## Architecture Overview
@@ -222,14 +222,14 @@ This three-layer approach (APISource retries + workflow staggering + task retrie
 To learn more about Moose, take a look at the following resources:
 
 - [Moose Documentation](https://docs.fiveonefour.com/moose) - learn about Moose.
-- [Aurora Documentation](https://docs.fiveonefour.com/aurora) - learn about Aurora, the MCP interface for data engineering.
+- [Sloan Documentation](https://docs.fiveonefour.com/sloan) - learn about Sloan, the MCP interface for data engineering.
 - [Deploy on Boreal](https://www.fiveonefour.com/boreal)
 
 You can check out [the Moose GitHub repository](https://github.com/514-labs/moose) - your feedback and contributions are welcome!
 
 ## Deploy on Boreal
 
-The easiest way to deploy your Moose app is to use the [Boreal](https://www.fiveonefour.com/boreal) from Fiveonefour, the creators of Moose and Aurora.
+The easiest way to deploy your Moose app is to use the [Boreal](https://www.fiveonefour.com/boreal) from Fiveonefour, the creators of Moose and Sloan.
 
 [Sign up](https://www.boreal.cloud/sign-up).
 

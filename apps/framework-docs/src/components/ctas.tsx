@@ -114,7 +114,7 @@ export const Icons = {
   api: HardDriveUpload,
   contact: Contact,
 
-  // Aurora
+  // Sloan
   cli: Terminal,
   json: FileJson,
   computer: Monitor,

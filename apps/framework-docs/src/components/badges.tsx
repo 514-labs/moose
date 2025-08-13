@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 interface CustomBadgeProps {
-  variant?: "moose" | "boreal" | "aurora" | "default";
+  variant?: "moose" | "boreal" | "sloan" | "default";
   children: React.ReactNode;
   className?: string;
 }
@@ -17,7 +17,7 @@ export function ProductBadge({
       "bg-moose-purple hover:bg-moose-purple-dark text-moose-purple-foreground",
     boreal:
       "bg-boreal-green hover:bg-boreal-green-dark text-boreal-green-foreground",
-    aurora: "bg-aurora-teal text-black",
+    sloan: "bg-sloan-teal text-black",
     default: "",
   };
 
@@ -39,7 +39,7 @@ const variantColors = {
     foreground: "text-gray-100",
     stroke: "border-gray-800",
   },
-  aurora: {
+  sloan: {
     background: "bg-gray-950",
     foreground: "text-gray-100",
     stroke: "border-gray-800",
@@ -54,7 +54,7 @@ const variantColors = {
 interface IconBadgeProps {
   Icon?: React.ElementType;
   label: string;
-  variant?: "moose" | "boreal" | "aurora" | "default";
+  variant?: "moose" | "boreal" | "sloan" | "default";
   rounded?: "md" | "full";
 }
 

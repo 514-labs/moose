@@ -15,4 +15,4 @@ To get started, follow these steps:
     $ moose dev
 
 """
-default_aurora_telemetry="comprehensive"
+default_sloan_telemetry="comprehensive"

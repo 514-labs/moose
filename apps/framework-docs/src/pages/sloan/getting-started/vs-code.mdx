@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Getting started guide for Aurora
+description: Getting started guide for Sloan
 ---
 
 import { Callout } from "@/components";
@@ -36,25 +36,25 @@ import { ArgTable } from "@/components/ArgTable";
 
 [Enable MCPs](vscode://settings/chat.mcp.enabled) by toggling on the `chat.mcp.enabled` setting.
 
-### Install Moose and Aurora CLI
+### Install Moose and Sloan CLI
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan,moose
 ```
 
-### Configure Aurora MCP
+### Configure Sloan MCP
 
-<Tabs items={['Aurora CLI', 'MCP.json (settings.json)']}>
+<Tabs items={['Sloan CLI', 'MCP.json (settings.json)']}>
   <Tabs.Tab>
     Create a new project with Claude Desktop MCP preconfigured: 
 
     ```bash filename="Terminal" copy
-    aurora init <project-name> <template-name> --mcp vscode-project
+    sloan init <project-name> <template-name> --mcp vscode-project
     ```
 
     If you want to use this as a global VS Code MCP, use `vscode-global` instead of `vscode-project`.
 
-    For other options, see [Aurora CLI docs](/aurora/getting-started/aurora-cli).
+    For other options, see [Sloan CLI docs](/sloan/getting-started/sloan-cli).
   </Tabs.Tab>
   <Tabs.Tab>
     ```json filename="/path/to/your/project/.cursor/settings.json" copy
@@ -62,9 +62,9 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
       "mcp": {
         "input": [],
         "servers": {
-          "aurora": {
+          "sloan": {
             "args": [
-              "@514labs/aurora-mcp@latest",
+              "@514labs/sloan-mcp@latest",
               "--moose-read-tools",
               "path/to/your/moose/project"
             ],
@@ -85,7 +85,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 
 ### Adding other toolsets
 
-For more information on available toolsets, see [Aurora MCP toolsets](/aurora/reference/tool-reference). All toolsets are available for Cursor.
+For more information on available toolsets, see [Sloan MCP toolsets](/sloan/reference/tool-reference). All toolsets are available for Cursor.
 
 ### Using the MCP
 
@@ -96,7 +96,7 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 ### Warnings / Peculiarities
 
 <Callout type="warning">
-**Recommended Configuration Method**: While VS Code has a feature that allows you to use MCPs from other clients (like Claude Desktop), we strongly recommend using either the **Aurora CLI** or the **settings.json file** method shown above instead. These methods provide better reliability and configuration control specifically for VS Code environments.
+**Recommended Configuration Method**: While VS Code has a feature that allows you to use MCPs from other clients (like Claude Desktop), we strongly recommend using either the **Sloan CLI** or the **settings.json file** method shown above instead. These methods provide better reliability and configuration control specifically for VS Code environments.
 </Callout>
 
 ### Common issues / troubleshooting
@@ -108,27 +108,27 @@ For more information on available toolsets, see [Aurora MCP toolsets](/aurora/re
 <FeatureGrid columns={3}>
   
   <FeatureCard
-    href="/aurora/reference/cli-reference"
+    href="/sloan/reference/cli-reference"
     title="CLI reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/mcp-json-reference"
+    href="/sloan/reference/mcp-json-reference"
     title="MCP.json reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
     <FeatureCard
-    href="/aurora/reference/tool-reference"
+    href="/sloan/reference/tool-reference"
     title="Tools reference"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

@@ -386,6 +386,7 @@ pub async fn start_development_mode(
         process_registry.clone(),
         metrics.clone(),
         redis_client.clone(),
+        settings.clone(),
     )?;
 
     info!("Starting web server...");

@@ -89,13 +89,18 @@ pub async fn execute_initial_infra_change(
     redis_client: &Arc<RedisClient>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
-    // Only execute OLAP changes if OLAP is enabled
-    if project.features.olap {
-        olap::execute_changes(project, &plan.changes.olap_changes).await?;
-    }
-    // Only execute streaming changes if streaming engine is enabled
-    if project.features.streaming_engine {
-        stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+    // Check if infrastructure execution is bypassed
+    if settings.should_bypass_infrastructure_execution() {
+        log::info!("Bypassing OLAP and streaming infrastructure execution (bypass_infrastructure_execution is enabled)");
+    } else {
+        // Only execute OLAP changes if OLAP is enabled and not bypassed
+        if project.features.olap {
+            olap::execute_changes(project, &plan.changes.olap_changes).await?;
+        }
+        // Only execute streaming changes if streaming engine is enabled and not bypassed
+        if project.features.streaming_engine {
+            stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+        }
     }
 
     // In prod, the webserver is part of the current process that gets spawned. As such
@@ -170,15 +175,21 @@ pub async fn execute_online_change(
     sync_processes_registry: &mut SyncingProcessesRegistry,
     process_registries: &mut ProcessRegistries,
     metrics: Arc<Metrics>,
+    settings: &Settings,
 ) -> Result<(), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
-    // Only execute OLAP changes if OLAP is enabled
-    if project.features.olap {
-        olap::execute_changes(project, &plan.changes.olap_changes).await?;
-    }
-    // Only execute streaming changes if streaming engine is enabled
-    if project.features.streaming_engine {
-        stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+    // Check if infrastructure execution is bypassed
+    if settings.should_bypass_infrastructure_execution() {
+        log::info!("Bypassing OLAP and streaming infrastructure execution (bypass_infrastructure_execution is enabled)");
+    } else {
+        // Only execute OLAP changes if OLAP is enabled and not bypassed
+        if project.features.olap {
+            olap::execute_changes(project, &plan.changes.olap_changes).await?;
+        }
+        // Only execute streaming changes if streaming engine is enabled and not bypassed
+        if project.features.streaming_engine {
+            stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+        }
     }
 
     // In prod, the webserver is part of the current process that gets spawned. As such

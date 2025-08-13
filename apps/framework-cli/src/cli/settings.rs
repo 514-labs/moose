@@ -43,7 +43,7 @@ use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 /// Configuration for metric collection labels and endpoints
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct MetricLabels {
     /// Custom labels to attach to metrics
     pub labels: Option<String>,
@@ -52,7 +52,7 @@ pub struct MetricLabels {
 }
 
 /// Telemetry configuration for usage tracking and metrics
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Telemetry {
     /// Whether telemetry collection is enabled
     pub enabled: bool,
@@ -102,7 +102,7 @@ impl Features {
 }
 
 /// Main settings structure containing all configuration options
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     /// Logging configuration settings
     #[serde(default)]
@@ -126,7 +126,7 @@ pub struct Settings {
 }
 
 /// Development-specific configuration options
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct DevSettings {
     /// Optional custom path to container CLI executable
     pub container_cli_path: Option<PathBuf>,
@@ -135,6 +135,12 @@ pub struct DevSettings {
     /// This can be set via the MOOSE_SKIP_CONTAINER_SHUTDOWN environment variable
     #[serde(default)]
     pub skip_container_shutdown: bool,
+
+    /// Whether to bypass execution of infrastructure changes (OLAP and streaming)
+    /// When enabled, the system will plan changes but not execute them
+    /// This can be set via the MOOSE_DEV__BYPASS_INFRASTRUCTURE_EXECUTION environment variable
+    #[serde(default)]
+    pub bypass_infrastructure_execution: bool,
 }
 
 /// Returns the path to the config file in the user's home directory
@@ -278,5 +284,17 @@ impl Settings {
     /// - Returns false when shutdown should be skipped
     pub fn should_shutdown_containers(&self) -> bool {
         !self.should_skip_container_shutdown()
+    }
+
+    /// Checks if infrastructure execution should be bypassed
+    ///
+    /// When enabled, OLAP and streaming changes will be planned but not executed.
+    /// This is useful for testing or debugging the planning phase without applying changes.
+    ///
+    /// The value can be set via:
+    /// - Configuration file: `dev.bypass_infrastructure_execution = true`
+    /// - Environment variable: `MOOSE_DEV__BYPASS_INFRASTRUCTURE_EXECUTION=true`
+    pub fn should_bypass_infrastructure_execution(&self) -> bool {
+        self.dev.bypass_infrastructure_execution
     }
 }

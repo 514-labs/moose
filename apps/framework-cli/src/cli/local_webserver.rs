@@ -2160,17 +2160,24 @@ pub struct InfraMapResponse {
     pub infra_map: InfrastructureMap,
 }
 
-/// Helper function for admin endpoints to get reconciled inframap with all tables included.
-/// This is simpler than the plan version because admin endpoints want ALL tables (Redis + reality).
+/// Helper function for admin endpoints to get reconciled inframap for managed tables.
+///
+/// This function:
+/// 1. Loads the current inframap from Redis (tables under Moose management)
+/// 2. Reconciles with database reality to get the true current state
+/// 3. Includes unmapped tables that match managed table names (in case managed tables
+///    exist in DB but are missing from Redis due to incomplete deployments)
+/// 4. Updates managed tables to reflect any structural changes in the database
+///
+/// This ensures admin endpoints work with the actual current state, not just what's documented in Redis.
 async fn get_admin_reconciled_inframap(
     redis_client: &Arc<RedisClient>,
     project: &Project,
 ) -> Result<InfrastructureMap, crate::framework::core::plan::PlanningError> {
-    use crate::framework::core::infra_reality_checker::InfraRealityChecker;
     use crate::infrastructure::olap::clickhouse;
     use std::collections::HashSet;
 
-    // Load current map from Redis
+    // Load current map from Redis (these are the tables under Moose management)
     let current_map = match InfrastructureMap::load_from_redis(redis_client).await {
         Ok(Some(infra_map)) => infra_map,
         Ok(None) => InfrastructureMap::default(),
@@ -2185,36 +2192,31 @@ async fn get_admin_reconciled_inframap(
         return Ok(current_map);
     }
 
-    // For admin endpoints, we want ALL tables (including unmapped ones)
-    // So first do a reality check to discover unmapped table names
-    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
-    let reality_checker =
-        InfraRealityChecker::new(clickhouse::create_client(project.clickhouse_config.clone()));
-    let discrepancies = reality_checker.check_reality(project, &current_map).await?;
-
-    // Build complete target table list: Redis tables + unmapped tables
-    let mut all_table_names: HashSet<String> = current_map
+    // For admin endpoints, reconcile all currently managed tables
+    // Pass the managed table names as target_table_names to ensure unmapped tables
+    // with matching names get included if they should be managed
+    let target_table_names: HashSet<String> = current_map
         .tables
         .values()
-        .map(|t| t.name.clone())
+        .map(|t| t.name.to_string())
         .collect();
 
-    for unmapped_table in &discrepancies.unmapped_tables {
-        all_table_names.insert(unmapped_table.name.clone());
-    }
+    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
 
-    // Now reconcile with complete table list using the public function
     crate::framework::core::plan::reconcile_with_reality(
         project,
         &current_map,
-        &all_table_names,
+        &target_table_names,
         olap_client,
     )
     .await
 }
 
 /// Handles the admin plan endpoint, which compares a submitted infrastructure map
-/// with the server's current state and returns the changes that would be applied
+/// with the server's reconciled current state and returns the changes that would be applied.
+///
+/// The server's current state is reconciled with database reality to ensure accurate planning,
+/// so the diff reflects changes against the true current state, not just what's in Redis.
 async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,

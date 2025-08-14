@@ -19,6 +19,7 @@ import {
   FileCode,
   Laptop,
   FolderPlus,
+  Cloud,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -80,7 +81,7 @@ const rawMeta = {
     isMoose: true,
   },
   metrics: {
-    title: "Metrics",
+    title: "Observability",
     Icon: ChartBar,
     isMoose: true,
   },
@@ -88,6 +89,12 @@ const rawMeta = {
     title: "Build",
     Icon: Hammer,
     isMoose: true,
+  },
+  "cloud-hosting": {
+    title: "Cloud Hosting",
+    href: "https://www.fiveonefour.com/boreal",
+    newWindow: true,
+    Icon: Cloud,
   },
   __reference__: {
     type: "separator",

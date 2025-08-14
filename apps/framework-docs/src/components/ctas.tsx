@@ -61,12 +61,12 @@ const ClickHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // Base paths for different sections
 const basePaths = {
-  quickstart: "/moose/quickstart",
+  quickstart: "/moose/getting-started/quickstart",
   dataModeling: "/moose/data-modeling",
   localDev: "/moose/local-dev",
-  fromClickhouse: "/moose/from-clickhouse",
+  fromClickhouse: "/moose/getting-started/from-clickhouse",
   // Modules
-  olap: "/moose/olap",
+  olap: "/moose/modules/olap",
   streaming: "/moose/streaming",
   workflows: "/moose/workflows",
   apis: "/moose/apis",

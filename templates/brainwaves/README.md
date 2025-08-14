@@ -9,8 +9,6 @@ To quickly learn about this project watch/skim through the following brief video
 - [Video 1: Introduction and demo](https://www.youtube.com/watch?v=svrHKqcj338)
 - [Video 2: Using Aurora MCP](https://www.youtube.com/watch?v=tzdQcVxJkYA)
 
-And checkout the [engineering blog post]().
-
 ---
 
 ## Table of Contents

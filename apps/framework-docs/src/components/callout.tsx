@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, PartyPopper, StopCircle } from "lucide-react";
+import { InfoIcon, Lightbulb, PartyPopper, StopCircle } from "lucide-react";
 
 interface CalloutProps {
   type: CalloutType;
@@ -31,7 +31,7 @@ const calloutVariants = {
     titleColor: "text-boreal-green/90",
   },
   info: {
-    icon: Lightbulb,
+    icon: InfoIcon,
     color: "bg-muted/50",
     border: "border",
     title: "MooseTip:",
@@ -59,7 +59,7 @@ export function Callout({
   type,
   title,
   href,
-  icon = false,
+  icon = true,
   ctaLabel = "Learn more",
   children,
   compact = false,

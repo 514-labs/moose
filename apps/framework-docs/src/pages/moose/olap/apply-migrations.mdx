@@ -3,11 +3,17 @@ title: Applying Migrations
 description: How to apply migrations to your database
 ---
 
-import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard } from "@/components";
+import { Callout, LanguageSwitcher, TypeScript, Python, BulletPointsCard, PathConfig } from "@/components";
+import { ShieldCheck } from "lucide-react";
 
 # Applying Migrations
 
+
 <LanguageSwitcher />
+
+<Callout type="info" title="OLAP Migrations" href={`${PathConfig.migrate.path}/migration-types`} ctaLabel="View Docs" compact>
+This page covers OLAP migrations. For migrations across the Moose stack, see the Migrate docs.
+</Callout>
 
 ## Overview
 
@@ -103,8 +109,8 @@ When you save changes, you'll see detailed migration logs showing what's being a
              ~ API Endpoint: events - Version: 0.0 - Path: ingest/events - Method: POST - Format: Some(Json)
 ```
 
-<Callout type="info">
-**Migration Safety**: In development, migrations are applied immediately. In production, migrations are applied during deployment with additional safety checks.
+<Callout type="info" title="Migration Safety" icon={ShieldCheck} compact>
+In development, migrations are applied immediately. In production, migrations are applied during deployment with additional safety checks.
 </Callout>
 
 ## Production Workflow
@@ -159,6 +165,25 @@ interface AddedColumn {
 ```
 </TypeScript>
 
+<Python>
+```python filename="Before.py" copy
+class AddedColumn(BaseModel):
+    id: Key[str]
+    another_column: str
+    some_column: str
+```
+</Python>
+
+<Python>
+```python filename="After.py" copy
+class AddedColumn(BaseModel):
+    id: Key[str]
+    another_column: str
+    some_column: str
+    new_column: int  # New field - migration applied
+```
+</Python>
+
 ### Column Removals
 
 Removing fields from your data models:
@@ -180,10 +205,31 @@ interface RemovedColumn {
   id: Key<string>;
   another_column: string;
   some_column: string;
-  // old_column field removed - migration applied
+  // old_column field removed 
 }
 ```
 </TypeScript>
+
+<Python>
+```python filename="Before.py" copy
+class RemovedColumn(BaseModel):
+    id: Key[str]
+    another_column: str
+    some_column: str
+    old_column: int
+```
+</Python>
+
+<Python>
+```python filename="After.py" copy
+class RemovedColumn(BaseModel):
+    id: Key[str]
+    another_column: str
+    some_column: str
+    # old_column field removed
+```
+</Python>
+
 
 ### Type Changes
 
@@ -206,6 +252,23 @@ interface ChangedType {
 }
 ```
 </TypeScript>
+
+<Python>
+```python filename="Before.py" copy
+class ChangedType(BaseModel):
+    id: Key[str]
+    some_column: str
+```
+</Python>
+
+<Python>
+```python filename="After.py" copy
+class ChangedType(BaseModel):
+    id: Key[str]
+    some_column: int  # Changed type from string to int
+```
+</Python>
+
 
 ### Materialized View Changes
 

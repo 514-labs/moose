@@ -20,6 +20,7 @@ import {
   Laptop,
   FolderPlus,
   Cloud,
+  UploadCloud,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -86,8 +87,8 @@ const rawMeta = {
     isMoose: true,
   },
   deploying: {
-    title: "Build",
-    Icon: Hammer,
+    title: "Deploy",
+    Icon: UploadCloud,
     isMoose: true,
   },
   "cloud-hosting": {

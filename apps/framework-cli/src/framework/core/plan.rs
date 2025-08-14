@@ -70,11 +70,12 @@ pub enum PlanningError {
 /// # Arguments
 /// * `project` - The project configuration
 /// * `infra_map` - The infrastructure map to update
+/// * `target_table_names` - Names of tables to include from unmapped tables (tables in DB but not in current inframap). Only unmapped tables with names in this set will be added to the reconciled inframap.
 /// * `olap_client` - The OLAP client to use for checking reality
 ///
 /// # Returns
 /// * `Result<InfrastructureMap, PlanningError>` - The reconciled infrastructure map or an error
-async fn reconcile_with_reality<T: OlapOperations>(
+pub async fn reconcile_with_reality<T: OlapOperations>(
     project: &Project,
     current_infra_map: &InfrastructureMap,
     target_table_names: &HashSet<String>,

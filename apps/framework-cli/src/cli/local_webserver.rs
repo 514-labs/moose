@@ -1153,7 +1153,17 @@ async fn router(
                 req,
                 &project.authentication.admin_api_key,
                 &redis_client,
+                &project,
                 project.http_server_config.max_request_body_size,
+            )
+            .await
+        }
+        (_, &hyper::Method::GET, ["admin", "inframap"]) => {
+            admin_inframap_route(
+                req,
+                &project.authentication.admin_api_key,
+                &redis_client,
+                &project,
             )
             .await
         }
@@ -2142,12 +2152,80 @@ pub struct PlanResponse {
     pub changes: InfraChanges,
 }
 
+/// Response structure for the admin inframap endpoint
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InfraMapResponse {
+    pub status: String,
+    // The current infrastructure map from the server
+    pub infra_map: InfrastructureMap,
+}
+
+/// Helper function for admin endpoints to get reconciled inframap for managed tables only.
+///
+/// This function:
+/// 1. Loads the current inframap from Redis (tables under Moose management)
+/// 2. Reconciles ONLY the managed tables with database reality to get their true current state
+/// 3. Updates managed table structures to reflect any schema changes in the database
+/// 4. Removes managed tables that no longer exist in the database
+///
+/// IMPORTANT: This function INTENTIONALLY EXCLUDES unmapped tables (tables that exist in the
+/// database but are not managed by Moose). Only tables present in the Redis inframap are
+/// considered for reconciliation. This is by design - admin endpoints only work with
+/// infrastructure that is explicitly managed by Moose.
+///
+/// This ensures admin endpoints work with the actual current state of managed infrastructure only.
+async fn get_admin_reconciled_inframap(
+    redis_client: &Arc<RedisClient>,
+    project: &Project,
+) -> Result<InfrastructureMap, crate::framework::core::plan::PlanningError> {
+    use crate::infrastructure::olap::clickhouse;
+    use std::collections::HashSet;
+
+    // Load current map from Redis (these are the tables under Moose management)
+    let current_map = match InfrastructureMap::load_from_redis(redis_client).await {
+        Ok(Some(infra_map)) => infra_map,
+        Ok(None) => InfrastructureMap::default(),
+        Err(e) => {
+            return Err(crate::framework::core::plan::PlanningError::Other(
+                anyhow::anyhow!("Failed to load infrastructure map from Redis: {e}"),
+            ));
+        }
+    };
+
+    if !project.features.olap {
+        return Ok(current_map);
+    }
+
+    // For admin endpoints, reconcile all currently managed tables only
+    // Pass the managed table names as target_table_names - this ensures that
+    // reconcile_with_reality only operates on tables that are already managed by Moose
+    let target_table_names: HashSet<String> = current_map
+        .tables
+        .values()
+        .map(|t| t.name.to_string())
+        .collect();
+
+    let olap_client = clickhouse::create_client(project.clickhouse_config.clone());
+
+    crate::framework::core::plan::reconcile_with_reality(
+        project,
+        &current_map,
+        &target_table_names,
+        olap_client,
+    )
+    .await
+}
+
 /// Handles the admin plan endpoint, which compares a submitted infrastructure map
-/// with the server's current state and returns the changes that would be applied
+/// with the server's reconciled managed infrastructure state and returns the changes that would be applied.
+///
+/// The server's managed infrastructure state is reconciled with database reality to ensure accurate planning.
+/// The diff reflects changes against the true current state of managed tables only (excludes unmapped tables by design).
 async fn admin_plan_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,
     redis_client: &Arc<RedisClient>,
+    project: &Project,
     max_request_body_size: usize,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     // Validate admin authentication
@@ -2198,16 +2276,17 @@ async fn admin_plan_route(
         }
     };
 
-    let current_infra_map = match InfrastructureMap::load_from_redis(redis_client).await {
-        Ok(Some(infra_map)) => infra_map,
-        Ok(None) => InfrastructureMap::default(),
+    // Get the reconciled infrastructure map (combines Redis + reality check for managed tables)
+    // This ensures we're diffing against the true current state of managed infrastructure only
+    let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
+        Ok(infra_map) => infra_map,
         Err(e) => {
-            error!("Failed to retrieve infrastructure map from Redis: {}", e);
+            error!("Failed to get reconciled infrastructure map: {}", e);
             return Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::new(Bytes::from(
-                    "Failed to acquire lock on Redis client",
-                )))
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get current infrastructure state: {e}"
+                ))))
                 .unwrap());
         }
     };
@@ -2243,6 +2322,80 @@ async fn admin_plan_route(
         .header("Content-Type", "application/json")
         .body(Full::new(Bytes::from(json_response)))
         .unwrap())
+}
+
+/// Handles the admin inframap endpoint, which returns the server's managed infrastructure map
+/// reconciled with the actual database state. This ensures the returned inframap reflects
+/// the true current state of managed tables only, with up-to-date schema information from the database.
+/// EXCLUDES unmapped tables (tables in DB but not managed by Moose) by design.
+/// Supports both JSON and protobuf formats based on Accept header
+async fn admin_inframap_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    redis_client: &Arc<RedisClient>,
+    project: &Project,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // Validate admin authentication
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    if let Err(e) = validate_admin_auth(auth_header, admin_api_key).await {
+        return e.to_response();
+    }
+
+    // Get the reconciled infrastructure map (combines Redis + reality check for managed tables)
+    // This ensures we return the true current state of managed infrastructure only
+    let current_infra_map = match get_admin_reconciled_inframap(redis_client, project).await {
+        Ok(infra_map) => infra_map,
+        Err(e) => {
+            error!("Failed to get reconciled infrastructure map: {}", e);
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get current infrastructure state: {e}"
+                ))))
+                .unwrap());
+        }
+    };
+
+    // Check Accept header to determine response format
+    let accept_header = req
+        .headers()
+        .get(hyper::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    if accept_header.contains("application/protobuf") {
+        // Return protobuf format
+        let proto_bytes = current_infra_map.to_proto_bytes();
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/protobuf")
+            .body(Full::new(Bytes::from(proto_bytes)))
+            .unwrap())
+    } else {
+        // Return JSON format
+        let response = InfraMapResponse {
+            status: "success".to_string(),
+            infra_map: current_infra_map,
+        };
+
+        let json_response = match serde_json::to_string(&response) {
+            Ok(json) => json,
+            Err(e) => {
+                error!("Failed to serialize inframap response: {}", e);
+                return Ok(Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from("Internal server error")))
+                    .unwrap());
+            }
+        };
+
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(json_response)))
+            .unwrap())
+    }
 }
 
 #[cfg(test)]
@@ -2350,5 +2503,36 @@ mod tests {
             infra_map.tables.get(&test_table.id()).unwrap().name,
             table_name
         );
+    }
+
+    #[tokio::test]
+    async fn test_admin_inframap_response_structure() {
+        let test_infra_map = InfrastructureMap::default();
+
+        let response = InfraMapResponse {
+            status: "success".to_string(),
+            infra_map: test_infra_map.clone(),
+        };
+
+        // Test JSON serialization
+        let json_result = serde_json::to_string(&response);
+        assert!(
+            json_result.is_ok(),
+            "InfraMapResponse should serialize to JSON"
+        );
+
+        let json_str = json_result.unwrap();
+        assert!(json_str.contains("\"status\":\"success\""));
+        assert!(json_str.contains("\"infra_map\":"));
+
+        // Test JSON deserialization
+        let deserialized: Result<InfraMapResponse, _> = serde_json::from_str(&json_str);
+        assert!(
+            deserialized.is_ok(),
+            "InfraMapResponse should deserialize from JSON"
+        );
+
+        let deserialized_response = deserialized.unwrap();
+        assert_eq!(deserialized_response.status, "success");
     }
 }

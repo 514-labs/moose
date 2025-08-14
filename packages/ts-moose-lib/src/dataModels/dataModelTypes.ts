@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { IdentifierBrandedString } from "../sqlHelpers";
 
 export type EnumValues =
   | { name: string; value: { Int: number } }[]
@@ -17,7 +18,7 @@ export type DataType =
   | MapType
   | { nullable: DataType };
 export interface Column {
-  name: string;
+  name: IdentifierBrandedString;
   data_type: DataType;
   required: boolean;
   unique: false; // what is this for?

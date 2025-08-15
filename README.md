@@ -28,11 +28,11 @@ MooseStack is designed to bring the best of the modern web-development experienc
 - [Moose **APIs**](https://docs.fiveonefour.com/moose/apis): Type‑safe ingestion and query endpoints with auto‑generated OpenAPI docs.
 - Moose Tooling: [Moose **Deploy**](https://docs.fiveonefour.com/moose/deploying), [Moose **Migrate**](https://docs.fiveonefour.com/moose/migrate), [Moose **Observability**](https://docs.fiveonefour.com/moose/metrics)
 
-## Docs
-
-Start with the [Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart) and explore deployment, operations, and APIs.
-
 ## Quickstart
+
+Also available in the Docs: [5-minute Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+
+Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 
 ### Install the CLI
 
@@ -127,6 +127,12 @@ def handler(client, params: QueryParams):
  
 consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", query_function=handler)
 ```
+
+## Docs
+
+- [Overview](https://docs.fiveonefour.com/moose)
+- [5-min Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+- [Quickstart with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/from-clickhouse)
 
 ## Built on
 

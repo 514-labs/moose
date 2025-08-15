@@ -60,9 +60,9 @@ export const ingest = new Task<null, void>("ingest", {
   timeout: "30s",
 });
 
-export const workflow = new Workflow("workflow", {
+export const workflow = new Workflow("generator", {
   startingTask: ingest,
   retries: 3,
   timeout: "30s",
-  schedule: "@every 5s",
+  // schedule: "@every 5s",
 });

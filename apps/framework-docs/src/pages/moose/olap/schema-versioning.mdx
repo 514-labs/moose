@@ -154,7 +154,7 @@ migrate_events_to_v01 = MaterializedView[EventV1](MaterializedViewOptions(
         f"SELECT id as id, name as event_name, 'user' as type, created_at as created_at FROM {events.name}"
     ),
     select_tables=[events],
-    table_name=events_v1._generate_table_name(),  # ensures versioned physical name
+    table_name=events_v1,
     order_by_fields=["id"],
 ))
 ```

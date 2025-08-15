@@ -59,7 +59,9 @@ moose dev
 
 MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
 
-### TypeScript Example
+## Examples
+
+### TypeScript 
 
 ```typescript
 import { Key, OlapTable, Stream, IngestApi, ConsumptionApi } from "@514labs/moose-lib";
@@ -92,7 +94,7 @@ export const consumptionApi = new ConsumptionApi<QueryParams, DataModel[]>("get-
   }
 );
 ```
-### Python Example
+### Python 
 
 ```python
 from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi

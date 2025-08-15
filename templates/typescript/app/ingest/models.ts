@@ -1,5 +1,7 @@
 import {
   IngestPipeline,
+  IngestApi,
+  Stream,
   Key,
   OlapTable,
   DeadLetterModel,
@@ -8,12 +10,21 @@ import {
 /**
  * Data Pipeline: Raw Record (Foo) → Processed Record (Bar)
  * Raw (Foo) → HTTP → Raw Stream → Transform → Derived (Bar) → Processed Stream → DB Table
+ *
+ * Additionally demonstrates versioned ingest APIs for User data
  */
 
 /** =======Data Models========= */
 
-/** Raw data ingested via API */
 export interface Foo {
+  id: Key<string>;
+  timestamp: number;
+  message: string;
+  category?: string;
+  priority?: number;
+}
+
+export interface FooV1 {
   primaryKey: Key<string>; // Unique ID
   timestamp: number; // Unix timestamp
   optionalText?: string; // Text to analyze
@@ -33,11 +44,17 @@ export const deadLetterTable = new OlapTable<DeadLetterModel>("FooDeadLetter", {
   orderByFields: ["failedAt"],
 });
 
-/** Raw data ingestion */
 export const FooPipeline = new IngestPipeline<Foo>("Foo", {
+  table: true,
+  stream: true,
+  ingest: true,
+});
+
+export const FooPipelineV1 = new IngestPipeline<FooV1>("Foo", {
   table: false, // No table; only stream raw records
   stream: true, // Buffer ingested records
   ingest: true, // POST /ingest/Foo
+  version: "1", // Version string for schema versioning
   deadLetterQueue: {
     destination: deadLetterTable,
   },

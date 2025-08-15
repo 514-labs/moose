@@ -226,6 +226,11 @@ const utils = {
       });
       console.log("Truncated Bar table");
 
+      await client.command({
+        query: "TRUNCATE TABLE IF EXISTS Foo",
+      });
+      console.log("Truncated Foo table");
+
       // Clear materialized view tables
       const mvTables = ["BarAggregated", "bar_aggregated"];
       for (const table of mvTables) {
@@ -562,7 +567,7 @@ describe("Moose Templates", () => {
       const responses = [];
 
       for (let i = 0; i < recordsToSend; i++) {
-        const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+        const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo/1`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -621,6 +626,36 @@ describe("Moose Templates", () => {
         `Primary Key: ${eventId}`,
         "Optional Text: Hello world",
       ]);
+    });
+
+    it("should successfully ingest data to unversioned API and verify in Foo table", async function () {
+      const eventId = randomUUID();
+
+      // Test unversioned API endpoint
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/Foo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: eventId,
+          timestamp: TEST_CONFIG.timestamp,
+          message: "Hello from unversioned API",
+          category: "test",
+          priority: 1,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Response code:", response.status);
+        const text = await response.text();
+        console.error(`Unversioned API test request failed: ${text}`);
+        throw new Error(`${response.status}: ${text}`);
+      }
+
+      // Wait for data to be written to Foo table
+      await utils.waitForDBWrite(devProcess!, "Foo", 1);
+
+      // Verify data was inserted into the Foo table
+      await utils.verifyClickhouseData("Foo", eventId, "id");
     });
   });
 
@@ -745,7 +780,7 @@ describe("Moose Templates", () => {
 
     it("should successfully ingest data and verify through consumption API", async function () {
       const eventId = randomUUID();
-      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo/1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -808,6 +843,36 @@ describe("Moose Templates", () => {
         `Primary Key: ${eventId}`,
         "Optional Text: Hello from Python",
       ]);
+    });
+
+    it("should successfully ingest data to unversioned API and verify in Foo table", async function () {
+      const eventId = randomUUID();
+
+      // Test unversioned API endpoint
+      const response = await fetch(`${TEST_CONFIG.server.url}/ingest/foo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: eventId,
+          timestamp: TEST_CONFIG.timestamp,
+          message: "Hello from unversioned Python API",
+          category: "test",
+          priority: 2,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Response code:", response.status);
+        const text = await response.text();
+        console.error(`Unversioned Python API test request failed: ${text}`);
+        throw new Error(`${response.status}: ${text}`);
+      }
+
+      // Wait for data to be written to Foo table
+      await utils.waitForDBWrite(devProcess!, "Foo", 1);
+
+      // Verify data was inserted into the Foo table
+      await utils.verifyClickhouseData("Foo", eventId, "id");
     });
   });
 });

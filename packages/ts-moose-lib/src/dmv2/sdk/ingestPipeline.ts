@@ -241,11 +241,24 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     }
 
     if (config.deadLetterQueue) {
+      let deadLetterQueueConfig =
+        typeof config.deadLetterQueue === "object" ?
+          config.deadLetterQueue
+        : {};
+
+      // If pipeline has a version and dead letter queue has a destination,
+      // ensure the destination also gets the pipeline version
+      if (config.version && deadLetterQueueConfig.destination) {
+        const dest = deadLetterQueueConfig.destination;
+        // Only apply version if the destination doesn't already have one
+        if (!dest.config.version) {
+          dest.config = { ...dest.config, version: config.version };
+        }
+      }
+
       const streamConfig = {
         destination: undefined,
-        ...(typeof config.deadLetterQueue === "object" ?
-          config.deadLetterQueue
-        : {}),
+        ...deadLetterQueueConfig,
         ...(config.version && { version: config.version }),
       };
       this.deadLetterQueue = new DeadLetterQueue<T>(

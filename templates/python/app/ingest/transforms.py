@@ -1,9 +1,9 @@
-from app.ingest.models import fooModel, barModel, Foo, Bar
+from app.ingest.models import fooModelV1, barModel, FooV1, Bar
 from moose_lib import DeadLetterQueue, DeadLetterModel, TransformConfig, MooseCache
 from datetime import datetime
 
 
-def foo_to_bar(foo: Foo):
+def foo_to_bar(foo: FooV1):
 
     """Transform Foo events to Bar events with error handling and caching.
     
@@ -43,11 +43,11 @@ def foo_to_bar(foo: Foo):
 
 
 # Transform Foo events to Bar events
-fooModel.get_stream().add_transform(
+fooModelV1.get_stream().add_transform(
     destination=barModel.get_stream(),
     transformation=foo_to_bar,
     config=TransformConfig(
-        dead_letter_queue=fooModel.get_dead_letter_queue()
+        dead_letter_queue=fooModelV1.get_dead_letter_queue()
     )
 )
 
@@ -61,12 +61,12 @@ def print_foo_event(foo):
     print("---")
 
 
-fooModel.get_stream().add_consumer(print_foo_event)
+fooModelV1.get_stream().add_consumer(print_foo_event)
 
 # DLQ consumer for handling failed events (alternate flow)
-def print_messages(dead_letter: DeadLetterModel[Foo]):
+def print_messages(dead_letter: DeadLetterModel[FooV1]):
     print("dead letter:", dead_letter)
     print("foo in dead letter:", dead_letter.as_typed())
 
 
-fooModel.get_dead_letter_queue().add_consumer(print_messages)
+fooModelV1.get_dead_letter_queue().add_consumer(print_messages)

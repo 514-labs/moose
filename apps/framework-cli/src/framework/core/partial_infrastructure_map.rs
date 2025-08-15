@@ -180,16 +180,20 @@ struct PartialEgressApi {
 pub struct WriteTo {
     pub kind: WriteToKind,
     pub name: String,
+    pub version: Option<String>,
 }
 
 /// Specifies a transformation target for topic data.
 ///
 /// Used to define where transformed data should be written and optionally specify a version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
     pub version: Option<String>,
+    /// Version of the target topic, if any
+    pub topic_version: Option<String>,
     pub metadata: Option<Metadata>,
 }
 
@@ -491,15 +495,20 @@ impl PartialInfrastructureMap {
         let mut api_endpoints = HashMap::new();
 
         for partial_api in self.ingest_apis.values() {
-            let target_topic_name = match &partial_api.write_to.kind {
-                WriteToKind::Stream => partial_api.write_to.name.clone(),
+            // Build the concrete topic key from base name + optional version
+            let topic_key = match &partial_api.write_to.kind {
+                WriteToKind::Stream => match &partial_api.write_to.version {
+                    Some(v) => format!(
+                        "{}_{}",
+                        partial_api.write_to.name,
+                        Version::from_string(v.clone()).as_suffix()
+                    ),
+                    None => partial_api.write_to.name.clone(),
+                },
             };
 
-            let not_found = &format!("Target topic '{target_topic_name}' not found");
-            let target_topic = topics
-                .values()
-                .find(|topic| topic.name == target_topic_name)
-                .expect(not_found);
+            let not_found = &format!("Target topic '{topic_key}' not found");
+            let target_topic = topics.get(&topic_key).expect(not_found);
 
             // TODO: Remove data model from api endpoints when dmv1 is removed
             let data_model = crate::framework::data_model::model::DataModel {
@@ -612,13 +621,21 @@ impl PartialInfrastructureMap {
     ) -> HashMap<String, TopicToTableSyncProcess> {
         let mut sync_processes = self.topic_to_table_sync_processes.clone();
 
-        for (topic_name, partial_topic) in &self.topics {
+        for partial_topic in self.topics.values() {
             if let Some(target_table_name) = &partial_topic.target_table {
-                let topic_not_found = &format!("Source topic '{topic_name}' not found");
-                let source_topic = topics
-                    .values()
-                    .find(|topic| &topic.name == topic_name)
-                    .expect(topic_not_found);
+                let topic_key =
+                    partial_topic
+                        .version
+                        .as_ref()
+                        .map_or(partial_topic.name.clone(), |v| {
+                            format!(
+                                "{}_{}",
+                                partial_topic.name,
+                                Version::from_string(v.clone()).as_suffix()
+                            )
+                        });
+                let topic_not_found = &format!("Source topic '{topic_key}' not found");
+                let source_topic = topics.get(&topic_key).expect(topic_not_found);
 
                 let target_table_version: Option<Version> = partial_topic
                     .target_table_version
@@ -674,23 +691,41 @@ impl PartialInfrastructureMap {
                 source_partial_topic, topic_name
             );
 
-            let not_found = &format!("Source topic '{topic_name}' not found");
-            let source_topic = topics
-                .values()
-                .find(|topic| &topic.name == topic_name)
-                .expect(not_found);
+            // Resolve source topic by base name + optional version
+            let source_key = source_partial_topic.version.as_ref().map_or(
+                source_partial_topic.name.clone(),
+                |v| {
+                    format!(
+                        "{}_{}",
+                        source_partial_topic.name,
+                        Version::from_string(v.clone()).as_suffix()
+                    )
+                },
+            );
+
+            let not_found = &format!("Source topic '{source_key}' not found");
+            let source_topic = topics.get(&source_key).expect(not_found);
 
             for transformation_target in &source_partial_topic.transformation_targets {
                 debug!("transformation_target: {:?}", transformation_target);
 
-                // In dmv1, the process name was the file name which had double underscores
-                let process_name = format!("{}__{}", topic_name, transformation_target.name);
+                // Resolve target topic by base name + optional version
+                let target_key = transformation_target.topic_version.as_ref().map_or(
+                    transformation_target.name.clone(),
+                    |v| {
+                        format!(
+                            "{}_{}",
+                            transformation_target.name,
+                            Version::from_string(v.clone()).as_suffix()
+                        )
+                    },
+                );
 
-                let not_found = &format!("Target topic '{}' not found", transformation_target.name);
-                let target_topic = topics
-                    .values()
-                    .find(|topic| topic.name == transformation_target.name)
-                    .expect(not_found);
+                // In dmv1, the process name was the file name which had double underscores
+                let process_name = format!("{}__{}", source_key, target_key);
+
+                let not_found = &format!("Target topic '{}' not found", target_key);
+                let target_topic = topics.get(&target_key).expect(not_found);
 
                 let function_process = FunctionProcess {
                     name: process_name.clone(),

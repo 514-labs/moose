@@ -1067,29 +1067,49 @@ async fn router(
     let res = match (configured_producer, req.method(), &route_split[..]) {
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
-                // For v2, find the latest version if no version specified
                 let route_table_read = route_table.read().await;
-                let base_path = route.to_str().unwrap();
-                let mut latest_version: Option<&Version> = None;
 
-                // First find matching routes, then get latest version
-                for (path, meta) in route_table_read.iter() {
-                    let path_str = path.to_str().unwrap();
-                    if path_str.starts_with(base_path) {
-                        if let Some(version) = &meta.version {
-                            if latest_version.is_none() || version > latest_version.unwrap() {
-                                latest_version = Some(version);
-                            }
-                        }
-                    }
-                }
+                let incoming_route_str = route.to_str().unwrap_or("");
+                let incoming_lower = incoming_route_str.to_ascii_lowercase();
 
-                match latest_version {
-                    // If latest version exists, use it
-                    Some(version) => {
+                // 1) Try to find an exact (case-insensitive) unversioned match
+                if let Some((matched_path, _)) = route_table_read.iter().find(|(p, _)| {
+                    p.to_str()
+                        .map(|s| s.eq_ignore_ascii_case(incoming_route_str))
+                        .unwrap_or(false)
+                }) {
+                    ingest_route(
+                        req,
+                        matched_path.clone(),
+                        configured_producer,
+                        route_table,
+                        is_prod,
+                        jwt_config,
+                        project.http_server_config.max_request_body_size,
+                    )
+                    .await
+                } else {
+                    // 2) No direct match. Look for exactly one versioned match that shares the same base path
+                    //    Case-insensitive prefix match: {base}/<version>
+                    let base_lower = format!("{}/", incoming_lower);
+
+                    let matches: Vec<PathBuf> = route_table_read
+                        .iter()
+                        .filter(|(path, meta)| {
+                            meta.version.is_some()
+                                && path
+                                    .to_str()
+                                    .map(|s| s.to_ascii_lowercase().starts_with(&base_lower))
+                                    .unwrap_or(false)
+                        })
+                        .map(|(path, _)| path.clone())
+                        .take(2)
+                        .collect();
+
+                    if matches.len() == 1 {
                         ingest_route(
                             req,
-                            route.join(version.to_string()),
+                            matches[0].clone(),
                             configured_producer,
                             route_table,
                             is_prod,
@@ -1097,9 +1117,8 @@ async fn router(
                             project.http_server_config.max_request_body_size,
                         )
                         .await
-                    }
-                    None => {
-                        // Otherwise, try direct route
+                    } else {
+                        // Either none or multiple versioned routes exist; let ingest_route return 404 with guidance
                         ingest_route(
                             req,
                             route,

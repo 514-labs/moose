@@ -104,7 +104,9 @@ When you save changes, you'll see detailed migration logs showing what's being a
 ```bash
 ⢹ Processing Infrastructure changes from file watcher
              ~ Topic: events - Version: 0.0 - Retention Period: 604800s - Partition Count: 1
-             ~ Table events with column changes: [Added(Column { name: "status", data_type: String, required: true, unique: false, primary_key: false, default: None })] and order by changes: OrderByChange { before: [], after: [] }
+             ~ Table events:
+                  Column changes:
+                    + status: String
              ~ Topic to Table Sync Process: events_0_0 -> events
              ~ API Endpoint: events - Version: 0.0 - Path: ingest/events - Method: POST - Format: Some(Json)
 ```

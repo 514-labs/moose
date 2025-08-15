@@ -2,7 +2,12 @@
 
 A Moose Application for Brainwave Data Capture & Analysis
 
-![Brainwaves](https://downloads.fiveonefour.com/moose/template-data/brainwaves/videos/brainwaves.gif)
+![Brainwaves](./brainwaves.gif)
+
+To quickly learn about this project watch/skim through the following brief videos:
+
+- [Video 1: Introduction and demo](https://www.youtube.com/watch?v=svrHKqcj338)
+- [Video 2: Using Aurora MCP](https://www.youtube.com/watch?v=tzdQcVxJkYA)
 
 ---
 

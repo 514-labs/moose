@@ -85,5 +85,13 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     console.error(error);
   }
+
+  // Replace all instances of "aurora" with "sloan" in the pathname (case-insensitive)
+  if (pathname.toLowerCase().includes("aurora")) {
+    const newUrl = request.nextUrl.clone();
+    newUrl.pathname = pathname.replace(/aurora/gi, "sloan");
+    return NextResponse.redirect(newUrl, { status: 301 });
+  }
+
   return NextResponse.next();
 }

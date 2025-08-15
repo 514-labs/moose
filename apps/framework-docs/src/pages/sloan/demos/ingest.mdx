@@ -1,6 +1,6 @@
 ---
 title: "Ingest Demo"
-description: "Learn how to ingest data using Aurora with a step-by-step TypeScript example"
+description: "Learn how to ingest data using Sloan with a step-by-step TypeScript example"
 ---
 
 import { Steps } from 'nextra/components'
@@ -11,12 +11,12 @@ import { Callout } from "@/components"
 
 ## Ingest data periodically from an API
 
-This demo will walk you through using Aurora tools to prompt your way to ingesting a whole bunch of aircraft telemetry data from adsb.lol.
+This demo will walk you through using Sloan tools to prompt your way to ingesting a whole bunch of aircraft telemetry data from adsb.lol.
 
 [Skip to prompt](#prompt-the-llm-to-create-an-ingest) if you started with the ads-b template.
 
 <Callout type="info" title="Prerequisites">
-- **Aurora and Moose CLIs**: [Install them here](/aurora/getting-started/cursor)
+- **Sloan and Moose CLIs**: [Install them here](/sloan/getting-started/cursor)
 - **OS**: macOS or Linux (WSL supported for Windows)
 - **Docker Desktop/Engine**: [24.0.0+](https://docs.docker.com/get-started/get-docker/)
 - **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
@@ -29,7 +29,7 @@ This demo will walk you through using Aurora tools to prompt your way to ingesti
 ### Create and initialize a new typescript project
 
 ```bash filename="Terminal" copy
-aurora init ingest-demo typescript-empty
+sloan init ingest-demo typescript-empty
 ```
 
 ```bash filename="Terminal" copy
@@ -45,9 +45,9 @@ npm install
 moose dev 
 ```
 
-### Initialize the Aurora MCP
+### Initialize the Sloan MCP
 
-Navigate to `Cursor > Settings > Cursor Settings > Tools and Integrations` then toggle on the `Aurora MCP` tool.
+Navigate to `Cursor > Settings > Cursor Settings > Tools and Integrations` then toggle on the `Sloan MCP` tool.
 
 ### For best results, set the LLM to `claude-4-sonnet`
 
@@ -69,7 +69,7 @@ The LLM might do a planning step, in which case, you can ask it to execute on th
 
 ### Action
 
-The LLM should now use aurora tools to:
+The LLM should now use sloan tools to:
 1. get sample data from the API using a temporary script
 2. use that sample to create a schema that's used to create an ingest pipeline (ingest API, Redpanda stream, ClickHouse table)
 3. create a Moose managed temporal workflow to periodically ingest the data
@@ -78,7 +78,7 @@ You'll know it is succeeding if you see dozens of events per second hit your Moo
 
 ### Continue this demo with:
 
-* [Creating Egress APIs](/aurora/demos/egress)
-* [Creating Materialized Views](/aurora/demos/mvs)
+* [Creating Egress APIs](/sloan/demos/egress)
+* [Creating Materialized Views](/sloan/demos/mvs)
 
 </Steps>

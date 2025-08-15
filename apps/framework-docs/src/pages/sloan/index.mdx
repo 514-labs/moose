@@ -1,5 +1,5 @@
 ---
-title: Aurora - Automated Data Engineering
+title: Sloan - Automated Data Engineering
 description: AI-powered tools and agents exposed through an easy to configure MCP server for data engineering and infrastructure
 ---
 
@@ -9,18 +9,18 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 
-# Welcome to Aurora
+# Welcome to Sloan
 
-Install [Aurora](/aurora/reference/cli-reference) and [Moose](/moose/reference/cli-reference) CLIs:
+Install [Sloan](/sloan/reference/cli-reference) and [Moose](/moose/reference/cli-reference) CLIs:
 ```
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan,moose
 ```
 
 <div className="flex flex-col md:flex-row gap-4 my-8">
-  <Link href="/aurora/guides">
+  <Link href="/sloan/guides">
     <Button variant="default">Quick Start →</Button>
   </Link>
-  <Link href="/aurora/guides/clickhouse-chat">
+  <Link href="/sloan/guides/clickhouse-chat">
     <Button variant="secondary">
       Start from ClickHouse
     </Button>
@@ -30,7 +30,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
       See Examples
     </Button>
   </Link>
-  <Link href="/aurora/reference/tool-reference">
+  <Link href="/sloan/reference/tool-reference">
     <Button variant="outline">
       Tools Reference
     </Button>
@@ -38,48 +38,48 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
 
 </div>
 
-## What is Aurora?
+## What is Sloan?
 
-Aurora is a set of tools to make your chat, copilot or BI fluent in data engineering. Use the CLI to set up MCPs with the tools you need in the clients you use. Create new data engineering projects with a moose-managed ClickHouse based infrastructure or use these agents with your existing data infrastructure.
+Sloan is a set of tools to make your chat, copilot or BI fluent in data engineering. Use the CLI to set up MCPs with the tools you need in the clients you use. Create new data engineering projects with a moose-managed ClickHouse based infrastructure or use these agents with your existing data infrastructure.
 
 ## Quickstart Guides
 
 <FeatureGrid columns={3}>
   <FeatureCard
-    href="/aurora/guides/clickhouse-chat"
+    href="/sloan/guides/clickhouse-chat"
     Icon={Icons.api}
     title="AI Chat with ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/guides/clickhouse-proj#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
+    href="/sloan/guides/clickhouse-proj#quickstart-analytics-engineering-project-from-clickhouse-playground-or-your-own-clickhouse-database"
     Icon={Icons.contact}
     title="AI analytics engineering on ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/guides/from-template#quickstart-new-complete-local-olap-project-from-template"
+    href="/sloan/guides/from-template#quickstart-new-complete-local-olap-project-from-template"
     Icon={Icons.db}
     title="AI powered OLAP templates"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>
 
 ## Core features
-Aurora offers a comprehensive suite of MCP tools and agents designed to streamline data engineering workflows, enabling faster and more efficient deployment and management.
+Sloan offers a comprehensive suite of MCP tools and agents designed to streamline data engineering workflows, enabling faster and more efficient deployment and management.
 
 <FeatureGrid columns={1}>
   <FeatureCard
-    href="/aurora/guides"
+    href="/sloan/guides"
     Icon={Icons.api}
     title="CLI based deployment"
     description={
@@ -91,11 +91,11 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
         </ul>
       </>
     }
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/reference/cli-reference#setup"
+    href="/sloan/reference/cli-reference#setup"
     Icon={Icons.contact}
     title="Client agnostic"
     description={
@@ -107,11 +107,11 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
         </ul>
       </>
     }
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/reference/cli-reference#init"
+    href="/sloan/reference/cli-reference#init"
     Icon={Icons.db}
     title="Infrastructure agnostic, opinionated stack available"
     description={
@@ -123,11 +123,11 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
         </ul>
       </>
     }
-    variant="aurora"
+    variant="sloan"
   />
 
   <FeatureCard
-    href="/aurora/reference/tool-reference#read-tools"
+    href="/sloan/reference/tool-reference#read-tools"
     Icon={Icons.workflows}
     title="Context-aware data engineering agents"
     description={
@@ -139,11 +139,11 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
         </ul>
       </>
     }
-    variant="aurora"
+    variant="sloan"
   />
 
   <FeatureCard
-    href="/aurora/reference/tool-reference"
+    href="/sloan/reference/tool-reference"
     Icon={Icons.models}
     title="Enterprise ready by default"
     description={
@@ -155,12 +155,12 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
         </ul>
       </>
     }
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>
 
-## Why Aurora exists
+## Why Sloan exists
 
 <BulletPointsCard
   title="LLMs don't have the tools or context they need to be good data engineers, or to make good data engineering cyborgs."
@@ -224,21 +224,21 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
   ]}
 />
 
-### The Aurora Approach
+### The Sloan Approach
 
 <BulletPointsCard
   bulletStyle="number"
   divider={false}
-  title="How would I use Aurora to create a new egress API on top of ClickHouse."
+  title="How would I use Sloan to create a new egress API on top of ClickHouse."
   bullets={[
     {
-      title: "Install Aurora and Moose",
+      title: "Install Sloan and Moose",
     },
     {
       title: "Create a project from my data in ClickHouse",
     },
     {
-      title: "Prompt Aurora to create the egress API with the given business requirements. Context added automatically. Used by Aurora to build egress API and test it.",
+      title: "Prompt Sloan to create the egress API with the given business requirements. Context added automatically. Used by Sloan to build egress API and test it.",
     },
     {
       title: "Deploy",
@@ -246,7 +246,7 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
   ]}
 />
 
-## What jobs can you do with Aurora?
+## What jobs can you do with Sloan?
 
 <div className="my-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
   <div className="p-5 border border-border rounded-lg bg-muted/30">
@@ -284,15 +284,15 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
     ctaLink="https://cal.com/team/514/talk-to-eng"
     ctaLabel="Talk to the Team"
     Icon={Icons.contact}
-    variant="aurora"
+    variant="sloan"
   />
   <CTACard
-    title="Talk to the Aurora Team"
+    title="Talk to the Sloan Team"
     description="We're always looking to improve Moose and would love to hear from you!"
     ctaLink="https://cal.com/team/514/talk-to-eng"
     ctaLabel="Talk to the Team"
     Icon={Icons.contact}
-    variant="aurora"
+    variant="sloan"
   />
   <CTACard
     title="GitHub"
@@ -300,7 +300,7 @@ Aurora offers a comprehensive suite of MCP tools and agents designed to streamli
     ctaLink="https://github.com/514-labs/moose"
     ctaLabel="GitHub"
     Icon={Icons.github}
-    variant="aurora"
+    variant="sloan"
   />
 
 </CTACards>

@@ -25,12 +25,12 @@ interface CTACardProps {
   ctaLabel: string;
   Icon?: React.ElementType;
   badge?: {
-    variant: "boreal" | "aurora" | "moose" | "default";
+    variant: "boreal" | "sloan" | "moose" | "default";
     text: string;
   };
   className?: string;
   cardName?: string;
-  variant?: "default" | "gradient" | "aurora";
+  variant?: "default" | "gradient" | "sloan";
   orientation?: "vertical" | "horizontal";
   isMooseModule?: boolean;
 }
@@ -62,7 +62,7 @@ export function CTACard({
               <Icon
                 className={cn(
                   "h-6 w-6",
-                  variant === "aurora" ? "text-aurora-teal" : "text-primary",
+                  variant === "sloan" ? "text-sloan-teal" : "text-primary",
                 )}
               />
             </div>
@@ -97,7 +97,7 @@ export function CTACard({
                 <Icon
                   className={cn(
                     "h-6 w-6",
-                    variant === "aurora" ? "text-aurora-teal" : "text-primary",
+                    variant === "sloan" ? "text-sloan-teal" : "text-primary",
                   )}
                 />
               </div>

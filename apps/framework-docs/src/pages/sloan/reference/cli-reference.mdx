@@ -1,16 +1,16 @@
 ---
 title: CLI Reference
-description: CLI Reference for Aurora
+description: CLI Reference for Sloan
 ---
 
 import { ArgTable } from "@/components/ArgTable";
 
 # CLI Reference
 
-The Aurora CLI is a tool we created to facilitate the easy setup of Aurora MCPs. It is not required, and we hope that LLM clients will eventually support all these features natively, so that we can remove the CLI.
+The Sloan CLI is a tool we created to facilitate the easy setup of Sloan MCPs. It is not required, and we hope that LLM clients will eventually support all these features natively, so that we can remove the CLI.
 
 It allows you to:
-- set up your Aurora MCP with a variety of clients
+- set up your Sloan MCP with a variety of clients
 - manage multiple projects
 - manage multiple toolsets
 - update multiple MCP configurations at once
@@ -18,17 +18,17 @@ It allows you to:
 ## Install CLI
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan
 ```
 
 ## Commands
 
 ### init
 
-Creates a data engineering project with Moose, with Aurora MCP preconfigured.
+Creates a data engineering project with Moose, with Sloan MCP preconfigured.
 
 ```bash filename="Terminal" copy
-aurora init <project-name> <template-name> <--mcp <host>> <--location <location>> 
+sloan init <project-name> <template-name> <--mcp <host>> <--location <location>> 
 ```
 
 <ArgTable
@@ -93,7 +93,7 @@ aurora init <project-name> <template-name> <--mcp <host>> <--location <location>
 Connects to an existing data source. Currently only `clickhouse` is supported.
 
 ```bash filename="Terminal" copy
-aurora connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
+sloan connect clickhouse <--connection-string <connection-string>> <--mcp <claude-desktop>>
 ```
 
 <ArgTable
@@ -115,10 +115,10 @@ aurora connect clickhouse <--connection-string <connection-string>> <--mcp <clau
 
 ### setup
 
-Takes an existing data engineering project build with Moose and configures Aurora MCP for it.
+Takes an existing data engineering project build with Moose and configures Sloan MCP for it.
 
 ```bash filename="Terminal" copy
-aurora setup [path] <tools> <--mcp <host>>
+sloan setup [path] <tools> <--mcp <host>>
 ```
 
 <ArgTable
@@ -136,7 +136,7 @@ aurora setup [path] <tools> <--mcp <host>>
     },
     {
       name: "--<tools>",
-      description: "Setup Aurora MCP to already have access to Moose read tools",
+      description: "Setup Sloan MCP to already have access to Moose read tools",
       examples: ["--moose-read-tools", "--moose-write-tools", "--remote-clickhouse-tools"]
     }
   ]}
@@ -144,22 +144,22 @@ aurora setup [path] <tools> <--mcp <host>>
 
 ### config
 
-Configure Aurora settings
+Configure Sloan settings
 
 #### config focus
 
-Aurora allows you to configure project level MCPs (e.g. for Cursor) and global MCPs (e.g. for Claude Desktop). To configure which Aurora project is being used with the Global MCPS, use `aurora config focus`.
+Sloan allows you to configure project level MCPs (e.g. for Cursor) and global MCPs (e.g. for Claude Desktop). To configure which Sloan project is being used with the Global MCPS, use `sloan config focus`.
 
 ```bash filename="Terminal" copy
-aurora config focus
+sloan config focus
 ```
 
 #### config keys
 
-Updates all MCP files for projects listed in ~/.aurora/aurora-config.toml to use updated API key.
+Updates all MCP files for projects listed in ~/.sloan/sloan-config.toml to use updated API key.
 
 ```bash filename="Terminal" copy
-aurora config keys <KEY>
+sloan config keys <KEY>
 ```
 
 <ArgTable
@@ -175,10 +175,10 @@ aurora config keys <KEY>
 
 #### config tools
 
-Toggles availability of experimental MCP tools. See [Tools Reference](/aurora/reference/tool-reference).
+Toggles availability of experimental MCP tools. See [Tools Reference](/sloan/reference/tool-reference).
 
 ```bash filename="Terminal" copy
-aurora config tools
+sloan config tools
 ```
 
 Note: if you select `remote-clickhouse`, you will need to add your ClickHouse Cloud / Boreal credentials to `mcp.json`.

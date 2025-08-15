@@ -2,9 +2,9 @@ import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg, ToggleBlock } from "
 import { Steps, Tabs } from "nextra/components";
 
 ## Quickstart: AI analytics engineering from your ClickHouse
-*Generate a local OLAP project from your ClickHouse deployment; Aurora MCP pre-configured for analytics engineering.*
+*Generate a local OLAP project from your ClickHouse deployment; Sloan MCP pre-configured for analytics engineering.*
 
-This will walk you through creating a new local Moose project reflecting the structure of your ClickHouse database. It will allow you to add data to your local dev environment from your remote ClickHouse database, and use Aurora MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
+This will walk you through creating a new local Moose project reflecting the structure of your ClickHouse database. It will allow you to add data to your local dev environment from your remote ClickHouse database, and use Sloan MCP tools to enrich your project with metadata, or create new Moose primitives that you can use in your project (e.g.egress APIs). We'll use the ClickHouse Playground as our example database, but you can use any ClickHouse database.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -15,18 +15,18 @@ This will walk you through creating a new local Moose project reflecting the str
 </Callout>
 
 <Steps>
-### Install Moose and Aurora CLIs
+### Install Moose and Sloan CLIs
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,sloan
 ```
 
-We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`. If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
+We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `sloan config keys anthropic <your-api-key>`. If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
 
 ### Create a new Moose project from your ClickHouse database
 
 ```bash filename="Terminal" copy
-aurora init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp cursor-project
+sloan init my_project_name --from-remote 'https://explorer:@play.clickhouse.com:443/?database=default' --language python --mcp cursor-project
 ```
 
 <Callout type="info" title="Try with ClickHouse Playground">
@@ -109,11 +109,11 @@ moose seed clickhouse --connection-string clickhouse://explorer:@play.clickhouse
 
 This will seed your local ClickHouse database with 100 rows of sample data from your remote ClickHouse database—here, the ClickHouse Playground. You can change the number of rows with the `--limit` flag.
 
-This will improve the context provided to Aurora's MCP tools, and make it easier to validate analytic engineering tasks.
+This will improve the context provided to Sloan's MCP tools, and make it easier to validate analytic engineering tasks.
 
 ### Set up your Client
 
-The `aurora init` command above configured Cursor to use Aurora MCP tools. You can check this by opening Cursor and looking at `cursor > settings > cursor settings > MCP` menu. You should see `aurora` in the list of MCPs, alongside a list of tools. 
+The `sloan init` command above configured Cursor to use Sloan MCP tools. You can check this by opening Cursor and looking at `cursor > settings > cursor settings > MCP` menu. You should see `sloan` in the list of MCPs, alongside a list of tools. 
 
 You may need to enable the MCP. Once you do so, you should see a green 🟢 status indicator next to it.
 
@@ -122,7 +122,7 @@ You may need to enable the MCP. Once you do so, you should see a green 🟢 stat
 If you would like to use a different client, you can use the following command from within the project directory:
 
 ```bash filename="Terminal" copy
-aurora setup --mcp <host>
+sloan setup --mcp <host>
 ```
 
 ### Enrich project with metadata [coming soon]
@@ -151,7 +151,7 @@ You can also now just chat with your client about your data! Try asking "Look at
 
 The client will use `read_moose_project`, `read_clickhouse_tables` and maybe `read_production_clickhouse` to answer your question.
 
-### Create new Egress APIs with Aurora MCP tools
+### Create new Egress APIs with Sloan MCP tools
 
 If you find a thread that you find interesting enough to want to productionize, try asking the client "can you create an egress API to furnish that data?"
 
@@ -159,29 +159,29 @@ The client will use `create_egress_api` and `test_egress_api` to create an egres
 
 ### What's next?
 
-Try adding new [ingestion scripts, data models, or materialized views to your project using Aurora's experimental tools](https://docs.fiveonefour.com/aurora/reference/tool-reference#experimental-moose-tools)!
+Try adding new [ingestion scripts, data models, or materialized views to your project using Sloan's experimental tools](https://docs.fiveonefour.com/sloan/reference/tool-reference#experimental-moose-tools)!
 
 </Steps>
 ## Other Quickstart Guides
 
 <FeatureGrid>
   <FeatureCard
-    href="/aurora/guides/clickhouse-chat"
+    href="/sloan/guides/clickhouse-chat"
     Icon={Icons.api}
     title="AI Chat with ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
   
   
   <FeatureCard
-    href="/aurora/guides/from-template"
+    href="/sloan/guides/from-template"
     Icon={Icons.db}
     title="AI powered OLAP templates"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

@@ -9,7 +9,7 @@ export interface FeatureCardProps {
   title: string;
   description: string;
   features?: string[];
-  variant?: "moose" | "aurora";
+  variant?: "moose" | "sloan";
   size?: "default" | "compact";
 }
 
@@ -28,8 +28,8 @@ export function FeatureCard({
       "transition-colors cursor-pointer": !!href,
       "hover:border-moose-purple hover:bg-moose-purple/10":
         !!href && variant === "moose",
-      "hover:border-aurora-teal hover:bg-aurora-teal/10":
-        !!href && variant === "aurora",
+      "hover:border-sloan-teal hover:bg-sloan-teal/10":
+        !!href && variant === "sloan",
       "p-6": size === "default",
       "p-3": size === "compact",
     },
@@ -55,7 +55,7 @@ export function FeatureCard({
             <Icon
               className={cn(
                 "h-[20px] w-[20px]",
-                variant === "moose" ? "text-moose-purple" : "text-aurora-teal",
+                variant === "moose" ? "text-moose-purple" : "text-sloan-teal",
                 {
                   "h-[24px] w-[24px]": size === "compact",
                 },

@@ -2,9 +2,9 @@ import { FeatureCard, FeatureGrid, Icons, Callout, ZoomImg } from "@/components"
 import { Steps } from "nextra/components";
 
 ## Quickstart: AI powered OLAP templates
-*Bootstrap a complete OLAP pipeline with a Moose template; with Aurora's AI tools already set up for you.*
+*Bootstrap a complete OLAP pipeline with a Moose template; with Sloan's AI tools already set up for you.*
 
-This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Aurora's Analytics Engineering MCP toolset.
+This will get you started with a Moose data engineering project ingesting Aircraft Transponder data that you can use to learn about Sloan's Analytics Engineering MCP toolset.
 
 <Callout type="info" title="Prerequisites">
 - **OS**: macOS or Linux (WSL supported for Windows)
@@ -16,24 +16,24 @@ This will get you started with a Moose data engineering project ingesting Aircra
 
 <Steps>
 
-### Install Aurora and Moose CLIs
+### Install Sloan and Moose CLIs
 
 ```bash filename="Terminal" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) aurora,moose
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) sloan,moose
 ```
 
-We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `aurora config keys anthropic <your-api-key>`.  If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
+We'll be using generative MCP tools here, so make sure you add your Anthropic API key in install. If you installed without adding it, you can add it later with `sloan config keys anthropic <your-api-key>`.  If you need to create one, see: https://docs.anthropic.com/en/docs/initial-setup.
 
 
 ### Create a new Moose project from the ADS-B template
 
 ```bash filename="Terminal" copy
-aurora init <project-name> ads-b
+sloan init <project-name> ads-b
 ```
 
-This will create a new Moose project using the ADS-B template to gather ADS-B (aircraft transponder) data that you can use to explore Aurora's MCP offerings. By default, it will create the project configured for use with Cursor (by creating `~/.cursor/mcp.config`), but if you would like to use Claude Desktop, append `--mcp claude-desktop`.
+This will create a new Moose project using the ADS-B template to gather ADS-B (aircraft transponder) data that you can use to explore Sloan's MCP offerings. By default, it will create the project configured for use with Cursor (by creating `~/.cursor/mcp.config`), but if you would like to use Claude Desktop, append `--mcp claude-desktop`.
 
-If you want to create an empty project, and build your own Data Models and ingestion, try `aurora init <project-name> typescript-empty` or `aurora init <project-name> python-empty`
+If you want to create an empty project, and build your own Data Models and ingestion, try `sloan init <project-name> typescript-empty` or `sloan init <project-name> python-empty`
 
 ### Install dependencies and run the dev server
 
@@ -59,7 +59,7 @@ moose dev
 
 Then open your code editor (e.g. by `cursor .`).
 
-Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "aurora". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
+Cursor should prompt you to enable the MCP. If it doesn't, go to `cursor > settings > cursor settings > MCP` and enable the MCP called "sloan". Note, the tools will not all work until the dev server is run locally! Note, you might need to refresh the MCP until its status indicator shows 🟢.
 
 <ZoomImg light="/cursor-mcp-settings.png" dark="/cursor-mcp-settings.png" alt="Claude search and tools, MCP running" />
 
@@ -96,7 +96,7 @@ You can also now just chat with your client about your data! Try asking "What ai
 
 The client will use `read_moose_project`, `read_clickhouse_tables` and maybe `read_production_clickhouse` to answer your question.
 
-### Create new Egress APIs with Aurora MCP tools
+### Create new Egress APIs with Sloan MCP tools
 
 If you find a thread that you find interesting enough to want to productionize, try asking the client "can you create an egress API to furnish that data?"
 
@@ -108,21 +108,21 @@ The client will use `create_egress_api` and `test_egress_api` to create an egres
 
 <FeatureGrid>
   <FeatureCard
-    href="/aurora/guides/clickhouse-chat"
+    href="/sloan/guides/clickhouse-chat"
     Icon={Icons.api}
     title="AI Chat with ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
   
   <FeatureCard
-    href="/aurora/guides/clickhouse-proj"
+    href="/sloan/guides/clickhouse-proj"
     Icon={Icons.contact}
     title="AI analytics engineering from your ClickHouse"
     description="
     "
-    variant="aurora"
+    variant="sloan"
   />
 
 </FeatureGrid>

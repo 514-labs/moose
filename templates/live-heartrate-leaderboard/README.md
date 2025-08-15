@@ -1,7 +1,7 @@
 # Get started
 
-1. Install Moose and aurora:\
-   `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose, aurora`\
+1. Install Moose and sloan:\
+   `bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose, sloan`\
    Ensure you have followed the instructions adding moose to your path or start a new terminal
 
 2. Create a python virtual environment
@@ -20,9 +20,9 @@
    In another terminal run:\
    moose workflow run generate_data`
 
-6. Configure Aurora:\
-   `aurora setup --mcp cursor-project`
-   `aurora setup --mcp claude-desktop`
+6. Configure Sloan:\
+   `sloan setup --mcp cursor-project`
+   `sloan setup --mcp claude-desktop`
 
 7. Running Streamlit:\
    In another terminal:\

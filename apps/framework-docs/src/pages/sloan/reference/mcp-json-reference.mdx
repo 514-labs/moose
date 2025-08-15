@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Getting started guide for Aurora
+description: Getting started guide for Sloan
 ---
 
 import { Callout } from "@/components";
@@ -21,11 +21,11 @@ import {
 } from "@/components";
 import { ArgTable } from "@/components/ArgTable";
 
-## Configuring Aurora MCP with MCP.JSON
+## Configuring Sloan MCP with MCP.JSON
 
 <Callout type="info" title="Prerequisites">
 - **Node**: [version 20+](https://nodejs.org/en/download) (LTS recommended)
-- **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Aurora's generative MCP tools.
+- **Anthropic API key**: [Get your API key from Anthropic](https://docs.anthropic.com/en/docs/initial-setup). This is required for using Sloan's generative MCP tools.
 - **Moose CLI** and Moose Project required for "write" tools. 
 </Callout>
 
@@ -40,7 +40,7 @@ Your MCP.JSON file is located in a different location depending on your client o
 
 For other clients, look to their documentation for where their MCP.JSON file is located.
 
-### Adding Aurora MCP to your MCP.JSON file
+### Adding Sloan MCP to your MCP.JSON file
 
 <Callout type="warning">
 **Configuration Object Naming**: Different MCP clients use different naming conventions for the server configuration object:
@@ -55,9 +55,9 @@ Make sure to check your specific client's documentation for the correct naming c
 ```json filename="MCP configuration" copy
 {
   "mcpServers": {
-    "aurora": {
+    "sloan": {
       "args": [
-        "@514labs/aurora-mcp@latest",
+        "@514labs/sloan-mcp@latest",
         "--moose-read-tools",
         "path/to/your/moose/project"
       ],
@@ -77,9 +77,9 @@ Make sure to check your specific client's documentation for the correct naming c
 ```json filename="MCP configuration" copy
 {
   "servers": {
-    "aurora": {
+    "sloan": {
       "args": [
-        "@514labs/aurora-mcp@latest",
+        "@514labs/sloan-mcp@latest",
         "--moose-read-tools",
         "path/to/your/moose/project"
       ],
@@ -104,7 +104,7 @@ Make sure to check your specific client's documentation for the correct naming c
     {
       name: "npx path",
       required: true,
-      description: "NPX path to aurora; should be `@514labs/aurora-mcp@latest`"
+      description: "NPX path to sloan; should be `@514labs/sloan-mcp@latest`"
     },
     {
       name: "tool flags",
@@ -119,7 +119,7 @@ Make sure to check your specific client's documentation for the correct naming c
     {
       name: "Anthropic API Key",
       required: false,
-      description: "Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup. This is required for using Aurora's generative MCP tools."
+      description: "Your Anthropic API key. If you don't have an Anthropic API key, see the Anthropic initial setup guide: https://docs.anthropic.com/en/docs/initial-setup. This is required for using Sloan's generative MCP tools."
     },
     {
         name: "Moose Path",
@@ -145,7 +145,7 @@ Make sure to check your specific client's documentation for the correct naming c
 In general, we recommend using read-only tool-sets (`moose-read-tools` and `remote-clickhouse`) with chat type clients (like Claude Desktop)
 </Callout>
 
-For information about toolsets, see [tools reference](../aurora/reference/tool-reference).
+For information about toolsets, see [tools reference](../sloan/reference/tool-reference).
 
 <Tabs items={['Moose read tools', 'Moose write tools', 'Remote ClickHouse tools']}>
   <Tabs.Tab>
@@ -155,7 +155,7 @@ For information about toolsets, see [tools reference](../aurora/reference/tool-r
         "--moose-read-tools",
     ]
     ```
-    [Moose read tools documentation](../aurora/reference/tool-reference#moose-read-tools)
+    [Moose read tools documentation](../sloan/reference/tool-reference#moose-read-tools)
 
   </Tabs.Tab>
   <Tabs.Tab>
@@ -166,7 +166,7 @@ For information about toolsets, see [tools reference](../aurora/reference/tool-r
         "--moose-write-tools",
     ]
     ```
-    [Moose write tools documentation](../aurora/reference/tool-reference#moose-write-tools)
+    [Moose write tools documentation](../sloan/reference/tool-reference#moose-write-tools)
   </Tabs.Tab>
   <Tabs.Tab>
 
@@ -186,7 +186,7 @@ For information about toolsets, see [tools reference](../aurora/reference/tool-r
     }
     ```
 
-    [Remote Clickhouse read tools documentation](../aurora/reference/tool-reference#remote-clickhouse)
+    [Remote Clickhouse read tools documentation](../sloan/reference/tool-reference#remote-clickhouse)
 
   </Tabs.Tab>
 </Tabs>

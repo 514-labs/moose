@@ -3,7 +3,7 @@ title: Migration Examples & Advanced Development
 description: Detailed migration examples and advanced development topics
 ---
 
-import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
+import { TypeScript, Python, LanguageSwitcher, Callout, PathConfig } from "@/components";
 
 # Migration Types
 
@@ -67,6 +67,10 @@ If you have not enabled the `olap` feature flag, you will not be able to create 
 [features]
 olap = true
 ```
+</Callout>
+
+<Callout type="info" title="Read the OLAP Migrations Guide" href={`${PathConfig.olap.path}/apply-migrations`} ctaLabel="View Docs">
+For more information on how to apply migrations to your OLAP tables, see the specific migration guide in the OLAP module docs.
 </Callout>
 
 

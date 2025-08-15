@@ -10,10 +10,22 @@ const isTable = (
   typeof value === "object" &&
   Object.getPrototypeOf(value).constructor.name === "OlapTable";
 
+export type IdentifierBrandedString = string & {
+  readonly __identifier_brand?: unique symbol;
+};
+export type NonIdentifierBrandedString = string & {
+  readonly __identifier_brand?: unique symbol;
+};
+
 /**
  * Values supported by SQL engine.
  */
-export type Value = string | number | boolean | Date | [string, string];
+export type Value =
+  | NonIdentifierBrandedString
+  | number
+  | boolean
+  | Date
+  | [string, string];
 
 /**
  * Supported value or SQL instance.

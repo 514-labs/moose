@@ -5,32 +5,157 @@
 [![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 [![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[Moose](https://docs.fiveonefour.com/moose) is an open source developer framework for building analytical backends. Moose is designed to help you quickly prototype, productionize, and scale data products, data pipelines, and data APIs - on OLAP and streaming infrastructure - using native TypeScript or Python.
+# MooseStack
 
-# Get started with Moose
+**Developer toolkit for building real-time analytical backends in Typescript and Python** — MooseStack modules offer type‑safe, code‑first abstractions for popular open source analytical infrastructure, including [ClickHouse](https://clickhouse.com/), [Kafka](https://kafka.apache.org/), [Redpanda](https://redpanda.com/), [Temporal](https://temporal.io/), and [Redis](https://redis.io/).
 
-Install with:
-```bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose```
+MooseStack is designed to bring the best of the modern web-development experience to any developer building an application that needs to integrate an analytics stack.
 
-Get up and running with your own Moose project in minutes:
-* Quick start guide: [https://docs.fiveonefour.com/moose/quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
-* Moose documentation: [https://docs.fiveonefour.com/moose](https://docs.fiveonefour.com/moose)
-* Moose pre-configured templates: [https://docs.fiveonefour.com/templates](https://docs.fiveonefour.com/templates)
+## Why MooseStack?
 
-# Moose in Production
+- **5‑minute setup**: Install the CLI and [bootstrap a backend](https://docs.fiveonefour.com/moose/getting-started/quickstart).
+- **Pre‑integrated components**: ClickHouse (storage), Redpanda (streaming), Temporal (orchestration).
+- **Hot‑reload development**: Run everything locally with live schema migrations.
+- **Code‑first infrastructure**: Declare tables, streams, workflows, and APIs in TS/Python -> MooseStack wires it all up.
+- **Modular design**: Only enable the modules you need. Each module is independent and can be adopted incrementally.
+- **Built for speed**: [ClickHouse](https://clickhouse.com/) is a columnar database that is roughly 100× faster than traditional databases for analytical queries.
 
-Moose is beta software and is in active development. Multiple public companies across the globe are using Moose in production. We’d love for you to [get your hands on it and try it out](https://docs.fiveonefour.com/moose). If you're interested in using Moose in production, or if you just want to chat, you can reach us at [moose@fiveonefour.com](mailto:moose@fiveonefour.com) or in the Moose developer community below.
+## MooseStack Modules
 
-# Community
+- [Moose **OLAP**](https://docs.fiveonefour.com/moose/olap): Manage ClickHouse tables, materialized views, and migrations in code.
+- [Moose **Streaming**](https://docs.fiveonefour.com/moose/streaming): Real‑time pipelines with Kafka/Redpanda and transformation functions.
+- [Moose **Workflows**](https://docs.fiveonefour.com/moose/workflows): ETL pipelines and tasks with Temporal.
+- [Moose **APIs**](https://docs.fiveonefour.com/moose/apis): Type‑safe ingestion and query endpoints with auto‑generated OpenAPI docs.
+- Moose Tooling: [Moose **Deploy**](https://docs.fiveonefour.com/moose/deploying), [Moose **Migrate**](https://docs.fiveonefour.com/moose/migrate), [Moose **Observability**](https://docs.fiveonefour.com/moose/metrics)
 
-You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+## Quickstart
 
-Here you can interact directly with the creators and maintainers of Moose, ask questions, give feedback, and make feature requests.
+Also available in the Docs: [5-minute Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 
-# Contributing
+Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 
-We welcome contributions to Moose! Please check out the [contribution guidelines](https://github.com/514-labs/moose/blob/main/CONTRIBUTING.md).
+### Install the CLI
 
-# Made by 514
+```bash
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
 
-Our mission at [fiveonefour](https://www.fiveonefour.com/) is to bring incredible developer experiences to the data stack. If you’re interested in enterprise solutions, commercial support, cloud hosting, managed infrastructure, or design partnerships, then we’d love to chat with you: [hello@fiveonefour.com](mailto:hello@fiveonefour.com)
+### Create a project
+
+```bash
+# typescript
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+
+# python
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
+```
+
+### Run locally
+
+```bash
+cd my-project
+moose dev
+```
+
+MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
+
+## Examples
+
+### TypeScript 
+
+```typescript
+import { Key, OlapTable, Stream, IngestApi, ConsumptionApi } from "@514labs/moose-lib";
+ 
+interface DataModel {
+  primaryKey: Key<string>;
+  name: string;
+}
+// Create a ClickHouse table
+export const clickhouseTable = new OlapTable<DataModel>("TableName");
+ 
+// Create a Redpanda streaming topic
+export const redpandaTopic = new Stream<DataModel>("TopicName", {
+  destination: clickhouseTable,
+});
+ 
+// Create an ingest API endpoint
+export const ingestApi = new IngestApi<DataModel>("post-api-route", {
+  destination: redpandaTopic,
+});
+ 
+// Create consumption API endpoint
+interface QueryParams {
+  limit?: number;
+}
+export const consumptionApi = new ConsumptionApi<QueryParams, DataModel[]>("get-api-route", 
+  async ({limit = 10}: QueryParams, {client, sql}) => {
+    const result = await client.query.execute(sql`SELECT * FROM ${clickhouseTable} LIMIT ${limit}`);
+    return await result.json();
+  }
+);
+```
+### Python 
+
+```python
+from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi
+from pydantic import BaseModel
+ 
+class DataModel(BaseModel):
+    primary_key: Key[str]
+    name: str
+ 
+# Create a ClickHouse table
+clickhouse_table = OlapTable[DataModel]("TableName")
+ 
+# Create a Redpanda streaming topic
+redpanda_topic = Stream[DataModel]("TopicName", StreamConfig(
+    destination=clickhouse_table,
+))
+ 
+# Create an ingest API endpoint
+ingest_api = IngestApi[DataModel]("post-api-route", IngestApiConfig(
+    destination=redpanda_topic,
+))
+ 
+# Create a consumption API endpoint
+class QueryParams(BaseModel):
+    limit: int = 10
+ 
+def handler(client, params: QueryParams):
+    return client.query.execute("SELECT * FROM {table: Identifier} LIMIT {limit: Int32}", {
+        "table": clickhouse_table.name,
+        "limit": params.limit,
+    })
+ 
+consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", query_function=handler)
+```
+
+## Docs
+
+- [Overview](https://docs.fiveonefour.com/moose)
+- [5-min Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+- [Quickstart with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/from-clickhouse)
+
+## Built on
+
+- [ClickHouse](https://clickhouse.com/) (OLAP storage)
+- [Redpanda](https://redpanda.com/) (streaming)
+- [Temporal](https://temporal.io/) (workflow orchestration)
+- [Redis](https://redis.io/) (internal state)
+
+
+## Moose in Production
+
+Moose is beta software and under active development. Multiple public companies are using Moose in production. If you’re evaluating production use, consider [Boreal Cloud](https://www.fiveonefour.com/boreal) or review the documentation for [self-hosting](https://docs.fiveonefour.com/moose/deploying). You can also reach us at [moose@fiveonefour.com](mailto:moose@fiveonefour.com) or join the [slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+
+## Community
+
+Join us on Slack: https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg
+
+## Contributing
+
+We welcome contributions! See the [contribution guidelines](https://github.com/514-labs/moose/blob/main/CONTRIBUTING.md).
+
+## License
+
+MooseStack is open source software and MIT licensed.

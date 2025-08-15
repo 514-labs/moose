@@ -3,7 +3,7 @@ title: Packaging Moose for deployment
 description: Packaging Moose for deployment
 ---
 
-# Packaging Moose for deployment
+# Packaging Moose for Deployment
 
 Once you've developed your Moose application locally, you can package it for deployment to your on-prem or cloud infrastructure.
 
@@ -16,7 +16,7 @@ cd my-moose-project
 The Moose CLI you've used to build your Moose project also has a handy flag that will automate the packaging and building of your project into docker images.
 
 ```txt filename="Terminal" copy
-npx @514labs/moose-cli build --docker
+moose build --docker
 ```
 
 After the above command completes you can view your newly created docker files by running the `docker images` command:

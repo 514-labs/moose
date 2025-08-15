@@ -27,6 +27,9 @@ const rawMeta = {
   "external-tables": {
     title: "External Tables",
   },
+  "schema-versioning": {
+    title: "Schema Versioning",
+  },
   "schema-change": {
     title: "Schema Changes",
     display: "hidden",

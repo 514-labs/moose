@@ -3,16 +3,37 @@ title: Summary
 description: Summary of deploying Moose into production
 ---
 
-import { TypeScript, Python, LanguageSwitcher } from "@/components";
+import { TypeScript, Python, LanguageSwitcher, Callout } from "@/components";
+import { Cloud } from "lucide-react";
 
-# Deploying Moose into Production
+# Moose Deploy
+
 <LanguageSwitcher />
 
-Once you've finished developing your Moose application locally, the next step is to deploy your Moose app into production. Check out the Architecture page to see what the architecture of your Moose application in production will look like.
+## Overview
 
+Once you've finished developing your Moose application locally, the next step is to deploy your Moose app into production. You have two options:
+
+- Self-host your Moose application on your own servers
+- Use the [Boreal Cloud hosting platform](https://www.fiveonefour.com/boreal) (from the makers of the Moose Stack)
+
+
+
+<Callout type="success" title="Deploy on Boreal Cloud" href="https://www.fiveonefour.com/boreal" ctaLabel="Learn More" icon={Cloud}>
+Want this managed in production for you? Check out Boreal Cloud (from the makers of the Moose Stack).
+</Callout>
+
+## Getting Started With Self-Hosting
 Moose makes it easy to package and deploy your applications, whether you're deploying to a server with or without internet access. The deployment process is designed to be flexible and can accommodate both containerized and non-containerized environments.
 
-## Key Deployment Steps
+### Deployment Options
+
+1. **Kubernetes Deployment**: Deploy your application to Kubernetes clusters (GKE, EKS, AKS, or on-premises)
+2. **Standard Server Deployment**: Deploy your application to a server with internet access
+3. **Containerized Cloud Deployment**: Deploy to cloud services like AWS ECS or Google Cloud Run
+4. **Offline Server Deployment**: Deploy to an environment without internet access
+
+### Key Deployment Steps
 
 There are three main aspects to deploying a Moose application:
 
@@ -28,16 +49,8 @@ There are three main aspects to deploying a Moose application:
 3. Setting up your deployment environment with the necessary runtime dependencies (Python, Docker) and configuration
 </Python>
 
-## Deployment Options
 
-Moose supports several deployment scenarios:
-
-1. **Kubernetes Deployment**: Deploy your application to Kubernetes clusters (GKE, EKS, AKS, or on-premises)
-2. **Standard Server Deployment**: Deploy your application to a server with internet access
-3. **Containerized Cloud Deployment**: Deploy to cloud services like AWS ECS or Google Cloud Run
-4. **Offline Server Deployment**: Deploy to an environment without internet access
-
-## Production-Ready Configuration
+## Configuring Your Deployment
 
 Based on our production experience, we recommend the following best practices for deploying Moose applications:
 

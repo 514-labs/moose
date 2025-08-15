@@ -11,6 +11,7 @@ import { Readable } from "node:stream";
 import { createHash } from "node:crypto";
 import type { ConfigurationRegistry } from "../../config/runtime";
 import { LifeCycle } from "./lifeCycle";
+import { IdentifierBrandedString } from "../../sqlHelpers";
 
 /**
  * Represents a failed record during insertion with error details
@@ -127,6 +128,8 @@ export type OlapConfig<T> = {
  * @template T The data type of the records stored in the table. The structure of T defines the table schema.
  */
 export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
+  name: IdentifierBrandedString;
+
   /** @internal */
   public readonly kind = "OlapTable";
 
@@ -161,6 +164,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     validators?: TypiaValidators<T>,
   ) {
     super(name, config ?? {}, schema, columns, validators);
+    this.name = name;
 
     const tables = getMooseInternal().tables;
     if (tables.has(name)) {

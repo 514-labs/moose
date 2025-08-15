@@ -7,28 +7,32 @@
 
 # MooseStack
 
-**Type‑safe, code‑first framework for real‑time analytics** — MooseStack ties together an OLAP database (ClickHouse), streaming (Redpanda), workflow orchestration (Temporal), and state management (Redis) into a single toolkit for building analytical backends.
+**Developer toolkit for building real-time analytical backends in Typescript and Python** — MooseStack modules offer type‑safe, code‑first abstractions for popular open source analytical infrastructure, including [ClickHouse](https://clickhouse.com/), [Kafka](https://kafka.apache.org/), [Redpanda](https://redpanda.com/), [Temporal](https://temporal.io/), and [Redis](https://redis.io/).
 
-Model your data, streams, and APIs in TypeScript or Python and deploy in minutes. Power OLAP databases, high‑throughput ingestion, ETL workflows, and query APIs from one modular codebase.
+MooseStack is designed to bring the best of the modern web-development experience to any developer building an application that needs to integrate an analytics stack.
 
 ## Why MooseStack?
 
 - **5‑minute setup**: Install the CLI and [bootstrap a backend](https://docs.fiveonefour.com/moose/getting-started/quickstart).
 - **Pre‑integrated components**: ClickHouse (storage), Redpanda (streaming), Temporal (orchestration).
 - **Hot‑reload development**: Run everything locally with live schema migrations.
-- **Code‑first infrastructure**: Declare tables, streams, workflows, and APIs in TS/Python; the framework wires it up.
+- **Code‑first infrastructure**: Declare tables, streams, workflows, and APIs in TS/Python -> MooseStack wires it all up.
 - **Modular design**: Only enable the modules you need. Each module is independent and can be adopted incrementally.
-- **Built for speed**: ClickHouse is a columnar database that is roughly 100× faster than traditional databases for analytical queries.
+- **Built for speed**: [ClickHouse](https://clickhouse.com/) is a columnar database that is roughly 100× faster than traditional databases for analytical queries.
 
-## Modules
+## MooseStack Modules
 
-- **OLAP**: Manage ClickHouse tables, materialized views, and migrations in code.
-- **Streaming**: Real‑time pipelines with Kafka/Redpanda and transformation functions.
-- **Workflows**: ETL pipelines and tasks with Temporal.
-- **APIs**: Type‑safe ingestion and query endpoints with auto‑generated OpenAPI docs.
-- **Tooling**: `moose build`, `moose plan`, and built‑in observability endpoints.
+- [Moose **OLAP**](https://docs.fiveonefour.com/moose/olap): Manage ClickHouse tables, materialized views, and migrations in code.
+- [Moose **Streaming**](https://docs.fiveonefour.com/moose/streaming): Real‑time pipelines with Kafka/Redpanda and transformation functions.
+- [Moose **Workflows**](https://docs.fiveonefour.com/moose/workflows): ETL pipelines and tasks with Temporal.
+- [Moose **APIs**](https://docs.fiveonefour.com/moose/apis): Type‑safe ingestion and query endpoints with auto‑generated OpenAPI docs.
+- Moose Tooling: [Moose **Deploy**](https://docs.fiveonefour.com/moose/deploying), [Moose **Migrate**](https://docs.fiveonefour.com/moose/migrate), [Moose **Observability**](https://docs.fiveonefour.com/moose/metrics)
 
 ## Quickstart
+
+Also available in the Docs: [5-minute Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+
+Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 
 ### Install the CLI
 
@@ -39,8 +43,10 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ### Create a project
 
 ```bash
+# typescript
 moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
-# or
+
+# python
 moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
 ```
 
@@ -51,37 +57,90 @@ cd my-project
 moose dev
 ```
 
-Moose will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
+MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
 
-### Example
-
-TypeScript: define a ClickHouse table, a Redpanda stream, and ingestion/consumption APIs.
+### TypeScript Example
 
 ```typescript
 import { Key, OlapTable, Stream, IngestApi, ConsumptionApi } from "@514labs/moose-lib";
-
-interface Event { id: Key<string>; name: string; createdAt: Date; }
-
-const events = new OlapTable<Event>("events");
-const eventsStream = new Stream<Event>("events-stream", { destination: events });
-
-new IngestApi<Event>("post-event", { destination: eventsStream });
-new ConsumptionApi<{ limit?: number }, Event[]>("get-events", async ({ limit = 10 }, { client, sql }) => {
-  const result = await client.query.execute(sql`SELECT * FROM ${events} LIMIT ${limit}`);
-  return await result.json();
+ 
+interface DataModel {
+  primaryKey: Key<string>;
+  name: string;
+}
+// Create a ClickHouse table
+export const clickhouseTable = new OlapTable<DataModel>("TableName");
+ 
+// Create a Redpanda streaming topic
+export const redpandaTopic = new Stream<DataModel>("TopicName", {
+  destination: clickhouseTable,
 });
+ 
+// Create an ingest API endpoint
+export const ingestApi = new IngestApi<DataModel>("post-api-route", {
+  destination: redpandaTopic,
+});
+ 
+// Create consumption API endpoint
+interface QueryParams {
+  limit?: number;
+}
+export const consumptionApi = new ConsumptionApi<QueryParams, DataModel[]>("get-api-route", 
+  async ({limit = 10}: QueryParams, {client, sql}) => {
+    const result = await client.query.execute(sql`SELECT * FROM ${clickhouseTable} LIMIT ${limit}`);
+    return await result.json();
+  }
+);
 ```
+### Python Example
 
-## Built on
-
-- ClickHouse (OLAP storage)
-- Redpanda (streaming)
-- Temporal (workflow orchestration)
-- Redis (internal state)
+```python
+from moose_lib import Key, OlapTable, Stream, StreamConfig, IngestApi, IngestApiConfig, ConsumptionApi
+from pydantic import BaseModel
+ 
+class DataModel(BaseModel):
+    primary_key: Key[str]
+    name: str
+ 
+# Create a ClickHouse table
+clickhouse_table = OlapTable[DataModel]("TableName")
+ 
+# Create a Redpanda streaming topic
+redpanda_topic = Stream[DataModel]("TopicName", StreamConfig(
+    destination=clickhouse_table,
+))
+ 
+# Create an ingest API endpoint
+ingest_api = IngestApi[DataModel]("post-api-route", IngestApiConfig(
+    destination=redpanda_topic,
+))
+ 
+# Create a consumption API endpoint
+class QueryParams(BaseModel):
+    limit: int = 10
+ 
+def handler(client, params: QueryParams):
+    return client.query.execute("SELECT * FROM {table: Identifier} LIMIT {limit: Int32}", {
+        "table": clickhouse_table.name,
+        "limit": params.limit,
+    })
+ 
+consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", query_function=handler)
+```
 
 ## Docs
 
-Start with the [Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart) and explore deployment, operations, and APIs.
+- [Overview](https://docs.fiveonefour.com/moose)
+- [5-min Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+- [Quickstart with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/from-clickhouse)
+
+## Built on
+
+- [ClickHouse](https://clickhouse.com/) (OLAP storage)
+- [Redpanda](https://redpanda.com/) (streaming)
+- [Temporal](https://temporal.io/) (workflow orchestration)
+- [Redis](https://redis.io/) (internal state)
+
 
 ## Moose in Production
 

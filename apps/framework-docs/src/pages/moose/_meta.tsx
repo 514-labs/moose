@@ -21,6 +21,7 @@ import {
   FolderPlus,
   Cloud,
   UploadCloud,
+  FileStack,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -47,6 +48,10 @@ const rawMeta = {
   "data-modeling": {
     title: "Data Modeling",
     Icon: FileCode,
+  },
+  "in-your-stack": {
+    title: "In Your Stack",
+    Icon: FileStack,
   },
   __modules__: {
     type: "separator",

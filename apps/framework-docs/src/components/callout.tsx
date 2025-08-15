@@ -20,6 +20,7 @@ interface CalloutProps {
   ctaLabel?: string;
   children: React.ReactNode;
   compact?: boolean;
+  className?: string;
 }
 
 const calloutVariants = {
@@ -63,6 +64,7 @@ export function Callout({
   ctaLabel = "Learn more",
   children,
   compact = false,
+  className,
 }: CalloutProps) {
   const variantProps = calloutVariants[type];
 
@@ -78,6 +80,7 @@ export function Callout({
           "flex items-start my-2 p-3",
           variantProps.color,
           variantProps.border,
+          className,
         )}
       >
         {icon && (

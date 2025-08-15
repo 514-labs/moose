@@ -21,7 +21,7 @@ const triggerApi = new ConsumptionApi<{}, WorkflowResponse>(
 const terminateAPI = new ConsumptionApi<{}, WorkflowResponse>(
   "terminate-workflow",
   async (_, { client }) => {
-    // Trigger the workflow with input parameters
+    // Terminate the workflow by name
     const workflowExecution = await client.workflow.terminate("workflow");
 
     return {

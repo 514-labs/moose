@@ -7,7 +7,7 @@ import { Steps } from "nextra/components";
 import { Callout, Python, TypeScript, LanguageSwitcher, CTACard, CTACards } from "@/components";
 import { BookOpen, Rocket } from "lucide-react";
 
-# Migrations & Planning
+# Moose Migrate
 
 Moose's migration system works like version control for your infrastructure. It automatically detects changes in your code and applies them to your data infrastructure with confidence.
 
@@ -33,7 +33,7 @@ interface UserSchema {
 }
 
 export const usersTable = new OlapTable<UserSchema>("Users");
-export const userEvents = new Stream<UserSchema>("UserEvents");
+export const userEvents = new Stream<UserSchema>("Users");
 ```
 </TypeScript>
 
@@ -48,13 +48,13 @@ class UserSchema(BaseModel):
     email: str
 
 users_table = OlapTable[UserSchema]("Users")
-user_events = Stream[UserSchema]("UserEvents")
+user_events = Stream[UserSchema]("Users")
 ```
 </Python>
 
 When you add these objects, Moose automatically creates:
 - A ClickHouse table named `Users` with the `UserSchema`
-- A Redpanda topic named `UserEvents` with the `UserSchema`
+- A Redpanda topic named `Users` with the `UserSchema`
 
 ## Development Workflow
 
@@ -107,13 +107,20 @@ analytics_table = OlapTable[AnalyticsSchema]("Analytics")
 - Applies migration automatically
 - Updates internal state
 
+In your terminal, you will see a log that shows the new table being created:
+```bash
+⠋ Processing Infrastructure changes from file watcher
+             +  Table: Analytics Version None - id: String, number: Int64, status: String -  - deduplicate: false
+```
 ### Example: Schema Changes
 
 <TypeScript>
-```ts file="app/index.ts" {6} copy
+```ts file="app/index.ts" {8} copy
+import { Key } from "@514labs/moose-lib";
+
 // After (add age field)
 interface UserSchema {
-  id: string;
+  id: Key<string>;
   name: string;
   email: string;
   age: number;  // New field
@@ -122,10 +129,12 @@ interface UserSchema {
 </TypeScript>
 
 <Python>
-```python file="app/main.py" {6} copy
+```python file="app/main.py" {8} copy
+from moose_lib import Key
+
 # After (add age field)
 class UserSchema(BaseModel):
-    id: str
+    id: Key[str]
     name: str
     email: str
     age: int  # New field
@@ -165,18 +174,8 @@ admin_api_key = "your-hashed-token"
 Moose shows exactly what will change:
 
 ```bash
-Infrastructure Changes:
-✨ New Components
-  + analytics_table (OLAP Table)
-  + metrics_topic (Streaming Topic)
-  + api/v2/metrics (API Endpoint)
-
-🔄 Modified Components
-  ~ users_table (Schema Update)
-  ~ events_topic (Config Change)
-
-❌ Removed Components
-  - deprecated_process (Background Process)
+  +  Table: Analytics Version None - id: String, number: Int64, status: String -  - deduplicate: false
+  +  Table: Users Version None - id: String, name: String, email: String -  - deduplicate: false
 ```
 
 ### Production Deployment Flow

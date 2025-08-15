@@ -26,7 +26,7 @@ const terminateAPI = new ConsumptionApi<{}, WorkflowResponse>(
 
     return {
       workflowId: workflowExecution.body,
-      status: "started",
+      status: "terminated",
     };
   },
 );

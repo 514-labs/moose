@@ -25,8 +25,8 @@ use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
-    cancel_workflow, get_workflow_status, init_workflow, list_workflows_history, pause_workflow,
-    run_workflow, terminate_workflow, unpause_workflow,
+    cancel_workflow, get_workflow_status, list_workflows_history, pause_workflow, run_workflow,
+    terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
 
@@ -678,7 +678,6 @@ pub async fn top_command_handler(
             }
 
             let activity_type = match &workflow_args.command {
-                Some(WorkflowCommands::Init { .. }) => ActivityType::WorkflowInitCommand,
                 Some(WorkflowCommands::Run { .. }) => ActivityType::WorkflowRunCommand,
                 Some(WorkflowCommands::List { .. }) => ActivityType::WorkflowListCommand,
                 Some(WorkflowCommands::History { .. }) => ActivityType::WorkflowListCommand,
@@ -699,9 +698,6 @@ pub async fn top_command_handler(
             );
 
             let result = match &workflow_args.command {
-                Some(WorkflowCommands::Init { name, tasks, task }) => {
-                    init_workflow(&project, name, tasks.clone(), task.clone()).await
-                }
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }

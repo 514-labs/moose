@@ -367,6 +367,7 @@ pub async fn start_development_mode(
         &project,
         settings,
         &plan,
+        false,
         api_changes_channel,
         metrics.clone(),
         &redis_client,
@@ -459,7 +460,7 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let (current_state, mut plan) = plan_changes(&redis_client, &project).await?;
+    let (current_state, plan) = plan_changes(&redis_client, &project).await?;
 
     let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
 
@@ -507,8 +508,6 @@ pub async fn start_production_mode(
                 }
                 info!("✓ Migration plan executed successfully");
             }
-
-            plan.changes.olap_changes = Vec::new();
         } else if current_state.tables == plan.target_infra_map.tables {
             info!("Current state already matches. Migration should be applied, ignoring.");
         } else {
@@ -526,6 +525,7 @@ pub async fn start_production_mode(
         &project,
         settings,
         &plan,
+        execute_migration_yaml,
         api_changes_channel,
         metrics.clone(),
         &redis_client,

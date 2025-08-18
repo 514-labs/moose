@@ -300,29 +300,45 @@ export interface Foo {
   id: Key<string>;
   timestamp: Date;
   data: string;
-  newField: string; // Add this line
+  newField?: string; // Add this new optional field
 }
 ```
 </TypeScript>
 
 <Python>
-```python filename="app/ingest/models.py" {6} copy
+```python filename="app/ingest/models.py" {8} copy
+from typing import Optional
+
 class Foo(BaseModel):
     id: Key[str]
     timestamp: datetime
     data: str
-    new_field: str  // Add this line
+    new_field: Optional[str]  # Add this new optional field
 ```
 </Python>
 
 3. Save the file and watch your terminal
 
 You should see Moose automatically update your infrastructure:
+
+<TypeScript>
 ```txt
-~ Table Foo with column changes: [Added(Column { name: "newField", data_type: String })]
-~ API Endpoint: Foo - Updated validation schema
-~ Topic: Foo - Schema updated
+⠋ Processing Infrastructure changes from file watcher
+             ~  Table Foo:
+                  Column changes:
+                    + newField: String
 ```
+</TypeScript>
+
+<Python>
+```txt
+⠋ Processing Infrastructure changes from file watcher
+             ~  Table Foo:
+                  Column changes:
+                    + new_field: String
+```
+</Python>
+
 
 Schema changes are automatically applied across your stack.
 

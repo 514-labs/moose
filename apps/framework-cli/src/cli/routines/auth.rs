@@ -48,7 +48,7 @@ pub fn generate_hash_token() {
     }
 }
 
-pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
+pub fn validate_auth_token(token: &str, expected_hash: &str) -> bool {
     let token_parts: Vec<&str> = token.split('.').collect();
     if token_parts.len() != 2 {
         return false;
@@ -63,7 +63,7 @@ pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
     let key1_hex = hex::encode(key1);
 
     // compare byte to byte to avoid timing attacks
-    let token_hash = hex::decode(private_pass).unwrap();
+    let token_hash = hex::decode(expected_hash).unwrap();
     let key1_hash = hex::decode(key1_hex).unwrap();
 
     constant_time_eq::constant_time_eq(&token_hash, &key1_hash)

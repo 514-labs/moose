@@ -102,6 +102,7 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
+use crate::framework::core::migration_plan::{MigrationPlan, MigrationPlanWithBeforeAfter};
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -530,10 +531,10 @@ pub enum InfraRetrievalError {
 /// * `Ok(InfrastructureMap)` - Successfully retrieved inframap
 /// * `Err(InfraRetrievalError)` - Various error conditions including endpoint not found
 async fn get_remote_inframap_protobuf(
-    base_url: &Option<String>,
+    base_url: Option<&str>,
     token: &Option<String>,
 ) -> Result<InfrastructureMap, InfraRetrievalError> {
-    let target_url = prepend_base_url(base_url.as_deref(), "admin/inframap");
+    let target_url = prepend_base_url(base_url, "admin/inframap");
 
     // Get authentication token
     let auth_token = token
@@ -751,7 +752,7 @@ pub async fn remote_plan(
     );
 
     // Try new endpoint first, fallback to legacy if not available
-    match get_remote_inframap_protobuf(base_url, token).await {
+    match get_remote_inframap_protobuf(base_url.as_deref(), token).await {
         Ok(remote_infra_map) => {
             // New flow: client-side diff calculation
             display::show_message_wrapper(
@@ -813,6 +814,52 @@ pub async fn remote_plan(
             ))
         }
     }
+}
+
+pub async fn remote_gen_migration(
+    project: &Project,
+    base_url: &str,
+    token: &Option<String>,
+) -> anyhow::Result<MigrationPlanWithBeforeAfter> {
+    // Build the inframap from the local project
+    let local_infra_map = if project.features.data_model_v2 {
+        debug!("Loading InfrastructureMap from user code (DMV2)");
+        InfrastructureMap::load_from_user_code(project).await?
+    } else {
+        debug!("Loading InfrastructureMap from primitives");
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(project, primitive_map)
+    };
+
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: "Comparing local project code with remote instance".to_string(),
+        },
+    );
+
+    use anyhow::Context;
+    // No fallback, we need the remote state
+    let remote_infra_map = get_remote_inframap_protobuf(Some(base_url), token)
+        .await
+        .with_context(|| "Failed to retrieve infrastructure map".to_string())?;
+
+    let changes = calculate_plan_diff_local(&remote_infra_map, &local_infra_map);
+
+    display::show_message_wrapper(
+        MessageType::Success,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: "Calculated plan differences locally".to_string(),
+        },
+    );
+
+    Ok(MigrationPlanWithBeforeAfter {
+        remote_state: remote_infra_map,
+        local_infra_map,
+        db_migration: MigrationPlan::from_infra_plan(&changes)?,
+    })
 }
 
 pub async fn remote_refresh(

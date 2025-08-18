@@ -189,7 +189,7 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
                     details.push(format!("  + {}", order_by_change.after.join(", ")));
                 }
 
-                infra_updated_detailed(&format!("Table {name}"), &details);
+                infra_updated_detailed(&format!("Table: {name}"), &details);
             }
         }
         OlapChange::View(Change::Added(infra)) => {

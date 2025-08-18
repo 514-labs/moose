@@ -285,30 +285,30 @@ async fn execute_create_table(
 
 async fn execute_drop_table(
     db_name: &str,
-    table: &str,
+    table_name: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing DropTable: {:?}", table);
-    let drop_query = drop_table_query(db_name, table)?;
+    log::info!("Executing DropTable: {:?}", table_name);
+    let drop_query = drop_table_query(db_name, table_name)?;
     run_query(&drop_query, client)
         .await
         .map_err(|e| ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.to_string()),
+            resource: Some(table_name.to_string()),
         })?;
     Ok(())
 }
 
 async fn execute_add_table_column(
     db_name: &str,
-    table: &str,
+    table_name: &str,
     column: &Column,
     after_column: &Option<String>,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing AddTableColumn for table: {}, column: {}, after: {:?}",
-        table,
+        table_name,
         column.name,
         after_column
     );
@@ -318,7 +318,7 @@ async fn execute_add_table_column(
     let add_column_query = format!(
         "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {} {}",
         db_name,
-        table,
+        table_name,
         clickhouse_column.name,
         column_type_string,
         match after_column {
@@ -330,7 +330,7 @@ async fn execute_add_table_column(
     run_query(&add_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.to_string()),
+            resource: Some(table_name.to_string()),
         }
     })?;
     Ok(())
@@ -338,24 +338,24 @@ async fn execute_add_table_column(
 
 async fn execute_drop_table_column(
     db_name: &str,
-    table: &str,
+    table_name: &str,
     column_name: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing DropTableColumn for table: {}, column: {}",
-        table,
+        table_name,
         column_name
     );
     let drop_column_query = format!(
         "ALTER TABLE `{}`.`{}` DROP COLUMN IF EXISTS `{}`",
-        db_name, table, column_name
+        db_name, table_name, column_name
     );
     log::debug!("Dropping column: {}", drop_column_query);
     run_query(&drop_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.to_string()),
+            resource: Some(table_name.to_string()),
         }
     })?;
     Ok(())
@@ -369,7 +369,7 @@ async fn execute_drop_table_column(
 /// the entire column definition.
 async fn execute_modify_table_column(
     db_name: &str,
-    table: &str,
+    table_name: &str,
     before_column: &Column,
     after_column: &Column,
     client: &ConfiguredDBClient,
@@ -384,7 +384,7 @@ async fn execute_modify_table_column(
     if !data_type_changed && !required_changed && comment_changed {
         log::info!(
             "Executing comment-only modification for table: {}, column: {}",
-            table,
+            table_name,
             after_column.name
         );
 
@@ -392,17 +392,18 @@ async fn execute_modify_table_column(
         let clickhouse_column = std_column_to_clickhouse_column(after_column.clone())?;
 
         if let Some(ref comment) = clickhouse_column.comment {
-            execute_modify_column_comment(db_name, table, after_column, comment, client).await?;
+            execute_modify_column_comment(db_name, table_name, after_column, comment, client)
+                .await?;
         } else {
             // If the new comment is None, we still need to update to remove the old comment
-            execute_modify_column_comment(db_name, table, after_column, "", client).await?;
+            execute_modify_column_comment(db_name, table_name, after_column, "", client).await?;
         }
         return Ok(());
     }
 
     log::info!(
         "Executing ModifyTableColumn for table: {}, column: {} ({}→{})",
-        table,
+        table_name,
         after_column.name,
         before_column.data_type.to_string(),
         after_column.data_type.to_string()
@@ -418,12 +419,12 @@ async fn execute_modify_table_column(
         let escaped_comment = comment.replace('\'', "''");
         format!(
             "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {} COMMENT '{}'",
-            db_name, table, clickhouse_column.name, column_type_string, escaped_comment
+            db_name, table_name, clickhouse_column.name, column_type_string, escaped_comment
         )
     } else {
         format!(
             "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
-            db_name, table, clickhouse_column.name, column_type_string
+            db_name, table_name, clickhouse_column.name, column_type_string
         )
     };
 
@@ -431,7 +432,7 @@ async fn execute_modify_table_column(
     run_query(&modify_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.to_string()),
+            resource: Some(table_name.to_string()),
         }
     })?;
     Ok(())
@@ -443,14 +444,14 @@ async fn execute_modify_table_column(
 /// for enum columns that need to store their original TypeScript definition.
 async fn execute_modify_column_comment(
     db_name: &str,
-    table: &str,
+    table_name: &str,
     column: &Column,
     comment: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing ModifyColumnComment for table: {}, column: {}",
-        table,
+        table_name,
         column.name
     );
 
@@ -464,7 +465,7 @@ async fn execute_modify_column_comment(
     // ClickHouse requires MODIFY COLUMN with the full column definition when changing comment
     let modify_comment_query = format!(
         "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {} COMMENT '{}'",
-        db_name, table, column.name, column_type_string, escaped_comment
+        db_name, table_name, column.name, column_type_string, escaped_comment
     );
 
     log::debug!("Modifying column comment: {}", modify_comment_query);
@@ -472,7 +473,7 @@ async fn execute_modify_column_comment(
         .await
         .map_err(|e| ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.to_string()),
+            resource: Some(table_name.to_string()),
         })?;
     Ok(())
 }

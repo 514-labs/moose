@@ -182,13 +182,13 @@ pub static DROP_TABLE_TEMPLATE: &str = r#"
 DROP TABLE IF EXISTS `{{db_name}}`.`{{table_name}}`;
 "#;
 
-pub fn drop_table_query(db_name: &str, table: &str) -> Result<String, ClickhouseError> {
+pub fn drop_table_query(db_name: &str, table_name: &str) -> Result<String, ClickhouseError> {
     let mut reg = Handlebars::new();
     reg.register_escape_fn(no_escape);
 
     let context = json!({
         "db_name": db_name,
-        "table_name": table,
+        "table_name": table_name,
     });
 
     Ok(reg.render_template(DROP_TABLE_TEMPLATE, &context)?)

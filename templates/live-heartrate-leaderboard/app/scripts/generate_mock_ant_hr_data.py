@@ -5,6 +5,7 @@ import random
 import time
 import math
 from pathlib import Path
+from typing import Dict, Any
 from app.datamodels.RawAntHRPacket import RawAntHRPacket
 
 def load_mock_device_ids() -> list[int]:
@@ -22,7 +23,7 @@ def load_mock_device_ids() -> list[int]:
     print(f"Using mock device IDs: {device_ids}")
     return device_ids
 
-def generate_mock_ant_hr_data() -> None:
+def generate_mock_ant_hr_data(task_state: Dict[str, Any]) -> None:
     """
     This script mocks N users who are wearing an ANT+ heart rate monitor.
     It sends data to Moose four times per second indefinitely

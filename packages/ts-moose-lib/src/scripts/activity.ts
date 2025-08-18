@@ -1,11 +1,8 @@
 import { log as logger, Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
-import * as fs from "fs";
 import { Task, Workflow } from "../dmv2";
 import { getWorkflows, getTaskForWorkflow } from "../dmv2/internal";
 import { jsonDateReviver } from "../utilities/json";
-import { WorkflowTaskResult } from "./types";
-import { pathToFileURL } from "url";
 
 export interface ScriptExecutionInput {
   scriptPath: string;
@@ -47,6 +44,27 @@ export const activities = {
     } catch (error) {
       const errorData = {
         error: "Failed to get workflow",
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      };
+      const errorMsg = JSON.stringify(errorData);
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+  },
+
+  async getTaskForWorkflow(
+    workflowName: string,
+    taskName: string,
+  ): Promise<Task<any, any>> {
+    try {
+      logger.info(`Getting task ${taskName} from workflow ${workflowName}`);
+      const task = await getTaskForWorkflow(workflowName, taskName);
+      logger.info(`Task ${taskName} found in workflow ${workflowName}`);
+      return task;
+    } catch (error) {
+      const errorData = {
+        error: "Failed to get task",
         details: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       };

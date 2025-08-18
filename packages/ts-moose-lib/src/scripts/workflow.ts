@@ -8,15 +8,17 @@ import {
 } from "@temporalio/workflow";
 import { Duration } from "@temporalio/common";
 import { Task, Workflow } from "../dmv2";
+
 import { WorkflowState } from "./types";
 import { mooseJsonEncode } from "./serialization";
 
-interface ContinueAsNewParams {
-  currentWorkflow: string;
-  currentTask: string;
+interface WorkflowRequest {
+  workflow_name: string;
+  execution_mode: "start" | "continue_as_new";
+  continue_from_task?: string; // Only for continue_as_new
 }
 
-const { getDmv2Workflow } = proxyActivities({
+const { getDmv2Workflow, getTaskForWorkflow } = proxyActivities({
   startToCloseTimeout: "1 minutes",
   retry: {
     maximumAttempts: 1,
@@ -24,7 +26,7 @@ const { getDmv2Workflow } = proxyActivities({
 });
 
 export async function ScriptWorkflow(
-  params: string | ContinueAsNewParams,
+  request: WorkflowRequest,
   inputData?: any,
 ): Promise<any[]> {
   const state: WorkflowState = {
@@ -36,26 +38,26 @@ export async function ScriptWorkflow(
   };
 
   const results: any[] = [];
-  const path = typeof params === "string" ? params : params.currentWorkflow;
+  const workflowName = request.workflow_name;
   let currentData = inputData?.data || inputData || {};
 
   logger.info(
-    `Starting workflow for ${path} with data: ${JSON.stringify(currentData)}`,
+    `Starting workflow: ${workflowName} (mode: ${request.execution_mode}) with data: ${JSON.stringify(currentData)}`,
   );
 
   try {
     currentData = JSON.parse(mooseJsonEncode(currentData));
-    const workflow = await getDmv2Workflow(path);
+    const workflow = await getDmv2Workflow(workflowName);
     const task =
-      typeof params === "string" ?
+      request.execution_mode === "start" ?
         workflow.config.startingTask
-      : params.currentTask;
+      : await getTaskForWorkflow(workflowName, request.continue_from_task!);
     const result = await handleDmv2Task(workflow, task, currentData);
     results.push(...result);
 
     return results;
   } catch (error) {
-    state.failedStep = path;
+    state.failedStep = workflowName;
     throw error;
   }
 }
@@ -126,8 +128,9 @@ async function handleDmv2Task(
         // );
 
         return await continueAsNew({
-          currentWorkflow: workflow.name,
-          currentTask: task,
+          workflow_name: workflow.name,
+          execution_mode: "continue_as_new" as const,
+          continue_from_task: task.name,
         });
       }
 

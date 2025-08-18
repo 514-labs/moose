@@ -56,7 +56,6 @@ impl Workflow {
             self.language,
             &self.name,
             &self.config,
-            &self.path,
             input,
         )
         .await?)

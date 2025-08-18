@@ -57,6 +57,8 @@ pub enum ActivityType {
     ImportCommand,
     #[serde(rename = "generateHashCommand")]
     GenerateHashCommand,
+    #[serde(rename = "generateMigrationCommand")]
+    GenerateMigrationCommand,
     #[serde(rename = "generateSDKCommand")]
     GenerateSDKCommand,
     #[serde(rename = "peekCommand")]

@@ -495,7 +495,7 @@ impl ClickHouseTable {
     }
 
     pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
-        drop_table_query(db_name, self.clone())
+        drop_table_query(db_name, &self.name)
     }
 
     pub fn primary_key_columns(&self) -> Vec<&str> {

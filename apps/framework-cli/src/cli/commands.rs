@@ -173,6 +173,19 @@ pub struct GenerateArgs {
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
     HashToken {},
+    /// Generate migration files
+    Migration {
+        /// URL of the remote Moose instance
+        #[arg(long)]
+        url: String,
+        /// API token for authentication with the remote Moose instance
+        /// This token will be sent as a Bearer token in the Authorization header
+        #[arg(long)]
+        token: Option<String>,
+        /// Save the migration files in the migrations/ directory
+        #[arg(long, default_value = "false")]
+        save: bool,
+    },
 }
 
 #[derive(Debug, Args)]

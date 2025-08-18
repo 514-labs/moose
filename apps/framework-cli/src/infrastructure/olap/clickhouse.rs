@@ -36,19 +36,14 @@ use errors::ClickhouseError;
 use itertools::Itertools;
 use log::{debug, info};
 use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
-use queries::{
-    basic_field_type_to_string, create_table_query, create_view_query, drop_table_query,
-    drop_view_query,
-};
+use queries::{basic_field_type_to_string, create_table_query, drop_table_query};
 use serde::{Deserialize, Serialize};
 
 use self::model::ClickHouseSystemTable;
-use crate::framework::core::infrastructure::sql_resource::SqlResource;
 use crate::framework::core::infrastructure::table::{
     Column, ColumnMetadata, ColumnType, DataEnum, EnumMember, EnumValue, EnumValueMetadata, Table,
     METADATA_PREFIX,
 };
-use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::core::partial_infrastructure_map::LifeCycle;
 use crate::framework::versions::Version;
@@ -91,6 +86,60 @@ pub enum ClickhouseChangesError {
     /// Error for unsupported operations
     #[error("Not Supported {0}")]
     NotSupported(String),
+}
+
+/// Represents atomic DDL operations for OLAP resources.
+/// These are the smallest operational units that can be executed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SerializableOlapOperation {
+    /// Create a new table
+    CreateTable {
+        /// The table to create
+        table: Table,
+    },
+    /// Drop an existing table
+    DropTable {
+        /// The table to drop
+        table: String,
+    },
+    /// Add a column to a table
+    AddTableColumn {
+        /// The table to add the column to
+        table: String,
+        /// Column to add
+        column: Column,
+        /// The column after which to add this column (None means adding as first column)
+        after_column: Option<String>,
+    },
+    /// Drop a column from a table
+    DropTableColumn {
+        /// The table to drop the column from
+        table: String,
+        /// Name of the column to drop
+        column_name: String,
+    },
+    /// Modify a column in a table
+    ModifyTableColumn {
+        /// The table containing the column
+        table: String,
+        /// The column before modification
+        before_column: Column,
+        /// The column after modification
+        after_column: Column,
+    },
+    RenameTableColumn {
+        /// The table containing the column
+        table: String,
+        /// Name of the column before renaming
+        before_column_name: String,
+        /// Name of the column after renaming
+        after_column_name: String,
+    },
+    RawSql {
+        /// The SQL statements to execute
+        sql: Vec<String>,
+        description: String,
+    },
 }
 
 /// Executes a series of changes to the ClickHouse database schema
@@ -145,7 +194,7 @@ pub async fn execute_changes(
     debug!("Ordered Teardown plan: {:?}", teardown_plan);
     for op in teardown_plan {
         debug!("Teardown operation: {:?}", op);
-        execute_atomic_operation(db_name, op, &client).await?;
+        execute_atomic_operation(db_name, &op.to_minimal(), &client).await?;
     }
 
     // Execute Setup Plan
@@ -156,7 +205,7 @@ pub async fn execute_changes(
     debug!("Ordered Setup plan: {:?}", setup_plan);
     for op in setup_plan {
         debug!("Setup operation: {:?}", op);
-        execute_atomic_operation(db_name, op, &client).await?;
+        execute_atomic_operation(db_name, &op.to_minimal(), &client).await?;
     }
 
     info!("OLAP Change execution complete");
@@ -166,61 +215,52 @@ pub async fn execute_changes(
 /// Executes a single atomic OLAP operation.
 async fn execute_atomic_operation(
     db_name: &str,
-    operation: &AtomicOlapOperation,
+    operation: &SerializableOlapOperation,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     match operation {
-        AtomicOlapOperation::CreateTable { table, .. } => {
+        SerializableOlapOperation::CreateTable { table } => {
             execute_create_table(db_name, table, client).await?;
         }
-        AtomicOlapOperation::DropTable { table, .. } => {
+        SerializableOlapOperation::DropTable { table, .. } => {
             execute_drop_table(db_name, table, client).await?;
         }
-        AtomicOlapOperation::AddTableColumn {
+        SerializableOlapOperation::AddTableColumn {
             table,
             column,
             after_column,
-            dependency_info: _,
         } => {
             execute_add_table_column(db_name, table, column, after_column, client).await?;
         }
-        AtomicOlapOperation::DropTableColumn {
+        SerializableOlapOperation::DropTableColumn {
             table, column_name, ..
         } => {
             execute_drop_table_column(db_name, table, column_name, client).await?;
         }
-        AtomicOlapOperation::ModifyTableColumn {
+        SerializableOlapOperation::ModifyTableColumn {
             table,
             before_column,
             after_column,
-            dependency_info: _,
         } => {
             execute_modify_table_column(db_name, table, before_column, after_column, client)
                 .await?;
         }
-        AtomicOlapOperation::CreateView {
-            view,
-            dependency_info: _,
+        SerializableOlapOperation::RenameTableColumn {
+            table,
+            before_column_name,
+            after_column_name,
         } => {
-            execute_create_view(db_name, view, client).await?;
+            execute_rename_table_column(
+                db_name,
+                table,
+                before_column_name,
+                after_column_name,
+                client,
+            )
+            .await?;
         }
-        AtomicOlapOperation::DropView {
-            view,
-            dependency_info: _,
-        } => {
-            execute_drop_view(db_name, view, client).await?;
-        }
-        AtomicOlapOperation::RunSetupSql {
-            resource,
-            dependency_info: _,
-        } => {
-            execute_run_setup_sql(resource, client).await?;
-        }
-        AtomicOlapOperation::RunTeardownSql {
-            resource,
-            dependency_info: _,
-        } => {
-            execute_run_teardown_sql(resource, client).await?;
+        SerializableOlapOperation::RawSql { sql, description } => {
+            execute_raw_sql(sql, description, client).await?;
         }
     }
     Ok(())
@@ -245,31 +285,30 @@ async fn execute_create_table(
 
 async fn execute_drop_table(
     db_name: &str,
-    table: &Table,
+    table: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing DropTable: {:?}", table.id());
-    let clickhouse_table = std_table_to_clickhouse_table(table)?;
-    let drop_query = drop_table_query(db_name, clickhouse_table)?;
+    log::info!("Executing DropTable: {:?}", table);
+    let drop_query = drop_table_query(db_name, table)?;
     run_query(&drop_query, client)
         .await
         .map_err(|e| ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.name.clone()),
+            resource: Some(table.to_string()),
         })?;
     Ok(())
 }
 
 async fn execute_add_table_column(
     db_name: &str,
-    table: &Table,
+    table: &str,
     column: &Column,
     after_column: &Option<String>,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing AddTableColumn for table: {}, column: {}, after: {:?}",
-        table.id(),
+        table,
         column.name,
         after_column
     );
@@ -279,7 +318,7 @@ async fn execute_add_table_column(
     let add_column_query = format!(
         "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {} {}",
         db_name,
-        table.name,
+        table,
         clickhouse_column.name,
         column_type_string,
         match after_column {
@@ -291,7 +330,7 @@ async fn execute_add_table_column(
     run_query(&add_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.name.clone()),
+            resource: Some(table.to_string()),
         }
     })?;
     Ok(())
@@ -299,24 +338,24 @@ async fn execute_add_table_column(
 
 async fn execute_drop_table_column(
     db_name: &str,
-    table: &Table,
+    table: &str,
     column_name: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing DropTableColumn for table: {}, column: {}",
-        table.id(),
+        table,
         column_name
     );
     let drop_column_query = format!(
         "ALTER TABLE `{}`.`{}` DROP COLUMN IF EXISTS `{}`",
-        db_name, table.name, column_name
+        db_name, table, column_name
     );
     log::debug!("Dropping column: {}", drop_column_query);
     run_query(&drop_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.name.clone()),
+            resource: Some(table.to_string()),
         }
     })?;
     Ok(())
@@ -330,7 +369,7 @@ async fn execute_drop_table_column(
 /// the entire column definition.
 async fn execute_modify_table_column(
     db_name: &str,
-    table: &Table,
+    table: &str,
     before_column: &Column,
     after_column: &Column,
     client: &ConfiguredDBClient,
@@ -345,7 +384,7 @@ async fn execute_modify_table_column(
     if !data_type_changed && !required_changed && comment_changed {
         log::info!(
             "Executing comment-only modification for table: {}, column: {}",
-            table.id(),
+            table,
             after_column.name
         );
 
@@ -363,7 +402,7 @@ async fn execute_modify_table_column(
 
     log::info!(
         "Executing ModifyTableColumn for table: {}, column: {} ({}→{})",
-        table.id(),
+        table,
         after_column.name,
         before_column.data_type.to_string(),
         after_column.data_type.to_string()
@@ -379,12 +418,12 @@ async fn execute_modify_table_column(
         let escaped_comment = comment.replace('\'', "''");
         format!(
             "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {} COMMENT '{}'",
-            db_name, table.name, clickhouse_column.name, column_type_string, escaped_comment
+            db_name, table, clickhouse_column.name, column_type_string, escaped_comment
         )
     } else {
         format!(
             "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
-            db_name, table.name, clickhouse_column.name, column_type_string
+            db_name, table, clickhouse_column.name, column_type_string
         )
     };
 
@@ -392,7 +431,7 @@ async fn execute_modify_table_column(
     run_query(&modify_column_query, client).await.map_err(|e| {
         ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.name.clone()),
+            resource: Some(table.to_string()),
         }
     })?;
     Ok(())
@@ -404,14 +443,14 @@ async fn execute_modify_table_column(
 /// for enum columns that need to store their original TypeScript definition.
 async fn execute_modify_column_comment(
     db_name: &str,
-    table: &Table,
+    table: &str,
     column: &Column,
     comment: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
     log::info!(
         "Executing ModifyColumnComment for table: {}, column: {}",
-        table.id(),
+        table,
         column.name
     );
 
@@ -425,7 +464,7 @@ async fn execute_modify_column_comment(
     // ClickHouse requires MODIFY COLUMN with the full column definition when changing comment
     let modify_comment_query = format!(
         "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {} COMMENT '{}'",
-        db_name, table.name, column.name, column_type_string, escaped_comment
+        db_name, table, column.name, column_type_string, escaped_comment
     );
 
     log::debug!("Modifying column comment: {}", modify_comment_query);
@@ -433,83 +472,59 @@ async fn execute_modify_column_comment(
         .await
         .map_err(|e| ClickhouseChangesError::ClickhouseClient {
             error: e,
-            resource: Some(table.name.clone()),
+            resource: Some(table.to_string()),
         })?;
     Ok(())
 }
 
-async fn execute_create_view(
+/// Execute a RenameTableColumn operation
+async fn execute_rename_table_column(
     db_name: &str,
-    view: &View,
+    table_name: &str,
+    before_column_name: &str,
+    after_column_name: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing CreateView: {:?}", view.id());
-    match &view.view_type {
-        ViewType::TableAlias { source_table_name } => {
-            let create_view_query = create_view_query(
-                db_name,
-                &view.id(),
-                &format!("SELECT * FROM `{db_name}`.`{source_table_name}`"),
-            )?;
-            run_query(&create_view_query, client).await.map_err(|e| {
-                ClickhouseChangesError::ClickhouseClient {
-                    error: e,
-                    resource: Some(view.id()),
-                }
-            })?;
+    log::info!(
+        "Executing RenameTableColumn for table: {}, column: {} → {}",
+        table_name,
+        before_column_name,
+        after_column_name
+    );
+    let rename_column_query = format!(
+        "ALTER TABLE `{db_name}`.`{table_name}` RENAME COLUMN `{before_column_name}` TO `{after_column_name}`"
+    );
+    log::debug!("Renaming column: {}", rename_column_query);
+    run_query(&rename_column_query, client).await.map_err(|e| {
+        ClickhouseChangesError::ClickhouseClient {
+            error: e,
+            resource: Some(table_name.to_string()),
         }
-    }
+    })?;
     Ok(())
 }
 
-async fn execute_drop_view(
-    db_name: &str,
-    view: &View,
+/// Execute raw SQL statements
+async fn execute_raw_sql(
+    sql_statements: &[String],
+    description: &str,
     client: &ConfiguredDBClient,
 ) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing DropView: {:?}", view.id());
-    match &view.view_type {
-        ViewType::TableAlias { .. } => {
-            let delete_view_query = drop_view_query(db_name, &view.id())?;
-            run_query(&delete_view_query, client).await.map_err(|e| {
-                ClickhouseChangesError::ClickhouseClient {
+    log::info!(
+        "Executing {} raw SQL statements. {}",
+        sql_statements.len(),
+        description
+    );
+    for (i, sql) in sql_statements.iter().enumerate() {
+        if !sql.trim().is_empty() {
+            log::debug!("Executing SQL statement {}: {}", i + 1, sql);
+            run_query(sql, client)
+                .await
+                .map_err(|e| ClickhouseChangesError::ClickhouseClient {
                     error: e,
-                    resource: Some(view.id()),
-                }
-            })?;
+                    resource: None,
+                })?;
         }
-    }
-    Ok(())
-}
-
-async fn execute_run_setup_sql(
-    resource: &SqlResource,
-    client: &ConfiguredDBClient,
-) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing RunSetupSql for resource: {:?}", resource.name);
-    for query in &resource.setup {
-        run_query(query, client)
-            .await
-            .map_err(|e| ClickhouseChangesError::ClickhouseClient {
-                error: e,
-                resource: Some(resource.name.clone()),
-            })?;
-    }
-    Ok(())
-}
-
-async fn execute_run_teardown_sql(
-    resource: &SqlResource,
-    client: &ConfiguredDBClient,
-) -> Result<(), ClickhouseChangesError> {
-    log::info!("Executing RunTeardownSql for resource: {:?}", resource.name);
-    for query in &resource.teardown {
-        run_query(query, client)
-            .await
-            .map_err(|e| ClickhouseChangesError::ClickhouseClient {
-                error: e,
-                resource: Some(resource.name.clone()),
-            })?;
     }
     Ok(())
 }

@@ -1,9 +1,10 @@
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
 use crate::framework::core::infrastructure::table::{Column, Table};
-use crate::framework::core::infrastructure::view::View;
+use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure::DataLineage;
 use crate::framework::core::infrastructure::InfrastructureSignature;
 use crate::framework::core::infrastructure_map::{Change, ColumnChange, OlapChange, TableChange};
+use crate::infrastructure::olap::clickhouse::SerializableOlapOperation;
 use petgraph::algo::toposort;
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
@@ -107,6 +108,98 @@ pub enum AtomicOlapOperation {
 }
 
 impl AtomicOlapOperation {
+    pub fn to_minimal(&self) -> SerializableOlapOperation {
+        match self {
+            AtomicOlapOperation::CreateTable {
+                table,
+                dependency_info: _,
+            } => SerializableOlapOperation::CreateTable {
+                table: table.clone(),
+            },
+            AtomicOlapOperation::DropTable {
+                table,
+                dependency_info: _,
+            } => SerializableOlapOperation::DropTable {
+                table: table.name.clone(),
+            },
+            AtomicOlapOperation::AddTableColumn {
+                table,
+                column,
+                after_column,
+                dependency_info: _,
+            } => SerializableOlapOperation::AddTableColumn {
+                table: table.name.clone(),
+                column: column.clone(),
+                after_column: after_column.clone(),
+            },
+            AtomicOlapOperation::DropTableColumn {
+                table,
+                column_name,
+                dependency_info: _,
+            } => SerializableOlapOperation::DropTableColumn {
+                table: table.name.clone(),
+                column_name: column_name.clone(),
+            },
+            AtomicOlapOperation::ModifyTableColumn {
+                table,
+                before_column,
+                after_column,
+                dependency_info: _,
+            } => SerializableOlapOperation::ModifyTableColumn {
+                table: table.name.clone(),
+                before_column: before_column.clone(),
+                after_column: after_column.clone(),
+            },
+            AtomicOlapOperation::CreateView {
+                view,
+                dependency_info: _,
+            } => {
+                let View {
+                    view_type: ViewType::TableAlias { source_table_name },
+                    ..
+                } = view;
+                let query = format!(
+                    "CREATE VIEW IF NOT EXISTS `{}` AS SELECT * FROM `{source_table_name}`;",
+                    view.id(),
+                );
+                SerializableOlapOperation::RawSql {
+                    sql: vec![query],
+                    description: format!("Creating view {}", view.id()),
+                }
+            }
+            AtomicOlapOperation::DropView {
+                view,
+                dependency_info: _,
+            } => {
+                // MinimalOlapOperation doesn't have DropView, convert to raw SQL
+                SerializableOlapOperation::RawSql {
+                    sql: vec![format!("DROP VIEW {}", view.id())],
+                    description: format!("Dropping view {}", view.id()),
+                }
+            }
+            AtomicOlapOperation::RunSetupSql {
+                resource,
+                dependency_info: _,
+            } => {
+                // Convert to raw SQL by using setup commands as vector
+                SerializableOlapOperation::RawSql {
+                    sql: resource.setup.clone(),
+                    description: format!("Running setup SQL for resource {}", resource.name),
+                }
+            }
+            AtomicOlapOperation::RunTeardownSql {
+                resource,
+                dependency_info: _,
+            } => {
+                // Convert to raw SQL by using teardown commands as vector
+                SerializableOlapOperation::RawSql {
+                    sql: resource.teardown.clone(),
+                    description: format!("Running teardown SQL for resource {}", resource.name),
+                }
+            }
+        }
+    }
+
     /// Returns the infrastructure signature associated with this operation
     pub fn resource_signature(&self) -> InfrastructureSignature {
         match self {

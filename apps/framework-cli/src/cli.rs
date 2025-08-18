@@ -401,6 +401,114 @@ pub async fn top_command_handler(
                     "Success".to_string(),
                 )))
             }
+            Some(GenerateCommand::Migration { url, token, save }) => {
+                info!("Running generate migration command");
+
+                let project = load_project()?;
+
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::GenerateMigrationCommand,
+                    Some(project.name()),
+                    &settings,
+                    machine_id.clone(),
+                );
+
+                check_project_name(&project.name())?;
+
+                let result = routines::remote_gen_migration(&project, url, token)
+                    .await
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message {
+                                action: "Plan".to_string(),
+                                details: "Failed to plan changes".to_string(),
+                            },
+                            e,
+                        )
+                    })?;
+
+                let plan_yaml = serde_yaml::to_string(&result.db_migration).map_err(|e| {
+                    RoutineFailure::new(
+                        Message {
+                            action: "Plan".to_string(),
+                            details: "Failed to serialize".to_string(),
+                        },
+                        e,
+                    )
+                })?;
+
+                wait_for_usage_capture(capture_handle).await;
+
+                if *save {
+                    std::fs::create_dir_all("./migrations").map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                    std::fs::write("./migrations/plan.yaml", plan_yaml).map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                    std::fs::write(
+                        "./migrations/remote_state.json",
+                        serde_json::to_string_pretty(&result.remote_state).map_err(|e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Error".to_string(),
+                                    "serializing remote state.".to_string(),
+                                ),
+                                e,
+                            )
+                        })?,
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                    std::fs::write(
+                        "./migrations/local_infra_map.json",
+                        serde_json::to_string_pretty(&result.local_infra_map).map_err(|e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Error".to_string(),
+                                    "serializing local state.".to_string(),
+                                ),
+                                e,
+                            )
+                        })?,
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                } else {
+                    println!("Changes: \n\n{}", plan_yaml)
+                }
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Migration".to_string(),
+                    "generated".to_string(),
+                )))
+            }
             None => Err(RoutineFailure::error(Message {
                 action: "Generate".to_string(),
                 details: "Please provide a subcommand".to_string(),

@@ -122,7 +122,7 @@ export default function App({ Component, pageProps }: AppProps) {
       // Add event listeners for copy buttons (Nextra's copy buttons)
       const addCopyButtonListeners = () => {
         const copyButtons = document.querySelectorAll(
-          '.nextra-code button[title*="Copy"], .nextra-code button[aria-label*="copy" i]',
+          '.nextra-code button'
         );
         copyButtons.forEach((button) => {
           button.addEventListener("click", handleCopyClick);

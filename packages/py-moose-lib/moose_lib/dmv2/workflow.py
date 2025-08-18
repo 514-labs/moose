@@ -12,14 +12,14 @@ from .types import TypedMooseResource, T_none, U_none
 from ._registry import _workflows
 
 type TaskRunFunc[T_none, U_none] = Union[
-    # Case 1: No input, no output
-    Callable[[], None],
-    # Case 2: No input, with output
-    Callable[[], Union[U_none, Awaitable[U_none]]],
-    # Case 3: With input, no output
-    Callable[[T_none], None],
-    # Case 4: With input, with output
-    Callable[[T_none], Union[U_none, Awaitable[U_none]]]
+    # task_state only, no input, no output
+    Callable[[Dict[str, Any]], None],
+    # task_state only, no input, with output
+    Callable[[Dict[str, Any]], Union[U_none, Awaitable[U_none]]],
+    # task_state + input, no output
+    Callable[[Dict[str, Any], T_none], None],
+    # task_state + input, with output
+    Callable[[Dict[str, Any], T_none], Union[U_none, Awaitable[U_none]]]
 ]
 
 @dataclasses.dataclass
@@ -28,14 +28,17 @@ class TaskConfig(Generic[T_none, U_none]):
 
     Attributes:
         run: The handler function that executes the task logic.
+             Signature: run(task_state: Dict[str, Any], input: T_none) -> U_none
+             Or: run(task_state: Dict[str, Any]) -> U_none (if no input)
         on_complete: Optional list of tasks to run after this task completes.
         on_cancel: Optional function to call when the task is cancelled.
-        timeout: Optional timeout string (e.g. "5m", "1h").
+                  Signature: on_cancel(task_state: Dict[str, Any]) -> None
+        timeout: Optional timeout string (e.g. "5m", "1h", "never").
         retries: Optional number of retry attempts.
     """
     run: TaskRunFunc[T_none, U_none]
     on_complete: Optional[list["Task[U_none, Any]"]] = None
-    on_cancel: Optional[Callable[[], Union[None, Awaitable[None]]]] = None
+    on_cancel: Optional[Callable[[Dict[str, Any]], Union[None, Awaitable[None]]]] = None
     timeout: Optional[str] = None
     retries: Optional[int] = None
 

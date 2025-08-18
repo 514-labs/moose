@@ -113,8 +113,9 @@ pub enum ClickhouseEngine {
     ReplacingMergeTree,
     AggregatingMergeTree,
     SummingMergeTree,
-    CollapsingMergeTree(String),           // sign column name
-    VersionedCollapsingMergeTree {         // sign + version columns
+    CollapsingMergeTree(String), // sign column name
+    VersionedCollapsingMergeTree {
+        // sign + version columns
         sign_column: String,
         version_column: String,
     },
@@ -167,13 +168,19 @@ pub fn create_table_query(
             }
             format!("CollapsingMergeTree({})", sign_col)
         }
-        ClickhouseEngine::VersionedCollapsingMergeTree { sign_column, version_column } => {
+        ClickhouseEngine::VersionedCollapsingMergeTree {
+            sign_column,
+            version_column,
+        } => {
             if table.order_by.is_empty() {
                 return Err(ClickhouseError::InvalidParameters {
                     message: "VersionedCollapsingMergeTree requires an order by clause".to_string(),
                 });
             }
-            format!("VersionedCollapsingMergeTree({}, {})", sign_column, version_column)
+            format!(
+                "VersionedCollapsingMergeTree({}, {})",
+                sign_column, version_column
+            )
         }
     };
 
@@ -652,10 +659,14 @@ ORDER BY (`id`) "#;
             _ => panic!("Expected CollapsingMergeTree engine"),
         }
 
-        let versioned_collapsing_engine = ClickhouseEngine::try_from("VersionedCollapsingMergeTree");
+        let versioned_collapsing_engine =
+            ClickhouseEngine::try_from("VersionedCollapsingMergeTree");
         assert!(versioned_collapsing_engine.is_ok());
         match versioned_collapsing_engine.unwrap() {
-            ClickhouseEngine::VersionedCollapsingMergeTree { sign_column, version_column } => {
+            ClickhouseEngine::VersionedCollapsingMergeTree {
+                sign_column,
+                version_column,
+            } => {
                 assert_eq!(sign_column, "sign");
                 assert_eq!(version_column, "version");
             }
@@ -775,23 +786,24 @@ ORDER BY (`user_id`) "#;
         let table = ClickHouseTable {
             name: "user_changes".to_string(),
             version: None,
-            columns: vec![
-                ClickHouseColumn {
-                    name: "user_id".to_string(),
-                    column_type: ClickHouseColumnType::String,
-                    required: true,
-                    primary_key: false,
-                    unique: false,
-                    default: None,
-                    comment: None,
-                },
-            ],
+            columns: vec![ClickHouseColumn {
+                name: "user_id".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: true,
+                primary_key: false,
+                unique: false,
+                default: None,
+                comment: None,
+            }],
             order_by: vec![], // Empty order_by should cause error
             engine: ClickhouseEngine::CollapsingMergeTree("sign".to_string()),
         };
 
         let result = create_table_query("test_db", table);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("CollapsingMergeTree requires an order by clause"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("CollapsingMergeTree requires an order by clause"));
     }
 }

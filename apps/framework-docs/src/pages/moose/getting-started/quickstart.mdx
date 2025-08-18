@@ -300,18 +300,20 @@ export interface Foo {
   id: Key<string>;
   timestamp: Date;
   data: string;
-  newField: string | null; // Add this new field with a nullable type
+  newField?: string; // Add this new optional field
 }
 ```
 </TypeScript>
 
 <Python>
-```python filename="app/ingest/models.py" {6} copy
+```python filename="app/ingest/models.py" {8} copy
+from typing import Optional
+
 class Foo(BaseModel):
     id: Key[str]
     timestamp: datetime
     data: str
-    new_field: str | None  # Add this new field with a nullable type
+    new_field: Optional[str]  # Add this new optional field
 ```
 </Python>
 

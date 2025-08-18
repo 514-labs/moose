@@ -80,23 +80,43 @@ class ScriptWorkflow:
         """
         return self._state
 
+    def _parse_task_timeout(self, timeout_str: Optional[str]) -> Optional[timedelta]:
+        """Parse timeout string, supporting 'never' for unlimited execution."""
+        if not timeout_str:
+            return timedelta(minutes=START_TO_CLOSE_TIMEOUT_MINUTES)
+        elif timeout_str == "never":
+            return None  # No timeout = unlimited execution
+        else:
+            return timedelta(seconds=humanfriendly.parse_timespan(timeout_str))
+
     async def _execute_dmv2_activity_with_state(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> Any:
         activity_name = f"{dmv2wf.name}/{task.name}"
         self._state.current_step = activity_name
         results = []
 
         try:
-            timeout = timedelta(seconds=humanfriendly.parse_timespan(task.config.timeout)) if task.config.timeout else timedelta(minutes=START_TO_CLOSE_TIMEOUT_MINUTES)
+            timeout = self._parse_task_timeout(task.config.timeout)
             retries = task.config.retries or 3
             log.info(f"<DMV2WF> Executing activity {activity_name} with timeout {timeout} and retries {retries}")
-            result = await workflow.execute_activity(
-                activity_name,
-                ScriptExecutionInput(dmv2_workflow_name=dmv2wf.name, task_name=task.name, input_data=input_data),
-                start_to_close_timeout=timeout,
-                retry_policy=RetryPolicy(
-                    maximum_attempts=retries,
-                ),
-            )
+            if timeout is None:
+                # For "never" timeout, use very large scheduleToCloseTimeout (like TypeScript)
+                result = await workflow.execute_activity(
+                    activity_name,
+                    ScriptExecutionInput(dmv2_workflow_name=dmv2wf.name, task_name=task.name, input_data=input_data),
+                    schedule_to_close_timeout=timedelta(hours=87600),  # 10 years like TypeScript
+                    retry_policy=RetryPolicy(
+                        maximum_attempts=retries,
+                    ),
+                )
+            else:
+                result = await workflow.execute_activity(
+                    activity_name,
+                    ScriptExecutionInput(dmv2_workflow_name=dmv2wf.name, task_name=task.name, input_data=input_data),
+                    start_to_close_timeout=timeout,
+                    retry_policy=RetryPolicy(
+                        maximum_attempts=retries,
+                    ),
+                )
             results.append(result)
             self._state.completed_steps.append(activity_name)
 

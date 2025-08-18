@@ -2,6 +2,7 @@ use super::bin;
 use crate::framework::consumption::model::ConsumptionQueryParam;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
 use crate::framework::typescript::consumption::{extract_intput_param, extract_schema};
+use crate::project::Project;
 use log::debug;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -27,9 +28,12 @@ pub enum ExportCollectorError {
     },
 }
 
-pub fn collect_from_index(project_path: &Path) -> Result<Child, ExportCollectorError> {
+pub fn collect_from_index(
+    project: &Project,
+    project_path: &Path,
+) -> Result<Child, ExportCollectorError> {
     let process_name = "dmv2-serializer";
-    let process = bin::run(process_name, project_path, &[])?;
+    let process = bin::run(process_name, project_path, &[], project)?;
     Ok(process)
 }
 
@@ -37,6 +41,7 @@ async fn collect_exports(
     command_name: &str,
     process_name: &str,
     file: &Path,
+    project: &Project,
     project_path: &Path,
 ) -> Result<Value, ExportCollectorError> {
     let file_path_str = file.to_str().ok_or(ExportCollectorError::Other {
@@ -44,7 +49,7 @@ async fn collect_exports(
     })?;
 
     let args = vec![file_path_str];
-    let process = bin::run(command_name, project_path, &args)?;
+    let process = bin::run(command_name, project_path, &args, project)?;
 
     let mut stdout = process.stdout.ok_or_else(|| ExportCollectorError::Other {
         message: format!("{process_name} process did not have a handle to stdout"),
@@ -75,6 +80,7 @@ async fn collect_exports(
 
 pub async fn get_data_model_configs(
     file: &Path,
+    project: &Project,
     project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
@@ -82,6 +88,7 @@ pub async fn get_data_model_configs(
         EXPORT_SERIALIZER_BIN,
         EXPORT_CONFIG_PROCESS,
         file,
+        project,
         project_path,
     )
     .await?;
@@ -107,12 +114,14 @@ pub async fn get_data_model_configs(
 
 pub async fn get_func_types(
     file: &Path,
+    project: &Project,
     project_path: &Path,
 ) -> Result<(Vec<ConsumptionQueryParam>, Value, Option<String>), ExportCollectorError> {
     let exports = collect_exports(
         EXPORT_FUNC_TYPE_BIN,
         EXPORT_FUNC_TYPE_PROCESS,
         file,
+        project,
         project_path,
     )
     .await?;

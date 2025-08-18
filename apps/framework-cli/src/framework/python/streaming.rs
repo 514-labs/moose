@@ -7,8 +7,10 @@ use tokio::io::AsyncBufReadExt;
 
 use super::executor;
 use crate::framework::python::executor::add_optional_arg;
+use crate::project::Project;
 
 pub fn run(
+    project: &Project,
     project_location: &Path,
     kafka_config: &KafkaConfig,
     source_topic: &StreamConfig,
@@ -53,6 +55,7 @@ pub fn run(
     }
 
     let mut streaming_function_process = executor::run_python_command(
+        project,
         project_location,
         executor::PythonCommand::StreamingFunctionRunner { args },
     )?;

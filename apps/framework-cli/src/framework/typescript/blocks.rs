@@ -3,10 +3,10 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use super::bin;
 use crate::framework::blocks::model::BlocksError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-
-use super::bin;
+use crate::project::Project;
 
 const BLOCKS_RUNNER_BIN: &str = "blocks";
 
@@ -15,6 +15,7 @@ const BLOCKS_RUNNER_BIN: &str = "blocks";
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     blocks_path: &Path,
+    project: &Project,
     project_path: &Path,
 ) -> Result<Child, BlocksError> {
     let host_port = clickhouse_config.host_port.to_string();
@@ -32,7 +33,7 @@ pub fn run(
     }
 
     let args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    let mut blocks_process = bin::run(BLOCKS_RUNNER_BIN, project_path, &args)?;
+    let mut blocks_process = bin::run(BLOCKS_RUNNER_BIN, project_path, &args, project)?;
 
     let stdout = blocks_process
         .stdout

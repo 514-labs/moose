@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::framework::core::infrastructure::table::Metadata;
 use crate::framework::python::datamodel_config::execute_python_model_file_for_config;
 use crate::framework::typescript::export_collectors::get_data_model_configs;
+use crate::project::Project;
 use crate::utilities::_true;
 use log::info;
 use serde::Deserialize;
@@ -76,11 +77,12 @@ pub enum ModelConfigurationError {
 
 pub async fn get(
     path: &Path,
+    project: &Project,
     project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path, project_path, enums).await?;
+        let config = get_data_model_configs(path, project, project_path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else if path.extension() == Some(OsStr::new("py"))

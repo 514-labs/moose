@@ -2030,12 +2030,13 @@ impl InfrastructureMap {
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
         let partial = if project.language == SupportedLanguages::Typescript {
             let process = crate::framework::typescript::export_collectors::collect_from_index(
+                project,
                 &project.project_location,
             )?;
 
             PartialInfrastructureMap::from_subprocess(process, "index.ts").await?
         } else {
-            load_main_py(&project.project_location).await?
+            load_main_py(project, &project.project_location).await?
         };
         Ok(partial.into_infra_map(project.language, &project.main_file()))
     }

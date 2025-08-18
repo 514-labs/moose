@@ -2,6 +2,7 @@ use crate::{cli::display::MessageType, utilities::constants::TSCONFIG_JSON};
 use serde::Deserialize;
 use std::{env, path::Path, process::Stdio};
 
+use crate::project::Project;
 use tokio::process::{Child, Command};
 
 #[derive(Deserialize)]
@@ -17,6 +18,7 @@ pub fn run(
     binary_command: &str,
     project_path: &Path,
     args: &[&str],
+    project: &Project,
 ) -> Result<Child, std::io::Error> {
     let mut command = Command::new(RUNNER_COMMAND);
 
@@ -35,7 +37,11 @@ pub fn run(
         .env("PATH", bin_path)
         .env("TS_NODE_COMPILER_HOST", "true")
         .env("NODE_NO_WARNINGS", "1")
-        .env("TS_NODE_EMIT", "true");
+        .env("TS_NODE_EMIT", "true")
+        .env(
+            "MOOSE_MANAGEMENT_PORT",
+            project.http_server_config.management_port.to_string(),
+        );
 
     if binary_command == "consumption-apis" || binary_command == "consumption-type-serializer" {
         command.env("TS_NODE_COMPILER", "ts-patch/compiler");

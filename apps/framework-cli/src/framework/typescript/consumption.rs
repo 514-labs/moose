@@ -84,7 +84,7 @@ pub fn run(
     }
 
     let args: Vec<&str> = string_args.iter().map(|s| s.as_str()).collect();
-    let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;
+    let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args, project)?;
 
     let stdout = consumption_process
         .stdout

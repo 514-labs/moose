@@ -79,7 +79,7 @@ export type CliLogData = {
 
 export const cliLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
-    port: 5001,
+    port: parseInt(process.env.MOOSE_MANAGEMENT_PORT ?? "5001"),
     method: "POST",
     path: "/logs",
   });

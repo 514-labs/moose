@@ -193,3 +193,9 @@ GROUP BY sessionId;
 ---
 
 For more details, see the code and comments in each app's `src/` directory.
+
+# Deploy on Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
+
+Check out our [Moose deployment documentation](https://docs.fiveonefour.com/moose/deploying) for more details.

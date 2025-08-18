@@ -128,3 +128,9 @@ Deploying this project involves deploying the Moose backend service and the fron
 *   **Deploy:** Vercel will build and deploy your Next.js frontend.
 
 Once both backend and frontend are deployed and configured correctly, your live GitHub Trends Dashboard should be accessible via the Vercel deployment URL.
+
+# Deploy on Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
+
+Check out our [Moose deployment documentation](https://docs.fiveonefour.com/moose/deploying) for more details.

@@ -229,7 +229,7 @@ You can check out [the Moose GitHub repository](https://github.com/514-labs/moos
 
 ## Deploy on Boreal
 
-The easiest way to deploy your Moose app is to use the [Boreal](https://www.fiveonefour.com/boreal) from Fiveonefour, the creators of Moose and Sloan.
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
 
 [Sign up](https://www.boreal.cloud/sign-up).
 

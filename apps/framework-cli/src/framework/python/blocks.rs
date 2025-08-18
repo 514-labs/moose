@@ -3,12 +3,13 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use super::executor;
 use crate::framework::blocks::model::BlocksError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-
-use super::executor;
+use crate::project::Project;
 
 pub fn run(
+    project: &Project,
     project_location: &Path,
     clickhouse_config: ClickHouseConfig,
     blocks_path: &Path,
@@ -24,6 +25,7 @@ pub fn run(
     ];
 
     let mut blocks_process = executor::run_python_program(
+        project,
         project_location,
         executor::PythonProgram::BlocksRunner { args },
     )?;

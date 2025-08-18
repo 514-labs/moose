@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import requests
 import json
 from typing import Optional, Literal
+import os
 
 
 class CliLogData:
@@ -20,6 +21,9 @@ class CliLogData:
         self.message = message
 
 
+moose_management_port = int(os.environ.get("MOOSE_MANAGEMENT_PORT", "5001"))
+
+
 def cli_log(log: CliLogData) -> None:
     try:
         # When dmv2 starts up, it imports all the dmv2 definitions. In python,
@@ -27,7 +31,7 @@ def cli_log(log: CliLogData) -> None:
         # If the user has a function being called at the module level, and that function
         # tries to send logs when moose hasn't fully started, the requests will fail.
         # The try catch is to ignore those errors.
-        url = "http://localhost:5001/logs"
+        url = f"http://localhost:{moose_management_port}/logs"
         headers = {'Content-Type': 'application/json'}
         requests.post(url, data=json.dumps(log.__dict__), headers=headers)
     except:

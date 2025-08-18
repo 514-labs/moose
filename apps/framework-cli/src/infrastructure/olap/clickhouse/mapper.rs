@@ -45,7 +45,7 @@ fn generate_column_comment(column: &Column) -> Result<Option<String>, Clickhouse
 
         // Combine user comment with new metadata
         Ok(match user_comment {
-            Some(user_text) => Some(format!("{} {}", user_text, metadata_comment)),
+            Some(user_text) => Some(format!("{user_text} {metadata_comment}")),
             None => Some(metadata_comment),
         })
     } else {
@@ -95,9 +95,9 @@ pub fn build_enum_metadata_comment(data_enum: &DataEnum) -> Result<String, Click
 
     let json =
         serde_json::to_string(&metadata).map_err(|e| ClickhouseError::InvalidParameters {
-            message: format!("Failed to serialize enum metadata: {}", e),
+            message: format!("Failed to serialize enum metadata: {e}"),
         })?;
-    Ok(format!("{}{}", METADATA_PREFIX, json))
+    Ok(format!("{METADATA_PREFIX}{json}"))
 }
 
 pub fn std_field_type_to_clickhouse_type_mapper(

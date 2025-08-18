@@ -596,8 +596,7 @@ async fn get_remote_inframap_protobuf(
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(InfraRetrievalError::ServerError(format!(
-                "HTTP {}: {}",
-                status, error_text
+                "HTTP {status}: {error_text}"
             )))
         }
     }

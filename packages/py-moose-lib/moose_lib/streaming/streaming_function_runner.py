@@ -30,7 +30,7 @@ from typing import Optional, Callable, Tuple, Any
 
 from moose_lib.dmv2 import get_streams, DeadLetterModel
 from moose_lib import cli_log, CliLogData, DeadLetterQueue
-from moose_lib.commons import EnhancedJSONEncoder
+from moose_lib.commons import EnhancedJSONEncoder, moose_management_port
 
 # Force stdout to be unbuffered
 sys.stdout = io.TextIOWrapper(
@@ -372,7 +372,7 @@ def main():
             time.sleep(1)
             with metrics_lock:
                 requests.post(
-                    "http://localhost:5001/metrics-logs",
+                    f"http://localhost:{moose_management_port}/metrics-logs",
                     json={
                         'timestamp': datetime.now(timezone.utc).isoformat(),
                         'count_in': metrics['count_in'],

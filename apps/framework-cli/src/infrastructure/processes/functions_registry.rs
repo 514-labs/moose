@@ -10,6 +10,7 @@ use crate::{
 };
 use log::{error, info};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FunctionRegistryError {
@@ -28,14 +29,14 @@ pub enum FunctionRegistryError {
 
 pub struct FunctionProcessRegistry {
     registry: HashMap<String, RestartingProcess>,
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl FunctionProcessRegistry {
     pub fn new(project: Project) -> Self {
         Self {
             registry: HashMap::new(),
-            project,
+            project: Arc::new(project),
         }
     }
 
@@ -68,10 +69,13 @@ impl FunctionProcessRegistry {
                     target_topic,
                 ));
 
+                let project = self.project.clone();
+
                 let start_fn: StartChildFn<FunctionRegistryError> =
                     if function_process.is_py_function_process() {
                         Box::new(move || {
                             Ok(python::streaming::run(
+                                &project,
                                 &project_location,
                                 &redpanda_config,
                                 &source_topic,
@@ -87,6 +91,7 @@ impl FunctionProcessRegistry {
                                 &source_topic,
                                 Some(&target_topic),
                                 &executable,
+                                &project,
                                 &project_location,
                                 parallel_process_count,
                                 data_model_v2,
@@ -116,11 +121,13 @@ impl FunctionProcessRegistry {
                         .find_topic_by_id(&function_process.source_topic_id)
                         .unwrap(),
                 ));
+                let project = self.project.clone();
 
                 let start_fn: StartChildFn<FunctionRegistryError> =
                     if function_process.is_py_function_process() {
                         Box::new(move || {
                             Ok(python::streaming::run(
+                                &project,
                                 &project_location,
                                 &redpanda_config,
                                 &source_topic,
@@ -136,6 +143,7 @@ impl FunctionProcessRegistry {
                                 &source_topic,
                                 None,
                                 &executable,
+                                &project,
                                 &project_location,
                                 parallel_process_count,
                                 data_model_v2,

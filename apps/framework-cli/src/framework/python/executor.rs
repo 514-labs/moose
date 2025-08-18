@@ -6,6 +6,7 @@ use std::process::Stdio;
 
 use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, LIB_DIR};
 
+use crate::project::Project;
 use tokio::process::{Child, Command};
 
 pub enum PythonSerializers {
@@ -80,8 +81,9 @@ fn python_path_with_lib(project_location: &Path) -> String {
     paths
 }
 
-/// Executes a Python program in a subprocess
+/// Executes a Python program in a subprocess, code from in moose_lib
 pub fn run_python_command(
+    project: &Project,
     project_location: &Path,
     command: PythonCommand,
 ) -> Result<Child, std::io::Error> {
@@ -94,6 +96,10 @@ pub fn run_python_command(
 
     Command::new("python3")
         .env(PYTHON_PATH, python_path_with_lib(project_location))
+        .env(
+            "MOOSE_MANAGEMENT_PORT",
+            project.http_server_config.management_port.to_string(),
+        )
         .arg("-m")
         .arg(library_module)
         .args(get_args)
@@ -103,8 +109,9 @@ pub fn run_python_command(
         .spawn()
 }
 
-/// Executes a Python program in a subprocess
+/// Executes a Python program in a subprocess, code supplied in command arg
 pub fn run_python_program(
+    project: &Project,
     project_location: &Path,
     program: PythonProgram,
 ) -> Result<Child, std::io::Error> {
@@ -117,6 +124,10 @@ pub fn run_python_program(
 
     Command::new("python3")
         .env(PYTHON_PATH, python_path_with_lib(project_location))
+        .env(
+            "MOOSE_MANAGEMENT_PORT",
+            project.http_server_config.management_port.to_string(),
+        )
         .arg("-u")
         .arg("-c")
         .arg(program_string)

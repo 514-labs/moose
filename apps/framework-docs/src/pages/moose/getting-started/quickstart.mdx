@@ -320,11 +320,25 @@ class Foo(BaseModel):
 3. Save the file and watch your terminal
 
 You should see Moose automatically update your infrastructure:
+
+<TypeScript>
 ```txt
-~ Table Foo with column changes: [Added(Column { name: "newField", data_type: String })]
-~ API Endpoint: Foo - Updated validation schema
-~ Topic: Foo - Schema updated
+⠋ Processing Infrastructure changes from file watcher
+             ~  Table Foo:
+                  Column changes:
+                    + newField: String
 ```
+</TypeScript>
+
+<Python>
+```txt
+⠋ Processing Infrastructure changes from file watcher
+             ~  Table Foo:
+                  Column changes:
+                    + new_field: String
+```
+</Python>
+
 
 Schema changes are automatically applied across your stack.
 

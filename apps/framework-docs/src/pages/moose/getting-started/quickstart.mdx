@@ -300,7 +300,7 @@ export interface Foo {
   id: Key<string>;
   timestamp: Date;
   data: string;
-  newField: string; // Add this line
+  newField: string | null; // Add this new field with a nullable type
 }
 ```
 </TypeScript>
@@ -311,7 +311,7 @@ class Foo(BaseModel):
     id: Key[str]
     timestamp: datetime
     data: str
-    new_field: str  // Add this line
+    new_field: str | None  # Add this new field with a nullable type
 ```
 </Python>
 

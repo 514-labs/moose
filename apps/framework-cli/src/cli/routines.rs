@@ -463,7 +463,7 @@ pub async fn start_production_mode(
 
     let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
 
-    if !execute_migration_yaml {
+    if execute_migration_yaml {
         info!("Executing pre-planned migrations");
 
         // Load and validate the approved migration plan
@@ -484,10 +484,10 @@ pub async fn start_production_mode(
             let desired_state: InfrastructureMap = serde_json::from_str(&after_state)?;
 
             if desired_state.tables == plan.target_infra_map.tables {
-                info!("Before DB state matches.");
+                info!("Desired DB state matches.");
             } else {
                 anyhow::bail!(
-                    "The desired state of the plan is different from the built infrastructure map."
+                    "The desired state of the plan is different from the built infrastructure map.\nThe migration is perhaps generated before additional code change."
                 );
             }
 

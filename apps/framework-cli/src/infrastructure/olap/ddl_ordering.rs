@@ -150,6 +150,7 @@ impl AtomicOlapOperation {
                 before_column: before_column.clone(),
                 after_column: after_column.clone(),
             },
+            // views are not in DMV2, convert them to RawSql
             AtomicOlapOperation::CreateView {
                 view,
                 dependency_info: _,
@@ -170,33 +171,24 @@ impl AtomicOlapOperation {
             AtomicOlapOperation::DropView {
                 view,
                 dependency_info: _,
-            } => {
-                // MinimalOlapOperation doesn't have DropView, convert to raw SQL
-                SerializableOlapOperation::RawSql {
-                    sql: vec![format!("DROP VIEW {}", view.id())],
-                    description: format!("Dropping view {}", view.id()),
-                }
-            }
+            } => SerializableOlapOperation::RawSql {
+                sql: vec![format!("DROP VIEW {}", view.id())],
+                description: format!("Dropping view {}", view.id()),
+            },
             AtomicOlapOperation::RunSetupSql {
                 resource,
                 dependency_info: _,
-            } => {
-                // Convert to raw SQL by using setup commands as vector
-                SerializableOlapOperation::RawSql {
-                    sql: resource.setup.clone(),
-                    description: format!("Running setup SQL for resource {}", resource.name),
-                }
-            }
+            } => SerializableOlapOperation::RawSql {
+                sql: resource.setup.clone(),
+                description: format!("Running setup SQL for resource {}", resource.name),
+            },
             AtomicOlapOperation::RunTeardownSql {
                 resource,
                 dependency_info: _,
-            } => {
-                // Convert to raw SQL by using teardown commands as vector
-                SerializableOlapOperation::RawSql {
-                    sql: resource.teardown.clone(),
-                    description: format!("Running teardown SQL for resource {}", resource.name),
-                }
-            }
+            } => SerializableOlapOperation::RawSql {
+                sql: resource.teardown.clone(),
+                description: format!("Running teardown SQL for resource {}", resource.name),
+            },
         }
     }
 

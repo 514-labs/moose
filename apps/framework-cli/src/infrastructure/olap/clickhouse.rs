@@ -89,7 +89,7 @@ pub enum ClickhouseChangesError {
 }
 
 /// Represents atomic DDL operations for OLAP resources.
-/// These are the smallest operational units that can be executed.
+/// Object details are omitted, e.g. we need only the table name for DropTable
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum SerializableOlapOperation {
     /// Create a new table

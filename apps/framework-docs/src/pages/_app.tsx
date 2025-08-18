@@ -121,9 +121,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
       // Add event listeners for copy buttons (Nextra's copy buttons)
       const addCopyButtonListeners = () => {
-        const copyButtons = document.querySelectorAll(
-          '.nextra-code button'
-        );
+        const copyButtons = document.querySelectorAll(".nextra-code button");
         copyButtons.forEach((button) => {
           button.addEventListener("click", handleCopyClick);
         });
@@ -138,10 +136,8 @@ export default function App({ Component, pageProps }: AppProps) {
       return () => {
         document.removeEventListener("copy", handleCopy);
 
-        // Remove copy button listeners
-        const copyButtons = document.querySelectorAll(
-          '.nextra-code button[title*="Copy"], .nextra-code button[aria-label*="copy" i]',
-        );
+        // Remove copy button listeners using the same selector as when adding
+        const copyButtons = document.querySelectorAll(".nextra-code button");
         copyButtons.forEach((button) => {
           button.removeEventListener("click", handleCopyClick);
         });

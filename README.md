@@ -62,7 +62,7 @@ MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validat
 
 ## Deploy with Boreal
 
-The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose. Boreal provides zero-config deployments, automatic scalig, managed or BYO infrastructure, monitoring and observability integrations.
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose. Boreal provides zero-config deployments, automatic scaling, managed or BYO infrastructure, monitoring and observability integrations.
 
 [Get started with Boreal →](https://www.fiveonefour.com/boreal)
 

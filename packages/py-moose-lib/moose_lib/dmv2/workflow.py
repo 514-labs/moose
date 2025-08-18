@@ -29,11 +29,13 @@ class TaskConfig(Generic[T_none, U_none]):
     Attributes:
         run: The handler function that executes the task logic.
         on_complete: Optional list of tasks to run after this task completes.
+        on_cancel: Optional function to call when the task is cancelled.
         timeout: Optional timeout string (e.g. "5m", "1h").
         retries: Optional number of retry attempts.
     """
     run: TaskRunFunc[T_none, U_none]
     on_complete: Optional[list["Task[U_none, Any]"]] = None
+    on_cancel: Optional[Callable[[], Union[None, Awaitable[None]]]] = None
     timeout: Optional[str] = None
     retries: Optional[int] = None
 

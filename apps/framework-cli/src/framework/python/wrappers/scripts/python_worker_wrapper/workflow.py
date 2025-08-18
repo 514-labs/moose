@@ -3,7 +3,7 @@ from datetime import timedelta
 from moose_lib.dmv2 import get_workflow, Workflow, Task
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import asyncio
 from .activity import ScriptExecutionInput
 from .logging import log

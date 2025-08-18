@@ -254,6 +254,16 @@ pub enum FloatType {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum GeoType {
+    Point,
+    Ring,
+    Polygon,
+    MultiPolygon,
+    LineString,
+    MultiLineString,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ColumnType {
     String,
     Boolean,
@@ -289,6 +299,7 @@ pub enum ColumnType {
     Uuid,
     IpV4,
     IpV6,
+    Geo(GeoType),
 }
 
 impl fmt::Display for ColumnType {

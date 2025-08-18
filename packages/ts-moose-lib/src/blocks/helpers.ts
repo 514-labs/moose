@@ -40,6 +40,7 @@ export enum ClickHouseEngines {
   CollapsingMergeTree = "CollapsingMergeTree",
   VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree",
   GraphiteMergeTree = "GraphiteMergeTree",
+  S3Queue = "S3Queue",
 }
 
 /**

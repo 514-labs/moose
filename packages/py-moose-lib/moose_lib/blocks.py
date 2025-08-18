@@ -11,6 +11,7 @@ class ClickHouseEngines(Enum):
     CollapsingMergeTree = "CollapsingMergeTree"
     VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree"
     GraphiteMergeTree = "GraphiteMergeTree"
+    S3Queue = "S3Queue"
 
 @dataclass
 class TableCreateOptions:

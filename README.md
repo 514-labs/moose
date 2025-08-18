@@ -1,5 +1,6 @@
 <a href="https://docs.fiveonefour.com/moose/"><img src="https://raw.githubusercontent.com/514-labs/moose/main/logo-m-light.png" alt="moose logo" height="100px"></a>
 
+[![Made by 514 Labs](https://img.shields.io/badge/MADE%20BY-514%20Labs-black.svg)](https://www.fiveonefour.com)
 [![NPM Version](https://img.shields.io/npm/v/%40514labs%2Fmoose-cli?logo=npm)](https://www.npmjs.com/package/@514labs/moose-cli?activeTab=readme)
 [![Moose Community](https://img.shields.io/badge/slack-moose_community-purple.svg?logo=slack)](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
 [![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/getting-started/quickstart)
@@ -58,6 +59,16 @@ moose dev
 ```
 
 MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
+
+## Deploy with Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose. Boreal provides zero-config deployments, automatic scalig, managed or BYO infrastructure, monitoring and observability integrations.
+
+[Get started with Boreal →](https://www.fiveonefour.com/boreal)
+
+## Deploy Yourself
+
+Moose is open source and can be self-hosted. For detailed self-hosting instructions, see our [deployment documentation](https://docs.fiveonefour.com/moose/deploying).
 
 ## Examples
 
@@ -143,10 +154,6 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
 - [Temporal](https://temporal.io/) (workflow orchestration)
 - [Redis](https://redis.io/) (internal state)
 
-
-## Moose in Production
-
-Moose is beta software and under active development. Multiple public companies are using Moose in production. If you’re evaluating production use, consider [Boreal Cloud](https://www.fiveonefour.com/boreal) or review the documentation for [self-hosting](https://docs.fiveonefour.com/moose/deploying). You can also reach us at [moose@fiveonefour.com](mailto:moose@fiveonefour.com) or join the [slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
 
 ## Community
 

@@ -1,5 +1,5 @@
 use crate::framework::core::infrastructure::table::{
-    ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
+    ColumnType, DataEnum, EnumValue, FloatType, GeoType, IntType, Nested, Table,
 };
 use convert_case::{Case, Casing};
 use regex::Regex;
@@ -80,6 +80,14 @@ fn map_column_type_to_python(
             let value_type_str = map_column_type_to_python(value_type, enums, nested, named_tuples);
             format!("dict[{key_type_str}, {value_type_str}]")
         }
+        ColumnType::Geo(geo_type) => match geo_type {
+            GeoType::Point => "Point".to_string(),
+            GeoType::Ring => "Ring".to_string(),
+            GeoType::Polygon => "Polygon".to_string(),
+            GeoType::MultiPolygon => "MultiPolygon".to_string(),
+            GeoType::LineString => "LineString".to_string(),
+            GeoType::MultiLineString => "MultiLineString".to_string(),
+        },
     }
 }
 

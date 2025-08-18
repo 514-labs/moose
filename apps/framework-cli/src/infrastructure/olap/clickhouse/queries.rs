@@ -306,6 +306,12 @@ pub fn basic_field_type_to_string(
             basic_field_type_to_string(key_type)?,
             basic_field_type_to_string(value_type)?
         )),
+        ClickHouseColumnType::Point => Ok("Point".to_string()),
+        ClickHouseColumnType::Ring => Ok("Ring".to_string()),
+        ClickHouseColumnType::Polygon => Ok("Polygon".to_string()),
+        ClickHouseColumnType::MultiPolygon => Ok("MultiPolygon".to_string()),
+        ClickHouseColumnType::LineString => Ok("LineString".to_string()),
+        ClickHouseColumnType::MultiLineString => Ok("MultiLineString".to_string()),
     }
 }
 

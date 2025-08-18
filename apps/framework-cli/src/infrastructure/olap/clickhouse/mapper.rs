@@ -1,6 +1,6 @@
 use crate::framework::core::infrastructure::table::{
     Column, ColumnMetadata, ColumnType, DataEnum, EnumMemberMetadata, EnumMetadata, EnumValue,
-    EnumValueMetadata, FloatType, IntType, Table, METADATA_PREFIX, METADATA_VERSION,
+    EnumValueMetadata, FloatType, GeoType, IntType, Table, METADATA_PREFIX, METADATA_VERSION,
 };
 use serde_json::Value;
 
@@ -246,6 +246,14 @@ pub fn std_field_type_to_clickhouse_type_mapper(
                 Box::new(clickhouse_value_type),
             ))
         }
+        ColumnType::Geo(geo_type) => match geo_type {
+            GeoType::Point => Ok(ClickHouseColumnType::Point),
+            GeoType::Ring => Ok(ClickHouseColumnType::Ring),
+            GeoType::Polygon => Ok(ClickHouseColumnType::Polygon),
+            GeoType::MultiPolygon => Ok(ClickHouseColumnType::MultiPolygon),
+            GeoType::LineString => Ok(ClickHouseColumnType::LineString),
+            GeoType::MultiLineString => Ok(ClickHouseColumnType::MultiLineString),
+        },
     }
 }
 

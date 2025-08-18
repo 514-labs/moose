@@ -1,0 +1,69 @@
+from moose_lib import (
+    IngestPipeline,
+    IngestPipelineConfig,
+    Key,
+    ClickhouseSize,
+    clickhouse_decimal,
+    clickhouse_datetime64
+)
+from pydantic import BaseModel
+from typing import Optional, Annotated
+from datetime import datetime
+from uuid import UUID
+import ipaddress
+
+# Example models showing geo type usage
+class LocationData(BaseModel):
+    id: Key[str]
+    name: str
+    location: Point  # Point geo type for coordinates
+    area: Polygon    # Polygon geo type for coverage area
+    route: LineString  # LineString geo type for paths
+    created_at: datetime
+
+class TrackingEvent(BaseModel):
+    id: Key[str]
+    user_id: str
+    current_position: Point
+    path_traveled: LineString
+    timestamp: datetime
+
+class ServiceArea(BaseModel):
+    id: Key[str]
+    name: str
+    coverage: MultiPolygon  # MultiPolygon for complex service areas
+    boundaries: Ring        # Ring for simple boundaries
+    routes: MultiLineString # MultiLineString for multiple routes
+
+class VehicleTracking(BaseModel):
+    id: Key[str]
+    vehicle_id: str
+    route: LineString
+    service_area: Polygon
+    checkpoints: MultiPoint = None  # Optional multiple points
+    timestamp: datetime
+
+# Pipeline configurations
+location_data_model = IngestPipeline[LocationData]("LocationData", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))
+
+tracking_event_model = IngestPipeline[TrackingEvent]("TrackingEvent", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))
+
+service_area_model = IngestPipeline[ServiceArea]("ServiceArea", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))
+
+vehicle_tracking_model = IngestPipeline[VehicleTracking]("VehicleTracking", IngestPipelineConfig(
+    ingest=True,
+    stream=True,
+    table=True
+))

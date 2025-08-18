@@ -2,7 +2,7 @@ use std::path::Path;
 
 use itertools::Either;
 
-use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::core::infrastructure::table::{ColumnType, GeoType};
 use crate::framework::data_model::model::DataModel;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python;
@@ -198,6 +198,17 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
                     format!("{{ [{key_default}]: {value_default} }}")
                 }
                 SupportedLanguages::Python => format!("{{ {key_default}: {value_default} }}"),
+            }
+        }
+        (ColumnType::Geo(geo_type), lang) => {
+            match (geo_type, lang) {
+                (GeoType::Point, SupportedLanguages::Typescript) => "{ x: 0, y: 0 }".to_string(),
+                (GeoType::Point, SupportedLanguages::Python) => "Point(0, 0)".to_string(),
+                (GeoType::Ring, _) => "[]".to_string(),
+                (GeoType::Polygon, _) => "[]".to_string(),
+                (GeoType::MultiPolygon, _) => "[]".to_string(),
+                (GeoType::LineString, _) => "[]".to_string(),
+                (GeoType::MultiLineString, _) => "[]".to_string(),
             }
         }
     }

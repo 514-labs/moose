@@ -5,7 +5,7 @@
 //! type system, supporting complex nested structures and various type formats.
 
 use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, IntType, Nested,
+    Column, ColumnType, DataEnum, EnumMember, EnumValue, FloatType, GeoType, IntType, Nested,
 };
 use logos::Logos;
 use std::fmt;
@@ -1339,9 +1339,20 @@ pub fn convert_ast_to_column_type(
             type_name: format!("Interval{interval_type}"),
         }),
 
-        ClickHouseTypeNode::Geo(geo_type) => Err(ConversionError::UnsupportedType {
-            type_name: geo_type.clone(),
-        }),
+        ClickHouseTypeNode::Geo(geo_type) => {
+            let geo_type_variant = match geo_type.as_str() {
+                "Point" => GeoType::Point,
+                "Ring" => GeoType::Ring,
+                "Polygon" => GeoType::Polygon,
+                "MultiPolygon" => GeoType::MultiPolygon,
+                "LineString" => GeoType::LineString,
+                "MultiLineString" => GeoType::MultiLineString,
+                _ => return Err(ConversionError::UnsupportedType {
+                    type_name: geo_type.clone(),
+                }),
+            };
+            Ok((ColumnType::Geo(geo_type_variant), false))
+        },
 
         ClickHouseTypeNode::Enum { bits, members } => {
             let enum_members = members
@@ -2308,6 +2319,26 @@ mod tests {
     }
 
     #[test]
+    fn test_geo_type_conversion() {
+        let geo_types = vec![
+            ("Point", GeoType::Point),
+            ("Ring", GeoType::Ring),
+            ("Polygon", GeoType::Polygon),
+            ("MultiPolygon", GeoType::MultiPolygon),
+            ("LineString", GeoType::LineString),
+            ("MultiLineString", GeoType::MultiLineString),
+        ];
+
+        for (type_str, expected_geo_type) in geo_types {
+            let parsed = parse_clickhouse_type(type_str).unwrap();
+            let (column_type, nullable) = convert_ast_to_column_type(&parsed).unwrap();
+            
+            assert!(!nullable, "Geo types should not be nullable by default");
+            assert_eq!(column_type, ColumnType::Geo(expected_geo_type));
+        }
+    }
+
+    #[test]
     fn test_conversion_not_supported_special_types() {
         // These special types are parsed but not supported in conversion
         let special_types = vec![
@@ -2318,8 +2349,6 @@ mod tests {
             "Object('schema')",
             "Variant(String, Int32)",
             "IntervalYear",
-            "Point",
-            "Polygon",
         ];
 
         for type_str in special_types {

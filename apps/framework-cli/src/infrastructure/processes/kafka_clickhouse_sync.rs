@@ -914,6 +914,17 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
+        ColumnType::Geo(_) => {
+            // For geo types, we expect a string representation (WKT format)
+            if let Some(value_str) = value.as_str() {
+                Ok(ClickHouseValue::new_string(value_str.to_string()))
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: Box::new(column_type.clone()),
+                    value: value.clone(),
+                })
+            }
+        }
     }
 }
 

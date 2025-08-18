@@ -70,6 +70,12 @@ pub enum ClickHouseColumnType {
     LowCardinality(Box<ClickHouseColumnType>),
     IpV4,
     IpV6,
+    Point,
+    Ring,
+    Polygon,
+    MultiPolygon,
+    LineString,
+    MultiLineString,
 }
 
 impl fmt::Display for ClickHouseColumnType {

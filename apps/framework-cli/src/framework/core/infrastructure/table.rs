@@ -5,6 +5,7 @@ use crate::proto::infrastructure_map;
 use crate::proto::infrastructure_map::column_type::T;
 use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
+use crate::proto::infrastructure_map::GeoType as ProtoGeoType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
 use crate::proto::infrastructure_map::Table as ProtoTable;
@@ -263,6 +264,19 @@ pub enum GeoType {
     MultiLineString,
 }
 
+impl fmt::Display for GeoType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GeoType::Point => write!(f, "Point"),
+            GeoType::Ring => write!(f, "Ring"),
+            GeoType::Polygon => write!(f, "Polygon"),
+            GeoType::MultiPolygon => write!(f, "MultiPolygon"),
+            GeoType::LineString => write!(f, "LineString"),
+            GeoType::MultiLineString => write!(f, "MultiLineString"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ColumnType {
     String,
@@ -330,6 +344,7 @@ impl fmt::Display for ColumnType {
             ColumnType::Date16 => write!(f, "Date16"),
             ColumnType::IpV4 => write!(f, "IPv4"),
             ColumnType::IpV6 => write!(f, "IPv6"),
+            ColumnType::Geo(geo_type) => std::fmt::Display::fmt(geo_type, f),
             ColumnType::Nullable(inner) => write!(f, "Nullable<{inner}>"),
             ColumnType::NamedTuple(fields) => {
                 write!(f, "NamedTuple<")?;
@@ -390,6 +405,7 @@ impl Serialize for ColumnType {
             ColumnType::Date16 => serializer.serialize_str("Date16"),
             ColumnType::IpV4 => serializer.serialize_str("IPv4"),
             ColumnType::IpV6 => serializer.serialize_str("IPv6"),
+            ColumnType::Geo(geo_type) => serializer.serialize_str(&format!("{geo_type:?}")),
             ColumnType::NamedTuple(fields) => {
                 let mut state = serializer.serialize_struct("NamedTuple", 1)?;
                 state.serialize_field("fields", &fields)?;
@@ -771,6 +787,17 @@ impl ColumnType {
                 value_type: MessageField::some(value_type.to_proto()),
                 special_fields: Default::default(),
             }),
+            ColumnType::Geo(geo_type) => column_type::T::Geo(
+                (match geo_type {
+                    GeoType::Point => ProtoGeoType::POINT,
+                    GeoType::Ring => ProtoGeoType::RING,
+                    GeoType::Polygon => ProtoGeoType::POLYGON,
+                    GeoType::MultiPolygon => ProtoGeoType::MULTIPOLYGON,
+                    GeoType::LineString => ProtoGeoType::LINESTRING,
+                    GeoType::MultiLineString => ProtoGeoType::MULTILINESTRING,
+                })
+                .into(),
+            ),
         };
         ProtoColumnType {
             t: Some(t),
@@ -854,6 +881,14 @@ impl ColumnType {
                 key_type: Box::new(Self::from_proto(map.key_type.clone().unwrap())),
                 value_type: Box::new(Self::from_proto(map.value_type.clone().unwrap())),
             },
+            T::Geo(geo_type) => ColumnType::Geo(match geo_type.enum_value().expect("Invalid geo type") {
+                ProtoGeoType::POINT => GeoType::Point,
+                ProtoGeoType::RING => GeoType::Ring,
+                ProtoGeoType::POLYGON => GeoType::Polygon,
+                ProtoGeoType::MULTIPOLYGON => GeoType::MultiPolygon,
+                ProtoGeoType::LINESTRING => GeoType::LineString,
+                ProtoGeoType::MULTILINESTRING => GeoType::MultiLineString,
+            }),
         }
     }
 }

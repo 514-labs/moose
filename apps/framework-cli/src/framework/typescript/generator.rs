@@ -269,6 +269,11 @@ fn std_field_type_to_typescript_field_mapper(
                 type_name: "Map".to_string(),
             })
         }
+        ColumnType::Geo(_) => {
+            // For now, represent geo types as strings
+            // In the future, we could create specific geo type interfaces
+            Ok(InterfaceFieldType::String)
+        }
     }
 }
 

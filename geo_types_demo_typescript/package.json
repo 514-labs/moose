@@ -1,0 +1,22 @@
+{
+  "name": "geo-types-demo-typescript",
+  "version": "1.0.0",
+  "description": "Demo application showing Moose geo types support in TypeScript",
+  "main": "index.js",
+  "scripts": {
+    "dev": "moose dev",
+    "build": "moose build",
+    "start": "moose start"
+  },
+  "dependencies": {
+    "@514labs/moose-lib": "latest",
+    "typia": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["moose", "geo", "clickhouse", "typescript"],
+  "author": "Moose Team",
+  "license": "MIT"
+}

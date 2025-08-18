@@ -185,6 +185,9 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
                     "a map with key type {key_type} and value type {value_type}"
                 )
             }
+            ColumnType::Geo(geo_type) => {
+                write!(formatter, "a geo value of type {geo_type}")
+            }
         }?;
         write!(formatter, " at {}", self.get_path())
     }

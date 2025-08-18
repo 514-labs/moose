@@ -195,6 +195,15 @@ enum FloatType {
   FLOAT32 = 1;
 }
 
+enum GeoType {
+  POINT = 0;
+  RING = 1;
+  POLYGON = 2;
+  MULTIPOLYGON = 3;
+  LINESTRING = 4;
+  MULTILINESTRING = 5;
+}
+
 message Decimal {
     int32 precision = 1;
     int32 scale = 2;
@@ -228,6 +237,7 @@ message ColumnType {
     Decimal decimal = 13;
     FloatType float = 14;
     IntType int = 15;
+    GeoType geo = 16;
   }
 }
 

@@ -73,6 +73,7 @@ export default function App({ Component, pageProps }: AppProps) {
         const trimmedContent = content.trim();
         // Send PostHog event instead of console log
         if (typeof posthog !== "undefined" && posthog) {
+          console.log("Code copied from page:", trimmedContent);
           posthog.capture("Code Copied", {
             code_content: trimmedContent,
             page_path: router.asPath,
@@ -144,9 +145,7 @@ export default function App({ Component, pageProps }: AppProps) {
       };
     };
 
-    const cleanup = setupCopyLogging();
-
-    return cleanup;
+    return setupCopyLogging();
   }, [router.asPath]);
 
   return (

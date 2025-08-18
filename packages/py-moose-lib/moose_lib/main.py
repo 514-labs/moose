@@ -281,15 +281,22 @@ class WorkflowClient:
         # Start workflow with appropriate args
         workflow_args = self._build_workflow_args(name, processed_input)
 
+        # Handle "never" timeout by omitting run_timeout parameter
+        workflow_kwargs = {
+            "args": workflow_args,
+            "id": workflow_id,
+            "task_queue": "python-script-queue",
+            "id_conflict_policy": WorkflowIDConflictPolicy.FAIL,
+            "id_reuse_policy": WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+            "retry_policy": retry_policy,
+        }
+
+        if run_timeout is not None:
+            workflow_kwargs["run_timeout"] = run_timeout
+
         workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
-            args=workflow_args,
-            id=workflow_id,
-            task_queue="python-script-queue",
-            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
-            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
-            retry_policy=retry_policy,
-            run_timeout=run_timeout
+            **workflow_kwargs
         )
 
         return workflow_id, workflow_handle.result_run_id
@@ -337,8 +344,10 @@ class WorkflowClient:
 
 
 
-    def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
-        if timeout_str.endswith('h'):
+    def parse_timeout_to_timedelta(self, timeout_str: str) -> Optional[timedelta]:
+        if timeout_str == "never":
+            return None  # Unlimited execution timeout
+        elif timeout_str.endswith('h'):
             return timedelta(hours=int(timeout_str[:-1]))
         elif timeout_str.endswith('m'):
             return timedelta(minutes=int(timeout_str[:-1]))

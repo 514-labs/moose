@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from faker import Faker
 from app.ingest.models import Foo, Baz
+from typing import Dict, Any
 import requests
 
 class FooWorkflow(BaseModel):
@@ -12,7 +13,7 @@ class FooWorkflow(BaseModel):
 
 workflow_table = OlapTable[FooWorkflow]("foo_workflow")
 
-def run_task() -> None:
+def run_task(task_state: Dict[str, Any]) -> None:
     fake = Faker()
     for i in range(1000):
         # Prepare request data

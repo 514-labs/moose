@@ -3,7 +3,7 @@ from datetime import timedelta
 from moose_lib.dmv2 import get_workflow, Workflow, Task
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import asyncio
 from .activity import ScriptExecutionInput
 from .logging import log
@@ -31,6 +31,13 @@ class WorkflowState:
     failed_step: Optional[str]
     script_path: Optional[str]
     input_data: Optional[Dict]
+
+@dataclass
+class WorkflowRequest:
+    """Clean workflow request structure."""
+    workflow_name: str
+    execution_mode: str  # 'start' or 'continue_as_new'
+    continue_from_task: Optional[str] = None  # Only for continue_as_new
 
 @dataclass
 class ContinueAsNewData:
@@ -206,11 +213,11 @@ class ScriptWorkflow:
         return result
 
     @workflow.run
-    async def run(self, params: Union[str, Dict[str, Any]], input_data: Optional[Dict] = None) -> List[WorkflowStepResult]:
+    async def run(self, request: WorkflowRequest, input_data: Optional[Dict] = None) -> List[WorkflowStepResult]:
         """Execute a DMv2 workflow by name or continue from a specific task.
 
         Args:
-            params: Either workflow_name (str) for normal start, or dict with continue-as-new params
+            request: WorkflowRequest with workflow_name, execution_mode, and optional continue_from_task
             input_data: Optional input data for the workflow
 
         Returns:
@@ -219,15 +226,12 @@ class ScriptWorkflow:
         Raises:
             ValueError: If workflow is not found or input data is invalid
         """
-        # Determine if this is a normal start or continue-as-new
-        if isinstance(params, str):
-            workflow_name = params
-            current_task_name = None
-            log.info(f"Starting DMv2 workflow: {workflow_name} with input: {input_data}")
-        else:
-            workflow_name = params.get("current_workflow")
-            current_task_name = params.get("current_task")
-            log.info(f"Continuing DMv2 workflow: {workflow_name} from task: {current_task_name} with input: {input_data}")
+        workflow_name = request.workflow_name
+        current_task_name = request.continue_from_task if request.execution_mode == 'continue_as_new' else None
+
+        log.info(f"Starting DMv2 workflow: {workflow_name} (mode: {request.execution_mode}) with input: {input_data}")
+        if current_task_name:
+            log.info(f"Continuing from task: {current_task_name}")
 
         # Process input data
         current_data = {}
@@ -267,10 +271,11 @@ class ScriptWorkflow:
         if isinstance(result, ContinueAsNewData):
             log.info(f"Triggering continue-as-new for workflow {result.current_workflow} at task {result.current_task}")
             return await workflow.continue_as_new(
-                args=[{
-                    "current_workflow": result.current_workflow,
-                    "current_task": result.current_task
-                }, input_data]
+                args=[WorkflowRequest(
+                    workflow_name=result.current_workflow,
+                    execution_mode="continue_as_new",
+                    continue_from_task=result.current_task
+                ), input_data]
             )
 
         return result

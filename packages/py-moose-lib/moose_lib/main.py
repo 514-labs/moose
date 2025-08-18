@@ -340,7 +340,7 @@ class WorkflowClient:
 
     def _build_workflow_args(self, name: str, input_data: Any) -> list:
         """Build workflow arguments for DMv2 workflow."""
-        return [name, input_data]
+        return [{"workflow_name": name, "execution_mode": "start"}, input_data]
 
 
 

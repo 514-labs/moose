@@ -2,7 +2,6 @@ use anyhow::Result;
 use log::info;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
 
 use super::{config::WorkflowConfig, Workflow};
 use crate::framework::{
@@ -38,7 +37,6 @@ pub enum WorkflowExecutionError {
 struct WorkflowExecutionParams<'a> {
     temporal_config: &'a TemporalConfig,
     workflow_id: &'a str,
-    execution_path: &'a Path,
     config: &'a WorkflowConfig,
     input: Option<String>,
     task_queue_name: &'a str,
@@ -50,7 +48,6 @@ pub(crate) async fn execute_workflow(
     language: SupportedLanguages,
     workflow_id: &str,
     config: &WorkflowConfig,
-    execution_path: &Path,
     input: Option<String>,
 ) -> Result<String, WorkflowExecutionError> {
     match language {
@@ -58,7 +55,6 @@ pub(crate) async fn execute_workflow(
             let params = WorkflowExecutionParams {
                 temporal_config,
                 workflow_id,
-                execution_path,
                 config,
                 input,
                 task_queue_name: PYTHON_TASK_QUEUE,
@@ -70,7 +66,6 @@ pub(crate) async fn execute_workflow(
             let params = WorkflowExecutionParams {
                 temporal_config,
                 workflow_id,
-                execution_path,
                 config,
                 input,
                 task_queue_name: TYPESCRIPT_TASK_QUEUE,
@@ -195,12 +190,17 @@ fn create_workflow_execution_request(
     namespace: String,
     params: &WorkflowExecutionParams<'_>,
 ) -> Result<StartWorkflowExecutionRequest, TemporalExecutionError> {
+    let workflow_request = serde_json::json!({
+        "workflow_name": params.workflow_id,
+        "execution_mode": "start"
+    });
+
     let mut payloads = vec![Payload {
         metadata: HashMap::from([(
             String::from("encoding"),
             String::from("json/plain").into_bytes(),
         )]),
-        data: serde_json::to_string(params.execution_path)
+        data: serde_json::to_string(&workflow_request)
             .unwrap()
             .as_bytes()
             .to_vec(),

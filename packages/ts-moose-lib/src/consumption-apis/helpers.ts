@@ -95,7 +95,10 @@ export class WorkflowClient {
       );
 
       const handle = await this.client.workflow.start("ScriptWorkflow", {
-        args: [name, processedInput],
+        args: [
+          { workflow_name: name, execution_mode: "start" as const },
+          processedInput,
+        ],
         taskQueue: "typescript-script-queue",
         workflowId,
         workflowIdConflictPolicy: "FAIL",

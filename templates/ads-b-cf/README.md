@@ -227,6 +227,10 @@ To learn more about Moose, take a look at the following resources:
 
 You can check out [the Moose GitHub repository](https://github.com/514-labs/moose) - your feedback and contributions are welcome!
 
+## Community
+
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moose).
+
 ## Deploy on Boreal
 
 The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.

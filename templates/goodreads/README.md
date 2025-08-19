@@ -27,7 +27,11 @@ To learn more about Moose, take a look at the following resources:
 - [Moose Documentation](https://docs.fiveonefour.com/moose) - learn about Moose.
 - [Sloan Documentation](https://docs.fiveonefour.com/sloan) - learn about Sloan, the MCP interface for data engineering.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+You can check out [the Moose GitHub repository](https://github.com/514-labs/moose) - your feedback and contributions are welcome!
+
+## Community
+
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moose).
 
 ## Deploy on Boreal
 

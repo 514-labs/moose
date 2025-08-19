@@ -134,3 +134,7 @@ Once both backend and frontend are deployed and configured correctly, your live 
 The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
 
 Check out our [Moose deployment documentation](https://docs.fiveonefour.com/moose/deploying) for more details.
+
+## Community
+
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moose).

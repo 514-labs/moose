@@ -388,10 +388,16 @@ impl DockerClient {
                 if let Ok(parsed) = p.parse::<u16>() {
                     port = parsed;
                 } else {
-                    warn!("Failed to parse redpanda broker port from '{}', defaulting to {}", broker, port);
+                    warn!(
+                        "Failed to parse redpanda broker port from '{}', defaulting to {}",
+                        broker, port
+                    );
                 }
             } else {
-                warn!("Invalid redpanda broker format '{}', expected host:port. Using defaults {}:{}", broker, host, port);
+                warn!(
+                    "Invalid redpanda broker format '{}', expected host:port. Using defaults {}:{}",
+                    broker, host, port
+                );
             }
 
             if let Some(obj) = data.as_object_mut() {

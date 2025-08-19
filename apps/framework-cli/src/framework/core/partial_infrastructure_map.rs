@@ -711,10 +711,12 @@ impl PartialInfrastructureMap {
                     .topics
                     .values()
                     .find(|topic| topic.name == transformation_target.name)
-                    .expect(&format!(
-                        "Target topic '{}' definition not found",
-                        transformation_target.name
-                    ));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Target topic '{}' definition not found",
+                            transformation_target.name
+                        )
+                    });
 
                 let target_key = target_partial_topic.version.as_ref().map_or(
                     transformation_target.name.clone(),

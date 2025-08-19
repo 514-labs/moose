@@ -377,6 +377,29 @@ impl DockerClient {
             "storage": project.features.olap
         });
 
+        // Thread Redpanda broker host/port from config into the compose template
+        if project.features.streaming_engine {
+            let broker = &project.redpanda_config.broker;
+            let mut host = "localhost".to_string();
+            let mut port: u16 = 19092;
+
+            if let Some((h, p)) = broker.rsplit_once(':') {
+                host = h.to_string();
+                if let Ok(parsed) = p.parse::<u16>() {
+                    port = parsed;
+                } else {
+                    warn!("Failed to parse redpanda broker port from '{}', defaulting to {}", broker, port);
+                }
+            } else {
+                warn!("Invalid redpanda broker format '{}', expected host:port. Using defaults {}:{}", broker, host, port);
+            }
+
+            if let Some(obj) = data.as_object_mut() {
+                obj.insert("redpanda_broker_host".to_string(), json!(host));
+                obj.insert("redpanda_broker_port".to_string(), json!(port));
+            }
+        }
+
         // Add the clickhouse host data path if it's set
         if let Some(path) = &project.clickhouse_config.host_data_path {
             if let Some(path_str) = path.to_str() {

@@ -223,16 +223,7 @@ pub async fn top_command_handler(
 
             if *write_infra_map {
                 let json_path = project_arc
-                    .internal_dir()
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new(
-                                "Failed".to_string(),
-                                "to create .moose directory".to_string(),
-                            ),
-                            e,
-                        )
-                    })?
+                    .internal_dir_with_routine_failure_err()?
                     .join("infrastructure_map.json");
 
                 infra_map.save_to_json(&json_path).map_err(|e| {
@@ -431,17 +422,7 @@ pub async fn top_command_handler(
                         )
                     })?;
 
-                if let Err(e) = std::fs::write(
-                    project
-                        .internal_dir()
-                        .unwrap()
-                        .join("migration_schema.json"),
-                    MIGRATION_SCHEMA,
-                ) {
-                    warn!("Error writing migration schema file: {e:?}");
-                };
-
-                let plan_json = serde_json::to_value(&result.db_migration).map_err(|e| {
+                let plan_yaml = result.db_migration.to_yaml().map_err(|e| {
                     RoutineFailure::new(
                         Message {
                             action: "Plan".to_string(),
@@ -450,13 +431,6 @@ pub async fn top_command_handler(
                         e,
                     )
                 })?;
-                // going through JSON before YAML because tooling does not support `!tag`
-                let plan_yaml = serde_yaml::to_string(&plan_json).unwrap();
-                // Prepend YAML language server schema directive for better editor support
-                let plan_yaml_with_header = format!(
-                    "# yaml-language-server: $schema=../.moose/migration_schema.json\n\n{}",
-                    plan_yaml
-                );
 
                 wait_for_usage_capture(capture_handle).await;
 
@@ -470,6 +444,20 @@ pub async fn top_command_handler(
                             e,
                         )
                     })?;
+
+                    if let Err(e) = std::fs::write(
+                        project
+                            .internal_dir_with_routine_failure_err()?
+                            .join("migration_schema.json"),
+                        MIGRATION_SCHEMA,
+                    ) {
+                        warn!("Error writing migration schema file: {e:?}");
+                    };
+                    // Prepend YAML language server schema directive for better editor support
+                    let plan_yaml_with_header = format!(
+                        "# yaml-language-server: $schema=../.moose/migration_schema.json\n\n{}",
+                        plan_yaml
+                    );
                     std::fs::write(MIGRATION_FILE, plan_yaml_with_header.as_str()).map_err(
                         |e| {
                             RoutineFailure::new(
@@ -524,7 +512,7 @@ pub async fn top_command_handler(
                         )
                     })?;
                 } else {
-                    println!("Changes: \n\n{}", plan_yaml_with_header)
+                    println!("Changes: \n\n{}", plan_yaml);
                 }
 
                 Ok(RoutineSuccess::success(Message::new(

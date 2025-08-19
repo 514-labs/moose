@@ -1,5 +1,5 @@
 use crate::infrastructure::olap::queue_engine::{
-    QueueEngine, QueueSource, ProcessingMode, AfterProcessing, QueueEngineValidationError
+    S3QueueEngine
 };
 use super::errors::ClickhouseError;
 
@@ -7,31 +7,24 @@ use super::errors::ClickhouseError;
 pub struct ClickHouseQueueTranslator;
 
 impl ClickHouseQueueTranslator {
-    /// Translate a generic QueueEngine to ClickHouse SQL syntax
-    pub fn translate_to_sql(&self, engine: &QueueEngine) -> Result<(String, Option<String>), ClickhouseError> {
+    /// Translate S3QueueEngine to ClickHouse SQL syntax
+    pub fn translate_s3queue_to_sql(&self, engine: &S3QueueEngine) -> Result<(String, Option<String>), ClickhouseError> {
         // Validate the configuration first
         engine.validate().map_err(|e| ClickhouseError::InvalidParameters {
-            message: format!("Queue engine validation failed: {}", e),
+            message: format!("S3Queue engine validation failed: {}", e),
         })?;
 
-        match &engine.source {
-            QueueSource::S3 { path, format, credentials, extra_settings } => {
-                self.translate_s3_queue(engine, path, format, credentials.as_ref(), extra_settings)
-            }
-            QueueSource::Azure { container, path, format, extra_settings } => {
-                self.translate_azure_queue(engine, container, path, format, extra_settings)
-            }
-        }
+        self.translate_s3_queue_internal(engine)
     }
 
-    fn translate_s3_queue(
+    fn translate_s3_queue_internal(
         &self,
-        engine: &QueueEngine,
-        path: &str,
-        format: &str,
-        credentials: Option<&crate::infrastructure::olap::queue_engine::S3Credentials>,
-        extra_settings: &std::collections::HashMap<String, String>,
+        engine: &S3QueueEngine,
     ) -> Result<(String, Option<String>), ClickhouseError> {
+        let path = &engine.config.path;
+        let format = &engine.config.format;
+        let credentials = engine.config.credentials.as_ref();
+        let extra_settings = &engine.config.extra_settings;
         // Build the engine definition
         let engine_def = if let Some(creds) = credentials {
             if let Some(role_arn) = &creds.role_arn {
@@ -124,95 +117,25 @@ impl ClickHouseQueueTranslator {
         Ok((engine_def, settings_string))
     }
 
-    fn translate_azure_queue(
-        &self,
-        engine: &QueueEngine,
-        container: &str,
-        path: &str,
-        format: &str,
-        extra_settings: &std::collections::HashMap<String, String>,
-    ) -> Result<(String, Option<String>), ClickhouseError> {
-        // ClickHouse AzureQueue syntax (if supported)
-        let engine_def = format!("AzureQueue('{}', '{}', '{}')", container, path, format);
 
-        // Build settings similar to S3Queue but with Azure-specific prefixes
-        let mut settings = Vec::new();
 
-        // Core processing settings
-        settings.push(format!("mode = '{}'", engine.processing.mode.to_string()));
-        settings.push(format!("after_processing = '{}'", engine.processing.after_processing.to_string()));
 
-        if engine.processing.retries > 0 {
-            settings.push(format!("azure_queue_loading_retries = {}", engine.processing.retries));
-        }
-
-        // Add keeper path if specified
-        if let Some(keeper_path) = &engine.coordination.path {
-            settings.push(format!("keeper_path = '{}'", keeper_path));
-        }
-
-        // Add extra settings
-        for (key, value) in extra_settings {
-            settings.push(format!("{} = '{}'", key, value));
-        }
-
-        let settings_string = if !settings.is_empty() {
-            Some(format!("SETTINGS {}", settings.join(", ")))
-        } else {
-            None
-        };
-
-        Ok((engine_def, settings_string))
-    }
-
-    /// Validate ClickHouse-specific constraints
-    pub fn validate_clickhouse_config(&self, engine: &QueueEngine) -> Result<(), ClickhouseError> {
-        match &engine.source {
-            QueueSource::S3 { path, .. } => {
-                if !path.starts_with("s3://") {
-                    return Err(ClickhouseError::InvalidParameters {
-                        message: "S3 path must start with 's3://'".to_string(),
-                    });
-                }
-            }
-            QueueSource::Azure { .. } => {
-                // Add Azure-specific validations here
-            }
-        }
-
-        // Validate processing mode constraints
-        if matches!(engine.processing.mode, ProcessingMode::Ordered) {
-            if engine.processing.buckets.is_some() && engine.processing.threads.is_some() {
-                let buckets = engine.processing.buckets.unwrap_or(1);
-                let threads = engine.processing.threads.unwrap_or(1);
-                
-                if buckets < threads {
-                    return Err(ClickhouseError::InvalidParameters {
-                        message: "For ordered mode, buckets should be >= processing_threads_num".to_string(),
-                    });
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::infrastructure::olap::queue_engine::*;
-    use std::collections::HashMap;
 
     #[test]
     fn test_s3queue_basic_translation() {
-        let queue_engine = QueueEngine::s3_queue(
+        let queue_engine = S3QueueEngine::new(
             "s3://my-bucket/data/*.json".to_string(),
             "JSONEachRow".to_string(),
         );
 
         let translator = ClickHouseQueueTranslator;
-        let result = translator.translate_to_sql(&queue_engine).unwrap();
+        let result = translator.translate_s3queue_to_sql(&queue_engine).unwrap();
 
         assert_eq!(result.0, "S3Queue('s3://my-bucket/data/*.json', 'JSONEachRow')");
         assert!(result.1.is_some());
@@ -223,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_s3queue_comprehensive_settings() {
-        let mut queue_engine = QueueEngine::s3_queue(
+        let mut queue_engine = S3QueueEngine::new(
             "s3://my-bucket/data/*.json".to_string(),
             "JSONEachRow".to_string(),
         );
@@ -244,7 +167,7 @@ mod tests {
         queue_engine.monitoring.polling_max_timeout_ms = Some(5000);
 
         let translator = ClickHouseQueueTranslator;
-        let result = translator.translate_to_sql(&queue_engine).unwrap();
+        let result = translator.translate_s3queue_to_sql(&queue_engine).unwrap();
 
         let settings = result.1.unwrap();
         assert!(settings.contains("mode = 'ordered'"));

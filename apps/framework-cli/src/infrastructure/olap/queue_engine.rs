@@ -1,33 +1,23 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-/// Generic queue engine abstraction for backend-agnostic queue table support
+/// S3Queue engine configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueueEngine {
-    pub source: QueueSource,
+pub struct S3QueueEngine {
+    pub config: S3QueueConfig,
     pub processing: ProcessingConfig,
     pub coordination: CoordinationConfig,
     pub monitoring: MonitoringConfig,
 }
 
-/// Queue data source configuration
+/// S3Queue configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum QueueSource {
-    S3 {
-        path: String,
-        format: String,
-        credentials: Option<S3Credentials>,
-        /// Additional S3-specific settings
-        extra_settings: HashMap<String, String>,
-    },
-    Azure {
-        container: String,
-        path: String,
-        format: String,
-        /// Azure-specific settings
-        extra_settings: HashMap<String, String>,
-    },
-    // Future: GCS, Kafka, etc.
+pub struct S3QueueConfig {
+    pub path: String,
+    pub format: String,
+    pub credentials: Option<S3Credentials>,
+    /// Additional S3-specific settings
+    pub extra_settings: HashMap<String, String>,
 }
 
 /// S3 credentials configuration
@@ -169,11 +159,11 @@ pub enum QueueEngineValidationError {
     ConfigurationConflict { message: String },
 }
 
-impl QueueEngine {
+impl S3QueueEngine {
     /// Create a new S3Queue engine with sensible defaults
-    pub fn s3_queue(path: String, format: String) -> Self {
+    pub fn new(path: String, format: String) -> Self {
         Self {
-            source: QueueSource::S3 {
+            config: S3QueueConfig {
                 path,
                 format,
                 credentials: None,
@@ -185,38 +175,23 @@ impl QueueEngine {
         }
     }
 
-    /// Validate the queue engine configuration
+    /// Validate the S3Queue engine configuration
     pub fn validate(&self) -> Result<(), QueueEngineValidationError> {
-        match &self.source {
-            QueueSource::S3 { path, format, .. } => {
-                if path.is_empty() {
-                    return Err(QueueEngineValidationError::MissingField {
-                        field: "path".to_string(),
-                    });
-                }
-                if format.is_empty() {
-                    return Err(QueueEngineValidationError::MissingField {
-                        field: "format".to_string(),
-                    });
-                }
-            }
-            QueueSource::Azure { container, path, format, .. } => {
-                if container.is_empty() {
-                    return Err(QueueEngineValidationError::MissingField {
-                        field: "container".to_string(),
-                    });
-                }
-                if path.is_empty() {
-                    return Err(QueueEngineValidationError::MissingField {
-                        field: "path".to_string(),
-                    });
-                }
-                if format.is_empty() {
-                    return Err(QueueEngineValidationError::MissingField {
-                        field: "format".to_string(),
-                    });
-                }
-            }
+        if self.config.path.is_empty() {
+            return Err(QueueEngineValidationError::MissingField {
+                field: "path".to_string(),
+            });
+        }
+        if self.config.format.is_empty() {
+            return Err(QueueEngineValidationError::MissingField {
+                field: "format".to_string(),
+            });
+        }
+        if !self.config.path.starts_with("s3://") {
+            return Err(QueueEngineValidationError::InvalidValue {
+                field: "path".to_string(),
+                value: self.config.path.clone(),
+            });
         }
 
         // Validate processing config
@@ -232,13 +207,5 @@ impl QueueEngine {
         }
 
         Ok(())
-    }
-
-    /// Get the source type as a string
-    pub fn source_type(&self) -> &'static str {
-        match &self.source {
-            QueueSource::S3 { .. } => "s3",
-            QueueSource::Azure { .. } => "azure",
-        }
     }
 }

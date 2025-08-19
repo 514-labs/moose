@@ -9,7 +9,7 @@ use crate::infrastructure::olap::clickhouse::model::{
 
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
-use crate::infrastructure::olap::queue_engine::QueueEngine;
+use crate::infrastructure::olap::queue_engine::S3QueueEngine;
 use super::queue_translator::ClickHouseQueueTranslator;
 
 #[cfg(test)]
@@ -119,7 +119,7 @@ pub enum ClickhouseEngine {
     ReplacingMergeTree,
     AggregatingMergeTree,
     SummingMergeTree,
-    Queue(QueueEngine),
+    S3Queue(S3QueueEngine),
 }
 
 impl<'a> TryFrom<&'a str> for ClickhouseEngine {
@@ -156,9 +156,9 @@ pub fn create_table_query(
         }
         ClickhouseEngine::AggregatingMergeTree => ("AggregatingMergeTree".to_string(), None),
         ClickhouseEngine::SummingMergeTree => ("SummingMergeTree".to_string(), None),
-        ClickhouseEngine::Queue(queue_engine) => {
+        ClickhouseEngine::S3Queue(s3queue_engine) => {
             let translator = ClickHouseQueueTranslator;
-            translator.translate_to_sql(queue_engine)?
+            translator.translate_s3queue_to_sql(s3queue_engine)?
         }
     };
 

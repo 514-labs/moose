@@ -145,6 +145,16 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     writeln!(output, "import typia from \"typia\";").unwrap();
     writeln!(output).unwrap();
 
+    // Add geo type definitions
+    writeln!(output, "// Geo type definitions").unwrap();
+    writeln!(output, "export type Point = string & {{ readonly __brand: 'Point' }};").unwrap();
+    writeln!(output, "export type Ring = string & {{ readonly __brand: 'Ring' }};").unwrap();
+    writeln!(output, "export type Polygon = string & {{ readonly __brand: 'Polygon' }};").unwrap();
+    writeln!(output, "export type MultiPolygon = string & {{ readonly __brand: 'MultiPolygon' }};").unwrap();
+    writeln!(output, "export type LineString = string & {{ readonly __brand: 'LineString' }};").unwrap();
+    writeln!(output, "export type MultiLineString = string & {{ readonly __brand: 'MultiLineString' }};").unwrap();
+    writeln!(output).unwrap();
+
     // Collect all enums and nested types
     let mut enums: HashMap<&DataEnum, String> = HashMap::new();
     let mut extra_type_names: HashMap<String, usize> = HashMap::new();

@@ -555,6 +555,18 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             ColumnType::IpV4
         } else if v == "IPv6" {
             ColumnType::IpV6
+        } else if v == "Point" {
+            ColumnType::Geo(GeoType::Point)
+        } else if v == "Ring" {
+            ColumnType::Geo(GeoType::Ring)
+        } else if v == "Polygon" {
+            ColumnType::Geo(GeoType::Polygon)
+        } else if v == "MultiPolygon" {
+            ColumnType::Geo(GeoType::MultiPolygon)
+        } else if v == "LineString" {
+            ColumnType::Geo(GeoType::LineString)
+        } else if v == "MultiLineString" {
+            ColumnType::Geo(GeoType::MultiLineString)
         } else {
             return Err(E::custom(format!("Unknown column type {v}.")));
         };
@@ -881,14 +893,16 @@ impl ColumnType {
                 key_type: Box::new(Self::from_proto(map.key_type.clone().unwrap())),
                 value_type: Box::new(Self::from_proto(map.value_type.clone().unwrap())),
             },
-            T::Geo(geo_type) => ColumnType::Geo(match geo_type.enum_value().expect("Invalid geo type") {
-                ProtoGeoType::POINT => GeoType::Point,
-                ProtoGeoType::RING => GeoType::Ring,
-                ProtoGeoType::POLYGON => GeoType::Polygon,
-                ProtoGeoType::MULTIPOLYGON => GeoType::MultiPolygon,
-                ProtoGeoType::LINESTRING => GeoType::LineString,
-                ProtoGeoType::MULTILINESTRING => GeoType::MultiLineString,
-            }),
+            T::Geo(geo_type) => {
+                ColumnType::Geo(match geo_type.enum_value().expect("Invalid geo type") {
+                    ProtoGeoType::POINT => GeoType::Point,
+                    ProtoGeoType::RING => GeoType::Ring,
+                    ProtoGeoType::POLYGON => GeoType::Polygon,
+                    ProtoGeoType::MULTIPOLYGON => GeoType::MultiPolygon,
+                    ProtoGeoType::LINESTRING => GeoType::LineString,
+                    ProtoGeoType::MULTILINESTRING => GeoType::MultiLineString,
+                })
+            }
         }
     }
 }

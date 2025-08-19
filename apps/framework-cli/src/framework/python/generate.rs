@@ -212,6 +212,16 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     .unwrap();
     writeln!(output).unwrap();
 
+    // Add geo type definitions
+    writeln!(output, "# Geo type definitions").unwrap();
+    writeln!(output, "Point = Annotated[str, 'Point']").unwrap();
+    writeln!(output, "Ring = Annotated[str, 'Ring']").unwrap();
+    writeln!(output, "Polygon = Annotated[str, 'Polygon']").unwrap();
+    writeln!(output, "MultiPolygon = Annotated[str, 'MultiPolygon']").unwrap();
+    writeln!(output, "LineString = Annotated[str, 'LineString']").unwrap();
+    writeln!(output, "MultiLineString = Annotated[str, 'MultiLineString']").unwrap();
+    writeln!(output).unwrap();
+
     // Collect all enums, nested types, and named tuples
     let mut enums: HashMap<&DataEnum, String> = HashMap::new();
     let mut extra_class_names: HashMap<String, usize> = HashMap::new();
@@ -425,6 +435,14 @@ import ipaddress
 from uuid import UUID
 from enum import IntEnum, Enum
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
+
+# Geo type definitions
+Point = Annotated[str, 'Point']
+Ring = Annotated[str, 'Ring']
+Polygon = Annotated[str, 'Polygon']
+MultiPolygon = Annotated[str, 'MultiPolygon']
+LineString = Annotated[str, 'LineString']
+MultiLineString = Annotated[str, 'MultiLineString']
 
 class Foo(BaseModel):
     primary_key: Key[str]

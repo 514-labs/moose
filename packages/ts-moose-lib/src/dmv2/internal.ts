@@ -213,12 +213,32 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     if (!metadata && table.config && (table as any).pipelineParent) {
       metadata = (table as any).pipelineParent.metadata;
     }
+
+    // Handle parameterized engines for CollapsingMergeTree and VersionedCollapsingMergeTree
+    let engineString = table.config.engine;
+    if (
+      table.config.engine === "CollapsingMergeTree" &&
+      table.config.collapsingMergeTreeConfig?.signColumn
+    ) {
+      engineString = `CollapsingMergeTree(${table.config.collapsingMergeTreeConfig.signColumn})`;
+    } else if (
+      table.config.engine === "VersionedCollapsingMergeTree" &&
+      table.config.versionedCollapsingMergeTreeConfig
+    ) {
+      const signCol =
+        table.config.versionedCollapsingMergeTreeConfig.signColumn || "sign";
+      const versionCol =
+        table.config.versionedCollapsingMergeTreeConfig.versionColumn ||
+        "version";
+      engineString = `VersionedCollapsingMergeTree(${signCol}, ${versionCol})`;
+    }
+
     tables[table.name] = {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
       deduplicate: table.config.deduplicate ?? false,
-      engine: table.config.engine,
+      engine: engineString,
       version: table.config.version,
       metadata,
       lifeCycle: table.config.lifeCycle,

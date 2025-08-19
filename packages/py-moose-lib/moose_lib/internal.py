@@ -270,12 +270,22 @@ def to_infra_map() -> dict:
 
     for name, table in get_tables().items():
         engine = table.config.engine
+        
+        # Handle parameterized engines for CollapsingMergeTree and VersionedCollapsingMergeTree
+        engine_string = None if engine is None else engine.value
+        if engine_string == "CollapsingMergeTree" and table.config.collapsing_merge_tree_config and table.config.collapsing_merge_tree_config.sign_column:
+            engine_string = f"CollapsingMergeTree({table.config.collapsing_merge_tree_config.sign_column})"
+        elif engine_string == "VersionedCollapsingMergeTree" and table.config.versioned_collapsing_merge_tree_config:
+            sign_col = table.config.versioned_collapsing_merge_tree_config.sign_column or "sign"
+            version_col = table.config.versioned_collapsing_merge_tree_config.version_column or "version"
+            engine_string = f"VersionedCollapsingMergeTree({sign_col}, {version_col})"
+        
         tables[name] = TableConfig(
             name=name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             deduplicate=table.config.deduplicate,
-            engine=None if engine is None else engine.value,
+            engine=engine_string,
             version=table.config.version,
             metadata=getattr(table, "metadata", None),
             life_cycle=table.config.life_cycle.value if table.config.life_cycle else None,

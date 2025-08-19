@@ -91,6 +91,32 @@ class InsertResult(Generic[T]):
     total: int
     failed_records: Optional[List[FailedRecord[T]]] = None
 
+@dataclass
+class CollapsingMergeTreeConfig:
+    """Configuration options for CollapsingMergeTree engines.
+    
+    Attributes:
+        sign_column: Name of the column used as the sign column for CollapsingMergeTree.
+                    This column should be of type Int8 with values +1 (insert/update) and -1 (delete).
+                    Defaults to "sign" if not specified.
+    """
+    sign_column: Optional[str] = None
+
+@dataclass 
+class VersionedCollapsingMergeTreeConfig:
+    """Configuration options for VersionedCollapsingMergeTree engines.
+    
+    Attributes:
+        sign_column: Name of the column used as the sign column.
+                    This column should be of type Int8 with values +1 (insert/update) and -1 (delete).
+                    Defaults to "sign" if not specified.
+        version_column: Name of the column used as the version column.
+                       This column should be of UInt* type and is used for ordering operations.
+                       Defaults to "version" if not specified.
+    """
+    sign_column: Optional[str] = None
+    version_column: Optional[str] = None
+
 class OlapConfig(BaseModel):
     """Configuration for OLAP tables (e.g., ClickHouse tables).
 
@@ -101,6 +127,10 @@ class OlapConfig(BaseModel):
                      deduplication based on `order_by_fields`. Equivalent to
                      setting `engine=ClickHouseEngines.ReplacingMergeTree`.
         engine: The ClickHouse table engine to use (e.g., MergeTree, ReplacingMergeTree).
+        collapsing_merge_tree_config: Configuration options for CollapsingMergeTree engine.
+                                     Only used when engine is set to ClickHouseEngines.CollapsingMergeTree.
+        versioned_collapsing_merge_tree_config: Configuration options for VersionedCollapsingMergeTree engine.
+                                               Only used when engine is set to ClickHouseEngines.VersionedCollapsingMergeTree.
         version: Optional version string for tracking configuration changes.
         metadata: Optional metadata for the table.
         life_cycle: Determines how changes in code will propagate to the resources.
@@ -109,6 +139,8 @@ class OlapConfig(BaseModel):
     # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
     deduplicate: bool = False
     engine: Optional[ClickHouseEngines] = None
+    collapsing_merge_tree_config: Optional[CollapsingMergeTreeConfig] = None
+    versioned_collapsing_merge_tree_config: Optional[VersionedCollapsingMergeTreeConfig] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None
     life_cycle: Optional[LifeCycle] = None

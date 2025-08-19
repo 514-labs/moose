@@ -92,6 +92,36 @@ export interface ValidationResult<T> {
 }
 
 /**
+ * Configuration options for CollapsingMergeTree engines.
+ */
+export interface CollapsingMergeTreeConfig {
+  /**
+   * Name of the column used as the sign column for CollapsingMergeTree.
+   * This column should be of type Int8 with values +1 (insert/update) and -1 (delete).
+   * Defaults to "sign" if not specified.
+   */
+  signColumn?: string;
+}
+
+/**
+ * Configuration options for VersionedCollapsingMergeTree engines.
+ */
+export interface VersionedCollapsingMergeTreeConfig {
+  /**
+   * Name of the column used as the sign column.
+   * This column should be of type Int8 with values +1 (insert/update) and -1 (delete).
+   * Defaults to "sign" if not specified.
+   */
+  signColumn?: string;
+  /**
+   * Name of the column used as the version column.
+   * This column should be of UInt* type and is used for ordering operations.
+   * Defaults to "version" if not specified.
+   */
+  versionColumn?: string;
+}
+
+/**
  * Configuration options for an OLAP (Online Analytical Processing) table.
  * @template T The data type of the records stored in the table.
  */
@@ -114,6 +144,16 @@ export type OlapConfig<T> = {
    * @see ClickHouseEngines for available options.
    */
   engine?: ClickHouseEngines;
+  /**
+   * Configuration options for CollapsingMergeTree engine.
+   * Only used when engine is set to ClickHouseEngines.CollapsingMergeTree.
+   */
+  collapsingMergeTreeConfig?: CollapsingMergeTreeConfig;
+  /**
+   * Configuration options for VersionedCollapsingMergeTree engine.
+   * Only used when engine is set to ClickHouseEngines.VersionedCollapsingMergeTree.
+   */
+  versionedCollapsingMergeTreeConfig?: VersionedCollapsingMergeTreeConfig;
   /**
    * An optional version string for this configuration. Can be used for tracking changes or managing deployments.
    */

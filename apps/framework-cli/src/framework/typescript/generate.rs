@@ -248,7 +248,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
             table.name
         )
         .unwrap();
-        writeln!(output, "    table: {{,").unwrap();
+        writeln!(output, "    table: {{").unwrap();
         writeln!(output, "        orderByFields: [{order_by_fields}]").unwrap();
         writeln!(output, "    }}").unwrap();
         writeln!(output, "    stream: true,").unwrap();
@@ -371,7 +371,9 @@ export interface User {
 }
 
 export const UserPipeline = new IngestPipeline<User>("User", {
-    table: true,
+    table: {
+        orderByFields: ["id"]
+    }
     stream: true,
     ingest: true,
 });"#
@@ -444,7 +446,9 @@ export interface Task {
 }
 
 export const TaskPipeline = new IngestPipeline<Task>("Task", {
-    table: true,
+    table: {
+        orderByFields: ["id"]
+    }
     stream: true,
     ingest: true,
 });"#

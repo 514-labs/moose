@@ -475,7 +475,9 @@ class Foo(BaseModel):
 foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["primary_key"]
+    )
 ))"#
         ));
     }
@@ -547,7 +549,9 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
 nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["id"]
+    )
 ))"#
         ));
     }
@@ -655,7 +659,9 @@ class User(BaseModel):
 user_model = IngestPipeline[User]("User", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["id"]
+    )
 ))"#
         ));
     }

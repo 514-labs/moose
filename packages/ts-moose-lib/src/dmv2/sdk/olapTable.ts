@@ -100,7 +100,7 @@ export type OlapConfig<T> = {
    * Specifies the fields to use for ordering data within the ClickHouse table.
    * This is crucial for optimizing query performance, especially for ReplacingMergeTree engines.
    */
-  orderByFields?: (keyof T & string)[];
+  orderByFields?: (keyof T & string)[] | ["tuple()"];
   /**
    * If true, uses the ReplacingMergeTree engine for the ClickHouse table, enabling automatic deduplication based on the `orderByFields`.
    * Equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`.

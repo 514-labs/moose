@@ -126,17 +126,54 @@ impl<'a> TryFrom<&'a str> for ClickhouseEngine {
 
     fn try_from(value: &'a str) -> Result<Self, &'a str> {
         // "There is a SharedMergeTree analog for every specific MergeTree engine type"
-        match value.strip_prefix("Shared").unwrap_or(value) {
-            "MergeTree" => Ok(ClickhouseEngine::MergeTree),
-            "ReplacingMergeTree" => Ok(ClickhouseEngine::ReplacingMergeTree),
-            "AggregatingMergeTree" => Ok(ClickhouseEngine::AggregatingMergeTree),
-            "SummingMergeTree" => Ok(ClickhouseEngine::SummingMergeTree),
-            "CollapsingMergeTree" => Ok(ClickhouseEngine::CollapsingMergeTree("sign".to_string())),
-            "VersionedCollapsingMergeTree" => Ok(ClickhouseEngine::VersionedCollapsingMergeTree {
-                sign_column: "sign".to_string(),
-                version_column: "version".to_string(),
-            }),
-            _ => Err(value),
+        let engine_str = value.strip_prefix("Shared").unwrap_or(value);
+
+        // Handle parameterized engines
+        if let Some(params_start) = engine_str.find('(') {
+            let engine_name = &engine_str[..params_start];
+            let params_end = engine_str
+                .rfind(')')
+                .ok_or("Missing closing parenthesis in engine parameters")?;
+            let params_str = &engine_str[params_start + 1..params_end];
+
+            match engine_name {
+                "CollapsingMergeTree" => {
+                    let sign_column = params_str.trim().to_string();
+                    if sign_column.is_empty() {
+                        return Err("CollapsingMergeTree requires a sign column parameter");
+                    }
+                    Ok(ClickhouseEngine::CollapsingMergeTree(sign_column))
+                }
+                "VersionedCollapsingMergeTree" => {
+                    let params: Vec<&str> = params_str.split(',').map(|s| s.trim()).collect();
+                    if params.len() != 2 {
+                        return Err("VersionedCollapsingMergeTree requires exactly two parameters: sign_column, version_column");
+                    }
+                    Ok(ClickhouseEngine::VersionedCollapsingMergeTree {
+                        sign_column: params[0].to_string(),
+                        version_column: params[1].to_string(),
+                    })
+                }
+                _ => Err(value),
+            }
+        } else {
+            // Handle non-parameterized engines and default parameterized ones
+            match engine_str {
+                "MergeTree" => Ok(ClickhouseEngine::MergeTree),
+                "ReplacingMergeTree" => Ok(ClickhouseEngine::ReplacingMergeTree),
+                "AggregatingMergeTree" => Ok(ClickhouseEngine::AggregatingMergeTree),
+                "SummingMergeTree" => Ok(ClickhouseEngine::SummingMergeTree),
+                "CollapsingMergeTree" => {
+                    Ok(ClickhouseEngine::CollapsingMergeTree("sign".to_string()))
+                }
+                "VersionedCollapsingMergeTree" => {
+                    Ok(ClickhouseEngine::VersionedCollapsingMergeTree {
+                        sign_column: "sign".to_string(),
+                        version_column: "version".to_string(),
+                    })
+                }
+                _ => Err(value),
+            }
         }
     }
 }
@@ -650,6 +687,7 @@ ORDER BY (`id`) "#;
 
     #[test]
     fn test_collapsing_merge_tree_engine_parsing() {
+        // Test default parameter parsing
         let collapsing_engine = ClickhouseEngine::try_from("CollapsingMergeTree");
         assert!(collapsing_engine.is_ok());
         match collapsing_engine.unwrap() {
@@ -659,6 +697,18 @@ ORDER BY (`id`) "#;
             _ => panic!("Expected CollapsingMergeTree engine"),
         }
 
+        // Test custom parameter parsing
+        let custom_collapsing_engine =
+            ClickhouseEngine::try_from("CollapsingMergeTree(operation_type)");
+        assert!(custom_collapsing_engine.is_ok());
+        match custom_collapsing_engine.unwrap() {
+            ClickhouseEngine::CollapsingMergeTree(sign_col) => {
+                assert_eq!(sign_col, "operation_type");
+            }
+            _ => panic!("Expected CollapsingMergeTree engine with custom parameter"),
+        }
+
+        // Test default VersionedCollapsingMergeTree
         let versioned_collapsing_engine =
             ClickhouseEngine::try_from("VersionedCollapsingMergeTree");
         assert!(versioned_collapsing_engine.is_ok());
@@ -672,6 +722,32 @@ ORDER BY (`id`) "#;
             }
             _ => panic!("Expected VersionedCollapsingMergeTree engine"),
         }
+
+        // Test custom VersionedCollapsingMergeTree parameters
+        let custom_versioned_engine =
+            ClickhouseEngine::try_from("VersionedCollapsingMergeTree(operation_sign, revision)");
+        assert!(custom_versioned_engine.is_ok());
+        match custom_versioned_engine.unwrap() {
+            ClickhouseEngine::VersionedCollapsingMergeTree {
+                sign_column,
+                version_column,
+            } => {
+                assert_eq!(sign_column, "operation_sign");
+                assert_eq!(version_column, "revision");
+            }
+            _ => panic!("Expected VersionedCollapsingMergeTree engine with custom parameters"),
+        }
+
+        // Test error cases
+        let invalid_collapsing = ClickhouseEngine::try_from("CollapsingMergeTree()");
+        assert!(invalid_collapsing.is_err());
+
+        let invalid_versioned =
+            ClickhouseEngine::try_from("VersionedCollapsingMergeTree(only_one_param)");
+        assert!(invalid_versioned.is_err());
+
+        let missing_paren = ClickhouseEngine::try_from("CollapsingMergeTree(no_closing");
+        assert!(missing_paren.is_err());
     }
 
     #[test]
@@ -805,5 +881,101 @@ ORDER BY (`user_id`) "#;
             .unwrap_err()
             .to_string()
             .contains("CollapsingMergeTree requires an order by clause"));
+    }
+
+    #[test]
+    fn test_custom_parameter_table_creation() {
+        // Test CollapsingMergeTree with custom sign column
+        let table = ClickHouseTable {
+            name: "custom_collapsing".to_string(),
+            version: None,
+            columns: vec![
+                ClickHouseColumn {
+                    name: "user_id".to_string(),
+                    column_type: ClickHouseColumnType::String,
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+                ClickHouseColumn {
+                    name: "operation_type".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int8),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: Some("Custom sign column".to_string()),
+                },
+            ],
+            order_by: vec!["user_id".to_string()],
+            engine: ClickhouseEngine::CollapsingMergeTree("operation_type".to_string()),
+        };
+
+        let query = create_table_query("test_db", table).unwrap();
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`custom_collapsing`
+(
+ `user_id` String NOT NULL,
+ `operation_type` Int8 NOT NULL COMMENT 'Custom sign column'
+)
+ENGINE = CollapsingMergeTree(operation_type)
+
+ORDER BY (`user_id`) "#;
+        assert_eq!(query.trim(), expected.trim());
+
+        // Test VersionedCollapsingMergeTree with custom parameters
+        let versioned_table = ClickHouseTable {
+            name: "custom_versioned".to_string(),
+            version: None,
+            columns: vec![
+                ClickHouseColumn {
+                    name: "user_id".to_string(),
+                    column_type: ClickHouseColumnType::String,
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+                ClickHouseColumn {
+                    name: "operation_sign".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int8),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+                ClickHouseColumn {
+                    name: "revision".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt64),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+            ],
+            order_by: vec!["user_id".to_string()],
+            engine: ClickhouseEngine::VersionedCollapsingMergeTree {
+                sign_column: "operation_sign".to_string(),
+                version_column: "revision".to_string(),
+            },
+        };
+
+        let versioned_query = create_table_query("test_db", versioned_table).unwrap();
+        let expected_versioned = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`custom_versioned`
+(
+ `user_id` String NOT NULL,
+ `operation_sign` Int8 NOT NULL,
+ `revision` UInt64 NOT NULL
+)
+ENGINE = VersionedCollapsingMergeTree(operation_sign, revision)
+
+ORDER BY (`user_id`) "#;
+        assert_eq!(versioned_query.trim(), expected_versioned.trim());
     }
 }

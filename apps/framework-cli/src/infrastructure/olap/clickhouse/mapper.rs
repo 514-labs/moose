@@ -12,6 +12,115 @@ use crate::infrastructure::olap::clickhouse::model::{
 use super::errors::ClickhouseError;
 use super::model::sanitize_column_name;
 use super::queries::ClickhouseEngine;
+use crate::infrastructure::olap::queue_engine::{S3QueueEngine, S3QueueConfig, S3Credentials, ProcessingConfig, ProcessingMode, AfterProcessing, CoordinationConfig, MonitoringConfig};
+use std::collections::HashMap;
+
+/// Parse S3Queue configuration from JSON value
+fn parse_s3queue_config(config: &serde_json::Value) -> Result<S3QueueEngine, ClickhouseError> {
+    let path = config.get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ClickhouseError::InvalidParameters {
+            message: "S3Queue requires 'path' field".to_string(),
+        })?
+        .to_string();
+
+    let format = config.get("format")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ClickhouseError::InvalidParameters {
+            message: "S3Queue requires 'format' field".to_string(),
+        })?
+        .to_string();
+
+    // Parse credentials if provided
+    let credentials = config.get("credentials")
+        .map(|creds| -> Result<S3Credentials, ClickhouseError> {
+            Ok(S3Credentials {
+                role_arn: creds.get("roleArn").and_then(|v| v.as_str()).map(String::from),
+                access_key_id: creds.get("accessKeyId").and_then(|v| v.as_str()).map(String::from),
+                secret_access_key: creds.get("secretAccessKey").and_then(|v| v.as_str()).map(String::from),
+                session_token: creds.get("sessionToken").and_then(|v| v.as_str()).map(String::from),
+            })
+        })
+        .transpose()?;
+
+    // Parse processing config
+    let processing = config.get("processing")
+        .map(|proc| -> Result<ProcessingConfig, ClickhouseError> {
+            Ok(ProcessingConfig {
+                mode: proc.get("mode")
+                    .and_then(|v| v.as_str())
+                    .map(|s| match s {
+                        "ordered" => ProcessingMode::Ordered,
+                        _ => ProcessingMode::Unordered,
+                    })
+                    .unwrap_or(ProcessingMode::Unordered),
+                after_processing: proc.get("afterProcessing")
+                    .and_then(|v| v.as_str())
+                    .map(|s| match s {
+                        "delete" => AfterProcessing::Delete,
+                        _ => AfterProcessing::Keep,
+                    })
+                    .unwrap_or(AfterProcessing::Keep),
+                retries: proc.get("retries").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+                threads: proc.get("threads").and_then(|v| v.as_u64()).map(|v| v as u32),
+                parallel_inserts: proc.get("parallelInserts").and_then(|v| v.as_bool()).unwrap_or(false),
+                buckets: proc.get("buckets").and_then(|v| v.as_u64()).map(|v| v as u32),
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+
+    // Parse coordination config
+    let coordination = config.get("coordination")
+        .map(|coord| -> Result<CoordinationConfig, ClickhouseError> {
+            Ok(CoordinationConfig {
+                path: coord.get("keeperPath").and_then(|v| v.as_str()).map(String::from),
+                tracked_files_limit: coord.get("trackedFilesLimit").and_then(|v| v.as_u64()).map(|v| v as u32),
+                tracked_file_ttl_sec: coord.get("trackedFileTtlSec").and_then(|v| v.as_u64()).map(|v| v as u32),
+                cleanup_interval_min_ms: coord.get("cleanupIntervalMinMs").and_then(|v| v.as_u64()).map(|v| v as u32),
+                cleanup_interval_max_ms: coord.get("cleanupIntervalMaxMs").and_then(|v| v.as_u64()).map(|v| v as u32),
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+
+    // Parse monitoring config
+    let monitoring = config.get("monitoring")
+        .map(|mon| -> Result<MonitoringConfig, ClickhouseError> {
+            Ok(MonitoringConfig {
+                enable_logging: mon.get("enableLogging").and_then(|v| v.as_bool()).unwrap_or(false),
+                polling_min_timeout_ms: mon.get("pollingMinTimeoutMs").and_then(|v| v.as_u64()).map(|v| v as u32),
+                polling_max_timeout_ms: mon.get("pollingMaxTimeoutMs").and_then(|v| v.as_u64()).map(|v| v as u32),
+                polling_backoff_ms: mon.get("pollingBackoffMs").and_then(|v| v.as_u64()).map(|v| v as u32),
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+
+    // Parse extra settings
+    let extra_settings = config.get("extraSettings")
+        .and_then(|v| v.as_object())
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                .collect::<HashMap<String, String>>()
+        })
+        .unwrap_or_default();
+
+    let s3_config = S3QueueConfig {
+        path,
+        format,
+        credentials,
+        extra_settings,
+    };
+
+    Ok(S3QueueEngine {
+        config: s3_config,
+        processing,
+        coordination,
+        monitoring,
+    })
+}
 
 /// Generates a column comment, preserving any existing user comment and adding/updating metadata for enums
 fn generate_column_comment(column: &Column) -> Result<Option<String>, ClickhouseError> {
@@ -278,11 +387,25 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
     let columns = std_columns_to_clickhouse_columns(&table.columns)?;
 
     let clickhouse_engine = match &table.engine {
-        Some(engine) => ClickhouseEngine::try_from(engine.as_str()).map_err(|e| {
-            ClickhouseError::InvalidParameters {
-                message: format!("engine: {e}"),
+        Some(engine) => {
+            if engine == "S3Queue" {
+                // Handle S3Queue with configuration
+                if let Some(s3_config) = &table.s3_queue_config {
+                    let s3queue_engine = parse_s3queue_config(s3_config)?;
+                    ClickhouseEngine::S3Queue(s3queue_engine)
+                } else {
+                    return Err(ClickhouseError::InvalidParameters {
+                        message: "S3Queue engine requires s3QueueConfig".to_string(),
+                    });
+                }
+            } else {
+                ClickhouseEngine::try_from(engine.as_str()).map_err(|e| {
+                    ClickhouseError::InvalidParameters {
+                        message: format!("engine: {e}"),
+                    }
+                })?
             }
-        })?,
+        }
         None if table.deduplicate => ClickhouseEngine::ReplacingMergeTree,
         None => ClickhouseEngine::MergeTree,
     };

@@ -86,6 +86,8 @@ pub struct Table {
     pub deduplicate: bool,
     #[serde(default)]
     pub engine: Option<String>,
+    #[serde(default)]
+    pub s3_queue_config: Option<serde_json::Value>,
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
     pub metadata: Option<Metadata>,

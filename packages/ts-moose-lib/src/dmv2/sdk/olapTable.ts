@@ -115,6 +115,49 @@ export type OlapConfig<T> = {
    */
   engine?: ClickHouseEngines;
   /**
+   * S3Queue configuration when using ClickHouseEngines.S3Queue engine.
+   * Required when engine is S3Queue.
+   */
+  s3QueueConfig?: {
+    /** S3 path with wildcards (e.g., 's3://bucket/path/*.json') */
+    path: string;
+    /** Data format (e.g., 'JSONEachRow', 'CSV', 'Parquet') */
+    format: string;
+    /** S3 credentials (optional if using IAM roles) */
+    credentials?: {
+      roleArn?: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+      sessionToken?: string;
+    };
+    /** Processing configuration */
+    processing?: {
+      mode?: 'ordered' | 'unordered';
+      afterProcessing?: 'keep' | 'delete';
+      retries?: number;
+      threads?: number;
+      parallelInserts?: boolean;
+      buckets?: number;
+    };
+    /** Coordination settings */
+    coordination?: {
+      keeperPath?: string;
+      trackedFilesLimit?: number;
+      trackedFileTtlSec?: number;
+      cleanupIntervalMinMs?: number;
+      cleanupIntervalMaxMs?: number;
+    };
+    /** Monitoring settings */
+    monitoring?: {
+      enableLogging?: boolean;
+      pollingMinTimeoutMs?: number;
+      pollingMaxTimeoutMs?: number;
+      pollingBackoffMs?: number;
+    };
+    /** Additional S3Queue-specific settings */
+    extraSettings?: Record<string, string>;
+  };
+  /**
    * An optional version string for this configuration. Can be used for tracking changes or managing deployments.
    */
   version?: string;

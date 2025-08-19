@@ -58,6 +58,8 @@ interface TableJson {
   deduplicate: boolean;
   /** The name of the ClickHouse engine (e.g., "MergeTree", "ReplacingMergeTree"). */
   engine?: string;
+  /** S3Queue configuration when engine is "S3Queue" */
+  s3QueueConfig?: any; // Will be serialized from OlapConfig.s3QueueConfig
   /** Optional version string for the table configuration. */
   version?: string;
   /** Optional metadata for the table (e.g., description). */
@@ -219,6 +221,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       orderBy: table.config.orderByFields ?? [],
       deduplicate: table.config.deduplicate ?? false,
       engine: table.config.engine,
+      s3QueueConfig: table.config.s3QueueConfig,
       version: table.config.version,
       metadata,
       lifeCycle: table.config.lifeCycle,

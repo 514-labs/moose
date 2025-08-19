@@ -1,5 +1,3 @@
-use crate::cli::display::Message;
-use crate::cli::routines::RoutineFailure;
 use crate::framework::core::infrastructure_map::{InfraChanges, InfrastructureMap};
 use crate::infrastructure::olap::clickhouse::SerializableOlapOperation;
 use crate::infrastructure::olap::ddl_ordering::{order_olap_changes, PlanOrderingError};
@@ -15,8 +13,7 @@ pub struct MigrationPlan {
     pub operations: Vec<SerializableOlapOperation>,
 }
 
-pub const MIGRATION_SCHEMA: &'static str =
-    include_str!("../../utilities/migration_plan_schema.json");
+pub const MIGRATION_SCHEMA: &str = include_str!("../../utilities/migration_plan_schema.json");
 
 impl MigrationPlan {
     /// Creates a new migration plan from an infrastructure plan
@@ -50,7 +47,7 @@ impl MigrationPlan {
     }
 
     pub fn to_yaml(&self) -> anyhow::Result<String> {
-        let plan_json = serde_json::to_value(&self)?;
+        let plan_json = serde_json::to_value(self)?;
         // going through JSON before YAML because tooling does not support `!tag`
         let plan_yaml = serde_yaml::to_string(&plan_json)?;
         Ok(plan_yaml)

@@ -49,7 +49,10 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
-use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
+use crate::utilities::constants::{
+    CLI_VERSION, MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
+    PROJECT_NAME_ALLOW_PATTERN,
+};
 
 use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
@@ -449,7 +452,7 @@ pub async fn top_command_handler(
                             e,
                         )
                     })?;
-                    std::fs::write("./migrations/plan.yaml", plan_yaml).map_err(|e| {
+                    std::fs::write(MIGRATION_FILE, plan_yaml).map_err(|e| {
                         RoutineFailure::new(
                             Message::new(
                                 "Migration".to_string(),
@@ -459,7 +462,7 @@ pub async fn top_command_handler(
                         )
                     })?;
                     std::fs::write(
-                        "./migrations/remote_state.json",
+                        MIGRATION_BEFORE_STATE_FILE,
                         serde_json::to_string_pretty(&result.remote_state).map_err(|e| {
                             RoutineFailure::new(
                                 Message::new(
@@ -480,7 +483,7 @@ pub async fn top_command_handler(
                         )
                     })?;
                     std::fs::write(
-                        "./migrations/local_infra_map.json",
+                        MIGRATION_AFTER_STATE_FILE,
                         serde_json::to_string_pretty(&result.local_infra_map).map_err(|e| {
                             RoutineFailure::new(
                                 Message::new(

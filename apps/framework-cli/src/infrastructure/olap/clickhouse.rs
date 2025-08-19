@@ -213,7 +213,7 @@ pub async fn execute_changes(
 }
 
 /// Executes a single atomic OLAP operation.
-async fn execute_atomic_operation(
+pub async fn execute_atomic_operation(
     db_name: &str,
     operation: &SerializableOlapOperation,
     client: &ConfiguredDBClient,

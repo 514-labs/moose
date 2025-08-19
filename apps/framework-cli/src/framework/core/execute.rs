@@ -74,6 +74,7 @@ pub enum ExecutionError {
 /// * `project` - The project configuration
 /// * `settings` - Application settings
 /// * `plan` - The infrastructure plan to execute
+/// * `skip_olap` - ignore plan.changes.olap_changes, when the migration yaml exists and overrides the plan.
 /// * `api_changes_channel` - Channel for sending API changes
 /// * `metrics` - Metrics collection
 /// * `redis_client` - Redis client for state management and leadership checks
@@ -84,6 +85,7 @@ pub async fn execute_initial_infra_change(
     project: &Project,
     settings: &Settings,
     plan: &InfraPlan,
+    skip_olap: bool,
     api_changes_channel: Sender<(InfrastructureMap, ApiChange)>,
     metrics: Arc<Metrics>,
     redis_client: &Arc<RedisClient>,
@@ -94,7 +96,7 @@ pub async fn execute_initial_infra_change(
         log::info!("Bypassing OLAP and streaming infrastructure execution (bypass_infrastructure_execution is enabled)");
     } else {
         // Only execute OLAP changes if OLAP is enabled and not bypassed
-        if project.features.olap {
+        if project.features.olap && !skip_olap {
             olap::execute_changes(project, &plan.changes.olap_changes).await?;
         }
         // Only execute streaming changes if streaming engine is enabled and not bypassed

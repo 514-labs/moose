@@ -195,11 +195,11 @@ pub struct InfraPlan {
 /// * `project` - Project configuration for building the target infrastructure map
 ///
 /// # Returns
-/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
+/// * `Result<(InfrastructureMap, InfraPlan), PlanningError>` - The current state and infrastructure plan, or an error
 pub async fn plan_changes(
     client: &RedisClient,
     project: &Project,
-) -> Result<InfraPlan, PlanningError> {
+) -> Result<(InfrastructureMap, InfraPlan), PlanningError> {
     let json_path = Path::new(".moose/infrastructure_map.json");
     let target_infra_map = if project.is_production && json_path.exists() {
         InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
@@ -288,7 +288,7 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize plan changes".to_string())
     );
 
-    Ok(plan)
+    Ok((reconciled_map, plan))
 }
 
 #[cfg(test)]

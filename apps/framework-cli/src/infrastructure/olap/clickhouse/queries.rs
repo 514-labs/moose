@@ -167,7 +167,9 @@ pub fn create_table_query(
         } else {
             None
         },
-        "order_by_string": if !table.order_by.is_empty() {
+        "order_by_string": if table.order_by.len() == 1 && table.order_by[0] == "tuple()" {
+            Some(table.order_by[0].to_string())
+        } else if !table.order_by.is_empty() {
             Some(wrap_and_join_column_names(&table.order_by, ","))
         } else {
             None

@@ -63,6 +63,14 @@ pub async fn db_to_dmv2(remote_url: &str, dir_path: &Path) -> Result<(), Routine
 
     let mut client = clickhouse::Client::default().with_url(remote_url);
     let url_username = url.username();
+    let url_username = if !url_username.is_empty() {
+        url_username.to_string()
+    } else {
+        match url.query_pairs().find(|(key, _)| key == "user") {
+            None => String::new(),
+            Some((_, v)) => v.to_string(),
+        }
+    };
     if !url_username.is_empty() {
         client = client.with_user(url_username)
     }

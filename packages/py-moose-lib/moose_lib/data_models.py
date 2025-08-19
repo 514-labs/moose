@@ -150,9 +150,9 @@ def py_type_to_column_type(t: type, mds: list[Any]) -> Tuple[bool, list[Any], Da
         data_type = "String"
     elif t is int:
         # Check for int size annotations
-        int_size = next((md for md in mds if isinstance(md, str) and re.match(r'^int\d+$', md)), None)
+        int_size = next((md for md in mds if isinstance(md, str) and re.match(r'^u?int\d+$', md)), None)
         if int_size:
-            data_type = int_size.capitalize()
+            data_type = int_size.replace("u", "U").replace("i", "I")
         else:
             data_type = "Int"
     elif t is float:

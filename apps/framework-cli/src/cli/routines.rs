@@ -115,6 +115,10 @@ use super::{Message, MessageType};
 use crate::framework::core::plan::plan_changes;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::infrastructure::olap::clickhouse::{check_ready, create_client};
+use crate::utilities::constants::{
+    MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
+};
 
 pub mod auth;
 pub mod build;
@@ -351,7 +355,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (_, plan) = plan_changes(&redis_client, &project).await?;
 
     plan_validator::validate(&project, &plan)?;
 
@@ -363,6 +367,7 @@ pub async fn start_development_mode(
         &project,
         settings,
         &plan,
+        false,
         api_changes_channel,
         metrics.clone(),
         &redis_client,
@@ -455,7 +460,60 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (current_state, plan) = plan_changes(&redis_client, &project).await?;
+
+    let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
+
+    if execute_migration_yaml {
+        info!("Executing pre-planned migrations");
+
+        // Load and validate the approved migration plan
+        let plan_content = std::fs::read_to_string(MIGRATION_FILE)?;
+        let migration_plan: MigrationPlan = serde_yaml::from_str(&plan_content)?;
+
+        info!("Loaded approved migration plan from {:?}", MIGRATION_FILE);
+        info!("Plan created: {}", migration_plan.created_at);
+        info!("Total operations: {}", migration_plan.total_operations());
+
+        let before_state = std::fs::read_to_string(MIGRATION_BEFORE_STATE_FILE)?;
+        let state_when_planned: InfrastructureMap = serde_json::from_str(&before_state)?;
+
+        if current_state.tables == state_when_planned.tables {
+            info!("Before DB state matches.");
+
+            let after_state = std::fs::read_to_string(MIGRATION_AFTER_STATE_FILE)?;
+            let desired_state: InfrastructureMap = serde_json::from_str(&after_state)?;
+
+            if desired_state.tables == plan.target_infra_map.tables {
+                info!("Desired DB state matches.");
+            } else {
+                anyhow::bail!(
+                    "The desired state of the plan is different from the built infrastructure map.\nThe migration is perhaps generated before additional code change."
+                );
+            }
+
+            // Execute the migration plan directly using OLAP operations
+            if project.features.olap && !migration_plan.operations.is_empty() {
+                info!("Executing approved migration plan...");
+
+                let client = create_client(project.clickhouse_config.clone());
+                check_ready(&client).await?;
+                for operation in migration_plan.operations.iter() {
+                    crate::infrastructure::olap::clickhouse::execute_atomic_operation(
+                        &client.config.db_name,
+                        operation,
+                        &client,
+                    )
+                    .await?;
+                }
+                info!("✓ Migration plan executed successfully");
+            }
+        } else if current_state.tables == plan.target_infra_map.tables {
+            info!("Current state already matches. Migration should be applied, ignoring.");
+        } else {
+            anyhow::bail!("The DB state has changed. Plan is no longer valid.");
+        }
+    };
 
     plan_validator::validate(&project, &plan)?;
 
@@ -467,6 +525,7 @@ pub async fn start_production_mode(
         &project,
         settings,
         &plan,
+        execute_migration_yaml,
         api_changes_channel,
         metrics.clone(),
         &redis_client,

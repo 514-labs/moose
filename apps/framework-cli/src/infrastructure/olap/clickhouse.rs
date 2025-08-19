@@ -1183,11 +1183,11 @@ fn extract_order_by_from_create_query(create_query: &str) -> Vec<String> {
         let order_by_clause = &after_order_by[..end_idx];
 
         // Extract the column names
-        let order_by_content = order_by_clause
-            .trim_start_matches("ORDER BY")
-            .trim()
-            .trim_matches('(')
-            .trim_matches(')');
+        let order_by_content = order_by_clause.trim_start_matches("ORDER BY").trim();
+        if order_by_content == "tuple()" {
+            return Vec::new();
+        };
+        let order_by_content = order_by_content.trim_matches('(').trim_matches(')');
 
         debug!("Found ORDER BY content: {}", order_by_content);
 

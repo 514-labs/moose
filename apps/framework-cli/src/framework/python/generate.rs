@@ -2,6 +2,7 @@ use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
 };
 use convert_case::{Case, Casing};
+use itertools::Itertools;
 use regex::Regex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -144,12 +145,6 @@ fn generate_nested_model(
             (type_str, "")
         };
 
-        let type_str = if column.primary_key {
-            format!("Key[{type_str}]")
-        } else {
-            type_str
-        };
-
         let (mapped_name, mapped_default) = if column.name.starts_with('_') {
             (
                 format!("UNDERSCORE_PREFIXED{}", column.name),
@@ -187,6 +182,78 @@ fn generate_named_tuple_model(
     model
 }
 
+fn collect_types<'a>(
+    column_type: &'a ColumnType,
+    name: &str,
+    enums: &mut HashMap<&'a DataEnum, String>,
+    extra_class_names: &mut HashMap<String, usize>,
+    nested_models: &mut HashMap<&'a Nested, String>,
+    named_tuples: &mut HashMap<&'a Vec<(String, ColumnType)>, String>,
+) {
+    match column_type {
+        ColumnType::Enum(data_enum) => {
+            if !enums.contains_key(data_enum) {
+                let name = name.to_case(Case::Pascal);
+                let name = match extra_class_names.entry(name.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        *entry.get_mut() = entry.get() + 1;
+                        format!("{}{}", name, entry.get())
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(0);
+                        name
+                    }
+                };
+                enums.insert(data_enum, name);
+            }
+        }
+        ColumnType::Nested(nested) => {
+            if !nested_models.contains_key(nested) {
+                let name = name.to_case(Case::Pascal);
+                let name = match extra_class_names.entry(name.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        *entry.get_mut() = entry.get() + 1;
+                        format!("{}{}", name, entry.get())
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(0);
+                        name
+                    }
+                };
+                nested_models.insert(nested, name);
+            }
+        }
+        ColumnType::NamedTuple(fields) => {
+            if !named_tuples.contains_key(fields) {
+                let name = format!("{}Tuple", name.to_case(Case::Pascal));
+                let name = match extra_class_names.entry(name.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        *entry.get_mut() = entry.get() + 1;
+                        format!("{}{}", name, entry.get())
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(0);
+                        name
+                    }
+                };
+                named_tuples.insert(fields, name);
+            }
+        }
+        ColumnType::Array {
+            element_type,
+            element_nullable: _,
+        } => collect_types(
+            element_type,
+            name,
+            enums,
+            extra_class_names,
+            nested_models,
+            named_tuples,
+        ),
+        _ => {}
+    }
+}
+
 pub fn tables_to_python(tables: &[Table]) -> String {
     let mut output = String::new();
 
@@ -199,7 +266,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     writeln!(output, "from enum import IntEnum, Enum").unwrap();
     writeln!(
         output,
-        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin"
+        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, OlapConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin"
     )
     .unwrap();
     writeln!(output).unwrap();
@@ -213,57 +280,14 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     // First pass: collect all nested types, enums, and named tuples
     for table in tables {
         for column in &table.columns {
-            match &column.data_type {
-                ColumnType::Enum(data_enum) => {
-                    if !enums.contains_key(data_enum) {
-                        let name = column.name.to_case(Case::Pascal);
-                        let name = match extra_class_names.entry(name.clone()) {
-                            Entry::Occupied(mut entry) => {
-                                *entry.get_mut() = entry.get() + 1;
-                                format!("{}{}", name, entry.get())
-                            }
-                            Entry::Vacant(entry) => {
-                                entry.insert(0);
-                                name
-                            }
-                        };
-                        enums.insert(data_enum, name);
-                    }
-                }
-                ColumnType::Nested(nested) => {
-                    if !nested_models.contains_key(nested) {
-                        let name = column.name.to_case(Case::Pascal);
-                        let name = match extra_class_names.entry(name.clone()) {
-                            Entry::Occupied(mut entry) => {
-                                *entry.get_mut() = entry.get() + 1;
-                                format!("{}{}", name, entry.get())
-                            }
-                            Entry::Vacant(entry) => {
-                                entry.insert(0);
-                                name
-                            }
-                        };
-                        nested_models.insert(nested, name);
-                    }
-                }
-                ColumnType::NamedTuple(fields) => {
-                    if !named_tuples.contains_key(fields) {
-                        let name = format!("{}Tuple", column.name.to_case(Case::Pascal));
-                        let name = match extra_class_names.entry(name.clone()) {
-                            Entry::Occupied(mut entry) => {
-                                *entry.get_mut() = entry.get() + 1;
-                                format!("{}{}", name, entry.get())
-                            }
-                            Entry::Vacant(entry) => {
-                                entry.insert(0);
-                                name
-                            }
-                        };
-                        named_tuples.insert(fields, name);
-                    }
-                }
-                _ => {}
-            }
+            collect_types(
+                &column.data_type,
+                &column.name,
+                &mut enums,
+                &mut extra_class_names,
+                &mut nested_models,
+                &mut named_tuples,
+            );
         }
     }
 
@@ -298,6 +322,19 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     for table in tables {
         writeln!(output, "class {}(BaseModel):", table.name).unwrap();
 
+        let primary_key = table
+            .columns
+            .iter()
+            .filter_map(|column| {
+                if column.primary_key {
+                    Some(column.name.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let can_use_key_wrapping = table.order_by.starts_with(primary_key.as_slice());
+
         for column in &table.columns {
             let type_str =
                 map_column_type_to_python(&column.data_type, &enums, &nested_models, &named_tuples);
@@ -308,7 +345,7 @@ pub fn tables_to_python(tables: &[Table]) -> String {
                 (type_str, "")
             };
 
-            let type_str = if column.primary_key {
+            let type_str = if can_use_key_wrapping && column.primary_key {
                 format!("Key[{type_str}]")
             } else {
                 type_str
@@ -334,6 +371,16 @@ pub fn tables_to_python(tables: &[Table]) -> String {
 
     // Generate pipeline configurations
     for table in tables {
+        let order_by_fields = if table.order_by.is_empty() {
+            "\"tuple()\"".to_string()
+        } else {
+            table
+                .order_by
+                .iter()
+                .map(|name| format!("{:?}", name))
+                .join(", ")
+        };
+
         writeln!(
             output,
             "{}_model = IngestPipeline[{}](\"{}\", IngestPipelineConfig(",
@@ -344,7 +391,9 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         .unwrap();
         writeln!(output, "    ingest=True,").unwrap();
         writeln!(output, "    stream=True,").unwrap();
-        writeln!(output, "    table=True").unwrap();
+        writeln!(output, "    table=OlapConfig(").unwrap();
+        writeln!(output, "        order_by_fields=[{order_by_fields}]").unwrap();
+        writeln!(output, "    )").unwrap();
         writeln!(output, "))").unwrap();
         writeln!(output).unwrap();
     }
@@ -416,7 +465,7 @@ import datetime
 import ipaddress
 from uuid import UUID
 from enum import IntEnum, Enum
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig, OlapConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
 
 class Foo(BaseModel):
     primary_key: Key[str]
@@ -426,7 +475,9 @@ class Foo(BaseModel):
 foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["primary_key"]
+    )
 ))"#
         ));
     }
@@ -498,7 +549,9 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
 nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["id"]
+    )
 ))"#
         ));
     }
@@ -606,7 +659,9 @@ class User(BaseModel):
 user_model = IngestPipeline[User]("User", IngestPipelineConfig(
     ingest=True,
     stream=True,
-    table=True
+    table=OlapConfig(
+        order_by_fields=["id"]
+    )
 ))"#
         ));
     }

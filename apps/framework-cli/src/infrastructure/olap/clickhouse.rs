@@ -64,6 +64,7 @@ pub mod inserter;
 pub mod mapper;
 pub mod model;
 pub mod queries;
+pub mod queue_translator;
 pub mod type_parser;
 
 pub use config::ClickHouseConfig;

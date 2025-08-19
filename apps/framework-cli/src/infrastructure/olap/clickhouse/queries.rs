@@ -9,6 +9,11 @@ use crate::infrastructure::olap::clickhouse::model::{
 
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
+use crate::infrastructure::olap::queue_engine::QueueEngine;
+use super::queue_translator::ClickHouseQueueTranslator;
+
+#[cfg(test)]
+mod queue_engine_test;
 
 // Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
@@ -105,6 +110,7 @@ CREATE TABLE IF NOT EXISTS `{{db_name}}`.`{{table_name}}`
 ENGINE = {{engine}}
 {{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}){{/if}}
 {{#if order_by_string}}ORDER BY ({{order_by_string}}){{/if}}
+{{#if engine_settings}}{{engine_settings}}{{/if}}
 "#;
 
 #[derive(Debug, Clone)]
@@ -113,6 +119,7 @@ pub enum ClickhouseEngine {
     ReplacingMergeTree,
     AggregatingMergeTree,
     SummingMergeTree,
+    Queue(QueueEngine),
 }
 
 impl<'a> TryFrom<&'a str> for ClickhouseEngine {
@@ -137,18 +144,22 @@ pub fn create_table_query(
     let mut reg = Handlebars::new();
     reg.register_escape_fn(no_escape);
 
-    let engine = match table.engine {
-        ClickhouseEngine::MergeTree => "MergeTree",
+    let (engine, engine_settings) = match &table.engine {
+        ClickhouseEngine::MergeTree => ("MergeTree".to_string(), None),
         ClickhouseEngine::ReplacingMergeTree => {
             if table.order_by.is_empty() {
                 return Err(ClickhouseError::InvalidParameters {
                     message: "ReplacingMergeTree requires an order by clause".to_string(),
                 });
             }
-            "ReplacingMergeTree"
+            ("ReplacingMergeTree".to_string(), None)
         }
-        ClickhouseEngine::AggregatingMergeTree => "AggregatingMergeTree",
-        ClickhouseEngine::SummingMergeTree => "SummingMergeTree",
+        ClickhouseEngine::AggregatingMergeTree => ("AggregatingMergeTree".to_string(), None),
+        ClickhouseEngine::SummingMergeTree => ("SummingMergeTree".to_string(), None),
+        ClickhouseEngine::Queue(queue_engine) => {
+            let translator = ClickHouseQueueTranslator;
+            translator.translate_to_sql(queue_engine)?
+        }
     };
 
     let primary_key = table
@@ -172,7 +183,8 @@ pub fn create_table_query(
         } else {
             None
         },
-        "engine": engine
+        "engine": engine,
+        "engine_settings": engine_settings
     });
 
     Ok(reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?)

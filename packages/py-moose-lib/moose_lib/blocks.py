@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
+from .queue_engine import QueueEngine
 
 
 class ClickHouseEngines(Enum):
@@ -11,13 +12,13 @@ class ClickHouseEngines(Enum):
     CollapsingMergeTree = "CollapsingMergeTree"
     VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree"
     GraphiteMergeTree = "GraphiteMergeTree"
-    S3Queue = "S3Queue"
+    Queue = "Queue"  # Use generic Queue instead of specific S3Queue
 
 @dataclass
 class TableCreateOptions:
     name: str
     columns: Dict[str, str]
-    engine: Optional[ClickHouseEngines] = ClickHouseEngines.MergeTree
+    engine: Optional[Union[ClickHouseEngines, QueueEngine]] = ClickHouseEngines.MergeTree  # Support both traditional engines and queue engines
     order_by: Optional[str] = None
 
 @dataclass

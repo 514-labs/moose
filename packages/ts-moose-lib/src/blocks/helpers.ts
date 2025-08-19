@@ -23,7 +23,7 @@ interface PopulateTableOptions {
 interface TableCreateOptions {
   name: string;
   columns: Record<string, string>;
-  engine?: ClickHouseEngines;
+  engine?: ClickHouseEngines | QueueEngine; // Support both traditional engines and queue engines
   orderBy?: string;
 }
 
@@ -31,6 +31,8 @@ export interface Blocks {
   setup: string[];
   teardown: string[];
 }
+
+import { QueueEngine } from './queue-engine';
 
 export enum ClickHouseEngines {
   MergeTree = "MergeTree",
@@ -40,8 +42,10 @@ export enum ClickHouseEngines {
   CollapsingMergeTree = "CollapsingMergeTree",
   VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree",
   GraphiteMergeTree = "GraphiteMergeTree",
-  S3Queue = "S3Queue",
+  Queue = "Queue", // Use generic Queue instead of specific S3Queue
 }
+
+
 
 /**
  * Drops an aggregation's view & underlying table.

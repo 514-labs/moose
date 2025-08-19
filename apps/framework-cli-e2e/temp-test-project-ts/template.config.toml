@@ -1,0 +1,13 @@
+language = "typescript" # Must be typescript or python
+description = "Default typescript project."
+post_install_print = """
+📂 Go to your project directory:
+    $ cd {project_dir}
+
+📦 Install Dependencies:
+    $ npm install
+
+🛠️ Start dev server:
+    $ moose dev
+"""
+default_sloan_telemetry="standard"

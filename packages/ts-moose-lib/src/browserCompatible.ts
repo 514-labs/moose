@@ -33,6 +33,12 @@ export {
   ClickHouseInt,
   LowCardinality,
   ClickHouseNamedTuple,
+  Point,
+  Ring,
+  Polygon,
+  MultiPolygon,
+  LineString,
+  MultiLineString,
 } from "./dataModels/types";
 
 export type { ConsumptionUtil } from "./consumption-apis/helpers";

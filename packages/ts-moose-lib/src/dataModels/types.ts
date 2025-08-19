@@ -59,3 +59,26 @@ export type ClickHouseInt<
 export type ClickHouseNamedTuple = {
   _clickhouse_mapped_type?: "namedTuple";
 };
+
+/**
+ * Geo type definitions for ClickHouse spatial data types.
+ * These types represent geospatial data in Well-Known Text (WKT) format.
+ */
+
+/** Point represents a single coordinate pair (x, y) */
+export type Point = string & { readonly __brand: 'Point' };
+
+/** Ring represents a closed line string forming a simple polygon boundary */
+export type Ring = string & { readonly __brand: 'Ring' };
+
+/** Polygon represents a closed area defined by one or more rings */
+export type Polygon = string & { readonly __brand: 'Polygon' };
+
+/** MultiPolygon represents multiple polygons as a single geometry */
+export type MultiPolygon = string & { readonly __brand: 'MultiPolygon' };
+
+/** LineString represents a sequence of connected points forming a line */
+export type LineString = string & { readonly __brand: 'LineString' };
+
+/** MultiLineString represents multiple line strings as a single geometry */
+export type MultiLineString = string & { readonly __brand: 'MultiLineString' };

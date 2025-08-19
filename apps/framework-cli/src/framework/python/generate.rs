@@ -207,19 +207,9 @@ pub fn tables_to_python(tables: &[Table]) -> String {
     writeln!(output, "from enum import IntEnum, Enum").unwrap();
     writeln!(
         output,
-        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin"
+        "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin, Point, Ring, Polygon, MultiPolygon, LineString, MultiLineString"
     )
     .unwrap();
-    writeln!(output).unwrap();
-
-    // Add geo type definitions
-    writeln!(output, "# Geo type definitions").unwrap();
-    writeln!(output, "Point = Annotated[str, 'Point']").unwrap();
-    writeln!(output, "Ring = Annotated[str, 'Ring']").unwrap();
-    writeln!(output, "Polygon = Annotated[str, 'Polygon']").unwrap();
-    writeln!(output, "MultiPolygon = Annotated[str, 'MultiPolygon']").unwrap();
-    writeln!(output, "LineString = Annotated[str, 'LineString']").unwrap();
-    writeln!(output, "MultiLineString = Annotated[str, 'MultiLineString']").unwrap();
     writeln!(output).unwrap();
 
     // Collect all enums, nested types, and named tuples
@@ -434,15 +424,7 @@ import datetime
 import ipaddress
 from uuid import UUID
 from enum import IntEnum, Enum
-from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
-
-# Geo type definitions
-Point = Annotated[str, 'Point']
-Ring = Annotated[str, 'Ring']
-Polygon = Annotated[str, 'Polygon']
-MultiPolygon = Annotated[str, 'MultiPolygon']
-LineString = Annotated[str, 'LineString']
-MultiLineString = Annotated[str, 'MultiLineString']
+from moose_lib import Key, IngestPipeline, IngestPipelineConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin, Point, Ring, Polygon, MultiPolygon, LineString, MultiLineString
 
 class Foo(BaseModel):
     primary_key: Key[str]
@@ -713,6 +695,112 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
         assert!(result.contains("    lat: float"));
         assert!(result.contains("    lng: float"));
         assert!(result.contains("    name: str"));
-        assert!(result.contains("    value: Annotated[int, \"int32\"]"));
+        assert!(result.contains("    value: Annotated[int, \"int32\"]"        ));
+    }
+
+    #[test]
+    fn test_geo_types() {
+        use crate::framework::core::infrastructure::table::GeoType;
+        use crate::framework::core::partial_infrastructure_map::LifeCycle;
+        use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+        use crate::framework::versions::Version;
+
+        let tables = vec![Table {
+            name: "LocationData".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: true,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "location".to_string(),
+                    data_type: ColumnType::Geo(GeoType::Point),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "area".to_string(),
+                    data_type: ColumnType::Geo(GeoType::Polygon),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "route".to_string(),
+                    data_type: ColumnType::Geo(GeoType::LineString),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "optional_point".to_string(),
+                    data_type: ColumnType::Nullable(Box::new(ColumnType::Geo(GeoType::Point))),
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "point_array".to_string(),
+                    data_type: ColumnType::Array {
+                        element_type: Box::new(ColumnType::Geo(GeoType::Point)),
+                        element_nullable: false,
+                    },
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            deduplicate: false,
+            engine: Some("MergeTree".to_string()),
+            version: Some(Version::from_string("1.0.0".to_string())),
+            source_primitive: PrimitiveSignature {
+                name: "LocationData".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
+        }];
+
+        let result = tables_to_python(&tables);
+        
+        // Verify geo types are imported
+        assert!(result.contains("Point, Ring, Polygon, MultiPolygon, LineString, MultiLineString"));
+        
+        // Verify geo types are used correctly in class
+        assert!(result.contains("location: Point"));
+        assert!(result.contains("area: Polygon"));
+        assert!(result.contains("route: LineString"));
+        assert!(result.contains("optional_point: Optional[Point]"));
+        assert!(result.contains("point_array: list[Point]"));
+        
+        // Verify the class is properly structured
+        assert!(result.contains("class LocationData(BaseModel)"));
+        assert!(result.contains("location_data_model = IngestPipeline[LocationData]"));
+        
+        println!("Generated Python with geo types:");
+        println!("{}", result);
     }
 }

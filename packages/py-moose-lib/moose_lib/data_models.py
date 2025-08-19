@@ -15,6 +15,27 @@ import ipaddress
 type Key[T: (str, int)] = T
 type JWT[T] = T
 
+# Geo type definitions for ClickHouse spatial data types
+# These types represent geospatial data in Well-Known Text (WKT) format
+
+# Point represents a single coordinate pair (x, y)
+Point = Annotated[str, 'Point']
+
+# Ring represents a closed line string forming a simple polygon boundary  
+Ring = Annotated[str, 'Ring']
+
+# Polygon represents a closed area defined by one or more rings
+Polygon = Annotated[str, 'Polygon']
+
+# MultiPolygon represents multiple polygons as a single geometry
+MultiPolygon = Annotated[str, 'MultiPolygon']
+
+# LineString represents a sequence of connected points forming a line
+LineString = Annotated[str, 'LineString']
+
+# MultiLineString represents multiple line strings as a single geometry
+MultiLineString = Annotated[str, 'MultiLineString']
+
 
 @dataclasses.dataclass  # a BaseModel in the annotations will confuse pydantic
 class ClickhousePrecision:

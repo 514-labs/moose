@@ -139,20 +139,10 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     // Add imports
     writeln!(
         output,
-        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple }} from \"@514labs/moose-lib\";"
+        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple, Point, Ring, Polygon, MultiPolygon, LineString, MultiLineString }} from \"@514labs/moose-lib\";"
     )
     .unwrap();
     writeln!(output, "import typia from \"typia\";").unwrap();
-    writeln!(output).unwrap();
-
-    // Add geo type definitions
-    writeln!(output, "// Geo type definitions").unwrap();
-    writeln!(output, "export type Point = string & {{ readonly __brand: 'Point' }};").unwrap();
-    writeln!(output, "export type Ring = string & {{ readonly __brand: 'Ring' }};").unwrap();
-    writeln!(output, "export type Polygon = string & {{ readonly __brand: 'Polygon' }};").unwrap();
-    writeln!(output, "export type MultiPolygon = string & {{ readonly __brand: 'MultiPolygon' }};").unwrap();
-    writeln!(output, "export type LineString = string & {{ readonly __brand: 'LineString' }};").unwrap();
-    writeln!(output, "export type MultiLineString = string & {{ readonly __brand: 'MultiLineString' }};").unwrap();
     writeln!(output).unwrap();
 
     // Collect all enums and nested types
@@ -442,5 +432,111 @@ export const TaskPipeline = new IngestPipeline<Task>("Task", {
     ingest: true,
 });"#
         ));
+    }
+
+    #[test]
+    fn test_geo_types() {
+        use crate::framework::core::infrastructure::table::GeoType;
+        use crate::framework::core::partial_infrastructure_map::LifeCycle;
+        use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+        use crate::framework::versions::Version;
+
+        let tables = vec![Table {
+            name: "LocationData".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: true,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "location".to_string(),
+                    data_type: ColumnType::Geo(GeoType::Point),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "area".to_string(),
+                    data_type: ColumnType::Geo(GeoType::Polygon),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "route".to_string(),
+                    data_type: ColumnType::Geo(GeoType::LineString),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "optional_point".to_string(),
+                    data_type: ColumnType::Nullable(Box::new(ColumnType::Geo(GeoType::Point))),
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+                Column {
+                    name: "point_array".to_string(),
+                    data_type: ColumnType::Array {
+                        element_type: Box::new(ColumnType::Geo(GeoType::Point)),
+                        element_nullable: false,
+                    },
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                    annotations: vec![],
+                    comment: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            deduplicate: false,
+            engine: Some("MergeTree".to_string()),
+            version: Some(Version::from_string("1.0.0".to_string())),
+            source_primitive: PrimitiveSignature {
+                name: "LocationData".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+            metadata: None,
+            life_cycle: LifeCycle::FullyManaged,
+        }];
+
+        let result = tables_to_typescript(&tables);
+        
+        // Verify geo types are imported
+        assert!(result.contains("Point, Ring, Polygon, MultiPolygon, LineString, MultiLineString"));
+        
+        // Verify geo types are used correctly in interface
+        assert!(result.contains("location: Point"));
+        assert!(result.contains("area: Polygon"));
+        assert!(result.contains("route: LineString"));
+        assert!(result.contains("optional_point: Point | undefined"));
+        assert!(result.contains("point_array: Point[]"));
+        
+        // Verify the interface is properly structured
+        assert!(result.contains("export interface LocationData"));
+        assert!(result.contains("export const LocationDataPipeline"));
+        
+        println!("Generated TypeScript with geo types:");
+        println!("{}", result);
     }
 }

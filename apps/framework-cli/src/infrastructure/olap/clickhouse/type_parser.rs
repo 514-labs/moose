@@ -2341,6 +2341,90 @@ mod tests {
     }
 
     #[test]
+    fn test_geo_types_complete_workflow() {
+        // Test complete workflow: parsing -> conversion -> serialization -> deserialization
+        let geo_test_cases = vec![
+            ("Point", GeoType::Point),
+            ("Ring", GeoType::Ring),
+            ("Polygon", GeoType::Polygon),
+            ("MultiPolygon", GeoType::MultiPolygon),
+            ("LineString", GeoType::LineString),
+            ("MultiLineString", GeoType::MultiLineString),
+        ];
+
+        for (type_str, expected_geo_type) in geo_test_cases {
+            // 1. Parse ClickHouse type string
+            let parsed = parse_clickhouse_type(type_str).unwrap();
+            assert_eq!(parsed, ClickHouseTypeNode::Geo(type_str.to_string()));
+
+            // 2. Convert to framework type
+            let (column_type, nullable) = convert_ast_to_column_type(&parsed).unwrap();
+            assert!(!nullable, "Geo types should not be nullable by default");
+            assert_eq!(column_type, ColumnType::Geo(expected_geo_type.clone()));
+
+            // 3. Test Display implementation
+            let display_str = format!("{}", column_type);
+            assert_eq!(display_str, type_str);
+
+            // 4. Test serialization
+            let serialized = serde_json::to_string(&column_type).unwrap();
+            assert!(serialized.contains(type_str));
+
+            // 5. Test the complete conversion function
+            let (converted_type, converted_nullable) = convert_clickhouse_type_to_column_type(type_str).unwrap();
+            assert_eq!(converted_type, column_type);
+            assert_eq!(converted_nullable, nullable);
+        }
+    }
+
+    #[test]
+    fn test_nullable_geo_types() {
+        let nullable_geo_types = vec![
+            "Nullable(Point)",
+            "Nullable(Polygon)",
+            "Nullable(LineString)",
+        ];
+
+        for type_str in nullable_geo_types {
+            let (column_type, nullable) = convert_clickhouse_type_to_column_type(type_str).unwrap();
+            assert!(nullable, "Nullable geo types should be nullable");
+            
+            // The inner type should be a geo type
+            match column_type {
+                ColumnType::Geo(_) => {}, // Expected
+                _ => panic!("Expected geo type for {}", type_str),
+            }
+        }
+    }
+
+    #[test]
+    fn test_array_of_geo_types() {
+        let array_geo_types = vec![
+            ("Array(Point)", GeoType::Point),
+            ("Array(Polygon)", GeoType::Polygon),
+            ("Array(LineString)", GeoType::LineString),
+        ];
+
+        for (type_str, expected_geo_type) in array_geo_types {
+            let (column_type, nullable) = convert_clickhouse_type_to_column_type(type_str).unwrap();
+            assert!(!nullable, "Array should not be nullable by default");
+            
+            match column_type {
+                ColumnType::Array { element_type, element_nullable } => {
+                    assert!(!element_nullable, "Elements should not be nullable by default");
+                    match element_type.as_ref() {
+                        ColumnType::Geo(geo_type) => {
+                            assert_eq!(*geo_type, expected_geo_type);
+                        },
+                        _ => panic!("Expected geo type in array for {}", type_str),
+                    }
+                },
+                _ => panic!("Expected Array type for {}", type_str),
+            }
+        }
+    }
+
+    #[test]
     fn test_conversion_not_supported_special_types() {
         // These special types are parsed but not supported in conversion
         let special_types = vec![

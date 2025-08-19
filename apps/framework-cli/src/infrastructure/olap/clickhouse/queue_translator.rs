@@ -1,18 +1,21 @@
-use crate::infrastructure::olap::queue_engine::{
-    S3QueueEngine
-};
 use super::errors::ClickhouseError;
+use crate::infrastructure::olap::queue_engine::S3QueueEngine;
 
 /// ClickHouse-specific queue engine translator
 pub struct ClickHouseQueueTranslator;
 
 impl ClickHouseQueueTranslator {
     /// Translate S3QueueEngine to ClickHouse SQL syntax
-    pub fn translate_s3queue_to_sql(&self, engine: &S3QueueEngine) -> Result<(String, Option<String>), ClickhouseError> {
+    pub fn translate_s3queue_to_sql(
+        &self,
+        engine: &S3QueueEngine,
+    ) -> Result<(String, Option<String>), ClickhouseError> {
         // Validate the configuration first
-        engine.validate().map_err(|e| ClickhouseError::InvalidParameters {
-            message: format!("S3Queue engine validation failed: {}", e),
-        })?;
+        engine
+            .validate()
+            .map_err(|e| ClickhouseError::InvalidParameters {
+                message: format!("S3Queue engine validation failed: {}", e),
+            })?;
 
         self.translate_s3_queue_internal(engine)
     }
@@ -41,10 +44,16 @@ impl ClickHouseQueueTranslator {
 
         // Core processing settings
         settings.push(format!("mode = '{}'", engine.processing.mode.to_string()));
-        settings.push(format!("after_processing = '{}'", engine.processing.after_processing.to_string()));
+        settings.push(format!(
+            "after_processing = '{}'",
+            engine.processing.after_processing.to_string()
+        ));
 
         if engine.processing.retries > 0 {
-            settings.push(format!("s3queue_loading_retries = {}", engine.processing.retries));
+            settings.push(format!(
+                "s3queue_loading_retries = {}",
+                engine.processing.retries
+            ));
         }
 
         if let Some(threads) = engine.processing.threads {
@@ -73,11 +82,17 @@ impl ClickHouseQueueTranslator {
         }
 
         if let Some(min_interval) = engine.coordination.cleanup_interval_min_ms {
-            settings.push(format!("s3queue_cleanup_interval_min_ms = {}", min_interval));
+            settings.push(format!(
+                "s3queue_cleanup_interval_min_ms = {}",
+                min_interval
+            ));
         }
 
         if let Some(max_interval) = engine.coordination.cleanup_interval_max_ms {
-            settings.push(format!("s3queue_cleanup_interval_max_ms = {}", max_interval));
+            settings.push(format!(
+                "s3queue_cleanup_interval_max_ms = {}",
+                max_interval
+            ));
         }
 
         // Monitoring settings
@@ -100,7 +115,9 @@ impl ClickHouseQueueTranslator {
         // Add any extra S3-specific settings
         for (key, value) in extra_settings {
             // Ensure S3-specific settings have the proper prefix if needed
-            let setting_key = if key.starts_with("s3queue_") || matches!(key.as_str(), "mode" | "after_processing" | "keeper_path") {
+            let setting_key = if key.starts_with("s3queue_")
+                || matches!(key.as_str(), "mode" | "after_processing" | "keeper_path")
+            {
                 key.clone()
             } else {
                 format!("s3queue_{}", key)
@@ -116,10 +133,6 @@ impl ClickHouseQueueTranslator {
 
         Ok((engine_def, settings_string))
     }
-
-
-
-
 }
 
 #[cfg(test)]
@@ -137,7 +150,10 @@ mod tests {
         let translator = ClickHouseQueueTranslator;
         let result = translator.translate_s3queue_to_sql(&queue_engine).unwrap();
 
-        assert_eq!(result.0, "S3Queue('s3://my-bucket/data/*.json', 'JSONEachRow')");
+        assert_eq!(
+            result.0,
+            "S3Queue('s3://my-bucket/data/*.json', 'JSONEachRow')"
+        );
         assert!(result.1.is_some());
         let settings = result.1.unwrap();
         assert!(settings.contains("mode = 'unordered'"));

@@ -9,11 +9,8 @@ use crate::infrastructure::olap::clickhouse::model::{
 
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
-use crate::infrastructure::olap::queue_engine::S3QueueEngine;
 use super::queue_translator::ClickHouseQueueTranslator;
-
-#[cfg(test)]
-mod queue_engine_test;
+use crate::infrastructure::olap::queue_engine::S3QueueEngine;
 
 // Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
@@ -625,5 +622,50 @@ ENGINE = MergeTree
 PRIMARY KEY (`id`)
 ORDER BY (`id`) "#;
         assert_eq!(query.trim(), expected.trim());
+    }
+
+    #[test]
+    fn test_s3queue_basic() {
+        use crate::infrastructure::olap::queue_engine::S3QueueEngine;
+
+        let queue_engine = S3QueueEngine::new(
+            "s3://my-bucket/data/*.json".to_string(),
+            "JSONEachRow".to_string(),
+        );
+
+        let table = ClickHouseTable {
+            name: "s3_queue_table".to_string(),
+            version: Some(Version::from_string("1".to_string())),
+            columns: vec![
+                ClickHouseColumn {
+                    name: "id".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+                ClickHouseColumn {
+                    name: "data".to_string(),
+                    column_type: ClickHouseColumnType::String,
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                    comment: None,
+                },
+            ],
+            engine: ClickhouseEngine::S3Queue(queue_engine),
+            order_by: vec![],
+        };
+
+        let query = create_table_query("test_db", table).unwrap();
+
+        // Verify the query contains expected elements
+        assert!(query.contains("ENGINE = S3Queue('s3://my-bucket/data/*.json', 'JSONEachRow')"));
+        assert!(query.contains("SETTINGS"));
+        assert!(query.contains("mode = 'unordered'"));
+        assert!(query.contains("after_processing = 'keep'"));
     }
 }

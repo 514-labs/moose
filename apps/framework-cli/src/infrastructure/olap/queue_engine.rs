@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// S3Queue engine configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ pub struct ProcessingConfig {
 }
 
 /// File processing order mode
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ProcessingMode {
     /// Files processed in lexicographic order
     Ordered,
@@ -56,7 +56,7 @@ pub enum ProcessingMode {
 }
 
 /// Action to take after successful file processing
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum AfterProcessing {
     /// Keep the file in the source
     Keep,
@@ -207,5 +207,38 @@ impl S3QueueEngine {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_s3queue_engine_creation() {
+        let engine = S3QueueEngine::new(
+            "s3://test-bucket/data/*.json".to_string(),
+            "JSONEachRow".to_string(),
+        );
+
+        assert_eq!(engine.config.path, "s3://test-bucket/data/*.json");
+        assert_eq!(engine.config.format, "JSONEachRow");
+        assert_eq!(engine.processing.mode, ProcessingMode::Unordered);
+        assert_eq!(engine.processing.after_processing, AfterProcessing::Keep);
+    }
+
+    #[test]
+    fn test_s3queue_validation() {
+        // Valid S3Queue
+        let valid_engine = S3QueueEngine::new(
+            "s3://test-bucket/data/*.json".to_string(),
+            "JSONEachRow".to_string(),
+        );
+        assert!(valid_engine.validate().is_ok());
+
+        // Invalid S3 path
+        let invalid_engine =
+            S3QueueEngine::new("invalid-path".to_string(), "JSONEachRow".to_string());
+        assert!(invalid_engine.validate().is_err());
     }
 }

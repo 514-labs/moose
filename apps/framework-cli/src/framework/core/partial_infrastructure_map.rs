@@ -192,8 +192,6 @@ pub struct TransformationTarget {
     pub kind: WriteToKind,
     pub name: String,
     pub version: Option<String>,
-    /// Version of the target topic, if any
-    pub topic_version: Option<String>,
     pub metadata: Option<Metadata>,
 }
 
@@ -709,8 +707,16 @@ impl PartialInfrastructureMap {
             for transformation_target in &source_partial_topic.transformation_targets {
                 debug!("transformation_target: {:?}", transformation_target);
 
-                // Resolve target topic by base name + optional version
-                let target_key = transformation_target.topic_version.as_ref().map_or(
+                let target_partial_topic = self
+                    .topics
+                    .values()
+                    .find(|topic| topic.name == transformation_target.name)
+                    .expect(&format!(
+                        "Target topic '{}' definition not found",
+                        transformation_target.name
+                    ));
+
+                let target_key = target_partial_topic.version.as_ref().map_or(
                     transformation_target.name.clone(),
                     |v| {
                         format!(

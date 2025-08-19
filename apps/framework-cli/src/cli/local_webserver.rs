@@ -1069,18 +1069,43 @@ async fn router(
             if project.features.data_model_v2 {
                 let route_table_read = route_table.read().await;
 
-                let incoming_route_str = route.to_str().unwrap_or("");
+                let Some(incoming_route_str) = route.to_str() else {
+                    return Ok(Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Full::new(Bytes::from(
+                            "Route not found. Please run `moose ls` to view your routes",
+                        )))
+                        .unwrap());
+                };
                 let incoming_lower = incoming_route_str.to_ascii_lowercase();
 
-                // 1) Try to find an exact (case-insensitive) unversioned match
-                if let Some((matched_path, _)) = route_table_read.iter().find(|(p, _)| {
-                    p.to_str()
-                        .map(|s| s.eq_ignore_ascii_case(incoming_route_str))
-                        .unwrap_or(false)
-                }) {
+                let mut versioned_count = 0;
+                let mut final_path: Option<PathBuf> = None;
+
+                for (path, metadata) in route_table_read.iter() {
+                    if let Some(path_str) = path.to_str() {
+                        if path_str.eq_ignore_ascii_case(incoming_route_str) {
+                            final_path = Some(path.clone());
+                            break;
+                        }
+                        if metadata.version.is_some()
+                            && path_str.to_ascii_lowercase().starts_with(&incoming_lower)
+                        {
+                            versioned_count += 1;
+                            final_path = Some(path.clone());
+
+                            if versioned_count >= 2 {
+                                final_path = None;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if let Some(final_path) = final_path {
                     ingest_route(
                         req,
-                        matched_path.clone(),
+                        final_path,
                         configured_producer,
                         route_table,
                         is_prod,
@@ -1089,47 +1114,16 @@ async fn router(
                     )
                     .await
                 } else {
-                    // 2) No direct match. Look for exactly one versioned match that shares the same base path
-                    //    Case-insensitive prefix match: {base}/<version>
-                    let base_lower = format!("{}/", incoming_lower);
-
-                    let matches: Vec<PathBuf> = route_table_read
-                        .iter()
-                        .filter(|(path, meta)| {
-                            meta.version.is_some()
-                                && path
-                                    .to_str()
-                                    .map(|s| s.to_ascii_lowercase().starts_with(&base_lower))
-                                    .unwrap_or(false)
-                        })
-                        .map(|(path, _)| path.clone())
-                        .take(2)
-                        .collect();
-
-                    if matches.len() == 1 {
-                        ingest_route(
-                            req,
-                            matches[0].clone(),
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                            project.http_server_config.max_request_body_size,
-                        )
-                        .await
-                    } else {
-                        // Either none or multiple versioned routes exist; let ingest_route return 404 with guidance
-                        ingest_route(
-                            req,
-                            route,
-                            configured_producer,
-                            route_table,
-                            is_prod,
-                            jwt_config,
-                            project.http_server_config.max_request_body_size,
-                        )
-                        .await
-                    }
+                    ingest_route(
+                        req,
+                        route,
+                        configured_producer,
+                        route_table,
+                        is_prod,
+                        jwt_config,
+                        project.http_server_config.max_request_body_size,
+                    )
+                    .await
                 }
             } else {
                 // For v1, append current version as before

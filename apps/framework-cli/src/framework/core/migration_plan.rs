@@ -19,6 +19,9 @@ pub struct MigrationPlanWithBeforeAfter {
     pub db_migration: MigrationPlan,
 }
 
+pub const MIGRATION_SCHEMA: &'static str =
+    include_str!("../../utilities/migration_plan_schema.json");
+
 impl MigrationPlan {
     /// Creates a new migration plan from an infrastructure plan
     pub fn from_infra_plan(infra_plan_changes: &InfraChanges) -> Result<Self, PlanOrderingError> {

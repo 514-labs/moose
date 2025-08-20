@@ -59,7 +59,6 @@ Configuration for OLAP tables.
 ```python
 class OlapConfig(BaseModel):
     order_by_fields: list[str] = []  # Fields to order by
-    deduplicate: bool = False        # Enable deduplication
     engine: Optional[ClickHouseEngines] = None  # Table engine
 ```
 
@@ -103,7 +102,7 @@ my_table = OlapTable[UserProfile]("user_profiles")
 # With configuration
 my_table = OlapTable[UserProfile]("user_profiles", OlapConfig(
     order_by_fields=["id", "timestamp"],
-    deduplicate=True
+    engine=ClickHouseEngines.ReplacingMergeTree,
 ))
 ```
 
@@ -169,7 +168,7 @@ pipeline = IngestPipeline[UserEvent]("user_pipeline", IngestPipelineConfig(
     stream=StreamConfig(parallelism=3),
     table=OlapConfig(
         order_by_fields=["id", "timestamp"],
-        deduplicate=True
+        engine=ClickHouseEngines.ReplacingMergeTree,
     )
 ))
 ```

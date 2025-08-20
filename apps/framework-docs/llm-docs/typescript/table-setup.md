@@ -19,7 +19,7 @@ The `OlapTable` class accepts the following configuration options:
 ```typescript
 type OlapConfig<T> = {
   orderByFields?: (keyof T & string)[];  // Fields to order by (must not be nullable)
-  deduplicate?: boolean;                  // Whether to deduplicate records
+  engine?: ClickHouseEngines;            // ClickHouseEngines.ReplacingMergeTree deuplicates records
 };
 ```
 
@@ -114,7 +114,7 @@ interface VersionedSchema {
 
 // Table that keeps only the latest version
 export const Versioned = new OlapTable("Versioned", {
-  deduplicate: true,
+  engine: ClickHouseEngines.ReplacingMergeTree,
   orderByFields: ["id", "version", "updatedAt"]  // Key field must be first
 });
 ```

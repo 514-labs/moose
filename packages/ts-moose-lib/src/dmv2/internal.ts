@@ -54,8 +54,6 @@ interface TableJson {
   columns: Column[];
   /** List of column names used for the ORDER BY clause. */
   orderBy: string[];
-  /** Flag indicating if the table uses a deduplicating engine (e.g., ReplacingMergeTree). */
-  deduplicate: boolean;
   /** The name of the ClickHouse engine (e.g., "MergeTree", "ReplacingMergeTree"). */
   engine?: string;
   /** Optional version string for the table configuration. */
@@ -217,9 +215,6 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
-      deduplicate:
-        table.config.deduplicate ??
-        table.config.engine === ClickHouseEngines.ReplacingMergeTree,
       engine: table.config.engine,
       version: table.config.version,
       metadata,

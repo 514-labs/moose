@@ -1122,7 +1122,6 @@ impl OlapOperations for ConfiguredDBClient {
                 name: table_name, // Keep the original table name with version
                 columns,
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
-                deduplicate: engine.contains("ReplacingMergeTree"),
                 engine: Some(engine),
                 version,
                 source_primitive,

@@ -1549,10 +1549,7 @@ impl InfrastructureMap {
                         };
 
                         // Only process changes if there are actual differences to report
-                        if !column_changes.is_empty()
-                            || order_by_changed
-                            || table.deduplicate != target_table.deduplicate
-                        {
+                        if !column_changes.is_empty() || order_by_changed {
                             // Use the strategy to determine the appropriate changes
                             let strategy_changes = strategy.diff_table_update(
                                 table,
@@ -1680,10 +1677,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,
@@ -1774,10 +1768,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,

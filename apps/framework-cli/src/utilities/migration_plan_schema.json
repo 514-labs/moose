@@ -200,10 +200,6 @@
             "type": "string"
           }
         },
-        "deduplicate": {
-          "type": "boolean",
-          "default": false
-        },
         "engine": {
           "type": ["string", "null"],
           "default": null

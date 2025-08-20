@@ -129,7 +129,7 @@ const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
   stream: true,    // Kafka topic
   table: {         // ClickHouse table
     orderByFields: ["primaryKey", "someDate"],
-    deduplicate: true
+    engine: ClickHouseEngines.ReplacingMergeTree,
   }
 });
 ```

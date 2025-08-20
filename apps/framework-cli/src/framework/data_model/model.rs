@@ -46,8 +46,11 @@ impl DataModel {
                 .unwrap_or_else(|| format!("{}_{}", self.name, self.version.as_suffix())),
             columns: self.columns.clone(),
             order_by,
-            deduplicate: self.config.storage.deduplicate,
-            engine: None,
+            engine: self
+                .config
+                .storage
+                .deduplicate
+                .then(|| "ReplacingMergeTree".to_string()),
             version: Some(self.version.clone()),
             source_primitive: PrimitiveSignature {
                 name: self.name.clone(),

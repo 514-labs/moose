@@ -154,43 +154,38 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
             before,
             after,
         }) => {
-            if after.deduplicate != before.deduplicate {
-                infra_removed(&before.expanded_display());
-                infra_added(&after.expanded_display());
-            } else {
-                let mut details = Vec::new();
+            let mut details = Vec::new();
 
-                if !column_changes.is_empty() {
-                    details.push("Column changes:".to_string());
-                    for change in column_changes {
-                        let change_line = match change {
-                            crate::framework::core::infrastructure_map::ColumnChange::Added {
-                                column,
-                                ..
-                            } => format!("  + {}: {}", column.name, column.data_type),
-                            crate::framework::core::infrastructure_map::ColumnChange::Removed(
-                                column,
-                            ) => format!("  - {}: {}", column.name, column.data_type),
-                            crate::framework::core::infrastructure_map::ColumnChange::Updated {
-                                before,
-                                after,
-                            } => format!(
-                                "  ~ {}: {} -> {}",
-                                before.name, before.data_type, after.data_type
-                            ),
-                        };
-                        details.push(change_line);
-                    }
+            if !column_changes.is_empty() {
+                details.push("Column changes:".to_string());
+                for change in column_changes {
+                    let change_line = match change {
+                        crate::framework::core::infrastructure_map::ColumnChange::Added {
+                            column,
+                            ..
+                        } => format!("  + {}: {}", column.name, column.data_type),
+                        crate::framework::core::infrastructure_map::ColumnChange::Removed(
+                            column,
+                        ) => format!("  - {}: {}", column.name, column.data_type),
+                        crate::framework::core::infrastructure_map::ColumnChange::Updated {
+                            before,
+                            after,
+                        } => format!(
+                            "  ~ {}: {} -> {}",
+                            before.name, before.data_type, after.data_type
+                        ),
+                    };
+                    details.push(change_line);
                 }
-
-                if order_by_change.before != order_by_change.after {
-                    details.push("Order by changes:".to_string());
-                    details.push(format!("  - {}", order_by_change.before.join(", ")));
-                    details.push(format!("  + {}", order_by_change.after.join(", ")));
-                }
-
-                infra_updated_detailed(&format!("Table: {name}"), &details);
             }
+
+            if order_by_change.before != order_by_change.after {
+                details.push("Order by changes:".to_string());
+                details.push(format!("  - {}", order_by_change.before.join(", ")));
+                details.push(format!("  + {}", order_by_change.after.join(", ")));
+            }
+
+            infra_updated_detailed(&format!("Table: {name}"), &details);
         }
         OlapChange::View(Change::Added(infra)) => {
             infra_added(&infra.expanded_display());

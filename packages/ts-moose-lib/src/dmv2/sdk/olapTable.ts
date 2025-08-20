@@ -102,13 +102,6 @@ export type OlapConfig<T> = {
    */
   orderByFields?: (keyof T & string)[] | ["tuple()"];
   /**
-   * If true, uses the ReplacingMergeTree engine for the ClickHouse table, enabling automatic deduplication based on the `orderByFields`.
-   * Equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`.
-   * Defaults to false.
-   */
-  // equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`
-  deduplicate?: boolean;
-  /**
    * Specifies the ClickHouse table engine to use.
    * Defaults to MergeTree if not specified.
    * @see ClickHouseEngines for available options.
@@ -165,13 +158,6 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
   ) {
     super(name, config ?? {}, schema, columns, validators);
     this.name = name;
-
-    if (
-      this.config.engine === ClickHouseEngines.ReplacingMergeTree &&
-      this.config.deduplicate === false
-    ) {
-      throw new Error("Invalid engine-deduplicate combination in config.");
-    }
 
     const tables = getMooseInternal().tables;
     if (tables.has(name)) {

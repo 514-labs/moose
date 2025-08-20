@@ -34,8 +34,7 @@ const rawMeta = {
     title: "Schema Versioning",
   },
   "schema-change": {
-    title: "Schema Changes",
-    display: "hidden",
+    title: "Failed Migrations",
   },
   "---Accessing Data---": {
     title: "Accessing Data",

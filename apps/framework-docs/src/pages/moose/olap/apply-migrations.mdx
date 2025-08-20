@@ -97,8 +97,6 @@ When you save changes, you'll see live logs in the terminal showing the diffs be
 
 ## Production Workflow
 
-
-
 <Callout type="info" title="Prefer a reviewed plan?" href={`${PathConfig.olap.path}/planned-migrations`} ctaLabel="Planned Migrations (OLAP)" compact>
 Use planned migrations to generate, review, and apply OLAP DDL plans deterministically.
 </Callout>
@@ -171,28 +169,75 @@ $ moose dev
 The generated plan for this operation will look like this:
 
 ```yaml filename="migrations/plan.yaml" copy
-- AddTable:
-    table: "new_table"
-    columns:
-      - name: "id"
-        data_type: "String"
-      - name: "a_column"
-        data_type: "String"
-      - name: "some_other_column"
-        data_type: "Float64"
-    deduplicate: false
-- AddTable:
-    table: "target_table"
-    columns:
-      - name: "id"
-        data_type: "String"
-      - name: "a_column"
-        data_type: "String"
-      - name: "some_other_column"
-        data_type: "Float64"
-    deduplicate: false
+- CreateTable:
+    table:
+      name: new_table
+      columns:
+      - name: id
+        data_type: String
+        required: true
+        unique: false
+        primary_key: true
+        default: null
+        annotations: []
+      - name: a_column
+        data_type: String
+        required: true
+        unique: false
+        primary_key: false
+        default: null
+        annotations: []
+      - name: some_other_column
+        data_type: Float64
+        required: true
+        unique: false
+        primary_key: false
+        default: null
+        annotations: []
+      order_by:
+      - id
+      deduplicate: false
+      engine: MergeTree
+      version: null
+      metadata:
+        description: null
+      life_cycle: FULLY_MANAGED
+- CreateTable:
+    table:
+      name: target_table
+      columns:
+      - name: id
+        data_type: String
+        required: true
+        unique: false
+        primary_key: true
+        default: null
+        annotations: []
+      - name: a_column
+        data_type: String
+        required: true
+        unique: false
+        primary_key: false
+        default: null
+        annotations: []
+      - name: some_other_column
+        data_type: Float64
+        required: true
+        unique: false
+        primary_key: false
+        default: null
+        annotations: []
+      order_by:
+      - id
+      deduplicate: false
+      engine: MergeTree
+      version: null
+      metadata:
+        description: null
+      life_cycle: FULLY_MANAGED
 - RawSQL:
-    sql: "CREATE MATERIALIZED VIEW mv_to_target AS SELECT * FROM target_table"
+    sql: "CREATE MATERIALIZED VIEW mv_to_target TO target_table AS SELECT * FROM source_table"
+    description: Running setup SQL for resource mv_to_target
 ```
 
 

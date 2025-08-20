@@ -1,35 +1,112 @@
 import { Callout, PathConfig } from "@/components";
 
-# Breaking In-Place Schema Changes
+# Handling Failed Migrations
 
+One of the main benefits of the Moose local development environment is that you can detect breaking schema changes before they happen in production. This can be specifically useful for identifying incompatible data type changes when you change a column's data type and the generated migration cannot cast the existing data to the new type.
 
-## Incompatible Data Type Changes
+This page describes how to recover from a failed migration in dev and gives a playbook for safely achieving the desired type change.
 
-If you have a table with data in it, and want to change the type of that column, but the type change fails....
+## What happened
+You changed a column’s data type on a table that already has data. The dev migration tried to run an in-place ALTER and ClickHouse created a mutation that failed (incompatible cast, nullability, defaults, etc.).
 
-- You get into an error state where the table is in a broken state.
+Symptoms:
+- Failed migration in dev
+- A stuck mutation on the table
+- Reverting your code type alone doesn’t help until the mutation is cleared
 
-Impact:
+## Quick recovery (dev)
+Follow these steps to get unblocked quickly.
 
-- You cannot just go into your data model code and "undo" the type change, because theres a stuck mutation
-- So you have to manually kill the mutation first before you can make any other changes
+### View the terminal logs to see the failing mutation
+In your terminal, you should see a message like this:
 
-... here theres an opportunity to automatically kill the mutation for the user...
+```txt
+⢹ Processing Infrastructure changes from file watcher
+  ~ Table events:
+      Column changes:
+        ~ value: String -> Float64
+  Applying: ALTER TABLE events MODIFY COLUMN value Float64
+  ClickHouse mutation created: mutation_id='00000001-0000-4000-8000-000000000123'
+  Error: Code: 368. Conversion failed: cannot parse 'abc' as Float64 (column: value)
+  Status: mutation failed; table may be partially transformed
+```
 
-- We need to clearly show the user we killed the mutation. But then the bigger problem is you still cannot query the table.
+Copy the mutation ID from the terminal logs and run the following command to kill the mutation.
 
-...so we need to tell them to "undo" the type change
+### Kill the mutation
+- If you have the `mutation_id`:
+```sql
+KILL MUTATION WHERE mutation_id = '<id>';
+```
 
-Proposed solution:
-Instruct the user to go to their table definition and change back the type of 'column: column name" back to the original type -> which we should show in the message.
+- If you didn’t capture the ID, find it and kill by table:
+```sql
+SELECT mutation_id, command, is_done, latest_fail_reason
+FROM system.mutations
+WHERE database = currentDatabase() AND table = '<your_table>'
+ORDER BY create_time DESC;
 
-we do not want to magically revert their code for them, we want to make the user be explicit about what to do here.
+KILL MUTATION WHERE database = currentDatabase() AND table = '<your_table>';
+```
 
-^^^^ THIS UNFUCKS THE MUTATATION FAILURE ^^^^^
+ClickHouse ALTERs are implemented as asynchronous mutations, not transactional. If a mutation fails mid-way, some parts may have been rewritten while others were not, leaving the table partially transformed. The failed mutation also remains queued until you kill it. Clear the mutation first, then proceed.
 
-then we probably need to help them achieve their desired state which is a "type chage":
+<Callout type="info" title="Coming Soon: Automatic mutation killing" compact>
+Soon, Moose will automatically generate a local DDL plan that kills the mutation and "rolls back" the transformation to the data that was changed before the failure occurred. 
+</Callout>
 
-Do we instruct them to:
+### Revert your code to match the current DB schema
+- Change the column type in code back to the previous (working) type
+- Save your changes; let `moose dev` resync. You should be able to query the table again
 
-- Create a new column named old_name_v2
-- And then backfill?
+<Callout type="info" compact>
+If the table only has disposable dev data, you can also `TRUNCATE TABLE <db>.<table>` or drop/recreate the table and let `moose dev` rebuild it. Only do this in dev.
+</Callout>
+
+## Safely achieving the desired type change
+Avoid in-place breaking changes on populated tables. Use one of these safe patterns:
+
+- Add new column + backfill (recommended)
+  - Add a new column with the target type (often `Nullable(...)` at first)
+  - Backfill using a safe cast (rows that can’t cast should yield null or a default you control)
+  - Migrate reads/writes to the new column
+  - Later, drop or rename columns via a reviewed plan in prod
+
+Example plan snippet for prod:
+```yaml filename="migrations/plan.yaml"
+- AddTableColumn:
+    table: "events"
+    column:
+      name: "value_v2"
+      data_type:
+        Nullable:
+          nullable: "Float64"
+      default: null
+- RawSql:
+    sql:
+      - "ALTER TABLE events UPDATE value_v2 = toFloat64OrNull(value) WHERE value_v2 IS NULL"
+    description: "Backfill value_v2 from value"
+# After switching application reads/writes to value_v2:
+- RenameTableColumn:
+    table: "events"
+    before_column_name: "value_v2"
+    after_column_name: "value"
+```
+
+- Enforce NOT NULL after backfill
+```sql
+-- After verifying no NULLs remain:
+ALTER TABLE events MODIFY COLUMN value Float64;
+```
+
+- If you must change in place in dev
+  - Only when the table is empty or data is disposable
+  - Prefer truncate/recreate
+
+## Common breaking cases
+- String -> Int/Float: can fail on non-numeric rows; prefer `toInt64OrNull(...)`/`toFloat64OrNull(...)` + backfill
+- Nullable(T) -> T (NOT NULL): fails if any NULLs exist and no default is provided; backfill then drop nullability
+- Narrowing types (e.g., Int64 -> Int32): fails if values overflow; validate and transform first
+
+## Related
+- Planned, reviewed changes for prod: `${PathConfig.olap.path}/planned-migrations`

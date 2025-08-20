@@ -71,18 +71,13 @@ export class Api<T, R = any> extends TypedBase<T, ApiConfig<T>> {
       schemas: [{ type: "array", items: { type: "object" } }],
       components: { schemas: {} },
     };
-    const egressApis = getMooseInternal().egressApis;
-    if (
-      egressApis.has(`${name}${config?.version ? `:${config.version}` : ""}`)
-    ) {
+    const apis = getMooseInternal().apis;
+    if (apis.has(`${name}${config?.version ? `:${config.version}` : ""}`)) {
       throw new Error(
         `Consumption API with name ${name} and version ${config?.version} already exists`,
       );
     }
-    egressApis.set(
-      `${name}${config?.version ? `:${config.version}` : ""}`,
-      this,
-    );
+    apis.set(`${name}${config?.version ? `:${config.version}` : ""}`, this);
   }
 
   /**

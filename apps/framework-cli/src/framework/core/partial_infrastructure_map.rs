@@ -162,10 +162,10 @@ struct PartialIngestApi {
 
 /// Represents an egress API endpoint definition before conversion to a complete [`ApiEndpoint`].
 ///
-/// Egress APIs are HTTP endpoints that allow consumers to query and retrieve data from the system.
+/// APIs are HTTP endpoints that allow consumers to query and retrieve data from the system.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct PartialEgressApi {
+struct PartialApi {
     pub name: String,
     pub query_params: Vec<Column>,
     pub response_schema: serde_json::Value,
@@ -261,7 +261,7 @@ pub struct PartialInfrastructureMap {
     #[serde(default)]
     ingest_apis: HashMap<String, PartialIngestApi>,
     #[serde(default)]
-    egress_apis: HashMap<String, PartialEgressApi>,
+    apis: HashMap<String, PartialApi>,
     #[serde(default)]
     tables: HashMap<String, PartialTable>,
     #[serde(default)]
@@ -476,7 +476,7 @@ impl PartialInfrastructureMap {
 
     /// Converts partial API endpoint definitions into complete [`ApiEndpoint`] instances.
     ///
-    /// Handles both ingestion and egress API endpoints, setting up appropriate paths,
+    /// Handles both ingestion and API endpoints, setting up appropriate paths,
     /// methods, and data models.
     ///
     /// # Arguments
@@ -557,7 +557,7 @@ impl PartialInfrastructureMap {
             api_endpoints.insert(api_endpoint.id(), api_endpoint);
         }
 
-        for partial_api in self.egress_apis.values() {
+        for partial_api in self.apis.values() {
             let api_endpoint = ApiEndpoint {
                 name: partial_api.name.clone(),
                 api_type: APIType::EGRESS {

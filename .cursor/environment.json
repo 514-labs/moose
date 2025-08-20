@@ -4,5 +4,5 @@
     "context": ".."
   },
   "terminals": [],
-  "install": "pnpm install && cargo build"
+  "install": "pnpm install --frozen-lockfile && cargo build --locked"
 }

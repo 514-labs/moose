@@ -11,16 +11,17 @@ from pydantic import BaseModel
 from .types import TypedMooseResource, T_none, U_none
 from ._registry import _workflows
 
-type TaskRunFunc[T_none, U_none] = Union[
-    # task_state only, no input, no output
-    Callable[[Dict[str, Any]], None],
-    # task_state only, no input, with output
-    Callable[[Dict[str, Any]], Union[U_none, Awaitable[U_none]]],
-    # task_state + input, no output
-    Callable[[Dict[str, Any], T_none], None],
-    # task_state + input, with output
-    Callable[[Dict[str, Any], T_none], Union[U_none, Awaitable[U_none]]]
-]
+@dataclasses.dataclass
+class TaskContext(Generic[T_none]):
+    """Context object passed to task handlers.
+
+    - When a task declares an input model `T`, `input` is of type `T` (not Optional).
+    - For no-input tasks (`T` is `None`), `input` is exactly `None`.
+    """
+    state: Dict[str, Any]
+    input: T_none
+
+type TaskRunFunc[T_none, U_none] = Callable[[TaskContext[T_none]], Union[U_none, Awaitable[U_none]]]
 
 @dataclasses.dataclass
 class TaskConfig(Generic[T_none, U_none]):
@@ -28,17 +29,16 @@ class TaskConfig(Generic[T_none, U_none]):
 
     Attributes:
         run: The handler function that executes the task logic.
-             Signature: run(task_state: Dict[str, Any], input: T_none) -> U_none
-             Or: run(task_state: Dict[str, Any]) -> U_none (if no input)
+             Signature: run(context: TaskContext[T]) -> U
         on_complete: Optional list of tasks to run after this task completes.
         on_cancel: Optional function to call when the task is cancelled.
-                  Signature: on_cancel(task_state: Dict[str, Any]) -> None
+                  Signature: on_cancel(context: TaskContext[T]) -> None
         timeout: Optional timeout string (e.g. "5m", "1h", "never").
         retries: Optional number of retry attempts.
     """
     run: TaskRunFunc[T_none, U_none]
     on_complete: Optional[list["Task[U_none, Any]"]] = None
-    on_cancel: Optional[Callable[[Dict[str, Any]], Union[None, Awaitable[None]]]] = None
+    on_cancel: Optional[Callable[[TaskContext[T_none]], Union[None, Awaitable[None]]]] = None
     timeout: Optional[str] = None
     retries: Optional[int] = None
 

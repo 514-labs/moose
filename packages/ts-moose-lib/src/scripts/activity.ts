@@ -128,7 +128,7 @@ export const activities = {
         // - This allows immediate cancellation detection rather than waiting for user code to finish
         // - If cancellation happens first, we catch it below and call onCancel cleanup
         const result = await Promise.race([
-          fullTask.config.run(taskState, revivedInputData),
+          fullTask.config.run({ state: taskState, input: revivedInputData }),
           context.cancelled,
         ]);
         return result;
@@ -138,7 +138,10 @@ export const activities = {
             `Task ${task.name} cancelled, calling onCancel handler if it exists`,
           );
           if (fullTask.config.onCancel) {
-            await fullTask.config.onCancel(taskState);
+            await fullTask.config.onCancel({
+              state: taskState,
+              input: revivedInputData,
+            });
           }
           return [];
         } else {

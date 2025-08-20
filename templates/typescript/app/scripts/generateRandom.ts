@@ -13,7 +13,7 @@ interface FooWorkflow {
 const workflowTable = new OlapTable<FooWorkflow>("FooWorkflow");
 
 export const ingest = new Task<null, void>("ingest", {
-  run: async (taskState: any) => {
+  run: async () => {
     for (let i = 0; i < 1000; i++) {
       const foo: Foo = {
         primaryKey: faker.string.uuid(),

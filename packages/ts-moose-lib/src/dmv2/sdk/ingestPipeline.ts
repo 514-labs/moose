@@ -71,7 +71,7 @@ export type IngestPipelineConfig<T> = {
    *
    * @default false
    */
-  ingestAPI: boolean | Omit<IngestConfig<T>, "destination">;
+  ingestAPI?: boolean | Omit<IngestConfig<T>, "destination">;
 
   /**
    * @deprecated Use `ingestAPI` instead. This parameter will be removed in a future version.

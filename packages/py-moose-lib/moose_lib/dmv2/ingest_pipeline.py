@@ -51,7 +51,7 @@ class IngestPipelineConfig(BaseModel):
                 "The 'ingest' parameter is deprecated and will be removed in a future version. "
                 "Please use 'ingest_api' instead.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3  # Points to the IngestPipelineConfig instantiation in user code
             )
             # If ingest_api is not explicitly set, use the ingest value
             if 'ingest_api' not in data:

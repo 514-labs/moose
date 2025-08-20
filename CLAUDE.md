@@ -21,9 +21,20 @@ When implementing backwards compatibility for deprecated parameters:
 2. Show a deprecation warning
 3. Only apply the old value if the new parameter is `undefined` (not `false`)
 4. Use object spread for type-safe config updates
+5. Make sure new parameters are optional in type definitions to maintain type-level backwards compatibility
 
 Example:
 ```typescript
+// In type definition - make new param optional:
+interface Config {
+  newParam?: boolean;  // Optional for backwards compatibility
+  /**
+   * @deprecated Use `newParam` instead
+   */
+  oldParam?: boolean;
+}
+
+// In implementation:
 if (config.oldParam !== undefined) {
   console.warn("⚠️  DEPRECATION WARNING: 'oldParam' is deprecated. Use 'newParam' instead.");
   if (config.newParam === undefined) {

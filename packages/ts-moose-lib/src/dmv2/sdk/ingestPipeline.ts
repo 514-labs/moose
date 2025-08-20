@@ -217,7 +217,8 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
       );
       // If ingestAPI is not explicitly set, use the ingest value
       if (config.ingestAPI === undefined) {
-        (config as any).ingestAPI = config.ingest;
+        // Create a new config object with the ingest value mapped to ingestAPI
+        config = { ...config, ingestAPI: config.ingest };
       }
     }
 

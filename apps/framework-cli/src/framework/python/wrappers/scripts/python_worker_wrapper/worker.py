@@ -47,7 +47,7 @@ def load_dmv2_workflows() -> dict[str, Workflow]:
         log.error(f"Failed to load DMV2 workflows: {e}")
         return {}
 
-async def register_workflows(temporal_url: str, namespace: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
+async def register_workflows(temporal_url: str, namespace: str, client_cert: str, client_key: str, api_key: str) -> Optional[Worker]:
     """
     Register DMv2 workflows and their activities.
     """
@@ -102,18 +102,18 @@ async def register_workflows(temporal_url: str, namespace: str, script_dir: str,
         log.error(f"Error registering workflows: {str(e)}")
         raise
 
-async def start_worker(temporal_url: str, namespace: str, script_dir: str, client_cert: str, client_key: str, api_key: str) -> Worker:
+async def start_worker(temporal_url: str, namespace: str, client_cert: str, client_key: str, api_key: str) -> Worker:
     """
     Start a Temporal worker that handles Python script execution workflows.
 
     Returns:
         Worker: The started Temporal worker instance.
     """
-    log.info(f"Starting worker for script directory: {script_dir}")
+    log.info(f"Starting Python worker")
 
     loop = asyncio.get_running_loop()
 
-    worker = await register_workflows(temporal_url, namespace, script_dir, client_cert, client_key, api_key)
+    worker = await register_workflows(temporal_url, namespace, client_cert, client_key, api_key)
 
     if worker is None:
         log.info("No worker found to start")

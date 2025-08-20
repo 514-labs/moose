@@ -90,7 +90,7 @@ impl EventBuckets {
         };
 
         for path in event.paths {
-            if !path.ext_is_supported_lang() && !path.ext_is_script_config() {
+            if !path.ext_is_supported_lang() {
                 continue;
             }
             self.changes.insert(path);

@@ -493,13 +493,13 @@ interface ProcessedEvent {
 
 // Create pipelines
 const rawEvents = new IngestPipeline<UserEvent>("raw_events", {
-  ingest: true,
+  ingestAPI: true,
   stream: true,
   table: false
 });
 
 const processedEvents = new IngestPipeline<ProcessedEvent>("processed_events", {
-  ingest: false,
+  ingestAPI: false,
   stream: true,
   table: true
 });

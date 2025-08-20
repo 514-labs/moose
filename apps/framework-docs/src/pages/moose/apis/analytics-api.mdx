@@ -75,7 +75,7 @@ interface SourceSchema {
 }
 
 export const SourcePipeline = new IngestPipeline<SourceSchema>("Source" {
-  ingest: false,
+  ingestAPI: false,
   stream: true,
   table: true,
 })

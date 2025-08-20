@@ -19,7 +19,7 @@ interface ExampleSchema {
 export const ExamplePipeline = new IngestPipeline<ExampleSchema>("ExamplePipeline", {
   table: true,      // Creates a basic table
   stream: true,     // Creates a basic stream
-  ingest: true      // Creates a basic ingest API
+  ingestAPI: true      // Creates a basic ingest API
 });
 ```
 
@@ -31,7 +31,7 @@ The `IngestPipeline` class accepts the following configuration options:
 type DataModelConfigV2<T> = {
   table: boolean | OlapConfig<T>;        // Table configuration
   stream: boolean | Omit<StreamConfig, "destination">;  // Stream configuration
-  ingest: boolean | Omit<IngestConfig, "destination">;  // Ingest configuration
+  ingestAPI: boolean | Omit<IngestConfig, "destination">;  // Ingest configuration
 };
 ```
 
@@ -84,7 +84,7 @@ export const ComprehensivePipeline = new IngestPipeline<ComprehensiveSchema>("Co
   },
 
   // Ingest configuration with all options
-  ingest: {
+  ingestAPI: {
     format: IngestionFormat.JSON,        // Specify ingestion format
   }
 });

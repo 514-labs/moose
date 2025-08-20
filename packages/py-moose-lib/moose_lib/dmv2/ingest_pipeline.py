@@ -23,14 +23,14 @@ class IngestPipelineConfig(BaseModel):
     Attributes:
         table: Configuration for the OLAP table component.
         stream: Configuration for the stream component.
-        ingest: Configuration for the ingest API component.
+        ingest_api: Configuration for the ingest API component.
         version: Optional version string applied to all created components.
         metadata: Optional metadata for the ingestion pipeline.
         life_cycle: Determines how changes in code will propagate to the resources.
     """
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
-    ingest: bool | IngestConfig = True
+    ingest_api: bool | IngestConfig = True
     dead_letter_queue: bool | StreamConfig = True
     version: Optional[str] = None
     metadata: Optional[dict] = None
@@ -145,11 +145,11 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
                 stream_config.version = config.version
             stream_config.metadata = stream_metadata
             self.dead_letter_queue = DeadLetterQueue(f"{name}DeadLetterQueue", stream_config, t=self._t)
-        if config.ingest:
+        if config.ingest_api:
             if self.stream is None:
                 raise ValueError("Ingest API needs a stream to write to.")
             ingest_config_dict = (
-                IngestConfig() if config.ingest is True else config.ingest
+                IngestConfig() if config.ingest_api is True else config.ingest_api
             ).model_dump()
             ingest_config_dict["destination"] = self.stream
             if config.version:

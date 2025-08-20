@@ -176,7 +176,7 @@ interface ExampleModel {
 }
 
 const examplePipeline = new IngestPipeline<ExampleModel>("example-name", {
-  ingest: true, // Creates a REST API endpoint
+  ingestAPI: true, // Creates a REST API endpoint
   stream: true, // Connects to a stream
   table: true
 });
@@ -279,7 +279,7 @@ interface IngestPipelineConfig<T> {
 class IngestPipelineConfig(BaseModel):
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
-    ingest: bool | IngestConfig = True
+    ingest_api: bool | IngestConfig = True
     dead_letter_queue: bool | StreamConfig = True
     version: Optional[str] = None
     metadata: Optional[dict] = None

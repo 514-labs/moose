@@ -88,7 +88,7 @@ Configuration for creating a complete data pipeline.
 class IngestPipelineConfig(BaseModel):
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
-    ingest: bool | IngestConfig = True
+    ingest_api: bool | IngestConfig = True
 ```
 
 ## Infrastructure Components

@@ -2,7 +2,7 @@ import { IJsonSchemaCollection } from "typia";
 import { TypedBase } from "../typedBase";
 import { Column } from "../../dataModels/dataModelTypes";
 import { getMooseInternal } from "../internal";
-import type { ConsumptionUtil } from "../../consumption-apis/helpers";
+import type { ApiUtil } from "../../consumption-apis/helpers";
 
 /**
  * Defines the signature for a handler function used by a Consumption API.
@@ -12,15 +12,12 @@ import type { ConsumptionUtil } from "../../consumption-apis/helpers";
  * @param utils Utility functions provided to the handler, e.g., for database access (`runSql`).
  * @returns A Promise resolving to the response data of type R.
  */
-type ConsumptionHandler<T, R> = (
-  params: T,
-  utils: ConsumptionUtil,
-) => Promise<R>;
+type ApiHandler<T, R> = (params: T, utils: ApiUtil) => Promise<R>;
 
 /**
  * @template T The data type of the request parameters.
  */
-export interface EgressConfig<T> {
+export interface ApiConfig<T> {
   /**
    * An optional version string for this configuration.
    */
@@ -35,25 +32,25 @@ export interface EgressConfig<T> {
  * @template T The data type defining the expected structure of the API's query parameters.
  * @template R The data type defining the expected structure of the API's response body. Defaults to `any`.
  */
-export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
+export class Api<T, R = any> extends TypedBase<T, ApiConfig<T>> {
   /** @internal The handler function that processes requests and generates responses. */
-  _handler: ConsumptionHandler<T, R>;
+  _handler: ApiHandler<T, R>;
   /** @internal The JSON schema definition for the response type R. */
   responseSchema: IJsonSchemaCollection.IV3_1;
 
   /**
-   * Creates a new ConsumptionApi instance.
+   * Creates a new Api instance.
    * @param name The name of the consumption API endpoint.
    * @param handler The function to execute when the endpoint is called. It receives validated query parameters and utility functions.
    * @param config Optional configuration for the consumption API.
    */
-  constructor(name: string, handler: ConsumptionHandler<T, R>, config?: {});
+  constructor(name: string, handler: ApiHandler<T, R>, config?: {});
 
   /** @internal **/
   constructor(
     name: string,
-    handler: ConsumptionHandler<T, R>,
-    config: EgressConfig<T>,
+    handler: ApiHandler<T, R>,
+    config: ApiConfig<T>,
     schema: IJsonSchemaCollection.IV3_1,
     columns: Column[],
     responseSchema: IJsonSchemaCollection.IV3_1,
@@ -61,8 +58,8 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
 
   constructor(
     name: string,
-    handler: ConsumptionHandler<T, R>,
-    config?: EgressConfig<T>,
+    handler: ApiHandler<T, R>,
+    config?: ApiConfig<T>,
     schema?: IJsonSchemaCollection.IV3_1,
     columns?: Column[],
     responseSchema?: IJsonSchemaCollection.IV3_1,
@@ -92,7 +89,7 @@ export class ConsumptionApi<T, R = any> extends TypedBase<T, EgressConfig<T>> {
    * Retrieves the handler function associated with this Consumption API.
    * @returns The handler function.
    */
-  getHandler = (): ConsumptionHandler<T, R> => {
+  getHandler = (): ApiHandler<T, R> => {
     return this._handler;
   };
 

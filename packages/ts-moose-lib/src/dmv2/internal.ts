@@ -12,16 +12,10 @@
  *           Its API might change without notice.
  */
 import process from "process";
-import {
-  IngestApi,
-  ConsumptionApi,
-  SqlResource,
-  Workflow,
-  Task,
-} from "./index";
+import { IngestApi, Api, SqlResource, Workflow, Task } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ConsumptionUtil } from "../index";
+import { ApiUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
 import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 import { compilerLog } from "../commons";
@@ -35,7 +29,7 @@ const moose_internal = {
   tables: new Map<string, OlapTable<any>>(),
   streams: new Map<string, Stream<any>>(),
   ingestApis: new Map<string, IngestApi<any>>(),
-  egressApis: new Map<string, ConsumptionApi<any>>(),
+  egressApis: new Map<string, Api<any>>(),
   sqlResources: new Map<string, SqlResource>(),
   workflows: new Map<string, Workflow>(),
 };
@@ -467,7 +461,7 @@ export const getEgressApis = async () => {
   loadIndex();
   const egressFunctions = new Map<
     string,
-    (params: unknown, utils: ConsumptionUtil) => unknown
+    (params: unknown, utils: ApiUtil) => unknown
   >();
 
   const registry = getMooseInternal();
@@ -475,7 +469,7 @@ export const getEgressApis = async () => {
   const versionCountByName = new Map<string, number>();
   const nameToSoleVersionHandler = new Map<
     string,
-    (params: unknown, utils: ConsumptionUtil) => unknown
+    (params: unknown, utils: ApiUtil) => unknown
   >();
 
   registry.egressApis.forEach((api, key) => {

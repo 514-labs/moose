@@ -57,7 +57,7 @@ export const isCreateConsumptionApiV2 = (
   }
 
   const sym = checker.getSymbolAtLocation(node.expression);
-  return sym?.name === "ConsumptionApi";
+  return sym?.name === "Api";
 };
 
 const getParamType = (
@@ -338,7 +338,7 @@ const transformNewConsumptionApi = (
     return node;
   }
 
-  // Get both type parameters from ConsumptionApi<T, R>
+  // Get both type parameters from Api<T, R>
   const typeNode = node.typeArguments[0];
   const responseTypeNode =
     node.typeArguments[1] ||
@@ -474,7 +474,7 @@ const transformNewConsumptionApi = (
       node.arguments[2]
     : factory.createObjectLiteralExpression([], false);
 
-  // Update the ConsumptionApi constructor call with all necessary arguments
+  // Update the Api constructor call with all necessary arguments
   return factory.updateNewExpression(
     node,
     node.expression,

@@ -16,7 +16,7 @@ export * from "./commons";
 export * from "./consumption-apis/helpers";
 export * from "./scripts/task";
 
-export { createConsumptionApi } from "./consumption-apis/runner";
+export { createApi } from "./consumption-apis/runner";
 
 export { MooseCache } from "./clients/redisClient";
 

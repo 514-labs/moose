@@ -41,7 +41,7 @@ if (
 
 import { dumpMooseInternal } from "./dmv2/internal";
 import { runBlocks } from "./blocks/runner";
-import { runConsumptionApis } from "./consumption-apis/runner";
+import { runApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
 import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
@@ -136,7 +136,7 @@ program
   .option("--proxy-port <port>", "Port to run the proxy server on", parseInt)
   .action(
     (
-      consumptionDir,
+      apisDir,
       clickhouseDb,
       clickhouseHost,
       clickhousePort,
@@ -144,8 +144,8 @@ program
       clickhousePassword,
       options,
     ) => {
-      runConsumptionApis({
-        consumptionDir,
+      runApis({
+        apisDir,
         clickhouseConfig: {
           database: clickhouseDb,
           host: clickhouseHost,

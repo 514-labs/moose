@@ -35,7 +35,7 @@ export {
 export { Workflow, Task } from "./sdk/workflow";
 
 export { IngestApi, IngestConfig } from "./sdk/ingestApi";
-export { Api, EgressConfig } from "./sdk/consumptionApi";
+export { ConsumptionApi, EgressConfig } from "./sdk/consumptionApi";
 export { IngestPipeline, IngestPipelineConfig } from "./sdk/ingestPipeline";
 export { ETLPipeline, ETLPipelineConfig } from "./sdk/etlPipeline";
 export {

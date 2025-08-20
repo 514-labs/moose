@@ -20,7 +20,7 @@ export { createConsumptionApi } from "./consumption-apis/runner";
 
 export { MooseCache } from "./clients/redisClient";
 
-export { ApiUtil } from "./consumption-apis/helpers";
+export { ConsumptionUtil } from "./consumption-apis/helpers";
 
 export * from "./utilities";
 export * from "./connectors/dataSource";

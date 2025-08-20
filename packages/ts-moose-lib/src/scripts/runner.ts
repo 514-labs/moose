@@ -22,7 +22,6 @@ interface TemporalConfig {
 }
 
 interface ScriptsConfig {
-  scriptDir: string;
   temporalConfig: TemporalConfig;
 }
 
@@ -117,9 +116,9 @@ async function registerWorkflows(
   logger: DefaultLogger,
   config: ScriptsConfig,
 ): Promise<Worker | null> {
-  logger.info(`Registering workflows from ${config.scriptDir}`);
+  logger.info(`Registering workflows`);
 
-  // Collect all TypeScript scripts
+  // Collect all TypeScript activities from registered workflows
   const allScriptPaths: string[] = [];
   const dynamicActivities: any[] = [];
 
@@ -163,20 +162,6 @@ async function registerWorkflows(
     }
 
     logger.info(`Found ${allScriptPaths.length} workflows`);
-
-    // Build dynamic activities
-    for (const scriptPath of allScriptPaths) {
-      const parentDir = path.basename(path.dirname(scriptPath));
-      const baseName = path.basename(scriptPath, path.extname(scriptPath));
-      const activityName = `${parentDir}/${baseName}`;
-
-      if (!ALREADY_REGISTERED.has(activityName)) {
-        const activity = await createActivityForScript(activityName);
-        dynamicActivities.push(activity);
-        ALREADY_REGISTERED.add(activityName);
-        logger.info(`Registered task ${activityName}`);
-      }
-    }
 
     if (dynamicActivities.length === 0) {
       logger.info(`No tasks found`);

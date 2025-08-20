@@ -57,7 +57,8 @@ export const isCreateConsumptionApiV2 = (
   }
 
   const sym = checker.getSymbolAtLocation(node.expression);
-  return sym?.name === "ConsumptionApi";
+  // Support both legacy name (ConsumptionApi) and the new name (Api)
+  return sym?.name === "ConsumptionApi" || sym?.name === "Api";
 };
 
 const getParamType = (

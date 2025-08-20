@@ -12,7 +12,7 @@ import { getWorkflows } from "../dmv2/internal";
 import { JWTPayload } from "jose";
 import { Sql, sql, RawValue, toQuery } from "../sqlHelpers";
 
-export interface ConsumptionUtil {
+export interface ApiUtil {
   client: MooseClient;
 
   // SQL interpolator

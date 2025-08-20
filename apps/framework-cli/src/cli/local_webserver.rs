@@ -209,7 +209,7 @@ async fn get_consumption_api_res(
         "http://{}:{}{}{}",
         host,
         proxy_port,
-        req.uri().path().strip_prefix("/consumption").unwrap_or(""),
+        req.uri().path().strip_prefix("/api").unwrap_or(""),
         req.uri()
             .query()
             .map_or("".to_string(), |q| format!("?{q}"))
@@ -222,7 +222,7 @@ async fn get_consumption_api_res(
         let consumption_name = req
             .uri()
             .path()
-            .strip_prefix("/consumption/")
+            .strip_prefix("/api/")
             .unwrap_or(req.uri().path());
 
         // Allow forwarding even if not an exact match; the proxy layer (runner) will
@@ -1168,7 +1168,7 @@ async fn router(
             .await
         }
         (_, &hyper::Method::GET, route_segments)
-            if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
+            if route_segments.len() >= 2 && route_segments[0] == "api" =>
         {
             match get_consumption_api_res(
                 http_client,

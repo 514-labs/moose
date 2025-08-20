@@ -559,7 +559,7 @@ example_dlq = DeadLetterQueue[ExampleSchema](name="exampleDLQ")
 pipeline = IngestPipeline[ExampleSchema](
     name="example",
     config=IngestPipelineConfig(
-        ingest=True,
+        ingest_api=True,
         stream=True,
         table=True,
         dead_letter_queue=True  # Route failed ingestions to DLQ

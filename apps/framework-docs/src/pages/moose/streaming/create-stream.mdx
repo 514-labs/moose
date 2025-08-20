@@ -410,7 +410,7 @@ class FinalData(BaseModel):
 # Create the first pipeline for raw data ingestion
 # Only create an API and a stream (no table) since we're ingesting the raw data
 raw_data = IngestPipeline[RawData]("raw_data", IngestPipelineConfig(
-  ingest=True,
+  ingest_api=True,
   stream=True,
   table=False
 ))
@@ -427,7 +427,7 @@ raw_data.get_stream().add_transform(destination=intermediate_stream, transformat
 
 # Create the final pipeline that will store the fully transformed data
 final_data = IngestPipeline[FinalData]("final_stream", IngestPipelineConfig(
-  ingest=False,
+  ingest_api=False,
   stream=True,
   table=True
 ))

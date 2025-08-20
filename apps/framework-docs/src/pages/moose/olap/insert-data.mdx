@@ -171,7 +171,7 @@ const eventsPipeline = new IngestPipeline<Event>("user_events", {
 from moose_lib import IngestPipeline, IngestConfig
 
 ingest_pipeline = IngestPipeline[Event]("user_events", IngestConfig(
-    ingest=True,
+    ingest_api=True,
     stream=True,
     table=True,
 ))

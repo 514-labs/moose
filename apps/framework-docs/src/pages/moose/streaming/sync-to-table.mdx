@@ -115,7 +115,7 @@ class Event(BaseModel):
 
 # Creates stream, table, API, and automatic sync
 events_pipeline = IngestPipeline[Event]("events", IngestPipelineConfig(
-    ingest=True,   
+    ingest_api=True,   
     stream=True,   # Creates stream  
     table=True     # Creates destination table + auto-sync process
 ))

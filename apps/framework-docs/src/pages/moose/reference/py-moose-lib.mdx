@@ -158,14 +158,14 @@ Combines ingest API, stream, and table creation in a single component.
 ```python
 # Basic usage
 pipeline = IngestPipeline[UserEvent]("user_pipeline", IngestPipelineConfig(
-    ingest=True,
+    ingest_api=True,
     stream=True,
     table=True
 ))
 
 # With advanced configuration
 pipeline = IngestPipeline[UserEvent]("user_pipeline", IngestPipelineConfig(
-    ingest=True,
+    ingest_api=True,
     stream=StreamConfig(parallelism=3),
     table=OlapConfig(
         order_by_fields=["id", "timestamp"],

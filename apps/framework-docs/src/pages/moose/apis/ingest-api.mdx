@@ -196,7 +196,7 @@ class ExampleSchema(BaseModel):
 example_pipeline = IngestPipeline[ExampleSchema](
     name="example-name",
     config=IngestPipelineConfig(
-        ingest=True,
+        ingest_api=True,
         stream=True,
         table=True
     )

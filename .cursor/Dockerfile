@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:25.04
 
 # Set non-interactive mode to prevent prompts
 ENV DEBIAN_FRONTEND=noninteractive

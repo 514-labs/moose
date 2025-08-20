@@ -445,7 +445,6 @@ mod tests {
                 },
             ],
             order_by: vec!["primary_key".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -528,7 +527,6 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -633,7 +631,6 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -709,7 +706,6 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {

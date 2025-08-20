@@ -247,8 +247,7 @@ mod tests {
                 },
             ],
             order_by,
-            deduplicate,
-            engine: None,
+            engine: deduplicate.then(|| "ReplacingMergeTree".to_string()),
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),

@@ -7,9 +7,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Work around potential clock skew in build environment for apt
+RUN printf 'Acquire::Check-Valid-Until "false";\nAcquire::Check-Date "false";\n' > /etc/apt/apt.conf.d/99no-check-valid-until
+
 # Install system dependencies (protobuf-compiler will be installed separately with specific version)
 # Use apt options to handle potential clock skew issues
-RUN apt-get update -o Acquire::Check-Valid-Until=false && apt-get install -y --no-install-recommends \
+RUN apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false && apt-get install -y --no-install-recommends \
     curl \
     wget \
     git \
@@ -41,7 +44,7 @@ RUN useradd -m -s /bin/bash ubuntu && \
 # Fallback: Docker-in-Docker with privileged mode if needed
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
-    && apt-get update -o Acquire::Check-Valid-Until=false \
+    && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false \
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,9 +65,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 RUN npm install -g pnpm@9.9.0
 
 # Install Python 3.12 (Ubuntu 22.04 comes with Python 3.10, we need 3.12)
-RUN apt-get update -o Acquire::Check-Valid-Until=false && apt-get install -y software-properties-common \
+RUN apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false && apt-get install -y software-properties-common \
     && add-apt-repository ppa:deadsnakes/ppa -y \
-    && apt-get update -o Acquire::Check-Valid-Until=false \
+    && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false \
     && apt-get install -y python3.12 python3.12-dev python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 

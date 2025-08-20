@@ -62,7 +62,7 @@
   },
   "peerDependencies": {
     "ts-patch": "^3.3.0",
-    "typia": "^7.6.0"
+    "typia": "^9.6.1"
   },
   "peerDependenciesMeta": {
     "ts-patch": {

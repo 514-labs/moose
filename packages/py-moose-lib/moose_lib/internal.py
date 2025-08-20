@@ -10,8 +10,6 @@ from importlib import import_module
 from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, ConfigDict, AliasGenerator
 import json
-
-from . import ClickHouseEngines
 from .data_models import Column, _to_columns
 from moose_lib.dmv2 import (
     get_tables,
@@ -274,7 +272,6 @@ def to_infra_map() -> dict:
             name=name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
-            # engine takes precedence
             engine=None if engine is None else engine.value,
             version=table.config.version,
             metadata=getattr(table, "metadata", None),

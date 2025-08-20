@@ -151,8 +151,8 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
             name,
             column_changes,
             order_by_change,
-            before,
-            after,
+            before: _,
+            after: _,
         }) => {
             let mut details = Vec::new();
 

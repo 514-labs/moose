@@ -157,17 +157,28 @@ check_command "make" "--version" "Make" || OVERALL_STATUS=1
 check_command "pkg-config" "--version" "pkg-config" || OVERALL_STATUS=1
 echo
 
-echo "🐳 Docker (Required for Moose Development):"
+echo "🐳 Docker (Required for Moose development):"
 check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
-# Check for Docker Compose (either standalone or plugin)
+
+# Check for Docker Compose (either standalone or plugin)  
 if command -v docker-compose &> /dev/null; then
-    check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
-elif docker compose version &> /dev/null; then
+    check_command "docker-compose" "--version" "Docker Compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
     version=$(docker compose version 2>&1)
     echo -e "${GREEN}✓${NC} Docker Compose (plugin): $version"
 else
     echo -e "${RED}✗${NC} Docker Compose: Not found"
     OVERALL_STATUS=1
+fi
+
+# Check Docker daemon connectivity (non-fatal)
+if command -v docker &> /dev/null; then
+    if docker info > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Docker daemon: Connected and working"
+    else
+        echo -e "${YELLOW}⚠${NC} Docker daemon: Not accessible (run docker-helper.sh for setup)"
+        echo -e "    Use: ${GREEN}/usr/local/bin/docker-helper.sh${NC} for Docker setup guidance"
+    fi
 fi
 echo
 
@@ -184,11 +195,11 @@ fi
 
 echo
 echo "🚀 Next Steps:"
-echo "1. Ensure Docker is running (required for 'moose dev')"
-echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"
+echo "1. Set up Docker access: run '/usr/local/bin/docker-helper.sh' for guidance"
+echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"  
 echo "3. Run 'cargo build' to build the Rust CLI"
 echo "4. Run 'pnpm build' to build TypeScript packages"
-echo "5. Run 'moose dev' to start development with Docker containers"
-echo "6. Check .cursor/Dockerfile for complete environment setup"
+echo "5. Run 'moose dev' to start development (requires working Docker)"
+echo "6. For Cursor: Configure Docker socket mounting or privileged mode"
 
 exit $OVERALL_STATUS

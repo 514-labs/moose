@@ -14,7 +14,7 @@ use clap::Parser;
 use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
 use display::with_spinner_completion;
-use log::{debug, info};
+use log::{debug, info, warn};
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::build::build_package;
@@ -57,6 +57,7 @@ use crate::utilities::constants::{
 use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
+use crate::framework::core::migration_plan::MIGRATION_SCHEMA;
 use anyhow::Result;
 
 #[derive(Parser)]
@@ -222,16 +223,7 @@ pub async fn top_command_handler(
 
             if *write_infra_map {
                 let json_path = project_arc
-                    .internal_dir()
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new(
-                                "Failed".to_string(),
-                                "to create .moose directory".to_string(),
-                            ),
-                            e,
-                        )
-                    })?
+                    .internal_dir_with_routine_failure_err()?
                     .join("infrastructure_map.json");
 
                 infra_map.save_to_json(&json_path).map_err(|e| {
@@ -430,7 +422,7 @@ pub async fn top_command_handler(
                         )
                     })?;
 
-                let plan_yaml = serde_yaml::to_string(&result.db_migration).map_err(|e| {
+                let plan_yaml = result.db_migration.to_yaml().map_err(|e| {
                     RoutineFailure::new(
                         Message {
                             action: "Plan".to_string(),
@@ -452,15 +444,31 @@ pub async fn top_command_handler(
                             e,
                         )
                     })?;
-                    std::fs::write(MIGRATION_FILE, plan_yaml).map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new(
-                                "Migration".to_string(),
-                                "plan writing failed.".to_string(),
-                            ),
-                            e,
-                        )
-                    })?;
+
+                    if let Err(e) = std::fs::write(
+                        project
+                            .internal_dir_with_routine_failure_err()?
+                            .join("migration_schema.json"),
+                        MIGRATION_SCHEMA,
+                    ) {
+                        warn!("Error writing migration schema file: {e:?}");
+                    };
+                    // Prepend YAML language server schema directive for better editor support
+                    let plan_yaml_with_header = format!(
+                        "# yaml-language-server: $schema=../.moose/migration_schema.json\n\n{}",
+                        plan_yaml
+                    );
+                    std::fs::write(MIGRATION_FILE, plan_yaml_with_header.as_str()).map_err(
+                        |e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Migration".to_string(),
+                                    "plan writing failed.".to_string(),
+                                ),
+                                e,
+                            )
+                        },
+                    )?;
                     std::fs::write(
                         MIGRATION_BEFORE_STATE_FILE,
                         serde_json::to_string_pretty(&result.remote_state).map_err(|e| {
@@ -504,7 +512,7 @@ pub async fn top_command_handler(
                         )
                     })?;
                 } else {
-                    println!("Changes: \n\n{}", plan_yaml)
+                    println!("Changes: \n\n{}", plan_yaml);
                 }
 
                 Ok(RoutineSuccess::success(Message::new(

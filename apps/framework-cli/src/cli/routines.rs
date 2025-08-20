@@ -469,7 +469,9 @@ pub async fn start_production_mode(
 
         // Load and validate the approved migration plan
         let plan_content = std::fs::read_to_string(MIGRATION_FILE)?;
-        let migration_plan: MigrationPlan = serde_yaml::from_str(&plan_content)?;
+        let migration_plan: MigrationPlan =
+            // see MigrationPlan::to_yaml for the reason of this workaround
+            serde_json::from_value(serde_yaml::from_str::<serde_json::Value>(&plan_content)?)?;
 
         info!("Loaded approved migration plan from {:?}", MIGRATION_FILE);
         info!("Plan created: {}", migration_plan.created_at);

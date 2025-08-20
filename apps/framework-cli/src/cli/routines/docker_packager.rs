@@ -227,16 +227,7 @@ pub fn create_dockerfile(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let internal_dir = project.internal_dir().map_err(|err| {
-        error!("Failed to get internal directory for project: {}", err);
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to get internal directory for project".to_string(),
-            ),
-            err,
-        )
-    })?;
+    let internal_dir = project.internal_dir_with_routine_failure_err()?;
 
     ensure_docker_running(docker_client).map_err(|err| {
         error!("Failed to ensure docker is running: {}", err);
@@ -468,16 +459,7 @@ pub fn build_dockerfile(
     is_amd64: bool,
     is_arm64: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let internal_dir = project.internal_dir().map_err(|err| {
-        error!("Failed to get internal directory for project: {}", err);
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to get internal directory for project".to_string(),
-            ),
-            err,
-        )
-    })?;
+    let internal_dir = project.internal_dir_with_routine_failure_err()?;
 
     ensure_docker_running(docker_client).map_err(|err| {
         error!("Failed to ensure docker is running: {}", err);

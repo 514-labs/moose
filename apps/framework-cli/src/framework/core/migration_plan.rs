@@ -13,11 +13,7 @@ pub struct MigrationPlan {
     pub operations: Vec<SerializableOlapOperation>,
 }
 
-pub struct MigrationPlanWithBeforeAfter {
-    pub remote_state: InfrastructureMap,
-    pub local_infra_map: InfrastructureMap,
-    pub db_migration: MigrationPlan,
-}
+pub const MIGRATION_SCHEMA: &str = include_str!("../../utilities/migration_plan_schema.json");
 
 impl MigrationPlan {
     /// Creates a new migration plan from an infrastructure plan
@@ -49,4 +45,17 @@ impl MigrationPlan {
     pub fn total_operations(&self) -> usize {
         self.operations.len()
     }
+
+    pub fn to_yaml(&self) -> anyhow::Result<String> {
+        let plan_json = serde_json::to_value(self)?;
+        // going through JSON before YAML because tooling does not support `!tag`
+        let plan_yaml = serde_yaml::to_string(&plan_json)?;
+        Ok(plan_yaml)
+    }
+}
+
+pub struct MigrationPlanWithBeforeAfter {
+    pub remote_state: InfrastructureMap,
+    pub local_infra_map: InfrastructureMap,
+    pub db_migration: MigrationPlan,
 }

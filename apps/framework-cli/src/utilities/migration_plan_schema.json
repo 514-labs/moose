@@ -1,0 +1,544 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MigrationPlan",
+  "description": "A comprehensive migration plan that can be reviewed, approved, and executed",
+  "type": "object",
+  "properties": {
+    "created_at": {
+      "description": "Timestamp when this plan was generated",
+      "type": "string",
+      "format": "date-time"
+    },
+    "operations": {
+      "description": "DB Operations to run",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SerializableOlapOperation"
+      }
+    }
+  },
+  "required": ["created_at", "operations"],
+  "$defs": {
+    "SerializableOlapOperation": {
+      "description": "Represents atomic DDL operations for OLAP resources.\nObject details are omitted, e.g. we need only the table name for DropTable",
+      "oneOf": [
+        {
+          "description": "Create a new table",
+          "type": "object",
+          "properties": {
+            "CreateTable": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table to create",
+                  "$ref": "#/$defs/Table"
+                }
+              },
+              "required": ["table"]
+            }
+          },
+          "required": ["CreateTable"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Drop an existing table",
+          "type": "object",
+          "properties": {
+            "DropTable": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table to drop",
+                  "type": "string"
+                }
+              },
+              "required": ["table"]
+            }
+          },
+          "required": ["DropTable"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Add a column to a table",
+          "type": "object",
+          "properties": {
+            "AddTableColumn": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table to add the column to",
+                  "type": "string"
+                },
+                "column": {
+                  "description": "Column to add",
+                  "$ref": "#/$defs/Column"
+                },
+                "after_column": {
+                  "description": "The column after which to add this column (None means adding as first column)",
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["table", "column"]
+            }
+          },
+          "required": ["AddTableColumn"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Drop a column from a table",
+          "type": "object",
+          "properties": {
+            "DropTableColumn": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table to drop the column from",
+                  "type": "string"
+                },
+                "column_name": {
+                  "description": "Name of the column to drop",
+                  "type": "string"
+                }
+              },
+              "required": ["table", "column_name"]
+            }
+          },
+          "required": ["DropTableColumn"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Modify a column in a table",
+          "type": "object",
+          "properties": {
+            "ModifyTableColumn": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table containing the column",
+                  "type": "string"
+                },
+                "before_column": {
+                  "description": "The column before modification",
+                  "$ref": "#/$defs/Column"
+                },
+                "after_column": {
+                  "description": "The column after modification",
+                  "$ref": "#/$defs/Column"
+                }
+              },
+              "required": ["table", "before_column", "after_column"]
+            }
+          },
+          "required": ["ModifyTableColumn"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "RenameTableColumn": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "description": "The table containing the column",
+                  "type": "string"
+                },
+                "before_column_name": {
+                  "description": "Name of the column before renaming",
+                  "type": "string"
+                },
+                "after_column_name": {
+                  "description": "Name of the column after renaming",
+                  "type": "string"
+                }
+              },
+              "required": ["table", "before_column_name", "after_column_name"]
+            }
+          },
+          "required": ["RenameTableColumn"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "RawSql": {
+              "type": "object",
+              "properties": {
+                "sql": {
+                  "description": "The SQL statements to execute",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": ["sql", "description"]
+            }
+          },
+          "required": ["RawSql"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Table": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "order_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deduplicate": {
+          "type": "boolean",
+          "default": false
+        },
+        "engine": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "version": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_primitive": {
+          "$ref": "#/$defs/PrimitiveSignature"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Metadata"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "life_cycle": {
+          "$ref": "#/$defs/LifeCycle",
+          "default": "FULLY_MANAGED"
+        }
+      },
+      "required": ["name", "columns", "order_by", "source_primitive"]
+    },
+    "Column": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/ColumnType"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "unique": {
+          "type": "boolean"
+        },
+        "primary_key": {
+          "type": "boolean"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColumnDefaults"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              true
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "default": []
+        },
+        "comment": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["name", "data_type", "required", "unique", "primary_key"]
+    },
+    "ColumnType": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "String",
+            "Boolean",
+            "BigInt",
+            "Date",
+            "Date16",
+            "Json",
+            "Bytes",
+            "UUID",
+            "IPv4",
+            "IPv6",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "Int128",
+            "Int256",
+            "UInt8",
+            "UInt16",
+            "UInt32",
+            "UInt64",
+            "UInt128",
+            "UInt256",
+            "Float32",
+            "Float64",
+            "DateTime"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^Decimal\\(\\d{1,3},\\s*\\d{1,3}\\)$"
+        },
+        {
+          "type": "string",
+          "pattern": "^DateTime\\(\\d{1,3}\\)$"
+        },
+        {
+          "$ref": "#/$defs/DataEnum"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "elementType": {
+              "$ref": "#/$defs/ColumnType"
+            },
+            "elementNullable": {
+              "type": "boolean"
+            }
+          },
+          "required": ["elementType", "elementNullable"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nullable": {
+              "$ref": "#/$defs/ColumnType"
+            }
+          },
+          "required": ["nullable"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "string" },
+                  { "$ref": "#/$defs/ColumnType" }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          },
+          "required": ["fields"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyType": {
+              "$ref": "#/$defs/ColumnType"
+            },
+            "valueType": {
+              "$ref": "#/$defs/ColumnType"
+            }
+          },
+          "required": ["keyType", "valueType"],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/Nested"
+        }
+      ]
+    },
+    "DataEnum": {
+      "description": "An internal framework representation for an enum.\nAvoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EnumMember"
+          }
+        }
+      },
+      "required": ["name", "values"]
+    },
+    "EnumMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/EnumValue"
+        }
+      },
+      "required": ["name", "value"]
+    },
+    "EnumValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "Int": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0,
+              "maximum": 255
+            }
+          },
+          "required": ["Int"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "String": {
+              "type": "string"
+            }
+          },
+          "required": ["String"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Nested": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "jwt": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["name", "columns"]
+    },
+    "ColumnDefaults": {
+      "type": "string",
+      "enum": ["AutoIncrement", "CUID", "UUID", "Now"]
+    },
+    "Version": {
+      "description": "Represents a version number that can be parsed from strings like \"1.2.3\".",
+      "type": "string"
+    },
+    "PrimitiveSignature": {
+      "description": "Signature that uniquely identifies a primitive component\n\nThis combines the name and type of a primitive to provide a consistent\nway to reference primitives throughout the system.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the primitive component",
+          "type": "string"
+        },
+        "primitive_type": {
+          "description": "Type of the primitive component",
+          "$ref": "#/$defs/PrimitiveTypes"
+        }
+      },
+      "required": ["name", "primitive_type"]
+    },
+    "PrimitiveTypes": {
+      "description": "Types of primitives that can be represented in the infrastructure\n\nThese represent the core building blocks of the system that can be\ntransformed into infrastructure components.",
+      "oneOf": [
+        {
+          "description": "A data model that defines the structure of data",
+          "type": "string",
+          "const": "DataModel"
+        },
+        {
+          "description": "A function that processes data",
+          "type": "string",
+          "const": "Function"
+        },
+        {
+          "description": "A database block for OLAP operations",
+          "type": "string",
+          "const": "DBBlock"
+        },
+        {
+          "description": "An API for consumption of data",
+          "type": "string",
+          "const": "ConsumptionAPI"
+        }
+      ]
+    },
+    "Metadata": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "LifeCycle": {
+      "description": "Defines how Moose manages the lifecycle of database resources when code changes.\n\nThis enum controls the behavior when there are differences between code definitions\nand the actual database schema or structure.",
+      "oneOf": [
+        {
+          "description": "Full automatic management (default behavior).\nMoose will automatically modify database resources to match code definitions,\nincluding potentially destructive operations like dropping columns or tables.",
+          "type": "string",
+          "const": "FULLY_MANAGED"
+        },
+        {
+          "description": "Deletion-protected automatic management.\nMoose will modify resources to match code but will avoid destructive actions\nsuch as dropping columns or tables. Only additive changes are applied.",
+          "type": "string",
+          "const": "DELETION_PROTECTED"
+        },
+        {
+          "description": "External management - no automatic changes.\nMoose will not modify the database resources. You are responsible for managing\nthe schema and ensuring it matches code definitions manually.",
+          "type": "string",
+          "const": "EXTERNALLY_MANAGED"
+        }
+      ]
+    }
+  }
+}

@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     apt-transport-https \
     software-properties-common \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Create ubuntu user early with proper sudoers permissions
@@ -30,17 +31,23 @@ RUN useradd -m -s /bin/bash ubuntu && \
     echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
-# Install Docker
+# Install Docker CLI and Daemon (for Cursor background agent)
+# Primary approach: Docker socket mounting from host
+# Fallback: Docker-in-Docker with privileged mode if needed
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Add setup for Docker-in-Docker (DinD) support - add both root and ubuntu to docker group
+# Setup docker group and add users
 RUN groupadd -f docker \
     && usermod -aG docker root \
     && usermod -aG docker ubuntu
+
+# Install Docker Compose standalone for maximum compatibility
+RUN curl -SL https://github.com/docker/compose/releases/download/v2.24.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose
 
 # Install Node.js 20.x
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -112,9 +119,19 @@ WORKDIR /workspace
 # Copy and run verification script (switch to root temporarily for this)
 USER root
 COPY scripts/verify-environment.sh /tmp/verify-environment.sh
+COPY .cursor/docker-helper.sh /usr/local/bin/docker-helper.sh
 RUN chmod +x /tmp/verify-environment.sh \
+    && chmod +x /usr/local/bin/docker-helper.sh \
     && /tmp/verify-environment.sh
 
 # Switch back to ubuntu user as the default user for the environment
 USER ubuntu
 WORKDIR /workspace
+
+# USAGE NOTES:
+# 1. RECOMMENDED: Mount Docker socket from host
+#    docker run -v /var/run/docker.sock:/var/run/docker.sock <image>
+# 2. ALTERNATIVE: Use privileged mode for Docker-in-Docker  
+#    docker run --privileged <image> 
+#    then run: sudo /usr/local/bin/docker-helper.sh --start-daemon
+# 3. Check Docker setup: /usr/local/bin/docker-helper.sh

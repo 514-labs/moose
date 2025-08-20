@@ -1,17 +1,35 @@
 import { Callout, PathConfig } from "@/components";
 
-## Managing Changes With Existing Tables
+# Breaking In-Place Schema Changes
 
-We're working on a new developer experience for how to manage schema changes in your database.
 
-<Callout type="info" title="Want to get involved?" href={PathConfig.slack.path} ctaLabel="Join Slack">
-Join the community slack to stay updated and let us know if you're interested in previewing the schema change experience and providing feedback on the API.
-</Callout>
+## Incompatible Data Type Changes
 
-### What is a schema change?
+If you have a table with data in it, and want to change the type of that column, but the type change fails....
 
-A schema change is a change to the database schema. This can be a new table, a new column, a new index, a new constraint, etc.
+- You get into an error state where the table is in a broken state.
 
-### How do I manage schema changes?
+Impact:
 
-We're working on a new developer experience for how to manage schema changes in your database.
+- You cannot just go into your data model code and "undo" the type change, because theres a stuck mutation
+- So you have to manually kill the mutation first before you can make any other changes
+
+... here theres an opportunity to automatically kill the mutation for the user...
+
+- We need to clearly show the user we killed the mutation. But then the bigger problem is you still cannot query the table.
+
+...so we need to tell them to "undo" the type change
+
+Proposed solution:
+Instruct the user to go to their table definition and change back the type of 'column: column name" back to the original type -> which we should show in the message.
+
+we do not want to magically revert their code for them, we want to make the user be explicit about what to do here.
+
+^^^^ THIS UNFUCKS THE MUTATATION FAILURE ^^^^^
+
+then we probably need to help them achieve their desired state which is a "type chage":
+
+Do we instruct them to:
+
+- Create a new column named old_name_v2
+- And then backfill?

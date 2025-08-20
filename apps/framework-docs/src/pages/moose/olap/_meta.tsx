@@ -24,6 +24,9 @@ const rawMeta = {
   "apply-migrations": {
     title: "Applying Migrations",
   },
+  "planned-migrations": {
+    title: "Planned Migrations",
+  },
   "external-tables": {
     title: "External Tables",
   },

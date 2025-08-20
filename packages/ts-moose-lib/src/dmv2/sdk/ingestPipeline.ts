@@ -216,7 +216,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
           "Please use 'ingestAPI' instead.",
       );
       // If ingestAPI is not explicitly set, use the ingest value
-      if (config.ingestAPI === undefined || config.ingestAPI === false) {
+      if (config.ingestAPI === undefined) {
         (config as any).ingestAPI = config.ingest;
       }
     }
@@ -274,7 +274,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
 
     // Create ingest API if configured, requiring a stream as destination
     const shouldCreateIngestAPI =
-      config.ingestAPI || (config.ingest && !config.ingestAPI);
+      config.ingestAPI || (config.ingest && config.ingestAPI === undefined);
     if (shouldCreateIngestAPI) {
       if (!this.stream) {
         throw new Error("Ingest API needs a stream to write to.");

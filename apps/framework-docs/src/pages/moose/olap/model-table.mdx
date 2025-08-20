@@ -147,7 +147,7 @@ const eventsPipeline = new IngestPipeline<UserEvent>("user_events", {
   stream: true,    // Creates Kafka/Redpanda topic
   table: {         // Creates and configures the table named "user_events"
     orderByFields: ["id", "timestamp"],
-  engine: ClickHouseEngines.ReplacingMergeTree
+    engine: ClickHouseEngines.ReplacingMergeTree
   }
 });
 

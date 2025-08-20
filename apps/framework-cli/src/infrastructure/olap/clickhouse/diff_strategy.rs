@@ -8,6 +8,7 @@ use crate::framework::core::infrastructure::table::{DataEnum, EnumValue, Table};
 use crate::framework::core::infrastructure_map::{
     ColumnChange, OlapChange, OrderByChange, TableChange, TableDiffStrategy,
 };
+use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 
 /// ClickHouse-specific table diff strategy
 ///
@@ -174,12 +175,17 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
             ];
         }
 
-        // Check if deduplication setting changed (affects engine)
-        if after
+        let before_engine = before
             .engine
-            .as_ref()
-            .is_some_and(|e| Some(e) != before.engine.as_ref())
-        {
+            .as_deref()
+            .and_then(|e| ClickhouseEngine::try_from(e).ok());
+        let after_engine = after
+            .engine
+            .as_deref()
+            .and_then(|e| ClickhouseEngine::try_from(e).ok());
+
+        // Check if engine has changed
+        if after_engine.is_some_and(|e| Some(e) != before_engine) {
             log::debug!(
                 "ClickHouse: Deduplication setting changed for table '{}', requiring drop+create",
                 before.name

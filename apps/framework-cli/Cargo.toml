@@ -77,7 +77,6 @@ num-traits = "0.2.19"
 async-trait = "0.1.83"
 protobuf = "3.7"
 petgraph = "0.8.1"
-ctor = "0.2.8"
 serial_test = "3.1.1"
 logos = "0.15.0"
 

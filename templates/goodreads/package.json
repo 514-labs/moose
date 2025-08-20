@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@514labs/moose-lib": "latest",
-    "typescript": "^5.7.0",
-    "typia": "^7.6.0",
+    "typescript": "~5.9.2",
+    "typia": "^9.6.1",
     "ts-patch": "^3.3.0"
   },
   "devDependencies": {

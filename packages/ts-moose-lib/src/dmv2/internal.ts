@@ -5,7 +5,7 @@
  * This module manages the registration of user-defined dmv2 resources (Tables, Streams, APIs, etc.)
  * and provides functions to serialize these resources into a JSON format (`InfrastructureMap`)
  * expected by the Moose infrastructure management system. It also includes helper functions
- * to retrieve registered handler functions (for streams and egress APIs) and the base class
+ * to retrieve registered handler functions (for streams and APIs) and the base class
  * (`TypedBase`) used by dmv2 resource classes.
  *
  * @internal This module is intended for internal use by the Moose library and compiler plugin.
@@ -191,7 +191,7 @@ interface SqlResourceJson {
  * This map is serialized to JSON and used by the Moose infrastructure system.
  *
  * @param registry The internal Moose resource registry (`moose_internal`).
- * @returns An object containing dictionaries of tables, topics, ingest APIs, egress APIs, and SQL resources, formatted according to the `*Json` interfaces.
+ * @returns An object containing dictionaries of tables, topics, ingest APIs, APIs, and SQL resources, formatted according to the `*Json` interfaces.
  */
 export const toInfraMap = (registry: typeof moose_internal) => {
   const tables: { [key: string]: TableJson } = {};
@@ -452,12 +452,12 @@ export const getStreamingFunctions = async () => {
 
 /**
  * Loads the user's application entry point and extracts all registered
- * Egress API handler functions.
+ * API handler functions.
  *
  * @returns A Map where keys are the names of the APIs and values
  *          are their corresponding handler functions.
  */
-export const getEgressApis = async () => {
+export const getApis = async () => {
   loadIndex();
   const apiFunctions = new Map<
     string,

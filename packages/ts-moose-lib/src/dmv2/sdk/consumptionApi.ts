@@ -26,7 +26,7 @@ export interface ApiConfig<T> {
 }
 
 /**
- * Represents a Consumption API endpoint (Egress API), used for querying data from a Moose system.
+ * Represents a Consumption API endpoint (API), used for querying data from a Moose system.
  * Exposes data, often from an OlapTable or derived through a custom handler function.
  *
  * @template T The data type defining the expected structure of the API's query parameters.

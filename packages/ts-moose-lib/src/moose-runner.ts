@@ -44,7 +44,7 @@ import { runBlocks } from "./blocks/runner";
 import { runApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
-import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
+import { runApiTypeSerializer } from "./consumption-apis/exportTypeSerializer";
 import { runScripts } from "./scripts/runner";
 import process from "process";
 
@@ -210,7 +210,7 @@ program
   .description("Run consumption type serializer")
   .argument("<target-model>", "Target model to serialize")
   .action((targetModel) => {
-    runConsumptionTypeSerializer(targetModel);
+    runApiTypeSerializer(targetModel);
   });
 
 program

@@ -7,7 +7,7 @@ import { Cluster } from "../cluster-utils";
 import { ApiUtil } from "../index";
 import { sql } from "../sqlHelpers";
 import { Client as TemporalClient } from "@temporalio/client";
-import { getEgressApis } from "../dmv2/internal";
+import { getApis } from "../dmv2/internal";
 
 interface ClickhouseConfig {
   database: string;
@@ -135,7 +135,7 @@ const apiHandler =
       let userFuncModule = modulesCache.get(pathName);
       if (userFuncModule === undefined) {
         if (isDmv2) {
-          const egressApis = await getEgressApis();
+          const apis = await getApis();
           let apiName = fileName.replace(/^\/+|\/+$/g, "");
           let version = url.searchParams.get("version");
 
@@ -151,12 +151,12 @@ const apiHandler =
           // Try versioned lookup first if version is available; otherwise rely on aliasing
           if (version) {
             const versionedKey = `${apiName}:${version}`;
-            userFuncModule = egressApis.get(versionedKey);
+            userFuncModule = apis.get(versionedKey);
           } else {
-            userFuncModule = egressApis.get(apiName);
+            userFuncModule = apis.get(apiName);
           }
           if (!userFuncModule) {
-            const availableApis = Array.from(egressApis.keys()).map((key) =>
+            const availableApis = Array.from(apis.keys()).map((key) =>
               key.replace(":", "/"),
             );
             const errorMessage =

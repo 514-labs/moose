@@ -166,6 +166,13 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     super(name, config ?? {}, schema, columns, validators);
     this.name = name;
 
+    if (
+      this.config.engine === ClickHouseEngines.ReplacingMergeTree &&
+      this.config.deduplicate === false
+    ) {
+      throw new Error("Invalid engine-deduplicate combination in config.");
+    }
+
     const tables = getMooseInternal().tables;
     if (tables.has(name)) {
       throw new Error(`OlapTable with name ${name} already exists`);

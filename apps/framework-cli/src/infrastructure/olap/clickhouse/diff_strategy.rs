@@ -175,7 +175,12 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
         }
 
         // Check if deduplication setting changed (affects engine)
-        if before.deduplicate != after.deduplicate {
+        if before.deduplicate != after.deduplicate
+            || after
+                .engine
+                .as_ref()
+                .is_some_and(|e| Some(e) != before.engine.as_ref())
+        {
             log::debug!(
                 "ClickHouse: Deduplication setting changed for table '{}', requiring drop+create",
                 before.name

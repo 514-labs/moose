@@ -13,15 +13,15 @@
  */
 import process from "process";
 import {
-  IngestApi,
   ConsumptionApi,
+  IngestApi,
   SqlResource,
-  Workflow,
   Task,
+  Workflow,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ConsumptionUtil } from "../index";
+import { ClickHouseEngines, ConsumptionUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
 import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 import { compilerLog } from "../commons";
@@ -217,7 +217,9 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
-      deduplicate: table.config.deduplicate ?? false,
+      deduplicate:
+        table.config.deduplicate ??
+        table.config.engine === ClickHouseEngines.ReplacingMergeTree,
       engine: table.config.engine,
       version: table.config.version,
       metadata,

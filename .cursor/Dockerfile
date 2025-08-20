@@ -32,6 +32,9 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=fa
     apt-transport-https \
     software-properties-common \
     sudo \
+    kmod \
+    iptables \
+    fuse-overlayfs \
     && rm -rf /var/lib/apt/lists/*
 
 # Create ubuntu user early with proper sudoers permissions
@@ -52,6 +55,25 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /
 RUN groupadd -f docker \
     && usermod -aG docker root \
     && usermod -aG docker ubuntu
+
+# Create necessary directories for Docker-in-Docker
+RUN mkdir -p /var/lib/docker \
+    && mkdir -p /var/run/docker \
+    && chmod 755 /var/lib/docker \
+    && chmod 755 /var/run/docker
+
+# Set up Docker daemon configuration for better compatibility
+RUN mkdir -p /etc/docker \
+    && echo '{\
+  "storage-driver": "vfs",\
+  "log-driver": "json-file",\
+  "log-opts": {\
+    "max-size": "10m",\
+    "max-file": "3"\
+  },\
+  "experimental": false,\
+  "debug": false\
+}' > /etc/docker/daemon.json
 
 # Install Docker Compose standalone for maximum compatibility
 RUN curl -SL https://github.com/docker/compose/releases/download/v2.24.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose \
@@ -138,4 +160,6 @@ WORKDIR /workspace
 # 2. ALTERNATIVE: Use privileged mode for Docker-in-Docker  
 #    docker run --privileged <image> 
 #    then run: sudo /usr/local/bin/docker-helper.sh --start-daemon
-# 3. Check Docker setup: /usr/local/bin/docker-helper.sh
+# 3. Check Docker setup: /usr/local/bin/docker-helper.sh --status
+# 4. The daemon.json is configured to use vfs storage driver by default for better compatibility
+# 5. Docker helper script will try overlay2 first, then fall back to vfs if needed

@@ -85,15 +85,38 @@ start_daemon() {
         return 0
     fi
     
-    # Start Docker daemon in background
+    # Start Docker daemon in background with storage driver fallback
     echo "📝 Starting dockerd... (logs: $DOCKER_DAEMON_LOG)"
+    
+    # Try overlay2 first
+    echo "🔧 Attempting to start with overlay2 storage driver..."
     dockerd --host=unix://$DOCKER_SOCK --storage-driver=overlay2 > "$DOCKER_DAEMON_LOG" 2>&1 &
+    DOCKERD_PID=$!
     
     # Wait for daemon to start
     echo "⏳ Waiting for Docker daemon to start..."
-    for i in {1..30}; do
+    for i in {1..15}; do
         if timeout 2 docker info &> /dev/null; then
-            echo "✅ Docker daemon started successfully"
+            echo "✅ Docker daemon started successfully with overlay2"
+            return 0
+        fi
+        echo -n "."
+        sleep 1
+    done
+    
+    # If overlay2 failed, try vfs
+    echo ""
+    echo "⚠️  overlay2 failed, trying vfs storage driver..."
+    kill $DOCKERD_PID 2>/dev/null || true
+    sleep 2
+    
+    dockerd --host=unix://$DOCKER_SOCK --storage-driver=vfs > "$DOCKER_DAEMON_LOG" 2>&1 &
+    DOCKERD_PID=$!
+    
+    echo "⏳ Waiting for Docker daemon to start with vfs..."
+    for i in {1..15}; do
+        if timeout 2 docker info &> /dev/null; then
+            echo "✅ Docker daemon started successfully with vfs"
             return 0
         fi
         echo -n "."
@@ -101,7 +124,7 @@ start_daemon() {
     done
     
     echo ""
-    echo "❌ Docker daemon failed to start within 30 seconds"
+    echo "❌ Docker daemon failed to start with both overlay2 and vfs"
     echo "📝 Check logs: $DOCKER_DAEMON_LOG"
     return 1
 }

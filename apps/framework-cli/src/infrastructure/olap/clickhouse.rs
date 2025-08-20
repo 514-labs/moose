@@ -1122,7 +1122,9 @@ impl OlapOperations for ConfiguredDBClient {
                 name: table_name, // Keep the original table name with version
                 columns,
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
-                engine: Some(engine),
+                engine: crate::infrastructure::olap::clickhouse::queries::engine_from_string(
+                    &engine,
+                ),
                 version,
                 source_primitive,
                 metadata: None,

@@ -47,6 +47,7 @@ use crate::{
         consumption::model::ConsumptionQueryParam, languages::SupportedLanguages,
         scripts::Workflow, versions::Version,
     },
+    infrastructure::olap::clickhouse::queries::engine_from_string,
     utilities::constants,
 };
 
@@ -426,7 +427,10 @@ impl PartialInfrastructureMap {
                         }),
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
-                    engine: partial_table.engine.clone(),
+                    engine: partial_table
+                        .engine
+                        .as_ref()
+                        .and_then(|e| engine_from_string(e)),
                     version,
                     source_primitive: PrimitiveSignature {
                         name: partial_table.name.clone(),

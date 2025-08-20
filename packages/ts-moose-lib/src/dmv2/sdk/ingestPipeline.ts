@@ -280,12 +280,17 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
         throw new Error("Ingest API needs a stream to write to.");
       }
 
+      // Extract the ingest configuration object (either from ingestAPI or deprecated ingest)
+      const ingestConfigValue = config.ingestAPI || config.ingest;
+      const customIngestConfig =
+        typeof ingestConfigValue === "object" ?
+          (ingestConfigValue as object)
+        : {};
+
       const ingestConfig = {
         destination: this.stream,
         deadLetterQueue: this.deadLetterQueue,
-        ...(typeof (config.ingestAPI || config.ingest) === "object" ?
-          ((config.ingestAPI || config.ingest) as object)
-        : {}),
+        ...customIngestConfig,
         ...(config.version && { version: config.version }),
       };
       this.ingestApi = new IngestApi(

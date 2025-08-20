@@ -64,49 +64,116 @@ If the table only has disposable dev data, you can also `TRUNCATE TABLE <db>.<ta
 </Callout>
 
 ## Safely achieving the desired type change
-Avoid in-place breaking changes on populated tables. Use one of these safe patterns:
+Instead of editing the column type in place, you can add a new column with the target type and backfill the data. This is the recommended approach.
 
-- Add new column + backfill (recommended)
-  - Add a new column with the target type (often `Nullable(...)` at first)
-  - Backfill using a safe cast (rows that can’t cast should yield null or a default you control)
-  - Migrate reads/writes to the new column
-  - Later, drop or rename columns via a reviewed plan in prod
+### Add a new column + backfill
 
-Example plan snippet for prod:
+<TypeScript>
+```ts filename="app/tables/events.ts" copy
+enum StatusEnum {
+  "active" = "active",
+  "inactive" = "inactive",
+}
+
+interface Event {
+  id: Key<string>;
+  name: string;
+  createdAt: Date;
+  status: string;
+  status_v2: StatusEnum; // New field - will trigger migration
+}
+```
+</TypeScript>
+
+Then, generate a plan to add the new column and backfill the data.
+
+```bash
+moose generate migration --url <YOUR_PRODUCTION_DATABASE_URL> --save --token <MOOSE_ADMIN_API_KEY>
+```
+
+Open the generated `/migrations/plan.yaml` file. You'll see the `AddTableColumn` operation to add the new column. Right after it, you can add a `RawSql` operation to backfill the data. Here you can write an `ALTER TABLE` statement to update the new column with the data from the old column:
+
 ```yaml filename="migrations/plan.yaml"
 - AddTableColumn:
     table: "events"
     column:
-      name: "value_v2"
+      name: "status_v2"
       data_type:
         Nullable:
-          nullable: "Float64"
+          nullable: "StatusEnum"
       default: null
 - RawSql:
     sql:
-      - "ALTER TABLE events UPDATE value_v2 = toFloat64OrNull(value) WHERE value_v2 IS NULL"
-    description: "Backfill value_v2 from value"
-# After switching application reads/writes to value_v2:
+      - "ALTER TABLE events UPDATE status_v2 = toStatusEnumOrNull(status) WHERE status_v2 IS NULL"
+    description: "Backfill status_v2 from status"
+```
+
+Then, when writing to the table, double write to both columns.
+
+This allows for all surrounding processes and applications that rely on the old column to continue working, and you can later deprecate the old column and rename the new column when you are ready.
+
+
+### Later, deprecate the old column and rename the new column
+
+Once the column backfill is complete and you are ready to deprecate the old column, you can rename the new column to the old column name and apply this in a new, subsequent PR.
+
+
+In your code, you can rename the column and deprecate the old column:
+<TypeScript>
+```ts filename="app/tables/events.ts" copy
+interface Event {
+  id: Key<string>;
+  name: string;
+  createdAt: Date;
+  status_old: string; // rename status to status_old
+  status: StatusEnum; // rename status_v2 to status
+}
+```
+</TypeScript>
+<Python>
+```python filename="app/tables/events.py" copy
+class Event(BaseModel):
+    id: Key[str]
+    name: str
+    created_at: datetime
+    status_old: str
+    status: StatusEnum
+
+table = OlapTable[Event]("events")
+```
+</Python>
+
+Initially you'll see two `DeleteTableColumn` operations, followed by two `AddTableColumn` operations. 
+
+
+*IMPORTANT*: DELETE ALL FOUR GENERATED `DeleteTableColumn` AND `AddTableColumn` OPERATIONS WITH THE FOLLOWING:
+
+```yaml filename="migrations/plan.yaml"
 - RenameTableColumn:
     table: "events"
-    before_column_name: "value_v2"
-    after_column_name: "value"
+    before_column_name: "status"
+    after_column_name: "status_old"
+- RenameTableColumn:
+    table: "events"
+    before_column_name: "status_v2"
+    after_column_name: "status"
 ```
 
-- Enforce NOT NULL after backfill
-```sql
--- After verifying no NULLs remain:
-ALTER TABLE events MODIFY COLUMN value Float64;
-```
+<Callout type="info" title="Dropping the old column" compact>
+Once the old column is no longer needed, you can drop it in a third PR.
 
-- If you must change in place in dev
-  - Only when the table is empty or data is disposable
-  - Prefer truncate/recreate
+```yaml filename="migrations/plan.yaml"
+- DropTableColumn:
+    table: "events"
+    column_name: "status_old"
+```
+</Callout>
 
 ## Common breaking cases
 - String -> Int/Float: can fail on non-numeric rows; prefer `toInt64OrNull(...)`/`toFloat64OrNull(...)` + backfill
 - Nullable(T) -> T (NOT NULL): fails if any NULLs exist and no default is provided; backfill then drop nullability
 - Narrowing types (e.g., Int64 -> Int32): fails if values overflow; validate and transform first
 
-## Related
-- Planned, reviewed changes for prod: `${PathConfig.olap.path}/planned-migrations`
+<Callout type="info" title="Related" compact href={`${PathConfig.olap.path}/planned-migrations`} ctaLabel="Learn more" icon={false}>
+Read about migration planning and how to use it to safely manage schema changes in production.
+</Callout>

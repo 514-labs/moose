@@ -38,5 +38,5 @@ export const BrainPipeline = new IngestPipeline<Brain>("Brain", {
     deduplicate: false,
   },
   stream: true,
-  ingestAPI: true, // POST /ingest/Brain
+  ingestApi: true, // POST /ingest/Brain
 });

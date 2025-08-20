@@ -125,7 +125,7 @@ interface MyDataModel {
 
 // This single interface can be reused across multiple systems:
 const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
-  ingestAPI: true,    // POST API endpoint
+  ingestApi: true,    // POST API endpoint
   stream: true,    // Kafka topic
   table: {         // ClickHouse table
     orderByFields: ["primaryKey", "someDate"],
@@ -276,7 +276,7 @@ export interface SimpleShared {
 
 // This SAME model creates all infrastructure
 const pipeline = new IngestPipeline<SimpleShared>("simple_shared", {
-  ingestAPI: true,  // Creates: POST /ingest/simple_shared
+  ingestApi: true,  // Creates: POST /ingest/simple_shared
   stream: true,  // Creates: Kafka topic
   table: true    // Creates: ClickHouse table
 });
@@ -345,7 +345,7 @@ export interface CompositeShared {
 
 // Using in IngestPipeline - all types preserved
 const pipeline = new IngestPipeline<CompositeShared>("composite_shared", {
-  ingestAPI: true,
+  ingestApi: true,
   stream: true,
   table: true
 });
@@ -449,7 +449,7 @@ const table = new OlapTable<ClickHouseOptimized>("optimized_table", {
 
 // SCENARIO 2: IngestPipeline - optimizations ONLY in ClickHouse
 const pipeline = new IngestPipeline<ClickHouseOptimized>("optimized_pipeline", {
-  ingestAPI: true,
+  ingestApi: true,
   stream: true,
   table: true
 });

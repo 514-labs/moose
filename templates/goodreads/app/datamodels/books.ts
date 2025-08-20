@@ -24,7 +24,7 @@ export const BooksPipeline = new IngestPipeline<BooksSchema>("books", {
     deduplicate: true,
   },
   stream: true,
-  ingestAPI: {
+  ingestApi: {
     format: IngestionFormat.JSON,
   },
 });

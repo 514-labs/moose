@@ -176,7 +176,7 @@ interface ExampleModel {
 }
 
 const examplePipeline = new IngestPipeline<ExampleModel>("example-name", {
-  ingestAPI: true, // Creates a REST API endpoint
+  ingestApi: true, // Creates a REST API endpoint
   stream: true, // Connects to a stream
   table: true
 });

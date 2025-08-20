@@ -22,14 +22,14 @@ import { LifeCycle } from "./lifeCycle";
  * const pipelineConfig: IngestPipelineConfig<UserData> = {
  *   table: true,
  *   stream: true,
- *   ingestAPI: true
+ *   ingestApi: true
  * };
  *
  * // Advanced pipeline with custom configurations
  * const advancedConfig: IngestPipelineConfig<UserData> = {
  *   table: { orderByFields: ['timestamp', 'userId'], deduplicate: true },
  *   stream: { parallelism: 4, retentionPeriod: 86400 },
- *   ingestAPI: true,
+ *   ingestApi: true,
  *   version: '1.2.0',
  *   metadata: { description: 'User data ingestion pipeline' }
  * };
@@ -71,10 +71,10 @@ export type IngestPipelineConfig<T> = {
    *
    * @default false
    */
-  ingestAPI?: boolean | Omit<IngestConfig<T>, "destination">;
+  ingestApi?: boolean | Omit<IngestConfig<T>, "destination">;
 
   /**
-   * @deprecated Use `ingestAPI` instead. This parameter will be removed in a future version.
+   * @deprecated Use `ingestApi` instead. This parameter will be removed in a future version.
    */
   ingest?: boolean | Omit<IngestConfig<T>, "destination">;
 
@@ -125,7 +125,7 @@ export type IngestPipelineConfig<T> = {
  * const userDataPipeline = new IngestPipeline('userData', {
  *   table: true,
  *   stream: true,
- *   ingestAPI: true,
+ *   ingestApi: true,
  *   version: '1.0.0',
  *   metadata: { description: 'Pipeline for user registration data' }
  * });
@@ -134,7 +134,7 @@ export type IngestPipelineConfig<T> = {
  * const analyticsStream = new IngestPipeline('analytics', {
  *   table: { orderByFields: ['timestamp'], deduplicate: true },
  *   stream: { parallelism: 8, retentionPeriod: 604800 },
- *   ingestAPI: false
+ *   ingestApi: false
  * });
  * ```
  */
@@ -156,7 +156,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
   /**
    * The ingest API component of the pipeline, if configured.
    * Provides HTTP endpoints for data ingestion.
-   * Only present when `config.ingestAPI` is not `false`.
+   * Only present when `config.ingestApi` is not `false`.
    */
   ingestApi?: IngestApi<T>;
 
@@ -177,7 +177,7 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
    * const pipeline = new IngestPipeline('events', {
    *   table: { orderByFields: ['timestamp'], engine: ClickHouseEngines.ReplacingMergeTree },
    *   stream: { parallelism: 2 },
-   *   ingestAPI: true
+   *   ingestApi: true
    * });
    * ```
    */
@@ -213,12 +213,12 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     if (config.ingest !== undefined) {
       console.warn(
         "⚠️  DEPRECATION WARNING: The 'ingest' parameter is deprecated and will be removed in a future version. " +
-          "Please use 'ingestAPI' instead.",
+          "Please use 'ingestApi' instead.",
       );
-      // If ingestAPI is not explicitly set, use the ingest value
-      if (config.ingestAPI === undefined) {
-        // Create a new config object with the ingest value mapped to ingestAPI
-        config = { ...config, ingestAPI: config.ingest };
+      // If ingestApi is not explicitly set, use the ingest value
+      if (config.ingestApi === undefined) {
+        // Create a new config object with the ingest value mapped to ingestApi
+        config = { ...config, ingestApi: config.ingest };
       }
     }
 
@@ -274,15 +274,15 @@ export class IngestPipeline<T> extends TypedBase<T, IngestPipelineConfig<T>> {
     }
 
     // Create ingest API if configured, requiring a stream as destination
-    const shouldCreateIngestAPI =
-      config.ingestAPI || (config.ingest && config.ingestAPI === undefined);
-    if (shouldCreateIngestAPI) {
+    const shouldCreateIngestApi =
+      config.ingestApi || (config.ingest && config.ingestApi === undefined);
+    if (shouldCreateIngestApi) {
       if (!this.stream) {
         throw new Error("Ingest API needs a stream to write to.");
       }
 
-      // Extract the ingest configuration object (either from ingestAPI or deprecated ingest)
-      const ingestConfigValue = config.ingestAPI || config.ingest;
+      // Extract the ingest configuration object (either from ingestApi or deprecated ingest)
+      const ingestConfigValue = config.ingestApi || config.ingest;
       const customIngestConfig =
         typeof ingestConfigValue === "object" ?
           (ingestConfigValue as object)

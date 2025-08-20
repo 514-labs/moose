@@ -62,6 +62,6 @@ export const AircraftTrackingDataPipeline =
   new IngestPipeline<AircraftTrackingData>("AircraftTrackingData", {
     table: false,
     stream: true,
-    ingestAPI: true,
+    ingestApi: true,
     deadLetterQueue: true,
   });

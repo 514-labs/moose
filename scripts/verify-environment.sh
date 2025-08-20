@@ -160,14 +160,26 @@ echo
 echo "🐳 Docker (Required for Moose development):"
 check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
 
-# Check for Docker Compose (either standalone or plugin)  
+# Check for Docker Compose (either standalone or plugin)
+DOCKER_COMPOSE_FOUND=0
+
+# First, try standalone docker-compose
 if command -v docker-compose &> /dev/null; then
-    check_command "docker-compose" "--version" "Docker Compose"
-elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
+    if check_command "docker-compose" "--version" "Docker Compose"; then
+        DOCKER_COMPOSE_FOUND=1
+    fi
+fi
+
+# If standalone failed or wasn't found, try the plugin version
+if [ $DOCKER_COMPOSE_FOUND -eq 0 ] && command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
     version=$(docker compose version 2>&1)
     echo -e "${GREEN}✓${NC} Docker Compose (plugin): $version"
-else
-    echo -e "${RED}✗${NC} Docker Compose: Not found"
+    DOCKER_COMPOSE_FOUND=1
+fi
+
+# If neither worked, mark as failure
+if [ $DOCKER_COMPOSE_FOUND -eq 0 ]; then
+    echo -e "${RED}✗${NC} Docker Compose: Not found or not working"
     OVERALL_STATUS=1
 fi
 

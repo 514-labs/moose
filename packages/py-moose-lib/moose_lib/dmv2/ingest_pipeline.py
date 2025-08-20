@@ -29,8 +29,6 @@ class IngestPipelineConfig(BaseModel):
         metadata: Optional metadata for the ingestion pipeline.
         life_cycle: Determines how changes in code will propagate to the resources.
     """
-    model_config = {"extra": "forbid"}
-    
     table: bool | OlapConfig = True
     stream: bool | StreamConfig = True
     ingest_api: bool | IngestConfig = True
@@ -41,6 +39,8 @@ class IngestPipelineConfig(BaseModel):
     
     # Legacy support - will be removed in future version
     ingest: Optional[bool | IngestConfig] = None
+    
+    model_config = {"extra": "forbid"}
     
     @model_validator(mode='before')
     @classmethod

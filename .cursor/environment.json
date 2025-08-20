@@ -1,8 +1,7 @@
 {
   "build": {
-    "dockerfile": ".cursor/Dockerfile",
-    "context": ".."
+    "context": "..",
+    "dockerfile": "Dockerfile"
   },
-  "terminals": [],
-  "install": "pnpm install --frozen-lockfile && cargo build --locked"
+  "start": "sudo service docker start"
 }

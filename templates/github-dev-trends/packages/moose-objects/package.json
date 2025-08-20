@@ -9,7 +9,7 @@
     "dev": "tspc --watch"
   },
   "devDependencies": {
-    "typescript": "~5.7.3",
+    "typescript": "~5.9.2",
     "ts-patch": "^3.3.0"
   },
   "dependencies": {

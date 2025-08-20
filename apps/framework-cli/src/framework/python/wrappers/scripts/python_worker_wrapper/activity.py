@@ -1,12 +1,12 @@
 from temporalio import activity
 from dataclasses import dataclass
 from moose_lib.dmv2 import get_workflow
+from moose_lib.dmv2.workflow import TaskContext
 from typing import Optional, Callable
 import asyncio
 import json
 import traceback
 import concurrent.futures
-import inspect
 
 from .logging import log
 from .types import WorkflowStepResult
@@ -33,9 +33,11 @@ async def _create_heartbeat_task(task_name: str) -> asyncio.Task:
     return asyncio.create_task(heartbeat_loop())
 
 
-def _process_input_data(execution_input: ScriptExecutionInput) -> dict:
-    """Process and validate input data."""
-    return execution_input.input_data.get('data', execution_input.input_data) if execution_input.input_data else {}
+def _process_input_data(execution_input: ScriptExecutionInput) -> dict | None:
+    """Extract user input payload. Returns None when not provided."""
+    if not execution_input.input_data:
+        return None
+    return execution_input.input_data.get('data', execution_input.input_data)
 
 
 def _get_workflow_and_task(execution_input: ScriptExecutionInput):
@@ -53,74 +55,59 @@ def _get_workflow_and_task(execution_input: ScriptExecutionInput):
     return workflow, task
 
 
-def _get_function_param_count(func: Callable) -> int:
-    """Get the number of parameters for a function (excluding 'self')."""
-    sig = inspect.signature(func)
-    params = list(sig.parameters.keys())
+def _validate_input_data(input_data: dict | None, task) -> any:
+    """Validate input data against task's declared input model.
 
-    # Remove 'self' if it's a method
-    if params and params[0] == 'self':
-        params = params[1:]
+    - If the task expects no input (model_type is None), return None.
+    - If the task expects input but received None, raise a clear error.
+    - Otherwise, coerce/validate into the Pydantic model.
+    """
+    model = getattr(task, 'model_type', None)
+    if model is None:
+        return None
 
-    return len(params)
+    if input_data is None:
+        raise ValueError(f"Task '{task.name}' requires input of type {model.__name__} but received None")
 
-
-def _validate_input_data(input_data: dict, task) -> any:
-    """Validate input data against task's input type."""
-    if input_data:
-        try:
-            validated_data = task.model_type.model_validate(input_data)
-            log.info(f"Converted input data to {task.model_type.__name__}: {validated_data}")
-            return validated_data
-        except Exception as e:
-            log.error(f"Failed to validate input data against {task.model_type.__name__}: {e}")
-            raise ValueError(f"Input data does not match task's input type {task.model_type.__name__}: {e}")
-    return input_data
+    try:
+        # If already the correct model instance, return as-is
+        if isinstance(input_data, model):
+            return input_data
+        validated_data = model.model_validate(input_data)
+        log.info(f"Converted input data to {model.__name__}: {validated_data}")
+        return validated_data
+    except Exception as e:
+        log.error(f"Failed to validate input data against {model.__name__}: {e}")
+        raise ValueError(f"Input data does not match task's input type {model.__name__}: {e}")
 
 
 async def _execute_task_function(task, input_data, executor, task_state: dict) -> any:
-    """Execute the task function (sync or async). Uses shared task_state."""
+    """Execute the task function with a single context parameter.
+
+    Supports both async and sync handlers via a thread executor for sync ones.
+    """
     task_func = task.config.run
-    param_count = _get_function_param_count(task_func)
+    context = TaskContext(state=task_state, input=input_data)
 
     if asyncio.iscoroutinefunction(task_func):
-        # Handle async functions
-        if param_count == 1:
-            # run(task_state) - no input
-            result = await task_func(task_state)
-        elif param_count == 2:
-            # run(task_state, input) - with input
-            result = await task_func(task_state, input=input_data)
-        else:
-            raise ValueError(f"Task function must have 1 (task_state) or 2 (task_state, input) parameters, got {param_count}")
+        return await task_func(context)
     else:
-        # Handle sync functions in thread executor
         loop = asyncio.get_running_loop()
-
-        if param_count == 1:
-            # run(task_state) - no input
-            future = loop.run_in_executor(executor, lambda: task_func(task_state))
-        elif param_count == 2:
-            # run(task_state, input) - with input
-            future = loop.run_in_executor(executor, lambda: task_func(task_state, input=input_data))
-        else:
-            raise ValueError(f"Task function must have 1 (task_state) or 2 (task_state, input) parameters, got {param_count}")
-
-        result = await asyncio.wait_for(future, timeout=None)
-
-    return result
+        future = loop.run_in_executor(executor, lambda: task_func(context))
+        return await asyncio.wait_for(future, timeout=None)
 
 
-async def _handle_task_cancellation(task, task_name: str, task_state: dict):
+async def _handle_task_cancellation(task, task_name: str, task_state: dict, input_data):
     """Handle task cancellation and call onCancel handler if it exists."""
     log.info(f"Task {task_name} cancelled, calling onCancel handler if it exists")
     
     if task.config.on_cancel:
         try:
+            context = TaskContext(state=task_state, input=input_data)
             if asyncio.iscoroutinefunction(task.config.on_cancel):
-                await task.config.on_cancel(task_state)
+                await task.config.on_cancel(context)
             else:
-                task.config.on_cancel(task_state)
+                task.config.on_cancel(context)
             log.info(f"onCancel handler completed for task {task_name}")
         except Exception as cancel_error:
             log.error(f"Error in onCancel handler for task {task_name}: {cancel_error}")
@@ -183,7 +170,7 @@ async def _execute_dmv2_task(execution_input: ScriptExecutionInput, script_name:
             )
         except asyncio.CancelledError:
             # Handle cancellation and call onCancel handler with shared task state
-            await _handle_task_cancellation(task, execution_input.task_name, shared_task_state)
+            await _handle_task_cancellation(task, execution_input.task_name, shared_task_state, validated_input)
             raise  # Re-raise to signal cancellation to Temporal
 
     except Exception as e:

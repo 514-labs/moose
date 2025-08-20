@@ -226,6 +226,10 @@ class ScriptWorkflow:
         Raises:
             ValueError: If workflow is not found or input data is invalid
         """
+
+        if isinstance(request, dict):
+            request = WorkflowRequest(**request)
+
         workflow_name = request.workflow_name
         current_task_name = request.continue_from_task if request.execution_mode == 'continue_as_new' else None
 

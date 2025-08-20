@@ -99,10 +99,7 @@ export const fetchAndIngestMilitaryAircraft = new Task<
   FetchTaskInput,
   FetchTaskOutput
 >("fetch_and_ingest_military_aircraft", {
-  run: async (
-    taskState: any,
-    input: FetchTaskInput,
-  ): Promise<FetchTaskOutput> => {
+  run: async ({ input }): Promise<FetchTaskOutput> => {
     try {
       // Use provided API URL or default to adsb.lol military API
       const apiUrl = input.apiUrl || "https://api.adsb.lol/v2/mil";

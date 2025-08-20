@@ -33,6 +33,7 @@ export {
 } from "./sdk/stream";
 
 export { Workflow, Task } from "./sdk/workflow";
+export type { TaskContext, TaskConfig } from "./sdk/workflow";
 
 export { IngestApi, IngestConfig } from "./sdk/ingestApi";
 export {

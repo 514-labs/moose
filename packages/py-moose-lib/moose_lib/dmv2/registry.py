@@ -8,17 +8,17 @@ from typing import Optional, Dict
 from .olap_table import OlapTable
 from .stream import Stream
 from .ingest_api import IngestApi
-from .consumption import ConsumptionApi
+from .consumption import Api
 from .sql_resource import SqlResource
 from .workflow import Workflow
 from ._registry import (
     _tables,
     _streams,
     _ingest_apis,
-    _egress_apis,
+    _apis,
     _sql_resources,
     _workflows,
-    _egress_api_name_aliases,
+    _api_name_aliases,
 )
 
 def get_tables() -> Dict[str, OlapTable]:
@@ -45,16 +45,16 @@ def get_ingest_api(name: str) -> Optional[IngestApi]:
     """Get a registered ingestion API by name."""
     return _ingest_apis.get(name)
 
-def get_consumption_apis() -> Dict[str, ConsumptionApi]:
-    """Get all registered consumption APIs."""
-    return _egress_apis
+def get_apis() -> Dict[str, Api]:
+    """Get all registered APIs."""
+    return _apis
 
-def get_consumption_api(name: str) -> Optional[ConsumptionApi]:
-    """Get a registered consumption API by name.
+def get_api(name: str) -> Optional[Api]:
+    """Get a registered API by name.
 
     Supports unversioned lookup by name via alias map when only a single versioned API exists.
     """
-    return _egress_apis.get(name) or _egress_api_name_aliases.get(name)
+    return _apis.get(name) or _api_name_aliases.get(name)
 
 def get_sql_resources() -> Dict[str, SqlResource]:
     """Get all registered SQL resources."""

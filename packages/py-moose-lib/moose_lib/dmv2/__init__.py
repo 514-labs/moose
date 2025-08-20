@@ -42,8 +42,8 @@ from .ingest_pipeline import (
 )
 
 from .consumption import (
-    EgressConfig,
-    ConsumptionApi,
+    ApiConfig,
+    Api,
     get_moose_base_url,
     set_moose_base_url,
 )
@@ -79,8 +79,8 @@ from .registry import (
     get_stream,
     get_ingest_apis,
     get_ingest_api,
-    get_consumption_apis,
-    get_consumption_api,
+    get_apis,
+    get_api,
     get_sql_resources,
     get_sql_resource,
     get_workflows,
@@ -119,8 +119,8 @@ __all__ = [
     'IngestPipeline',
 
     # Consumption
-    'EgressConfig',
-    'ConsumptionApi',
+    'ApiConfig',
+    'Api',
     'get_moose_base_url',
     'set_moose_base_url',
 
@@ -146,8 +146,8 @@ __all__ = [
     'get_stream',
     'get_ingest_apis',
     'get_ingest_api',
-    'get_consumption_apis',
-    'get_consumption_api',
+    'get_apis',
+    'get_api',
     'get_sql_resources',
     'get_sql_resource',
     'get_workflows',

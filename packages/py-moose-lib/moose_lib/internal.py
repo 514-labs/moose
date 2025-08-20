@@ -15,7 +15,7 @@ from moose_lib.dmv2 import (
     get_tables,
     get_streams,
     get_ingest_apis,
-    get_consumption_apis,
+    get_apis,
     get_sql_resources,
     get_workflows,
     OlapTable,
@@ -128,8 +128,8 @@ class IngestApiConfig(BaseModel):
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
-class EgressApiConfig(BaseModel):
-    """Internal representation of a Consumption (Egress) API configuration for serialization.
+class InternalApiConfig(BaseModel):
+    """Internal representation of a API configuration for serialization.
 
     Attributes:
         name: Name of the Egress API.
@@ -213,7 +213,7 @@ class InfrastructureMap(BaseModel):
     tables: dict[str, TableConfig]
     topics: dict[str, TopicConfig]
     ingest_apis: dict[str, IngestApiConfig]
-    egress_apis: dict[str, EgressApiConfig]
+    egress_apis: dict[str, InternalApiConfig]
     sql_resources: dict[str, SqlResourceConfig]
     workflows: dict[str, WorkflowJson]
 
@@ -326,8 +326,8 @@ def to_infra_map() -> dict:
             dead_letter_queue=api.config.dead_letter_queue.name
         )
 
-    for name, api in get_consumption_apis().items():
-        egress_apis[name] = EgressApiConfig(
+    for name, api in get_apis().items():
+        egress_apis[name] = InternalApiConfig(
             name=api.name,
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),

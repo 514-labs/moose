@@ -108,25 +108,16 @@ async function handleDmv2Task(
 
   const { executeDmv2Task } = proxyActivities(activityOptions);
 
+  let taskCompleted = false;
+
   const monitorTask = async () => {
     logger.info(`Monitor task starting for ${task.name}`);
-    for (let historyLimitChecks = 0; ; historyLimitChecks++) {
+    while (!taskCompleted) {
       const info = workflowInfo();
 
-      // TODO: remove historyLimitChecks >= 10. This is just to test the continue as new functionality
-      if (
-        info.continueAsNewSuggested ||
-        info.historyLength >= 800 ||
-        info.historySize >= 1048576 ||
-        historyLimitChecks >= 10
-      ) {
-        logger.info(
-          `History limits approaching after ${historyLimitChecks} checks`,
-        );
-        // logger.info(
-        //   `Events: ${info.historyLength} | Size: ${info.historySize}`,
-        // );
-
+      // Continue-as-new only when suggested by Temporal
+      if (info.continueAsNewSuggested) {
+        logger.info(`ContinueAsNew suggested by Temporal`);
         return await continueAsNew({
           workflow_name: workflow.name,
           execution_mode: "continue_as_new" as const,
@@ -136,13 +127,20 @@ async function handleDmv2Task(
 
       await sleep(100);
     }
+    logger.info(`Monitor task exiting because main task completed`);
   };
 
   const result = await Promise.race([
-    executeDmv2Task(workflow, task, inputData).then((taskResult) => ({
-      type: "task_completed",
-      data: taskResult,
-    })),
+    executeDmv2Task(workflow, task, inputData)
+      .then((taskResult) => {
+        return {
+          type: "task_completed",
+          data: taskResult,
+        };
+      })
+      .finally(() => {
+        taskCompleted = true;
+      }),
     monitorTask().then((continueResult) => ({
       type: "continue_as_new",
       data: continueResult,

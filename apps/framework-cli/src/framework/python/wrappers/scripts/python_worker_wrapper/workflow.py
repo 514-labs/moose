@@ -98,66 +98,60 @@ class ScriptWorkflow:
         else:
             return timedelta(seconds=humanfriendly.parse_timespan(timeout_str))
 
-    async def _monitor_workflow_history(self, workflow_name: str, task: Task) -> ContinueAsNewData:
-        """Monitor workflow history and trigger continue-as-new when limits are reached.
+    async def _monitor_workflow_history(self, workflow_name: str, task: Task, completed_event: asyncio.Event) -> Optional[ContinueAsNewData]:
+        """Monitor workflow history and trigger continue-as-new when suggested.
 
-        Uses Python SDK's proper methods:
-        - info.is_continue_as_new_suggested(): Temporal's built-in recommendation
-        - info.get_current_history_length(): Current event count in workflow history
-        - Testing trigger after 10 iterations (similar to TypeScript implementation)
+        Exits promptly when the main task completes using a shared completion event.
         """
         log.info(f"Monitor task starting for {task.name}")
 
-        for history_limit_checks in range(1000):  # Prevent infinite loop
+        while not completed_event.is_set():
             info = workflow.info()
 
-            # Check continue-as-new conditions using proper Python SDK methods
-            if (
-                info.is_continue_as_new_suggested() or
-                info.get_current_history_length() >= 800 or
-                history_limit_checks >= 10  # Testing trigger like TypeScript
-            ):
-                log.info(f"History limits approaching after {history_limit_checks} checks")
-                log.info(f"Continue-as-new suggested: {info.is_continue_as_new_suggested()}")
-                log.info(f"Current history length: {info.get_current_history_length()}")
-
-                # Return continue-as-new data (like TypeScript continueAsNew call)
+            # Continue-as-new only when suggested by Temporal
+            if info.is_continue_as_new_suggested():
+                log.info("Continue-as-new suggested by Temporal")
                 return ContinueAsNewData(
                     current_workflow=workflow_name,
-                    current_task=task.name
+                    current_task=task.name,
                 )
 
-            # Sleep 100ms like TypeScript
-            await asyncio.sleep(0.1)
+            # Wait up to 100ms, but exit early if task completes
+            try:
+                await asyncio.wait_for(completed_event.wait(), timeout=0.1)
+            except asyncio.TimeoutError:
+                pass
 
-        # Should never reach here, but safety fallback
-        raise Exception("History monitoring exceeded maximum iterations")
+        log.info("Monitor task exiting because main task completed")
+        return None
 
     async def _execute_dmv2_activity_with_state(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> Union[List[Any], ContinueAsNewData]:
         activity_name = f"{dmv2wf.name}/{task.name}"
         self._state.current_step = activity_name
 
+        completed_event: asyncio.Event = asyncio.Event()
+        history_monitor = self._monitor_workflow_history(dmv2wf.name, task, completed_event)
+
+        activity_task: Optional[asyncio.Task] = None
+        monitor_task: Optional[asyncio.Task] = None
+
         try:
             # Create task execution coroutine
             task_execution = self._execute_single_activity(dmv2wf, task, input_data)
 
-            # Create history monitoring coroutine
-            history_monitor = self._monitor_workflow_history(dmv2wf.name, task)
-
             # Race them like TypeScript Promise.race - but don't manually cancel!
+            activity_task = asyncio.create_task(task_execution)
+            monitor_task = asyncio.create_task(history_monitor)
             done, pending = await asyncio.wait(
-                [
-                    asyncio.create_task(task_execution),
-                    asyncio.create_task(history_monitor)
-                ],
-                return_when=asyncio.FIRST_COMPLETED
+                [activity_task, monitor_task],
+                return_when=asyncio.FIRST_COMPLETED,
             )
-
-            # DON'T manually cancel pending tasks - let Temporal handle it
-            # This was the bug in my previous implementation!
 
             # Get result from completed task
             completed_task = done.pop()
+            # If the activity finished first, signal the monitor to exit
+            if activity_task in done:
+                completed_event.set()
             result = await completed_task
 
             # Check if it's continue-as-new
@@ -181,6 +175,20 @@ class ScriptWorkflow:
         except Exception as e:
             self._state.failed_step = activity_name
             raise
+        finally:
+            # Ensure the monitor exits and tasks are cleaned up
+            try:
+                completed_event.set()
+            except Exception:
+                pass
+            for t in (activity_task, monitor_task):
+                if t is not None and not t.done():
+                    t.cancel()
+            # Await tasks to avoid warnings; ignore exceptions from cancellations
+            await asyncio.gather(
+                *(t for t in (activity_task, monitor_task) if t is not None),
+                return_exceptions=True,
+            )
 
     async def _execute_single_activity(self, dmv2wf: Workflow, task: Task, input_data: Optional[Dict] = None) -> WorkflowStepResult:
         """Execute a single activity without racing against history monitor."""

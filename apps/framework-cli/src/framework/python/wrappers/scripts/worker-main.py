@@ -8,7 +8,6 @@ def main():
     log.info("Starting worker")
     temporal_url = sys.argv[1]
     namespace = sys.argv[2]
-    # Connection configs (no script_root argument anymore)
     client_cert = sys.argv[3]
     client_key = sys.argv[4]
     api_key = sys.argv[5]

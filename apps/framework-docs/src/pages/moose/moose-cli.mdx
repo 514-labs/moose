@@ -116,6 +116,15 @@ moose generate hash-token
 ```
 Generates both a plain-text Bearer token and its corresponding hashed version for authentication.
 
+### Generate Migration Plan (OLAP)
+Create an ordered ClickHouse DDL plan by comparing a remote instance with your local code.
+```bash
+moose generate migration --url https://<remote-env> --token <api-token> --save
+```
+- Writes `./migrations/plan.yaml` and snapshots `remote_state.json` and `local_infra_map.json`
+- Omit `--save` to output to stdout without writing files
+- Requires `[features].olap = true`; execution of saved plan requires `[features].ddl_plan = true`
+
 ## Workflow Management
 
 ### Workflow

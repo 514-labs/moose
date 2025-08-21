@@ -7,13 +7,13 @@ use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
+use crate::proto::infrastructure_map::SimpleColumnType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
-use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
 use crate::proto::infrastructure_map::{ColumnType as ProtoColumnType, Map, Tuple};
 use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
-use protobuf::{EnumOrUnknown, MessageField};
+use protobuf::MessageField;
 use serde::de::{Error, IgnoredAny, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -223,20 +223,14 @@ pub struct Column {
     pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
-    pub default: Option<ColumnDefaults>,
+    pub default: Option<String>,
     #[serde(default)]
     pub annotations: Vec<(String, Value)>, // workaround for needing to Hash
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>, // Column comment for metadata storage
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum ColumnDefaults {
-    AutoIncrement,
-    CUID,
-    UUID,
-    Now,
-}
+// ColumnDefaults enum removed in favor of free-form default string
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum IntType {
@@ -650,10 +644,11 @@ impl Column {
             required: self.required,
             unique: self.unique,
             primary_key: self.primary_key,
-            default: EnumOrUnknown::new(match &self.default {
-                None => ProtoColumnDefaults::NONE,
-                Some(column_default) => column_default.to_proto(),
-            }),
+            default: 0,
+            default_expr: MessageField::from_option(self.default.as_ref().map(|d| StringValue {
+                value: d.clone(),
+                special_fields: Default::default(),
+            })),
             annotations: self
                 .annotations
                 .iter()
@@ -678,14 +673,7 @@ impl Column {
             required: proto.required,
             unique: proto.unique,
             primary_key: proto.primary_key,
-            default: match proto
-                .default
-                .enum_value()
-                .expect("Invalid default enum value")
-            {
-                ProtoColumnDefaults::NONE => None,
-                default => Some(ColumnDefaults::from_proto(default)),
-            },
+            default: proto.default_expr.into_option().map(|w| w.value),
             annotations,
             comment: proto.comment,
         }
@@ -939,26 +927,7 @@ impl EnumValue {
     }
 }
 
-impl ColumnDefaults {
-    fn to_proto(&self) -> ProtoColumnDefaults {
-        match self {
-            ColumnDefaults::AutoIncrement => ProtoColumnDefaults::AUTO_INCREMENT,
-            ColumnDefaults::CUID => ProtoColumnDefaults::CUID,
-            ColumnDefaults::UUID => ProtoColumnDefaults::UUID,
-            ColumnDefaults::Now => ProtoColumnDefaults::NOW,
-        }
-    }
-
-    pub fn from_proto(proto: ProtoColumnDefaults) -> Self {
-        match proto {
-            ProtoColumnDefaults::AUTO_INCREMENT => ColumnDefaults::AutoIncrement,
-            ProtoColumnDefaults::CUID => ColumnDefaults::CUID,
-            ProtoColumnDefaults::UUID => ColumnDefaults::UUID,
-            ProtoColumnDefaults::NOW => ColumnDefaults::Now,
-            ProtoColumnDefaults::NONE => panic!("NONE should be handled as Option::None"),
-        }
-    }
-}
+// ColumnDefaults helpers removed
 
 #[cfg(test)]
 mod tests {

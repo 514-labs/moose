@@ -101,6 +101,21 @@ const handleAggregated = (
   }
 };
 
+/** Detect ClickHouse default annotation on a type and return raw sql */
+const handleDefault = (t: ts.Type, checker: TypeChecker): string | null => {
+  const defaultSymbol = t.getProperty("_clickhouse_default");
+  if (defaultSymbol === undefined) return null;
+  const defaultType = checker.getNonNullableType(
+    checker.getTypeOfSymbol(defaultSymbol),
+  );
+  if (!defaultType.isStringLiteral()) {
+    throw new UnsupportedFeature(
+      'ClickHouseDefault must use a string literal, e.g. ClickHouseDefault<"now()">',
+    );
+  }
+  return defaultType.value;
+};
+
 const handleNumberType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -401,6 +416,12 @@ const tsTypeToDataType = (
     annotations.push(["aggregationFunction", aggregationFunction]);
   }
 
+  // default handling similar to aggregation
+  const raw = handleDefault(t, checker);
+  if (raw !== null) {
+    annotations.push(["defaultExpression", raw]);
+  }
+
   const lowCardinalitySymbol = t.getProperty("_LowCardinality");
   if (lowCardinalitySymbol !== undefined) {
     const lowCardinalityType = checker.getNonNullableType(
@@ -462,13 +483,16 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       isJwt,
     );
 
+    // compute default at property-level as well (to cover cases where default is attached to the property type)
+    const propRawDefault = handleDefault(type, checker);
+
     return {
       name: prop.name,
       data_type: dataType,
       primary_key: isKey,
       required: !nullable,
       unique: false,
-      default: null,
+      default: propRawDefault,
       annotations,
     };
   });

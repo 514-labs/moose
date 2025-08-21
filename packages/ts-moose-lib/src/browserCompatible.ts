@@ -33,6 +33,7 @@ export {
   ClickHouseInt,
   LowCardinality,
   ClickHouseNamedTuple,
+  ClickHouseDefault,
 } from "./dataModels/types";
 
 export type { ConsumptionUtil } from "./consumption-apis/helpers";

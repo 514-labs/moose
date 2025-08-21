@@ -148,7 +148,10 @@ message Column {
   bool required = 3;
   bool unique = 4;
   bool primary_key = 5;
-  ColumnDefaults default = 6;
+  // was an enum that we never used
+  int32 default = 6 [deprecated = true];
+
+  google.protobuf.StringValue default_expr = 9;
 
   map<string, string> annotations = 7;
   optional string comment = 8; // Column comment for metadata storage
@@ -258,13 +261,7 @@ message EnumValue {
   }
 }
 
-enum ColumnDefaults {
-  NONE = 0;
-  AUTO_INCREMENT = 1;
-  CUID = 2;
-  UUID = 3;
-  NOW = 4;
-}
+// Column default is now a free-form SQL expression passed as a string
 
 message PrimitiveSignature {
   string name = 1;

@@ -1858,10 +1858,7 @@ impl InfrastructureMap {
 
     /// Loads an infrastructure map using the last deployment's Redis key prefix.
     pub async fn load_from_last_redis_prefix(redis_client: &RedisClient) -> Result<Option<Self>> {
-        let Some(last_prefix) = &redis_client.config.last_key_prefix else {
-            log::info!("No last InfrastructureMap prefix found");
-            return Ok(None);
-        };
+        let last_prefix = &redis_client.config.last_key_prefix;
 
         log::info!(
             "Loading InfrastructureMap from last Redis prefix: {}",

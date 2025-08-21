@@ -137,9 +137,8 @@ pub struct RedisConfig {
     pub url: String,
     #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
-    /// Optional previous key prefix used to look up state from the last deployment
-    #[serde(default)]
-    pub last_key_prefix: Option<String>,
+    #[serde(default = "RedisConfig::default_key_prefix")]
+    pub last_key_prefix: String,
     #[serde(default = "RedisConfig::default_port")]
     pub port: u16,
     /// Whether to use TLS (rediss://) or plain Redis (redis://)
@@ -258,7 +257,7 @@ impl Default for RedisConfig {
         RedisConfig {
             url: RedisConfig::default_url(),
             key_prefix: RedisConfig::default_key_prefix(),
-            last_key_prefix: None,
+            last_key_prefix: RedisConfig::default_key_prefix(),
             port: RedisConfig::default_port(),
             tls: RedisConfig::default_tls(),
             hostname: RedisConfig::default_hostname(),

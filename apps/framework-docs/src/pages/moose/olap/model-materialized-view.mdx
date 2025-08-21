@@ -13,7 +13,27 @@ import { Lightbulb } from "lucide-react";
 
 ## Overview
 
-Materialized views are write-time pipelines. They run a static `SELECT` to transform data from one or more source table(s) to a target destination table. You query the destination table like any other table.
+Materialized views are write-time pipelines. They run a static `SELECT` to transform data from one or more source table(s) to a target destination table. You query the destination table like any other table. The MaterializedView class wraps ClickHouse's `MATERIALIZED VIEW` functionality, letting you model these transformations in code rather than raw SQL.
+
+<BulletPointsCard title="Key differences from other databases" bulletStyle="number" compact bullets={[
+    "Requires both a transformation query AND a target table definition",
+    "Automatically handles backfilling historical data",
+    "Manages dependencies between multiple materialized views"
+]} />
+
+<BulletPointsCard title="What Moose handles for you"
+bulletStyle="check"
+compact
+bullets={[
+    "Orchestrates the transformation query and target table setup",
+    "Coordinates cascading dependencies as your pipeline grows",
+    "Automatically manages setup/teardown when you modify pipelines"
+]}
+/>
+
+<Callout type="info" title="Dependency awareness" compact icon={Lightbulb}>
+This dependency awareness becomes crucial as you build more complex data pipelines with multiple materialized views that depend on each other.
+</Callout>
 
 ### Basic Usage
 

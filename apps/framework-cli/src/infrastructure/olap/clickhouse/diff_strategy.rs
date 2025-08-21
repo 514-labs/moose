@@ -182,9 +182,7 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
         // do NOT compare the strings directly because of the possible prefix "Shared"
         let engine_changed = match after.engine.as_deref() {
             None => before_engine.is_some_and(|e| e != ClickhouseEngine::MergeTree),
-            Some(e) => ClickhouseEngine::try_from(e)
-                .ok()
-                .is_some_and(|e| Some(e) != before_engine),
+            Some(e) => ClickhouseEngine::try_from(e).is_ok_and(|e| Some(e) != before_engine),
         };
         // Check if engine has changed
         if engine_changed {

@@ -1,9 +1,9 @@
 ---
-title: Moose CLI Reference
-description: Moose CLI Reference
+title: MooseStack CLI Reference
+description: MooseStack CLI Reference
 ---
 
-# Moose CLI Reference
+# MooseStack CLI Reference
 
 ## Installation
 
@@ -14,7 +14,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ## Core Commands
 
 ### Init
-Initializes a new Moose project.
+Initializes a new MooseStack project.
 ```bash
 moose init <name> --template <template> [--location <location>] [--no-fail-already-exists]
 ```
@@ -30,7 +30,7 @@ moose template list
 ```
 
 ### Build
-Builds your Moose project.
+Builds your MooseStack project.
 ```bash
 moose build [--docker] [--amd64] [--arm64]
 ```
@@ -45,7 +45,7 @@ moose dev
 ```
 
 ### Prod
-Starts Moose in production mode for cloud deployments.
+Starts MooseStack in production mode for cloud deployments.
 ```bash
 moose prod
 ```
@@ -65,7 +65,7 @@ moose clean
 ## Monitoring Commands
 
 ### Logs
-View Moose logs.
+View MooseStack logs.
 ```bash
 moose logs [--tail] [--filter <search_string>]
 ```
@@ -73,13 +73,13 @@ moose logs [--tail] [--filter <search_string>]
 - `--filter`: Filter logs by specific string
 
 ### Ps
-View Moose processes.
+View MooseStack processes.
 ```bash
 moose ps
 ```
 
 ### Ls
-View Moose primitives & infrastructure.
+View MooseStack primitives & infrastructure.
 ```bash
 moose ls [--limit <n>] [--version <version>] [--streaming] [--type <type>] [--name <name>] [--json]
 ```
@@ -91,7 +91,7 @@ moose ls [--limit <n>] [--version <version>] [--streaming] [--type <type>] [--na
 - `--json`: Output in JSON format
 
 ### Metrics
-View live metrics from your Moose application.
+View live metrics from your MooseStack application.
 ```bash
 moose metrics
 ```
@@ -141,7 +141,7 @@ Display infrastructure changes for the next production deployment.
 ```bash
 moose plan [--url <url>] [--token <token>]
 ```
-- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--url`: Remote MooseStack instance URL (default: http://localhost:4000)
 - `--token`: API token for authentication
 
 ### Refresh
@@ -149,7 +149,7 @@ Integrate matching tables from a remote instance into the local project.
 ```bash
 moose refresh [--url <url>] [--token <token>]
 ```
-- `--url`: Remote Moose instance URL (default: http://localhost:4000)
+- `--url`: Remote MooseStack instance URL (default: http://localhost:4000)
 - `--token`: API token for authentication
 
-This reference reflects the current state of the Moose CLI based on the source code in the framework-cli directory. The commands are organized by their primary functions and include all available options and flags.
+This reference reflects the current state of the MooseStack CLI based on the source code in the framework-cli directory. The commands are organized by their primary functions and include all available options and flags.

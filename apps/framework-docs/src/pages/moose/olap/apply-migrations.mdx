@@ -12,12 +12,12 @@ import { ShieldCheck } from "lucide-react";
 <LanguageSwitcher />
 
 <Callout type="info" title="OLAP Migrations" href={`${PathConfig.migrate.path}/migration-types`} ctaLabel="View Docs" compact>
-This page covers OLAP migrations. For migrations across the Moose stack, see the Migrate docs.
+This page covers OLAP migrations. For migrations across the MooseStack, see the Migrate docs.
 </Callout>
 
 ## Overview
 
-Moose automatically manages database migrations by comparing your code with your database schema. Migrations are applied automatically when:
+MooseStack automatically manages database migrations by comparing your code with your database schema. Migrations are applied automatically when:
 
 - **Development**: Changes are detected during `moose dev`
 - **Production**: Changes are applied during deployment
@@ -54,7 +54,7 @@ Moose automatically manages database migrations by comparing your code with your
 
 ### Starting the Runtime
 
-Use `moose dev` to start the Moose runtime with automatic migration detection:
+Use `moose dev` to start the MooseStack runtime with automatic migration detection:
 
 ```bash
 moose dev
@@ -70,7 +70,7 @@ moose dev
 
 ### Automatic Migration Detection
 
-Moose continuously monitors your code changes and applies migrations automatically. All changes are applied to your **local database only**.
+MooseStack continuously monitors your code changes and applies migrations automatically. All changes are applied to your **local database only**.
 
 <TypeScript>
 ```ts filename="app/tables/events.ts" copy
@@ -119,9 +119,9 @@ In development, migrations are applied immediately. In production, migrations ar
 
 ### Deployment Process
 
-When you deploy your code to production, Moose follows this migration process:
+When you deploy your code to production, MooseStack follows this migration process:
 
-1. **Schema Comparison**: Moose compares the final code in your repository with the state of your production database schema
+1. **Schema Comparison**: MooseStack compares the final code in your repository with the state of your production database schema
 2. **Migration Plan**: A migration plan is generated showing what changes will be applied
 3. **Manual Review**: Before applying migrations, you will be prompted to review the plan and confirm the changes. You can make changes to the plan before applying it.
 4. **Application**: Changes are applied to the production database during deployment
@@ -342,7 +342,7 @@ user_stats = MaterializedView[UserStats]("user_stats", MaterializedViewConfig(
 ```
 </Python>
 
-When you modify a materialized view's SELECT statement, Moose will:
+When you modify a materialized view's SELECT statement, MooseStack will:
 1. **Detect the change** in your code
 2. **Drop the existing view** in the database
 3. **Recreate the view** with the new SELECT statement

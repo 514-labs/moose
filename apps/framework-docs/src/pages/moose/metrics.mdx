@@ -1,6 +1,6 @@
 ---
 title: Observability
-description: Unified observability for Moose across development and production—metrics console, health checks, Prometheus, OpenTelemetry, logging, and error tracking
+description: Unified observability for MooseStack across development and production—metrics console, health checks, Prometheus, OpenTelemetry, logging, and error tracking
 ---
 
 import { Callout, PathConfig } from "@/components";
@@ -9,13 +9,13 @@ import { ArrowUpDownIcon, Cloud } from "lucide-react";
 # Observability
 
 
-This page consolidates Moose observability for both local development and production environments.
+This page consolidates MooseStack observability for both local development and production environments.
 
 ## Local Development
 
 ### Metrics Console
 
-Moose provides a console to view live metrics from your Moose application. To launch the console, run:
+MooseStack provides a console to view live metrics from your MooseStack application. To launch the console, run:
 
 ```bash filename="Terminal" copy
 moose metrics
@@ -72,11 +72,11 @@ For each streaming transformation:
 
 ### Health Monitoring
 
-Moose applications expose a health check endpoint at `/health` that returns a 200 OK response when the application is operational. This endpoint is used by container orchestration systems like Kubernetes to determine the health of your application.
+MooseStack applications expose a health check endpoint at `/health` that returns a 200 OK response when the application is operational. This endpoint is used by container orchestration systems like Kubernetes to determine the health of your application.
 
 In production environments, we recommend configuring three types of probes:
 
-1. Startup Probe: Gives Moose time to initialize before receiving traffic
+1. Startup Probe: Gives MooseStack time to initialize before receiving traffic
 2. Readiness Probe: Determines when the application is ready to receive traffic
 3. Liveness Probe: Detects when the application is in a deadlocked state and needs to be restarted
 
@@ -86,11 +86,11 @@ Learn more about how to configure health checks in your Kubernetes deployment.
 
 ### Prometheus Metrics
 
-Moose applications expose metrics in Prometheus format at the `/metrics` endpoint. These metrics include:
+MooseStack applications expose metrics in Prometheus format at the `/metrics` endpoint. These metrics include:
 
 - HTTP request latency histograms for each endpoint
 - Request counts and error rates
-- System metrics for the Moose process
+- System metrics for the MooseStack process
 
 Example metrics output:
 
@@ -120,7 +120,7 @@ You can scrape these metrics using a Prometheus server or any compatible monitor
 
 ### OpenTelemetry Integration
 
-In production deployments, Moose can export telemetry data using OpenTelemetry. Enable via environment variables:
+In production deployments, MooseStack can export telemetry data using OpenTelemetry. Enable via environment variables:
 
 ```
 MOOSE_TELEMETRY__ENABLED=true
@@ -173,7 +173,7 @@ Want this managed in production for you? Check out Boreal Cloud (from the makers
 ## Feedback
 
 <Callout type="info" title="Join the Community" href={PathConfig.slack.path} ctaLabel="Join Slack" icon={PathConfig.slack.icon}>
-Join our Slack community to share feedback and get help with Moose.
+Join our Slack community to share feedback and get help with MooseStack.
 </Callout>
 
 

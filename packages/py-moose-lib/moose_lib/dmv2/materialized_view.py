@@ -12,45 +12,6 @@ from .types import BaseTypedResource, T
 from .olap_table import OlapTable, OlapConfig
 from .sql_resource import SqlResource
 
-class TargetTableConfig(BaseModel):
-    """Inline configuration for creating a target `OlapTable`.
-
-    Attributes:
-        name: Name of the underlying target table.
-        engine: Optional ClickHouse engine for the target table.
-        order_by_fields: Optional ordering key for the target table.
-    """
-    name: str
-    engine: Optional[ClickHouseEngines] = None
-    order_by_fields: Optional[list[str]] = None
-
-
-class MaterializedViewConfig(BaseModel):
-    """Configuration for a Materialized View.
-
-    Attributes:
-        select_statement: The SQL SELECT statement defining the view's data.
-        select_tables: List of source tables/views the select statement reads from.
-        table_name: (Deprecated in favor of target_table) Optional name of the underlying
-                    target table storing the materialized data.
-        materialized_view_name: The name of the MATERIALIZED VIEW object itself.
-        engine: Optional ClickHouse engine for the target table (used when creating
-                a target table via table_name or inline config).
-        order_by_fields: Optional ordering key for the target table (required for
-                         engines like ReplacingMergeTree).
-        target_table: Either an existing `OlapTable` instance to use as the destination,
-                      or an inline config (`TargetTableInlineConfig`) with the name and
-                      optional engine/order_by_fields to create one.
-        model_config: ConfigDict for Pydantic validation
-    """
-    select_statement: str
-    select_tables: list[Union[OlapTable, SqlResource]]
-    materialized_view_name: str
-    metadata: Optional[dict] = None
-    # New flexible target table specification:
-    #  - an existing OlapTable
-    #  - or inline config to create one
-    target_table: Union[OlapTable, TargetTableConfig]
 
 class MaterializedViewOptions(BaseModel):
     """Configuration options for creating a Materialized View.
@@ -78,18 +39,9 @@ class MaterializedViewOptions(BaseModel):
     engine: Optional[ClickHouseEngines] = None
     order_by_fields: Optional[list[str]] = None
     metadata: Optional[dict] = None
-    # New flexible target table specification:
-    #  - an existing OlapTable
-    #  - or inline config to create one
-    target_table: Optional[Union[OlapTable, TargetTableConfig]] = None
     # Ensure arbitrary types are allowed for Pydantic validation
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @model_validator(mode="after")
-    def _validate_target_specified(self) -> "MaterializedViewOptions":
-        if self.target_table is None and not self.table_name:
-            raise ValueError("Either 'target_table' or 'table_name' must be provided")
-        return self
 
 class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
     """Represents a ClickHouse Materialized View.
@@ -118,22 +70,17 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
     def __init__(
             self,
             options: MaterializedViewOptions,
+            target_table: Optional[OlapTable[T]] = None,
             **kwargs
     ):
         self._set_type(options.materialized_view_name, self._get_type(kwargs))
 
         # Resolve target table from options
-        if isinstance(options.target_table, OlapTable):
-            target_table = options.target_table
-        elif isinstance(options.target_table, TargetTableConfig):
-            target_table = OlapTable(
-                name=options.target_table.name,
-                config=OlapConfig(
-                    order_by_fields=(options.target_table.order_by_fields or options.order_by_fields or []),
-                    engine=(options.target_table.engine or options.engine)
-                ),
-                t=self._t
-            )
+        if target_table:
+            print("target_table is an OlapTable")
+            self.target_table = target_table
+            if self._t != target_table._t:
+                raise ValueError("Target table must have the same type as the materialized view")
         else:
             # Backward-compatibility path using table_name/engine/order_by_fields
             if not options.table_name:

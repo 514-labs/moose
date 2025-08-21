@@ -218,10 +218,6 @@ new MaterializedView<Dest>({
 
 <Python>
 
-<Callout type="warning" title="Coming soon" compact>
-The decoupled target table is not yet supported in Python.
-</Callout>
-
 ```python filename="DecoupledTarget.py" copy
 from pydantic import BaseModel
 from moose_lib import MaterializedView, MaterializedViewOptions, OlapConfig, ClickHouseEngines
@@ -242,9 +238,8 @@ mv = MaterializedView[TargetSchema](MaterializedViewOptions(
         SELECT {source_table.columns.id}, toInt32({source_table.columns.value}) AS value FROM {source_table}
     """,
     select_tables=[source_table],
-    target_table=target_table, ## This is the standalone table that is managed independently from the MV
     materialized_view_name="mv_to_target_table",
-))
+), target_table=target_table)
 ```
 </Python>
 
@@ -490,8 +485,7 @@ class DailyCounts(BaseModel):
     events: int
 
 # Create the destination table explicitly
-daily = OlapTable[DailyCounts](OlapConfig(
-    name="daily_counts",
+daily = OlapTable[DailyCounts]("daily_counts", OlapConfig(
     engine=ClickHouseEngines.SummingMergeTree,
     order_by_fields=["day", "user_id"],
 ))
@@ -500,17 +494,15 @@ daily = OlapTable[DailyCounts](OlapConfig(
 mv1 = MaterializedView[DailyCounts](MaterializedViewOptions(
     select_statement="SELECT toDate(ts) AS day, user_id, 1 AS events FROM {webEvents}",
     select_tables=[webEvents],
-    target_table=daily,
     materialized_view_name="mv_web_to_daily_counts",
-))
+), target_table=daily)
 
 # MV 2 - write to the daily_counts table
 mv2 = MaterializedView[DailyCounts](MaterializedViewOptions(
     select_statement="SELECT toDate(ts) AS day, user_id, 1 AS events FROM {mobileEvents}",
     select_tables=[mobileEvents],
-    target_table=daily,
     materialized_view_name="mv_mobile_to_daily_counts",
-))
+), target_table=daily)
 ```
 </Python>
 
@@ -567,7 +559,7 @@ from pydantic import BaseModel
 from moose_lib import MaterializedView, MaterializedViewOptions, OlapConfig
 
 class Dest(BaseModel):
-    id: str
+    id: Key[str] ## Do not need to set `order_by_fields` for the materialized view with a Key type
     name: str
     day: str
 
@@ -746,7 +738,7 @@ When using an `AggregatingMergeTree` target table, you must use the `AggregateFu
   from moose_lib import MaterializedView, AggregateFunction, MaterializedViewOptions
 
   class MetricsById(TypedDict):
-      id: str
+      id: Key[str]
       # avg_rating stores result of avgState(events.rating)
       # daily_uniques stores result of uniqExactState(events.user_id)
       #   - uniqExact returns an integer; use number & ClickHouseInt<"uint64"> for precision
@@ -887,11 +879,9 @@ agg_stmt = '''
 mv = MaterializedView[MetricsById](MaterializedViewOptions(
     select_statement=agg_stmt,
     select_tables=[reviews],
-    target_table=OlapConfig(
-        name="metrics_by_id",
-        engine=ClickHouseEngines.AggregatingMergeTree,
-        order_by_fields=["id"],
-    ),
+    table_name="metrics_by_id",
+    engine=ClickHouseEngines.AggregatingMergeTree,
+    order_by_fields=["id"],
     materialized_view_name="mv_metrics_by_id",
 ))
 ```

@@ -2516,6 +2516,7 @@ mod diff_tests {
         Column, ColumnDefaults, ColumnType, FloatType, IntType,
     };
     use crate::framework::versions::Version;
+    use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
     use serde_json::Value as JsonValue;
 
     // Helper function to create a basic test table
@@ -2788,8 +2789,8 @@ mod diff_tests {
         let mut before = create_test_table("test", "1.0");
         let mut after = create_test_table("test", "1.0");
 
-        before.engine = Some("MergeTree".to_string());
-        after.engine = Some("ReplacingMergeTree".to_string());
+        before.engine = Some(ClickhouseEngine::MergeTree);
+        after.engine = Some(ClickhouseEngine::ReplacingMergeTree);
 
         let mut changes = Vec::new();
         InfrastructureMap::diff_tables(
@@ -2805,8 +2806,11 @@ mod diff_tests {
                 after: a,
                 ..
             }) => {
-                assert_eq!(b.engine.as_deref(), Some("MergeTree"));
-                assert_eq!(a.engine.as_deref(), Some("ReplacingMergeTree"));
+                assert_eq!(b.engine.as_ref(), Some(&ClickhouseEngine::MergeTree));
+                assert_eq!(
+                    a.engine.as_ref(),
+                    Some(&ClickhouseEngine::ReplacingMergeTree)
+                );
             }
             _ => panic!("Expected Updated change with engine modification"),
         }

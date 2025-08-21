@@ -266,6 +266,7 @@ mod tests {
     use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumMember, Nested};
     use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
     use crate::framework::core::partial_infrastructure_map::LifeCycle;
+    use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 
     #[test]
     fn test_nested_types() {
@@ -344,7 +345,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string()],
-            engine: Some("MergeTree".to_string()),
+            engine: Some(ClickhouseEngine::MergeTree),
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "User".to_string(),
@@ -420,7 +421,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                 },
             ],
             order_by: vec!["id".to_string()],
-            engine: Some("MergeTree".to_string()),
+            engine: Some(ClickhouseEngine::MergeTree),
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "Task".to_string(),

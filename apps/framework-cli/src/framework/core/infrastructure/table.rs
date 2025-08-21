@@ -642,7 +642,9 @@ impl Column {
             required: self.required,
             unique: self.unique,
             primary_key: self.primary_key,
-            default: 0, // ColumnDefaults enum removed in favor of free-form default string
+            // The enum removed in favor of free-form default expression string,
+            // ColumnDefaults::NONE was deserialized the same as 0
+            default: 0,
             default_expr: MessageField::from_option(self.default.as_ref().map(|d| StringValue {
                 value: d.clone(),
                 special_fields: Default::default(),

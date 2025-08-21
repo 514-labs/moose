@@ -481,6 +481,65 @@ PRIMARY KEY (`id`)
     }
 
     #[test]
+    fn test_create_table_query_with_default_nullable_string() {
+        let table = ClickHouseTable {
+            version: Some(Version::from_string("1".to_string())),
+            name: "test_table".to_string(),
+            columns: vec![ClickHouseColumn {
+                name: "name".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: false,
+                primary_key: false,
+                unique: false,
+                default: Some("'abc'".to_string()),
+                comment: None,
+            }],
+            order_by: vec![],
+            engine: ClickhouseEngine::MergeTree,
+        };
+
+        let query = create_table_query("test_db", table).unwrap();
+        // DEFAULT should appear after nullable marker
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
+(
+ `name` String NULL DEFAULT 'abc'
+)
+ENGINE = MergeTree
+"#;
+        assert_eq!(query.trim(), expected.trim());
+    }
+
+    #[test]
+    fn test_create_table_query_with_default_not_null_int() {
+        let table = ClickHouseTable {
+            version: Some(Version::from_string("1".to_string())),
+            name: "test_table".to_string(),
+            columns: vec![ClickHouseColumn {
+                name: "count".to_string(),
+                column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                required: true,
+                primary_key: false,
+                unique: false,
+                default: Some("42".to_string()),
+                comment: None,
+            }],
+            order_by: vec![],
+            engine: ClickhouseEngine::MergeTree,
+        };
+
+        let query = create_table_query("test_db", table).unwrap();
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
+(
+ `count` Int32 NOT NULL DEFAULT 42
+)
+ENGINE = MergeTree
+"#;
+        assert_eq!(query.trim(), expected.trim());
+    }
+
+    #[test]
     fn test_create_table_query_replacing_merge_tree() {
         let table = ClickHouseTable {
             version: Some(Version::from_string("1".to_string())),

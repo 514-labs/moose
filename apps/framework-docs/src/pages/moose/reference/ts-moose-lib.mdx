@@ -30,10 +30,10 @@ A type for working with JSON Web Tokens.
 type UserJWT = JWT<{ userId: string, role: string }>;
 ```
 
-### `ConsumptionUtil`
-Interface providing utilities for consumption APIs.
+### `ApiUtil`
+Interface providing utilities for analytics APIs.
 ```ts
-interface ConsumptionUtil {
+interface ApiUtil {
   client: MooseClient;  // Client for interacting with the database
   sql: typeof sql;      // SQL template tag function
   jwt: JWTPayload | undefined;  // Current JWT if available
@@ -83,11 +83,11 @@ const myIngestApi = new IngestApi<UserEvent>("user_events", {
 });
 ```
 
-### `ConsumptionApi<T, R>`
+### `Api<T, R>`
 Creates an HTTP endpoint for querying data with request type T and response type R.
 ```ts
 // Basic usage
-const myApi = new ConsumptionApi<UserQuery, UserProfile[]>(
+const myApi = new Api<UserQuery, UserProfile[]>(
   "getUserProfiles",
   async (params, { client, sql }) => {
     const result = await client.query.execute(

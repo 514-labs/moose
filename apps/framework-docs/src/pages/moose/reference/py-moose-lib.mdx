@@ -41,12 +41,12 @@ class MooseClient:
     workflow: Optional[WorkflowClient]  # For workflow operations
 ```
 
-### `ConsumptionApiResult`
-Class representing the result of a consumption API call.
+### `ApiResult`
+Class representing the result of a analytics API call.
 
 ```python
 @dataclass
-class ConsumptionApiResult:
+class ApiResult:
     status: int  # HTTP status code
     body: Any    # Response body
 ```
@@ -137,7 +137,7 @@ my_ingest_api = IngestApi[UserEvent]("user_events", IngestConfigWithDestination(
 ))
 ```
 
-### `ConsumptionApi[T, U]`
+### `Api[T, U]`
 Creates an HTTP endpoint for querying data with request type T and response type U.
 
 ```python
@@ -146,7 +146,7 @@ def get_user_profiles(params: UserQuery) -> list[UserProfile]:
     # Query implementation
     return [UserProfile(...), UserProfile(...)]
 
-my_api = ConsumptionApi[UserQuery, list[UserProfile]](
+my_api = Api[UserQuery, list[UserProfile]](
     "get_user_profiles",
     get_user_profiles
 )

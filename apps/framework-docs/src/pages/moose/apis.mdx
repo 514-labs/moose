@@ -1,6 +1,6 @@
 ---
 title: Moose APIs
-description: Create type-safe ingestion and consumption APIs for data access and integration
+description: Create type-safe ingestion and analytics APIs for data access and integration
 ---
 
 import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python, CTACards, CTACard } from "@/components";
@@ -11,7 +11,7 @@ import { Tabs } from "nextra/components";
 
 ## Overview
 
-The APIs module provides standalone HTTP endpoints for data ingestion and consumption. Unlike other modules of the MooseStack, APIs are meant to be paired with other MooseStack modules like OLAP tables and streams.
+The APIs module provides standalone HTTP endpoints for data ingestion and analytics. Unlike other modules of the MooseStack, APIs are meant to be paired with other MooseStack modules like OLAP tables and streams.
 
 
 ## Core Capabilities
@@ -83,7 +83,7 @@ user_events_api = IngestApi[UserEvent]("user-events", IngestConfig(destination=e
 
 <TypeScript>
 ```ts filename="AnalyticsApi.ts" copy
-import { ConsumptionApi } from "@514labs/moose-lib";
+import { Api } from "@514labs/moose-lib";
 
 interface Params {
   userId: string;
@@ -96,8 +96,8 @@ interface ResultData {
   email: string;
 }
 
-// Create a standalone consumption API
-const userDataApi = new ConsumptionApi<Params, ResultData[]>("user-data", 
+// Create a standalone analytics API
+const userDataApi = new Api<Params, ResultData[]>("user-data", 
   async ({ userId, limit }, { client, sql }) => {
     // Query external service or custom logic
     return [
@@ -110,7 +110,7 @@ const userDataApi = new ConsumptionApi<Params, ResultData[]>("user-data",
 
 <Python>
 ```py filename="AnalyticsApi.py" copy
-from moose_lib import ConsumptionApi, MooseClient
+from moose_lib import Api, MooseClient
 from pydantic import BaseModel
 
 class Params(BaseModel):
@@ -127,7 +127,7 @@ def query_function(client: MooseClient, params: QueryParams) -> list[UserData]:
     sql = f"SELECT * FROM user_data WHERE user_id = {params.user_id} LIMIT {params.limit}"
     return client.query.execute(sql)
 
-user_data_api = ConsumptionApi[Params, ResultData]("get-data", query_function)
+user_data_api = Api[Params, ResultData]("get-data", query_function)
 ```
 </Python>
 

@@ -54,11 +54,11 @@ const mv = new MaterializedView<TargetSchema>({
 
 <Python>
 ```python filename="BasicUsage.py" copy
-from moose_lib import MaterializedView, OlapTable, ClickHouseEngines, sql
+from moose_lib import MaterializedView, MaterializedViewOptions, ClickHouseEngines
 from source_table import source_table
 
 # Define the schema of the transformed rows-- this is static and it must match the results of your SELECT. It also represents the schema of your entire destination table.
-class TargetSchema(TypedDict):
+class TargetSchema(BaseModel):
     id: str
     average_rating: float
     num_reviews: int
@@ -77,10 +77,8 @@ mv = MaterializedView[TargetSchema](MaterializedViewOptions(
     select_tables=[source_table],
 
     # Creates a new OlapTable named "target_table" where the transformed rows are written to.
-    target_table=OlapConfig(
-      name="target_table",
-      order_by_fields=["id"]
-    ),
+    table_name="target_table",
+    order_by_fields=["id"],
     # The name of the materialized view in ClickHouse
     materialized_view_name="mv_to_target_table",
 ))
@@ -172,10 +170,10 @@ new MaterializedView<Dest>({
 
 <Python>
 ```python filename="InlineTarget.py" copy
-from typing import TypedDict
-from moose_lib import MaterializedView, OlapTable, ClickHouseEngines, sql
+from pydantic import BaseModel
+from moose_lib import MaterializedView, MaterializedViewOptions
 
-class TargetSchema(TypedDict):
+class TargetSchema(BaseModel):
     id: str
     value: int
 
@@ -184,7 +182,8 @@ mv = MaterializedView[TargetSchema](MaterializedViewOptions(
         SELECT {source_table.columns.id}, toInt32({source_table.columns.value}) AS value FROM {source_table}
     """,
     select_tables=[source_table],
-    target_table=OlapConfig(name="serving_table", order_by_fields=["id"]),
+    table_name="serving_table",
+    order_by_fields=["id"],
     materialized_view_name="mv_to_serving_table",
 ))
 ```
@@ -218,6 +217,11 @@ new MaterializedView<Dest>({
 </TypeScript>
 
 <Python>
+
+<Callout type="warning" title="Coming soon" compact>
+The decoupled target table is not yet supported in Python.
+</Callout>
+
 ```python filename="DecoupledTarget.py" copy
 from pydantic import BaseModel
 from moose_lib import MaterializedView, MaterializedViewOptions, OlapConfig, ClickHouseEngines
@@ -274,7 +278,7 @@ Create a narrower, query-optimized table from a wide source. Apply light transfo
 <Python>
 ```python filename="Denormalization.py" copy
 from pydantic import BaseModel
-from moose_lib import MaterializedView, sql
+from moose_lib import MaterializedView, MaterializedViewOptions
 
 class Dest(BaseModel):
     id: str
@@ -286,7 +290,8 @@ mv = MaterializedView[Dest](MaterializedViewOptions(
         SELECT {source_table.columns.id}, toInt32({source_table.columns.value}) AS value, {source_table.columns.created_at} AS created_at FROM {source_table} WHERE active = 1
     """,
     select_tables=[source_table],
-    target_table=OlapConfig(name="proj_table"),
+    table_name="proj_table",
+    order_by_fields=["id"],
     materialized_view_name="mv_to_proj_table",
 ))
 ```
@@ -334,10 +339,10 @@ When you want to maintain running sums (counts, totals) that are additive per ke
 
 <Python>
 ```python filename="Summing.py" copy
-from typing import TypedDict
-from moose_lib import MaterializedView, OlapTable, ClickHouseEngines, sql
+from pydantic import BaseModel
+from moose_lib import MaterializedView, MaterializedViewOptions, ClickHouseEngines
 
-class DailyCounts(TypedDict):
+class DailyCounts(BaseModel):
     day: str
     user_id: str
     events: int
@@ -354,11 +359,9 @@ stmt = """
 mv = MaterializedView[DailyCounts](MaterializedViewOptions(
     select_statement=STMT,
     select_tables=[events],
-    target_table=OlapConfig(
-      name="daily_counts", 
-      engine=ClickHouseEngines.SummingMergeTree, 
-      order_by_fields=["day", "user_id"]
-    ),
+    table_name="daily_counts",
+    engine=ClickHouseEngines.SummingMergeTree,
+    order_by_fields=["day", "user_id"],
     materialized_view_name="mv_to_daily_counts",
 ))
 ```
@@ -405,10 +408,11 @@ When you want to compute complex aggregation metrics that are not just simple ad
 
   <Python>
   ```python filename="AggTransform.py" copy
-  from typing import Annotated, TypedDict
-  from moose_lib import MaterializedView, AggregateFunction, MaterializedViewOptions
+  from typing import Annotated
+  from pydantic import BaseModel
+  from moose_lib import MaterializedView, AggregateFunction, MaterializedViewOptions, ClickHouseEngines
 
-  class MetricsById(TypedDict):
+  class MetricsById(BaseModel):
       id: str
       avg_rating: Annotated[float, AggregateFunction(agg_func="avg", param_types=[float])]
       daily_uniques: Annotated[int, AggregateFunction(agg_func="uniqExact", param_types=[str])]
@@ -428,6 +432,8 @@ When you want to compute complex aggregation metrics that are not just simple ad
       select_statement=STMT,
       table_name="metrics_by_id",
       materialized_view_name="mv_metrics_by_id",
+      engine=ClickHouseEngines.AggregatingMergeTree,
+      order_by_fields=["id"],
       select_tables=[events],
   ))
   ```
@@ -576,7 +582,7 @@ mv = MaterializedView[Dest](MaterializedViewOptions(
         WHERE {events.columns.active} = 1
     """,
     select_tables=[events, users],
-    target_table=OlapConfig(name="user_activity_by_day"),
+    table_name="user_activity_by_day",
     materialized_view_name="mv_user_activity_by_day",
 ))
 ```

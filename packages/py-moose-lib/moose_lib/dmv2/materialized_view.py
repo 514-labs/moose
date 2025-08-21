@@ -77,7 +77,6 @@ class MaterializedView(SqlResource, BaseTypedResource, Generic[T]):
 
         # Resolve target table from options
         if target_table:
-            print("target_table is an OlapTable")
             self.target_table = target_table
             if self._t != target_table._t:
                 raise ValueError("Target table must have the same type as the materialized view")

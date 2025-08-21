@@ -24,6 +24,9 @@ const rawMeta = {
   "apply-migrations": {
     title: "Applying Migrations",
   },
+  "planned-migrations": {
+    title: "Planned Migrations",
+  },
   "external-tables": {
     title: "External Tables",
   },
@@ -31,8 +34,7 @@ const rawMeta = {
     title: "Schema Versioning",
   },
   "schema-change": {
-    title: "Schema Changes",
-    display: "hidden",
+    title: "Failed Migrations",
   },
   "---Accessing Data---": {
     title: "Accessing Data",

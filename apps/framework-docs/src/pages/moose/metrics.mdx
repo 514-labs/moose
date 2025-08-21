@@ -15,7 +15,7 @@ This page consolidates Moose observability for both local development and produc
 
 ### Metrics Console
 
-Moose provides a console to view live metrics from your Moose application. To launch the console, run:
+Moose provides a console to view live metrics from your MooseStack Applications. To launch the console, run:
 
 ```bash filename="Terminal" copy
 moose metrics
@@ -72,7 +72,7 @@ For each streaming transformation:
 
 ### Health Monitoring
 
-Moose applications expose a health check endpoint at `/health` that returns a 200 OK response when the application is operational. This endpoint is used by container orchestration systems like Kubernetes to determine the health of your application.
+MooseStack Applications expose a health check endpoint at `/health` that returns a 200 OK response when the application is operational. This endpoint is used by container orchestration systems like Kubernetes to determine the health of your application.
 
 In production environments, we recommend configuring three types of probes:
 
@@ -86,7 +86,7 @@ Learn more about how to configure health checks in your Kubernetes deployment.
 
 ### Prometheus Metrics
 
-Moose applications expose metrics in Prometheus format at the `/metrics` endpoint. These metrics include:
+MooseStack Applications expose metrics in Prometheus format at the `/metrics` endpoint. These metrics include:
 
 - HTTP request latency histograms for each endpoint
 - Request counts and error rates

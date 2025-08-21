@@ -3,7 +3,7 @@ description = "A real-time look at top trending topics on GitHub. Collects & ana
 post_install_print = """
 Deploy on Boreal
 
-The easiest way to deploy your Moose app is to use Boreal
+The easiest way to deploy your MooseStack Applications is to use Boreal
 from the creators of MooseStack.
 
 https://boreal.cloud

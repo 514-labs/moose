@@ -1868,9 +1868,14 @@ impl InfrastructureMap {
         let encoded = redis_client
             .get_with_explicit_prefix(last_prefix, "infrastructure_map")
             .await
-            .context("Failed to get InfrastructureMap from Redis using LAST_KEY_PREFIX")?;
+            .context("Failed to get InfrastructureMap from Redis using LAST_KEY_PREFIX");
 
-        if let Some(encoded) = encoded {
+        if let Err(e) = encoded {
+            log::error!("{}", e);
+            return Ok(None);
+        }
+
+        if let Ok(Some(encoded)) = encoded {
             let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
                 anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
             })?;

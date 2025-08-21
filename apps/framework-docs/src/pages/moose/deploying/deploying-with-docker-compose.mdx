@@ -68,7 +68,7 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
-Next, install Node.js or Python depending on your MooseStack Applications:
+Next, install Node.js or Python depending on your Moose application:
 
 ```bash
 # For Node.js applications
@@ -204,7 +204,7 @@ REDPANDA_VERSION=v24.3.13
 REDPANDA_CONSOLE_VERSION=v3.1.0
 ```
 
-Additionally, create a `.env.prod` file for your MooseStack Applications-specific secrets and configuration:
+Additionally, create a `.env.prod` file for your Moose application-specific secrets and configuration:
 
 ```bash
 # Create and open the .env.prod file
@@ -637,7 +637,7 @@ For production, it's recommended to restrict external access to Redpanda:
 
 ### Configuring Temporal (Optional)
 
-If your MooseStack Applications uses Temporal for workflow orchestration, the configuration above includes all necessary services based on the
+If your Moose application uses Temporal for workflow orchestration, the configuration above includes all necessary services based on the
 [official Temporal Docker Compose examples](https://github.com/temporalio/docker-compose).
 
 If you're not using Temporal, simply remove the Temporal-related services (postgresql, temporal, temporal-ui) 
@@ -803,7 +803,7 @@ You get a smooth deployment process with these options:
 
 1. Set up a CI/CD pipeline using GitHub Actions (if runner is configured)
 2. When code is pushed to your repository:
-   - The GitHub Actions runner builds your MooseStack Applications
+   - The GitHub Actions runner builds your Moose application
    - Updates the Docker image
    - Deploys using Docker Compose
 

@@ -206,7 +206,7 @@ class Api(BaseTypedResource, Generic[U]):
             )
 
         # Construct the API endpoint URL
-        url = f"{effective_base_url.rstrip('/')}/consumption/{self.name}"
+        url = f"{effective_base_url.rstrip('/')}/api/{self.name}"
 
         # Convert Pydantic model to dictionary
         params_dict = params.model_dump()

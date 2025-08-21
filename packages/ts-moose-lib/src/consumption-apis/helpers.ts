@@ -283,7 +283,7 @@ export async function getTemporalClient(
   }
 }
 
-export const ConsumptionHelpers = {
+export const ApiHelpers = {
   column: (value: string) => ["Identifier", value] as [string, string],
   table: (value: string) => ["Identifier", value] as [string, string],
 };

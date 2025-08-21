@@ -90,9 +90,7 @@ export class Api<T, R = any> extends TypedBase<T, ApiConfig<T>> {
 
   async call(baseUrl: string, queryParams: T): Promise<R> {
     // Construct the API endpoint URL
-    const url = new URL(
-      `${baseUrl.replace(/\/$/, "")}/consumption/${this.name}`,
-    );
+    const url = new URL(`${baseUrl.replace(/\/$/, "")}/api/${this.name}`);
 
     const searchParams = url.searchParams;
 

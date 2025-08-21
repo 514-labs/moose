@@ -579,7 +579,7 @@ from pydantic import BaseModel
 from moose_lib import MaterializedView, MaterializedViewOptions, OlapConfig
 
 class Dest(BaseModel):
-    id: Key[str] ## Do not need to set `order_by_fields` for the materialized view with a Key type
+    id: str
     name: str
     day: str
 
@@ -594,6 +594,7 @@ mv = MaterializedView[Dest](MaterializedViewOptions(
         WHERE {events.columns.active} = 1
     """,
     select_tables=[events, users],
+    order_by_fields=["id"],
     table_name="user_activity_by_day",
     materialized_view_name="mv_user_activity_by_day",
 ))

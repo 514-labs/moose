@@ -160,7 +160,7 @@ const eventsPipeline = new IngestPipeline<Event>("user_events", {
    stream: true,
    table: {
     orderByFields: ["id", "timestamp"],
-    deduplicate: true
+    engine: ClickHouseEngines.ReplacingMergeTree,
    }
 })
 ```

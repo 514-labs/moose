@@ -30,7 +30,7 @@ The `Stream` class accepts the following configuration:
 ```python
 from typing import TypedDict, Optional
 
-class StreamConfig(TypedDict):
+class StreamConfig(BaseModel):
     name: str            # Required: Name of the stream
     destination: str     # Required: Destination table
     parallelism: Optional[int] = None  # Optional: Number of parallel processors

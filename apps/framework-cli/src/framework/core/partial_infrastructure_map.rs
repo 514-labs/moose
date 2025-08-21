@@ -106,7 +106,6 @@ struct PartialTable {
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
-    pub deduplicate: bool,
     pub engine: Option<String>,
     pub version: Option<String>,
     pub metadata: Option<Metadata>,
@@ -427,7 +426,6 @@ impl PartialInfrastructureMap {
                         }),
                     columns: partial_table.columns.clone(),
                     order_by: partial_table.order_by.clone(),
-                    deduplicate: partial_table.deduplicate,
                     engine: partial_table.engine.clone(),
                     version,
                     source_primitive: PrimitiveSignature {

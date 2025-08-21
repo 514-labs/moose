@@ -107,7 +107,7 @@ ENGINE = {{engine}}
 {{#if order_by_string}}ORDER BY ({{order_by_string}}){{/if}}
 "#;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClickhouseEngine {
     MergeTree,
     ReplacingMergeTree,

@@ -283,7 +283,6 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
                 message: format!("engine: {e}"),
             }
         })?,
-        None if table.deduplicate => ClickhouseEngine::ReplacingMergeTree,
         None => ClickhouseEngine::MergeTree,
     };
 

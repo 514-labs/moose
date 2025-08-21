@@ -313,7 +313,6 @@ mod tests {
             }],
             order_by: vec!["id".to_string()],
             engine: None,
-            deduplicate: false,
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
@@ -507,13 +506,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_reality_checker_deduplicate_mismatch() {
+    async fn test_reality_checker_engine_mismatch() {
         let mut actual_table = create_base_table("test_table");
         let mut infra_table = create_base_table("test_table");
 
-        // Set different deduplicate values
-        actual_table.deduplicate = true;
-        infra_table.deduplicate = false;
+        // Set different engine values
+        actual_table.engine = Some("ReplacingMergeTree".to_string());
+        infra_table.engine = None;
 
         let mock_client = MockOlapClient {
             tables: vec![actual_table],
@@ -547,11 +546,11 @@ mod tests {
         assert!(discrepancies.missing_tables.is_empty());
         assert_eq!(discrepancies.mismatched_tables.len(), 1);
 
-        // Verify the change is from reality's perspective - we need to change deduplicate to match infra map
+        // Verify the change is from reality's perspective - we need to change engine to match infra map
         match &discrepancies.mismatched_tables[0] {
             OlapChange::Table(TableChange::Updated { before, after, .. }) => {
-                assert!(before.deduplicate);
-                assert!(!after.deduplicate);
+                assert_eq!(before.engine.as_deref(), Some("ReplacingMergeTree"));
+                assert_eq!(after.engine.as_deref(), None);
             }
             _ => panic!("Expected TableChange::Updated variant"),
         }

@@ -85,7 +85,7 @@ interface ExampleSchema {
 // Create a standalone table named "example_table"
 const exampleTable = new OlapTable<ExampleSchema>("example_table", {
   orderByFields: ["id", "dateField"], // Optional when using a primary key
-  deduplicate: true  // Optional: keep only the latest version of each record
+  engine: ClickHouseEngines.ReplacingMergeTree,  // Optional: keep only the latest version of each record
 });
 
 // Now you can:
@@ -109,7 +109,7 @@ class ExampleSchema(BaseModel):
 # Create a standalone table named "example_table"
 example_table = OlapTable[ExampleSchema]("example_table", {
   orderByFields: ["id", "date_field"],
-  deduplicate: True
+  engine: ClickHouseEngines.ReplacingMergeTree,
 })
 ```
 </Python>
@@ -147,7 +147,7 @@ const eventsPipeline = new IngestPipeline<UserEvent>("user_events", {
   stream: true,    // Creates Kafka/Redpanda topic
   table: {         // Creates and configures the table named "user_events"
     orderByFields: ["id", "timestamp"],
-    deduplicate: true
+    engine: ClickHouseEngines.ReplacingMergeTree
   }
 });
 
@@ -172,7 +172,7 @@ events_pipeline = IngestPipeline[UserEvent]("user_events", {
   stream: True, # Creates a Kafka/Redpanda topic
   table: {      # Creates and configures the table named "user_events"
     orderByFields: ["id", "timestamp"],
-    deduplicate: True
+    engine: ClickHouseEngines.ReplacingMergeTree
   }
 })
 

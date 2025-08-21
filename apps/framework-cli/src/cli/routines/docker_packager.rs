@@ -89,8 +89,21 @@ static PY_BASE_DOCKER_FILE: &str = r#"
 FROM python:3.12-slim-bookworm
 "#;
 
-/// Generates the monorepo TypeScript Dockerfile with dynamic Node.js version
-fn generate_ts_monorepo_dockerfile(node_version: &str) -> String {
+/// Generates the monorepo TypeScript Dockerfile with dynamic Node.js version and lock file
+fn generate_ts_monorepo_dockerfile(node_version: &str, lock_file_name: Option<&str>) -> String {
+    let lock_file_copy = match lock_file_name {
+        Some(name) => format!("COPY {} ./", name),
+        None => "# No lock file found".to_string(),
+    };
+
+    let install_command = match lock_file_name {
+        Some("pnpm-lock.yaml") => "RUN pnpm install --frozen-lockfile",
+        Some("package-lock.json") => "RUN npm ci",
+        Some("yarn.lock") => "RUN yarn install --frozen-lockfile",
+        Some(_) => "RUN pnpm install --frozen-lockfile", // fallback to pnpm
+        None => "RUN pnpm install",                      // no lock file, regular install
+    };
+
     format!(
         r#"
 # Stage 1: Full monorepo context for dependency resolution
@@ -107,13 +120,13 @@ WORKDIR /monorepo
 
 # Copy workspace configuration files
 COPY pnpm-workspace.yaml ./
-COPY pnpm-lock.yaml ./
+{}
 
 # Copy workspace package directories (will be replaced with actual patterns)
 MONOREPO_PACKAGE_COPIES
 
 # Install all dependencies from monorepo root
-RUN pnpm install --frozen-lockfile
+{}
 
 # Stage 2: Production image  
 FROM node:{}-bookworm-slim
@@ -124,7 +137,7 @@ RUN npm config set update-notifier false
 # Install alternative package managers globally
 RUN npm install -g pnpm@latest
 "#,
-        node_version, node_version
+        node_version, lock_file_copy, install_command, node_version
     )
 }
 
@@ -296,6 +309,19 @@ pub fn create_dockerfile(
             if let Some(workspace_root) = find_pnpm_workspace_root(&project_root) {
                 info!("Detected pnpm workspace at: {:?}", workspace_root);
 
+                // Detect lock file at workspace root
+                let workspace_lock_file = get_lock_file_path(&workspace_root);
+                let lock_file_name = workspace_lock_file
+                    .as_ref()
+                    .and_then(|path| path.file_name())
+                    .and_then(|name| name.to_str());
+
+                if let Some(name) = lock_file_name {
+                    info!("Found lock file in workspace: {}", name);
+                } else {
+                    info!("No lock file found in workspace root");
+                }
+
                 // Calculate relative path from workspace root to project
                 let relative_project_path = match project_root.strip_prefix(&workspace_root) {
                     Ok(path) => path,
@@ -352,7 +378,8 @@ pub fn create_dockerfile(
                 };
 
                 // Build the monorepo Dockerfile
-                let mut dockerfile = generate_ts_monorepo_dockerfile(&node_version_str);
+                let mut dockerfile =
+                    generate_ts_monorepo_dockerfile(&node_version_str, lock_file_name);
                 dockerfile = dockerfile.replace("MONOREPO_PACKAGE_COPIES", &package_copies);
 
                 // Add the common Docker sections
@@ -375,6 +402,33 @@ pub fn create_dockerfile(
                     .collect::<Vec<_>>()
                     .join("\n");
 
+                // Prepare lock file copy command for deployment stage
+                let deploy_lock_file_copy = match lock_file_name {
+                    Some(name) => format!("COPY --from=monorepo-base /monorepo/{} ./", name),
+                    None => "# No lock file found".to_string(),
+                };
+
+                let deploy_install_command = match lock_file_name {
+                    Some("pnpm-lock.yaml") => format!(
+                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy --legacy",
+                        relative_project_path.to_string_lossy()
+                    ),
+                    Some("package-lock.json") => {
+                        "RUN npm ci --prefix /temp-deploy --production".to_string()
+                    }
+                    Some("yarn.lock") => {
+                        "RUN yarn install --production --cwd /temp-deploy".to_string()
+                    }
+                    Some(_) => format!(
+                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy --legacy",
+                        relative_project_path.to_string_lossy()
+                    ), // fallback
+                    None => format!(
+                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy",
+                        relative_project_path.to_string_lossy()
+                    ), // no lock file
+                };
+
                 // Modify the copy commands to copy from the build stage
                 let copy_from_build = format!(
                     r#"
@@ -387,12 +441,12 @@ COPY --from=monorepo-base --chown=moose:moose /monorepo/{}/tsconfig.json ./tscon
 USER root:root
 WORKDIR /temp-monorepo
 COPY --from=monorepo-base /monorepo/pnpm-workspace.yaml ./
-COPY --from=monorepo-base /monorepo/pnpm-lock.yaml ./
+{}
 COPY --from=monorepo-base /monorepo/{} ./{}
 # Copy all workspace directories that exist
 {}
-# Use pnpm deploy from workspace to install only production dependencies
-RUN pnpm --filter "./{}" deploy /temp-deploy --legacy
+# Use package manager to install only production dependencies
+{}
 RUN cp -r /temp-deploy/node_modules /application/node_modules
 RUN chown -R moose:moose /application/node_modules
 
@@ -407,10 +461,11 @@ WORKDIR /application"#,
                     relative_project_path.to_string_lossy(), // 1: /monorepo/{}/app
                     relative_project_path.to_string_lossy(), // 2: /monorepo/{}/package.json
                     relative_project_path.to_string_lossy(), // 3: /monorepo/{}/tsconfig.json
-                    relative_project_path.to_string_lossy(), // 4: /monorepo/{} ./{}
+                    deploy_lock_file_copy,                   // 4: lock file copy or comment
                     relative_project_path.to_string_lossy(), // 5: /monorepo/{} ./{}
-                    workspace_copies,                        // 6: {} (workspace_copies)
-                    relative_project_path.to_string_lossy(), // 7: --filter "./{}"
+                    relative_project_path.to_string_lossy(), // 6: /monorepo/{} ./{}
+                    workspace_copies,                        // 7: {} (workspace_copies)
+                    deploy_install_command,                  // 8: package manager install command
                 );
 
                 dockerfile = dockerfile.replace("COPY_PACKAGE_FILE", &copy_from_build);

@@ -7,23 +7,12 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct NodeVersion {
     pub major: u64,
-    pub minor: u64,
-    pub patch: u64,
     pub is_lts: bool,
 }
 
 impl NodeVersion {
-    pub fn new(major: u64, minor: u64, patch: u64, is_lts: bool) -> Self {
-        Self {
-            major,
-            minor,
-            patch,
-            is_lts,
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("{}.{}.{}", self.major, self.minor, self.patch)
+    pub fn new(major: u64, is_lts: bool) -> Self {
+        Self { major, is_lts }
     }
 
     pub fn to_major_string(&self) -> String {
@@ -36,20 +25,18 @@ impl NodeVersion {
 const NODE_LTS_VERSIONS: &[NodeVersion] = &[
     NodeVersion {
         major: 18,
-        minor: 20,
-        patch: 4,
         is_lts: true,
     },
     NodeVersion {
         major: 20,
-        minor: 18,
-        patch: 0,
         is_lts: true,
     },
     NodeVersion {
         major: 22,
-        minor: 12,
-        patch: 0,
+        is_lts: true,
+    },
+    NodeVersion {
+        major: 24,
         is_lts: true,
     },
 ];
@@ -132,7 +119,7 @@ fn normalize_node_version_requirement(req: &str) -> String {
 
 /// Finds the highest LTS Node.js version that satisfies the given requirement
 pub fn find_compatible_lts_version(requirement: Option<&VersionReq>) -> NodeVersion {
-    let default_version = NodeVersion::new(20, 18, 0, true);
+    let default_version = NodeVersion::new(20, true);
 
     let Some(req) = requirement else {
         info!(
@@ -146,23 +133,18 @@ pub fn find_compatible_lts_version(requirement: Option<&VersionReq>) -> NodeVers
     let mut compatible_versions: Vec<&NodeVersion> = NODE_LTS_VERSIONS
         .iter()
         .filter(|version| {
-            let semver = Version::new(version.major, version.minor, version.patch);
+            let semver = Version::new(version.major, 0, 0);
             req.matches(&semver)
         })
         .collect();
 
     // Sort by version (highest first)
-    compatible_versions.sort_by(|a, b| {
-        b.major
-            .cmp(&a.major)
-            .then_with(|| b.minor.cmp(&a.minor))
-            .then_with(|| b.patch.cmp(&a.patch))
-    });
+    compatible_versions.sort_by(|a, b| b.major.cmp(&a.major));
 
     if let Some(best_version) = compatible_versions.first() {
         info!(
             "Found compatible LTS Node.js version {} for requirement {}",
-            best_version.to_string(),
+            best_version.to_major_string(),
             req
         );
         (*best_version).clone()
@@ -182,7 +164,7 @@ pub fn determine_node_version_from_package_json(package_json_path: &Path) -> Nod
         Ok(requirement) => find_compatible_lts_version(requirement.as_ref()),
         Err(e) => {
             warn!("Error parsing package.json engines field: {}", e);
-            NodeVersion::new(20, 18, 0, true) // Default fallback
+            NodeVersion::new(20, true) // Default fallback
         }
     }
 }
@@ -208,6 +190,14 @@ mod tests {
         let version = find_compatible_lts_version(Some(&req));
         assert!(version.major >= 18);
         assert!(version.is_lts);
+
+        // Test that it picks the highest compatible version (should be 24)
+        assert_eq!(version.major, 24);
+
+        // Test with constraint that should pick specific version
+        let req_20 = VersionReq::parse("^20.0.0").unwrap();
+        let version_20 = find_compatible_lts_version(Some(&req_20));
+        assert_eq!(version_20.major, 20);
     }
 
     #[test]

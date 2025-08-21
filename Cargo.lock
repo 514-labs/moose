@@ -2565,6 +2565,7 @@ dependencies = [
  "reqwest 0.12.12",
  "rustpython-ast",
  "rustpython-parser",
+ "semver",
  "serde",
  "serde_json",
  "serde_urlencoded",

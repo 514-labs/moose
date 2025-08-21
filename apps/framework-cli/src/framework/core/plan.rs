@@ -216,7 +216,7 @@ pub async fn plan_changes(
         }
     };
 
-    let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
+    let current_infra_map = InfrastructureMap::load_from_last_redis_prefix(client).await?;
 
     debug!(
         "Current infrastructure map: {}",

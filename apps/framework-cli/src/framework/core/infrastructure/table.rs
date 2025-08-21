@@ -83,8 +83,6 @@ pub struct Table {
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
     #[serde(default)]
-    pub deduplicate: bool,
-    #[serde(default)]
     pub engine: Option<String>,
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
@@ -114,7 +112,7 @@ impl Table {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Table: {} Version {:?} - {} - {} - deduplicate: {}",
+            "Table: {} Version {:?} - {} - {}{}",
             self.name,
             self.version,
             self.columns
@@ -123,7 +121,10 @@ impl Table {
                 .collect::<Vec<String>>()
                 .join(", "),
             self.order_by.join(","),
-            self.deduplicate
+            self.engine
+                .as_ref()
+                .map(|e| format!(" - engine: {}", e))
+                .unwrap_or_default()
         )
     }
 
@@ -163,7 +164,10 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
-            deduplicate: self.deduplicate,
+            deduplicate: self
+                .engine
+                .as_ref()
+                .is_some_and(|e| e.contains("ReplacingMergeTree")),
             engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
                 value: engine.to_string(),
                 special_fields: Default::default(),
@@ -190,8 +194,11 @@ impl Table {
             order_by: proto.order_by,
             version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
-            deduplicate: proto.deduplicate,
-            engine: proto.engine.into_option().map(|wrapper| wrapper.value),
+            engine: proto
+                .engine
+                .into_option()
+                .map(|wrapper| wrapper.value)
+                .or_else(|| proto.deduplicate.then(|| "ReplacingMergeTree".to_string())),
             metadata: proto.metadata.into_option().map(|m| Metadata {
                 description: if m.description.is_empty() {
                     None

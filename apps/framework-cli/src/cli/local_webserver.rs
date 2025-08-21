@@ -2424,7 +2424,6 @@ mod tests {
             }],
             order_by: vec!["id".to_string()],
             engine: None,
-            deduplicate: false,
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),

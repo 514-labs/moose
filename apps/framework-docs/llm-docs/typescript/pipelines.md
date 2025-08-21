@@ -74,7 +74,7 @@ export const ComprehensivePipeline = new IngestPipeline<ComprehensiveSchema>("Co
   // Table configuration with all options
   table: {
     orderByFields: ["id", "timestamp"],  // Specify sort order
-    deduplicate: true,                   // Enable deduplication
+    engine: ClickHouseEngines.ReplacingMergeTree,                   // Enable deduplication
   },
 
   // Stream configuration with all options

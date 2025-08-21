@@ -157,7 +157,7 @@ consumption_api = ConsumptionApi[RequestParams, DataModel]("get-api-route", quer
 
 ## Community
 
-Join us on Slack: https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg
+[Join us on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
 
 ## Contributing
 

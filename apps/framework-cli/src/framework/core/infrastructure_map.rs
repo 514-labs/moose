@@ -1856,6 +1856,33 @@ impl InfrastructureMap {
         }
     }
 
+    /// Loads an infrastructure map using the last deployment's Redis key prefix.
+    pub async fn load_from_last_redis_prefix(redis_client: &RedisClient) -> Result<Option<Self>> {
+        let Some(last_prefix) = &redis_client.config.last_key_prefix else {
+            log::info!("No last InfrastructureMap prefix found");
+            return Ok(None);
+        };
+
+        log::info!(
+            "Loading InfrastructureMap from last Redis prefix: {}",
+            last_prefix
+        );
+
+        let encoded = redis_client
+            .get_with_explicit_prefix(last_prefix, "infrastructure_map")
+            .await
+            .context("Failed to get InfrastructureMap from Redis using LAST_KEY_PREFIX")?;
+
+        if let Some(encoded) = encoded {
+            let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
+                anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
+            })?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Converts the infrastructure map to its protocol buffer representation
     ///
     /// This creates a complete protocol buffer representation of the map

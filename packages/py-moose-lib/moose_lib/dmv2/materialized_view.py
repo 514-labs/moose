@@ -26,9 +26,6 @@ class MaterializedViewOptions(BaseModel):
                 a target table via table_name or inline config).
         order_by_fields: Optional ordering key for the target table (required for
                          engines like ReplacingMergeTree).
-        target_table: Either an existing `OlapTable` instance to use as the destination,
-                      or an inline config (`TargetTableInlineConfig`) with the name and
-                      optional engine/order_by_fields to create one.
         model_config: ConfigDict for Pydantic validation
     """
     select_statement: str

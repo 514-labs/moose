@@ -376,12 +376,13 @@ async fn execute_modify_table_column(
 ) -> Result<(), ClickhouseChangesError> {
     // Check if only the comment has changed
     let data_type_changed = before_column.data_type != after_column.data_type;
+    let default_changed = before_column.default != after_column.default;
     let required_changed = before_column.required != after_column.required;
     let comment_changed = before_column.comment != after_column.comment;
 
     // If only the comment changed, use a simpler ALTER TABLE ... MODIFY COLUMN ... COMMENT
     // This is more efficient and avoids unnecessary table rebuilds
-    if !data_type_changed && !required_changed && comment_changed {
+    if !data_type_changed && !required_changed && !default_changed && comment_changed {
         log::info!(
             "Executing comment-only modification for table: {}, column: {}",
             table_name,
@@ -413,18 +414,28 @@ async fn execute_modify_table_column(
     let clickhouse_column = std_column_to_clickhouse_column(after_column.clone())?;
     let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
 
-    // Build the MODIFY COLUMN query with optional comment
+    // Build the MODIFY COLUMN query with optional default and comment
+    let default_clause = clickhouse_column
+        .default
+        .as_ref()
+        .map(|d| format!(" DEFAULT {}", d))
+        .unwrap_or_default();
     let modify_column_query = if let Some(ref comment) = clickhouse_column.comment {
         // Escape single quotes in the comment for SQL safety
         let escaped_comment = comment.replace('\'', "''");
         format!(
-            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {} COMMENT '{}'",
-            db_name, table_name, clickhouse_column.name, column_type_string, escaped_comment
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}{} COMMENT '{}'",
+            db_name,
+            table_name,
+            clickhouse_column.name,
+            column_type_string,
+            default_clause,
+            escaped_comment
         )
     } else {
         format!(
-            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
-            db_name, table_name, clickhouse_column.name, column_type_string
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}{}",
+            db_name, table_name, clickhouse_column.name, column_type_string, default_clause
         )
     };
 
@@ -455,17 +466,12 @@ async fn execute_modify_column_comment(
         column.name
     );
 
-    // Get the ClickHouse column type for the ALTER statement
-    let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
-    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
-
     // Escape single quotes in the comment for SQL safety
     let escaped_comment = comment.replace('\'', "''");
 
-    // ClickHouse requires MODIFY COLUMN with the full column definition when changing comment
     let modify_comment_query = format!(
-        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {} COMMENT '{}'",
-        db_name, table_name, column.name, column_type_string, escaped_comment
+        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` COMMENT '{}'",
+        db_name, table_name, column.name, escaped_comment
     );
 
     log::debug!("Modifying column comment: {}", modify_comment_query);

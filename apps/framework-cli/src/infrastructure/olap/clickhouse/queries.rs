@@ -99,7 +99,7 @@ pub fn create_alias_for_table(
 static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS `{{db_name}}`.`{{table_name}}`
 (
-{{#each fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#if field_comment}} COMMENT '{{{field_comment}}}'{{/if}}{{#unless @last}},{{/unless}}
+{{#each fields}} `{{field_name}}` {{field_nullable}}{{{field_type}}}{{#if field_default}} DEFAULT {{{field_default}}}{{/if}}{{#if field_comment}} COMMENT '{{{field_comment}}}'{{/if}}{{#unless @last}},{{/unless}}
 {{/each}}
 )
 ENGINE = {{engine}}
@@ -323,6 +323,7 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
             Ok(json!({
                 "field_name": column.name,
                 "field_type": field_type,
+                "field_default": column.default,
                 "field_nullable": if let ClickHouseColumnType::Nullable(_) = column.column_type {
                     // if type is Nullable, do not add extra specifier
                     "".to_string()

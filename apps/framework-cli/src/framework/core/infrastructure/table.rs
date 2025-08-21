@@ -230,8 +230,6 @@ pub struct Column {
     pub comment: Option<String>, // Column comment for metadata storage
 }
 
-// ColumnDefaults enum removed in favor of free-form default string
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum IntType {
     Int8,
@@ -644,7 +642,7 @@ impl Column {
             required: self.required,
             unique: self.unique,
             primary_key: self.primary_key,
-            default: 0,
+            default: 0, // ColumnDefaults enum removed in favor of free-form default string
             default_expr: MessageField::from_option(self.default.as_ref().map(|d| StringValue {
                 value: d.clone(),
                 special_fields: Default::default(),
@@ -926,8 +924,6 @@ impl EnumValue {
         }
     }
 }
-
-// ColumnDefaults helpers removed
 
 #[cfg(test)]
 mod tests {

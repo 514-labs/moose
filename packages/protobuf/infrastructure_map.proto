@@ -150,7 +150,7 @@ message Column {
   bool primary_key = 5;
   // was an enum that we never used
   int32 default = 6 [deprecated = true];
-
+  // Column default is now a free-form SQL expression passed as a string
   google.protobuf.StringValue default_expr = 9;
 
   map<string, string> annotations = 7;
@@ -260,8 +260,6 @@ message EnumValue {
     string string_value = 2;
   }
 }
-
-// Column default is now a free-form SQL expression passed as a string
 
 message PrimitiveSignature {
   string name = 1;

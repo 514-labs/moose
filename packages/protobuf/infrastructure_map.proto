@@ -90,7 +90,7 @@ message Table {
   optional string version = 4;
   PrimitiveSignature source_primitive = 5;
 
-  bool deduplicate = 6;
+  bool deduplicate = 6 [deprecated = true];
   google.protobuf.StringValue engine = 7;
   Metadata metadata = 8;
   LifeCycle life_cycle = 9;
@@ -151,6 +151,7 @@ message Column {
   ColumnDefaults default = 6;
 
   map<string, string> annotations = 7;
+  optional string comment = 8; // Column comment for metadata storage
 }
 
 enum SimpleColumnType {

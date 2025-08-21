@@ -26,13 +26,62 @@ pub struct Metadata {
     pub description: Option<String>,
 }
 
+/// Prefix for Moose-managed metadata in column comments.
+/// This prefix ensures users don't accidentally modify the metadata.
+pub const METADATA_PREFIX: &str = "[MOOSE_METADATA:DO_NOT_MODIFY] ";
+
+/// Version number for the metadata format.
+/// This allows for future format changes while maintaining backward compatibility.
+pub const METADATA_VERSION: u32 = 1;
+
+/// Root structure for column metadata stored in ClickHouse column comments.
+///
+/// This metadata preserves the original TypeScript enum definitions to solve
+/// the false positive diff issue where TypeScript string enums (e.g., `TEXT = 'text'`)
+/// get converted to ClickHouse integer enums (e.g., `'text' = 1`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ColumnMetadata {
+    /// Version of the metadata format
+    pub version: u32,
+    /// Enum definition (currently the only supported metadata type)
+    #[serde(rename = "enum")]
+    pub enum_def: EnumMetadata,
+    // Future fields can be added here with #[serde(skip_serializing_if = "Option::is_none")]
+}
+
+/// Metadata for an enum type
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnumMetadata {
+    /// Original enum name from TypeScript
+    pub name: String,
+    /// List of enum members with their values
+    pub members: Vec<EnumMemberMetadata>,
+}
+
+/// Metadata for a single enum member
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnumMemberMetadata {
+    /// Member name (e.g., "TEXT")
+    pub name: String,
+    /// Member value (either integer or string)
+    pub value: EnumValueMetadata,
+}
+
+/// Value of an enum member, supporting both integer and string values
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum EnumValueMetadata {
+    /// Integer value for numeric enums
+    Int(u8),
+    /// String value for string enums
+    String(String),
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
-    #[serde(default)]
-    pub deduplicate: bool,
     #[serde(default)]
     pub engine: Option<String>,
     pub version: Option<Version>,
@@ -63,7 +112,7 @@ impl Table {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Table: {} Version {:?} - {} - {} - deduplicate: {}",
+            "Table: {} Version {:?} - {} - {}{}",
             self.name,
             self.version,
             self.columns
@@ -72,7 +121,10 @@ impl Table {
                 .collect::<Vec<String>>()
                 .join(", "),
             self.order_by.join(","),
-            self.deduplicate
+            self.engine
+                .as_ref()
+                .map(|e| format!(" - engine: {}", e))
+                .unwrap_or_default()
         )
     }
 
@@ -112,7 +164,10 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
-            deduplicate: self.deduplicate,
+            deduplicate: self
+                .engine
+                .as_ref()
+                .is_some_and(|e| e.contains("ReplacingMergeTree")),
             engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
                 value: engine.to_string(),
                 special_fields: Default::default(),
@@ -139,8 +194,11 @@ impl Table {
             order_by: proto.order_by,
             version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
-            deduplicate: proto.deduplicate,
-            engine: proto.engine.into_option().map(|wrapper| wrapper.value),
+            engine: proto
+                .engine
+                .into_option()
+                .map(|wrapper| wrapper.value)
+                .or_else(|| proto.deduplicate.then(|| "ReplacingMergeTree".to_string())),
             metadata: proto.metadata.into_option().map(|m| Metadata {
                 description: if m.description.is_empty() {
                     None
@@ -168,6 +226,8 @@ pub struct Column {
     pub default: Option<ColumnDefaults>,
     #[serde(default)]
     pub annotations: Vec<(String, Value)>, // workaround for needing to Hash
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub comment: Option<String>, // Column comment for metadata storage
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -599,6 +659,7 @@ impl Column {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
+            comment: self.comment.clone(),
             special_fields: Default::default(),
         }
     }
@@ -626,6 +687,7 @@ impl Column {
                 default => Some(ColumnDefaults::from_proto(default)),
             },
             annotations,
+            comment: proto.comment,
         }
     }
 }
@@ -970,10 +1032,54 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         let json = serde_json::to_string(&nested_column).unwrap();
         let deserialized: Column = serde_json::from_str(&json).unwrap();
         assert_eq!(nested_column, deserialized);
+    }
+
+    #[test]
+    fn test_column_proto_with_comment() {
+        // Test that comment field is properly serialized/deserialized through proto
+        let column_with_comment = Column {
+            name: "test_column".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: Some("[MOOSE_METADATA:DO_NOT_MODIFY] {\"version\":1,\"enum\":{\"name\":\"TestEnum\",\"members\":[]}}".to_string()),
+        };
+
+        // Convert to proto and back
+        let proto = column_with_comment.to_proto();
+        let reconstructed = Column::from_proto(proto);
+
+        assert_eq!(column_with_comment, reconstructed);
+        assert_eq!(
+            reconstructed.comment,
+            Some("[MOOSE_METADATA:DO_NOT_MODIFY] {\"version\":1,\"enum\":{\"name\":\"TestEnum\",\"members\":[]}}".to_string())
+        );
+
+        // Test without comment
+        let column_without_comment = Column {
+            name: "test_column".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let proto = column_without_comment.to_proto();
+        let reconstructed = Column::from_proto(proto);
+
+        assert_eq!(column_without_comment, reconstructed);
+        assert_eq!(reconstructed.comment, None);
     }
 }

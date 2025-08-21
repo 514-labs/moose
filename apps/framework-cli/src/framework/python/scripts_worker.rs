@@ -74,6 +74,7 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     )?;
 
     let mut worker_process = run_python_program(
+        project,
         &project.project_location,
         PythonProgram::OrchestrationWorker {
             args: vec![

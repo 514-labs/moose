@@ -11,13 +11,13 @@ export default render({
   },
   moose: {
     type: "page",
-    title: "Moose Stack",
+    title: "MooseStack",
     href: "/moose",
   },
-  aurora: {
+  sloan: {
     type: "page",
-    title: "Aurora",
-    href: "/aurora",
+    title: "Sloan",
+    href: "/sloan",
   },
   blog: {
     title: "Blog",
@@ -25,11 +25,10 @@ export default render({
     href: "https://www.fiveonefour.com/blog",
     newWindow: true,
   },
-  "area-code": {
+  "in-your-stack": {
     type: "page",
-    title: "Area Code",
-    href: "https://github.com/514-labs/area-code",
-    newWindow: true,
+    title: "Reference Architectures",
+    href: "/moose/in-your-stack",
   },
   "release-notes": {
     type: "page",

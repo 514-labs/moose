@@ -1,9 +1,10 @@
 use crate::framework::core::infrastructure::sql_resource::SqlResource;
-use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
-use crate::framework::core::infrastructure::view::View;
+use crate::framework::core::infrastructure::table::{Column, Table};
+use crate::framework::core::infrastructure::view::{View, ViewType};
 use crate::framework::core::infrastructure::DataLineage;
 use crate::framework::core::infrastructure::InfrastructureSignature;
 use crate::framework::core::infrastructure_map::{Change, ColumnChange, OlapChange, TableChange};
+use crate::infrastructure::olap::clickhouse::SerializableOlapOperation;
 use petgraph::algo::toposort;
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
@@ -69,16 +70,10 @@ pub enum AtomicOlapOperation {
     ModifyTableColumn {
         /// The table containing the column
         table: Table,
-        /// Name of the column
-        column_name: String,
-        /// The data type before modification
-        before_data_type: ColumnType,
-        /// The data type after modification
-        after_data_type: ColumnType,
-        /// Whether the column was required before modification
-        before_required: bool,
-        /// Whether the column is required after modification
-        after_required: bool,
+        /// The column before modification
+        before_column: Column,
+        /// The column after modification
+        after_column: Column,
         /// Dependency information
         dependency_info: DependencyInfo,
     },
@@ -113,6 +108,90 @@ pub enum AtomicOlapOperation {
 }
 
 impl AtomicOlapOperation {
+    pub fn to_minimal(&self) -> SerializableOlapOperation {
+        match self {
+            AtomicOlapOperation::CreateTable {
+                table,
+                dependency_info: _,
+            } => SerializableOlapOperation::CreateTable {
+                table: table.clone(),
+            },
+            AtomicOlapOperation::DropTable {
+                table,
+                dependency_info: _,
+            } => SerializableOlapOperation::DropTable {
+                table: table.name.clone(),
+            },
+            AtomicOlapOperation::AddTableColumn {
+                table,
+                column,
+                after_column,
+                dependency_info: _,
+            } => SerializableOlapOperation::AddTableColumn {
+                table: table.name.clone(),
+                column: column.clone(),
+                after_column: after_column.clone(),
+            },
+            AtomicOlapOperation::DropTableColumn {
+                table,
+                column_name,
+                dependency_info: _,
+            } => SerializableOlapOperation::DropTableColumn {
+                table: table.name.clone(),
+                column_name: column_name.clone(),
+            },
+            AtomicOlapOperation::ModifyTableColumn {
+                table,
+                before_column,
+                after_column,
+                dependency_info: _,
+            } => SerializableOlapOperation::ModifyTableColumn {
+                table: table.name.clone(),
+                before_column: before_column.clone(),
+                after_column: after_column.clone(),
+            },
+            // views are not in DMV2, convert them to RawSql
+            AtomicOlapOperation::CreateView {
+                view,
+                dependency_info: _,
+            } => {
+                let View {
+                    view_type: ViewType::TableAlias { source_table_name },
+                    ..
+                } = view;
+                let query = format!(
+                    "CREATE VIEW IF NOT EXISTS `{}` AS SELECT * FROM `{source_table_name}`;",
+                    view.id(),
+                );
+                SerializableOlapOperation::RawSql {
+                    sql: vec![query],
+                    description: format!("Creating view {}", view.id()),
+                }
+            }
+            AtomicOlapOperation::DropView {
+                view,
+                dependency_info: _,
+            } => SerializableOlapOperation::RawSql {
+                sql: vec![format!("DROP VIEW {}", view.id())],
+                description: format!("Dropping view {}", view.id()),
+            },
+            AtomicOlapOperation::RunSetupSql {
+                resource,
+                dependency_info: _,
+            } => SerializableOlapOperation::RawSql {
+                sql: resource.setup.clone(),
+                description: format!("Running setup SQL for resource {}", resource.name),
+            },
+            AtomicOlapOperation::RunTeardownSql {
+                resource,
+                dependency_info: _,
+            } => SerializableOlapOperation::RawSql {
+                sql: resource.teardown.clone(),
+                description: format!("Running teardown SQL for resource {}", resource.name),
+            },
+        }
+    }
+
     /// Returns the infrastructure signature associated with this operation
     pub fn resource_signature(&self) -> InfrastructureSignature {
         match self {
@@ -451,19 +530,13 @@ fn process_column_removal(before: &Table, column_name: &str) -> AtomicOlapOperat
 /// Process a column modification
 fn process_column_modification(
     after: &Table,
-    column_name: &str,
-    before_data_type: &ColumnType,
-    after_data_type: &ColumnType,
-    before_required: bool,
-    after_required: bool,
+    before_column: &Column,
+    after_column: &Column,
 ) -> AtomicOlapOperation {
     AtomicOlapOperation::ModifyTableColumn {
         table: after.clone(),
-        column_name: column_name.to_string(),
-        before_data_type: before_data_type.clone(),
-        after_data_type: after_data_type.clone(),
-        before_required,
-        after_required,
+        before_column: before_column.clone(),
+        after_column: after_column.clone(),
         dependency_info: create_empty_dependency_info(),
     }
 }
@@ -496,14 +569,8 @@ fn process_column_changes(
                 before: before_col,
                 after: after_col,
             } => {
-                plan.setup_ops.push(process_column_modification(
-                    after,
-                    &after_col.name,
-                    &before_col.data_type,
-                    &after_col.data_type,
-                    before_col.required,
-                    after_col.required,
-                ));
+                plan.setup_ops
+                    .push(process_column_modification(after, before_col, after_col));
             }
         }
     }
@@ -818,6 +885,7 @@ fn path_exists(graph: &DiGraph<usize, ()>, start: NodeIndex, end: NodeIndex) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::framework::core::infrastructure::table::ColumnType;
     use crate::framework::core::partial_infrastructure_map::LifeCycle;
     use crate::framework::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
@@ -835,7 +903,6 @@ mod tests {
             // Include minimal required fields
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -871,6 +938,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             after_column: None,
             dependency_info: DependencyInfo {
@@ -901,7 +969,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -917,7 +984,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1004,7 +1070,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1020,7 +1085,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1127,7 +1191,6 @@ mod tests {
             name: "test_table".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1154,6 +1217,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with correct dependencies
@@ -1275,7 +1339,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1290,7 +1353,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1305,7 +1367,6 @@ mod tests {
             name: "table_c".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1388,7 +1449,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1403,7 +1463,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1418,7 +1477,6 @@ mod tests {
             name: "table_c".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1433,7 +1491,6 @@ mod tests {
             name: "table_d".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1448,7 +1505,6 @@ mod tests {
             name: "table_e".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1594,7 +1650,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1610,7 +1665,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1724,7 +1778,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1740,7 +1793,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1859,7 +1911,6 @@ mod tests {
             name: "table_a".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -1874,7 +1925,6 @@ mod tests {
             name: "table_b".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -2072,7 +2122,6 @@ mod tests {
             name: "test_table".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -2092,6 +2141,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         };
 
         // Create operations with signatures that work with the current implementation
@@ -2169,7 +2219,6 @@ mod tests {
             name: "test_table".to_string(),
             columns: vec![],
             order_by: vec![],
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -2264,6 +2313,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "old_column".to_string(),
@@ -2273,11 +2323,11 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
-            engine: None,
+            engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
@@ -2298,6 +2348,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "new_column".to_string(),
@@ -2307,10 +2358,10 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()], // Same ORDER BY
-            deduplicate: false,
             engine: None,
             version: None,
             source_primitive: PrimitiveSignature {
@@ -2331,6 +2382,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }),
             ColumnChange::Added {
                 column: Column {
@@ -2341,6 +2393,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 position_after: Some("id".to_string()),
             },

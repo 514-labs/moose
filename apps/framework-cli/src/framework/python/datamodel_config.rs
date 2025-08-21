@@ -13,6 +13,7 @@ use crate::framework::{
     data_model::config::{ConfigIdentifier, DataModelConfig, ModelConfigurationError},
     python::executor::{run_python_command, run_python_file, PythonCommand},
 };
+use crate::project::Project;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct PythonDataModelConfig {
@@ -63,8 +64,9 @@ pub async fn execute_python_model_file_for_config(
 }
 
 pub async fn load_main_py(
+    project: &Project,
     project_location: &Path,
 ) -> anyhow::Result<PartialInfrastructureMap, DmV2LoadingError> {
-    let child = run_python_command(project_location, PythonCommand::DmV2Serializer)?;
+    let child = run_python_command(project, project_location, PythonCommand::DmV2Serializer)?;
     PartialInfrastructureMap::from_subprocess(child, "main.py").await
 }

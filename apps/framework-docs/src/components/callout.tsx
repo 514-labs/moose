@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, PartyPopper, StopCircle } from "lucide-react";
+import { InfoIcon, Lightbulb, PartyPopper, StopCircle } from "lucide-react";
 
 interface CalloutProps {
   type: CalloutType;
@@ -20,6 +20,7 @@ interface CalloutProps {
   ctaLabel?: string;
   children: React.ReactNode;
   compact?: boolean;
+  className?: string;
 }
 
 const calloutVariants = {
@@ -31,7 +32,7 @@ const calloutVariants = {
     titleColor: "text-boreal-green/90",
   },
   info: {
-    icon: Lightbulb,
+    icon: InfoIcon,
     color: "bg-muted/50",
     border: "border",
     title: "MooseTip:",
@@ -59,10 +60,11 @@ export function Callout({
   type,
   title,
   href,
-  icon = false,
+  icon = true,
   ctaLabel = "Learn more",
   children,
   compact = false,
+  className,
 }: CalloutProps) {
   const variantProps = calloutVariants[type];
 
@@ -78,6 +80,7 @@ export function Callout({
           "flex items-start my-2 p-3",
           variantProps.color,
           variantProps.border,
+          className,
         )}
       >
         {icon && (

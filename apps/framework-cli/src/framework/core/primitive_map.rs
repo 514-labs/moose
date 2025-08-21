@@ -213,6 +213,7 @@ impl PrimitiveMap {
 
         let data_models_configs = data_model::config::get(
             file_path,
+            project,
             &project.project_location,
             file_objects
                 .enums

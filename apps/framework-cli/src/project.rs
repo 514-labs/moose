@@ -43,18 +43,14 @@ use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 
+use crate::cli::display::Message;
+use crate::cli::routines::RoutineFailure;
 use crate::project::typescript_project::TypescriptProject;
-use crate::utilities::constants::SCRIPTS_DIR;
-use config::{Config, ConfigError, Environment, File};
-use log::debug;
-use python_project::PythonProject;
-use serde::Deserialize;
-use serde::Serialize;
-
 use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::ENVIRONMENT_VARIABLE_PREFIX;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
+use crate::utilities::constants::SCRIPTS_DIR;
 use crate::utilities::constants::{APP_DIR, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
     CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, TS_FLOW_FILE,
@@ -62,6 +58,11 @@ use crate::utilities::constants::{
 use crate::utilities::git::GitConfig;
 use crate::utilities::PathExt;
 use crate::utilities::_true;
+use config::{Config, ConfigError, Environment, File};
+use log::{debug, error};
+use python_project::PythonProject;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Represents errors that can occur during project file operations
 #[derive(Debug, thiserror::Error)]
@@ -163,6 +164,10 @@ pub struct ProjectFeatures {
     /// Whether OLAP (ClickHouse) is enabled
     #[serde(default = "_true")]
     pub olap: bool,
+
+    /// Execute planned DDL file unless MOOSE_AUTO_APPROVE_MIGRATIONS=true
+    #[serde(default)]
+    pub ddl_plan: bool,
 }
 
 impl Default for ProjectFeatures {
@@ -172,6 +177,7 @@ impl Default for ProjectFeatures {
             workflows: false,
             data_model_v2: false,
             olap: true,
+            ddl_plan: false,
         }
     }
 }
@@ -489,6 +495,19 @@ impl Project {
         }
 
         Ok(internal_dir)
+    }
+
+    pub fn internal_dir_with_routine_failure_err(&self) -> Result<PathBuf, RoutineFailure> {
+        self.internal_dir().map_err(|err| {
+            error!("Failed to get internal directory for project: {}", err);
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to get internal directory for project".to_string(),
+                ),
+                err,
+            )
+        })
     }
 
     /// Deletes the internal directory

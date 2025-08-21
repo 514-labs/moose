@@ -2,6 +2,7 @@ use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, Nested, Table,
 };
 use convert_case::{Case, Casing};
+use itertools::Itertools;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -195,11 +196,24 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
 
     // Generate model interfaces
     for table in tables {
+        let primary_key = table
+            .columns
+            .iter()
+            .filter_map(|column| {
+                if column.primary_key {
+                    Some(column.name.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let can_use_key_wrapping = table.order_by.starts_with(primary_key.as_slice());
+
         writeln!(output, "export interface {} {{", table.name).unwrap();
 
         for column in &table.columns {
             let type_str = map_column_type_to_typescript(&column.data_type, &enums, &nested_models);
-            let type_str = if column.primary_key {
+            let type_str = if can_use_key_wrapping && column.primary_key {
                 format!("Key<{type_str}>")
             } else {
                 type_str
@@ -217,6 +231,15 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
 
     // Generate pipeline configurations
     for table in tables {
+        let order_by_fields = if table.order_by.is_empty() {
+            "\"tuple()\"".to_string()
+        } else {
+            table
+                .order_by
+                .iter()
+                .map(|name| format!("{:?}", name))
+                .join(", ")
+        };
         writeln!(
             output,
             "export const {}Pipeline = new IngestPipeline<{}>(\"{}\", {{",
@@ -225,7 +248,9 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
             table.name
         )
         .unwrap();
-        writeln!(output, "    table: {},", table.engine.is_some()).unwrap();
+        writeln!(output, "    table: {{").unwrap();
+        writeln!(output, "        orderByFields: [{order_by_fields}]").unwrap();
+        writeln!(output, "    }}").unwrap();
         writeln!(output, "    stream: true,").unwrap();
         writeln!(output, "    ingest: true,").unwrap();
         writeln!(output, "}});").unwrap();
@@ -255,6 +280,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "city".to_string(),
@@ -264,6 +290,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "zip_code".to_string(),
@@ -273,6 +300,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             jwt: false,
@@ -289,6 +317,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "address".to_string(),
@@ -298,6 +327,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "addresses".to_string(),
@@ -310,10 +340,10 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -340,7 +370,9 @@ export interface User {
 }
 
 export const UserPipeline = new IngestPipeline<User>("User", {
-    table: true,
+    table: {
+        orderByFields: ["id"]
+    }
     stream: true,
     ingest: true,
 });"#
@@ -374,6 +406,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "status".to_string(),
@@ -383,10 +416,10 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -411,7 +444,9 @@ export interface Task {
 }
 
 export const TaskPipeline = new IngestPipeline<Task>("Task", {
-    table: true,
+    table: {
+        orderByFields: ["id"]
+    }
     stream: true,
     ingest: true,
 });"#

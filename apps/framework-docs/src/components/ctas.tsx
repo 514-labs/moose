@@ -61,7 +61,10 @@ const ClickHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // Base paths for different sections
 const basePaths = {
-  start: "/moose/getting-started",
+  quickstart: "/moose/getting-started/quickstart",
+  fromClickhouse: "/moose/getting-started/from-clickhouse",
+  dataModeling: "/moose/data-modeling",
+  localDev: "/moose/local-dev",
   // Modules
   olap: "/moose/olap",
   streaming: "/moose/streaming",
@@ -114,7 +117,7 @@ export const Icons = {
   api: HardDriveUpload,
   contact: Contact,
 
-  // Aurora
+  // Sloan
   cli: Terminal,
   json: FileJson,
   computer: Monitor,
@@ -124,25 +127,25 @@ export const Icons = {
 export const PathConfig = {
   // Getting Started
   quickstart: {
-    path: `${basePaths.start}/quickstart`,
+    path: `${basePaths.quickstart}`,
     icon: Icons.quickstart,
     title: "Quickstart",
     category: "getting-started" as const,
   },
   dataModeling: {
-    path: `${basePaths.start}/data-modeling`,
+    path: `${basePaths.dataModeling}`,
     icon: Icons.dataModeling,
     title: "Data Modeling",
     category: "getting-started" as const,
   },
   localDev: {
-    path: `${basePaths.start}/local-dev`,
+    path: `${basePaths.localDev}`,
     icon: Icons.localDev,
     title: "Local Development",
     category: "getting-started" as const,
   },
   fromClickhouse: {
-    path: `${basePaths.start}/from-clickhouse`,
+    path: `${basePaths.fromClickhouse}`,
     icon: Icons.fromClickhouse,
     title: "From ClickHouse",
     category: "getting-started" as const,

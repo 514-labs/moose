@@ -99,7 +99,7 @@ const config = {
           foreground: "hsl(var(--accent-moo-yellow-foreground))",
           hover: "hsla(var(--accent-moo-yellow), 0.9)",
         },
-        "aurora-teal": {
+        "sloan-teal": {
           DEFAULT: "hsl(var(--accent-bor-tea))",
           background: "hsla(var(--accent-bor-tea), 0.2)",
           foreground: "hsl(var(--accent-bor-tea-foreground))",

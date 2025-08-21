@@ -11,6 +11,7 @@ import { Readable } from "node:stream";
 import { createHash } from "node:crypto";
 import type { ConfigurationRegistry } from "../../config/runtime";
 import { LifeCycle } from "./lifeCycle";
+import { IdentifierBrandedString } from "../../sqlHelpers";
 
 /**
  * Represents a failed record during insertion with error details
@@ -99,14 +100,7 @@ export type OlapConfig<T> = {
    * Specifies the fields to use for ordering data within the ClickHouse table.
    * This is crucial for optimizing query performance, especially for ReplacingMergeTree engines.
    */
-  orderByFields?: (keyof T & string)[];
-  /**
-   * If true, uses the ReplacingMergeTree engine for the ClickHouse table, enabling automatic deduplication based on the `orderByFields`.
-   * Equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`.
-   * Defaults to false.
-   */
-  // equivalent to setting `engine: ClickHouseEngines.ReplacingMergeTree`
-  deduplicate?: boolean;
+  orderByFields?: (keyof T & string)[] | ["tuple()"];
   /**
    * Specifies the ClickHouse table engine to use.
    * Defaults to MergeTree if not specified.
@@ -127,6 +121,8 @@ export type OlapConfig<T> = {
  * @template T The data type of the records stored in the table. The structure of T defines the table schema.
  */
 export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
+  name: IdentifierBrandedString;
+
   /** @internal */
   public readonly kind = "OlapTable";
 
@@ -161,6 +157,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     validators?: TypiaValidators<T>,
   ) {
     super(name, config ?? {}, schema, columns, validators);
+    this.name = name;
 
     const version = config?.version;
     const tableKey = version ? `${name}_${version.replace(/\./g, "_")}` : name;

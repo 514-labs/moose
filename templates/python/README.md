@@ -1,33 +1,48 @@
-This is a [Moose](https://www.docs.fiveonefour.com/moose) project bootstrapped with the
-[`Moose CLI`](https://github.com/514-labs/moose/tree/main/apps/framework-cli).
+# Template: Python
 
-<a href="https://www.docs.fiveonefour.com/moose"><img src="https://raw.githubusercontent.com/514-labs/moose/main/logo-m-light.png" alt="moose logo" height="100px"></a>
+This is a Python-based Moose template that provides a foundation for building data-intensive applications using Python.
 
 [![PyPI Version](https://img.shields.io/pypi/v/moose-cli?logo=python)](https://pypi.org/project/moose-cli/)
 [![Moose Community](https://img.shields.io/badge/slack-moose_community-purple.svg?logo=slack)](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
-[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/)
+[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 [![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-[Moose](https://www.docs.fiveonefour.com/moose) is an open-source data engineering framework designed to drastically accellerate AI-enabled software developers, as you prototype and scale data-intensive features and applications.
+## Getting Started
 
-# Get started with Moose
+### Prerequisites
 
-Get up and running with your own Moose project in minutes by using our [Quick Start Tutorial](https://docs.getmoose.dev/getting-started/quickstart). We also have our [Docs](https://docs.getmoose.dev) where you can pick your path, learn more about Moose, and learn what types of applications can be built with Moose.
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* [Python](https://www.python.org/downloads/) (version 3.8+)
+* [An Anthropic API Key](https://docs.anthropic.com/en/api/getting-started)
+* [Cursor](https://www.cursor.com/) or [Claude Desktop](https://claude.ai/download)
 
-# Beta release
+### Installation
 
-Moose is beta software and is in active development. Multiple public companies across the globe are using Moose in production. We’d love for you to [get your hands on it and try it out](https://docs.getmoose.dev/getting-started/quickstart). If you're interested in using Moose in production, or if you just want to chat, you can reach us at [hello@moosejs.dev](mailto:hello@moosejs.dev) or in the Moose developer community below.
+1. Install Moose CLI: `pip install moose-cli`
+2. Create project: `moose init <project-name> python`
+3. Install dependencies: `cd <project-name> && pip install -r requirements.txt`
+4. Run Moose: `moose dev`
 
-# Community
+You are ready to go! You can start editing the app by modifying primitives in the `app` subdirectory.
 
-You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+## Learn More
 
-Here you can get together with other Moose developers, ask questions, give feedback, make feature requests, and interact directly with Moose maintainers.
+To learn more about Moose, take a look at the following resources:
 
-# Contributing
+- [Moose Documentation](https://docs.fiveonefour.com/moose) - learn about Moose.
+- [Sloan Documentation](https://docs.fiveonefour.com/sloan) - learn about Sloan, the MCP interface for data engineering.
 
-We welcome contributions to Moose! Please check out the [contribution guidelines](https://github.com/514-labs/moose/blob/main/CONTRIBUTING.md).
+## Community
 
-# Made by 514
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moosestack).
 
-Our mission at [fiveonefour](https://www.fiveonefour.com/) is to bring incredible developer experiences to the data stack. If you’re interested in enterprise solutions, commercial support, or design partnerships, then we’d love to chat with you: [hello@moosejs.dev](mailto:hello@moosejs.dev)
+## Deploy on Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
+
+[Sign up](https://www.boreal.cloud/sign-up).
+
+## License
+
+This template is MIT licensed.
+

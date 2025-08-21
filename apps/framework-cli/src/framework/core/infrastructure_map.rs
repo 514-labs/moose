@@ -1536,6 +1536,9 @@ impl InfrastructureMap {
                             && !(target_table.order_by.is_empty()
                                 && order_by_from_primary_key(target_table) == table.order_by);
 
+                        // Detect engine change (e.g., MergeTree -> ReplacingMergeTree)
+                        let engine_changed = table.engine != target_table.engine;
+
                         let order_by_change = if order_by_changed {
                             OrderByChange {
                                 before: table.order_by.clone(),
@@ -1549,10 +1552,7 @@ impl InfrastructureMap {
                         };
 
                         // Only process changes if there are actual differences to report
-                        if !column_changes.is_empty()
-                            || order_by_changed
-                            || table.deduplicate != target_table.deduplicate
-                        {
+                        if !column_changes.is_empty() || order_by_changed || engine_changed {
                             // Use the strategy to determine the appropriate changes
                             let strategy_changes = strategy.diff_table_update(
                                 table,
@@ -1680,10 +1680,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,
@@ -1774,10 +1771,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,
@@ -1853,6 +1847,35 @@ impl InfrastructureMap {
             .context("Failed to get InfrastructureMap from Redis")?;
 
         if let Some(encoded) = encoded {
+            let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
+                anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
+            })?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Loads an infrastructure map using the last deployment's Redis key prefix.
+    pub async fn load_from_last_redis_prefix(redis_client: &RedisClient) -> Result<Option<Self>> {
+        let last_prefix = &redis_client.config.last_key_prefix;
+
+        log::info!(
+            "Loading InfrastructureMap from last Redis prefix: {}",
+            last_prefix
+        );
+
+        let encoded = redis_client
+            .get_with_explicit_prefix(last_prefix, "infrastructure_map")
+            .await
+            .context("Failed to get InfrastructureMap from Redis using LAST_KEY_PREFIX");
+
+        if let Err(e) = encoded {
+            log::error!("{}", e);
+            return Ok(None);
+        }
+
+        if let Ok(Some(encoded)) = encoded {
             let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
                 anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
             })?;
@@ -2030,12 +2053,13 @@ impl InfrastructureMap {
     pub async fn load_from_user_code(project: &Project) -> anyhow::Result<Self> {
         let partial = if project.language == SupportedLanguages::Typescript {
             let process = crate::framework::typescript::export_collectors::collect_from_index(
+                project,
                 &project.project_location,
             )?;
 
             PartialInfrastructureMap::from_subprocess(process, "index.ts").await?
         } else {
-            load_main_py(&project.project_location).await?
+            load_main_py(project, &project.project_location).await?
         };
         Ok(partial.into_infra_map(project.language, &project.main_file()))
     }
@@ -2117,6 +2141,43 @@ impl InfrastructureMap {
     }
 }
 
+/// Check if two columns are semantically equivalent
+///
+/// This handles special cases like enum types where ClickHouse's representation
+/// may differ from the source TypeScript but is semantically the same.
+///
+/// # Arguments
+/// * `before` - The first column to compare
+/// * `after` - The second column to compare
+///
+/// # Returns
+/// `true` if the columns are semantically equivalent, `false` otherwise
+fn columns_are_equivalent(before: &Column, after: &Column) -> bool {
+    // Check all non-data_type fields first
+    if before.name != after.name
+        || before.required != after.required
+        || before.unique != after.unique
+        || before.primary_key != after.primary_key
+        || before.default != after.default
+        || before.annotations != after.annotations
+        || before.comment != after.comment
+    {
+        return false;
+    }
+
+    // Special handling for enum types
+    use crate::framework::core::infrastructure::table::ColumnType;
+    match (&before.data_type, &after.data_type) {
+        (ColumnType::Enum(before_enum), ColumnType::Enum(after_enum)) => {
+            // Try to use ClickHouse-specific enum comparison for string enums
+            use crate::infrastructure::olap::clickhouse::diff_strategy::enums_are_equivalent;
+            enums_are_equivalent(before_enum, after_enum)
+        }
+        // For all other types, use standard equality
+        _ => before.data_type == after.data_type,
+    }
+}
+
 /// Computes the detailed differences between two table versions
 ///
 /// This function performs a column-by-column comparison between two tables
@@ -2143,7 +2204,7 @@ fn compute_table_columns_diff(before: &Table, after: &Table) -> Vec<ColumnChange
     // Process additions and updates: O(n)
     for (i, after_col) in after.columns.iter().enumerate() {
         if let Some(&before_col) = before_columns.get(&after_col.name) {
-            if before_col != after_col {
+            if !columns_are_equivalent(before_col, after_col) {
                 log::debug!(
                     "Column '{}' modified from {:?} to {:?}",
                     after_col.name,
@@ -2227,7 +2288,6 @@ mod tests {
         let before = Table {
             name: "test_table".to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -2237,6 +2297,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "name".to_string(),
@@ -2246,6 +2307,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "to_be_removed".to_string(),
@@ -2255,6 +2317,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string()],
@@ -2270,7 +2333,6 @@ mod tests {
         let after = Table {
             name: "test_table".to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -2280,6 +2342,7 @@ mod tests {
                     primary_key: true,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "name".to_string(),
@@ -2289,6 +2352,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
                 Column {
                     name: "age".to_string(), // New column
@@ -2298,6 +2362,7 @@ mod tests {
                     primary_key: false,
                     default: None,
                     annotations: vec![],
+                    comment: None,
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
@@ -2336,6 +2401,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_remove".to_string(),
@@ -2345,6 +2411,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ];
 
@@ -2359,6 +2426,7 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "new_column".to_string(),
@@ -2368,6 +2436,7 @@ mod tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ];
 
@@ -2459,7 +2528,6 @@ mod diff_tests {
         Table {
             name: name.to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![],
             order_by: vec![],
             version: Some(Version::from_string(version.to_string())),
@@ -2494,6 +2562,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2523,6 +2592,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2549,6 +2619,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2559,6 +2630,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2591,6 +2663,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_remove".to_string(),
@@ -2600,6 +2673,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_modify".to_string(),
@@ -2609,6 +2683,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2622,6 +2697,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "to_modify".to_string(), // modified
@@ -2631,6 +2707,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "new_column".to_string(), // added
@@ -2640,6 +2717,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2711,12 +2789,12 @@ mod diff_tests {
     }
 
     #[test]
-    fn test_deduplicate_flag_change() {
+    fn test_engine_change_detects_update() {
         let mut before = create_test_table("test", "1.0");
         let mut after = create_test_table("test", "1.0");
 
-        before.deduplicate = false;
-        after.deduplicate = true;
+        before.engine = Some("MergeTree".to_string());
+        after.engine = Some("ReplacingMergeTree".to_string());
 
         let mut changes = Vec::new();
         InfrastructureMap::diff_tables(
@@ -2732,10 +2810,10 @@ mod diff_tests {
                 after: a,
                 ..
             }) => {
-                assert!(!b.deduplicate);
-                assert!(a.deduplicate);
+                assert_eq!(b.engine.as_deref(), Some("MergeTree"));
+                assert_eq!(a.engine.as_deref(), Some("ReplacingMergeTree"));
             }
-            _ => panic!("Expected Updated change with deduplicate modification"),
+            _ => panic!("Expected Updated change with engine modification"),
         }
     }
 
@@ -2752,6 +2830,7 @@ mod diff_tests {
             primary_key: false,
             default: Some(ColumnDefaults::AutoIncrement),
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2762,6 +2841,7 @@ mod diff_tests {
             primary_key: false,
             default: Some(ColumnDefaults::Now),
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2793,6 +2873,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "name".to_string(),
@@ -2802,6 +2883,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2815,6 +2897,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
             Column {
                 name: "id".to_string(),
@@ -2824,6 +2907,7 @@ mod diff_tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             },
         ]);
 
@@ -2849,6 +2933,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             };
             before.columns.push(col.clone());
             after.columns.push(col);
@@ -2888,6 +2973,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             });
 
             // Change every other column type in the after table
@@ -2919,6 +3005,7 @@ mod diff_tests {
                 primary_key: false,
                 default: None,
                 annotations: vec![],
+                comment: None,
             });
         }
 
@@ -2947,6 +3034,7 @@ mod diff_tests {
                 ("index".to_string(), JsonValue::Bool(true)),
                 ("deprecated".to_string(), JsonValue::Bool(true)),
             ],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -2960,6 +3048,7 @@ mod diff_tests {
                 ("index".to_string(), JsonValue::Bool(true)),
                 ("new_annotation".to_string(), JsonValue::Bool(true)),
             ],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
@@ -2998,6 +3087,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -3008,6 +3098,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         // Test special characters in column name
@@ -3019,6 +3110,7 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         after.columns.push(Column {
@@ -3029,10 +3121,144 @@ mod diff_tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         let diff = compute_table_columns_diff(&before, &after);
         assert_eq!(diff.len(), 2, "Expected changes for edge case columns");
+    }
+
+    #[test]
+    fn test_columns_are_equivalent_with_enums() {
+        use crate::framework::core::infrastructure::table::IntType;
+        use crate::framework::core::infrastructure::table::{
+            Column, ColumnType, DataEnum, EnumMember, EnumValue,
+        };
+
+        // Test 1: Identical columns should be equivalent
+        let col1 = Column {
+            name: "status".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+        let col2 = col1.clone();
+        assert!(columns_are_equivalent(&col1, &col2));
+
+        // Test 2: Different names should not be equivalent
+        let mut col3 = col1.clone();
+        col3.name = "different".to_string();
+        assert!(!columns_are_equivalent(&col1, &col3));
+
+        // Test 2b: Different comments should not be equivalent
+        let mut col_with_comment = col1.clone();
+        col_with_comment.comment = Some("User documentation".to_string());
+        assert!(!columns_are_equivalent(&col1, &col_with_comment));
+
+        // Test 3: String enum from TypeScript vs integer enum from ClickHouse
+        let typescript_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "RecordType".to_string(),
+                values: vec![
+                    EnumMember {
+                        name: "TEXT".to_string(),
+                        value: EnumValue::String("text".to_string()),
+                    },
+                    EnumMember {
+                        name: "EMAIL".to_string(),
+                        value: EnumValue::String("email".to_string()),
+                    },
+                ],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let clickhouse_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "Enum8".to_string(),
+                values: vec![
+                    EnumMember {
+                        name: "text".to_string(),
+                        value: EnumValue::Int(1),
+                    },
+                    EnumMember {
+                        name: "email".to_string(),
+                        value: EnumValue::Int(2),
+                    },
+                ],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        // These should be equivalent due to the enum semantic comparison
+        assert!(columns_are_equivalent(
+            &clickhouse_enum_col,
+            &typescript_enum_col
+        ));
+
+        // Test 4: Different enum values should not be equivalent
+        let different_enum_col = Column {
+            name: "record_type".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "RecordType".to_string(),
+                values: vec![EnumMember {
+                    name: "TEXT".to_string(),
+                    value: EnumValue::String("different".to_string()),
+                }],
+            }),
+            required: true,
+            unique: false,
+            primary_key: true,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        assert!(!columns_are_equivalent(
+            &typescript_enum_col,
+            &different_enum_col
+        ));
+
+        // Test 5: Non-enum types should use standard equality
+        let int_col1 = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int64),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        let int_col2 = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int32),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+            annotations: vec![],
+            comment: None,
+        };
+
+        assert!(!columns_are_equivalent(&int_col1, &int_col2));
     }
 }
 
@@ -3284,6 +3510,7 @@ mod diff_topic_tests {
                 primary_key: false,
                 default: None,
                 annotations: Vec::new(),
+                comment: None,
             }],
             metadata: None,
             life_cycle: LifeCycle::FullyManaged,
@@ -3563,6 +3790,7 @@ mod diff_topic_to_table_sync_process_tests {
                 primary_key: false,
                 default: None,
                 annotations: Vec::new(),
+                comment: None,
             }],
             version: Some(version.clone()),
             source_primitive: PrimitiveSignature {
@@ -3681,6 +3909,7 @@ mod diff_topic_to_table_sync_process_tests {
             primary_key: true,
             default: None,
             annotations: vec![("note".to_string(), Value::String("changed".to_string()))],
+            comment: None,
         }];
 
         assert_eq!(

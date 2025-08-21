@@ -157,17 +157,39 @@ check_command "make" "--version" "Make" || OVERALL_STATUS=1
 check_command "pkg-config" "--version" "pkg-config" || OVERALL_STATUS=1
 echo
 
-echo "🐳 Docker (Required for Moose Development):"
-check_command "docker" "--version" "Docker" || OVERALL_STATUS=1
+echo "🐳 Docker (Optional for Moose development):"
+# Docker checks are informational only, not breaking
+check_command "docker" "--version" "Docker" || true
+
 # Check for Docker Compose (either standalone or plugin)
+DOCKER_COMPOSE_FOUND=0
+
+# First, try standalone docker-compose
 if command -v docker-compose &> /dev/null; then
-    check_command "docker-compose" "--version" "Docker Compose" || OVERALL_STATUS=1
-elif docker compose version &> /dev/null; then
+    if check_command "docker-compose" "--version" "Docker Compose"; then
+        DOCKER_COMPOSE_FOUND=1
+    fi
+fi
+
+# If standalone failed or wasn't found, try the plugin version
+if [ $DOCKER_COMPOSE_FOUND -eq 0 ] && command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
     version=$(docker compose version 2>&1)
     echo -e "${GREEN}✓${NC} Docker Compose (plugin): $version"
-else
-    echo -e "${RED}✗${NC} Docker Compose: Not found"
-    OVERALL_STATUS=1
+    DOCKER_COMPOSE_FOUND=1
+fi
+
+# If neither worked, show warning but don't fail
+if [ $DOCKER_COMPOSE_FOUND -eq 0 ]; then
+    echo -e "${YELLOW}⚠${NC} Docker Compose: Not found (optional)"
+fi
+
+# Check Docker daemon connectivity (non-fatal)
+if command -v docker &> /dev/null; then
+    if docker info > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Docker daemon: Connected and working"
+    else
+        echo -e "${YELLOW}⚠${NC} Docker daemon: Not accessible (optional for development)"
+    fi
 fi
 echo
 
@@ -184,11 +206,9 @@ fi
 
 echo
 echo "🚀 Next Steps:"
-echo "1. Ensure Docker is running (required for 'moose dev')"
-echo "2. Run 'pnpm install --frozen-lockfile' to install project dependencies"
-echo "3. Run 'cargo build' to build the Rust CLI"
-echo "4. Run 'pnpm build' to build TypeScript packages"
-echo "5. Run 'moose dev' to start development with Docker containers"
-echo "6. Check .cursor/Dockerfile for complete environment setup"
+echo "1. Run 'pnpm install --frozen-lockfile' to install project dependencies"  
+echo "2. Run 'cargo build' to build the Rust CLI"
+echo "3. Run 'pnpm build' to build TypeScript packages"
+echo "4. Run 'moose dev' to start development"
 
 exit $OVERALL_STATUS

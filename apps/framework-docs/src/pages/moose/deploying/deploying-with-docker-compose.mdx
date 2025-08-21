@@ -1,5 +1,4 @@
-import { Callout } from "@/components";
-
+import { Callout, PathConfig } from "@/components";
 
 # Deploying with Docker Compose
 
@@ -177,6 +176,9 @@ moose build --docker --arm64
 ```bash
 docker images
 ```
+<Callout type="info" title="View the Full Packaging Guide" href={`${PathConfig.deploying.path}/packaging-moose-for-deployment`} ctaLabel="Learn More">
+For more information on packaging Moose for deployment, see the full packaging guide.
+</Callout>
 
 ## Preparing for Deployment
 

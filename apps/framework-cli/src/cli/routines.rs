@@ -102,6 +102,7 @@ use crate::cli::routines::openapi::openapi;
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure_map::{InfrastructureMap, OlapChange, TableChange};
+use crate::framework::core::migration_plan::{MigrationPlan, MigrationPlanWithBeforeAfter};
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
@@ -114,6 +115,10 @@ use super::{Message, MessageType};
 use crate::framework::core::plan::plan_changes;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::infrastructure::olap::clickhouse::{check_ready, create_client};
+use crate::utilities::constants::{
+    MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
+};
 
 pub mod auth;
 pub mod build;
@@ -350,7 +355,7 @@ pub async fn start_development_mode(
         .spawn_api_update_listener(project.clone(), route_table, consumption_apis)
         .await;
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (_, plan) = plan_changes(&redis_client, &project).await?;
 
     plan_validator::validate(&project, &plan)?;
 
@@ -362,6 +367,7 @@ pub async fn start_development_mode(
         &project,
         settings,
         &plan,
+        false,
         api_changes_channel,
         metrics.clone(),
         &redis_client,
@@ -386,6 +392,7 @@ pub async fn start_development_mode(
         process_registry.clone(),
         metrics.clone(),
         redis_client.clone(),
+        settings.clone(),
     )?;
 
     info!("Starting web server...");
@@ -453,7 +460,62 @@ pub async fn start_production_mode(
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let plan = plan_changes(&redis_client, &project).await?;
+    let (current_state, plan) = plan_changes(&redis_client, &project).await?;
+
+    let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
+
+    if execute_migration_yaml {
+        info!("Executing pre-planned migrations");
+
+        // Load and validate the approved migration plan
+        let plan_content = std::fs::read_to_string(MIGRATION_FILE)?;
+        let migration_plan: MigrationPlan =
+            // see MigrationPlan::to_yaml for the reason of this workaround
+            serde_json::from_value(serde_yaml::from_str::<serde_json::Value>(&plan_content)?)?;
+
+        info!("Loaded approved migration plan from {:?}", MIGRATION_FILE);
+        info!("Plan created: {}", migration_plan.created_at);
+        info!("Total operations: {}", migration_plan.total_operations());
+
+        let before_state = std::fs::read_to_string(MIGRATION_BEFORE_STATE_FILE)?;
+        let state_when_planned: InfrastructureMap = serde_json::from_str(&before_state)?;
+
+        if current_state.tables == state_when_planned.tables {
+            info!("Before DB state matches.");
+
+            let after_state = std::fs::read_to_string(MIGRATION_AFTER_STATE_FILE)?;
+            let desired_state: InfrastructureMap = serde_json::from_str(&after_state)?;
+
+            if desired_state.tables == plan.target_infra_map.tables {
+                info!("Desired DB state matches.");
+            } else {
+                anyhow::bail!(
+                    "The desired state of the plan is different from the built infrastructure map.\nThe migration is perhaps generated before additional code change."
+                );
+            }
+
+            // Execute the migration plan directly using OLAP operations
+            if project.features.olap && !migration_plan.operations.is_empty() {
+                info!("Executing approved migration plan...");
+
+                let client = create_client(project.clickhouse_config.clone());
+                check_ready(&client).await?;
+                for operation in migration_plan.operations.iter() {
+                    crate::infrastructure::olap::clickhouse::execute_atomic_operation(
+                        &client.config.db_name,
+                        operation,
+                        &client,
+                    )
+                    .await?;
+                }
+                info!("✓ Migration plan executed successfully");
+            }
+        } else if current_state.tables == plan.target_infra_map.tables {
+            info!("Current state already matches. Migration should be applied, ignoring.");
+        } else {
+            anyhow::bail!("The DB state has changed. Plan is no longer valid.");
+        }
+    };
 
     plan_validator::validate(&project, &plan)?;
 
@@ -465,6 +527,7 @@ pub async fn start_production_mode(
         &project,
         settings,
         &plan,
+        execute_migration_yaml,
         api_changes_channel,
         metrics.clone(),
         &redis_client,
@@ -502,6 +565,208 @@ fn prepend_base_url(base_url: Option<&str>, path: &str) -> String {
     )
 }
 
+/// Custom error types for inframap retrieval operations
+#[derive(thiserror::Error, Debug)]
+pub enum InfraRetrievalError {
+    #[error(
+        "Inframap endpoint not found on server (404). Server may not support the new endpoint."
+    )]
+    EndpointNotFound,
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    #[error("Failed to parse response: {0}")]
+    ParseError(String),
+    #[error("Server error: {0}")]
+    ServerError(String),
+}
+
+/// Retrieves the current infrastructure map from a remote Moose instance using the new admin/inframap endpoint
+///
+/// # Arguments
+/// * `base_url` - Optional base URL of the remote instance (default: http://localhost:4000)
+/// * `token` - API token for admin authentication
+///
+/// # Returns
+/// * `Ok(InfrastructureMap)` - Successfully retrieved inframap
+/// * `Err(InfraRetrievalError)` - Various error conditions including endpoint not found
+async fn get_remote_inframap_protobuf(
+    base_url: Option<&str>,
+    token: &Option<String>,
+) -> Result<InfrastructureMap, InfraRetrievalError> {
+    let target_url = prepend_base_url(base_url, "admin/inframap");
+
+    // Get authentication token
+    let auth_token = token
+        .clone()
+        .or_else(|| std::env::var("MOOSE_ADMIN_TOKEN").ok())
+        .ok_or_else(|| {
+            InfraRetrievalError::AuthenticationFailed(
+                "No authentication token provided".to_string(),
+            )
+        })?;
+
+    // Create HTTP client and request
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&target_url)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/protobuf")
+        .header("Authorization", format!("Bearer {auth_token}"))
+        .send()
+        .await
+        .map_err(|e| InfraRetrievalError::NetworkError(e.to_string()))?;
+
+    // Handle different response status codes
+    match response.status() {
+        reqwest::StatusCode::OK => {
+            let content_type = response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+
+            if content_type.contains("application/protobuf") {
+                // Parse protobuf response
+                let bytes = response
+                    .bytes()
+                    .await
+                    .map_err(|e| InfraRetrievalError::NetworkError(e.to_string()))?;
+
+                InfrastructureMap::from_proto(bytes.to_vec()).map_err(|e| {
+                    InfraRetrievalError::ParseError(format!("Failed to parse protobuf: {e}"))
+                })
+            } else {
+                // Fallback to JSON response
+                let json_response: super::local_webserver::InfraMapResponse =
+                    response.json().await.map_err(|e| {
+                        InfraRetrievalError::ParseError(format!("Failed to parse JSON: {e}"))
+                    })?;
+                Ok(json_response.infra_map)
+            }
+        }
+        reqwest::StatusCode::NOT_FOUND => Err(InfraRetrievalError::EndpointNotFound),
+        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN => {
+            Err(InfraRetrievalError::AuthenticationFailed(
+                "Invalid or missing authentication token".to_string(),
+            ))
+        }
+        status => {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(InfraRetrievalError::ServerError(format!(
+                "HTTP {status}: {error_text}"
+            )))
+        }
+    }
+}
+
+/// Calculates the diff between current and target infrastructure maps on the client side
+///
+/// # Arguments
+/// * `current_map` - The current infrastructure map (from server)
+/// * `target_map` - The target infrastructure map (from local project)
+///
+/// # Returns
+/// * `InfraChanges` - The calculated changes needed to go from current to target
+fn calculate_plan_diff_local(
+    current_map: &InfrastructureMap,
+    target_map: &InfrastructureMap,
+) -> crate::framework::core::infrastructure_map::InfraChanges {
+    use crate::infrastructure::olap::clickhouse::diff_strategy::ClickHouseTableDiffStrategy;
+
+    let clickhouse_strategy = ClickHouseTableDiffStrategy;
+    current_map.diff_with_table_strategy(target_map, &clickhouse_strategy)
+}
+
+/// Legacy implementation of remote_plan using the existing /admin/plan endpoint
+/// This is used as a fallback when the new /admin/inframap endpoint is not available
+async fn legacy_remote_plan_logic(
+    project: &Project,
+    base_url: &Option<String>,
+    token: &Option<String>,
+) -> anyhow::Result<()> {
+    // Build the inframap from the local project
+    let local_infra_map = if project.features.data_model_v2 {
+        debug!("Loading InfrastructureMap from user code (DMV2)");
+        InfrastructureMap::load_from_user_code(project).await?
+    } else {
+        debug!("Loading InfrastructureMap from primitives");
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(project, primitive_map)
+    };
+
+    // Use existing implementation
+    let target_url = prepend_base_url(base_url.as_deref(), "admin/plan");
+
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: format!("Comparing local project code with remote instance at {target_url}"),
+        },
+    );
+
+    let request_body = PlanRequest {
+        infra_map: local_infra_map,
+    };
+
+    let auth_token = token
+        .clone()
+        .or_else(|| std::env::var("MOOSE_ADMIN_TOKEN").ok())
+        .ok_or_else(|| anyhow::anyhow!("Authentication token required. Please provide token via --token parameter or MOOSE_ADMIN_TOKEN environment variable"))?;
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&target_url)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {auth_token}"))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        return Err(anyhow::anyhow!(
+            "Failed to get plan from remote instance: {}",
+            error_text
+        ));
+    }
+
+    let plan_response: PlanResponse = response.json().await?;
+
+    display::show_message_wrapper(
+        MessageType::Success,
+        Message {
+            action: "Legacy Plan".to_string(),
+            details: "Retrieved plan from remote instance using legacy endpoint".to_string(),
+        },
+    );
+
+    if plan_response.changes.is_empty() {
+        display::show_message_wrapper(
+            MessageType::Info,
+            Message {
+                action: "No Changes".to_string(),
+                details: "No changes detected".to_string(),
+            },
+        );
+        return Ok(());
+    }
+
+    // Create a temporary InfraPlan to use with the show_changes function
+    let temp_plan = InfraPlan {
+        changes: plan_response.changes,
+        target_infra_map: InfrastructureMap::new(project, PrimitiveMap::default()),
+    };
+
+    display::show_changes(&temp_plan);
+    Ok(())
+}
+
 /// Authentication for remote plan requests:
 ///
 /// When making requests to a remote Moose instance, authentication is required for admin operations.
@@ -529,94 +794,133 @@ pub async fn remote_plan(
     base_url: &Option<String>,
     token: &Option<String>,
 ) -> anyhow::Result<()> {
-    // Build the inframap from the local project=
+    // Build the inframap from the local project
     let local_infra_map = if project.features.data_model_v2 {
         debug!("Loading InfrastructureMap from user code (DMV2)");
         InfrastructureMap::load_from_user_code(project).await?
     } else {
         debug!("Loading InfrastructureMap from primitives");
         let primitive_map = PrimitiveMap::load(project).await?;
-
         InfrastructureMap::new(project, primitive_map)
     };
-
-    // Determine the target URL
-    let target_url = prepend_base_url(base_url.as_deref(), "admin/plan");
 
     display::show_message_wrapper(
         MessageType::Info,
         Message {
             action: "Remote Plan".to_string(),
-            details: format!("Comparing local project code with remote instance at {target_url}"),
+            details: "Comparing local project code with remote instance".to_string(),
         },
     );
 
-    let request_body = PlanRequest {
-        infra_map: local_infra_map,
+    // Try new endpoint first, fallback to legacy if not available
+    match get_remote_inframap_protobuf(base_url.as_deref(), token).await {
+        Ok(remote_infra_map) => {
+            // New flow: client-side diff calculation
+            display::show_message_wrapper(
+                MessageType::Info,
+                Message {
+                    action: "New Endpoint".to_string(),
+                    details: "Successfully retrieved infrastructure map from /admin/inframap"
+                        .to_string(),
+                },
+            );
+
+            let changes = calculate_plan_diff_local(&remote_infra_map, &local_infra_map);
+
+            display::show_message_wrapper(
+                MessageType::Success,
+                Message {
+                    action: "Remote Plan".to_string(),
+                    details: "Calculated plan differences locally".to_string(),
+                },
+            );
+
+            if changes.is_empty() {
+                display::show_message_wrapper(
+                    MessageType::Info,
+                    Message {
+                        action: "No Changes".to_string(),
+                        details: "No changes detected".to_string(),
+                    },
+                );
+                return Ok(());
+            }
+
+            // Create a temporary InfraPlan to use with the show_changes function
+            let temp_plan = InfraPlan {
+                changes,
+                target_infra_map: local_infra_map,
+            };
+
+            display::show_changes(&temp_plan);
+            Ok(())
+        }
+        Err(InfraRetrievalError::EndpointNotFound) => {
+            // Fallback to existing logic
+            display::show_message_wrapper(
+                MessageType::Info,
+                Message {
+                    action: "Legacy Fallback".to_string(),
+                    details: "New endpoint not available, using legacy /admin/plan endpoint"
+                        .to_string(),
+                },
+            );
+            legacy_remote_plan_logic(project, base_url, token).await
+        }
+        Err(e) => {
+            // Other errors should be propagated
+            Err(anyhow::anyhow!(
+                "Failed to retrieve infrastructure map: {}",
+                e
+            ))
+        }
+    }
+}
+
+pub async fn remote_gen_migration(
+    project: &Project,
+    base_url: &str,
+    token: &Option<String>,
+) -> anyhow::Result<MigrationPlanWithBeforeAfter> {
+    // Build the inframap from the local project
+    let local_infra_map = if project.features.data_model_v2 {
+        debug!("Loading InfrastructureMap from user code (DMV2)");
+        InfrastructureMap::load_from_user_code(project).await?
+    } else {
+        debug!("Loading InfrastructureMap from primitives");
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(project, primitive_map)
     };
 
-    // Get authentication token - prioritize command line parameter, then env var, then project config
-    let auth_token = token
-        .clone()
-        .or_else(|| std::env::var("MOOSE_ADMIN_TOKEN").ok())
-        .ok_or_else(|| anyhow::anyhow!("Authentication token required. Please provide token via --token parameter or MOOSE_ADMIN_TOKEN environment variable"))?;
+    display::show_message_wrapper(
+        MessageType::Info,
+        Message {
+            action: "Remote Plan".to_string(),
+            details: "Comparing local project code with remote instance".to_string(),
+        },
+    );
 
-    // Create HTTP client
-    let client = reqwest::Client::new();
-    let mut request_builder = client
-        .post(&target_url)
-        .header("Content-Type", "application/json")
-        .json(&request_body);
+    use anyhow::Context;
+    // No fallback, we need the remote state
+    let remote_infra_map = get_remote_inframap_protobuf(Some(base_url), token)
+        .await
+        .with_context(|| "Failed to retrieve infrastructure map".to_string())?;
 
-    // Add authorization header if token is available
-    request_builder = request_builder.header("Authorization", format!("Bearer {auth_token}"));
+    let changes = calculate_plan_diff_local(&remote_infra_map, &local_infra_map);
 
-    // Send request
-    let response = request_builder.send().await?;
-
-    // Check response status
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!(
-            "Failed to get plan from remote instance: {}",
-            error_text
-        ));
-    }
-
-    // Parse response
-    let plan_response: PlanResponse = response.json().await?;
-
-    // Display results
     display::show_message_wrapper(
         MessageType::Success,
         Message {
             action: "Remote Plan".to_string(),
-            details: "Retrieved plan from remote instance".to_string(),
+            details: "Calculated plan differences locally".to_string(),
         },
     );
 
-    // Check if there are any changes to display
-    if plan_response.changes.is_empty() {
-        display::show_message_wrapper(
-            MessageType::Info,
-            Message {
-                action: "No Changes".to_string(),
-                details: "No changes detected".to_string(),
-            },
-        );
-        return Ok(());
-    }
-
-    // Create a temporary InfraPlan to use with the show_changes function
-    let temp_plan = InfraPlan {
-        changes: plan_response.changes,
-        target_infra_map: InfrastructureMap::new(project, PrimitiveMap::default()),
-    };
-
-    // Use the existing display method to show the changes
-    display::show_changes(&temp_plan);
-
-    Ok(())
+    Ok(MigrationPlanWithBeforeAfter {
+        remote_state: remote_infra_map,
+        local_infra_map,
+        db_migration: MigrationPlan::from_infra_plan(&changes)?,
+    })
 }
 
 pub async fn remote_refresh(
@@ -728,7 +1032,7 @@ pub async fn remote_refresh(
     display::show_message_wrapper(
         MessageType::Info,
         Message {
-            action: "Integrating Changes".to_string(),
+            action: "Integrating".to_string(),
             details: format!(
                 "Integrating {} table(s) into remote instance: {}",
                 tables_to_integrate.len(),

@@ -30,6 +30,7 @@ use tokio::sync::RwLock;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 
 use super::display::{self, with_spinner_completion_async, Message, MessageType};
+use super::settings::Settings;
 
 use crate::cli::routines::openapi::openapi;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -114,6 +115,8 @@ impl EventBuckets {
 /// * `project_registries` - Registry for project processes
 /// * `metrics` - Metrics collection
 /// * `redis_client` - Redis client for state management
+/// * `settings` - CLI settings configuration
+#[allow(clippy::too_many_arguments)]
 async fn watch(
     project: Arc<Project>,
     route_update_channel: tokio::sync::mpsc::Sender<(InfrastructureMap, ApiChange)>,
@@ -122,6 +125,7 @@ async fn watch(
     project_registries: Arc<RwLock<ProcessRegistries>>,
     metrics: Arc<Metrics>,
     redis_client: Arc<RedisClient>,
+    settings: Settings,
 ) -> Result<(), anyhow::Error> {
     log::debug!(
         "Starting file watcher for project: {:?}",
@@ -164,7 +168,7 @@ async fn watch(
                                 framework::core::plan::plan_changes(&redis_client, &project).await;
 
                             match plan_result {
-                                Ok(plan_result) => {
+                                Ok((_, plan_result)) => {
 
                                     framework::core::plan_validator::validate(&project, &plan_result)?;
 
@@ -177,6 +181,7 @@ async fn watch(
                                         syncing_process_registry,
                                         &mut project_registries,
                                         metrics.clone(),
+                                        &settings,
                                     )
                                     .await
                                     {
@@ -270,6 +275,7 @@ impl FileWatcher {
         project_registries: Arc<RwLock<ProcessRegistries>>,
         metrics: Arc<Metrics>,
         redis_client: Arc<RedisClient>,
+        settings: Settings,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -290,6 +296,7 @@ impl FileWatcher {
                 project_registries,
                 metrics,
                 redis_client,
+                settings,
             )
             .await
         };

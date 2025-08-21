@@ -71,6 +71,7 @@ impl ProcessRegistries {
                 project.blocks_dir(),
                 project.project_location.clone(),
                 project.clickhouse_config.clone(),
+                project,
             ))
         };
 

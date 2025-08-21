@@ -13,15 +13,15 @@
  */
 import process from "process";
 import {
-  IngestApi,
   ConsumptionApi,
+  IngestApi,
   SqlResource,
-  Workflow,
   Task,
+  Workflow,
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ConsumptionUtil } from "../index";
+import { ClickHouseEngines, ConsumptionUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
 import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 import { compilerLog } from "../commons";
@@ -64,8 +64,6 @@ interface TableJson {
   columns: Column[];
   /** List of column names used for the ORDER BY clause. */
   orderBy: string[];
-  /** Flag indicating if the table uses a deduplicating engine (e.g., ReplacingMergeTree). */
-  deduplicate: boolean;
   /** The name of the ClickHouse engine (e.g., "MergeTree", "ReplacingMergeTree"). */
   engine?: string;
   /** Optional version string for the table configuration. */
@@ -235,7 +233,6 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
-      deduplicate: table.config.deduplicate ?? false,
       engine: table.config.engine,
       version: table.config.version,
       metadata,
@@ -457,11 +454,16 @@ const loadIndex = () => {
     if (details.includes("ERR_REQUIRE_ESM") || details.includes("ES Module")) {
       hint =
         "The file or its dependencies are ESM-only. Switch to packages that dual-support CJS & ESM, or upgrade to Node 22.12+. " +
-        "If you must use Node 20, you may try Node 20.19";
+        "If you must use Node 20, you may try Node 20.19\n\n";
     }
 
-    const errorMsg = `${hint ?? ""}\n\n${details}`;
-    throw new Error(errorMsg);
+    let options: { cause: Error } | undefined = undefined;
+    if (error instanceof Error) {
+      options = { cause: error };
+    }
+
+    const errorMsg = `${hint ?? ""}${details}`;
+    throw new Error(errorMsg, options);
   }
 };
 

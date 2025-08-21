@@ -122,6 +122,30 @@ export class WorkflowClient {
     }
   }
 
+  async terminate(workflowId: string) {
+    try {
+      if (!this.client) {
+        return {
+          status: 404,
+          body: `Temporal client not found. Is the feature flag enabled?`,
+        };
+      }
+
+      const handle = this.client.workflow.getHandle(workflowId);
+      await handle.terminate();
+
+      return {
+        status: 200,
+        body: `Workflow terminated: ${workflowId}`,
+      };
+    } catch (error) {
+      return {
+        status: 400,
+        body: `Error terminating workflow: ${error}`,
+      };
+    }
+  }
+
   private async getWorkflowConfig(
     name: string,
   ): Promise<{ retries: number; timeout: string; is_dmv2: boolean }> {

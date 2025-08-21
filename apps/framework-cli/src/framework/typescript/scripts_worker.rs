@@ -38,7 +38,7 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         project.temporal_config.api_key.as_str(),
     ];
 
-    let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args)?;
+    let mut scripts_process = bin::run(SCRIPTS_BIN, &project_path, &args, project)?;
 
     let stdout = scripts_process
         .stdout

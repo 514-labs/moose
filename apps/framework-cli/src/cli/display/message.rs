@@ -52,6 +52,7 @@ pub enum MessageType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message {
     /// The action or category of the message, displayed with color
+    /// This is limited to 15 characters.
     pub action: String,
     /// The main content or details of the message
     pub details: String,

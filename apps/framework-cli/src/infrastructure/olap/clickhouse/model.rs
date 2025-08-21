@@ -1,8 +1,6 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
-use crate::framework::core::infrastructure::table::{
-    Column, ColumnType, DataEnum, FloatType, IntType, Nested,
-};
+use crate::framework::core::infrastructure::table::DataEnum;
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
@@ -81,144 +79,6 @@ impl fmt::Display for ClickHouseColumnType {
 }
 
 impl ClickHouseColumnType {
-    // TODO: delete? this is used only by `check_table` which is unused
-    pub fn to_std_column_type(&self) -> (ColumnType, bool) {
-        let mut required = true;
-        let column_type = match self {
-            ClickHouseColumnType::String => ColumnType::String,
-            ClickHouseColumnType::Boolean => ColumnType::Boolean,
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int8) => {
-                ColumnType::Int(IntType::Int8)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int16) => {
-                ColumnType::Int(IntType::Int16)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32) => {
-                ColumnType::Int(IntType::Int32)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64) => {
-                ColumnType::Int(IntType::Int64)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int128) => {
-                ColumnType::Int(IntType::Int128)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int256) => {
-                ColumnType::Int(IntType::Int256)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt8) => {
-                ColumnType::Int(IntType::UInt8)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt16) => {
-                ColumnType::Int(IntType::UInt16)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt32) => {
-                ColumnType::Int(IntType::UInt32)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt64) => {
-                ColumnType::Int(IntType::UInt64)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt128) => {
-                ColumnType::Int(IntType::UInt128)
-            }
-            ClickHouseColumnType::ClickhouseInt(ClickHouseInt::UInt256) => {
-                ColumnType::Int(IntType::UInt256)
-            }
-
-            ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float32) => {
-                ColumnType::Float(FloatType::Float32)
-            }
-            ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64) => {
-                ColumnType::Float(FloatType::Float64)
-            }
-            ClickHouseColumnType::Decimal { precision, scale } => ColumnType::Decimal {
-                precision: *precision,
-                scale: *scale,
-            },
-            ClickHouseColumnType::Date => ColumnType::Date16,
-            ClickHouseColumnType::Date32 => ColumnType::Date,
-            ClickHouseColumnType::DateTime => ColumnType::DateTime { precision: None },
-            ClickHouseColumnType::DateTime64 { precision } => ColumnType::DateTime {
-                precision: Some(*precision),
-            },
-            ClickHouseColumnType::Json => ColumnType::Json,
-            ClickHouseColumnType::Bytes => ColumnType::Bytes,
-            ClickHouseColumnType::Array(inner_type) => {
-                let (element_type, inner_required) = inner_type.to_std_column_type();
-                ColumnType::Array {
-                    element_type: Box::new(element_type),
-                    element_nullable: !inner_required,
-                }
-            }
-            ClickHouseColumnType::Enum(enum_def) => ColumnType::Enum(enum_def.clone()),
-            ClickHouseColumnType::Nested(columns) => ColumnType::Nested(Nested {
-                name: "Unknown".to_string(),
-                columns: columns
-                    .iter()
-                    .map(|col| {
-                        let (data_type, required) = col.column_type.to_std_column_type();
-                        Column {
-                            name: col.name.clone(),
-                            data_type,
-                            required: col.required && required,
-                            unique: col.unique,
-                            primary_key: col.primary_key,
-                            default: None,
-                            annotations: Default::default(),
-                        }
-                    })
-                    .collect(),
-                jwt: false,
-            }),
-            ClickHouseColumnType::Nullable(inner) => {
-                required = false;
-                inner.to_std_column_type().0
-            }
-            ClickHouseColumnType::AggregateFunction(_, return_type) => {
-                return return_type.to_std_column_type();
-            }
-            ClickHouseColumnType::Map(key_type, value_type) => {
-                let (key_std_type, key_required) = key_type.to_std_column_type();
-                let (value_std_type, value_required) = value_type.to_std_column_type();
-
-                let final_key_type = if key_required {
-                    key_std_type
-                } else {
-                    ColumnType::Nullable(Box::new(key_std_type))
-                };
-
-                let final_value_type = if value_required {
-                    value_std_type
-                } else {
-                    ColumnType::Nullable(Box::new(value_std_type))
-                };
-
-                ColumnType::Map {
-                    key_type: Box::new(final_key_type),
-                    value_type: Box::new(final_value_type),
-                }
-            }
-            ClickHouseColumnType::Uuid => ColumnType::Uuid,
-            ClickHouseColumnType::LowCardinality(t) => return t.to_std_column_type(),
-            ClickHouseColumnType::IpV4 => ColumnType::IpV4,
-            ClickHouseColumnType::IpV6 => ColumnType::IpV6,
-            ClickHouseColumnType::NamedTuple(fields) => ColumnType::NamedTuple(
-                fields
-                    .iter()
-                    .map(|(name, t)| {
-                        let (t, required) = t.to_std_column_type();
-                        let t = if required {
-                            t
-                        } else {
-                            ColumnType::Nullable(Box::new(t))
-                        };
-                        (name.clone(), t)
-                    })
-                    .collect(),
-            ),
-        };
-        (column_type, required)
-    }
-
     pub fn from_type_str(type_str: &str) -> Option<Self> {
         // When we select from `system.columns`, the `Nested` columns are dotted names
         // so it's not handled here
@@ -422,6 +282,7 @@ pub struct ClickHouseColumn {
     pub unique: bool,
     pub primary_key: bool,
     pub default: Option<ClickHouseColumnDefaults>,
+    pub comment: Option<String>, // Column comment for metadata storage
 }
 
 impl ClickHouseColumn {
@@ -634,7 +495,7 @@ impl ClickHouseTable {
     }
 
     pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
-        drop_table_query(db_name, self.clone())
+        drop_table_query(db_name, &self.name)
     }
 
     pub fn primary_key_columns(&self) -> Vec<&str> {

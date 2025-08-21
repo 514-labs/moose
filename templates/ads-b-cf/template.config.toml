@@ -14,5 +14,5 @@ post_install_print = """
     $ moose workflow run militaryAircraftETL
     $ moose workflow run laddAircraftETL
 """
-default_aurora_telemetry="comprehensive"
+default_sloan_telemetry="comprehensive"
 visible=false

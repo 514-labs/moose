@@ -3,10 +3,10 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use super::bin;
 use crate::infrastructure::stream::kafka::models::KafkaConfig;
 use crate::infrastructure::stream::StreamConfig;
-
-use super::bin;
+use crate::project::Project;
 
 const FUNCTION_RUNNER_BIN: &str = "streaming-functions";
 
@@ -18,6 +18,7 @@ pub fn run(
     source_topic: &StreamConfig,
     target_topic: Option<&StreamConfig>,
     streaming_function_file: &Path,
+    project: &Project,
     project_path: &Path,
     max_subscriber_count: usize,
     is_dmv2: bool,
@@ -69,7 +70,8 @@ pub fn run(
         args.push("--is-dmv2");
     }
 
-    let mut streaming_function_process = bin::run(FUNCTION_RUNNER_BIN, project_path, &args)?;
+    let mut streaming_function_process =
+        bin::run(FUNCTION_RUNNER_BIN, project_path, &args, project)?;
 
     let stdout = streaming_function_process
         .stdout

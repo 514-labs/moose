@@ -1,6 +1,6 @@
 import fs from "fs";
 import fetch from "node-fetch";
-import { config } from "dotenv";
+import { MOOSE_INGEST_URL, DAS_PORT } from "./config.js";
 import { BrainwaveData } from "./types.js";
 import { createScreen } from "./blessed-setup.js";
 import { Logger } from "./logger.js";
@@ -13,8 +13,7 @@ import { UDPServer } from "./udp-server.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-config({ path: "../.env.local" });
-console.log("MOOSE_INGEST_URL:", process.env.MOOSE_INGEST_URL);
+console.log("MOOSE_INGEST_URL:", MOOSE_INGEST_URL);
 
 interface Args {
   sessionId: string;
@@ -85,10 +84,7 @@ function writeFile(fileName: string, document: BrainwaveData): void {
   }
 
   document.sessionId = `${argv.sessionId}`;
-  if (!process.env.MOOSE_INGEST_URL) {
-    throw new Error("MOOSE_INGEST_URL is not defined in environment variables");
-  }
-  fetch(process.env.MOOSE_INGEST_URL, {
+  fetch(MOOSE_INGEST_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -177,7 +173,7 @@ async function main(): Promise<void> {
     checkExcessiveMovement(data);
   });
 
-  server.start(Number(process.env.DAS_PORT) || 43134);
+  server.start(Number(DAS_PORT));
 }
 
 function cleanup() {

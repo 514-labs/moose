@@ -16,6 +16,12 @@ import {
   Hammer,
   Terminal,
   GanttChart,
+  FileCode,
+  Laptop,
+  FolderPlus,
+  Cloud,
+  UploadCloud,
+  FileStack,
 } from "lucide-react";
 
 // Raw meta object - more concise without repetitive rendering logic
@@ -27,9 +33,25 @@ const rawMeta = {
     },
     Icon: GanttChart,
   },
-  "getting-started": {
+  __fundamentals__: {
     title: "Getting Started",
-    Icon: HandMetal,
+    type: "separator",
+  },
+  "getting-started": {
+    title: "Create Project",
+    Icon: FolderPlus,
+  },
+  "local-dev": {
+    title: "Local Dev Environment",
+    Icon: Laptop,
+  },
+  "data-modeling": {
+    title: "Data Modeling",
+    Icon: FileCode,
+  },
+  "in-your-stack": {
+    title: "In Your Stack",
+    Icon: FileStack,
   },
   __modules__: {
     type: "separator",
@@ -65,14 +87,20 @@ const rawMeta = {
     isMoose: true,
   },
   metrics: {
-    title: "Metrics",
+    title: "Observability",
     Icon: ChartBar,
     isMoose: true,
   },
   deploying: {
-    title: "Build",
-    Icon: Hammer,
+    title: "Deploy",
+    Icon: UploadCloud,
     isMoose: true,
+  },
+  "cloud-hosting": {
+    title: "Cloud Hosting",
+    href: "https://www.fiveonefour.com/boreal",
+    newWindow: true,
+    Icon: Cloud,
   },
   __reference__: {
     type: "separator",

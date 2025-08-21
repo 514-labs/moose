@@ -96,11 +96,10 @@ pub fn create_alias_for_table(
     create_alias_query(db_name, alias_name, &latest_table.name)
 }
 
-// TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS `{{db_name}}`.`{{table_name}}`
 (
-{{#each fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
+{{#each fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#if field_comment}} COMMENT '{{{field_comment}}}'{{/if}}{{#unless @last}},{{/unless}}
 {{/each}}
 )
 ENGINE = {{engine}}
@@ -108,7 +107,7 @@ ENGINE = {{engine}}
 {{#if order_by_string}}ORDER BY ({{order_by_string}}){{/if}}
 "#;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClickhouseEngine {
     MergeTree,
     ReplacingMergeTree,
@@ -168,7 +167,9 @@ pub fn create_table_query(
         } else {
             None
         },
-        "order_by_string": if !table.order_by.is_empty() {
+        "order_by_string": if table.order_by.len() == 1 && table.order_by[0] == "tuple()" {
+            Some(table.order_by[0].to_string())
+        } else if !table.order_by.is_empty() {
             Some(wrap_and_join_column_names(&table.order_by, ","))
         } else {
             None
@@ -183,13 +184,13 @@ pub static DROP_TABLE_TEMPLATE: &str = r#"
 DROP TABLE IF EXISTS `{{db_name}}`.`{{table_name}}`;
 "#;
 
-pub fn drop_table_query(db_name: &str, table: ClickHouseTable) -> Result<String, ClickhouseError> {
+pub fn drop_table_query(db_name: &str, table_name: &str) -> Result<String, ClickhouseError> {
     let mut reg = Handlebars::new();
     reg.register_escape_fn(no_escape);
 
     let context = json!({
         "db_name": db_name,
-        "table_name": table.name,
+        "table_name": table_name,
     });
 
     Ok(reg.render_template(DROP_TABLE_TEMPLATE, &context)?)
@@ -316,6 +317,9 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
         .map(|column| {
             let field_type = basic_field_type_to_string(&column.column_type)?;
 
+            // Escape single quotes in comments for SQL safety
+            let escaped_comment = column.comment.as_ref().map(|c| c.replace('\'', "''"));
+
             Ok(json!({
                 "field_name": column.name,
                 "field_type": field_type,
@@ -328,6 +332,7 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
                 } else {
                     "NULL".to_string()
                 },
+                "field_comment": escaped_comment,
             }))
         })
         .collect::<Result<Vec<Value>, ClickhouseError>>()
@@ -352,6 +357,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_2".to_string(),
@@ -360,6 +366,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_3".to_string(),
@@ -368,6 +375,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_4".to_string(),
@@ -376,6 +384,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_5".to_string(),
@@ -384,6 +393,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_6".to_string(),
@@ -404,6 +414,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
             ClickHouseColumn {
                 name: "nested_field_7".to_string(),
@@ -412,6 +423,7 @@ mod tests {
                 unique: false,
                 primary_key: false,
                 default: None,
+                comment: None,
             },
         ]);
 
@@ -438,6 +450,7 @@ mod tests {
                     primary_key: true,
                     unique: false,
                     default: None,
+                    comment: None,
                 },
                 ClickHouseColumn {
                     name: "name".to_string(),
@@ -446,6 +459,7 @@ mod tests {
                     primary_key: false,
                     unique: false,
                     default: None,
+                    comment: None,
                 },
             ],
             order_by: vec![],
@@ -477,6 +491,7 @@ PRIMARY KEY (`id`)
                 primary_key: true,
                 unique: false,
                 default: None,
+                comment: None,
             }],
             order_by: vec!["id".to_string()],
             engine: ClickhouseEngine::ReplacingMergeTree,
@@ -506,6 +521,7 @@ ORDER BY (`id`) "#;
                 primary_key: true,
                 unique: false,
                 default: None,
+                comment: None,
             }],
             engine: ClickhouseEngine::ReplacingMergeTree,
             order_by: vec![],
@@ -531,6 +547,7 @@ ORDER BY (`id`) "#;
                     primary_key: true,
                     unique: false,
                     default: None,
+                    comment: None,
                 },
                 ClickHouseColumn {
                     name: "nested_data".to_string(),
@@ -542,6 +559,7 @@ ORDER BY (`id`) "#;
                             primary_key: false,
                             unique: false,
                             default: None,
+                            comment: None,
                         },
                         ClickHouseColumn {
                             name: "field2".to_string(),
@@ -550,12 +568,14 @@ ORDER BY (`id`) "#;
                             primary_key: false,
                             unique: false,
                             default: None,
+                            comment: None,
                         },
                     ]),
                     required: true,
                     primary_key: false,
                     unique: false,
                     default: None,
+                    comment: None,
                 },
                 ClickHouseColumn {
                     name: "status".to_string(),
@@ -576,6 +596,7 @@ ORDER BY (`id`) "#;
                     primary_key: false,
                     unique: false,
                     default: None,
+                    comment: None,
                 },
             ],
             engine: ClickhouseEngine::MergeTree,

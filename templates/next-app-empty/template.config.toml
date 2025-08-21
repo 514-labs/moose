@@ -20,5 +20,5 @@ post_install_print = """
 🛠️ Start frontend dev server:
 	$ npm run dev
 """
-default_aurora_telemetry="standard"
+default_sloan_telemetry="standard"
 visible=false

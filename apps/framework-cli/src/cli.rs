@@ -14,7 +14,7 @@ use clap::Parser;
 use commands::{Commands, GenerateCommand, TemplateSubCommands, WorkflowCommands};
 use config::ConfigError;
 use display::with_spinner_completion;
-use log::{debug, info};
+use log::{debug, info, warn};
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::build::build_package;
@@ -49,11 +49,15 @@ use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
-use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
+use crate::utilities::constants::{
+    CLI_VERSION, MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
+    PROJECT_NAME_ALLOW_PATTERN,
+};
 
 use crate::cli::routines::code_generation::db_to_dmv2;
 use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
+use crate::framework::core::migration_plan::MIGRATION_SCHEMA;
 use anyhow::Result;
 
 #[derive(Parser)]
@@ -219,16 +223,7 @@ pub async fn top_command_handler(
 
             if *write_infra_map {
                 let json_path = project_arc
-                    .internal_dir()
-                    .map_err(|e| {
-                        RoutineFailure::new(
-                            Message::new(
-                                "Failed".to_string(),
-                                "to create .moose directory".to_string(),
-                            ),
-                            e,
-                        )
-                    })?
+                    .internal_dir_with_routine_failure_err()?
                     .join("infrastructure_map.json");
 
                 infra_map.save_to_json(&json_path).map_err(|e| {
@@ -312,6 +307,7 @@ pub async fn top_command_handler(
         }
         Commands::Dev {} => {
             info!("Running dev command");
+            info!("Moose Version: {}", CLI_VERSION);
 
             let mut project = load_project()?;
             project.set_is_production_env(false);
@@ -399,6 +395,130 @@ pub async fn top_command_handler(
                 Ok(RoutineSuccess::success(Message::new(
                     "Token".to_string(),
                     "Success".to_string(),
+                )))
+            }
+            Some(GenerateCommand::Migration { url, token, save }) => {
+                info!("Running generate migration command");
+
+                let project = load_project()?;
+
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::GenerateMigrationCommand,
+                    Some(project.name()),
+                    &settings,
+                    machine_id.clone(),
+                );
+
+                check_project_name(&project.name())?;
+
+                let result = routines::remote_gen_migration(&project, url, token)
+                    .await
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message {
+                                action: "Plan".to_string(),
+                                details: "Failed to plan changes".to_string(),
+                            },
+                            e,
+                        )
+                    })?;
+
+                let plan_yaml = result.db_migration.to_yaml().map_err(|e| {
+                    RoutineFailure::new(
+                        Message {
+                            action: "Plan".to_string(),
+                            details: "Failed to serialize".to_string(),
+                        },
+                        e,
+                    )
+                })?;
+
+                wait_for_usage_capture(capture_handle).await;
+
+                if *save {
+                    std::fs::create_dir_all("./migrations").map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+
+                    if let Err(e) = std::fs::write(
+                        project
+                            .internal_dir_with_routine_failure_err()?
+                            .join("migration_schema.json"),
+                        MIGRATION_SCHEMA,
+                    ) {
+                        warn!("Error writing migration schema file: {e:?}");
+                    };
+                    // Prepend YAML language server schema directive for better editor support
+                    let plan_yaml_with_header = format!(
+                        "# yaml-language-server: $schema=../.moose/migration_schema.json\n\n{}",
+                        plan_yaml
+                    );
+                    std::fs::write(MIGRATION_FILE, plan_yaml_with_header.as_str()).map_err(
+                        |e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Migration".to_string(),
+                                    "plan writing failed.".to_string(),
+                                ),
+                                e,
+                            )
+                        },
+                    )?;
+                    std::fs::write(
+                        MIGRATION_BEFORE_STATE_FILE,
+                        serde_json::to_string_pretty(&result.remote_state).map_err(|e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Error".to_string(),
+                                    "serializing remote state.".to_string(),
+                                ),
+                                e,
+                            )
+                        })?,
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                    std::fs::write(
+                        MIGRATION_AFTER_STATE_FILE,
+                        serde_json::to_string_pretty(&result.local_infra_map).map_err(|e| {
+                            RoutineFailure::new(
+                                Message::new(
+                                    "Error".to_string(),
+                                    "serializing local state.".to_string(),
+                                ),
+                                e,
+                            )
+                        })?,
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Migration".to_string(),
+                                "plan writing failed.".to_string(),
+                            ),
+                            e,
+                        )
+                    })?;
+                } else {
+                    println!("Changes: \n\n{}", plan_yaml);
+                }
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Migration".to_string(),
+                    "generated".to_string(),
                 )))
             }
             None => Err(RoutineFailure::error(Message {

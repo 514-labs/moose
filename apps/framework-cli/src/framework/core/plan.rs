@@ -70,11 +70,12 @@ pub enum PlanningError {
 /// # Arguments
 /// * `project` - The project configuration
 /// * `infra_map` - The infrastructure map to update
+/// * `target_table_names` - Names of tables to include from unmapped tables (tables in DB but not in current inframap). Only unmapped tables with names in this set will be added to the reconciled inframap.
 /// * `olap_client` - The OLAP client to use for checking reality
 ///
 /// # Returns
 /// * `Result<InfrastructureMap, PlanningError>` - The reconciled infrastructure map or an error
-async fn reconcile_with_reality<T: OlapOperations>(
+pub async fn reconcile_with_reality<T: OlapOperations>(
     project: &Project,
     current_infra_map: &InfrastructureMap,
     target_table_names: &HashSet<String>,
@@ -194,11 +195,11 @@ pub struct InfraPlan {
 /// * `project` - Project configuration for building the target infrastructure map
 ///
 /// # Returns
-/// * `Result<InfraPlan, PlanningError>` - The infrastructure plan or an error
+/// * `Result<(InfrastructureMap, InfraPlan), PlanningError>` - The current state and infrastructure plan, or an error
 pub async fn plan_changes(
     client: &RedisClient,
     project: &Project,
-) -> Result<InfraPlan, PlanningError> {
+) -> Result<(InfrastructureMap, InfraPlan), PlanningError> {
     let json_path = Path::new(".moose/infrastructure_map.json");
     let target_infra_map = if project.is_production && json_path.exists() {
         InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
@@ -215,7 +216,7 @@ pub async fn plan_changes(
         }
     };
 
-    let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
+    let current_infra_map = InfrastructureMap::load_from_last_redis_prefix(client).await?;
 
     debug!(
         "Current infrastructure map: {}",
@@ -287,7 +288,7 @@ pub async fn plan_changes(
             .unwrap_or("Could not serialize plan changes".to_string())
     );
 
-    Ok(plan)
+    Ok((reconciled_map, plan))
 }
 
 #[cfg(test)]
@@ -330,10 +331,10 @@ mod tests {
                 primary_key: true,
                 default: None,
                 annotations: vec![],
+                comment: None,
             }],
             order_by: vec!["id".to_string()],
             engine: None,
-            deduplicate: false,
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),
@@ -504,6 +505,7 @@ mod tests {
             primary_key: false,
             default: None,
             annotations: vec![],
+            comment: None,
         });
 
         // Create mock OLAP client with the actual table

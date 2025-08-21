@@ -10,7 +10,7 @@ interface ContactCardProps {
   ctaLabel: string;
   Icon?: React.ElementType;
   className?: string;
-  variant?: "default" | "gradient" | "aurora";
+  variant?: "default" | "gradient" | "sloan";
 }
 
 export function ContactCard({
@@ -33,9 +33,7 @@ export function ContactCard({
               <Icon
                 className={cn(
                   "h-5 w-5",
-                  variant === "aurora" ? "text-aurora-teal" : (
-                    "text-moose-purple"
-                  ),
+                  variant === "sloan" ? "text-sloan-teal" : "text-moose-purple",
                 )}
               />
             </div>

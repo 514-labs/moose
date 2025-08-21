@@ -97,17 +97,12 @@ class OlapConfig(BaseModel):
     Attributes:
         order_by_fields: List of column names to use for the ORDER BY clause.
                        Crucial for `ReplacingMergeTree` and performance.
-        deduplicate: If True, uses the ReplacingMergeTree engine for automatic
-                     deduplication based on `order_by_fields`. Equivalent to
-                     setting `engine=ClickHouseEngines.ReplacingMergeTree`.
         engine: The ClickHouse table engine to use (e.g., MergeTree, ReplacingMergeTree).
         version: Optional version string for tracking configuration changes.
         metadata: Optional metadata for the table.
         life_cycle: Determines how changes in code will propagate to the resources.
     """
     order_by_fields: list[str] = []
-    # equivalent to setting `engine=ClickHouseEngines.ReplacingMergeTree`
-    deduplicate: bool = False
     engine: Optional[ClickHouseEngines] = None
     version: Optional[str] = None
     metadata: Optional[dict] = None

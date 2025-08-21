@@ -27,7 +27,7 @@ import { LifeCycle } from "./lifeCycle";
  *
  * // Advanced pipeline with custom configurations
  * const advancedConfig: IngestPipelineConfig<UserData> = {
- *   table: { orderByFields: ['timestamp', 'userId'], deduplicate: true },
+ *   table: { orderByFields: ['timestamp', 'userId'], engine: ClickHouseEngines.ReplacingMergeTree },
  *   stream: { parallelism: 4, retentionPeriod: 86400 },
  *   ingest: true,
  *   version: '1.2.0',
@@ -127,7 +127,7 @@ export type IngestPipelineConfig<T> = {
  *
  * // Create a pipeline with only table and stream
  * const analyticsStream = new IngestPipeline('analytics', {
- *   table: { orderByFields: ['timestamp'], deduplicate: true },
+ *   table: { orderByFields: ['timestamp'], engine: ClickHouseEngines.ReplacingMergeTree },
  *   stream: { parallelism: 8, retentionPeriod: 604800 },
  *   ingest: false
  * });

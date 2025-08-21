@@ -124,8 +124,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Update the package lists for upgrades for security purposes
 RUN apt-get update && apt-get upgrade -y
 
-# Install tail and locales package
-RUN apt-get install -y locales coreutils curl
+# Install ca-certificates, tail and locales package
+RUN apt-get install -y ca-certificates locales coreutils curl && update-ca-certificates
 
 # moose depends on libc 2.40+, not available in stable
 # This uses unstable, but unpinned because they delete older versions
@@ -227,16 +227,7 @@ pub fn create_dockerfile(
     project: &Project,
     docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let internal_dir = project.internal_dir().map_err(|err| {
-        error!("Failed to get internal directory for project: {}", err);
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to get internal directory for project".to_string(),
-            ),
-            err,
-        )
-    })?;
+    let internal_dir = project.internal_dir_with_routine_failure_err()?;
 
     ensure_docker_running(docker_client).map_err(|err| {
         error!("Failed to ensure docker is running: {}", err);
@@ -468,16 +459,7 @@ pub fn build_dockerfile(
     is_amd64: bool,
     is_arm64: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let internal_dir = project.internal_dir().map_err(|err| {
-        error!("Failed to get internal directory for project: {}", err);
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to get internal directory for project".to_string(),
-            ),
-            err,
-        )
-    })?;
+    let internal_dir = project.internal_dir_with_routine_failure_err()?;
 
     ensure_docker_running(docker_client).map_err(|err| {
         error!("Failed to ensure docker is running: {}", err);

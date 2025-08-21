@@ -1,4 +1,9 @@
-import { IngestPipeline, Key, IngestionFormat } from "@514labs/moose-lib";
+import {
+  IngestPipeline,
+  Key,
+  IngestionFormat,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
 
 // Define the schema for Goodreads books
 export interface GoodreadsBookSchema {
@@ -22,7 +27,7 @@ export const GoodreadsBooksPipeline = new IngestPipeline<GoodreadsBookSchema>(
   {
     table: {
       orderByFields: ["bookID"],
-      deduplicate: true,
+      engine: ClickHouseEngines.ReplacingMergeTree,
     },
     stream: {
       parallelism: 4,

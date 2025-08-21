@@ -106,3 +106,7 @@ pub const WORKFLOW_TYPE: &str = "ScriptWorkflow";
 pub const PYTHON_TASK_QUEUE: &str = "python-script-queue";
 pub const TYPESCRIPT_TASK_QUEUE: &str = "typescript-script-queue";
 pub const MOOSE_CLI_IDENTITY: &str = "moose-cli";
+
+pub const MIGRATION_FILE: &str = "./migrations/plan.yaml";
+pub const MIGRATION_BEFORE_STATE_FILE: &str = "./migrations/remote_state.json";
+pub const MIGRATION_AFTER_STATE_FILE: &str = "./migrations/local_infra_map.json";

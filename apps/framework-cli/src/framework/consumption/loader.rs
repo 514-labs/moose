@@ -60,13 +60,15 @@ async fn build_endpoint_file(
         path.set_extension("");
 
         let (query_params, output_schema, version) = match project.language {
-            SupportedLanguages::Typescript => {
-                typescript::export_collectors::get_func_types(&path, &project.project_location)
-                    .await
-                    .map_err(ConsumptionLoaderError::FailedToLoadTypescriptParams)?
-            }
+            SupportedLanguages::Typescript => typescript::export_collectors::get_func_types(
+                &path,
+                project,
+                &project.project_location,
+            )
+            .await
+            .map_err(ConsumptionLoaderError::FailedToLoadTypescriptParams)?,
             SupportedLanguages::Python => {
-                let params = load_python_query_param(&project.project_location, &path)
+                let params = load_python_query_param(project, &project.project_location, &path)
                     .await
                     .map_err(ConsumptionLoaderError::FailedToLoadPythonParams)?;
                 (params, Value::Null, None)

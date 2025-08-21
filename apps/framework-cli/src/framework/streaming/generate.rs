@@ -506,6 +506,9 @@ my_function = StreamingFunction(
                 primary_key: is_key,
                 default: None,
                 annotations: vec![],
+                // Comment is None in test columns - metadata comments are only needed
+                // for actual ClickHouse table columns to preserve enum definitions
+                comment: None,
             })
             .collect()
     }

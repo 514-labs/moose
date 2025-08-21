@@ -72,7 +72,6 @@ class TableConfig(BaseModel):
         name: Name of the table.
         columns: List of columns with their types and attributes.
         order_by: List of columns used for the ORDER BY clause.
-        deduplicate: Whether the table uses a deduplicating engine (e.g., ReplacingMergeTree).
         engine: The name of the ClickHouse engine used.
         version: Optional version string of the table configuration.
         metadata: Optional metadata for the table.
@@ -83,7 +82,6 @@ class TableConfig(BaseModel):
     name: str
     columns: List[Column]
     order_by: List[str]
-    deduplicate: bool
     engine: Optional[str]
     version: Optional[str] = None
     metadata: Optional[dict] = None
@@ -286,7 +284,6 @@ def to_infra_map() -> dict:
             name=table.name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
-            deduplicate=table.config.deduplicate,
             engine=None if engine is None else engine.value,
             version=table.config.version,
             metadata=getattr(table, "metadata", None),

@@ -242,6 +242,25 @@ class WorkflowClient:
                 "body": str(e)
             }
 
+    def terminate(self, workflow_id: str) -> Dict[str, Any]:
+        try:
+            asyncio.run(self._terminate_workflow_async(workflow_id))
+            print(f"WorkflowClient - terminated workflow: {workflow_id}")
+            return {
+                "status": 200,
+                "body": f"Workflow terminated: {workflow_id}"
+            }
+        except Exception as e:
+            print(f"WorkflowClient - error while terminating workflow: {e}")
+            return {
+                "status": 400,
+                "body": str(e)
+            }
+
+    async def _terminate_workflow_async(self, workflow_id: str):
+        workflow_handle = self.temporal_client.get_workflow_handle(workflow_id)
+        await workflow_handle.terminate()
+
     async def _start_workflow_async(self, name: str, input_data: Any):
         # Extract configuration based on workflow type
         config = self._get_workflow_config(name)

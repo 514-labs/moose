@@ -43,8 +43,8 @@ def download_dataset():
     api.authenticate()
     
     print("Downloading dataset from Kaggle...")
-    api.dataset_download_files('jealousleopard/goodreadsbooks', path='.aurora', unzip=True)
-    return '.aurora/books.csv'
+    api.dataset_download_files('jealousleopard/goodreadsbooks', path='.sloan', unzip=True)
+    return '.sloan/books.csv'
 
 def display_sample_data(df):
     """Display a sample row of data in both raw and cleaned format"""
@@ -162,7 +162,7 @@ def process_and_ingest_data(csv_path):
                 print(f"Error ingesting book {book.get('title', 'Unknown')}: {str(e)}")
                 error_count += 1
                 # Save failed book for retry
-                error_file = f'.aurora/failed_book_{book["bookID"]}.json'
+                error_file = f'.sloan/failed_book_{book["bookID"]}.json'
                 with open(error_file, 'w') as f:
                     json.dump(book, f)
                 print(f"Failed book saved to {error_file}")
@@ -178,8 +178,8 @@ def cleanup(csv_path):
         print(f"Error during cleanup: {str(e)}")
 
 def main():
-    # Create .aurora directory if it doesn't exist
-    Path('.aurora').mkdir(exist_ok=True)
+    # Create .sloan directory if it doesn't exist
+    Path('.sloan').mkdir(exist_ok=True)
     
     try:
         # Download and process the dataset

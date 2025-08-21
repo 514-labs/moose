@@ -2,7 +2,12 @@
 
 A Moose Application for Brainwave Data Capture & Analysis
 
-![Brainwaves](https://downloads.fiveonefour.com/moose/template-data/brainwaves/videos/brainwaves.gif)
+![Brainwaves](./brainwaves.gif)
+
+To quickly learn about this project watch/skim through the following brief videos:
+
+- [Video 1: Introduction and demo](https://www.youtube.com/watch?v=svrHKqcj338)
+- [Video 2: Using Aurora MCP](https://www.youtube.com/watch?v=tzdQcVxJkYA)
 
 ---
 
@@ -21,7 +26,7 @@ A Moose Application for Brainwave Data Capture & Analysis
 **Brainwaves** is a comprehensive demo platform for brain mapping and movement analytics, built with [Moose](https://docs.fiveonefour.com/moose) and designed to work with the [Muse Headband](https://choosemuse.com) EEG device. The project consists of two main applications:
 
 - **DAS (Data Acquisition Server):** Real-time collection, analysis, visualization, and logging of brainwave and movement data from a Muse device or simulator.
-- **Brainmoose:** A Moose-powered backend for data ingestion, storage, analytics, and API access, with optional OpenAI-powered insights.
+- **Brainmoose:** A Moose-powered backend for data ingestion, storage, analytics, and API access.
 
 The platform supports both live device streaming and simulation using freely available datasets, making it ideal for experimentation, research, and educational use.
 
@@ -56,7 +61,7 @@ The platform supports both live device streaming and simulation using freely ava
   npm install
   moose dev
   ```
-- (Optional) Enable OpenAI analysis by adding your API key to `.env.local` in `apps/brainmoose`.
+
 
 ### Listen to ~15 minute podcasts
 > Generated using NotebookLM
@@ -115,16 +120,11 @@ The platform supports both live device streaming and simulation using freely ava
 - Modular architecture for data models, serverless functions, analytics blocks, and APIs
 - Ingests and stores data from DAS
 - Provides APIs for querying session insights and movement scores
-- Optional OpenAI GPT-4o integration for advanced analysis
 
 ### Setup
 - Install dependencies:
   ```sh
   npm install
-  ```
-- (Optional) Enable OpenAI analysis by adding your API key to `.env.local`:
-  ```
-  OPENAI_API_KEY=your-key-here
   ```
 - Start the backend:
   ```sh
@@ -193,3 +193,13 @@ GROUP BY sessionId;
 ---
 
 For more details, see the code and comments in each app's `src/` directory.
+
+## Community
+
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moosestack).
+
+# Deploy on Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
+
+Check out our [Moose deployment documentation](https://docs.fiveonefour.com/moose/deploying) for more details.

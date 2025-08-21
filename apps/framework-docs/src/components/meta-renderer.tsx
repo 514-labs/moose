@@ -1,6 +1,7 @@
 import { SmallText } from "@/components/typography";
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 /**
  * Meta item definition for sidebar navigation
@@ -37,18 +38,23 @@ const UI = {
     icon,
     text,
     isMoose = false,
+    showExternalIcon = false,
   }: {
     icon?: React.ReactElement;
     text: React.ReactNode;
     isMoose?: boolean;
+    showExternalIcon?: boolean;
   }) => (
     <div className="flex items-center gap-2 text-primary my-0">
       {icon}
-      <SmallText className="text-inherit my-0">
+      <SmallText className="text-inherit my-0 inline-flex items-center gap-1">
         {isMoose ?
           <span className="text-muted-foreground">Moose </span>
         : ""}
         {text}
+        {showExternalIcon ?
+          <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
+        : null}
       </SmallText>
     </div>
   ),
@@ -91,6 +97,11 @@ const renderPageItem = (item: MetaItem): MetaItem => {
  * Renders an object item with icon
  */
 const renderObjectWithIcon = (item: MetaItem): MetaItem => {
+  const isExternal = Boolean(
+    item.newWindow ||
+      (typeof item.href === "string" && /^https?:\/\//.test(item.href)),
+  );
+
   return {
     ...item,
     title: (
@@ -98,6 +109,7 @@ const renderObjectWithIcon = (item: MetaItem): MetaItem => {
         icon={item.Icon ? <item.Icon className="w-4 h-4" /> : undefined}
         text={item.title}
         isMoose={item.isMoose}
+        showExternalIcon={isExternal}
       />
     ),
   };

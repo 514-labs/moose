@@ -12,6 +12,7 @@ use crate::framework::core::{
     },
     plan::InfraPlan,
 };
+use crossterm::{execute, style::Print};
 use log::info;
 
 /// Displays a message about infrastructure being added.
@@ -77,6 +78,45 @@ pub fn infra_updated(message: &str) {
     info!("~ {}", message.trim());
 }
 
+/// Displays a multi-line message about infrastructure being updated with detailed formatting.
+///
+/// Uses yellow styling with a "~" prefix and supports indented details on subsequent lines.
+/// Each detail line is properly indented for readability.
+///
+/// # Arguments
+///
+/// * `title` - The main title of the update
+/// * `details` - A slice of detail strings to display with indentation
+///
+/// # Examples
+///
+/// ```rust
+/// # use crate::cli::display::infrastructure::infra_updated_detailed;
+/// infra_updated_detailed("Table users schema modified", &[
+///     "Column changes:",
+///     "  + email: String",
+///     "  ~ age: Int32 -> Float64"
+/// ]);
+/// ```
+pub fn infra_updated_detailed(title: &str, details: &[String]) {
+    infra_updated(title);
+
+    // Write detailed lines with proper indentation
+    let mut stdout = std::io::stdout();
+    for detail in details {
+        execute!(
+            stdout,
+            Print("                  "),
+            Print(detail),
+            Print("\n")
+        )
+        .expect("failed to write detail to terminal");
+    }
+
+    // Log the full message
+    info!("~ {} {}", title.trim(), details.join(" "));
+}
+
 /// Displays OLAP (Online Analytical Processing) infrastructure changes.
 ///
 /// This function handles the display of changes to OLAP components including
@@ -111,17 +151,41 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
             name,
             column_changes,
             order_by_change,
-            before,
-            after,
+            before: _,
+            after: _,
         }) => {
-            if after.deduplicate != before.deduplicate {
-                infra_removed(&before.expanded_display());
-                infra_added(&after.expanded_display());
-            } else {
-                infra_updated(&format!(
-                    "Table {name} with column changes: {column_changes:?} and order by changes: {order_by_change:?}"
-                ));
+            let mut details = Vec::new();
+
+            if !column_changes.is_empty() {
+                details.push("Column changes:".to_string());
+                for change in column_changes {
+                    let change_line = match change {
+                        crate::framework::core::infrastructure_map::ColumnChange::Added {
+                            column,
+                            ..
+                        } => format!("  + {}: {}", column.name, column.data_type),
+                        crate::framework::core::infrastructure_map::ColumnChange::Removed(
+                            column,
+                        ) => format!("  - {}: {}", column.name, column.data_type),
+                        crate::framework::core::infrastructure_map::ColumnChange::Updated {
+                            before,
+                            after,
+                        } => format!(
+                            "  ~ {}: {} -> {}",
+                            before.name, before.data_type, after.data_type
+                        ),
+                    };
+                    details.push(change_line);
+                }
             }
+
+            if order_by_change.before != order_by_change.after {
+                details.push("Order by changes:".to_string());
+                details.push(format!("  - {}", order_by_change.before.join(", ")));
+                details.push(format!("  + {}", order_by_change.after.join(", ")));
+            }
+
+            infra_updated_detailed(&format!("Table: {name}"), &details);
         }
         OlapChange::View(Change::Added(infra)) => {
             infra_added(&infra.expanded_display());

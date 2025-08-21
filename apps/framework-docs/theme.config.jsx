@@ -101,8 +101,8 @@ export default {
     let defaultImage = "/og-image-fiveonefour.png"; // Default for root/main page
     if (asPath.startsWith("/moose")) {
       defaultImage = "/og-image-moose.png";
-    } else if (asPath.startsWith("/aurora")) {
-      defaultImage = "/og-image-aurora.png";
+    } else if (asPath.startsWith("/sloan")) {
+      defaultImage = "/og-image-sloan.png";
     }
 
     return (
@@ -127,21 +127,21 @@ export default {
           property="og:description"
           content={
             frontMatter.description ||
-            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+            "Documentation hub for Moose and Sloan, tools for building analytical backends and automated data engineering"
           }
         />
         <meta
           property="twitter:description"
           content={
             frontMatter.description ||
-            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+            "Documentation hub for Moose and Sloan, tools for building analytical backends and automated data engineering"
           }
         />
         <meta
           name="description"
           content={
             frontMatter.description ||
-            "Documentation hub for Moose and Aurora, tools for building analytical backends and automated data engineering"
+            "Documentation hub for Moose and Sloan, tools for building analytical backends and automated data engineering"
           }
         />
         {/* Use frontMatter.image if specified, otherwise use the default image based on path */}

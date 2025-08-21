@@ -1,6 +1,6 @@
 ---
 title: 514 Labs Documentation
-description: Documentation hub for Moose and Aurora, open source tools for building analytical backends and automated data engineering
+description: Documentation hub for Moose and Sloan, open source tools for building analytical backends and automated data engineering
 ---
 
 import { CTACards, CTACard, Contact } from "@/components";
@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 This is the home of the documentation for the 514 products:
 
 ```bash filename="Installation" copy
-bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,sloan
 ```
 
 <CTACards>
@@ -25,18 +25,18 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
     ctaLabel="Start Developing"
     badge={{
       variant: "moose",
-      text: "Moose"
+      text: "MooseStack"
     }}
     isMooseModule={true}
   />
   <CTACard
-    title="Automated Data Engineering"
+    title="AI Co-Pilot"
     description="Tools and agents exposed through an easy to configure MCP server"
-    ctaLink="/aurora"
-    ctaLabel="Get Started with Aurora"
+    ctaLink="/sloan"
+    ctaLabel="Get Started with Sloan"
     badge={{
-      variant: "aurora",
-      text: "Aurora"
+      variant: "sloan",
+      text: "Sloan"
     }}
   />
 </CTACards>
@@ -45,7 +45,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
 
 <CTACards>
   <CTACard
-    title="Area Code"
+    title="Start from a Template Environment"
     description="Bootstrap your User-Facing Analytics or Operational Data Warehouse application by cloning this template monorepo"
     ctaLink="https://github.com/514-labs/area-code"
     ctaLabel="View Repo"
@@ -55,7 +55,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose,aurora
     }}
   />
   <CTACard
-    title="Start from ClickHouse"
+    title="Start from your Existing Environment"
     description="Already have a ClickHouse database? Bootstrap a Moose project directly from your existing tables"
     ctaLink="/moose/getting-started/from-clickhouse"
     ctaLabel="Import from ClickHouse"

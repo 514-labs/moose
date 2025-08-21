@@ -1,6 +1,4 @@
-# GitHub Trending Topics Template
-
-<a href="https://www.docs.fiveonefour.com/moose"><img src="https://raw.githubusercontent.com/514-labs/moose/main/logo-m-light.png" alt="moose logo" height="100px"></a>
+# Template: GitHub Trending Topics
 
 This template provides a real-time dashboard tracking trending repositories and topics on GitHub. It collects and analyzes Star Events from the public GitHub events feed using Moose for the backend and a separate dashboard application for the frontend.
 
@@ -10,7 +8,14 @@ This template provides a real-time dashboard tracking trending repositories and 
 
 **Documentation:** [Template Documentation](https://docs.fiveonefour.com/templates/github)
 
-## Prerequisites
+[![NPM Version](https://img.shields.io/npm/v/%40514labs%2Fmoose-cli?logo=npm)](https://www.npmjs.com/package/@514labs/moose-cli?activeTab=readme)
+[![Moose Community](https://img.shields.io/badge/slack-moose_community-purple.svg?logo=slack)](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
+[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+[![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
+## Getting Started
+
+### Prerequisites
 
 *   Node.js (Minimum version 20+)
 *   pnpm (Minimum version 8+)
@@ -34,7 +39,7 @@ This is a pnpm monorepo with the following structure:
 └── template.config.toml  # Template specific configuration
 ```
 
-## Setup
+### Installation
 
 If you haven't already, install the Moose CLI and pnpm:
 ```bash copy
@@ -45,18 +50,18 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 npm install -g pnpm
 ```
 
-### 1. Initialize the Project
+1. Initialize the Project
 ```bash copy
 moose init moose-github-dev-trends github-dev-trends
 ```
 
-### 2. Install Dependencies
+2. Install Dependencies
 ```bash copy
 cd moose-github-dev-trends
 pnpm install
 ```
 
-### 3. Moose Backend Setup
+3. Moose Backend Setup
 
 *   Set the GitHub Personal Access Token:
     *   This project requires a [GitHub Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to access the GitHub API for fetching event data.
@@ -68,7 +73,7 @@ pnpm install
     *   This will start the Moose backend service containing the local infrastructure (Redpanda, ClickHouse, Temporal, Webserver) and the GitHub event poller.
     *   You can verify that it's running by checking the Moose logs in your terminal.
 
-### 4. Frontend Dashboard Setup
+4. Frontend Dashboard Setup
 
 *   Open a **new terminal** and start the frontend dashboard:
     ```bash copy
@@ -128,3 +133,13 @@ Deploying this project involves deploying the Moose backend service and the fron
 *   **Deploy:** Vercel will build and deploy your Next.js frontend.
 
 Once both backend and frontend are deployed and configured correctly, your live GitHub Trends Dashboard should be accessible via the Vercel deployment URL.
+
+# Deploy on Boreal
+
+The easiest way to deploy your Moose app is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose.
+
+Check out our [Moose deployment documentation](https://docs.fiveonefour.com/moose/deploying) for more details.
+
+## Community
+
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg). Check out the [MooseStack repo on GitHub](https://github.com/514-labs/moosestack).

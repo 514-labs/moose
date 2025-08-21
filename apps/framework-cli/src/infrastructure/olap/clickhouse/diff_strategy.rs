@@ -179,13 +179,15 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
             .engine
             .as_deref()
             .and_then(|e| ClickhouseEngine::try_from(e).ok());
-        let after_engine = after
-            .engine
-            .as_deref()
-            .and_then(|e| ClickhouseEngine::try_from(e).ok());
-
+        // do NOT compare the strings directly because of the possible prefix "Shared"
+        let engine_changed = match after.engine.as_deref() {
+            None => before_engine.is_some_and(|e| e != ClickhouseEngine::MergeTree),
+            Some(e) => ClickhouseEngine::try_from(e)
+                .ok()
+                .is_some_and(|e| Some(e) != before_engine),
+        };
         // Check if engine has changed
-        if after_engine.is_some_and(|e| Some(e) != before_engine) {
+        if engine_changed {
             log::debug!(
                 "ClickHouse: Deduplication setting changed for table '{}', requiring drop+create",
                 before.name

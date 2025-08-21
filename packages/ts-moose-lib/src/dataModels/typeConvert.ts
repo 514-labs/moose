@@ -416,12 +416,6 @@ const tsTypeToDataType = (
     annotations.push(["aggregationFunction", aggregationFunction]);
   }
 
-  // default handling similar to aggregation
-  const raw = handleDefault(t, checker);
-  if (raw !== null) {
-    annotations.push(["defaultExpression", raw]);
-  }
-
   const lowCardinalitySymbol = t.getProperty("_LowCardinality");
   if (lowCardinalitySymbol !== undefined) {
     const lowCardinalityType = checker.getNonNullableType(
@@ -483,16 +477,13 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       isJwt,
     );
 
-    // compute default at property-level as well (to cover cases where default is attached to the property type)
-    const propRawDefault = handleDefault(type, checker);
-
     return {
       name: prop.name,
       data_type: dataType,
       primary_key: isKey,
       required: !nullable,
       unique: false,
-      default: propRawDefault,
+      default: handleDefault(type, checker),
       annotations,
     };
   });

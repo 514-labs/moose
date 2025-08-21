@@ -7,6 +7,7 @@ use crate::utilities::constants::{
     SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::docker::DockerClient;
+use crate::utilities::nodejs_version::determine_node_version_from_package_json;
 use crate::utilities::package_managers::get_lock_file_path;
 use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
@@ -67,27 +68,33 @@ struct PathMapping {
     package_directory: String, // The directory name from the filesystem path
 }
 
-// Adapted from https://github.com/nodejs/docker-node/blob/2928850549388a57a33365302fc5ebac91f78ffe/20/bookworm-slim/Dockerfile
-// and removed yarn
-static TS_BASE_DOCKER_FILE: &str = r#"
-FROM node:20-bookworm-slim
+/// Generates the TypeScript base Dockerfile with dynamic Node.js version
+fn generate_ts_base_dockerfile(node_version: &str) -> String {
+    format!(
+        r#"
+FROM node:{}-bookworm-slim
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
 
 # Install alternative package managers globally
 RUN npm install -g pnpm@latest
-"#;
+"#,
+        node_version
+    )
+}
 
 // Python and node 'slim' term is flipped
 static PY_BASE_DOCKER_FILE: &str = r#"
 FROM python:3.12-slim-bookworm
 "#;
 
-// Monorepo-aware TypeScript Dockerfile template
-static TS_MONOREPO_DOCKER_FILE: &str = r#"
+/// Generates the monorepo TypeScript Dockerfile with dynamic Node.js version
+fn generate_ts_monorepo_dockerfile(node_version: &str) -> String {
+    format!(
+        r#"
 # Stage 1: Full monorepo context for dependency resolution
-FROM node:20-bookworm-slim AS monorepo-base
+FROM node:{}-bookworm-slim AS monorepo-base
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
@@ -109,14 +116,17 @@ MONOREPO_PACKAGE_COPIES
 RUN pnpm install --frozen-lockfile
 
 # Stage 2: Production image  
-FROM node:20-bookworm-slim
+FROM node:{}-bookworm-slim
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
 
 # Install alternative package managers globally
 RUN npm install -g pnpm@latest
-"#;
+"#,
+        node_version, node_version
+    )
+}
 
 static DOCKER_FILE_COMMON: &str = r#"
 ARG DEBIAN_FRONTEND=noninteractive
@@ -272,6 +282,16 @@ pub fn create_dockerfile(
         SupportedLanguages::Typescript => {
             let project_root = project.project_location.clone();
 
+            // Determine Node.js version from package.json
+            let package_json_path = project_root.join("package.json");
+            let node_version = determine_node_version_from_package_json(&package_json_path);
+            let node_version_str = node_version.to_major_string();
+
+            info!(
+                "Using Node.js version {} for Docker image",
+                node_version_str
+            );
+
             // Check if we're in a pnpm workspace (monorepo)
             if let Some(workspace_root) = find_pnpm_workspace_root(&project_root) {
                 info!("Detected pnpm workspace at: {:?}", workspace_root);
@@ -282,7 +302,11 @@ pub fn create_dockerfile(
                     Err(e) => {
                         error!("Failed to calculate relative project path: {}", e);
                         // Fall back to standard build if we can't determine the relative path
-                        return create_standard_typescript_dockerfile(project, &internal_dir);
+                        return create_standard_typescript_dockerfile(
+                            project,
+                            &internal_dir,
+                            &node_version_str,
+                        );
                     }
                 };
 
@@ -292,7 +316,11 @@ pub fn create_dockerfile(
                     Err(e) => {
                         error!("Failed to read workspace config: {:?}", e);
                         // Fall back to standard build if we can't read the workspace config
-                        return create_standard_typescript_dockerfile(project, &internal_dir);
+                        return create_standard_typescript_dockerfile(
+                            project,
+                            &internal_dir,
+                            &node_version_str,
+                        );
                     }
                 };
 
@@ -324,7 +352,7 @@ pub fn create_dockerfile(
                 };
 
                 // Build the monorepo Dockerfile
-                let mut dockerfile = TS_MONOREPO_DOCKER_FILE.to_string();
+                let mut dockerfile = generate_ts_monorepo_dockerfile(&node_version_str);
                 dockerfile = dockerfile.replace("MONOREPO_PACKAGE_COPIES", &package_copies);
 
                 // Add the common Docker sections
@@ -415,7 +443,7 @@ WORKDIR /application"#,
                 dockerfile
             } else {
                 // Not a monorepo, use standard Dockerfile generation
-                create_standard_typescript_dockerfile_content(project)?
+                create_standard_typescript_dockerfile_content(project, &node_version_str)?
             }
         }
         SupportedLanguages::Python => {
@@ -1073,6 +1101,7 @@ fn transform_tsconfig_for_docker(
 /// Creates standard TypeScript Dockerfile content (non-monorepo)
 fn create_standard_typescript_dockerfile_content(
     project: &Project,
+    node_version: &str,
 ) -> Result<String, RoutineFailure> {
     let project_root = project.project_location.clone();
     let (install_command, lock_file_copy) =
@@ -1129,15 +1158,17 @@ fn create_standard_typescript_dockerfile_content(
         )
         .replace("INSTALL_COMMAND", &install_command);
 
-    Ok(format!("{TS_BASE_DOCKER_FILE}{install}"))
+    let ts_base_dockerfile = generate_ts_base_dockerfile(node_version);
+    Ok(format!("{ts_base_dockerfile}{install}"))
 }
 
 /// Creates standard TypeScript Dockerfile and writes it to disk
 fn create_standard_typescript_dockerfile(
     project: &Project,
     internal_dir: &Path,
+    node_version: &str,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let dockerfile_content = create_standard_typescript_dockerfile_content(project)?;
+    let dockerfile_content = create_standard_typescript_dockerfile_content(project, node_version)?;
     let file_path = internal_dir.join("packager/Dockerfile");
 
     fs::write(&file_path, dockerfile_content).map_err(|err| {

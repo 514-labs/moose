@@ -100,10 +100,10 @@ Skip the tutorial and add Moose as a layer on top of your existing database
 ```bash filename="One-line install" copy
 bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 ```
-
-<Callout type="info" title="You should see:" compact={true} icon={CheckCircle}>
-`Moose vX.X.X installed successfully!`
-</Callout>
+You should see:
+```txt filename="Terminal" copy
+Moose vX.X.X installed successfully!
+```
 
 <Callout type="warning" title="Restart your terminal" compact={true}>
 After installation, restart your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`) to ensure the `moose` command is available in your PATH.
@@ -175,7 +175,7 @@ moose dev # This will spin up the Moose, ClickHouse, Redpanda, and Temporal cont
 	Your local development server is running at: http://localhost:4000/ingest
 ```
 
-<Callout type="success" title="Your local analytics stack is running">
+<Callout type="success" title="Your local analytics stack is running" compact={true}>
 You can now send data to Moose and query it. See [step 4](#step-4-test-your-pipeline-2-minutes) for more details.
 </Callout>
 
@@ -227,7 +227,8 @@ Your project includes a complete example pipeline:
         </FileTree>
     </TypeScript>
 
-**Important:** While your pipeline objects are defined in the child folders, they must be imported into the root <TypeScript inline>`index.ts`</TypeScript><Python inline>`main.py`</Python> file for the Moose CLI to discover and use them.
+
+**Important:** While your pipeline objects are defined in the child folders, they **must be imported** into the root <TypeScript inline>`index.ts`</TypeScript><Python inline>`main.py`</Python> file for the Moose CLI to discover and use them.
 
 <TypeScript>
 ```ts filename="app/index.ts" 
@@ -241,20 +242,13 @@ export * from "./workflows/generator"; // Background workflows
 
 <Python>
 ```python filename="app/main.py"
-from .ingest.models import *      # Data models & pipelines
-from .ingest.transform import *   # Transformation logic
-from .apis.bar import *           # API endpoints  
-from .views.bar_aggregated import * # Materialized views
-from .workflows.generator import *  # Background workflows
+from app.ingest.models import *      # Data models & pipelines
+from app.ingest.transform import *   # Transformation logic
+from app.apis.bar import *           # API endpoints  
+from app.views.bar_aggregated import * # Materialized views
+from app.workflows.generator import *  # Background workflows
 ```
 </Python>
-
-<Callout type="info" title="Why this matters" >
-
-- The CLI scans the root file to find all your pipeline components
-- If you create new models, APIs, or workflows but forget to export/import them, they won't be available
-- This pattern keeps your code organized while ensuring everything is discoverable
-</Callout>
 
 
 ## Step 4: Test Your Pipeline (2 minutes)
@@ -279,13 +273,16 @@ moose workflow run generator
 </Python>
 
 <ToggleBlock openText="Understanding the generator workflow" closeText="Hide details">
-**How it works:**
+
+<Callout type="info" title="How it works" compact={true} icon={false}>
 - Generates 1000 fake records with realistic data (using the Faker library)
 - Sends each record to your ingestion API via HTTP POST
 - Runs as a background task managed by Temporal
 - Helps you test your entire pipeline without needing real data
 
 You can see the code in the <TypeScript inline>`/workflows/generator.ts`</TypeScript><Python inline>`/workflows/generator.py`</Python> file.
+</Callout>
+
 </ToggleBlock>
 
 You should see logs like:
@@ -295,8 +292,8 @@ POST ingest/Foo
 Received Foo_0_0 -> Bar_0_0 1 message(s)
 [DB] 17 row(s) successfully written to DB table (Bar)
 ```
-<Callout type="info" title="Workflow Status" compact={true}>
-The workflow runs in the background and is powered by [Temporal](https://temporal.io). You can check its status in the Temporal UI at `http://localhost:8080` (if you have the management dashboard enabled).
+<Callout type="info" title="View Temporal Dashboard to see workflow status" compact={true}>
+The workflow runs in the background and is powered by [Temporal](https://temporal.io). When you run the `moose workflow run` command, you'll see a message showing the workflow has been triggered and a link to the Temporal UI at `http://localhost:8080`.
 </Callout>
 
 <ToggleBlock openText="(Bonus) Peek at your data" closeText="Hide details">
@@ -467,9 +464,8 @@ You've built a complete analytical backend with:
   bulletStyle="check"
   title="What's Working"
   bullets={[
-    { title: "Type-safe data ingestion API" },
-    { title: "Real-time stream processing" },
-    { title: "ClickHouse database with auto-schema" },
+    { title: "Type-safe ingestion pipeline with API and stream processing" },
+    { title: "ClickHouse database with dynamic schema management" },
     { title: "Analytics API with filtering" },
     { title: "Hot-reload development" }
   ]}

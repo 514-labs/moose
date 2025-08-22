@@ -2,15 +2,14 @@
 
 from moose_lib import MooseClient, Api, MooseCache
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from app.views.bar_aggregated import barAggregatedMV
 from datetime import datetime, timezone
 
 # Query params are defined as Pydantic models and are validated automatically
 class QueryParams(BaseModel):
-    order_by: Optional[str] = Field(
+    order_by: Optional[Literal["total_rows", "rows_with_text", "max_text_length", "total_text_length"]] = Field(
         default="total_rows",
-        pattern=r"^(total_rows|rows_with_text|max_text_length|total_text_length)$",
         description="Must be one of: total_rows, rows_with_text, max_text_length, total_text_length"
     )
     limit: Optional[int] = Field(

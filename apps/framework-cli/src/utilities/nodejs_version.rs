@@ -35,10 +35,6 @@ const NODE_LTS_VERSIONS: &[NodeVersion] = &[
         major: 22,
         is_lts: true,
     },
-    NodeVersion {
-        major: 24,
-        is_lts: true,
-    },
 ];
 
 /// Parses the engines field from package.json and returns the Node.js version requirement
@@ -191,8 +187,8 @@ mod tests {
         assert!(version.major >= 18);
         assert!(version.is_lts);
 
-        // Test that it picks the highest compatible version (should be 24)
-        assert_eq!(version.major, 24);
+        // Test that it picks the highest compatible version (should be 22)
+        assert_eq!(version.major, 22);
 
         // Test with constraint that should pick specific version
         let req_20 = VersionReq::parse("^20.0.0").unwrap();

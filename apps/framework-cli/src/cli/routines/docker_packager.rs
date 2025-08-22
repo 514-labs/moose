@@ -408,26 +408,10 @@ pub fn create_dockerfile(
                     None => "# No lock file found".to_string(),
                 };
 
-                let deploy_install_command = match lock_file_name {
-                    Some("pnpm-lock.yaml") => format!(
-                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy --legacy",
-                        relative_project_path.to_string_lossy()
-                    ),
-                    Some("package-lock.json") => {
-                        "RUN npm ci --prefix /temp-deploy --production".to_string()
-                    }
-                    Some("yarn.lock") => {
-                        "RUN yarn install --production --cwd /temp-deploy".to_string()
-                    }
-                    Some(_) => format!(
-                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy --legacy",
-                        relative_project_path.to_string_lossy()
-                    ), // fallback
-                    None => format!(
-                        "RUN pnpm --filter \"./{}\" deploy /temp-deploy",
-                        relative_project_path.to_string_lossy()
-                    ), // no lock file
-                };
+                let deploy_install_command = format!(
+                    "RUN pnpm --filter \"./{}\" deploy /temp-deploy --legacy",
+                    relative_project_path.to_string_lossy()
+                );
 
                 // Modify the copy commands to copy from the build stage
                 let copy_from_build = format!(

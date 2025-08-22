@@ -1,4 +1,4 @@
-## This is the documentation for MooseStack
+## This is the documentation for MooseStack's documentation website 
 
 To run the dev environment locally :
 

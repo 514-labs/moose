@@ -13,26 +13,33 @@ import { Lightbulb } from "lucide-react";
 
 ## Overview
 
-Materialized views are write-time pipelines. They run a static `SELECT` to transform data from one or more source table(s) to a target destination table. You query the destination table like any other table. The MaterializedView class wraps ClickHouse's `MATERIALIZED VIEW` functionality, letting you model these transformations in code rather than raw SQL.
+Materialized views are write-time transformations in ClickHouse. A static `SELECT` populates a destination table from one or more sources. You query the destination like any other table. The `MaterializedView` class wraps [ClickHouse `MATERIALIZED VIEW`](https://clickhouse.com/docs/en/sql-reference/statements/create/view/#create-materialized-view) and keeps the `SELECT` explicit. When you edit the destination schema in code and update the `SELECT` accordingly, Moose applies the corresponding DDL, orders dependent updates, and backfills as needed, so the pipeline stays consistent as you iterate in <Python>Python</Python><TypeScript>TypeScript</TypeScript>.
 
-<BulletPointsCard title="Key differences from other databases" bulletStyle="number" compact bullets={[
-    "Requires both a transformation query AND a target table definition",
-    "Automatically handles backfilling historical data",
-    "Manages dependencies between multiple materialized views"
+<BulletPointsCard title="Materialized Views: ClickHouse vs. Other Databases" bulletStyle="number" compact bullets={[
+    "Requires two parts: a SELECT transformation and a destination table schema",
+    "Transformation is write-time: runs on INSERT into source table(s) and writes to the destination table",
+    "SQL‑native pipelines: MV ‘triggers’ live inside ClickHouse, so pipelines are defined and executed entirely in the database — no external orchestrator needed. Cascading MVs require correct DDL order."
 ]} />
 
-<BulletPointsCard title="What Moose handles for you"
+In local dev, Moose Migrate generates and applies DDL to your local database.
+
+<BulletPointsCard title="On change, Moose Migrate:"
 bulletStyle="check"
 compact
 bullets={[
-    "Orchestrates the transformation query and target table setup",
-    "Coordinates cascading dependencies as your pipeline grows",
-    "Automatically manages setup/teardown when you modify pipelines"
+    "Generates and applies destination table DDL when you update the schema in code",
+    "Applies DDL in dependency order across views and tables",
+    "Backfills or rewires when the SELECT changes",
+    "Hot‑reloads the view and destination table locally and keeps APIs in sync"
 ]}
 />
 
+<Callout type="info" title="Roadmap: inferring schema from SELECT" compact>
+Today, destination schemas are declared in code and kept in sync manually with your `SELECT`. Moose Migrate coordinates DDL and dependencies when you make those changes. A future enhancement will infer the destination schema from the `SELECT` and update it automatically.
+</Callout>
+
 <Callout type="info" title="Dependency awareness" compact icon={Lightbulb}>
-This dependency awareness becomes crucial as you build more complex data pipelines with multiple materialized views that depend on each other.
+This dependency awareness is critical for [cascading materialized views](https://clickhouse.com/docs/en/sql-reference/statements/create/view/#create-materialized-view-with-dependencies). Moose Migrate [orders DDL across views and tables](https://www.fiveonefour.com/blog/Moose-SQL-Getting-DDL-Dependencies-in-Order) to avoid failed migrations and partial states.
 </Callout>
 
 ### Basic Usage

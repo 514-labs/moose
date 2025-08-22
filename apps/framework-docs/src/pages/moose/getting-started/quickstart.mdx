@@ -105,6 +105,10 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 `Moose vX.X.X installed successfully!`
 </Callout>
 
+<Callout type="warning" title="Restart your terminal" compact={true}>
+After installation, close and reopen your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`) to ensure the `moose` command is available in your PATH.
+</Callout>
+
 <br />
 
 ## Step 2: Create Your Project (1 minute)
@@ -134,13 +138,24 @@ pip install -r requirements.txt
 ```
 </Python>
 
+### Verify Docker is running
+
+<Callout type="warning" title="Docker must be running" compact={true}>
+Make sure Docker Desktop is running before proceeding. Moose uses Docker to run ClickHouse, Redpanda, and Temporal locally.
+</Callout>
+
+```bash filename="Verify Docker is running" copy
+docker ps
+```
+
+You should see an empty list or existing containers. If you get an error, start Docker Desktop and wait for it to fully initialize.
+
 ### Start your development environment
 
 ```bash filename="Terminal" copy
 moose dev
 ```
 
-<ToggleBlock openText="Show expected output" closeText="Hide output">
 ```txt
        Created docker compose file
 ⡗ Starting local infrastructure
@@ -167,8 +182,6 @@ moose dev
 <Callout type="success" title="Your local analytics stack is running">
 You can now send data to Moose and query it.
 </Callout>
-</ToggleBlock>
-
 
 </Steps>
 
@@ -179,7 +192,9 @@ Your project includes a complete example pipeline:
 <Python>
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
-<FileTree.File name="main.py" />
+<FileTree.Folder name="apis">
+<FileTree.File name="bar.py" />
+</FileTree.Folder>
 <FileTree.Folder name="ingest" defaultOpen>
 <FileTree.File name="models.py" />
 <FileTree.File name="transform.py" />
@@ -187,9 +202,10 @@ Your project includes a complete example pipeline:
 <FileTree.Folder name="views">
 <FileTree.File name="bar_aggregated.py" />
 </FileTree.Folder>
-<FileTree.Folder name="apis">
-<FileTree.File name="bar.py" />
+<FileTree.Folder name="workflows">
+<FileTree.File name="generator.py" />
 </FileTree.Folder>
+<FileTree.File name="main.py" />
 </FileTree.Folder>
 </FileTree>
 </Python>
@@ -197,7 +213,9 @@ Your project includes a complete example pipeline:
 <TypeScript>
 <FileTree>
 <FileTree.Folder name="app" defaultOpen>
-<FileTree.File name="index.ts" />
+<FileTree.Folder name="apis">
+<FileTree.File name="bar.ts" />
+</FileTree.Folder>
 <FileTree.Folder name="ingest" defaultOpen>
 <FileTree.File name="models.ts" />
 <FileTree.File name="transform.ts" />
@@ -205,18 +223,43 @@ Your project includes a complete example pipeline:
 <FileTree.Folder name="views">
 <FileTree.File name="barAggregated.ts" />
 </FileTree.Folder>
-<FileTree.Folder name="apis">
-<FileTree.File name="bar.ts" />
+<FileTree.Folder name="workflows">
+<FileTree.File name="generator.ts" />
 </FileTree.Folder>
+<FileTree.File name="index.ts" />
 </FileTree.Folder>
 </FileTree>
 </TypeScript>
 
-<Callout type="info" title="Browse your project files" >
-Review the files located within your `/app` directory to see start understanding how data flows from ingestion to analytics APIs.
+**Important:** While your pipeline objects are defined in the child folders, they must be imported into the root <TypeScript inline>`index.ts`</TypeScript><Python inline>`main.py`</Python> file for the Moose CLI to discover and use them.
+
+<TypeScript>
+```ts filename="app/index.ts" 
+export * from "./ingest/models";      // Data models & pipelines
+export * from "./ingest/transforms";  // Transformation logic  
+export * from "./apis/bar";           // API endpoints
+export * from "./views/barAggregated"; // Materialized views
+export * from "./workflows/generator"; // Background workflows
+```
+</TypeScript>
+
+<Python>
+```python filename="app/main.py"
+from .ingest.models import *      # Data models & pipelines
+from .ingest.transform import *   # Transformation logic
+from .apis.bar import *           # API endpoints  
+from .views.bar_aggregated import * # Materialized views
+from .workflows.generator import *  # Background workflows
+```
+</Python>
+
+<Callout type="info" title="Why this matters" >
+
+- The CLI scans the root file to find all your pipeline components
+- If you create new models, APIs, or workflows but forget to export/import them, they won't be available
+- This pattern keeps your code organized while ensuring everything is discoverable
 </Callout>
 
-<br />
 
 ## Step 4: Test Your Pipeline (2 minutes)
 
@@ -226,6 +269,7 @@ Review the files located within your `/app` directory to see start understanding
 <Callout type="info" title="Open a new terminal window to run these commands" icon={Terminal} compact={true}>
 </Callout>
 
+Your project comes with a pre-built [Workflow](../workflows) called `generator` that acts as a **data simulator**. Trigger the workflow with:
 <TypeScript>
 ```bash filename="Open a new terminal window" copy
 moose workflow run generator
@@ -238,6 +282,16 @@ moose workflow run generator
 ```
 </Python>
 
+<ToggleBlock openText="Understanding the generator workflow" closeText="Hide details">
+**How it works:**
+- Generates 1000 fake records with realistic data (using the Faker library)
+- Sends each record to your ingestion API via HTTP POST
+- Runs as a background task managed by Temporal
+- Helps you test your entire pipeline without needing real data
+
+You can see the code in the <TypeScript inline>`/workflows/generator.ts`</TypeScript><Python inline>`/workflows/generator.py`</Python> file.
+</ToggleBlock>
+
 You should see logs like:
 ```txt
 POST ingest/Foo
@@ -245,27 +299,94 @@ POST ingest/Foo
 Received Foo_0_0 -> Bar_0_0 1 message(s)
 [DB] 17 row(s) successfully written to DB table (Bar)
 ```
+<Callout type="info" title="Workflow Status" compact={true}>
+The workflow runs in the background and is powered by [Temporal](https://temporal.io). You can check its status in the Temporal UI at `http://localhost:8080` (if you have the management dashboard enabled).
+</Callout>
 
 <ToggleBlock openText="(Bonus) Peek at your data" closeText="Hide details">
-Run this helper command to peek at your data in ClickHouse:
+**What this command does:**
+- Directly queries your ClickHouse database to show raw data
+- Useful for debugging and verifying data was processed correctly
 
 ```bash filename="Terminal" copy
 moose peek Bar --limit 5
 ```
 
+You should see output like:
+```txt
+┌─primaryKey─────────────────────────┬─utcTimestamp────────┬─hasText─┬─textLength─┐
+│ 123e4567-e89b-12d3-a456-426614174000 │ 2024-01-15 10:30:00 │       1 │         42 │
+│ 987fcdeb-51a2-43d1-b789-123456789abc │ 2024-01-15 10:31:00 │       0 │          0 │
+└────────────────────────────────────┴─────────────────────┴─────────┴────────────┘
+```
+
+If you see 0 rows, wait a few seconds for the workflow to process data, then try again.
+
 </ToggleBlock>
 
 ### Query your data
 
+You application has a pre-built [API](../apis) that reads from your database. The API is running on a webserver running on `localhost:4000`. Call the API with `curl`:
+
 ```bash filename="Terminal" copy
 curl "http://localhost:4000/consumption/bar"
 ```
-You should see JSON data with your processed events.
 
-
-```bash filename="Try adding a query parameter!" copy
-curl "http://localhost:4000/consumption/bar?limit=5"
+You should see JSON data like:
+```json
+[
+  {
+    "dayOfMonth": 15,
+    "totalRows": 67,
+    "rowsWithText": 34,
+    "maxTextLength": 142,
+    "totalTextLength": 2847
+  },
+  {
+    "dayOfMonth": 14,
+    "totalRows": 43,
+    "rowsWithText": 21,
+    "maxTextLength": 98,
+    "totalTextLength": 1923
+  }
+]
 ```
+
+**Try query parameters:**
+```bash filename="Add filters and limits" copy
+curl "http://localhost:4000/consumption/bar?limit=5&orderBy=totalRows"
+```
+
+<Callout type="info" title="Port Reference" compact={true}>
+- **Port 4000**: Your Moose application webserver (all APIs are running on this port)
+- **Port 8080**: Temporal UI dashboard (workflow management)
+- **Port 18123**: ClickHouse HTTP interface (direct database access)
+</Callout>
+
+<ToggleBlock openText="Troubleshooting" closeText="Hide troubleshooting">
+**If the workflow command doesn't work:**
+- Make sure you're in the project directory (`cd my-analytics-app`)
+- Verify `moose dev` is still running in your first terminal
+- Check that Docker containers are running: `docker ps`
+
+**If curl returns an error:**
+- Verify the URL is `http://localhost:4000` (not 8080)
+- Make sure the workflow has had time to generate data (wait 30-60 seconds)
+- Check your `moose dev` terminal for error messages
+
+**If you get HTML instead of JSON:**
+- You might be hitting the wrong port - use 4000, not 8080
+- Port 8080 serves the Temporal UI (workflow dashboard), not your API
+
+**If `moose peek Bar` shows 0 rows:**
+- Wait for the workflow to complete (it processes 1000 records)
+- Check the workflow is running: look for "Ingested X records..." messages
+- Verify no errors in your `moose dev` terminal logs
+
+**If you see connection refused:**
+- Restart `moose dev` and wait for "Started Webserver" message
+- Check if another process is using port 4000: `lsof -i :4000`
+</ToggleBlock>
 
 ### Explore with OpenAPI UI
 
@@ -283,6 +404,7 @@ curl "http://localhost:4000/consumption/bar?limit=5"
   muted={true}
   loop={true}
 />
+
 </Steps>
 
 

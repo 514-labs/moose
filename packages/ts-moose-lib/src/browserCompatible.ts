@@ -15,6 +15,8 @@ export {
   IngestConfig,
   Api,
   ApiConfig,
+  ConsumptionApi,
+  EgressConfig,
   IngestPipeline,
   SqlResource,
   View,
@@ -33,8 +35,9 @@ export {
   ClickHouseInt,
   LowCardinality,
   ClickHouseNamedTuple,
+  ClickHouseDefault,
 } from "./dataModels/types";
 
-export type { ApiUtil } from "./consumption-apis/helpers";
+export type { ApiUtil, ConsumptionUtil } from "./consumption-apis/helpers";
 
 export * from "./sqlHelpers";

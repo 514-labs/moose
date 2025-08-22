@@ -120,3 +120,9 @@ export class Api<T, R = any> extends TypedBase<T, ApiConfig<T>> {
     return data as R;
   }
 }
+
+/** @deprecated Use ApiConfig<T> directly instead. */
+export type EgressConfig<T> = ApiConfig<T>;
+
+/** @deprecated Use Api directly instead. */
+export const ConsumptionApi = Api;

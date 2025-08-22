@@ -16,11 +16,11 @@ export * from "./commons";
 export * from "./consumption-apis/helpers";
 export * from "./scripts/task";
 
-export { createApi } from "./consumption-apis/runner";
+export { createApi, createConsumptionApi } from "./consumption-apis/runner";
 
 export { MooseCache } from "./clients/redisClient";
 
-export { ApiUtil } from "./consumption-apis/helpers";
+export { ApiUtil, ConsumptionUtil } from "./consumption-apis/helpers";
 
 export * from "./utilities";
 export * from "./connectors/dataSource";

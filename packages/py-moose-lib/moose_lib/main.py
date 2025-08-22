@@ -147,6 +147,11 @@ class ApiResult:
     body: Any
 
 
+# Backward compatibility alias (deprecated)
+ConsumptionApiResult = ApiResult
+"""@deprecated: Use ApiResult instead of ConsumptionApiResult"""
+
+
 class QueryClient:
     """Client for executing queries, typically against ClickHouse.
 

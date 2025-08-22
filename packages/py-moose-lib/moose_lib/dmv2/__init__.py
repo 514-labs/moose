@@ -46,6 +46,9 @@ from .consumption import (
     Api,
     get_moose_base_url,
     set_moose_base_url,
+    # Backward compatibility aliases
+    ConsumptionApi,
+    EgressConfig,
 )
 
 from .sql_resource import (
@@ -85,6 +88,9 @@ from .registry import (
     get_sql_resource,
     get_workflows,
     get_workflow,
+    # Backward compatibility aliases
+    get_consumption_apis,
+    get_consumption_api,
 )
 
 __all__ = [
@@ -123,6 +129,9 @@ __all__ = [
     'Api',
     'get_moose_base_url',
     'set_moose_base_url',
+    # Backward compatibility aliases (deprecated)
+    'ConsumptionApi',
+    'EgressConfig',
 
     # SQL
     'SqlResource',
@@ -152,4 +161,7 @@ __all__ = [
     'get_sql_resource',
     'get_workflows',
     'get_workflow',
+    # Backward compatibility aliases (deprecated)
+    'get_consumption_apis',
+    'get_consumption_api',
 ]

@@ -59,6 +59,8 @@ use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
 use crate::framework::core::migration_plan::MIGRATION_SCHEMA;
 use anyhow::Result;
+use std::time::Duration;
+use tokio::time::timeout;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -108,6 +110,47 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
         }));
     }
     Ok(())
+}
+
+/// Runs local infrastructure with a configurable timeout
+async fn run_local_infrastructure_with_timeout(
+    project: &Arc<Project>,
+    settings: &Settings,
+) -> anyhow::Result<()> {
+    let timeout_duration = Duration::from_secs(settings.dev.infrastructure_timeout_seconds);
+
+    // Wrap the synchronous function in a blocking task to make it work with timeout
+    let run_future = tokio::task::spawn_blocking({
+        let project = project.clone();
+        let settings = settings.clone();
+        move || {
+            let docker_client = DockerClient::new(&settings);
+            run_local_infrastructure(&project, &settings, &docker_client)
+        }
+    });
+
+    match timeout(timeout_duration, run_future).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(e)) => Err(e.into()),
+        Err(_) => {
+            Err(anyhow::anyhow!(
+                "Docker container startup and validation timed out after {} seconds.\n\n\
+                This usually happens when Docker is in an unresponsive state.\n\n\
+                Troubleshooting steps:\n\
+                • Check if Docker is running: `docker info`\n\
+                • Stop existing containers: `docker stop $(docker ps -aq)`\n\
+                • Restart Docker Desktop (if using Desktop)\n\
+                • On Linux, restart Docker daemon: `sudo systemctl restart docker`\n\
+                • Check for port conflicts: `lsof -i :4000-4002`\n\
+                • If the issue persists, you can increase the timeout in your Moose configuration:\n\
+                  [dev]\n\
+                  infrastructure_timeout_seconds = {}\n\n\
+                For more help, visit: https://docs.moosejs.com/help/troubleshooting",
+                timeout_duration.as_secs(),
+                timeout_duration.as_secs() * 2
+            ))
+        }
+    }
 }
 
 pub async fn top_command_handler(
@@ -320,15 +363,15 @@ pub async fn top_command_handler(
                 machine_id.clone(),
             );
 
-            let docker_client = DockerClient::new(&settings);
-
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc, &settings, &docker_client).map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Dev".to_string(),
-                    details: format!("Failed to run local infrastructure: {e:?}"),
-                })
-            })?;
+            run_local_infrastructure_with_timeout(&project_arc, &settings)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to run local infrastructure: {e:?}"),
+                    })
+                })?;
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {

@@ -228,3 +228,11 @@ class Api(BaseTypedResource, Generic[U]):
         # Parse JSON response and return as the expected type
         response_data = response.json()
         return self._u.model_validate(response_data)
+
+
+# Backward compatibility aliases (deprecated)
+ConsumptionApi = Api
+"""@deprecated: Use Api instead of ConsumptionApi"""
+
+EgressConfig = ApiConfig
+"""@deprecated: Use ApiConfig instead of EgressConfig"""

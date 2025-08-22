@@ -59,3 +59,7 @@ export type ClickHouseInt<
 export type ClickHouseNamedTuple = {
   _clickhouse_mapped_type?: "namedTuple";
 };
+
+export type ClickHouseDefault<SqlExpression extends string> = {
+  _clickhouse_default?: SqlExpression;
+};

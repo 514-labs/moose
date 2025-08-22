@@ -24,10 +24,6 @@ impl NodeVersion {
 /// This should be updated periodically or ideally fetched from Node.js release API
 const NODE_LTS_VERSIONS: &[NodeVersion] = &[
     NodeVersion {
-        major: 18,
-        is_lts: true,
-    },
-    NodeVersion {
         major: 20,
         is_lts: true,
     },
@@ -182,9 +178,9 @@ mod tests {
 
     #[test]
     fn test_find_compatible_lts_version() {
-        let req = VersionReq::parse(">=18.0.0").unwrap();
+        let req = VersionReq::parse(">=20.0.0").unwrap();
         let version = find_compatible_lts_version(Some(&req));
-        assert!(version.major >= 18);
+        assert!(version.major >= 20);
         assert!(version.is_lts);
 
         // Test that it picks the highest compatible version (should be 22)
@@ -194,6 +190,16 @@ mod tests {
         let req_20 = VersionReq::parse("^20.0.0").unwrap();
         let version_20 = find_compatible_lts_version(Some(&req_20));
         assert_eq!(version_20.major, 20);
+
+        // Test that >=18.0.0 still works since 20 and 22 satisfy it
+        let req_18_plus = VersionReq::parse(">=18.0.0").unwrap();
+        let version_18_plus = find_compatible_lts_version(Some(&req_18_plus));
+        assert_eq!(version_18_plus.major, 22); // Should pick highest available (22)
+
+        // Test that ^18.0.0 (18.x.x only) falls back to default since 18 is not available
+        let req_18_caret = VersionReq::parse("^18.0.0").unwrap();
+        let version_18_caret = find_compatible_lts_version(Some(&req_18_caret));
+        assert_eq!(version_18_caret.major, 20); // Should fall back to default (20)
     }
 
     #[test]

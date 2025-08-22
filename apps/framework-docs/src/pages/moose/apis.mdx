@@ -3,7 +3,7 @@ title: Moose APIs
 description: Create type-safe ingestion and analytics APIs for data access and integration
 ---
 
-import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python, CTACards, CTACard } from "@/components";
+import { Callout, LanguageSwitcher, BulletPointsCard, CheckmarkBullets, TypeScript, Python, CTACards, CTACard, ExportRequirement } from "@/components";
 import { Tabs } from "nextra/components";
 
 # Moose APIs
@@ -42,6 +42,8 @@ The APIs module provides standalone HTTP endpoints for data ingestion and analyt
 
 ## Basic Examples
 
+<ExportRequirement primitive="API" example="export { userEventsApi, userDataApi }" />
+
 ### Ingestion API
 
 <TypeScript>
@@ -56,7 +58,7 @@ interface UserEvent {
 }
 
 // Create a standalone ingestion API
-const userEventsApi = new IngestApi<UserEvent>("user-events", {
+export const userEventsApi = new IngestApi<UserEvent>("user-events", {
   destination: eventStream
 });
 ```
@@ -76,6 +78,8 @@ class UserEvent(BaseModel):
 
 # Create a standalone ingestion API
 user_events_api = IngestApi[UserEvent]("user-events", IngestConfig(destination=event_stream))
+
+# No export needed - Python modules are automatically discovered
 ```
 </Python>
 
@@ -97,7 +101,7 @@ interface ResultData {
 }
 
 // Create a standalone analytics API
-const userDataApi = new Api<Params, ResultData[]>("user-data", 
+export const userDataApi = new Api<Params, ResultData[]>("user-data", 
   async ({ userId, limit }, { client, sql }) => {
     // Query external service or custom logic
     return [
@@ -128,6 +132,8 @@ def query_function(client: MooseClient, params: QueryParams) -> list[UserData]:
     return client.query.execute(sql)
 
 user_data_api = Api[Params, ResultData]("get-data", query_function)
+
+# No export needed - Python modules are automatically discovered
 ```
 </Python>
 

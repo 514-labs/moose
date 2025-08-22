@@ -55,7 +55,7 @@ interface TargetSchema {
   average_rating: number;
   num_reviews: number;
 }
-const mv = new MaterializedView<TargetSchema>({
+export const mv = new MaterializedView<TargetSchema>({
   // The transformation to run on the source table
   selectStatement: sql`
   SELECT

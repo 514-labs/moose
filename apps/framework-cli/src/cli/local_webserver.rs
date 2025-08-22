@@ -79,7 +79,7 @@ use std::future::Future;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
@@ -120,7 +120,7 @@ pub struct RouteMeta {
 }
 
 fn resolve_ingest_route_v2(
-    incoming_route: &PathBuf,
+    incoming_route: &Path,
     route_table: &HashMap<PathBuf, RouteMeta>,
 ) -> Option<PathBuf> {
     let incoming_route_str = incoming_route.to_str()?;
@@ -1209,7 +1209,7 @@ async fn router(
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
                 let route_table_read = route_table.read().await;
-                let final_path = resolve_ingest_route_v2(&route, &*route_table_read);
+                let final_path = resolve_ingest_route_v2(&route, &route_table_read);
 
                 if let Some(final_path) = final_path {
                     ingest_route(

@@ -12,7 +12,7 @@ import { ShieldCheck } from "lucide-react";
 <LanguageSwitcher />
 
 <Callout type="info" title="OLAP Migrations" href={`${PathConfig.migrate.path}/migration-types`} ctaLabel="View Docs" compact>
-This page covers OLAP migrations. For migrations across the Moose stack, see the Migrate docs.
+This page covers OLAP migrations. For migrations across the MooseStack, see the Migrate docs.
 </Callout>
 
 ## Overview
@@ -23,11 +23,11 @@ Migrations are designed for two complementary goals:
 - Be deliberate in production by executing a reviewed, versioned plan that matches your intent and protects data.
 
 How to think about it:
-- Development mode: You edit code, Moose infers the SQL and immediatelyapplies it to local ClickHouse. Great for rapid iteration; not guaranteed to infer intent (e.g., renames).
-- Production (planned) mode: You generate a plan from the target environment vs your code, review and commit the plan, and Moose executes it deterministically during deploy with drift checks.
+- Development mode: You edit code, MooseStack infers the SQL and immediately applies it to local ClickHouse. Great for rapid iteration; not guaranteed to infer intent (e.g., renames).
+- Production (planned) mode: You generate a plan from the target environment vs your code, review and commit the plan, and MooseStack executes it deterministically during deploy with drift checks.
 
 What you need to do:
-- In dev: just code. Moose handles local diffs automatically.
+- In dev: just code. MooseStack handles local diffs automatically.
 - In prod (OLAP):
   - Generate and save a plan:
     ```bash
@@ -35,14 +35,14 @@ What you need to do:
     ```
   - Review and edit the plan (`plan.yaml`) as needed
   - Commit the plan to source control
-  - Deploy to production. Moose validates snapshots (current DB vs `remote_state.json`, desired code vs `local_infra_map.json`) and executes `plan.yaml` in order. If drift is detected, the deploy aborts; regenerate the plan and retry.
+  - Deploy to production. MooseStack validates snapshots (current DB vs `remote_state.json`, desired code vs `local_infra_map.json`) and executes `plan.yaml` in order. If drift is detected, the deploy aborts; regenerate the plan and retry.
 
 
 ## Development Workflow
 
 ### Starting the Runtime
 
-Use `moose dev` to start the Moose runtime with automatic migration detection:
+Use `moose dev` to start the MooseStack runtime with automatic migration detection:
 
 ```bash
 moose dev
@@ -58,7 +58,7 @@ moose dev
 
 ### Hot-Reloaded Migrations
 
-Moose continuously monitors your code changes and applies migrations automatically. All changes are applied to your **local database only**.
+MooseStack continuously monitors your code changes and applies migrations automatically. All changes are applied to your **local database only**.
 
 <TypeScript>
 ```ts filename="app/tables/events.ts" copy
@@ -130,7 +130,7 @@ You can review and edit the plan as needed. The plan is a YAML file that contain
 
 ### Applying the Plan
  
-The plan is applied during deployment. Moose will validate that the remote database state matches the snapshot of the database state at the time the plan was generated, and applies `plan.yaml` in order; it aborts if snapshots don’t match current state.
+The plan is applied during deployment. MooseStack will validate that the remote database state matches the snapshot of the database state at the time the plan was generated, and applies `plan.yaml` in order; it aborts if snapshots don’t match current state.
 
 
 ## Migration Types

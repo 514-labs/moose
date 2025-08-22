@@ -31,6 +31,7 @@ use routines::scripts::{
 use routines::templates::list_available_templates;
 
 use settings::Settings;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -195,6 +196,7 @@ pub async fn top_command_handler(
                 Some(name.to_string()),
                 &settings,
                 machine_id.clone(),
+                HashMap::from([("template".to_string(), template.to_string())]),
             );
 
             check_project_name(name)?;
@@ -229,6 +231,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -304,6 +307,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 let docker_client = DockerClient::new(&settings);
@@ -323,6 +327,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 // Use the new build_package function instead of Docker build
@@ -361,6 +366,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -428,6 +434,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 check_project_name(&project_arc.name())?;
@@ -450,6 +457,7 @@ pub async fn top_command_handler(
                     Some(project.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 check_project_name(&project.name())?;
@@ -626,6 +634,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             routines::start_production_mode(&settings, project_arc, arc_metrics, redis_client)
@@ -653,6 +662,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project.name())?;
@@ -682,6 +692,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -706,6 +717,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project.name())?;
@@ -743,6 +755,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = show_processes(project_arc);
@@ -769,6 +782,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let res = if project_arc.features.data_model_v2 {
@@ -800,6 +814,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             // Default to table if neither table nor stream is specified
@@ -822,6 +837,7 @@ pub async fn top_command_handler(
                 None,
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = run_console().await;
@@ -859,6 +875,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = match &workflow_args.command {
@@ -913,6 +930,7 @@ pub async fn top_command_handler(
                         None,
                         &settings,
                         machine_id.clone(),
+                        HashMap::new(),
                     );
 
                     let result = list_available_templates(CLI_VERSION).await;
@@ -933,6 +951,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let output = remote_refresh(&project, url, token).await.map_err(|e| {

@@ -92,6 +92,7 @@ pub fn capture_usage(
     project_name: Option<String>,
     settings: &Settings,
     machine_id: String,
+    parameters: HashMap<String, String>,
 ) -> Option<tokio::task::JoinHandle<()>> {
     // Skip if telemetry is disabled
     if !settings.telemetry.enabled {
@@ -109,6 +110,10 @@ pub fn capture_usage(
     context.insert("command".into(), json!(activity_type));
     context.insert("sequence_id".into(), sequence_id.into());
     context.insert("project".into(), project.into());
+
+    parameters.iter().for_each(|(key, value)| {
+        context.insert(key.to_string(), value.to_string().into());
+    });
 
     // Add list of flags used on the CLI invocation, if any
     let flags = collect_cli_flags();

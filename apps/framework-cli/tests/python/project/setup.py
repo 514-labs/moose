@@ -8,5 +8,5 @@ setup(
     name='test_project',
     version='0.0',
     install_requires=requirements,
-    python_requires='>=3.12',
+    python_requires='&gt;&#x3D;3.12',
 )

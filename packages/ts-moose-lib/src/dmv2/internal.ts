@@ -51,7 +51,8 @@ const defaultRetentionPeriod = 60 * 60 * 24 * 7;
  * @returns The version string with dots replaced by underscores (e.g., "1_2_3")
  */
 const formatVersionForKey = (version: string): string => {
-  return version.replace(/\./g, "_");
+  // Normalize version for IDs and topic keys: replace dots and slashes
+  return version.replace(/[./]/g, "_");
 };
 
 /**

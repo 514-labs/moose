@@ -18,7 +18,8 @@ from .life_cycle import LifeCycle
 def generate_stream_key(name: str, version: Optional[str]) -> str:
     """Generate a unique key for the stream based on its name and version."""
     if version:
-        version_suffix = version.replace(".", "_")
+        # Normalize version for IDs and topic keys: replace dots and slashes
+        version_suffix = version.replace(".", "_").replace("/", "_")
         return f"{name}_{version_suffix}"
     return name
 
@@ -164,7 +165,7 @@ class Stream(TypedMooseResource, Generic[T]):
         if not topic_version:
             return self.name
         else:
-            version_suffix = topic_version.replace(".", "_")
+            version_suffix = topic_version.replace(".", "_").replace("/", "_")
             return f"{self.name}_{version_suffix}"
 
     def has_consumers(self) -> bool:

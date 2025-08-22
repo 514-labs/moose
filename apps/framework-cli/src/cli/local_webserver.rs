@@ -1139,7 +1139,9 @@ async fn router(
                 .await
             }
         }
-        (Some(configured_producer), &hyper::Method::POST, ["ingest", _, _]) => {
+        (Some(configured_producer), &hyper::Method::POST, route_segments)
+            if route_segments.len() >= 3 && route_segments[0] == "ingest" =>
+        {
             ingest_route(
                 req,
                 route,

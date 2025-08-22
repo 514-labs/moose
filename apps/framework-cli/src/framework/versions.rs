@@ -81,7 +81,8 @@ impl Version {
     /// assert_eq!(version.as_suffix(), "1_2_3");
     /// ```
     pub fn as_suffix(&self) -> String {
-        self.version.replace('.', "_")
+        // Normalize version for identifiers: replace dots and slashes with underscores
+        self.version.replace('.', "_").replace('/', "_")
     }
 
     /// Returns the parsed version components as a slice of integers.

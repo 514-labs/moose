@@ -32,7 +32,7 @@ model_config = ConfigDict(alias_generator=AliasGenerator(
 
 def generate_versioned_key(name: str, version: Optional[str]) -> str:
     if (version is not None):
-        version_suffix = version.replace(".", "_")
+        version_suffix = version.replace(".", "_").replace("/", "_")
         return f"{name}_{version_suffix}"
     else:
         return name

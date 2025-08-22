@@ -1,11 +1,11 @@
-import { ConsumptionApi } from "@514labs/moose-lib";
+import { Api } from "@514labs/moose-lib";
 
 interface WorkflowResponse {
   workflowId: string;
   status: string;
 }
 
-const triggerApi = new ConsumptionApi<{}, WorkflowResponse>(
+const triggerApi = new Api<{}, WorkflowResponse>(
   "start-workflow",
   async (_, { client }) => {
     // Trigger the workflow with input parameters
@@ -18,7 +18,7 @@ const triggerApi = new ConsumptionApi<{}, WorkflowResponse>(
   },
 );
 
-const terminateAPI = new ConsumptionApi<{}, WorkflowResponse>(
+const terminateAPI = new Api<{}, WorkflowResponse>(
   "terminate-workflow",
   async (_, { client }) => {
     // Terminate the workflow by name

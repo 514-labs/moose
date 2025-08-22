@@ -5,7 +5,7 @@
  * This module manages the registration of user-defined dmv2 resources (Tables, Streams, APIs, etc.)
  * and provides functions to serialize these resources into a JSON format (`InfrastructureMap`)
  * expected by the Moose infrastructure management system. It also includes helper functions
- * to retrieve registered handler functions (for streams and egress APIs) and the base class
+ * to retrieve registered handler functions (for streams and APIs) and the base class
  * (`TypedBase`) used by dmv2 resource classes.
  *
  * @internal This module is intended for internal use by the Moose library and compiler plugin.
@@ -13,7 +13,7 @@
  */
 import process from "process";
 import {
-  ConsumptionApi,
+  Api,
   IngestApi,
   SqlResource,
   Task,
@@ -21,7 +21,7 @@ import {
 } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
-import { ClickHouseEngines, ConsumptionUtil } from "../index";
+import { ClickHouseEngines, ApiUtil } from "../index";
 import { OlapTable } from "./sdk/olapTable";
 import { ConsumerConfig, Stream, TransformConfig } from "./sdk/stream";
 import { compilerLog } from "../commons";
@@ -35,7 +35,7 @@ const moose_internal = {
   tables: new Map<string, OlapTable<any>>(),
   streams: new Map<string, Stream<any>>(),
   ingestApis: new Map<string, IngestApi<any>>(),
-  egressApis: new Map<string, ConsumptionApi<any>>(),
+  apis: new Map<string, Api<any>>(),
   sqlResources: new Map<string, SqlResource>(),
   workflows: new Map<string, Workflow>(),
 };
@@ -134,10 +134,10 @@ interface IngestApiJson {
 }
 
 /**
- * JSON representation of an Egress (Consumption) API configuration.
+ * JSON representation of an API configuration.
  */
-interface EgressApiJson {
-  /** The name of the Egress API endpoint. */
+interface ApiJson {
+  /** The name of the API endpoint. */
   name: string;
   /** Array defining the expected query parameters schema. */
   queryParams: Column[];
@@ -195,13 +195,13 @@ interface SqlResourceJson {
  * This map is serialized to JSON and used by the Moose infrastructure system.
  *
  * @param registry The internal Moose resource registry (`moose_internal`).
- * @returns An object containing dictionaries of tables, topics, ingest APIs, egress APIs, and SQL resources, formatted according to the `*Json` interfaces.
+ * @returns An object containing dictionaries of tables, topics, ingest APIs, APIs, and SQL resources, formatted according to the `*Json` interfaces.
  */
 export const toInfraMap = (registry: typeof moose_internal) => {
   const tables: { [key: string]: TableJson } = {};
   const topics: { [key: string]: StreamJson } = {};
   const ingestApis: { [key: string]: IngestApiJson } = {};
-  const egressApis: { [key: string]: EgressApiJson } = {};
+  const apis: { [key: string]: ApiJson } = {};
   const sqlResources: { [key: string]: SqlResourceJson } = {};
   const workflows: { [key: string]: WorkflowJson } = {};
 
@@ -283,10 +283,10 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.egressApis.forEach((api, key) => {
+  registry.apis.forEach((api, key) => {
     const rustKey =
       api.config.version ? `${api.name}:${api.config.version}` : api.name;
-    egressApis[rustKey] = {
+    apis[rustKey] = {
       name: api.name,
       queryParams: api.columnArray,
       responseSchema: api.responseSchema,
@@ -359,7 +359,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     topics,
     tables,
     ingestApis,
-    egressApis,
+    apis,
     sqlResources,
     workflows,
   };
@@ -460,16 +460,16 @@ export const getStreamingFunctions = async () => {
 
 /**
  * Loads the user's application entry point and extracts all registered
- * Egress API handler functions.
+ * API handler functions.
  *
- * @returns A Map where keys are the names of the Egress APIs and values
+ * @returns A Map where keys are the names of the APIs and values
  *          are their corresponding handler functions.
  */
-export const getEgressApis = async () => {
+export const getApis = async () => {
   loadIndex();
-  const egressFunctions = new Map<
+  const apiFunctions = new Map<
     string,
-    (params: unknown, utils: ConsumptionUtil) => unknown
+    (params: unknown, utils: ApiUtil) => unknown
   >();
 
   const registry = getMooseInternal();
@@ -477,21 +477,21 @@ export const getEgressApis = async () => {
   const versionCountByName = new Map<string, number>();
   const nameToSoleVersionHandler = new Map<
     string,
-    (params: unknown, utils: ConsumptionUtil) => unknown
+    (params: unknown, utils: ApiUtil) => unknown
   >();
 
-  registry.egressApis.forEach((api, key) => {
+  registry.apis.forEach((api, key) => {
     const handler = api.getHandler();
-    egressFunctions.set(key, handler);
+    apiFunctions.set(key, handler);
 
     if (!api.config.version) {
       // Explicit unversioned takes precedence for alias
-      if (!egressFunctions.has(api.name)) {
-        egressFunctions.set(api.name, handler);
+      if (!apiFunctions.has(api.name)) {
+        apiFunctions.set(api.name, handler);
       }
       nameToSoleVersionHandler.delete(api.name);
       versionCountByName.delete(api.name);
-    } else if (!egressFunctions.has(api.name)) {
+    } else if (!apiFunctions.has(api.name)) {
       // Only track versioned for alias if no explicit unversioned present
       const count = (versionCountByName.get(api.name) ?? 0) + 1;
       versionCountByName.set(api.name, count);
@@ -505,12 +505,12 @@ export const getEgressApis = async () => {
 
   // Finalize aliases for names that have exactly one versioned API and no unversioned
   nameToSoleVersionHandler.forEach((handler, name) => {
-    if (!egressFunctions.has(name)) {
-      egressFunctions.set(name, handler);
+    if (!apiFunctions.has(name)) {
+      apiFunctions.set(name, handler);
     }
   });
 
-  return egressFunctions;
+  return apiFunctions;
 };
 
 export const dlqSchema: IJsonSchemaCollection.IV3_1 = {

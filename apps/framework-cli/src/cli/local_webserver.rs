@@ -205,11 +205,17 @@ async fn get_consumption_api_res(
             )))?);
     }
 
+    let full_path = req.uri().path();
+    let stripped_for_proxy = full_path
+        .strip_prefix("/api")
+        .or_else(|| full_path.strip_prefix("/consumption"))
+        .unwrap_or(full_path);
+
     let url = format!(
         "http://{}:{}{}{}",
         host,
         proxy_port,
-        req.uri().path().strip_prefix("/consumption").unwrap_or(""),
+        stripped_for_proxy,
         req.uri()
             .query()
             .map_or("".to_string(), |q| format!("?{q}"))
@@ -219,11 +225,12 @@ async fn get_consumption_api_res(
     {
         let consumption_apis = consumption_apis.read().await;
 
-        let consumption_name = req
-            .uri()
-            .path()
-            .strip_prefix("/consumption/")
-            .unwrap_or(req.uri().path());
+        // Normalize to the API name by removing either prefix
+        let raw_path = req.uri().path();
+        let consumption_name = raw_path
+            .strip_prefix("/api/")
+            .or_else(|| raw_path.strip_prefix("/consumption/"))
+            .unwrap_or(raw_path);
 
         // Allow forwarding even if not an exact match; the proxy layer (runner) will
         // handle aliasing (unversioned -> sole versioned) or return 404.
@@ -1168,7 +1175,8 @@ async fn router(
             .await
         }
         (_, &hyper::Method::GET, route_segments)
-            if route_segments.len() >= 2 && route_segments[0] == "consumption" =>
+            if route_segments.len() >= 2
+                && (route_segments[0] == "api" || route_segments[0] == "consumption") =>
         {
             match get_consumption_api_res(
                 http_client,
@@ -1233,7 +1241,8 @@ async fn router(
                 .await;
         }
 
-        if metrics_path_clone.starts_with("consumption/") {
+        if metrics_path_clone.starts_with("consumption/") || metrics_path_clone.starts_with("api/")
+        {
             let _ = metrics_clone
                 .send_metric_event(MetricEvent::ConsumedEvent {
                     timestamp: Utc::now(),

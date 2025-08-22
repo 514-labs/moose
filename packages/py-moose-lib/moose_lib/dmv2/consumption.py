@@ -1,7 +1,7 @@
 """
-Consumption (Egress) API definitions for Moose Data Model v2 (dmv2).
+API definitions for Moose Data Model v2 (dmv2).
 
-This module provides classes for defining and configuring consumption APIs
+This module provides classes for defining and configuring APIs
 that allow querying data through user-defined functions.
 """
 import os
@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaValue
 
 from .types import BaseTypedResource, T, U
-from ._registry import _egress_apis, _egress_api_name_aliases
+from ._registry import _apis, _api_name_aliases
 
 # Global base URL configuration
 _global_base_url: Optional[str] = None
@@ -22,7 +22,7 @@ def _generate_api_key(name: str, version: Optional[str] = None) -> str:
 
 
 def set_moose_base_url(url: str) -> None:
-    """Set the global base URL for consumption API calls.
+    """Set the global base URL for API calls.
     
     Args:
         url: The base URL to use for API calls
@@ -43,40 +43,40 @@ def get_moose_base_url() -> Optional[str]:
     return os.getenv('MOOSE_BASE_URL')
 
 
-class EgressConfig(BaseModel):
-    """Configuration for Consumption (Egress) APIs.
+class ApiConfig(BaseModel):
+    """Configuration for APIs.
 
     Attributes:
         version: Optional version string.
-        metadata: Optional metadata for the consumption API.
+        metadata: Optional metadata for the API.
     """
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
 
-class ConsumptionApi(BaseTypedResource, Generic[U]):
-    """Represents a Consumption (Egress) API endpoint.
+class Api(BaseTypedResource, Generic[U]):
+    """Represents a API endpoint.
 
     Allows querying data, typically powered by a user-defined function.
     Requires two Pydantic models: `T` for query parameters and `U` for the response body.
 
     Args:
-        name: The name of the consumption API endpoint.
+        name: The name of the API endpoint.
         query_function: The callable that executes the query logic.
                       It receives parameters matching model `T` (and potentially
                       other runtime utilities) and should return data matching model `U`.
         config: Optional configuration (currently only `version`).
         t: A tuple containing the input (`T`) and output (`U`) Pydantic models
-           (passed via `ConsumptionApi[InputModel, OutputModel](...)`).
+           (passed via `Api[InputModel, OutputModel](...)`).
 
     Attributes:
-        config (EgressConfig): Configuration for the API.
+        config (ApiConfig): Configuration for the API.
         query_function (Callable[..., U]): The handler function for the API.
         name (str): The name of the API.
         model_type (type[T]): The Pydantic model for the input/query parameters.
         return_type (type[U]): The Pydantic model for the response body.
     """
-    config: EgressConfig
+    config: ApiConfig
     query_function: Callable[..., U]
     _u: type[U]
 
@@ -91,7 +91,7 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
 
         return curried_constructor
 
-    def __init__(self, name: str, query_function: Callable[..., U], config: EgressConfig = None, version: str = None, **kwargs):
+    def __init__(self, name: str, query_function: Callable[..., U], config: ApiConfig = None, version: str = None, **kwargs):
         super().__init__()
         self._set_type(name, self._get_type(kwargs))
         
@@ -100,7 +100,7 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
             # If config is provided, use it as base
             if version is not None:
                 # If version is also provided, update the config's version
-                self.config = EgressConfig(
+                self.config = ApiConfig(
                     version=version,
                     metadata=config.metadata
                 )
@@ -109,28 +109,28 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
                 self.config = config
         elif version is not None:
             # Only version provided, create new config with version
-            self.config = EgressConfig(version=version)
+            self.config = ApiConfig(version=version)
         else:
             # Neither provided, use default config
-            self.config = EgressConfig()
+            self.config = ApiConfig()
             
         self.query_function = query_function
         self.metadata = getattr(self.config, 'metadata', {}) or {}
         key = _generate_api_key(name, self.config.version)
-        _egress_apis[key] = self
+        _apis[key] = self
 
         # Maintain alias for base name:
         # - If explicit unversioned registered, alias -> that
         # - Else, if exactly one versioned exists, alias -> that
         base = name
         if self.config.version is None:
-            _egress_api_name_aliases[base] = self
+            _api_name_aliases[base] = self
             return
 
         # Versioned registration: only adjust alias if no explicit unversioned exists
-        if base in _egress_apis:
+        if base in _apis:
             # Explicit unversioned present, ensure alias points to it
-            _egress_api_name_aliases[base] = _egress_apis[base]
+            _api_name_aliases[base] = _apis[base]
             return
 
         # Determine if there is exactly one versioned API
@@ -138,16 +138,16 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
         # Early exit on 2 matches to avoid O(n) counting
         match_count = 0
         sole = None
-        for k in _egress_apis.keys():
+        for k in _apis.keys():
             if k.startswith(prefix):
                 match_count += 1
-                sole = _egress_apis[k]
+                sole = _apis[k]
                 if match_count > 1:
                     break
         if match_count == 1 and sole is not None:
-            _egress_api_name_aliases[base] = sole
+            _api_name_aliases[base] = sole
         else:
-            _egress_api_name_aliases.pop(base, None)
+            _api_name_aliases.pop(base, None)
 
     @classmethod
     def _get_type(cls, keyword_args: dict):
@@ -184,7 +184,7 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
         )
 
     def call(self, params: T, base_url: Optional[str] = None) -> U:
-        """Call the consumption API with the given parameters.
+        """Call the API with the given parameters.
         
         Args:
             params: Parameters matching the input model T
@@ -206,7 +206,7 @@ class ConsumptionApi(BaseTypedResource, Generic[U]):
             )
 
         # Construct the API endpoint URL
-        url = f"{effective_base_url.rstrip('/')}/consumption/{self.name}"
+        url = f"{effective_base_url.rstrip('/')}/api/{self.name}"
 
         # Convert Pydantic model to dictionary
         params_dict = params.model_dump()

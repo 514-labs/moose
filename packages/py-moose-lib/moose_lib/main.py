@@ -136,7 +136,7 @@ JWTPayload = Dict[str, Any]
 
 
 @dataclass
-class ConsumptionApiResult:
+class ApiResult:
     """Standard structure for returning results from a Consumption API handler.
 
     Attributes:

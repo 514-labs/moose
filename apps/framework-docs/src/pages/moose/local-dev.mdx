@@ -75,6 +75,7 @@ Only the root file in your `app/` directory is run when changes are detected. In
 
 ## Quick Example
 
+<TypeScript>
 **❌ Doesn't work - No export from root:**
 ```ts file="app/tables/users.ts"
 import { UserSchema } from './schemas/user';
@@ -84,20 +85,41 @@ const usersTable = new OlapTable<UserSchema>("Users");
 ```
 
 **✅ Works - Export from root file:**
-```ts file="app/tables/users.ts" {5}
+```ts file="app/tables/users.ts" {3}
 import { UserSchema } from './schemas/user';
 
-const usersTable = new OlapTable<UserSchema>("Users");
-
-export { usersTable }; // add this line to export the table
+export const usersTable = new OlapTable<UserSchema>("Users");
 ```
 
 ```ts file="app/index.ts"
-import { usersTable } from './tables/users';
-export { usersTable };  // Moose sees this
+export * from './tables/users';  // Moose sees this
 ```
 
 Now because we exported the table from the root file, Moose will detect the change and rebuild the table.
+</TypeScript>
+
+<Python>
+**❌ Doesn't work - No export from root:**
+```py file="app/tables/users.py"
+from schemas.user import UserSchema
+
+users_table = OlapTable[UserSchema]("Users")
+# Moose can't see this - not imported in main.py
+```
+
+**✅ Works - Import in main file:**
+```py file="app/tables/users.py" {3}
+from schemas.user import UserSchema
+
+users_table = OlapTable[UserSchema]("Users")  # No export needed - Python modules are automatically discovered
+```
+
+```py file="app/main.py"
+from tables.users import users_table  # Moose sees this
+```
+
+Now because we imported the table in the main file, Moose will detect the change and rebuild the table.
+</Python>
 
 
 **✅ Works - Change dependency:**

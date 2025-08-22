@@ -55,7 +55,7 @@ interface RawData {
   value: number;
 }
 
-const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+export const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
   ingest: true, // Creates an ingestion API endpoint at `POST /ingest/raw_data`
   stream: true, // Buffers data between the ingestion API and the database table
   table: true // Creates an OLAP table named `raw_data`
@@ -93,16 +93,16 @@ interface RawData {
   value: number;
 }
 // Create a table for the raw data
-const rawTable = new OlapTable<RawData>("raw_data");
+export const rawTable = new OlapTable<RawData>("raw_data");
 
 // Create a stream for the raw data
-const rawStream = new Stream<RawData>("raw_data", {
+export const rawStream = new Stream<RawData>("raw_data", {
   destination: rawTable // Optional: Specify a destination table for the stream, sets up a process to sync data from the stream to the table
 });
 
 // Create an ingestion API for the raw data
-const rawIngestApi = new IngestApi<RawData>("raw_data" {
-  destination: rawIngestionStream // Configure Moose to write all validated data to the stream
+export const rawIngestApi = new IngestApi<RawData>("raw_data", {
+  destination: rawStream // Configure Moose to write all validated data to the stream
 });
 ```
 </TypeScript>

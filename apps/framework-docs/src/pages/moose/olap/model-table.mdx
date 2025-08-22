@@ -27,7 +27,7 @@ interface MyFirstTable {
 }
 
 // Create a table named "first_table"
-const myTable = new OlapTable<MyFirstTable>("first_table");
+export const myTable = new OlapTable<MyFirstTable>("first_table");
 ```
 </TypeScript>
 
@@ -45,6 +45,7 @@ class MyFirstTable(BaseModel):
 # Create a table named "first_table"
 my_table = OlapTable[MyFirstTable]("first_table") 
 
+# No export needed - Python modules are automatically discovered
 ```
 </Python>
 
@@ -83,7 +84,7 @@ interface ExampleSchema {
 }
 
 // Create a standalone table named "example_table"
-const exampleTable = new OlapTable<ExampleSchema>("example_table", {
+export const exampleTable = new OlapTable<ExampleSchema>("example_table", {
   orderByFields: ["id", "dateField"], // Optional when using a primary key
   engine: ClickHouseEngines.ReplacingMergeTree,  // Optional: keep only the latest version of each record
 });

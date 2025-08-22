@@ -46,7 +46,7 @@ const SourceTable = SourcePipeline.table!; // Use `!` to assert that the table i
 const cols = SourceTable.columns;
 
 // Define the result type as an array of the result item type
-const exampleApi = new Api<QueryParams, ResultItem[]>("example_endpoint",  
+export const exampleApi = new Api<QueryParams, ResultItem[]>("example_endpoint",  
     async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
         const query = sql`
         SELECT 

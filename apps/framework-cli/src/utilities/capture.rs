@@ -117,15 +117,15 @@ pub fn capture_usage(
     }
 
     // Create PostHog client
-    let client = match PostHog514Client::from_env(machine_id) {
-        Some(client) => client,
-        None => {
-            log::warn!("PostHog client not configured - missing POSTHOG_API_KEY");
-            return None;
-        }
-    };
-
     Some(tokio::task::spawn(async move {
+        let client = match PostHog514Client::from_env(machine_id).await {
+            Some(client) => client,
+            None => {
+                log::warn!("PostHog client not configured - missing POSTHOG_API_KEY");
+                return;
+            }
+        };
+
         if let Err(e) = client
             .capture_cli_command(
                 "moose_cli_command",

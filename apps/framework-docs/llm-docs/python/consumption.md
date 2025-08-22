@@ -2,7 +2,7 @@
 
 ## Overview
 
-Moose provides one main type of API for exposing data:
+Moose provides one type of API for exposing data:
 
 **Api**:  They are designed to read data from your OLAP database. Out of the box, these APIs provide:
 

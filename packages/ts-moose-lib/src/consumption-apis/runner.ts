@@ -67,17 +67,17 @@ export function createApi<T extends object, R = any>(
   );
 }
 
-const apiHandler =
-  (
-    publicKey: jose.KeyLike | undefined,
-    clickhouseClient: ClickHouseClient,
-    temporalClient: TemporalClient | undefined,
-    apisDir: string,
-    enforceAuth: boolean,
-    isDmv2: boolean,
-    jwtConfig?: JwtConfig,
-  ) =>
-  async (req: http.IncomingMessage, res: http.ServerResponse) => {
+const apiHandler = async (
+  publicKey: jose.KeyLike | undefined,
+  clickhouseClient: ClickHouseClient,
+  temporalClient: TemporalClient | undefined,
+  apisDir: string,
+  enforceAuth: boolean,
+  isDmv2: boolean,
+  jwtConfig?: JwtConfig,
+) => {
+  const apis = isDmv2 ? await getApis() : new Map();
+  return async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       const url = new URL(req.url || "", "http://localhost");
       const fileName = url.pathname;
@@ -135,7 +135,6 @@ const apiHandler =
       let userFuncModule = modulesCache.get(pathName);
       if (userFuncModule === undefined) {
         if (isDmv2) {
-          const apis = await getApis();
           let apiName = fileName.replace(/^\/+|\/+$/g, "");
           let version = url.searchParams.get("version");
 
@@ -230,6 +229,7 @@ const apiHandler =
       }
     }
   };
+};
 
 export const runApis = async (config: ApisConfig) => {
   const apisCluster = new Cluster({
@@ -254,7 +254,7 @@ export const runApis = async (config: ApisConfig) => {
       }
 
       const server = http.createServer(
-        apiHandler(
+        await apiHandler(
           publicKey,
           clickhouseClient,
           temporalClient,

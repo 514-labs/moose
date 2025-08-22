@@ -244,7 +244,7 @@ mod route_resolution_tests {
     fn matches_nested_versioned_routes() {
         let route_table = make_table(vec![
             ("ingest/users/test/1.0.0", Some("1.0.0")),
-            ("ingest/users/2.0.0", Some("2.0.0")),
+            ("ingest/users/test/2.0.0", Some("2.0.0")),
         ]);
         let incoming = PathBuf::from("ingest/users/test/1.0.0");
         let resolved = resolve_ingest_route_v2(&incoming, &route_table);

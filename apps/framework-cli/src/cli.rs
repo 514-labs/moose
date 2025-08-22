@@ -131,7 +131,7 @@ async fn run_local_infrastructure_with_timeout(
 
     match timeout(timeout_duration, run_future).await {
         Ok(Ok(result)) => result,
-        Ok(Err(e)) => Err(anyhow::anyhow!("Task panicked: {e:?}")),
+        Ok(Err(e)) => Err(e.into()),
         Err(_) => {
             Err(anyhow::anyhow!(
                 "Docker container startup and validation timed out after {} seconds.\n\n\

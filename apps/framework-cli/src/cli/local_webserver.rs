@@ -119,6 +119,147 @@ pub struct RouteMeta {
     pub version: Option<Version>,
 }
 
+fn resolve_ingest_route_v2(
+    incoming_route: &PathBuf,
+    route_table: &HashMap<PathBuf, RouteMeta>,
+) -> Option<PathBuf> {
+    let incoming_route_str = incoming_route.to_str()?;
+    let incoming_lower = incoming_route_str.to_ascii_lowercase();
+
+    let mut versioned_count = 0;
+    let mut final_path: Option<PathBuf> = None;
+
+    for (path, metadata) in route_table.iter() {
+        if let Some(path_str) = path.to_str() {
+            if path_str.eq_ignore_ascii_case(incoming_route_str) {
+                return Some(path.clone());
+            }
+            if metadata.version.is_some()
+                && path_str.to_ascii_lowercase().starts_with(&incoming_lower)
+            {
+                versioned_count += 1;
+                final_path = Some(path.clone());
+
+                if versioned_count >= 2 {
+                    return None;
+                }
+            }
+        }
+    }
+
+    final_path
+}
+
+#[cfg(test)]
+mod route_resolution_tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, IntType};
+
+    fn dm(name: &str, version: &str) -> DataModel {
+        DataModel {
+            columns: vec![Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int(IntType::Int64),
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+                annotations: vec![],
+                comment: None,
+            }],
+            name: name.to_string(),
+            config: Default::default(),
+            abs_file_path: PathBuf::from("/tmp/dm"),
+            version: Version::from_string(version.to_string()),
+        }
+    }
+
+    fn route_meta(name: &str, version: Option<&str>) -> RouteMeta {
+        RouteMeta {
+            kafka_topic_name: format!("{}_topic", name.replace('/', "_")),
+            data_model: dm(name, version.unwrap_or("1.0.0")),
+            dead_letter_queue: None,
+            version: version.map(|v| Version::from_string(v.to_string())),
+        }
+    }
+
+    fn make_table(entries: Vec<(&str, Option<&str>)>) -> HashMap<PathBuf, RouteMeta> {
+        let mut map = HashMap::new();
+        for (path, v) in entries {
+            map.insert(PathBuf::from(path), route_meta(path, v));
+        }
+        map
+    }
+
+    #[test]
+    fn resolves_exact_match_case_insensitive() {
+        let route_table = make_table(vec![
+            ("ingest/users", None),
+            ("ingest/users/1.0.0", Some("1.0.0")),
+        ]);
+        let incoming = PathBuf::from("INGEST/USERS");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert_eq!(resolved, Some(PathBuf::from("ingest/users")));
+    }
+
+    #[test]
+    fn resolves_single_version_fallback() {
+        let route_table = make_table(vec![("ingest/orders/1.0.0", Some("1.0.0"))]);
+        let incoming = PathBuf::from("ingest/orders");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert_eq!(resolved, Some(PathBuf::from("ingest/orders/1.0.0")));
+    }
+
+    #[test]
+    fn returns_none_when_multiple_versions_present() {
+        let route_table = make_table(vec![
+            ("ingest/payments/1.0.0", Some("1.0.0")),
+            ("ingest/payments/2.0.0", Some("2.0.0")),
+        ]);
+        let incoming = PathBuf::from("ingest/payments");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn prefers_exact_over_versioned() {
+        let route_table = make_table(vec![
+            ("ingest/inventory", None),
+            ("ingest/inventory/1.0.0", Some("1.0.0")),
+        ]);
+        let incoming = PathBuf::from("ingest/inventory");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert_eq!(resolved, Some(PathBuf::from("ingest/inventory")));
+    }
+
+    #[test]
+    fn returns_none_when_no_match() {
+        let route_table = make_table(vec![("ingest/other/1.0.0", Some("1.0.0"))]);
+        let incoming = PathBuf::from("ingest/missing");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn matches_nested_versioned_routes() {
+        let route_table = make_table(vec![
+            ("ingest/users/test/1.0.0", Some("1.0.0")),
+            ("ingest/users/2.0.0", Some("2.0.0")),
+        ]);
+        let incoming = PathBuf::from("ingest/users/test/1.0.0");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert_eq!(resolved, Some(PathBuf::from("ingest/users/test/1.0.0")));
+    }
+
+    #[test]
+    fn resolved_nested_versioned_fallback() {
+        let route_table = make_table(vec![("ingest/users/test/1.0.0", Some("1.0.0"))]);
+        let incoming = PathBuf::from("ingest/users");
+        let resolved = resolve_ingest_route_v2(&incoming, &route_table);
+        assert_eq!(resolved, Some(PathBuf::from("ingest/users/test/1.0.0")));
+    }
+}
+
 /// Configuration for the local webserver.
 /// This struct contains settings for the webserver, including host, port,
 /// management port, and path prefix.
@@ -1068,39 +1209,7 @@ async fn router(
         (Some(configured_producer), &hyper::Method::POST, ["ingest", _]) => {
             if project.features.data_model_v2 {
                 let route_table_read = route_table.read().await;
-
-                let Some(incoming_route_str) = route.to_str() else {
-                    return Ok(Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Full::new(Bytes::from(
-                            "Route not found. Please run `moose ls` to view your routes",
-                        )))
-                        .unwrap());
-                };
-                let incoming_lower = incoming_route_str.to_ascii_lowercase();
-
-                let mut versioned_count = 0;
-                let mut final_path: Option<PathBuf> = None;
-
-                for (path, metadata) in route_table_read.iter() {
-                    if let Some(path_str) = path.to_str() {
-                        if path_str.eq_ignore_ascii_case(incoming_route_str) {
-                            final_path = Some(path.clone());
-                            break;
-                        }
-                        if metadata.version.is_some()
-                            && path_str.to_ascii_lowercase().starts_with(&incoming_lower)
-                        {
-                            versioned_count += 1;
-                            final_path = Some(path.clone());
-
-                            if versioned_count >= 2 {
-                                final_path = None;
-                                break;
-                            }
-                        }
-                    }
-                }
+                let final_path = resolve_ingest_route_v2(&route, &*route_table_read);
 
                 if let Some(final_path) = final_path {
                     ingest_route(

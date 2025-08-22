@@ -101,6 +101,21 @@ const handleAggregated = (
   }
 };
 
+/** Detect ClickHouse default annotation on a type and return raw sql */
+const handleDefault = (t: ts.Type, checker: TypeChecker): string | null => {
+  const defaultSymbol = t.getProperty("_clickhouse_default");
+  if (defaultSymbol === undefined) return null;
+  const defaultType = checker.getNonNullableType(
+    checker.getTypeOfSymbol(defaultSymbol),
+  );
+  if (!defaultType.isStringLiteral()) {
+    throw new UnsupportedFeature(
+      'ClickHouseDefault must use a string literal, e.g. ClickHouseDefault<"now()">',
+    );
+  }
+  return defaultType.value;
+};
+
 const handleNumberType = (
   t: ts.Type,
   checker: TypeChecker,
@@ -468,7 +483,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       primary_key: isKey,
       required: !nullable,
       unique: false,
-      default: null,
+      default: handleDefault(type, checker),
       annotations,
     };
   });

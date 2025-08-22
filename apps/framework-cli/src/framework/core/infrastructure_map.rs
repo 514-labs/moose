@@ -2517,9 +2517,7 @@ mod tests {
 #[cfg(test)]
 mod diff_tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{
-        Column, ColumnDefaults, ColumnType, FloatType, IntType,
-    };
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, FloatType, IntType};
     use crate::framework::versions::Version;
     use serde_json::Value as JsonValue;
 
@@ -2828,7 +2826,7 @@ mod diff_tests {
             required: true,
             unique: false,
             primary_key: false,
-            default: Some(ColumnDefaults::AutoIncrement),
+            default: Some("auto_increment".to_string()),
             annotations: vec![],
             comment: None,
         });
@@ -2839,7 +2837,7 @@ mod diff_tests {
             required: true,
             unique: false,
             primary_key: false,
-            default: Some(ColumnDefaults::Now),
+            default: Some("now()".to_string()),
             annotations: vec![],
             comment: None,
         });
@@ -2851,8 +2849,8 @@ mod diff_tests {
                 before: b,
                 after: a,
             } => {
-                assert_eq!(b.default, Some(ColumnDefaults::AutoIncrement));
-                assert_eq!(a.default, Some(ColumnDefaults::Now));
+                assert_eq!(b.default.as_deref(), Some("auto_increment"));
+                assert_eq!(a.default.as_deref(), Some("now()"));
             }
             _ => panic!("Expected Updated change"),
         }

@@ -26,6 +26,15 @@ class ClickhouseSize:
     size: int
 
 
+@dataclasses.dataclass
+class ClickhouseDefault:
+    expression: str
+
+
+def clickhouse_default(expression: str) -> ClickhouseDefault:
+    return ClickhouseDefault(expression=expression)
+
+
 def clickhouse_decimal(precision: int, scale: int) -> Type[Decimal]:
     return Annotated[Decimal, Field(max_digits=precision, decimal_places=scale)]
 
@@ -135,6 +144,7 @@ class Column(BaseModel):
     required: bool
     unique: Literal[False]
     primary_key: bool
+    default: str | None = None
     annotations: list[Tuple[str, Any]] = []
 
 
@@ -255,6 +265,12 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
 
         column_name = field_name if field_info.alias is None else field_info.alias
 
+        # Extract default expression from metadata, if provided
+        default_expr = next(
+            (md.expression for md in mds if isinstance(md, ClickhouseDefault)),
+            None,
+        )
+
         columns.append(
             Column(
                 name=column_name,
@@ -262,6 +278,7 @@ def _to_columns(model: type[BaseModel]) -> list[Column]:
                 required=not optional,
                 unique=False,
                 primary_key=primary_key,
+                default=default_expr,
                 annotations=annotations,
             )
         )

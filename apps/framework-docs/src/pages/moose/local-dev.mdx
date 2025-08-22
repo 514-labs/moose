@@ -70,7 +70,12 @@ The file watcher recursively monitors your entire `app/` directory structure and
 </Python>
 
 <Callout type="info" title="Only Runs Your Root File">
-Only the root file in your `app/` directory is run when changes are detected. In order for your tables/streams/apis/workflows to be detected, you must export them from your root file. If you change a file in your app directory and it is a dependency of your root file, then those changes WILL be detected.
+<TypeScript>
+Only the root file in your `app/` directory is run when changes are detected. In order for your tables/streams/apis/workflows to be detected, you must export them from your root file (`app/index.ts`). If you change a file in your app directory and it is a dependency of your root file, then those changes WILL be detected.
+</TypeScript>
+<Python>
+Only the root file in your `app/` directory is run when changes are detected. In order for your tables/streams/apis/workflows to be detected, you must import them in your root file (`main.py`). If you change a file in your app directory and it is a dependency of your root file, then those changes WILL be detected.
+</Python>
 </Callout>
 
 ## Quick Example

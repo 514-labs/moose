@@ -71,3 +71,11 @@ def get_workflows() -> Dict[str, Workflow]:
 def get_workflow(name: str) -> Optional[Workflow]:
     """Get a registered workflow by name."""
     return _workflows.get(name)
+
+
+# Backward compatibility aliases (deprecated)
+get_consumption_apis = get_apis
+"""@deprecated: Use get_apis instead of get_consumption_apis"""
+
+get_consumption_api = get_api
+"""@deprecated: Use get_api instead of get_consumption_api"""

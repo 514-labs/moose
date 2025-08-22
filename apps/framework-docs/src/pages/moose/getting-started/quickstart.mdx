@@ -106,7 +106,7 @@ bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
 </Callout>
 
 <Callout type="warning" title="Restart your terminal" compact={true}>
-After installation, close and reopen your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`) to ensure the `moose` command is available in your PATH.
+After installation, restart your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`) to ensure the `moose` command is available in your PATH.
 </Callout>
 
 <br />
@@ -140,20 +140,16 @@ pip install -r requirements.txt
 
 ### Verify Docker is running
 
-<Callout type="warning" title="Docker must be running" compact={true}>
-Make sure Docker Desktop is running before proceeding. Moose uses Docker to run ClickHouse, Redpanda, and Temporal locally.
-</Callout>
+Moose uses Docker to run ClickHouse, Redpanda, and Temporal locally.
 
 ```bash filename="Verify Docker is running" copy
-docker ps
+docker ps # you should see an empty list or existing containers. If you see an error, start Docker Desktop.
 ```
-
-You should see an empty list or existing containers. If you get an error, start Docker Desktop and wait for it to fully initialize.
 
 ### Start your development environment
 
 ```bash filename="Terminal" copy
-moose dev
+moose dev # This will spin up the Moose, ClickHouse, Redpanda, and Temporal containers. It will take a few minutes to start up.
 ```
 
 ```txt
@@ -180,7 +176,7 @@ moose dev
 ```
 
 <Callout type="success" title="Your local analytics stack is running">
-You can now send data to Moose and query it.
+You can now send data to Moose and query it. See [step 4](#step-4-test-your-pipeline-2-minutes) for more details.
 </Callout>
 
 </Steps>
@@ -189,57 +185,47 @@ You can now send data to Moose and query it.
 
 Your project includes a complete example pipeline:
 
-<Python>
-<FileTree>
-<FileTree.Folder name="app" defaultOpen>
-<FileTree.Folder name="apis">
-<FileTree.File name="bar.py" />
-</FileTree.Folder>
-<FileTree.Folder name="ingest" defaultOpen>
-<FileTree.File name="models.py" />
-<FileTree.File name="transform.py" />
-</FileTree.Folder>
-<FileTree.Folder name="views">
-<FileTree.File name="bar_aggregated.py" />
-</FileTree.Folder>
-<FileTree.Folder name="workflows">
-<FileTree.File name="generator.py" />
-</FileTree.Folder>
-<FileTree.File name="main.py" />
-</FileTree.Folder>
-</FileTree>
+    <Python>
+        <FileTree>
+            <FileTree.Folder name="app" defaultOpen>
+                <FileTree.Folder name="apis">
+                    <FileTree.File name="bar.py" />
+                </FileTree.Folder>
+                <FileTree.Folder name="ingest" defaultOpen>
+                    <FileTree.File name="models.py" />
+                    <FileTree.File name="transform.py" />
+                </FileTree.Folder>
+                <FileTree.Folder name="views">
+                    <FileTree.File name="bar_aggregated.py" />
+                </FileTree.Folder>
+                <FileTree.Folder name="workflows">
+                    <FileTree.File name="generator.py" />
+                </FileTree.Folder>
+                <FileTree.File name="main.py" />
+            </FileTree.Folder>
+        </FileTree>
+    </Python>
 
-<Callout type="info" title="Import Pattern">
-<div>The `main.py` file imports all your data components so Moose can detect them.</div>
-<div className="text-sm mt-2">Learn more about export pattern: <a href="/moose/local-dev#hot-reloading-development" className="text-blue-500 hover:underline">local development</a> / <a href="/moose/migrate" className="text-blue-500 hover:underline">hosted</a></div>
-</Callout>
-</Python>
-
-<TypeScript>
-<FileTree>
-<FileTree.Folder name="app" defaultOpen>
-<FileTree.Folder name="apis">
-<FileTree.File name="bar.ts" />
-</FileTree.Folder>
-<FileTree.Folder name="ingest" defaultOpen>
-<FileTree.File name="models.ts" />
-<FileTree.File name="transform.ts" />
-</FileTree.Folder>
-<FileTree.Folder name="views">
-<FileTree.File name="barAggregated.ts" />
-</FileTree.Folder>
-<FileTree.Folder name="workflows">
-<FileTree.File name="generator.ts" />
-</FileTree.Folder>
-<FileTree.File name="index.ts" />
-</FileTree.Folder>
-</FileTree>
-
-<Callout type="info" title="Export Pattern">
-<div>The `index.ts` file exports all your data components so Moose can detect them.</div>
-<div className="text-sm mt-2">Learn more about export pattern: <a href="/moose/local-dev#hot-reloading-development" className="text-blue-500 hover:underline">local development</a> / <a href="/moose/migrate" className="text-blue-500 hover:underline">hosted</a></div>
-</Callout>
-</TypeScript>
+    <TypeScript>
+        <FileTree>
+            <FileTree.Folder name="app" defaultOpen>
+                <FileTree.Folder name="apis">
+                    <FileTree.File name="bar.ts" />
+                </FileTree.Folder>
+                <FileTree.Folder name="ingest" defaultOpen>
+                    <FileTree.File name="models.ts" />
+                    <FileTree.File name="transform.ts" />
+                </FileTree.Folder>
+                <FileTree.Folder name="views">
+                    <FileTree.File name="barAggregated.ts" />
+                </FileTree.Folder>
+                <FileTree.Folder name="workflows">
+                    <FileTree.File name="generator.ts" />
+                </FileTree.Folder>
+                <FileTree.File name="index.ts" />
+            </FileTree.Folder>
+        </FileTree>
+    </TypeScript>
 
 **Important:** While your pipeline objects are defined in the child folders, they must be imported into the root <TypeScript inline>`index.ts`</TypeScript><Python inline>`main.py`</Python> file for the Moose CLI to discover and use them.
 
@@ -314,12 +300,9 @@ The workflow runs in the background and is powered by [Temporal](https://tempora
 </Callout>
 
 <ToggleBlock openText="(Bonus) Peek at your data" closeText="Hide details">
-**What this command does:**
-- Directly queries your ClickHouse database to show raw data
-- Useful for debugging and verifying data was processed correctly
 
 ```bash filename="Terminal" copy
-moose peek Bar --limit 5
+moose peek Bar --limit 5 # This queries your Clickhouse database to show raw data; useful for debugging / verification
 ```
 
 You should see output like:
@@ -398,7 +381,7 @@ curl "http://localhost:4000/consumption/bar?limit=5&orderBy=totalRows"
 - Check if another process is using port 4000: `lsof -i :4000`
 </ToggleBlock>
 
-### Explore with OpenAPI UI
+<ToggleBlock openText="Explore with OpenAPI UI" closeText="Hide Explore with OpenAPI UI">
 
 1. Install the [OpenAPI (Swagger) Viewer extension](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) in your IDE
 2. Open `.moose/openapi.yaml` in your IDE  
@@ -415,11 +398,9 @@ curl "http://localhost:4000/consumption/bar?limit=5&orderBy=totalRows"
   loop={true}
 />
 
+</ToggleBlock>
+
 </Steps>
-
-
-<br />
-
 
 ## Step 5: Hot Reload Schema Changes (1 minute)
 
@@ -478,7 +459,6 @@ Schema changes are automatically applied across your stack.
 Your API, database schema, and streaming topic all updated automatically. Try adding another field with a different data type.
 </Callout>
 
-
 ## Recap
 
 You've built a complete analytical backend with:
@@ -494,7 +474,6 @@ You've built a complete analytical backend with:
     { title: "Hot-reload development" }
   ]}
 />
-
 
 ## Need Help?
 

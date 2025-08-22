@@ -71,7 +71,7 @@ Set environment variables with **hashed** API keys:
 export MOOSE_INGEST_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
 
 # For analytics endpoints  
-export MOOSE_CONSUMPTION_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+export MOOSE_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
 
 # For admin endpoints
 export MOOSE_ADMIN_TOKEN='your_plain_text_token'
@@ -109,7 +109,7 @@ enforce_on_all_ingest_apis = true
 Then, only JWT will be accepted if JWT is configured.
 
 
-### Analytics Endpoints
+### API Endpoints
 
 (Same as Ingest Endpoints, but for `/api` endpoints)
 
@@ -121,7 +121,7 @@ enforce_on_all_consumptions_apis = false
 ```
 
 ```bash filename=".env" copy
-MOOSE_CONSUMPTION_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
+MOOSE_API_KEY='your_pbkdf2_hmac_sha256_hashed_key'
 ```
 
 Then, when a request is made to an `/api` endpoint, the server will:

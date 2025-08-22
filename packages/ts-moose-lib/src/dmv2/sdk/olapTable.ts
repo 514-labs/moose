@@ -160,7 +160,8 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     this.name = name;
 
     const version = config?.version;
-    const tableKey = version ? `${name}_${version.replace(/\./g, "_")}` : name;
+    const tableKey =
+      version ? `${name}_${this.normalizeVersion(version)}` : name;
     const tables = getMooseInternal().tables;
     if (tables.has(tableKey)) {
       throw new Error(`OlapTable with name ${tableKey} already exists`);
@@ -182,11 +183,15 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     if (!tableVersion) {
       this._cachedTableName = this.name;
     } else {
-      const versionSuffix = tableVersion.replace(/\./g, "_");
+      const versionSuffix = this.normalizeVersion(tableVersion);
       this._cachedTableName = `${this.name}_${versionSuffix}`;
     }
 
     return this._cachedTableName;
+  }
+
+  private normalizeVersion(version: string): string {
+    return version.replace(/[./]/g, "_");
   }
 
   /**

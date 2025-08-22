@@ -751,7 +751,7 @@ const buildLogger = (args: StreamingFunctionArgs, workerId: number): Logger => {
  * Example: "1.2.3" -> "_1_2_3"
  */
 export function formatVersionSuffix(version: string): string {
-  return `_${version.replace(/\./g, "_")}`;
+  return `_${version.replace(/\./g, "_").replace(/\//g, "_")}`;
 }
 
 /**

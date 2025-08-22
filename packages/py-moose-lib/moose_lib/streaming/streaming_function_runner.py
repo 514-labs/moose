@@ -67,7 +67,7 @@ class KafkaTopicConfig:
 
         name = self.name
         if self.version is not None:
-            version_suffix = f"_{self.version}".replace(".", "_")
+            version_suffix = ("_" + self.version.replace('.', '_').replace('/', '_'))
             if name.endswith(version_suffix):
                 name = name.removesuffix(version_suffix)
             else:
@@ -86,7 +86,8 @@ class KafkaTopicConfig:
         """Returns the stream registry key, including version suffix if present."""
         stream_name = self.topic_name_to_stream_name()
         if self.version is not None:
-            version_suffix = self.version.replace(".", "_")
+            # Keep registry key generation consistent with stream.generate_topic_id
+            version_suffix = self.version.replace('.', '_').replace('/', '_')
             return f"{stream_name}_{version_suffix}"
         return stream_name
 

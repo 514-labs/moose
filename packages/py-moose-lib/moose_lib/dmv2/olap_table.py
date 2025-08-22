@@ -144,7 +144,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
     def _generate_table_name(self) -> str:
         """Generate the versioned table name following Moose's naming convention.
 
-        Format: {tableName}_{version_with_dots_replaced_by_underscores}
+        Format: {tableName}_{version_with_dots_and_slashes_replaced_by_underscores}
 
         Returns:
             The versioned table name.
@@ -156,7 +156,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
         if not table_version:
             self._cached_table_name = self.name
         else:
-            version_suffix = table_version.replace(".", "_")
+            version_suffix = table_version.replace(".", "_").replace("/", "_")
             self._cached_table_name = f"{self.name}_{version_suffix}"
 
         return self._cached_table_name

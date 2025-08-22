@@ -20,6 +20,9 @@ export interface ApiUtil {
   jwt: JWTPayload | undefined;
 }
 
+/** @deprecated Use ApiUtil instead. */
+export type ConsumptionUtil = ApiUtil;
+
 export class MooseClient {
   query: QueryClient;
   workflow: WorkflowClient;
@@ -287,6 +290,9 @@ export const ApiHelpers = {
   column: (value: string) => ["Identifier", value] as [string, string],
   table: (value: string) => ["Identifier", value] as [string, string],
 };
+
+/** @deprecated Use ApiHelpers instead. */
+export const ConsumptionHelpers = ApiHelpers;
 
 export function joinQueries({
   values,

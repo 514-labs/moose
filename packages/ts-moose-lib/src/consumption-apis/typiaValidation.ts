@@ -57,7 +57,7 @@ export const isCreateApiV2 = (
   }
 
   const sym = checker.getSymbolAtLocation(node.expression);
-  return sym?.name === "Api";
+  return sym?.name === "Api" || sym?.name === "ConsumptionApi";
 };
 
 const getParamType = (

@@ -50,7 +50,6 @@ use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::ENVIRONMENT_VARIABLE_PREFIX;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
-use crate::utilities::constants::SCRIPTS_DIR;
 use crate::utilities::constants::{APP_DIR, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
     CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, TS_FLOW_FILE,
@@ -387,18 +386,6 @@ impl Project {
             std::fs::create_dir_all(&app_dir).expect("Failed to create app directory");
         }
         app_dir
-    }
-
-    /// Returns the path to the scripts directory
-    pub fn scripts_dir(&self) -> PathBuf {
-        let mut scripts_dir = self.app_dir();
-        scripts_dir.push(SCRIPTS_DIR);
-
-        if !scripts_dir.exists() {
-            std::fs::create_dir_all(&scripts_dir).expect("Failed to create scripts directory");
-        }
-
-        scripts_dir
     }
 
     /// Returns the path to the data models directory

@@ -62,6 +62,7 @@ from .materialized_view import (
 )
 
 from .workflow import (
+    TaskContext,
     TaskConfig,
     Task,
     WorkflowConfig,
@@ -131,6 +132,7 @@ __all__ = [
     'MaterializedView',
 
     # Workflow
+    'TaskContext',
     'TaskConfig',
     'Task',
     'WorkflowConfig',

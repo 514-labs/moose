@@ -12,13 +12,16 @@ import { getWorkflows } from "../dmv2/internal";
 import { JWTPayload } from "jose";
 import { Sql, sql, RawValue, toQuery } from "../sqlHelpers";
 
-export interface ConsumptionUtil {
+export interface ApiUtil {
   client: MooseClient;
 
   // SQL interpolator
   sql: typeof sql;
   jwt: JWTPayload | undefined;
 }
+
+/** @deprecated Use ApiUtil instead. */
+export type ConsumptionUtil = ApiUtil;
 
 export class MooseClient {
   query: QueryClient;
@@ -283,10 +286,13 @@ export async function getTemporalClient(
   }
 }
 
-export const ConsumptionHelpers = {
+export const ApiHelpers = {
   column: (value: string) => ["Identifier", value] as [string, string],
   table: (value: string) => ["Identifier", value] as [string, string],
 };
+
+/** @deprecated Use ApiHelpers instead. */
+export const ConsumptionHelpers = ApiHelpers;
 
 export function joinQueries({
   values,

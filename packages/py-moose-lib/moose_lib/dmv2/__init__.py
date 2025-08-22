@@ -42,10 +42,13 @@ from .ingest_pipeline import (
 )
 
 from .consumption import (
-    EgressConfig,
-    ConsumptionApi,
+    ApiConfig,
+    Api,
     get_moose_base_url,
     set_moose_base_url,
+    # Backward compatibility aliases
+    ConsumptionApi,
+    EgressConfig,
 )
 
 from .sql_resource import (
@@ -79,12 +82,15 @@ from .registry import (
     get_stream,
     get_ingest_apis,
     get_ingest_api,
-    get_consumption_apis,
-    get_consumption_api,
+    get_apis,
+    get_api,
     get_sql_resources,
     get_sql_resource,
     get_workflows,
     get_workflow,
+    # Backward compatibility aliases
+    get_consumption_apis,
+    get_consumption_api,
 )
 
 __all__ = [
@@ -119,10 +125,13 @@ __all__ = [
     'IngestPipeline',
 
     # Consumption
-    'EgressConfig',
-    'ConsumptionApi',
+    'ApiConfig',
+    'Api',
     'get_moose_base_url',
     'set_moose_base_url',
+    # Backward compatibility aliases (deprecated)
+    'ConsumptionApi',
+    'EgressConfig',
 
     # SQL
     'SqlResource',
@@ -146,10 +155,13 @@ __all__ = [
     'get_stream',
     'get_ingest_apis',
     'get_ingest_api',
-    'get_consumption_apis',
-    'get_consumption_api',
+    'get_apis',
+    'get_api',
     'get_sql_resources',
     'get_sql_resource',
     'get_workflows',
     'get_workflow',
+    # Backward compatibility aliases (deprecated)
+    'get_consumption_apis',
+    'get_consumption_api',
 ]

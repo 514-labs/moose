@@ -322,9 +322,7 @@ const utils = {
     endpoint: string,
     expectedResponse: any,
   ): Promise<void> => {
-    const response = await fetch(
-      `${TEST_CONFIG.server.url}/consumption/${endpoint}`,
-    );
+    const response = await fetch(`${TEST_CONFIG.server.url}/api/${endpoint}`);
     if (response.ok) {
       console.log("Test request sent successfully");
       const json = (await response.json()) as any[];
@@ -367,9 +365,7 @@ const utils = {
     endpoint: string,
     expectedResponse: any,
   ): Promise<void> => {
-    const response = await fetch(
-      `${TEST_CONFIG.server.url}/consumption/${endpoint}`,
-    );
+    const response = await fetch(`${TEST_CONFIG.server.url}/api/${endpoint}`);
     if (response.ok) {
       console.log("Versioned API test request sent successfully");
       const json = (await response.json()) as any[];

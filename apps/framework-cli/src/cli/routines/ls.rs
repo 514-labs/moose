@@ -473,8 +473,8 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
                 .map(|param| param.name.clone())
                 .collect(),
             path: match &endpoint.version {
-                Some(version) => format!("consumption/{}/{}", endpoint.name, version),
-                None => format!("consumption/{}", endpoint.name),
+                Some(version) => format!("api/{}/{}", endpoint.name, version),
+                None => format!("api/{}", endpoint.name),
             },
         }),
     }
@@ -529,7 +529,7 @@ pub struct ConsumptionApiInfo {
 impl ResourceInfo for Vec<ConsumptionApiInfo> {
     fn show(&self) {
         show_table(
-            "Consumption APIs".to_string(),
+            "Analytics APIs".to_string(),
             vec!["name".to_string(), "params".to_string(), "path".to_string()],
             self.iter()
                 .map(|api| {

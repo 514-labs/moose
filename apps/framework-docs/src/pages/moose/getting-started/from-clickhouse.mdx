@@ -296,7 +296,7 @@ export interface QueryParams {
   limit?: number;
 }
 
-const api = new ConsumptionApi<QueryParams, TargetSchema>("get-aggregated-data",
+const api = new Api<QueryParams, TargetSchema>("get-aggregated-data",
   async ({ date, limit = 10 }: QueryParams, { client, sql }) => {
     const query = sql`
         SELECT * FROM ${materializedView.targetTable} 

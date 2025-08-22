@@ -4,10 +4,10 @@ import { MooseClient, QueryClient, getTemporalClient } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
-import { ConsumptionUtil } from "../index";
+import { ApiUtil } from "../index";
 import { sql } from "../sqlHelpers";
 import { Client as TemporalClient } from "@temporalio/client";
-import { getEgressApis } from "../dmv2/internal";
+import { getApis } from "../dmv2/internal";
 
 interface ClickhouseConfig {
   database: string;
@@ -32,8 +32,8 @@ interface TemporalConfig {
   apiKey: string;
 }
 
-interface ConsumptionApisConfig {
-  consumptionDir: string;
+interface ApisConfig {
+  apisDir: string;
   clickhouseConfig: ClickhouseConfig;
   jwtConfig?: JwtConfig;
   temporalConfig?: TemporalConfig;
@@ -48,8 +48,7 @@ const toClientConfig = (config: ClickhouseConfig) => ({
   useSSL: config.useSSL ? "true" : "false",
 });
 
-const createPath = (consumptionDir: string, path: string) =>
-  `${consumptionDir}${path}.ts`;
+const createPath = (apisDir: string, path: string) => `${apisDir}${path}.ts`;
 
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
@@ -57,28 +56,32 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
 
 const modulesCache = new Map<string, any>();
 
-export function createConsumptionApi<T extends object, R = any>(
-  _handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
+export function createApi<T extends object, R = any>(
+  _handler: (params: T, utils: ApiUtil) => Promise<R>,
 ): (
   rawParams: Record<string, string[] | string>,
-  utils: ConsumptionUtil,
+  utils: ApiUtil,
 ) => Promise<R> {
   throw new Error(
     "This should be compiled-time replaced by compiler plugins to add parsing.",
   );
 }
 
-const apiHandler =
-  (
-    publicKey: jose.KeyLike | undefined,
-    clickhouseClient: ClickHouseClient,
-    temporalClient: TemporalClient | undefined,
-    consumptionDir: string,
-    enforceAuth: boolean,
-    isDmv2: boolean,
-    jwtConfig?: JwtConfig,
-  ) =>
-  async (req: http.IncomingMessage, res: http.ServerResponse) => {
+/** @deprecated Use `Api` from "dmv2/sdk/consumptionApi" instead. */
+export const createConsumptionApi = createApi;
+
+const apiHandler = async (
+  publicKey: jose.KeyLike | undefined,
+  clickhouseClient: ClickHouseClient,
+  temporalClient: TemporalClient | undefined,
+  apisDir: string,
+  enforceAuth: boolean,
+  isDmv2: boolean,
+  jwtConfig?: JwtConfig,
+) => {
+  const apis = isDmv2 ? await getApis() : new Map();
+  return async (req: http.IncomingMessage, res: http.ServerResponse) => {
+
     try {
       const url = new URL(req.url || "", "http://localhost");
       const fileName = url.pathname;
@@ -115,7 +118,7 @@ const apiHandler =
         return;
       }
 
-      const pathName = createPath(consumptionDir, fileName);
+      const pathName = createPath(apisDir, fileName);
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
         (obj: { [key: string]: string[] | string }, [key, value]) => {
           const existingValue = obj[key];
@@ -136,7 +139,6 @@ const apiHandler =
       let userFuncModule = modulesCache.get(pathName);
       if (userFuncModule === undefined) {
         if (isDmv2) {
-          const egressApis = await getEgressApis();
           let apiName = fileName.replace(/^\/+|\/+$/g, "");
           let version = url.searchParams.get("version");
 
@@ -152,18 +154,18 @@ const apiHandler =
           // Try versioned lookup first if version is available; otherwise rely on aliasing
           if (version) {
             const versionedKey = `${apiName}:${version}`;
-            userFuncModule = egressApis.get(versionedKey);
+            userFuncModule = apis.get(versionedKey);
           } else {
-            userFuncModule = egressApis.get(apiName);
+            userFuncModule = apis.get(apiName);
           }
           if (!userFuncModule) {
-            const availableApis = Array.from(egressApis.keys()).map((key) =>
+            const availableApis = Array.from(apis.keys()).map((key) =>
               key.replace(":", "/"),
             );
             const errorMessage =
               version ?
-                `Consumption API ${apiName} with version ${version} not found. Available APIs: ${availableApis.join(", ")}`
-              : `Consumption API ${apiName} not found. Available APIs: ${availableApis.join(", ")}`;
+                `API ${apiName} with version ${version} not found. Available APIs: ${availableApis.join(", ")}`
+              : `API ${apiName} not found. Available APIs: ${availableApis.join(", ")}`;
             throw new Error(errorMessage);
           }
 
@@ -231,9 +233,10 @@ const apiHandler =
       }
     }
   };
+};
 
-export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
-  const consumptionCluster = new Cluster({
+export const runApis = async (config: ApisConfig) => {
+  const apisCluster = new Cluster({
     workerStart: async () => {
       let temporalClient: TemporalClient | undefined;
       if (config.temporalConfig) {
@@ -255,11 +258,11 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
       }
 
       const server = http.createServer(
-        apiHandler(
+        await apiHandler(
           publicKey,
           clickhouseClient,
           temporalClient,
-          config.consumptionDir,
+          config.apisDir,
           config.enforceAuth,
           config.isDmv2,
           config.jwtConfig,
@@ -280,5 +283,5 @@ export const runConsumptionApis = async (config: ConsumptionApisConfig) => {
     },
   });
 
-  consumptionCluster.start();
+  apisCluster.start();
 };

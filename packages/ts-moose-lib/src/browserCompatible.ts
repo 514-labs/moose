@@ -13,6 +13,8 @@ export {
   DeadLetterQueue,
   IngestApi,
   IngestConfig,
+  Api,
+  ApiConfig,
   ConsumptionApi,
   EgressConfig,
   IngestPipeline,
@@ -35,6 +37,6 @@ export {
   ClickHouseNamedTuple,
 } from "./dataModels/types";
 
-export type { ConsumptionUtil } from "./consumption-apis/helpers";
+export type { ApiUtil, ConsumptionUtil } from "./consumption-apis/helpers";
 
 export * from "./sqlHelpers";

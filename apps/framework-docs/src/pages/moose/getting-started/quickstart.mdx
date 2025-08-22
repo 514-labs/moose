@@ -258,13 +258,13 @@ moose peek Bar --limit 5
 ### Query your data
 
 ```bash filename="Terminal" copy
-curl "http://localhost:4000/consumption/bar"
+curl "http://localhost:4000/api/bar"
 ```
 You should see JSON data with your processed events.
 
 
 ```bash filename="Try adding a query parameter!" copy
-curl "http://localhost:4000/consumption/bar?limit=5"
+curl "http://localhost:4000/api/bar?limit=5"
 ```
 
 ### Explore with OpenAPI UI
@@ -272,7 +272,7 @@ curl "http://localhost:4000/consumption/bar?limit=5"
 1. Install the [OpenAPI (Swagger) Viewer extension](https://marketplace.cursorapi.com/items?itemName=42Crunch.vscode-openapi) in your IDE
 2. Open `.moose/openapi.yaml` in your IDE  
 3. Click the "Preview" icon to launch the interactive API explorer
-4. Test the `POST /ingest/Foo` and `GET /consumption/bar` endpoints
+4. Test the `POST /ingest/Foo` and `GET /api/bar` endpoints
 
 <MuxVideo 
   playbackId="66qLKy46JddIBcJWqestllPmBJBxWcOwbgw00WpKXO02M"

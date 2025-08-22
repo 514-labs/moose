@@ -1302,11 +1302,11 @@ impl InfrastructureMap {
         target_process: &ConsumptionApiWebServer,
         process_changes: &mut Vec<ProcessChange>,
     ) {
-        log::info!("Analyzing changes in Consumption API processes...");
+        log::info!("Analyzing changes in Analytics API processes...");
 
         // We are currently not tracking individual consumption endpoints, so we will just restart
         // the consumption web server when something changed
-        log::debug!("Consumption API Web Server updated (assumed for now)");
+        log::debug!("Analytics API Web Server updated (assumed for now)");
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
         >::Updated {

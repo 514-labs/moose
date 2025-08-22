@@ -237,7 +237,7 @@ async fn get_consumption_api_res(
         if !consumption_apis.contains(consumption_name) && !is_prod {
             use crossterm::{execute, style::Print};
             let msg = format!(
-                "Exact match for Consumption API {} not found. Looking for fallback API. Known consumption paths: {}",
+                "Exact match for Analytics API {} not found. Looking for fallback API. Known analytics api paths: {}",
                 consumption_name,
                 consumption_apis
                     .iter()

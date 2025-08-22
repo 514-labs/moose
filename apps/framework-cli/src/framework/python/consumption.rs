@@ -92,12 +92,12 @@ pub fn run(
     let stdout = consumption_process
         .stdout
         .take()
-        .expect("Consumption process did not have a handle to stdout");
+        .expect("Analytics api process did not have a handle to stdout");
 
     let stderr = consumption_process
         .stderr
         .take()
-        .expect("Consumption process did not have a handle to stderr");
+        .expect("Analytics api process did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();

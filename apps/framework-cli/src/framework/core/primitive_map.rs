@@ -41,7 +41,7 @@ pub enum PrimitiveMapLoadingError {
     #[error("Failed to load functions")]
     FunctionsLoading(#[from] crate::framework::streaming::model::FunctionError),
 
-    #[error("Failed to load consumption")]
+    #[error("Failed to load analytics apis")]
     Consumption(#[from] ConsumptionLoaderError),
 }
 

@@ -211,16 +211,14 @@ impl PostHog514Client {
     /// 1. First check for a build-time API key (baked into the binary)
     /// 2. Then check for a runtime POSTHOG_API_KEY environment variable
     /// 3. Return None if neither is available
-    pub async fn from_env(machine_id: impl Into<String>) -> Option<Self> {
+    pub fn from_env(machine_id: impl Into<String>) -> Option<Self> {
         // First try build-time API key
         if let Some(api_key) = POSTHOG_API_KEY {
             return Self::new(api_key, machine_id).ok();
         }
 
         // Then try runtime environment variable
-        if let Ok(Ok(api_key)) =
-            tokio::task::spawn_blocking(move || env::var("POSTHOG_API_KEY")).await
-        {
+        if let Ok(api_key) = env::var("POSTHOG_API_KEY") {
             return Self::new(api_key, machine_id).ok();
         }
 

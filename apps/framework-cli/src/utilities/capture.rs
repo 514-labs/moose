@@ -118,7 +118,7 @@ pub fn capture_usage(
 
     // Create PostHog client
     Some(tokio::task::spawn(async move {
-        let client = match PostHog514Client::from_env(machine_id).await {
+        let client = match PostHog514Client::from_env(machine_id) {
             Some(client) => client,
             None => {
                 log::warn!("PostHog client not configured - missing POSTHOG_API_KEY");

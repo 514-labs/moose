@@ -45,6 +45,17 @@ const moose_internal = {
 const defaultRetentionPeriod = 60 * 60 * 24 * 7;
 
 /**
+ * Converts a version string to use underscores instead of dots.
+ * This ensures consistency with Rust's Version::as_suffix() method.
+ * @param version - The version string (e.g., "1.2.3")
+ * @returns The version string with dots replaced by underscores (e.g., "1_2_3")
+ */
+const formatVersionForKey = (version: string): string => {
+  // Normalize version for IDs and topic keys: replace dots and slashes
+  return version.replace(/[./]/g, "_");
+};
+
+/**
  * JSON representation of an OLAP table configuration.
  */
 interface TableJson {
@@ -73,6 +84,8 @@ interface Target {
   kind: "stream"; // may add `| "table"` in the future
   /** Optional version string of the target resource's configuration. */
   version?: string;
+  /** Optional version of the target topic (separate from transformation version). */
+  topicVersion?: string;
   /** Optional metadata for the target (e.g., description for function processes). */
   metadata?: { description?: string };
 }
@@ -205,13 +218,19 @@ export const toInfraMap = (registry: typeof moose_internal) => {
   const sqlResources: { [key: string]: SqlResourceJson } = {};
   const workflows: { [key: string]: WorkflowJson } = {};
 
-  registry.tables.forEach((table) => {
+  registry.tables.forEach((table, key) => {
     // If the table is part of an IngestPipeline, inherit metadata if not set
     let metadata = (table as any).metadata;
     if (!metadata && table.config && (table as any).pipelineParent) {
       metadata = (table as any).pipelineParent.metadata;
     }
-    tables[table.name] = {
+
+    const tableKey =
+      table.config.version ?
+        `${table.name}_${formatVersionForKey(table.config.version)}`
+      : table.name;
+
+    tables[tableKey] = {
       name: table.name,
       columns: table.columnArray,
       orderBy: table.config.orderByFields ?? [],
@@ -222,7 +241,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.streams.forEach((stream) => {
+  registry.streams.forEach((stream, key) => {
     // If the stream is part of an IngestPipeline, inherit metadata if not set
     let metadata = stream.metadata;
     if (!metadata && stream.config && (stream as any).pipelineParent) {
@@ -231,12 +250,15 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     const transformationTargets: Target[] = [];
     const consumers: Consumer[] = [];
 
-    stream._transformations.forEach((transforms, destinationName) => {
+    stream._transformations.forEach((transforms, _destinationName) => {
       transforms.forEach(([destination, _, config]) => {
         transformationTargets.push({
           kind: "stream",
-          name: destinationName,
+          name: destination.name,
+          // transformation function version
           version: config.version,
+          // topic version provided separately
+          topicVersion: destination.config.version,
           metadata: config.metadata,
         });
       });
@@ -248,7 +270,11 @@ export const toInfraMap = (registry: typeof moose_internal) => {
       });
     });
 
-    topics[stream.name] = {
+    const streamKey =
+      stream.config.version ?
+        `${stream.name}_${formatVersionForKey(stream.config.version)}`
+      : stream.name;
+    topics[streamKey] = {
       name: stream.name,
       columns: stream.columnArray,
       targetTable: stream.config.destination?.name,
@@ -264,21 +290,43 @@ export const toInfraMap = (registry: typeof moose_internal) => {
     };
   });
 
-  registry.ingestApis.forEach((api) => {
+  registry.ingestApis.forEach((api, key) => {
     // If the ingestApi is part of an IngestPipeline, inherit metadata if not set
     let metadata = api.metadata;
     if (!metadata && api.config && (api as any).pipelineParent) {
       metadata = (api as any).pipelineParent.metadata;
     }
-    ingestApis[api.name] = {
+
+    let deadLetterQueueName = undefined;
+    if (api.config.deadLetterQueue) {
+      // Find the key that corresponds to this DLQ stream in the registry
+      for (const [streamKey, stream] of registry.streams) {
+        if (stream === api.config.deadLetterQueue) {
+          // Convert to Rust format
+          deadLetterQueueName =
+            stream.config.version ?
+              `${stream.name}_${formatVersionForKey(stream.config.version)}`
+            : stream.name;
+          break;
+        }
+      }
+    }
+
+    const rustKey =
+      api.config.version ?
+        `${api.name}_${formatVersionForKey(api.config.version)}`
+      : api.name;
+    ingestApis[rustKey] = {
       name: api.name,
       columns: api.columnArray,
       version: api.config.version,
       writeTo: {
         kind: "stream",
         name: api.config.destination.name,
+        // Use the destination stream's version so the Rust loader can resolve the topic key
+        version: api.config.destination.config.version,
       },
-      deadLetterQueue: api.config.deadLetterQueue?.name,
+      deadLetterQueue: deadLetterQueueName,
       metadata,
     };
   });
@@ -306,7 +354,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
           const table = r as OlapTable<any>;
           const id =
             table.config.version ?
-              `${table.name}_${table.config.version}`
+              `${table.name}_${formatVersionForKey(table.config.version)}`
             : table.name;
           return {
             id,
@@ -327,7 +375,7 @@ export const toInfraMap = (registry: typeof moose_internal) => {
           const table = r as OlapTable<any>;
           const id =
             table.config.version ?
-              `${table.name}_${table.config.version}`
+              `${table.name}_${formatVersionForKey(table.config.version)}`
             : table.name;
           return {
             id,

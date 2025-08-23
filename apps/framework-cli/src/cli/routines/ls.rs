@@ -401,15 +401,21 @@ impl StreamInfo {
     fn from_topic(
         value: Topic,
         topic_to_table_sync_processes: &HashMap<String, TopicToTableSyncProcess>,
+        infra_map: &InfrastructureMap,
     ) -> Self {
         let process = topic_to_table_sync_processes
             .values()
             .find(|p| p.source_topic_id == value.id());
 
         Self {
-            name: value.name,
+            name: value.id(),
             schema_fields: value.columns.iter().map(|col| col.name.clone()).collect(),
-            destination: process.map(|p| p.target_table_id.to_string()),
+            destination: process.and_then(|p| {
+                infra_map
+                    .get_table(&p.target_table_id)
+                    .ok()
+                    .map(|table| table.name.clone())
+            }),
         }
     }
 }
@@ -443,6 +449,7 @@ impl ResourceInfo for Vec<StreamInfo> {
 pub struct IngestionApiInfo {
     pub name: String,
     pub destination: String,
+    pub path: String,
 }
 
 fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInfo> {
@@ -454,6 +461,7 @@ fn to_info(endpoint: &ApiEndpoint) -> Either<IngestionApiInfo, ConsumptionApiInf
         } => Either::Left(IngestionApiInfo {
             name: endpoint.name.clone(),
             destination: target_topic_id.clone(),
+            path: endpoint.path.to_string_lossy().to_string(),
         }),
         APIType::EGRESS {
             query_params,
@@ -476,9 +484,13 @@ impl ResourceInfo for Vec<IngestionApiInfo> {
     fn show(&self) {
         show_table(
             "Ingestion APIs".to_string(),
-            vec!["name".to_string(), "destination".to_string()],
+            vec![
+                "name".to_string(),
+                "destination".to_string(),
+                "path".to_string(),
+            ],
             self.iter()
-                .map(|api| vec![api.name.clone(), api.destination.clone()])
+                .map(|api| vec![api.name.clone(), api.destination.clone(), api.path.clone()])
                 .collect(),
         )
     }
@@ -656,18 +668,29 @@ pub async fn ls_dmv2(
         .values()
         .filter(|api| name.is_none_or(|name| api.name.contains(name)))
         .partition_map(to_info);
+
+    // Extract all needed data to avoid ownership issues
+    let topics: Vec<Topic> = infra_map
+        .topics
+        .values()
+        .filter(|api| name.is_none_or(|name| api.name.contains(name)))
+        .cloned()
+        .collect();
+
+    let tables: Vec<Table> = infra_map
+        .tables
+        .values()
+        .filter(|api| name.is_none_or(|name| api.name.contains(name)))
+        .cloned()
+        .collect();
+
     let resources = ResourceListing {
-        tables: infra_map
-            .tables
-            .into_values()
-            .filter(|api| name.is_none_or(|name| api.name.contains(name)))
-            .map(|t| t.into())
-            .collect(),
-        streams: infra_map
-            .topics
-            .into_values()
-            .filter(|api| name.is_none_or(|name| api.name.contains(name)))
-            .map(|t| StreamInfo::from_topic(t, &infra_map.topic_to_table_sync_processes))
+        tables: tables.into_iter().map(|t| t.into()).collect(),
+        streams: topics
+            .into_iter()
+            .map(|t| {
+                StreamInfo::from_topic(t, &infra_map.topic_to_table_sync_processes, &infra_map)
+            })
             .collect(),
         ingestion_apis,
         sql_resources: infra_map

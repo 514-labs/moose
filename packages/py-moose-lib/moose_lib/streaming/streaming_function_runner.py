@@ -67,7 +67,7 @@ class KafkaTopicConfig:
 
         name = self.name
         if self.version is not None:
-            version_suffix = f"_{self.version}".replace(".", "_")
+            version_suffix = ("_" + self.version.replace('.', '_').replace('/', '_'))
             if name.endswith(version_suffix):
                 name = name.removesuffix(version_suffix)
             else:
@@ -81,6 +81,15 @@ class KafkaTopicConfig:
                 raise Exception(f"Namespace prefix {prefix} not found in topic name {name}")
 
         return name
+
+    def topic_name_to_stream_key(self) -> str:
+        """Returns the stream registry key, including version suffix if present."""
+        stream_name = self.topic_name_to_stream_name()
+        if self.version is not None:
+            # Keep registry key generation consistent with stream.generate_topic_id
+            version_suffix = self.version.replace('.', '_').replace('/', '_')
+            return f"{stream_name}_{version_suffix}"
+        return stream_name
 
 
 def load_streaming_function_dmv1(function_file_dir: str, function_file_name: str) -> Tuple[type, Callable]:
@@ -160,7 +169,8 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
 
     # Find the stream that has a transformation matching our source/destination
     for source_py_stream_name, stream in get_streams().items():
-        if source_py_stream_name != source_topic.topic_name_to_stream_name():
+        # Compare registry key with topic's expected stream key (handles both versioned and unversioned)
+        if source_py_stream_name != source_topic.topic_name_to_stream_key():
             continue
 
         if stream.has_consumers() and target_topic is None:
@@ -170,21 +180,36 @@ def load_streaming_function_dmv2(function_file_dir: str, function_file_name: str
             return stream.model_type, consumers
 
         # Check each transformation in the stream
-        for dest_stream_py_name, transform_entries in stream.transformations.items():
-            # The source topic name should match the stream name
-            # The destination topic name should match the destination stream name
-            if source_py_stream_name == source_topic.topic_name_to_stream_name() and dest_stream_py_name == target_topic.topic_name_to_stream_name():
-                # Found the matching transformation
-                transformations = [(entry.transformation, entry.config.dead_letter_queue) for entry in
-                                   transform_entries]
-                if not transformations:
-                    continue
-                return stream.model_type, transformations
+        # Match by destination stream registry key (includes version) vs. target topic's expected stream key
+        # Flatten all transform entries and select only those whose destination matches the exact target stream key
+        target_stream_key = target_topic.topic_name_to_stream_key() if target_topic is not None else None
+        if target_stream_key is not None:
+            matching_transformations: list[tuple[Callable, Optional[DeadLetterQueue]]] = []
+            for _dest_name, transform_entries in stream.transformations.items():
+                for entry in transform_entries:
+                    # The destination is a Stream; generate its registry key including version
+                    try:
+                        dest_stream_key = entry.destination.generate_topic_id()
+                    except Exception:
+                        # Fallback: use destination name if method unavailable
+                        dest_stream_key = getattr(entry.destination, 'name', None)
+
+                    if dest_stream_key == target_stream_key:
+                        matching_transformations.append((entry.transformation, entry.config.dead_letter_queue))
+
+            if matching_transformations:
+                return stream.model_type, matching_transformations
 
     # If we get here, no matching transformation was found
+    expected_key = None
+    try:
+        expected_key = target_topic.topic_name_to_stream_key() if target_topic is not None else None
+    except Exception:
+        expected_key = None
+    detail = f" (expected destination key: {expected_key})" if expected_key else ""
     cli_log(CliLogData(
         action="Function",
-        message=f"No transformation found from {source_topic.name} to {target_topic.name}",
+        message=f"No transformation found from {source_topic.name} to {getattr(target_topic, 'name', None)}{detail}",
         message_type="Error"
     ))
     sys.exit(1)

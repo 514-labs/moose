@@ -30,6 +30,13 @@ model_config = ConfigDict(alias_generator=AliasGenerator(
     serialization_alias=to_camel,
 ))
 
+def generate_versioned_key(name: str, version: Optional[str]) -> str:
+    if (version is not None):
+        version_suffix = version.replace(".", "_").replace("/", "_")
+        return f"{name}_{version_suffix}"
+    else:
+        return name
+
 
 class Target(BaseModel):
     """Represents a target destination for data flow, typically a stream.
@@ -40,9 +47,14 @@ class Target(BaseModel):
         version: Optional version of the target stream configuration.
         metadata: Optional metadata for the target stream.
     """
+    model_config = model_config
+
     kind: Literal["stream"]
     name: str
     version: Optional[str] = None
+    # For transformation targets, this carries the destination topic's version.
+    # For ingest APIs, this may be None as `version` already represents the topic version.
+    topic_version: Optional[str] = None
     metadata: Optional[dict] = None
 
 class Consumer(BaseModel):
@@ -235,7 +247,7 @@ def _map_sql_resource_ref(r: Any) -> InfrastructureSignatureJson:
         if r.kind == "OlapTable":
             # Explicitly cast for type hint checking if needed, though Python is dynamic
             table = r # type: OlapTable
-            res_id = f"{table.name}_{table.config.version}" if table.config.version else table.name
+            res_id = generate_versioned_key(table.name, table.config.version) if table.config.version else table.name
             return InfrastructureSignatureJson(id=res_id, kind="Table")
         elif r.kind == "SqlResource":
             # Explicitly cast for type hint checking if needed
@@ -269,7 +281,7 @@ def to_infra_map() -> dict:
     for name, table in get_tables().items():
         engine = table.config.engine
         tables[name] = TableConfig(
-            name=name,
+            name=table.name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
             engine=None if engine is None else engine.value,
@@ -282,8 +294,9 @@ def to_infra_map() -> dict:
         transformation_targets = [
             Target(
                 kind="stream",
-                name=dest_name,
+                name=transform.destination.name,
                 version=transform.config.version,
+                topic_version=transform.destination.config.version,
                 metadata=getattr(transform.config, "metadata", None),
             )
             for dest_name, transforms in stream.transformations.items()
@@ -296,7 +309,7 @@ def to_infra_map() -> dict:
         ]
 
         topics[name] = TopicConfig(
-            name=name,
+            name=stream.name,
             columns=_to_columns(stream._t),
             target_table=stream.config.destination.name if stream.config.destination else None,
             target_table_version=stream.config.destination.config.version if stream.config.destination else None,
@@ -310,17 +323,23 @@ def to_infra_map() -> dict:
             life_cycle=stream.config.life_cycle.value if stream.config.life_cycle else None,
         )
 
-    for name, api in get_ingest_apis().items():
-        ingest_apis[name] = IngestApiConfig(
-            name=name,
+    for registry_key, api in get_ingest_apis().items():
+        # Use consistent versioned key generation like tables and topics
+        versioned_key = generate_versioned_key(api.name, api.config.version)
+
+        dead_letter_queue_id = api.config.dead_letter_queue.generate_topic_id() if api.config.dead_letter_queue else None
+
+        ingest_apis[versioned_key] = IngestApiConfig(
+            name=api.name,  # Use original name from the API object
             columns=_to_columns(api._t),
             version=api.config.version,
             write_to=Target(
                 kind="stream",
-                name=api.config.destination.name
+                name=api.config.destination.name,
+                version=api.config.destination.config.version,
             ),
             metadata=getattr(api, "metadata", None),
-            dead_letter_queue=api.config.dead_letter_queue.name
+            dead_letter_queue=dead_letter_queue_id
         )
 
     for name, api in get_apis().items():

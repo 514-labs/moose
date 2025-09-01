@@ -301,6 +301,11 @@ async fn execute_drop_table(
     Ok(())
 }
 
+// Note: The nullable wrapping logic has been moved to std_column_to_clickhouse_column
+// in mapper.rs to ensure consistent handling across all uses.
+// TODO: Future refactoring opportunity - Consider eliminating the `required` boolean field
+// from ClickHouseColumn and rely solely on the Nullable type wrapper.
+
 async fn execute_add_table_column(
     db_name: &str,
     table_name: &str,
@@ -317,12 +322,20 @@ async fn execute_add_table_column(
     let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
     let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
 
+    // Include DEFAULT clause if column has a default value
+    let default_clause = clickhouse_column
+        .default
+        .as_ref()
+        .map(|d| format!(" DEFAULT {}", d))
+        .unwrap_or_default();
+
     let add_column_query = format!(
-        "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {} {}",
+        "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}{} {}",
         db_name,
         table_name,
         clickhouse_column.name,
         column_type_string,
+        default_clause,
         match after_column {
             None => "FIRST".to_string(),
             Some(after_col) => format!("AFTER `{after_col}`"),
@@ -462,11 +475,13 @@ fn build_modify_column_sql(
     ch_col: &ClickHouseColumn,
 ) -> Result<String, ClickhouseChangesError> {
     let column_type_string = basic_field_type_to_string(&ch_col.column_type)?;
+
     let default_clause = ch_col
         .default
         .as_ref()
         .map(|d| format!(" DEFAULT {}", d))
         .unwrap_or_default();
+
     let sql = if let Some(ref comment) = ch_col.comment {
         let escaped_comment = comment.replace('\'', "''");
         format!(
@@ -1476,6 +1491,33 @@ mod tests {
     }
 
     #[test]
+    fn test_modify_nullable_column_with_default() {
+        use crate::framework::core::infrastructure::table::Column;
+        use crate::infrastructure::olap::clickhouse::mapper::std_column_to_clickhouse_column;
+
+        // Test modifying a nullable column with a default value
+        let column = Column {
+            name: "description".to_string(),
+            data_type: ColumnType::String,
+            required: false,
+            unique: false,
+            primary_key: false,
+            default: Some("'updated default'".to_string()),
+            annotations: vec![],
+            comment: Some("Updated description field".to_string()),
+        };
+
+        let clickhouse_column = std_column_to_clickhouse_column(column).unwrap();
+
+        let sql = build_modify_column_sql("test_db", "users", &clickhouse_column).unwrap();
+
+        assert_eq!(
+            sql,
+            "ALTER TABLE `test_db`.`users` MODIFY COLUMN IF EXISTS `description` Nullable(String) DEFAULT 'updated default' COMMENT 'Updated description field'"
+        );
+    }
+
+    #[test]
     fn test_extract_order_by_from_create_query_edge_cases() {
         // Test with multiple ORDER BY clauses (should only use the first one)
         let query =
@@ -1520,5 +1562,96 @@ mod tests {
         let query = "CREATE TABLE test (`PRIMARY KEY` Int64) ENGINE = MergeTree() ORDER BY (`id`)";
         let order_by = extract_order_by_from_create_query(query);
         assert_eq!(order_by, vec!["id".to_string()]);
+    }
+
+    #[test]
+    fn test_add_column_with_default_value() {
+        use crate::framework::core::infrastructure::table::{Column, IntType};
+        use crate::infrastructure::olap::clickhouse::mapper::std_column_to_clickhouse_column;
+        use crate::infrastructure::olap::clickhouse::queries::basic_field_type_to_string;
+
+        // Test adding a column with a default value
+        let column = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int32),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: Some("42".to_string()),
+            annotations: vec![],
+            comment: Some("Number of items".to_string()),
+        };
+
+        let clickhouse_column = std_column_to_clickhouse_column(column).unwrap();
+        let column_type_string =
+            basic_field_type_to_string(&clickhouse_column.column_type).unwrap();
+
+        // Include DEFAULT clause if column has a default value
+        let default_clause = clickhouse_column
+            .default
+            .as_ref()
+            .map(|d| format!(" DEFAULT {}", d))
+            .unwrap_or_default();
+
+        let add_column_query = format!(
+            "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}{} {}",
+            "test_db",
+            "test_table",
+            clickhouse_column.name,
+            column_type_string,
+            default_clause,
+            "FIRST"
+        );
+
+        assert_eq!(
+            add_column_query,
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `count` Int32 DEFAULT 42 FIRST"
+        );
+    }
+
+    #[test]
+    fn test_add_nullable_column_with_default_string() {
+        use crate::framework::core::infrastructure::table::Column;
+        use crate::infrastructure::olap::clickhouse::mapper::std_column_to_clickhouse_column;
+        use crate::infrastructure::olap::clickhouse::queries::basic_field_type_to_string;
+
+        // Test adding a nullable column with a default string value
+        let column = Column {
+            name: "description".to_string(),
+            data_type: ColumnType::String,
+            required: false,
+            unique: false,
+            primary_key: false,
+            default: Some("'default text'".to_string()),
+            annotations: vec![],
+            comment: None,
+        };
+
+        let clickhouse_column = std_column_to_clickhouse_column(column).unwrap();
+
+        let column_type_string =
+            basic_field_type_to_string(&clickhouse_column.column_type).unwrap();
+
+        // Include DEFAULT clause if column has a default value
+        let default_clause = clickhouse_column
+            .default
+            .as_ref()
+            .map(|d| format!(" DEFAULT {}", d))
+            .unwrap_or_default();
+
+        let add_column_query = format!(
+            "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}{} {}",
+            "test_db",
+            "test_table",
+            clickhouse_column.name,
+            column_type_string,
+            default_clause,
+            "AFTER `id`"
+        );
+
+        assert_eq!(
+            add_column_query,
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `description` Nullable(String) DEFAULT 'default text' AFTER `id`"
+        );
     }
 }

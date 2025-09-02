@@ -151,7 +151,7 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                 let (path_item, component_schemas) =
                     create_egress_path_item(api_endpoint, output_schema.clone(), query_params);
                 paths.insert(
-                    format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
+                    format!("/api/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
                 );
                 // Merge egress schemas into the main schemas map

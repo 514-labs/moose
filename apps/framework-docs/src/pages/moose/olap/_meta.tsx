@@ -31,7 +31,7 @@ const rawMeta = {
     title: "External Tables",
   },
   "schema-versioning": {
-    title: "Schema Versioning",
+    title: "Table Versioning",
   },
   "schema-change": {
     title: "Failed Migrations",

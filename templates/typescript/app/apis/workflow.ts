@@ -6,10 +6,10 @@ interface WorkflowResponse {
 }
 
 const triggerApi = new Api<{}, WorkflowResponse>(
-  "start-workflow",
+  "start-generator-workflow",
   async (_, { client }) => {
     // Trigger the workflow with input parameters
-    const workflowExecution = await client.workflow.execute("workflow", {});
+    const workflowExecution = await client.workflow.execute("generator", {});
 
     return {
       workflowId: workflowExecution.body,
@@ -19,10 +19,10 @@ const triggerApi = new Api<{}, WorkflowResponse>(
 );
 
 const terminateAPI = new Api<{}, WorkflowResponse>(
-  "terminate-workflow",
+  "terminate-generator-workflow",
   async (_, { client }) => {
     // Terminate the workflow by name
-    const workflowExecution = await client.workflow.terminate("workflow");
+    const workflowExecution = await client.workflow.terminate("generator");
 
     return {
       workflowId: workflowExecution.body,

@@ -37,6 +37,7 @@ humantime = "2.1.0"
 uuid = { version = "1.6", features = ["v4", "serde"] }
 serde_json = { version = "1.0.133", features = ["preserve_order"] }
 serde_urlencoded = "0.7"
+semver = "1.0"
 base64 = "0.22.0"
 async-recursion = "1.1.0"
 hyper-util = { version = "0.1.3", features = ["full"] }

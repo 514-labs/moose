@@ -36,6 +36,7 @@ export {
   LowCardinality,
   ClickHouseNamedTuple,
   ClickHouseDefault,
+  WithDefault,
 } from "./dataModels/types";
 
 export type { ApiUtil, ConsumptionUtil } from "./consumption-apis/helpers";

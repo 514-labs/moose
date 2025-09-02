@@ -39,6 +39,7 @@ use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
 use model::ClickHouseColumn;
 use queries::{basic_field_type_to_string, create_table_query, drop_table_query};
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::table::{
@@ -1003,7 +1004,9 @@ impl OlapOperations for ConfiguredDBClient {
                     type,
                     comment,
                     is_in_primary_key,
-                    is_in_sorting_key
+                    is_in_sorting_key,
+                    default_kind,
+                    default_expression
                 FROM system.columns
                 WHERE database = '{db_name}'
                 AND table = '{table_name}'
@@ -1018,7 +1021,7 @@ impl OlapOperations for ConfiguredDBClient {
             let mut columns_cursor = self
                 .client
                 .query(&columns_query)
-                .fetch::<(String, String, String, u8, u8)>()
+                .fetch::<(String, String, String, u8, u8, String, String)>()
                 .map_err(|e| {
                     debug!("Error fetching columns for table {}: {}", table_name, e);
                     OlapChangesError::DatabaseError(e.to_string())
@@ -1026,7 +1029,15 @@ impl OlapOperations for ConfiguredDBClient {
 
             let mut columns = Vec::new();
 
-            while let Some((col_name, col_type, comment, is_primary, is_sorting)) = columns_cursor
+            while let Some((
+                col_name,
+                col_type,
+                comment,
+                is_primary,
+                is_sorting,
+                default_kind,
+                default_expression,
+            )) = columns_cursor
                 .next()
                 .await
                 .map_err(|e| OlapChangesError::DatabaseError(e.to_string()))?
@@ -1108,13 +1119,26 @@ impl OlapOperations for ConfiguredDBClient {
                     None
                 };
 
+                let default = match default_kind.deref() {
+                    "" => None,
+                    "DEFAULT" => Some(default_expression),
+                    "MATERIALIZED" | "ALIAS" => {
+                        debug!("MATERIALIZED and ALIAS not yet handled.");
+                        None
+                    }
+                    _ => {
+                        debug!("Unknown default kind: {default_kind} for column {col_name}");
+                        None
+                    }
+                };
+
                 let column = Column {
                     name: col_name.clone(),
                     data_type,
                     required: !is_nullable,
                     unique: false,
                     primary_key: is_actual_primary_key,
-                    default: None,
+                    default,
                     annotations: Default::default(),
                     comment: column_comment,
                 };

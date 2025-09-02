@@ -15,6 +15,25 @@ interface MaterializedViewCreateOptions {
   select: string;
 }
 
+interface RefreshableMaterializedViewToOptions {
+  name: string;
+  destinationTable: string;
+  select: string;
+  refreshInterval: RefreshInterval;
+  appendMode?: boolean;
+  dependsOn?: string[];
+}
+
+// New simplified interface for refreshable materialized views using TO syntax
+interface RefreshableMaterializedViewToOptions {
+  name: string;
+  destinationTable: string;
+  select: string;
+  refreshInterval: RefreshInterval;
+  appendMode?: boolean;
+  dependsOn?: string[];
+}
+
 interface PopulateTableOptions {
   destinationTable: string;
   select: string;
@@ -25,6 +44,11 @@ interface TableCreateOptions {
   columns: Record<string, string>;
   engine?: ClickHouseEngines;
   orderBy?: string;
+}
+
+interface RefreshInterval {
+  value: number;
+  unit: "seconds" | "minutes" | "hours" | "days";
 }
 
 export interface Blocks {
@@ -90,6 +114,42 @@ export function createMaterializedView(
   return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
         TO ${options.destinationTable}
         AS ${options.select}`.trim();
+}
+
+/**
+ * Converts a RefreshInterval to ClickHouse INTERVAL syntax.
+ */
+export function toClickHouseInterval(interval: RefreshInterval): string {
+  const unitMap = {
+    seconds: "SECOND",
+    minutes: "MINUTE",
+    hours: "HOUR",
+    days: "DAY",
+  };
+  const unit =
+    interval.value === 1 ?
+      unitMap[interval.unit]
+    : unitMap[interval.unit] + "S";
+  return `${interval.value} ${unit}`;
+}
+
+/**
+ * Creates a refreshable materialized view using TO syntax (same pattern as regular materialized views).
+ */
+export function createRefreshableMaterializedView(
+  options: RefreshableMaterializedViewToOptions,
+): string {
+  const refreshClause = `REFRESH EVERY ${toClickHouseInterval(options.refreshInterval)}`;
+  const appendClause = options.appendMode ? " APPEND" : "";
+  const dependsOnClause =
+    options.dependsOn && options.dependsOn.length > 0 ?
+      ` DEPENDS ON ${options.dependsOn.join(", ")}`
+    : "";
+
+  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name}
+${refreshClause}${appendClause}${dependsOnClause}
+TO ${options.destinationTable}
+AS ${options.select}`.trim();
 }
 
 /**

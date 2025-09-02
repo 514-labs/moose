@@ -483,6 +483,7 @@ import ipaddress
 from uuid import UUID
 from enum import IntEnum, Enum
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig, OlapConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
+from moose_lib import clickhouse_default, ClickHouseEngines
 
 class Foo(BaseModel):
     primary_key: Key[str]

@@ -42,7 +42,7 @@ interface ExampleModel {
   }
 }
 
-const api = new IngestApi<ExampleModel>("your-api-route", {
+export const api = new IngestApi<ExampleModel>("your-api-route", {
   destination: new Stream<ExampleModel>("your-stream-name"),
   deadLetterQueue: new DeadLetterQueue<ExampleModel>("your-dlq-name")
 });

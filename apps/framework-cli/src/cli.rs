@@ -25,12 +25,13 @@ use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
 use routines::scripts::{
-    cancel_workflow, get_workflow_status, init_workflow, list_workflows_history, pause_workflow,
-    run_workflow, terminate_workflow, unpause_workflow,
+    cancel_workflow, get_workflow_status, list_workflows_history, pause_workflow, run_workflow,
+    terminate_workflow, unpause_workflow,
 };
 use routines::templates::list_available_templates;
 
 use settings::Settings;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -59,6 +60,8 @@ use crate::cli::routines::ls::ls_dmv2;
 use crate::cli::routines::templates::create_project_from_template;
 use crate::framework::core::migration_plan::MIGRATION_SCHEMA;
 use anyhow::Result;
+use std::time::Duration;
+use tokio::time::timeout;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -110,6 +113,47 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
     Ok(())
 }
 
+/// Runs local infrastructure with a configurable timeout
+async fn run_local_infrastructure_with_timeout(
+    project: &Arc<Project>,
+    settings: &Settings,
+) -> anyhow::Result<()> {
+    let timeout_duration = Duration::from_secs(settings.dev.infrastructure_timeout_seconds);
+
+    // Wrap the synchronous function in a blocking task to make it work with timeout
+    let run_future = tokio::task::spawn_blocking({
+        let project = project.clone();
+        let settings = settings.clone();
+        move || {
+            let docker_client = DockerClient::new(&settings);
+            run_local_infrastructure(&project, &settings, &docker_client)
+        }
+    });
+
+    match timeout(timeout_duration, run_future).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(e)) => Err(e.into()),
+        Err(_) => {
+            Err(anyhow::anyhow!(
+                "Docker container startup and validation timed out after {} seconds.\n\n\
+                This usually happens when Docker is in an unresponsive state.\n\n\
+                Troubleshooting steps:\n\
+                • Check if Docker is running: `docker info`\n\
+                • Stop existing containers: `docker stop $(docker ps -aq)`\n\
+                • Restart Docker Desktop (if using Desktop)\n\
+                • On Linux, restart Docker daemon: `sudo systemctl restart docker`\n\
+                • Check for port conflicts: `lsof -i :4000-4002`\n\
+                • If the issue persists, you can increase the timeout in your Moose configuration:\n\
+                  [dev]\n\
+                  infrastructure_timeout_seconds = {}\n\n\
+                For more help, visit: https://docs.moosejs.com/help/troubleshooting",
+                timeout_duration.as_secs(),
+                timeout_duration.as_secs() * 2
+            ))
+        }
+    }
+}
+
 pub async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
@@ -152,6 +196,7 @@ pub async fn top_command_handler(
                 Some(name.to_string()),
                 &settings,
                 machine_id.clone(),
+                HashMap::from([("template".to_string(), template.to_string())]),
             );
 
             check_project_name(name)?;
@@ -186,6 +231,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -261,6 +307,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 let docker_client = DockerClient::new(&settings);
@@ -280,6 +327,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 // Use the new build_package function instead of Docker build
@@ -307,6 +355,7 @@ pub async fn top_command_handler(
         }
         Commands::Dev {} => {
             info!("Running dev command");
+            info!("Moose Version: {}", CLI_VERSION);
 
             let mut project = load_project()?;
             project.set_is_production_env(false);
@@ -317,17 +366,18 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
-            let docker_client = DockerClient::new(&settings);
-
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc, &settings, &docker_client).map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Dev".to_string(),
-                    details: format!("Failed to run local infrastructure: {e:?}"),
-                })
-            })?;
+            run_local_infrastructure_with_timeout(&project_arc, &settings)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to run local infrastructure: {e:?}"),
+                    })
+                })?;
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
@@ -384,6 +434,7 @@ pub async fn top_command_handler(
                     Some(project_arc.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 check_project_name(&project_arc.name())?;
@@ -406,6 +457,7 @@ pub async fn top_command_handler(
                     Some(project.name()),
                     &settings,
                     machine_id.clone(),
+                    HashMap::new(),
                 );
 
                 check_project_name(&project.name())?;
@@ -582,6 +634,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             routines::start_production_mode(&settings, project_arc, arc_metrics, redis_client)
@@ -609,6 +662,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project.name())?;
@@ -638,6 +692,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project_arc.name())?;
@@ -662,6 +717,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             check_project_name(&project.name())?;
@@ -699,6 +755,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = show_processes(project_arc);
@@ -725,6 +782,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let res = if project_arc.features.data_model_v2 {
@@ -756,6 +814,7 @@ pub async fn top_command_handler(
                 Some(project_arc.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             // Default to table if neither table nor stream is specified
@@ -778,6 +837,7 @@ pub async fn top_command_handler(
                 None,
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = run_console().await;
@@ -797,7 +857,6 @@ pub async fn top_command_handler(
             }
 
             let activity_type = match &workflow_args.command {
-                Some(WorkflowCommands::Init { .. }) => ActivityType::WorkflowInitCommand,
                 Some(WorkflowCommands::Run { .. }) => ActivityType::WorkflowRunCommand,
                 Some(WorkflowCommands::List { .. }) => ActivityType::WorkflowListCommand,
                 Some(WorkflowCommands::History { .. }) => ActivityType::WorkflowListCommand,
@@ -815,12 +874,10 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let result = match &workflow_args.command {
-                Some(WorkflowCommands::Init { name, tasks, task }) => {
-                    init_workflow(&project, name, tasks.clone(), task.clone()).await
-                }
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }
@@ -869,6 +926,7 @@ pub async fn top_command_handler(
                         None,
                         &settings,
                         machine_id.clone(),
+                        HashMap::new(),
                     );
 
                     let result = list_available_templates(CLI_VERSION).await;
@@ -889,6 +947,7 @@ pub async fn top_command_handler(
                 Some(project.name()),
                 &settings,
                 machine_id.clone(),
+                HashMap::new(),
             );
 
             let output = remote_refresh(&project, url, token).await.map_err(|e| {

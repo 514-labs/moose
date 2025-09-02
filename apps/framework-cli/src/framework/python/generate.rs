@@ -1,6 +1,7 @@
 use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, IntType, Nested, Table,
 };
+use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 use regex::Regex;
@@ -269,6 +270,11 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         "from moose_lib import Key, IngestPipeline, IngestPipelineConfig, OlapConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin"
     )
     .unwrap();
+    writeln!(
+        output,
+        "from moose_lib import clickhouse_default, ClickHouseEngines"
+    )
+    .unwrap();
     writeln!(output).unwrap();
 
     // Collect all enums, nested types, and named tuples
@@ -339,11 +345,18 @@ pub fn tables_to_python(tables: &[Table]) -> String {
             let type_str =
                 map_column_type_to_python(&column.data_type, &enums, &nested_models, &named_tuples);
 
-            let (type_str, default) = if !column.required {
+            let (mut type_str, default) = if !column.required {
                 (format!("Optional[{type_str}]"), " = None")
             } else {
                 (type_str, "")
             };
+
+            if let Some(ref default_expr) = column.default {
+                type_str = format!(
+                    "Annotated[{}, clickhouse_default({:?})]",
+                    type_str, default_expr
+                );
+            }
 
             let type_str = if can_use_key_wrapping && column.primary_key {
                 format!("Key[{type_str}]")
@@ -392,7 +405,12 @@ pub fn tables_to_python(tables: &[Table]) -> String {
         writeln!(output, "    ingest=True,").unwrap();
         writeln!(output, "    stream=True,").unwrap();
         writeln!(output, "    table=OlapConfig(").unwrap();
-        writeln!(output, "        order_by_fields=[{order_by_fields}]").unwrap();
+        writeln!(output, "        order_by_fields=[{order_by_fields}],").unwrap();
+        if let Some(engine) = table.engine.as_deref() {
+            if let Ok(engine) = ClickhouseEngine::try_from(engine) {
+                writeln!(output, "        engine=ClickHouseEngines.{:?},", engine).unwrap();
+            }
+        }
         writeln!(output, "    )").unwrap();
         writeln!(output, "))").unwrap();
         writeln!(output).unwrap();
@@ -445,7 +463,6 @@ mod tests {
                 },
             ],
             order_by: vec!["primary_key".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -466,6 +483,7 @@ import ipaddress
 from uuid import UUID
 from enum import IntEnum, Enum
 from moose_lib import Key, IngestPipeline, IngestPipelineConfig, OlapConfig, clickhouse_datetime64, clickhouse_decimal, ClickhouseSize, StringToEnumMixin
+from moose_lib import clickhouse_default, ClickHouseEngines
 
 class Foo(BaseModel):
     primary_key: Key[str]
@@ -476,7 +494,8 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
     ingest=True,
     stream=True,
     table=OlapConfig(
-        order_by_fields=["primary_key"]
+        order_by_fields=["primary_key"],
+        engine=ClickHouseEngines.MergeTree,
     )
 ))"#
         ));
@@ -528,7 +547,6 @@ foo_model = IngestPipeline[Foo]("Foo", IngestPipelineConfig(
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -550,7 +568,8 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
     ingest=True,
     stream=True,
     table=OlapConfig(
-        order_by_fields=["id"]
+        order_by_fields=["id"],
+        engine=ClickHouseEngines.MergeTree,
     )
 ))"#
         ));
@@ -633,7 +652,6 @@ nested_array_model = IngestPipeline[NestedArray]("NestedArray", IngestPipelineCo
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -660,7 +678,8 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
     ingest=True,
     stream=True,
     table=OlapConfig(
-        order_by_fields=["id"]
+        order_by_fields=["id"],
+        engine=ClickHouseEngines.MergeTree,
     )
 ))"#
         ));
@@ -709,7 +728,6 @@ user_model = IngestPipeline[User]("User", IngestPipelineConfig(
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {

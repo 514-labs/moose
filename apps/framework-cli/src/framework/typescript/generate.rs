@@ -1,6 +1,7 @@
 use crate::framework::core::infrastructure::table::{
     ColumnType, DataEnum, EnumValue, FloatType, Nested, Table,
 };
+use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 use std::collections::hash_map::Entry;
@@ -132,7 +133,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     // Add imports
     writeln!(
         output,
-        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple }} from \"@514labs/moose-lib\";"
+        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple, ClickHouseEngines, ClickHouseDefault, WithDefault }} from \"@514labs/moose-lib\";"
     )
     .unwrap();
     writeln!(output, "import typia from \"typia\";").unwrap();
@@ -213,6 +214,16 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
 
         for column in &table.columns {
             let type_str = map_column_type_to_typescript(&column.data_type, &enums, &nested_models);
+            let type_str = match column.default {
+                None => type_str,
+                Some(ref default) if type_str == "Date" => {
+                    // https://github.com/samchon/typia/issues/1658
+                    format!("WithDefault<{type_str}, {:?}>", default)
+                }
+                Some(ref default) => {
+                    format!("{type_str} & ClickHouseDefault<{:?}>", default)
+                }
+            };
             let type_str = if can_use_key_wrapping && column.primary_key {
                 format!("Key<{type_str}>")
             } else {
@@ -249,7 +260,12 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
         )
         .unwrap();
         writeln!(output, "    table: {{").unwrap();
-        writeln!(output, "        orderByFields: [{order_by_fields}]").unwrap();
+        writeln!(output, "        orderByFields: [{order_by_fields}],").unwrap();
+        if let Some(engine) = table.engine.as_deref() {
+            if let Ok(engine) = ClickhouseEngine::try_from(engine) {
+                writeln!(output, "        engine: ClickHouseEngines.{:?},", engine).unwrap();
+            }
+        }
         writeln!(output, "    }}").unwrap();
         writeln!(output, "    stream: true,").unwrap();
         writeln!(output, "    ingestApi: true,").unwrap();
@@ -344,7 +360,6 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -372,7 +387,8 @@ export interface User {
 
 export const UserPipeline = new IngestPipeline<User>("User", {
     table: {
-        orderByFields: ["id"]
+        orderByFields: ["id"],
+        engine: ClickHouseEngines.MergeTree,
     }
     stream: true,
     ingestApi: true,
@@ -421,7 +437,6 @@ export const UserPipeline = new IngestPipeline<User>("User", {
                 },
             ],
             order_by: vec!["id".to_string()],
-            deduplicate: false,
             engine: Some("MergeTree".to_string()),
             version: None,
             source_primitive: PrimitiveSignature {
@@ -447,7 +462,8 @@ export interface Task {
 
 export const TaskPipeline = new IngestPipeline<Task>("Task", {
     table: {
-        orderByFields: ["id"]
+        orderByFields: ["id"],
+        engine: ClickHouseEngines.MergeTree,
     }
     stream: true,
     ingestApi: true,

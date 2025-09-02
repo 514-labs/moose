@@ -210,6 +210,11 @@ Check what Moose created from your tables in the `app/main.py` file:
 <FileTree.File name="main.py" />
 </FileTree.Folder>
 </FileTree>
+
+<Callout type="info" title="Import Pattern">
+<div>Your generated table models are imported here so Moose can detect them.</div>
+<div className="text-sm mt-2">Learn more about export pattern: <a href="/moose/local-dev#hot-reloading-development" className="text-blue-500 hover:underline">local development</a> / <a href="/moose/migrate" className="text-blue-500 hover:underline">hosted</a></div>
+</Callout>
 </Python>
 
 <TypeScript>
@@ -219,6 +224,11 @@ Check what Moose created from your tables in the `app/index.ts` file:
 <FileTree.File name="index.ts" />
 </FileTree.Folder>
 </FileTree>
+
+<Callout type="info" title="Export Pattern">
+<div>Your generated table models are exported here so Moose can detect them.</div>
+<div className="text-sm mt-2">Learn more about export pattern: <a href="/moose/local-dev#hot-reloading-development" className="text-blue-500 hover:underline">local development</a> / <a href="/moose/migrate" className="text-blue-500 hover:underline">hosted</a></div>
+</Callout>
 </TypeScript>
 
 <br />
@@ -296,7 +306,7 @@ export interface QueryParams {
   limit?: number;
 }
 
-const api = new ConsumptionApi<QueryParams, TargetSchema>("get-aggregated-data",
+const api = new Api<QueryParams, TargetSchema>("get-aggregated-data",
   async ({ date, limit = 10 }: QueryParams, { client, sql }) => {
     const query = sql`
         SELECT * FROM ${materializedView.targetTable} 

@@ -118,7 +118,7 @@ interface ProductEvent {
 const productAnalytics = new IngestPipeline<ProductEvent>("product_analytics", {
   table: {
     orderByFields: ["timestamp", "productId"],
-    deduplicate: true,
+    engine: ClickHouseEngines.ReplacingMergeTree,
   },
   stream: {
     parallelism: 4,
@@ -145,7 +145,7 @@ class ProductEvent(BaseModel):
 product_analytics = IngestPipeline[ProductEvent]("product_analytics", IngestPipelineConfig(
     table=OlapConfig(
         order_by_fields=["timestamp", "product_id"],
-        deduplicate=True,
+        engine=ClickHouseEngines.ReplacingMergeTree,
     ),
     stream=StreamConfig(
         parallelism=4,

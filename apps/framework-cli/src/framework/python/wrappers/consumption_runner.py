@@ -17,9 +17,9 @@ from importlib import import_module
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
 from moose_lib import MooseClient
-from moose_lib.query_param import map_params_to_class, convert_consumption_api_param, convert_pydantic_definition
+from moose_lib.query_param import map_params_to_class, convert_api_param, convert_pydantic_definition
 from moose_lib.internal import load_models
-from moose_lib.dmv2 import get_consumption_api, get_consumption_apis, get_workflow
+from moose_lib.dmv2 import get_api, get_apis, get_workflow
 from pydantic import BaseModel, ValidationError
 
 import jwt
@@ -131,9 +131,9 @@ def handler_with_client(moose_client):
                     # Use alias-aware lookup: unversioned name resolves to explicit unversioned
                     # or the sole versioned API if exactly one exists
                     user_api = (
-                        get_consumption_api(f"{module_name}:{version_from_path}")
+                        get_api(f"{module_name}:{version_from_path}")
                         if version_from_path
-                        else get_consumption_api(module_name)
+                        else get_api(module_name)
                     )
                     if user_api is not None:
                         query_fields = convert_pydantic_definition(user_api.model_type)
@@ -155,8 +155,8 @@ def handler_with_client(moose_client):
                     else:
                         self.send_response(404)
                         self.end_headers()
-                        available_apis = list(get_consumption_apis().keys())
-                        error_message = f"Consumption API {module_name}"
+                        available_apis = list(get_apis().keys())
+                        error_message = f"API {module_name}"
                         if version_from_path:
                             error_message += f" with version {version_from_path}"
                         error_message += f" not found. Available APIs: {', '.join(available_apis).replace(':', '/')}"
@@ -164,7 +164,7 @@ def handler_with_client(moose_client):
                         return
                 else:
                     module = import_module(module_name)
-                    fields_and_class = convert_consumption_api_param(module)
+                    fields_and_class = convert_api_param(module)
 
                     if fields_and_class is not None:
                         (cls, fields) = fields_and_class

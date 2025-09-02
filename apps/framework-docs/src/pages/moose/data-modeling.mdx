@@ -129,7 +129,7 @@ const pipeline = new IngestPipeline<MyDataModel>("MyDataPipeline", {
   stream: true,    // Kafka topic
   table: {         // ClickHouse table
     orderByFields: ["primaryKey", "someDate"],
-    deduplicate: true
+    engine: ClickHouseEngines.ReplacingMergeTree,
   }
 });
 ```
@@ -525,7 +525,7 @@ APIs use runtime validation to ensure query parameters meet your requirements:
 
 <TypeScript>
 ```ts filename="app/apis/consumption_with_validation.ts"
-import { tags, ConsumptionAPI } from "@514labs/moose-lib";
+import { tags, Api } from "@514labs/moose-lib";
 
 // Query parameters with runtime validation
 interface SearchParams {
@@ -555,7 +555,7 @@ interface SearchResult {
 }
 
 // Create validated API endpoint
-const searchAPI = new ConsumptionAPI<SearchParams, SearchResult[]>(
+const searchAPI = new Api<SearchParams, SearchResult[]>(
   "search",
   async (params, { client }) => {
     // Params are already validated when this runs
@@ -583,16 +583,16 @@ const searchAPI = new ConsumptionAPI<SearchParams, SearchResult[]>(
 );
 
 // API Usage Examples:
-// ✅ Valid: GET /consumption/search?startDate=2024-01-01&endDate=2024-01-31
-// ✅ Valid: GET /consumption/search?startDate=2024-01-01&endDate=2024-01-31&minValue=100&limit=50
-// ❌ Invalid: GET /consumption/search?startDate=Jan-1-2024 (wrong date format)
-// ❌ Invalid: GET /consumption/search?startDate=2024-01-01&endDate=2024-01-31&limit=200 (exceeds max)
+// ✅ Valid: GET /api/search?startDate=2024-01-01&endDate=2024-01-31
+// ✅ Valid: GET /api/search?startDate=2024-01-01&endDate=2024-01-31&minValue=100&limit=50
+// ❌ Invalid: GET /api/search?startDate=Jan-1-2024 (wrong date format)
+// ❌ Invalid: GET /api/search?startDate=2024-01-01&endDate=2024-01-31&limit=200 (exceeds max)
 ```
 </TypeScript>
 
 <Python>
 ```python filename="app/apis/consumption_with_validation.py"
-from moose_lib import ConsumptionAPI
+from moose_lib import Api
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
@@ -639,16 +639,16 @@ async def search_handler(params: SearchParams, context) -> List[SearchResult]:
     results = await context.client.query(query)
     return [SearchResult(**row) for row in results]
 
-search_api = ConsumptionAPI[SearchParams, List[SearchResult]](
+search_api = Api[SearchParams, List[SearchResult]](
     "search",
     handler=search_handler
 )
 
 # API Usage Examples:
-# ✅ Valid: GET /consumption/search?start_date=2024-01-01&end_date=2024-01-31
-# ✅ Valid: GET /consumption/search?start_date=2024-01-01&end_date=2024-01-31&min_value=100&limit=50
-# ❌ Invalid: GET /consumption/search?start_date=Jan-1-2024 (wrong date format)
-# ❌ Invalid: GET /consumption/search?start_date=2024-01-01&end_date=2024-01-31&limit=200 (exceeds max)
+# ✅ Valid: GET /api/search?start_date=2024-01-01&end_date=2024-01-31
+# ✅ Valid: GET /api/search?start_date=2024-01-01&end_date=2024-01-31&min_value=100&limit=50
+# ❌ Invalid: GET /api/search?start_date=Jan-1-2024 (wrong date format)
+# ❌ Invalid: GET /api/search?start_date=2024-01-01&end_date=2024-01-31&limit=200 (exceeds max)
 ```
 </Python>
 

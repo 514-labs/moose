@@ -269,10 +269,7 @@ impl fmt::Display for ClickHouseFloat {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum ClickHouseColumnDefaults {
-    Now,
-}
+// ClickHouse column defaults are expressed as raw SQL strings on the framework side
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClickHouseColumn {
@@ -281,7 +278,7 @@ pub struct ClickHouseColumn {
     pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
-    pub default: Option<ClickHouseColumnDefaults>,
+    pub default: Option<String>,
     pub comment: Option<String>, // Column comment for metadata storage
 }
 

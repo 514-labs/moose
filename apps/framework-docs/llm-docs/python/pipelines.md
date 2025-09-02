@@ -35,16 +35,16 @@ The `IngestPipeline` class accepts the following configuration options:
 ```python
 from typing import TypedDict, Optional, Union, Literal
 
-class OlapConfig(TypedDict, total=False):
-    order_by_fields: list[str]  # Fields to order by
-    deduplicate: bool          # Enable deduplication
+class OlapConfig(BaseModel):
+    order_by_fields: list[str]                  # Fields to order by
+    engine: Optional[ClickHouseEngines] = None  # Enable deduplication with ClickHouseEngines.ReplacingMergeTree 
 
-class StreamConfig(TypedDict, total=False):
+class StreamConfig(BaseModel):
     parallelism: int           # Number of parallel processing threads
     retention_period: int      # Data retention period in seconds
     destination: str           # Optional destination table
 
-class IngestConfig(TypedDict, total=False):
+class IngestConfig(BaseModel):
     destination: str           # Required destination stream
     format: Literal["JSON", "JSON_ARRAY"]  # Optional ingestion format
 
@@ -85,8 +85,8 @@ ComprehensivePipeline = IngestPipeline[ComprehensiveSchema](
     {
         # Table configuration with all options
         "table": {
-            "order_by_fields": ["id", "timestamp"],  # Specify sort order
-            "deduplicate": True                      # Enable deduplication
+            "order_by_fields": ["id", "timestamp"],       # Specify sort order
+            engine: ClickHouseEngines.ReplacingMergeTree, # Enable deduplication
         },
 
         # Stream configuration with all options

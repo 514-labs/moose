@@ -197,19 +197,6 @@ pub struct WorkflowArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum WorkflowCommands {
-    /// Initialize a new workflow
-    Init {
-        /// Name of your workflow
-        name: String,
-
-        /// Comma-separated list of task names
-        #[arg(long)]
-        tasks: Option<String>,
-
-        /// Individual task names (can be specified multiple times)
-        #[arg(long)]
-        task: Option<Vec<String>>,
-    },
     /// Run a workflow
     Run {
         /// Name of the workflow to run

@@ -48,7 +48,7 @@ class BrainData(BaseModel):
 config = IngestPipelineConfig(
     table=OlapConfig(
         order_by_fields=["id", "timestamp"],
-        deduplicate=True
+        engine=ClickHouseEngines.ReplacingMergeTree,
     ),
     stream=True,
     ingest_api=True
@@ -190,7 +190,7 @@ class BrainData(BaseModel):
 config = IngestPipelineConfig(
     table=OlapConfig(  # Use OlapConfig for table customization
         order_by_fields=["id", "timestamp"],
-        deduplicate=True
+        engine=ClickHouseEngines.ReplacingMergeTree,
     ),
     stream=True,
     ingest_api=True,
@@ -230,7 +230,7 @@ brain_data_pipeline = IngestPipeline[BrainData](
    config = IngestPipelineConfig(
        table=OlapConfig(
            order_by_fields=["id", "timestamp"],
-           deduplicate=True
+           engine=ClickHouseEngines.ReplacingMergeTree,
        ),
        stream=True,
        ingest_api=True
@@ -255,7 +255,7 @@ brain_data_pipeline = IngestPipeline[BrainData](
    config = IngestPipelineConfig(
        table=OlapConfig(
            order_by_fields=["id", "timestamp"],
-           deduplicate=True
+           engine=ClickHouseEngines.ReplacingMergeTree,
        ),
        stream=True,
        ingest_api=True,

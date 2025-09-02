@@ -67,7 +67,7 @@ pub fn std_column_to_clickhouse_column(
         required: column.required,
         unique: column.unique,
         primary_key: column.primary_key,
-        default: None, // TODO: Implement the default mapper
+        default: column.default.clone(),
         comment,
     };
 
@@ -283,7 +283,6 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
                 message: format!("engine: {e}"),
             }
         })?,
-        None if table.deduplicate => ClickhouseEngine::ReplacingMergeTree,
         None => ClickhouseEngine::MergeTree,
     };
 

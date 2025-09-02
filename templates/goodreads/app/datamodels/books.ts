@@ -1,4 +1,9 @@
-import { IngestionFormat, IngestPipeline, Key } from "@514labs/moose-lib";
+import {
+  IngestionFormat,
+  IngestPipeline,
+  Key,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
 
 /**
  * Goodreads books data model containing information about books including title, author, ratings, and publication details
@@ -21,7 +26,7 @@ interface BooksSchema {
 export const BooksPipeline = new IngestPipeline<BooksSchema>("books", {
   table: {
     orderByFields: ["bookID"],
-    deduplicate: true,
+    engine: ClickHouseEngines.ReplacingMergeTree,
   },
   stream: true,
   ingestApi: {

@@ -35,7 +35,6 @@ export interface Brain {
 export const BrainPipeline = new IngestPipeline<Brain>("Brain", {
   table: {
     orderByFields: ["sessionId", "timestamp"],
-    deduplicate: false,
   },
   stream: true,
   ingestApi: true, // POST /ingest/Brain

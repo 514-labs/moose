@@ -200,10 +200,6 @@
             "type": "string"
           }
         },
-        "deduplicate": {
-          "type": "boolean",
-          "default": false
-        },
         "engine": {
           "type": ["string", "null"],
           "default": null
@@ -257,14 +253,7 @@
           "type": "boolean"
         },
         "default": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ColumnDefaults"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
         },
         "annotations": {
           "type": "array",
@@ -464,10 +453,7 @@
       },
       "required": ["name", "columns"]
     },
-    "ColumnDefaults": {
-      "type": "string",
-      "enum": ["AutoIncrement", "CUID", "UUID", "Now"]
-    },
+
     "Version": {
       "description": "Represents a version number that can be parsed from strings like \"1.2.3\".",
       "type": "string"

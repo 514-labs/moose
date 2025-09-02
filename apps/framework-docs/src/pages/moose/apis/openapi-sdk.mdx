@@ -15,7 +15,7 @@ Moose automatically generates OpenAPI specifications for all your APIs, enabling
 When you run `moose dev`, Moose automatically generates an OpenAPI specification file at `.moose/openapi.yaml` that includes:
 
 - **All ingestion endpoints** with request/response schemas
-- **All consumption APIs** with query parameters and response types
+- **All analytics APIs** with query parameters and response types
 - **Example data** for testing and documentation
 - **Type definitions** for all data models
 
@@ -103,7 +103,7 @@ const fetchUserEvents = async () => {
   return response;
 };
 
-// Consumption API with query parameters
+// Analytics API with query parameters
 const fetchAnalytics = async () => {
   const response = await mooseClient.consumptionUserEventsGet({
     startDate: "2024-01-01",
@@ -147,7 +147,7 @@ def send_user_event():
     response = moose_client.ingest_user_events_post(event_data)
     return response
 
-# Type-safe consumption
+# Type-safe Analytics
 def fetch_analytics():
     response = moose_client.consumption_user_events_get(
         start_date="2024-01-01",
@@ -233,8 +233,8 @@ openapi-generator-cli generate \
 <Callout type="warning" title="Regenerate SDKs When:">
 - **Update data models** - Changes to your TypeScript interfaces or Python models
 - **Modify ingestion pipelines** - Adding/removing fields or changing validation rules
-- **Update consumption APIs** - Changing query parameters or response schemas
-- **Add new endpoints** - New ingestion or consumption APIs
+- **Update analytics APIs** - Changing query parameters or response schemas
+- **Add new endpoints** - New ingestion or analytics APIs
 - **Change API configuration** - Modifying authentication, rate limiting, etc.
 </Callout>
 

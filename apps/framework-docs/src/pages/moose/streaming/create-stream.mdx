@@ -55,7 +55,7 @@ interface RawData {
   value: number;
 }
 
-const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
+export const rawIngestionStream = new IngestPipeline<RawData>("raw_data", {
   ingestApi: true, // Creates an ingestion API endpoint at `POST /ingest/raw_data`
   stream: true, // Buffers data between the ingestion API and the database table
   table: true // Creates an OLAP table named `raw_data`
@@ -93,16 +93,16 @@ interface RawData {
   value: number;
 }
 // Create a table for the raw data
-const rawTable = new OlapTable<RawData>("raw_data");
+export const rawTable = new OlapTable<RawData>("raw_data");
 
 // Create a stream for the raw data
-const rawStream = new Stream<RawData>("raw_data", {
+export const rawStream = new Stream<RawData>("raw_data", {
   destination: rawTable // Optional: Specify a destination table for the stream, sets up a process to sync data from the stream to the table
 });
 
 // Create an ingestion API for the raw data
-const rawIngestApi = new IngestApi<RawData>("raw_data" {
-  destination: rawIngestionStream // Configure Moose to write all validated data to the stream
+export const rawIngestApi = new IngestApi<RawData>("raw_data", {
+  destination: rawStream // Configure Moose to write all validated data to the stream
 });
 ```
 </TypeScript>
@@ -261,14 +261,14 @@ interface TransformedData {
 }
 
 // Configure components for raw data ingestion & buffering
-const rawDataStream = new Stream<RawData>("raw_data");
-const rawIngestionStream = new IngestApi<RawData>("raw_data", {
+export const rawDataStream = new Stream<RawData>("raw_data");
+export const rawIngestionStream = new IngestApi<RawData>("raw_data", {
   destination: rawDataStream
 });
 
 // Configure components for transformed data stream & storage
-const transformedTable = new OlapTable<TransformedData>("transformed_data");
-const transformedStream = new Stream<TransformedData>("transformed_stream", {
+export const transformedTable = new OlapTable<TransformedData>("transformed_data");
+export const transformedStream = new Stream<TransformedData>("transformed_stream", {
   destination: transformedTable // Configure the stream <-> table sync
 });
 
@@ -359,7 +359,7 @@ const rawData = new IngestPipeline<RawData>("raw_data", {
 });
 
 // Create an intermediate stream to hold data between transformations (no api or table needed)
-const intermediateStream = new Stream<IntermediateData>("intermediate_stream");
+export const intermediateStream = new Stream<IntermediateData>("intermediate_stream");
 
 // First transformation: double the value and add timestamp
 rawData.stream.addTransform(intermediateStream, (record) => ({
@@ -448,7 +448,7 @@ intermediate_stream.add_transform(destination=final_data.get_stream(), transform
 
 <TypeScript>
 ```typescript filename="StreamConfig.ts"
-const highThroughputStream = new Stream<Data>("high_throughput", {
+export const highThroughputStream = new Stream<Data>("high_throughput", {
   parallelism: 4,              // Process 4 records simultaneously
   retentionPeriod: 86400      // Keep data for 1 day
 });
@@ -475,12 +475,12 @@ Control how Moose manages your stream resources when your code changes. See the 
 import { Stream, LifeCycle } from "@514labs/moose-lib";
 
 // Production stream with external management
-const prodStream = new Stream<Data>("prod_stream", {
+export const prodStream = new Stream<Data>("prod_stream", {
   lifeCycle: LifeCycle.EXTERNALLY_MANAGED
 });
 
 // Development stream with full management
-const devStream = new Stream<Data>("dev_stream", {
+export const devStream = new Stream<Data>("dev_stream", {
   lifeCycle: LifeCycle.FULLY_MANAGED
 });
 ```

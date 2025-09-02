@@ -36,8 +36,10 @@ use errors::ClickhouseError;
 use itertools::Itertools;
 use log::{debug, info};
 use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
+use model::ClickHouseColumn;
 use queries::{basic_field_type_to_string, create_table_query, drop_table_query};
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 
 use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::table::{
@@ -376,12 +378,13 @@ async fn execute_modify_table_column(
 ) -> Result<(), ClickhouseChangesError> {
     // Check if only the comment has changed
     let data_type_changed = before_column.data_type != after_column.data_type;
+    let default_changed = before_column.default != after_column.default;
     let required_changed = before_column.required != after_column.required;
     let comment_changed = before_column.comment != after_column.comment;
 
     // If only the comment changed, use a simpler ALTER TABLE ... MODIFY COLUMN ... COMMENT
     // This is more efficient and avoids unnecessary table rebuilds
-    if !data_type_changed && !required_changed && comment_changed {
+    if !data_type_changed && !required_changed && !default_changed && comment_changed {
         log::info!(
             "Executing comment-only modification for table: {}, column: {}",
             table_name,
@@ -411,22 +414,7 @@ async fn execute_modify_table_column(
 
     // Full column modification including type change
     let clickhouse_column = std_column_to_clickhouse_column(after_column.clone())?;
-    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
-
-    // Build the MODIFY COLUMN query with optional comment
-    let modify_column_query = if let Some(ref comment) = clickhouse_column.comment {
-        // Escape single quotes in the comment for SQL safety
-        let escaped_comment = comment.replace('\'', "''");
-        format!(
-            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {} COMMENT '{}'",
-            db_name, table_name, clickhouse_column.name, column_type_string, escaped_comment
-        )
-    } else {
-        format!(
-            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}",
-            db_name, table_name, clickhouse_column.name, column_type_string
-        )
-    };
+    let modify_column_query = build_modify_column_sql(db_name, table_name, &clickhouse_column)?;
 
     log::debug!("Modifying column: {}", modify_column_query);
     run_query(&modify_column_query, client).await.map_err(|e| {
@@ -455,18 +443,8 @@ async fn execute_modify_column_comment(
         column.name
     );
 
-    // Get the ClickHouse column type for the ALTER statement
-    let clickhouse_column = std_column_to_clickhouse_column(column.clone())?;
-    let column_type_string = basic_field_type_to_string(&clickhouse_column.column_type)?;
-
-    // Escape single quotes in the comment for SQL safety
-    let escaped_comment = comment.replace('\'', "''");
-
-    // ClickHouse requires MODIFY COLUMN with the full column definition when changing comment
-    let modify_comment_query = format!(
-        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {} COMMENT '{}'",
-        db_name, table_name, column.name, column_type_string, escaped_comment
-    );
+    let modify_comment_query =
+        build_modify_column_comment_sql(db_name, table_name, &column.name, comment)?;
 
     log::debug!("Modifying column comment: {}", modify_comment_query);
     run_query(&modify_comment_query, client)
@@ -476,6 +454,45 @@ async fn execute_modify_column_comment(
             resource: Some(table_name.to_string()),
         })?;
     Ok(())
+}
+
+fn build_modify_column_sql(
+    db_name: &str,
+    table_name: &str,
+    ch_col: &ClickHouseColumn,
+) -> Result<String, ClickhouseChangesError> {
+    let column_type_string = basic_field_type_to_string(&ch_col.column_type)?;
+    let default_clause = ch_col
+        .default
+        .as_ref()
+        .map(|d| format!(" DEFAULT {}", d))
+        .unwrap_or_default();
+    let sql = if let Some(ref comment) = ch_col.comment {
+        let escaped_comment = comment.replace('\'', "''");
+        format!(
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}{} COMMENT '{}'",
+            db_name, table_name, ch_col.name, column_type_string, default_clause, escaped_comment
+        )
+    } else {
+        format!(
+            "ALTER TABLE `{}`.`{}` MODIFY COLUMN IF EXISTS `{}` {}{}",
+            db_name, table_name, ch_col.name, column_type_string, default_clause
+        )
+    };
+    Ok(sql)
+}
+
+fn build_modify_column_comment_sql(
+    db_name: &str,
+    table_name: &str,
+    column_name: &str,
+    comment: &str,
+) -> Result<String, ClickhouseChangesError> {
+    let escaped_comment = comment.replace('\'', "''");
+    Ok(format!(
+        "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` COMMENT '{}'",
+        db_name, table_name, column_name, escaped_comment
+    ))
 }
 
 /// Execute a RenameTableColumn operation
@@ -987,7 +1004,9 @@ impl OlapOperations for ConfiguredDBClient {
                     type,
                     comment,
                     is_in_primary_key,
-                    is_in_sorting_key
+                    is_in_sorting_key,
+                    default_kind,
+                    default_expression
                 FROM system.columns
                 WHERE database = '{db_name}'
                 AND table = '{table_name}'
@@ -1002,7 +1021,7 @@ impl OlapOperations for ConfiguredDBClient {
             let mut columns_cursor = self
                 .client
                 .query(&columns_query)
-                .fetch::<(String, String, String, u8, u8)>()
+                .fetch::<(String, String, String, u8, u8, String, String)>()
                 .map_err(|e| {
                     debug!("Error fetching columns for table {}: {}", table_name, e);
                     OlapChangesError::DatabaseError(e.to_string())
@@ -1010,7 +1029,15 @@ impl OlapOperations for ConfiguredDBClient {
 
             let mut columns = Vec::new();
 
-            while let Some((col_name, col_type, comment, is_primary, is_sorting)) = columns_cursor
+            while let Some((
+                col_name,
+                col_type,
+                comment,
+                is_primary,
+                is_sorting,
+                default_kind,
+                default_expression,
+            )) = columns_cursor
                 .next()
                 .await
                 .map_err(|e| OlapChangesError::DatabaseError(e.to_string()))?
@@ -1092,13 +1119,26 @@ impl OlapOperations for ConfiguredDBClient {
                     None
                 };
 
+                let default = match default_kind.deref() {
+                    "" => None,
+                    "DEFAULT" => Some(default_expression),
+                    "MATERIALIZED" | "ALIAS" => {
+                        debug!("MATERIALIZED and ALIAS not yet handled.");
+                        None
+                    }
+                    _ => {
+                        debug!("Unknown default kind: {default_kind} for column {col_name}");
+                        None
+                    }
+                };
+
                 let column = Column {
                     name: col_name.clone(),
                     data_type,
                     required: !is_nullable,
                     unique: false,
                     primary_key: is_actual_primary_key,
-                    default: None,
+                    default,
                     annotations: Default::default(),
                     comment: column_comment,
                 };
@@ -1122,7 +1162,6 @@ impl OlapOperations for ConfiguredDBClient {
                 name: table_name, // Keep the original table name with version
                 columns,
                 order_by: order_by_cols, // Use the extracted ORDER BY columns
-                deduplicate: engine.contains("ReplacingMergeTree"),
                 engine: Some(engine),
                 version,
                 source_primitive,
@@ -1375,6 +1414,65 @@ mod tests {
         assert_ne!(before_column.comment, after_column.comment);
         assert_eq!(before_column.data_type, after_column.data_type);
         assert_eq!(before_column.required, after_column.required);
+    }
+
+    #[test]
+    fn test_modify_column_includes_default_and_comment() {
+        use crate::framework::core::infrastructure::table::{Column, IntType};
+
+        // Build before/after where default changes and comment present
+        let before_column = Column {
+            name: "count".to_string(),
+            data_type: ColumnType::Int(IntType::Int32),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: Some("1".to_string()),
+            annotations: vec![],
+            comment: Some("Number of things".to_string()),
+        };
+        let after_column = Column {
+            default: Some("42".to_string()),
+            ..before_column.clone()
+        };
+
+        let ch_after = std_column_to_clickhouse_column(after_column).unwrap();
+        let sql = build_modify_column_sql("db", "table", &ch_after).unwrap();
+
+        assert_eq!(
+            sql,
+            "ALTER TABLE `db`.`table` MODIFY COLUMN IF EXISTS `count` Int32 DEFAULT 42 COMMENT 'Number of things'".to_string()
+        );
+    }
+
+    #[test]
+    fn test_modify_column_comment_only_no_default_change() {
+        use crate::framework::core::infrastructure::table::Column;
+
+        // same type/required/default; only comment changed => should be handled via comment-only path
+        let before_column = Column {
+            name: "status".to_string(),
+            data_type: ColumnType::String,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: Some("'open'".to_string()),
+            annotations: vec![],
+            comment: Some("old".to_string()),
+        };
+
+        let after_column = Column {
+            comment: Some("new".to_string()),
+            ..before_column.clone()
+        };
+
+        // Use the pure SQL builder for comment-only update
+        let sql =
+            build_modify_column_comment_sql("db", "table", &after_column.name, "new").unwrap();
+        assert_eq!(
+            sql,
+            "ALTER TABLE `db`.`table` MODIFY COLUMN `status` COMMENT 'new'"
+        );
     }
 
     #[test]

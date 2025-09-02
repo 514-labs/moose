@@ -8,6 +8,7 @@ use crate::framework::core::infrastructure::table::{DataEnum, EnumValue, Table};
 use crate::framework::core::infrastructure_map::{
     ColumnChange, OlapChange, OrderByChange, TableChange, TableDiffStrategy,
 };
+use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 
 /// ClickHouse-specific table diff strategy
 ///
@@ -174,10 +175,21 @@ impl TableDiffStrategy for ClickHouseTableDiffStrategy {
             ];
         }
 
-        // Check if deduplication setting changed (affects engine)
-        if before.deduplicate != after.deduplicate {
+        let before_engine = before
+            .engine
+            .as_deref()
+            .and_then(|e| ClickhouseEngine::try_from(e).ok());
+        // do NOT compare the strings directly because of the possible prefix "Shared"
+        let engine_changed = match after.engine.as_deref() {
+            // after.engine is unset -> before engine should be same as default
+            None => before_engine.is_some_and(|e| e != ClickhouseEngine::MergeTree),
+            // force recreate only if after.engine can be parsed and before.engine is not the same
+            Some(e) => ClickhouseEngine::try_from(e).is_ok_and(|e| Some(e) != before_engine),
+        };
+        // Check if engine has changed
+        if engine_changed {
             log::debug!(
-                "ClickHouse: Deduplication setting changed for table '{}', requiring drop+create",
+                "ClickHouse: engine changed for table '{}', requiring drop+create",
                 before.name
             );
             return vec![
@@ -237,8 +249,7 @@ mod tests {
                 },
             ],
             order_by,
-            deduplicate,
-            engine: None,
+            engine: deduplicate.then(|| "ReplacingMergeTree".to_string()),
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),

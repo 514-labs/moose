@@ -452,7 +452,7 @@ pub async fn start_production_mode(
 
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
-    info!("Consumption APIs initialized");
+    info!("Analytics APIs initialized");
 
     let route_table = HashMap::<PathBuf, RouteMeta>::new();
 

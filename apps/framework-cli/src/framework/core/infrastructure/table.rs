@@ -7,13 +7,13 @@ use crate::proto::infrastructure_map::Decimal as ProtoDecimal;
 use crate::proto::infrastructure_map::FloatType as ProtoFloatType;
 use crate::proto::infrastructure_map::IntType as ProtoIntType;
 use crate::proto::infrastructure_map::LifeCycle as ProtoLifeCycle;
+use crate::proto::infrastructure_map::SimpleColumnType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 use crate::proto::infrastructure_map::{column_type, DateType};
-use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
 use crate::proto::infrastructure_map::{ColumnType as ProtoColumnType, Map, Tuple};
 use num_traits::ToPrimitive;
 use protobuf::well_known_types::wrappers::StringValue;
-use protobuf::{EnumOrUnknown, MessageField};
+use protobuf::MessageField;
 use serde::de::{Error, IgnoredAny, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -83,8 +83,6 @@ pub struct Table {
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
     #[serde(default)]
-    pub deduplicate: bool,
-    #[serde(default)]
     pub engine: Option<String>,
     pub version: Option<Version>,
     pub source_primitive: PrimitiveSignature,
@@ -114,7 +112,7 @@ impl Table {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Table: {} Version {:?} - {} - {} - deduplicate: {}",
+            "Table: {} Version {:?} - {} - {}{}",
             self.name,
             self.version,
             self.columns
@@ -123,7 +121,10 @@ impl Table {
                 .collect::<Vec<String>>()
                 .join(", "),
             self.order_by.join(","),
-            self.deduplicate
+            self.engine
+                .as_ref()
+                .map(|e| format!(" - engine: {}", e))
+                .unwrap_or_default()
         )
     }
 
@@ -163,7 +164,10 @@ impl Table {
             order_by: self.order_by.clone(),
             version: self.version.as_ref().map(|v| v.to_string()),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
-            deduplicate: self.deduplicate,
+            deduplicate: self
+                .engine
+                .as_ref()
+                .is_some_and(|e| e.contains("ReplacingMergeTree")),
             engine: MessageField::from_option(self.engine.as_ref().map(|engine| StringValue {
                 value: engine.to_string(),
                 special_fields: Default::default(),
@@ -190,8 +194,11 @@ impl Table {
             order_by: proto.order_by,
             version: proto.version.map(Version::from_string),
             source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
-            deduplicate: proto.deduplicate,
-            engine: proto.engine.into_option().map(|wrapper| wrapper.value),
+            engine: proto
+                .engine
+                .into_option()
+                .map(|wrapper| wrapper.value)
+                .or_else(|| proto.deduplicate.then(|| "ReplacingMergeTree".to_string())),
             metadata: proto.metadata.into_option().map(|m| Metadata {
                 description: if m.description.is_empty() {
                     None
@@ -216,19 +223,11 @@ pub struct Column {
     pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
-    pub default: Option<ColumnDefaults>,
+    pub default: Option<String>,
     #[serde(default)]
     pub annotations: Vec<(String, Value)>, // workaround for needing to Hash
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>, // Column comment for metadata storage
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum ColumnDefaults {
-    AutoIncrement,
-    CUID,
-    UUID,
-    Now,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -643,10 +642,13 @@ impl Column {
             required: self.required,
             unique: self.unique,
             primary_key: self.primary_key,
-            default: EnumOrUnknown::new(match &self.default {
-                None => ProtoColumnDefaults::NONE,
-                Some(column_default) => column_default.to_proto(),
-            }),
+            // The enum removed in favor of free-form default expression string,
+            // ColumnDefaults::NONE was deserialized the same as 0
+            default: 0,
+            default_expr: MessageField::from_option(self.default.as_ref().map(|d| StringValue {
+                value: d.clone(),
+                special_fields: Default::default(),
+            })),
             annotations: self
                 .annotations
                 .iter()
@@ -671,14 +673,7 @@ impl Column {
             required: proto.required,
             unique: proto.unique,
             primary_key: proto.primary_key,
-            default: match proto
-                .default
-                .enum_value()
-                .expect("Invalid default enum value")
-            {
-                ProtoColumnDefaults::NONE => None,
-                default => Some(ColumnDefaults::from_proto(default)),
-            },
+            default: proto.default_expr.into_option().map(|w| w.value),
             annotations,
             comment: proto.comment,
         }
@@ -928,27 +923,6 @@ impl EnumValue {
             crate::proto::infrastructure_map::enum_value::Value::StringValue(s) => {
                 EnumValue::String(s)
             }
-        }
-    }
-}
-
-impl ColumnDefaults {
-    fn to_proto(&self) -> ProtoColumnDefaults {
-        match self {
-            ColumnDefaults::AutoIncrement => ProtoColumnDefaults::AUTO_INCREMENT,
-            ColumnDefaults::CUID => ProtoColumnDefaults::CUID,
-            ColumnDefaults::UUID => ProtoColumnDefaults::UUID,
-            ColumnDefaults::Now => ProtoColumnDefaults::NOW,
-        }
-    }
-
-    pub fn from_proto(proto: ProtoColumnDefaults) -> Self {
-        match proto {
-            ProtoColumnDefaults::AUTO_INCREMENT => ColumnDefaults::AutoIncrement,
-            ProtoColumnDefaults::CUID => ColumnDefaults::CUID,
-            ProtoColumnDefaults::UUID => ColumnDefaults::UUID,
-            ProtoColumnDefaults::NOW => ColumnDefaults::Now,
-            ProtoColumnDefaults::NONE => panic!("NONE should be handled as Option::None"),
         }
     }
 }

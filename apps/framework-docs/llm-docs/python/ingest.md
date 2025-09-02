@@ -31,7 +31,7 @@ The `IngestApi` class accepts the following configuration:
 ```python
 from typing import TypedDict, Literal, Optional
 
-class IngestConfig(TypedDict):
+class IngestConfig(BaseModel):
     name: str                    # Required: Name of the ingest endpoint
     destination: str             # Required: Stream to write to
     format: Optional[Literal["JSON", "JSON_ARRAY"]]  # Optional: Ingestion format

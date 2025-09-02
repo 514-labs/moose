@@ -387,7 +387,8 @@ export interface User {
 
 export const UserPipeline = new IngestPipeline<User>("User", {
     table: {
-        orderByFields: ["id"]
+        orderByFields: ["id"],
+        engine: ClickHouseEngines.MergeTree,
     }
     stream: true,
     ingest: true,
@@ -461,7 +462,8 @@ export interface Task {
 
 export const TaskPipeline = new IngestPipeline<Task>("Task", {
     table: {
-        orderByFields: ["id"]
+        orderByFields: ["id"],
+        engine: ClickHouseEngines.MergeTree,
     }
     stream: true,
     ingest: true,

@@ -457,6 +457,25 @@ const hasJwtWrapping = (typeNode: ts.TypeNode | undefined) => {
   return hasWrapping(typeNode, "JWT");
 };
 
+const handleDefaultWrapping = (
+  typeNode: ts.TypeNode | undefined,
+): string | undefined => {
+  if (typeNode !== undefined && isTypeReferenceNode(typeNode)) {
+    const typeName = typeNode.typeName;
+    const name = isIdentifier(typeName) ? typeName.text : typeName.right.text;
+    if (name === "WithDefault" && typeNode.typeArguments?.length === 2) {
+      const defaultValueType = typeNode.typeArguments[1];
+      if (
+        ts.isLiteralTypeNode(defaultValueType) &&
+        ts.isStringLiteral(defaultValueType.literal)
+      ) {
+        return defaultValueType.literal.text;
+      }
+    }
+  }
+  return undefined;
+};
+
 export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
   if (checker.getIndexInfosOfType(t).length !== 0) {
     console.log(checker.getIndexInfosOfType(t));
@@ -469,6 +488,9 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
 
     const isKey = hasKeyWrapping(node.type);
     const isJwt = hasJwtWrapping(node.type);
+
+    const defaultExpression = handleDefaultWrapping(node.type);
+
     const [nullable, annotations, dataType] = tsTypeToDataType(
       type,
       checker,
@@ -483,7 +505,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       primary_key: isKey,
       required: !nullable,
       unique: false,
-      default: handleDefault(type, checker),
+      default: defaultExpression ?? handleDefault(type, checker),
       annotations,
     };
   });

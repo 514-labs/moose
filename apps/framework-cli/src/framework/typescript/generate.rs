@@ -133,7 +133,7 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
     // Add imports
     writeln!(
         output,
-        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple, ClickHouseEngines, ClickHouseDefault }} from \"@514labs/moose-lib\";"
+        "import {{ IngestPipeline, Key, ClickHouseInt, ClickHouseDecimal, ClickHousePrecision, ClickHouseByteSize, ClickHouseNamedTuple, ClickHouseEngines, ClickHouseDefault, WithDefault }} from \"@514labs/moose-lib\";"
     )
     .unwrap();
     writeln!(output, "import typia from \"typia\";").unwrap();
@@ -216,6 +216,10 @@ pub fn tables_to_typescript(tables: &[Table]) -> String {
             let type_str = map_column_type_to_typescript(&column.data_type, &enums, &nested_models);
             let type_str = match column.default {
                 None => type_str,
+                Some(ref default) if type_str == "Date" => {
+                    // https://github.com/samchon/typia/issues/1658
+                    format!("WithDefault<{type_str}, {:?}>", default)
+                }
                 Some(ref default) => {
                     format!("{type_str} & ClickHouseDefault<{:?}>", default)
                 }

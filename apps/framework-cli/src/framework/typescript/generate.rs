@@ -361,6 +361,7 @@ mod tests {
             ],
             order_by: vec!["id".to_string()],
             engine: Some("MergeTree".to_string()),
+            replacing_merge_tree_dedup_by: None,
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "User".to_string(),
@@ -438,6 +439,7 @@ export const UserPipeline = new IngestPipeline<User>("User", {
             ],
             order_by: vec!["id".to_string()],
             engine: Some("MergeTree".to_string()),
+            replacing_merge_tree_dedup_by: None,
             version: None,
             source_primitive: PrimitiveSignature {
                 name: "Task".to_string(),

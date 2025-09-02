@@ -134,22 +134,20 @@ async function handleDmv2Task(
     executeDmv2Task(workflow, task, inputData)
       .then((taskResult) => {
         return {
-          type: "task_completed",
+          type: "task_completed" as const,
           data: taskResult,
         };
       })
       .finally(() => {
         taskCompleted = true;
       }),
-    monitorTask().then((continueResult) => ({
-      type: "continue_as_new",
-      data: continueResult,
-    })),
+    monitorTask().then(() => {
+      return { type: "continue_as_new" as const, data: undefined };
+    }),
   ]);
 
-  if (result.type === "continue_as_new") {
-    logger.info(`Workflow continuing as new due to history limits`);
-    return result.data;
+  if (result.type !== "task_completed") {
+    return [];
   }
 
   const results = [result.data];
@@ -168,8 +166,10 @@ async function handleDmv2Task(
     task.name.endsWith("_extract") &&
     result &&
     typeof result === "object" &&
-    "hasMore" in result &&
-    result.hasMore === true
+    result.data &&
+    typeof result.data === "object" &&
+    "hasMore" in result.data &&
+    (result.data as any).hasMore === true
   ) {
     logger.info(`Extract task ${task.name} has more data, restarting chain...`);
 

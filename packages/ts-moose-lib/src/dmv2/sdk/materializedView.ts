@@ -24,6 +24,7 @@ export interface MaterializedViewConfig<T> {
   /** @deprecated See {@link targetTable}
    *  The name for the underlying target OlapTable that stores the materialized data. */
   tableName?: string;
+
   /** The name for the ClickHouse MATERIALIZED VIEW object itself. */
   materializedViewName: string;
 
@@ -38,9 +39,12 @@ export interface MaterializedViewConfig<T> {
         name: string;
         /** Optional ClickHouse engine for the target table (e.g., ReplacingMergeTree). Defaults to MergeTree. */
         engine?: ClickHouseEngines;
+        /** Optional ordering fields for the target table. Crucial if using ReplacingMergeTree. */
+        orderByFields?: (keyof T & string)[];
       };
 
-  /** Optional ordering fields for the target table. Crucial if using ReplacingMergeTree. */
+  /** @deprecated See {@link targetTable}
+   *  Optional ordering fields for the target table. Crucial if using ReplacingMergeTree. */
   orderByFields?: (keyof T & string)[];
 }
 
@@ -102,12 +106,20 @@ export class MaterializedView<TargetTable> extends SqlResource {
             options.targetTable?.name ?? options.tableName,
           ),
           {
-            orderByFields: options.orderByFields,
+            orderByFields:
+              options.targetTable?.orderByFields ?? options.orderByFields,
             engine: options.targetTable?.engine ?? options.engine,
           },
           targetSchema,
           targetColumns,
         );
+
+    if (targetTable.name === options.materializedViewName) {
+      throw new Error(
+        "Materialized view name cannot be the same as the target table name.",
+      );
+    }
+
     super(
       options.materializedViewName,
       [

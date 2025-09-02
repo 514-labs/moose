@@ -136,7 +136,7 @@ JWTPayload = Dict[str, Any]
 
 
 @dataclass
-class ConsumptionApiResult:
+class ApiResult:
     """Standard structure for returning results from a Consumption API handler.
 
     Attributes:
@@ -145,6 +145,11 @@ class ConsumptionApiResult:
     """
     status: int
     body: Any
+
+
+# Backward compatibility alias (deprecated)
+ConsumptionApiResult = ApiResult
+"""@deprecated: Use ApiResult instead of ConsumptionApiResult"""
 
 
 class QueryClient:
@@ -215,7 +220,7 @@ class QueryClient:
 
 
 class WorkflowClient:
-    """Client for interacting with Temporal workflows.
+    """Client for interacting with Temporal DMv2 workflows.
 
     Args:
         temporal_client: An instance of the Temporal client.
@@ -223,8 +228,6 @@ class WorkflowClient:
 
     def __init__(self, temporal_client: TemporalClient):
         self.temporal_client = temporal_client
-        self.configs = self.load_consolidated_configs()
-        print(f"WorkflowClient - configs: {self.configs}")
 
     # Test workflow executor in rust if this changes significantly
     def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
@@ -273,42 +276,43 @@ class WorkflowClient:
         run_timeout = self.parse_timeout_to_timedelta(config['timeout_str'])
 
         print(
-            f"WorkflowClient - starting {'DMv2 ' if config['is_dmv2'] else ''}workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
+            f"WorkflowClient - starting DMv2 workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
 
         # Start workflow with appropriate args
-        workflow_args = self._build_workflow_args(name, processed_input, config['is_dmv2'])
+        workflow_args = self._build_workflow_args(name, processed_input)
+
+        # Handle "never" timeout by omitting run_timeout parameter
+        workflow_kwargs = {
+            "args": workflow_args,
+            "id": workflow_id,
+            "task_queue": "python-script-queue",
+            "id_conflict_policy": WorkflowIDConflictPolicy.FAIL,
+            "id_reuse_policy": WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+            "retry_policy": retry_policy,
+        }
+
+        if run_timeout is not None:
+            workflow_kwargs["run_timeout"] = run_timeout
 
         workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
-            args=workflow_args,
-            id=workflow_id,
-            task_queue="python-script-queue",
-            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
-            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
-            retry_policy=retry_policy,
-            run_timeout=run_timeout
+            **workflow_kwargs
         )
 
         return workflow_id, workflow_handle.result_run_id
 
     def _get_workflow_config(self, name: str) -> Dict[str, Any]:
-        """Extract workflow configuration from DMv2 or legacy config."""
+        """Extract workflow configuration from DMv2 workflow."""
         from moose_lib.dmv2 import get_workflow
 
         dmv2_workflow = get_workflow(name)
-        if dmv2_workflow is not None:
-            return {
-                'retry_count': dmv2_workflow.config.retries or 3,
-                'timeout_str': dmv2_workflow.config.timeout or "1h",
-                'is_dmv2': True
-            }
-        else:
-            config = self.configs.get(name, {})
-            return {
-                'retry_count': config.get('retries', 3),
-                'timeout_str': config.get('timeout', "1h"),
-                'is_dmv2': False
-            }
+        if dmv2_workflow is None:
+            raise ValueError(f"DMv2 workflow '{name}' not found")
+            
+        return {
+            'retry_count': dmv2_workflow.config.retries or 3,
+            'timeout_str': dmv2_workflow.config.timeout or "1h",
+        }
 
     def _process_input_data(self, name: str, input_data: Any) -> tuple[Any, str]:
         """Process input data and generate workflow ID."""
@@ -334,26 +338,16 @@ class WorkflowClient:
 
         return input_data, workflow_id
 
-    def _build_workflow_args(self, name: str, input_data: Any, is_dmv2: bool) -> list:
-        """Build workflow arguments based on workflow type."""
-        if is_dmv2:
-            return [f"{name}", input_data]
-        else:
-            return [f"{os.getcwd()}/app/scripts/{name}", input_data]
+    def _build_workflow_args(self, name: str, input_data: Any) -> list:
+        """Build workflow arguments for DMv2 workflow."""
+        return [{"workflow_name": name, "execution_mode": "start"}, input_data]
 
-    # TODO: Remove when workflows dmv1 is removed
-    def load_consolidated_configs(self):
-        try:
-            file_path = os.path.join(os.getcwd(), ".moose", "workflow_configs.json")
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                config_map = {config['name']: config for config in data}
-                return config_map
-        except Exception as e:
-            print(f"Could not load configs for workflows v1: {e}")
 
-    def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
-        if timeout_str.endswith('h'):
+
+    def parse_timeout_to_timedelta(self, timeout_str: str) -> Optional[timedelta]:
+        if timeout_str == "never":
+            return None  # Unlimited execution timeout
+        elif timeout_str.endswith('h'):
             return timedelta(hours=int(timeout_str[:-1]))
         elif timeout_str.endswith('m'):
             return timedelta(minutes=int(timeout_str[:-1]))

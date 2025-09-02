@@ -38,18 +38,18 @@ services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.11
     ports:
-      - "9092:9092"
-      - "19092:19092"
-      - "9644:9644"
+      # Internal listener stays internal to the docker network; no host binding to avoid conflicts
+      # External listener is parameterized to allow multiple projects concurrently
+      - "{{redpanda_broker_port}}:19092"
     volumes:
       - redpanda-0:/var/lib/redpanda/data
     command:
       - redpanda
       - start
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://{{redpanda_broker_host}}:{{redpanda_broker_port}}
       - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
-      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://{{redpanda_broker_host}}:18082
       - --mode=dev-container
       - --smp=1
       - --memory=2G

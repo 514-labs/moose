@@ -216,7 +216,7 @@ pub async fn plan_changes(
         }
     };
 
-    let current_infra_map = InfrastructureMap::load_from_redis(client).await?;
+    let current_infra_map = InfrastructureMap::load_from_last_redis_prefix(client).await?;
 
     debug!(
         "Current infrastructure map: {}",
@@ -335,7 +335,6 @@ mod tests {
             }],
             order_by: vec!["id".to_string()],
             engine: None,
-            deduplicate: false,
             version: Some(Version::from_string("1.0.0".to_string())),
             source_primitive: PrimitiveSignature {
                 name: "test".to_string(),

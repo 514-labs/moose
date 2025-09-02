@@ -21,7 +21,7 @@ export const UserActivityPipeline = new IngestPipeline<UserActivity>(
   {
     table: {
       orderByFields: ["eventId", "timestamp"],
-      deduplicate: true,
+      engine: ClickHouseEngines.ReplacingMergeTree,
     },
     stream: true,
     ingest: true, // POST /ingest/UserActivity
@@ -34,7 +34,7 @@ export const ParsedActivityPipeline = new IngestPipeline<ParsedActivity>(
   {
     table: {
       orderByFields: ["eventId", "timestamp"],
-      deduplicate: true,
+      engine: ClickHouseEngines.ReplacingMergeTree,
     },
     stream: true,
     ingest: false, // No direct ingest API; populated by streaming function

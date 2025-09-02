@@ -41,10 +41,10 @@ if (
 
 import { dumpMooseInternal } from "./dmv2/internal";
 import { runBlocks } from "./blocks/runner";
-import { runConsumptionApis } from "./consumption-apis/runner";
+import { runApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
-import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
+import { runApiTypeSerializer } from "./consumption-apis/exportTypeSerializer";
 import { runScripts } from "./scripts/runner";
 import process from "process";
 
@@ -136,7 +136,7 @@ program
   .option("--proxy-port <port>", "Port to run the proxy server on", parseInt)
   .action(
     (
-      consumptionDir,
+      apisDir,
       clickhouseDb,
       clickhouseHost,
       clickhousePort,
@@ -144,8 +144,8 @@ program
       clickhousePassword,
       options,
     ) => {
-      runConsumptionApis({
-        consumptionDir,
+      runApis({
+        apisDir,
         clickhouseConfig: {
           database: clickhouseDb,
           host: clickhouseHost,
@@ -210,21 +210,19 @@ program
   .description("Run consumption type serializer")
   .argument("<target-model>", "Target model to serialize")
   .action((targetModel) => {
-    runConsumptionTypeSerializer(targetModel);
+    runApiTypeSerializer(targetModel);
   });
 
 program
   .command("scripts")
   .description("Run scripts")
-  .argument("<script-dir>", "Directory containing scripts")
   .option("--temporal-url <url>", "Temporal server URL")
   .option("--temporal-namespace <namespace>", "Temporal namespace")
   .option("--client-cert <path>", "Path to client certificate")
   .option("--client-key <path>", "Path to client key")
   .option("--api-key <key>", "API key for authentication")
-  .action((scriptDir, options) => {
+  .action((options) => {
     runScripts({
-      scriptDir,
       temporalConfig: {
         url: options.temporalUrl,
         namespace: options.temporalNamespace,

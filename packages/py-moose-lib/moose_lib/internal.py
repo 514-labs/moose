@@ -15,7 +15,7 @@ from moose_lib.dmv2 import (
     get_tables,
     get_streams,
     get_ingest_apis,
-    get_consumption_apis,
+    get_apis,
     get_sql_resources,
     get_workflows,
     OlapTable,
@@ -60,7 +60,6 @@ class TableConfig(BaseModel):
         name: Name of the table.
         columns: List of columns with their types and attributes.
         order_by: List of columns used for the ORDER BY clause.
-        deduplicate: Whether the table uses a deduplicating engine (e.g., ReplacingMergeTree).
         engine: The name of the ClickHouse engine used.
         version: Optional version string of the table configuration.
         metadata: Optional metadata for the table.
@@ -71,7 +70,6 @@ class TableConfig(BaseModel):
     name: str
     columns: List[Column]
     order_by: List[str]
-    deduplicate: bool
     engine: Optional[str]
     version: Optional[str] = None
     metadata: Optional[dict] = None
@@ -128,11 +126,11 @@ class IngestApiConfig(BaseModel):
     version: Optional[str] = None
     metadata: Optional[dict] = None
 
-class EgressApiConfig(BaseModel):
-    """Internal representation of a Consumption (Egress) API configuration for serialization.
+class InternalApiConfig(BaseModel):
+    """Internal representation of a API configuration for serialization.
 
     Attributes:
-        name: Name of the Egress API.
+        name: Name of the API.
         query_params: List of columns representing the expected query parameters.
         response_schema: JSON schema definition of the API's response body.
         version: Optional version string of the API configuration.
@@ -204,7 +202,7 @@ class InfrastructureMap(BaseModel):
         tables: Dictionary mapping table names to their configurations.
         topics: Dictionary mapping topic/stream names to their configurations.
         ingest_apis: Dictionary mapping ingest API names to their configurations.
-        egress_apis: Dictionary mapping egress API names to their configurations.
+        apis: Dictionary mapping API names to their configurations.
         sql_resources: Dictionary mapping SQL resource names to their configurations.
         workflows: Dictionary mapping workflow names to their configurations.
     """
@@ -213,7 +211,7 @@ class InfrastructureMap(BaseModel):
     tables: dict[str, TableConfig]
     topics: dict[str, TopicConfig]
     ingest_apis: dict[str, IngestApiConfig]
-    egress_apis: dict[str, EgressApiConfig]
+    apis: dict[str, InternalApiConfig]
     sql_resources: dict[str, SqlResourceConfig]
     workflows: dict[str, WorkflowJson]
 
@@ -264,7 +262,7 @@ def to_infra_map() -> dict:
     tables = {}
     topics = {}
     ingest_apis = {}
-    egress_apis = {}
+    apis = {}
     sql_resources = {}
     workflows = {}
 
@@ -274,7 +272,6 @@ def to_infra_map() -> dict:
             name=name,
             columns=_to_columns(table._t),
             order_by=table.config.order_by_fields,
-            deduplicate=table.config.deduplicate,
             engine=None if engine is None else engine.value,
             version=table.config.version,
             metadata=getattr(table, "metadata", None),
@@ -326,8 +323,8 @@ def to_infra_map() -> dict:
             dead_letter_queue=api.config.dead_letter_queue.name
         )
 
-    for name, api in get_consumption_apis().items():
-        egress_apis[name] = EgressApiConfig(
+    for name, api in get_apis().items():
+        apis[name] = InternalApiConfig(
             name=api.name,
             query_params=_to_columns(api.model_type),
             response_schema=api.get_response_schema(),
@@ -357,7 +354,7 @@ def to_infra_map() -> dict:
         tables=tables,
         topics=topics,
         ingest_apis=ingest_apis,
-        egress_apis=egress_apis,
+        apis=apis,
         sql_resources=sql_resources,
         workflows=workflows
     )

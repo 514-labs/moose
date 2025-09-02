@@ -126,7 +126,7 @@ pub struct Settings {
 }
 
 /// Development-specific configuration options
-#[derive(Deserialize, Debug, Default, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct DevSettings {
     /// Optional custom path to container CLI executable
     pub container_cli_path: Option<PathBuf>,
@@ -141,6 +141,26 @@ pub struct DevSettings {
     /// This can be set via the MOOSE_DEV__BYPASS_INFRASTRUCTURE_EXECUTION environment variable
     #[serde(default)]
     pub bypass_infrastructure_execution: bool,
+
+    /// Timeout in seconds for Docker container startup and validation
+    /// Default is 120 seconds if not specified
+    #[serde(default = "default_infrastructure_timeout")]
+    pub infrastructure_timeout_seconds: u64,
+}
+
+impl Default for DevSettings {
+    fn default() -> Self {
+        Self {
+            container_cli_path: None,
+            skip_container_shutdown: false,
+            bypass_infrastructure_execution: false,
+            infrastructure_timeout_seconds: default_infrastructure_timeout(),
+        }
+    }
+}
+
+fn default_infrastructure_timeout() -> u64 {
+    120
 }
 
 /// Returns the path to the config file in the user's home directory
@@ -296,5 +316,38 @@ impl Settings {
     /// - Environment variable: `MOOSE_DEV__BYPASS_INFRASTRUCTURE_EXECUTION=true`
     pub fn should_bypass_infrastructure_execution(&self) -> bool {
         self.dev.bypass_infrastructure_execution
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DevSettings, Settings};
+
+    #[test]
+    fn test_default_timeout_configuration() {
+        let dev_settings = DevSettings::default();
+        assert_eq!(dev_settings.infrastructure_timeout_seconds, 120);
+    }
+
+    #[test]
+    fn test_timeout_configuration_parsing() {
+        let toml_content = r#"
+[dev]
+infrastructure_timeout_seconds = 300
+"#;
+
+        let settings: Settings = toml::from_str(toml_content).expect("Failed to parse TOML");
+        assert_eq!(settings.dev.infrastructure_timeout_seconds, 300);
+    }
+
+    #[test]
+    fn test_timeout_configuration_default_when_missing() {
+        let toml_content = r#"
+[dev]
+skip_container_shutdown = true
+"#;
+
+        let settings: Settings = toml::from_str(toml_content).expect("Failed to parse TOML");
+        assert_eq!(settings.dev.infrastructure_timeout_seconds, 120);
     }
 }

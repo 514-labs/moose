@@ -1302,11 +1302,11 @@ impl InfrastructureMap {
         target_process: &ConsumptionApiWebServer,
         process_changes: &mut Vec<ProcessChange>,
     ) {
-        log::info!("Analyzing changes in Consumption API processes...");
+        log::info!("Analyzing changes in Analytics API processes...");
 
         // We are currently not tracking individual consumption endpoints, so we will just restart
         // the consumption web server when something changed
-        log::debug!("Consumption API Web Server updated (assumed for now)");
+        log::debug!("Analytics API Web Server updated (assumed for now)");
         process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
         >::Updated {
@@ -1536,6 +1536,9 @@ impl InfrastructureMap {
                             && !(target_table.order_by.is_empty()
                                 && order_by_from_primary_key(target_table) == table.order_by);
 
+                        // Detect engine change (e.g., MergeTree -> ReplacingMergeTree)
+                        let engine_changed = table.engine != target_table.engine;
+
                         let order_by_change = if order_by_changed {
                             OrderByChange {
                                 before: table.order_by.clone(),
@@ -1549,10 +1552,7 @@ impl InfrastructureMap {
                         };
 
                         // Only process changes if there are actual differences to report
-                        if !column_changes.is_empty()
-                            || order_by_changed
-                            || table.deduplicate != target_table.deduplicate
-                        {
+                        if !column_changes.is_empty() || order_by_changed || engine_changed {
                             // Use the strategy to determine the appropriate changes
                             let strategy_changes = strategy.diff_table_update(
                                 table,
@@ -1680,10 +1680,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,
@@ -1774,10 +1771,7 @@ impl InfrastructureMap {
         };
 
         // Only return changes if there are actual differences to report
-        if !column_changes.is_empty()
-            || order_by_changed
-            || table.deduplicate != target_table.deduplicate
-        {
+        if !column_changes.is_empty() || order_by_changed {
             Some(TableChange::Updated {
                 name: table.name.clone(),
                 column_changes,
@@ -1853,6 +1847,35 @@ impl InfrastructureMap {
             .context("Failed to get InfrastructureMap from Redis")?;
 
         if let Some(encoded) = encoded {
+            let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
+                anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
+            })?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Loads an infrastructure map using the last deployment's Redis key prefix.
+    pub async fn load_from_last_redis_prefix(redis_client: &RedisClient) -> Result<Option<Self>> {
+        let last_prefix = &redis_client.config.last_key_prefix;
+
+        log::info!(
+            "Loading InfrastructureMap from last Redis prefix: {}",
+            last_prefix
+        );
+
+        let encoded = redis_client
+            .get_with_explicit_prefix(last_prefix, "infrastructure_map")
+            .await
+            .context("Failed to get InfrastructureMap from Redis using LAST_KEY_PREFIX");
+
+        if let Err(e) = encoded {
+            log::error!("{}", e);
+            return Ok(None);
+        }
+
+        if let Ok(Some(encoded)) = encoded {
             let decoded = InfrastructureMap::from_proto(encoded).map_err(|e| {
                 anyhow::anyhow!("Failed to decode InfrastructureMap from proto: {}", e)
             })?;
@@ -2265,7 +2288,6 @@ mod tests {
         let before = Table {
             name: "test_table".to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -2311,7 +2333,6 @@ mod tests {
         let after = Table {
             name: "test_table".to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -2496,9 +2517,7 @@ mod tests {
 #[cfg(test)]
 mod diff_tests {
     use super::*;
-    use crate::framework::core::infrastructure::table::{
-        Column, ColumnDefaults, ColumnType, FloatType, IntType,
-    };
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, FloatType, IntType};
     use crate::framework::versions::Version;
     use serde_json::Value as JsonValue;
 
@@ -2507,7 +2526,6 @@ mod diff_tests {
         Table {
             name: name.to_string(),
             engine: None,
-            deduplicate: false,
             columns: vec![],
             order_by: vec![],
             version: Some(Version::from_string(version.to_string())),
@@ -2769,12 +2787,12 @@ mod diff_tests {
     }
 
     #[test]
-    fn test_deduplicate_flag_change() {
+    fn test_engine_change_detects_update() {
         let mut before = create_test_table("test", "1.0");
         let mut after = create_test_table("test", "1.0");
 
-        before.deduplicate = false;
-        after.deduplicate = true;
+        before.engine = Some("MergeTree".to_string());
+        after.engine = Some("ReplacingMergeTree".to_string());
 
         let mut changes = Vec::new();
         InfrastructureMap::diff_tables(
@@ -2790,10 +2808,10 @@ mod diff_tests {
                 after: a,
                 ..
             }) => {
-                assert!(!b.deduplicate);
-                assert!(a.deduplicate);
+                assert_eq!(b.engine.as_deref(), Some("MergeTree"));
+                assert_eq!(a.engine.as_deref(), Some("ReplacingMergeTree"));
             }
-            _ => panic!("Expected Updated change with deduplicate modification"),
+            _ => panic!("Expected Updated change with engine modification"),
         }
     }
 
@@ -2808,7 +2826,7 @@ mod diff_tests {
             required: true,
             unique: false,
             primary_key: false,
-            default: Some(ColumnDefaults::AutoIncrement),
+            default: Some("auto_increment".to_string()),
             annotations: vec![],
             comment: None,
         });
@@ -2819,7 +2837,7 @@ mod diff_tests {
             required: true,
             unique: false,
             primary_key: false,
-            default: Some(ColumnDefaults::Now),
+            default: Some("now()".to_string()),
             annotations: vec![],
             comment: None,
         });
@@ -2831,8 +2849,8 @@ mod diff_tests {
                 before: b,
                 after: a,
             } => {
-                assert_eq!(b.default, Some(ColumnDefaults::AutoIncrement));
-                assert_eq!(a.default, Some(ColumnDefaults::Now));
+                assert_eq!(b.default.as_deref(), Some("auto_increment"));
+                assert_eq!(a.default.as_deref(), Some("now()"));
             }
             _ => panic!("Expected Updated change"),
         }

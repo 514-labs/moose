@@ -24,15 +24,17 @@ const rawMeta = {
   "apply-migrations": {
     title: "Applying Migrations",
   },
+  "planned-migrations": {
+    title: "Planned Migrations",
+  },
   "external-tables": {
     title: "External Tables",
   },
   "schema-versioning": {
-    title: "Schema Versioning",
+    title: "Table Versioning",
   },
   "schema-change": {
-    title: "Schema Changes",
-    display: "hidden",
+    title: "Failed Migrations",
   },
   "---Accessing Data---": {
     title: "Accessing Data",

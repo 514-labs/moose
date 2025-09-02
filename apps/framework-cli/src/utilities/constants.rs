@@ -36,7 +36,6 @@ pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FUNCTIONS_DIR: &str = "functions";
 pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
-pub const SCRIPTS_DIR: &str = "scripts";
 pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "Foo";
 pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "Bar";
@@ -48,13 +47,7 @@ pub const TEMPORAL_CONTAINER_NAME: &str = "temporal";
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 
 pub const APP_DIR: &str = "app";
-pub const APP_DIR_LAYOUT: [&str; 5] = [
-    SCHEMAS_DIR,
-    FUNCTIONS_DIR,
-    BLOCKS_DIR,
-    CONSUMPTION_DIR,
-    SCRIPTS_DIR,
-];
+pub const APP_DIR_LAYOUT: [&str; 4] = [SCHEMAS_DIR, FUNCTIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR];
 
 pub const GITIGNORE: &str = ".gitignore";
 

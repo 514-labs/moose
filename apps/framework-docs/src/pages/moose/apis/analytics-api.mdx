@@ -25,7 +25,7 @@ Common use cases include:
 
 <TypeScript>
 ```ts filename="ExampleApi.ts" copy
-import { ConsumptionApi } from "@514labs/moose-lib";
+import { Api } from "@514labs/moose-lib";
 import { SourcePipeline } from "path/to/SourcePipeline"; 
 
 // Define the query parameters
@@ -46,7 +46,7 @@ const SourceTable = SourcePipeline.table!; // Use `!` to assert that the table i
 const cols = SourceTable.columns;
 
 // Define the result type as an array of the result item type
-const exampleApi = new ConsumptionApi<QueryParams, ResultItem[]>("example_endpoint",  
+export const exampleApi = new Api<QueryParams, ResultItem[]>("example_endpoint",  
     async ({ filterField, maxResults }: QueryParams, { client, sql }) => {
         const query = sql`
         SELECT 
@@ -86,7 +86,7 @@ export const SourcePipeline = new IngestPipeline<SourceSchema>("Source" {
 
 <Python>
 ```python filename="ExampleApi.py" copy
-from moose_lib import ConsumptionApi
+from moose_lib import Api
 from pydantic import BaseModel
 
 ## Import the source pipeline
@@ -121,7 +121,7 @@ def run(client: MooseClient, params: QueryParams) -> list[ResponseBody]:
     return client.query.execute(query, {"table": SourceTable.name, "filterField": params.filterField, "maxResults": params.maxResults})
 
 # Create the API
-example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
+example_api = Api[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
 ```
 <ToggleBlock openText="Show Source Pipeline" closeText="Hide Source Pipeline">
 ```python filename="SourcePipeline.py" copy
@@ -143,7 +143,7 @@ SourcePipeline = IngestPipeline<SourceSchema>("Source", IngestPipelineConfig(
 
 </Python>
 
-The `ConsumptionApi` class takes:
+The `Api` class takes:
 - Route name: The URL path to access your API (e.g., `"example_endpoint"`)
 - Handler function: Processes requests with typed parameters and returns the result
 
@@ -204,7 +204,7 @@ Moose automatically handles:
 - OpenAPI documentation generation
 
 <Callout type="warning">
-Complex nested objects and arrays are not supported. Consumption APIs are `GET` endpoints designed to be simple and lightweight.
+Complex nested objects and arrays are not supported. Analytics APIs are `GET` endpoints designed to be simple and lightweight.
 </Callout>
 
 ### Adding Advanced Type Validation
@@ -311,7 +311,7 @@ interface QueryParams {
   optionalParam?: string; // Not required for client to provide
 }
 
-const api = new ConsumptionApi<QueryParams, ResponseBody>("example_endpoint",
+const api = new Api<QueryParams, ResponseBody>("example_endpoint",
   async ({ filterField = "example", maxResults = 10, optionalParam = "default" }, { client, sql }) => {
     // Your logic here...
   }
@@ -341,10 +341,10 @@ Moose provides a managed `MooseClient` to your function execution context. This 
 
 <TypeScript>
 ```ts filename="ExampleApi.ts" copy {1}
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { ApiUtil } from "@514labs/moose-lib";
 import { UserTable } from "./UserTable";
 
-async function handler({ client, sql }: ConsumptionUtil) {
+async function handler({ client, sql }: ApiUtil) {
   const query = sql`SELECT * FROM ${UserTable}`;
   const data = await client.query.execute<UserSchema>(query);
 }
@@ -381,7 +381,7 @@ def run(client: MooseClient, params: QueryParams):
 
 
 ## Create the API
-example_api = ConsumptionApi[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
+example_api = Api[QueryParams, ResponseBody](name="example_endpoint", query_function=run)
 ```
 </Python>
 
@@ -560,7 +560,7 @@ Static type checking ensures you only reference columns that actually exist.
 <Tabs.Tab title="Using Parameter Binding">
 
 ```python filename="SafeParameterBinding.py" copy
-from moose_lib import ConsumptionApi, MooseClient
+from moose_lib import Api, MooseClient
 from pydantic import BaseModel
 from typing import Literal, Optional, List
 from enum import Enum
@@ -608,7 +608,7 @@ This approach is recommended because:
 <Tabs.Tab title="Using F-strings">
 
 ```python filename="ValidatedFStrings.py" copy
-from moose_lib import ConsumptionApi, MooseClient
+from moose_lib import Api, MooseClient
 from pydantic import BaseModel, Field, constr
 from typing import Literal, Optional
 from enum import Enum
@@ -712,10 +712,10 @@ export const UserTable = new OlapTable<UserSchema>("users")
 #### Dynamic Column & Table Selection
 
 <TypeScript>
-Use `ConsumptionHelpers` to handle dynamic column and table references in your queries:
+Use `ApiHelpers` to handle dynamic column and table references in your queries:
 
 ```ts filename="DynamicColumns.ts" copy
-import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { ApiHelpers as CH } from "@514labs/moose-lib";
 
 interface QueryParams {
   sortBy: string;  // Column to sort by
@@ -742,7 +742,7 @@ const queryHandler = async ({ sortBy = "id", fields = "id,name" }: QueryParams, 
 ```
 
 ```ts filename="DynamicTables.ts" copy
-import { ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { ApiHelpers as CH } from "@514labs/moose-lib";
 
 interface QueryParams {
   tableName: string;
@@ -783,10 +783,10 @@ def run(client: MooseClient, params: QueryParams):
     return data
 
 ## Create the API
-bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
+bar = Api[QueryParams, QueryResult](name="bar", query_function=run)
 
 ## Call the API
-## HTTP Request: GET http://localhost:4000/consumption/bar?colName=id
+## HTTP Request: GET http://localhost:4000/api/bar?colName=id
 ## EXECUTED QUERY: SELECT id FROM users
 ```
 
@@ -817,10 +817,10 @@ def run(client: MooseClient, params: QueryParams):
     return data
 
 ## Create the API
-bar = ConsumptionApi[QueryParams, QueryResult](name="bar", query_function=run)
+bar = Api[QueryParams, QueryResult](name="bar", query_function=run)
 
 ## Call the API
-## HTTP Request: GET http://localhost:4000/consumption/bar?colName=id
+## HTTP Request: GET http://localhost:4000/api/bar?colName=id
 ## EXECUTED QUERY: SELECT id FROM users
 ```
 </Tabs.Tab>
@@ -920,10 +920,10 @@ def build_query(client: MooseClient, params: FilterParams) -> QueryResult:
     return data
 
 ## Create the API
-bar = ConsumptionApi[FilterParams, QueryResult](name="bar", query_function=build_query)
+bar = Api[FilterParams, QueryResult](name="bar", query_function=build_query)
 
 ## Call the API
-## HTTP Request: GET http://localhost:4000/consumption/bar?min_age=20&status=active&search_text=John
+## HTTP Request: GET http://localhost:4000/api/bar?min_age=20&status=active&search_text=John
 ## EXECUTED QUERY: SELECT * FROM users WHERE age >= 20 AND status = 'active' AND (name ILIKE '%John%' OR email ILIKE '%John%') ORDER BY created_at DESC
 ```
 </Tabs.Tab>
@@ -962,10 +962,10 @@ def build_query(client: MooseClient, params: FilterParams) -> None:
     return data
 
 ## Create the API
-bar = ConsumptionApi[FilterParams, QueryResult](name="bar", query_function=build_query)
+bar = Api[FilterParams, QueryResult](name="bar", query_function=build_query)
 
 ## Call the API
-## HTTP Request: GET http://localhost:4000/consumption/bar?min_age=20&status=active&search_text=John
+## HTTP Request: GET http://localhost:4000/api/bar?min_age=20&status=active&search_text=John
 ## EXECUTED QUERY: SELECT * FROM users WHERE age >= 20 AND status = 'active' AND (name ILIKE '%John%' OR email ILIKE '%John%') ORDER BY created_at DESC
 ```
 </Tabs.Tab> 
@@ -976,7 +976,7 @@ bar = ConsumptionApi[FilterParams, QueryResult](name="bar", query_function=build
 
 ### Adding Authentication
 
-Moose supports authentication via JSON web tokens (JWTs). When your client makes a request to your Consumption API, Moose will automatically parse the JWT and pass the **authenticated** payload to your handler function as the `jwt` object:
+Moose supports authentication via JSON web tokens (JWTs). When your client makes a request to your Analytics API, Moose will automatically parse the JWT and pass the **authenticated** payload to your handler function as the `jwt` object:
 <TypeScript>
 ```typescript
 async (
@@ -1052,7 +1052,7 @@ interface ResponseBody {
   date: string;
 }
 
-const processDataApi = new ConsumptionApi<QueryParams, ResponseBody>(
+const processDataApi = new Api<QueryParams, ResponseBody>(
   "process_data_endpoint",
   async ({ category, maxResults = 10 }, { client, sql }) => {
     // 1. Fetch raw data
@@ -1091,7 +1091,7 @@ const processDataApi = new ConsumptionApi<QueryParams, ResponseBody>(
 <Python>
 ```python filename="PostProcessingExample.py" copy
 from datetime import datetime
-from moose_lib import ConsumptionApi
+from moose_lib import Api
 from pydantic import BaseModel
 
 class QueryParams(BaseModel):
@@ -1135,7 +1135,7 @@ def run(client: MooseClient, params: QueryParams):
     return processed_results
 
 # Create the API
-process_data_api = ConsumptionApi[QueryParams, ResponseItem](name="process_data_endpoint", query_function=run)
+process_data_api = Api[QueryParams, ResponseItem](name="process_data_endpoint", query_function=run)
 ```
 </Python>
 

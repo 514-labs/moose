@@ -269,7 +269,7 @@ range_query = """
 
 <TypeScript>
 ```ts filename="DynamicQueries.ts"
-import { sql, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { sql, ApiHelpers as CH } from "@514labs/moose-lib";
 
 interface QueryParams {
   sortBy: string;
@@ -692,13 +692,13 @@ left_join_query = """
 ```
 </Python>
 
-## Building APIs with ConsumptionApi
+## Building APIs with Api
 
 ### Basic API
 
 <TypeScript>
 ```ts filename="BasicAPI.ts"
-import { ConsumptionApi, sql } from "@514labs/moose-lib";
+import { Api, sql } from "@514labs/moose-lib";
 
 interface QueryParams {
   limit?: number;
@@ -711,7 +711,7 @@ interface UserData {
   email: string;
 }
 
-const userApi = new ConsumptionApi<QueryParams, UserData[]>(
+const userApi = new Api<QueryParams, UserData[]>(
   "users",
   async ({ limit = 10, status }, { client, sql }) => {
     let query = sql`
@@ -734,7 +734,7 @@ const userApi = new ConsumptionApi<QueryParams, UserData[]>(
 
 <Python>
 ```py filename="BasicAPI.py"
-from moose_lib import ConsumptionApi, MooseClient
+from moose_lib import Api, MooseClient
 from pydantic import BaseModel
 from typing import Optional
 
@@ -764,7 +764,7 @@ def user_query(client: MooseClient, params: QueryParams) -> list[UserData]:
     
     return client.query.execute(query, parameters)
 
-user_api = ConsumptionApi[QueryParams, UserData](
+user_api = Api[QueryParams, UserData](
     name="users", 
     query_function=user_query
 )
@@ -775,7 +775,7 @@ user_api = ConsumptionApi[QueryParams, UserData](
 
 <TypeScript>
 ```ts filename="AdvancedAPI.ts"
-import { ConsumptionApi, sql, ConsumptionHelpers as CH } from "@514labs/moose-lib";
+import { Api, sql, ApiHelpers as CH } from "@514labs/moose-lib";
 
 interface AdvancedQueryParams {
   filters: Record<string, any>;
@@ -785,7 +785,7 @@ interface AdvancedQueryParams {
   limit: number;
 }
 
-const advancedUserApi = new ConsumptionApi<AdvancedQueryParams, UserData[]>(
+const advancedUserApi = new Api<AdvancedQueryParams, UserData[]>(
   "users/advanced",
   async ({ filters, sortBy, sortDirection, page, limit }, { client, sql }) => {
     // Build WHERE conditions
@@ -814,7 +814,7 @@ const advancedUserApi = new ConsumptionApi<AdvancedQueryParams, UserData[]>(
 
 <Python>
 ```py filename="AdvancedAPI.py"
-from moose_lib import ConsumptionApi, MooseClient
+from moose_lib import Api, MooseClient
 from pydantic import BaseModel
 from typing import Dict, Any, Literal
 
@@ -855,7 +855,7 @@ def advanced_user_query(client: MooseClient, params: AdvancedQueryParams) -> lis
     
     return client.query.execute(query, query_params)
 
-advanced_user_api = ConsumptionApi[AdvancedQueryParams, UserData](
+advanced_user_api = Api[AdvancedQueryParams, UserData](
     name="users/advanced", 
     query_function=advanced_user_query
 )

@@ -3,7 +3,7 @@ title: TypeScript Moose Lib Reference
 description: TypeScript Moose Lib Reference
 ---
 
-import { LanguageSwitcher, TypeScript, Python } from "@/components";
+import { LanguageSwitcher, TypeScript, Python, ExportRequirement } from "@/components";
 
 # API Reference
 
@@ -30,10 +30,10 @@ A type for working with JSON Web Tokens.
 type UserJWT = JWT<{ userId: string, role: string }>;
 ```
 
-### `ConsumptionUtil`
-Interface providing utilities for consumption APIs.
+### `ApiUtil`
+Interface providing utilities for analytics APIs.
 ```ts
-interface ConsumptionUtil {
+interface ApiUtil {
   client: MooseClient;  // Client for interacting with the database
   sql: typeof sql;      // SQL template tag function
   jwt: JWTPayload | undefined;  // Current JWT if available
@@ -46,12 +46,12 @@ interface ConsumptionUtil {
 Creates a ClickHouse table with the schema of type T.
 ```ts
 // Basic usage
-const myTable = new OlapTable<UserProfile>("user_profiles");
+export const myTable = new OlapTable<UserProfile>("user_profiles");
 
 // With configuration
-const myTable = new OlapTable<UserProfile>("user_profiles", {
+export const myConfiguredTable = new OlapTable<UserProfile>("user_profiles", {
   orderByFields: ["id", "timestamp"],
-  deduplicate: true
+  engine: ClickHouseEngines.ReplacingMergeTree,
 });
 ```
 
@@ -59,16 +59,16 @@ const myTable = new OlapTable<UserProfile>("user_profiles", {
 Creates a Redpanda topic with the schema of type T.
 ```ts
 // Basic usage
-const myStream = new Stream<UserEvent>("user_events");
+export const myStream = new Stream<UserEvent>("user_events");
 
 // With configuration
-const myStream = new Stream<UserEvent>("user_events", {
+export const myConfiguredStream = new Stream<UserEvent>("user_events", {
   parallelism: 3,
   retentionPeriod: 86400 // 1 day in seconds
 });
 
 // Adding transformations
-myStream.addTransform(
+myConfiguredStream.addTransform(
   destinationStream,
   (record) => transformFunction(record)
 );
@@ -78,16 +78,16 @@ myStream.addTransform(
 Creates an HTTP endpoint for ingesting data of type T.
 ```ts
 // Basic usage with destination stream
-const myIngestApi = new IngestApi<UserEvent>("user_events", {
+export const myIngestApi = new IngestApi<UserEvent>("user_events", {
   destination: myUserEventStream
 });
 ```
 
-### `ConsumptionApi<T, R>`
+### `Api<T, R>`
 Creates an HTTP endpoint for querying data with request type T and response type R.
 ```ts
 // Basic usage
-const myApi = new ConsumptionApi<UserQuery, UserProfile[]>(
+export const myApi = new Api<UserQuery, UserProfile[]>(
   "getUserProfiles",
   async (params, { client, sql }) => {
     const result = await client.query.execute(
@@ -102,19 +102,19 @@ const myApi = new ConsumptionApi<UserQuery, UserProfile[]>(
 Combines ingest API, stream, and table creation in a single component.
 ```ts
 // Basic usage
-const pipeline = new IngestPipeline<UserEvent>("user_pipeline", {
+export const pipeline = new IngestPipeline<UserEvent>("user_pipeline", {
   ingest: true,
   stream: true,
   table: true
 });
 
 // With advanced configuration
-const pipeline = new IngestPipeline<UserEvent>("user_pipeline", {
+export const advancedPipeline = new IngestPipeline<UserEvent>("advanced_pipeline", {
   ingest: true,
   stream: { parallelism: 3 },
   table: { 
     orderByFields: ["id", "timestamp"],
-    deduplicate: true
+    engine: ClickHouseEngines.ReplacingMergeTree,
   }
 });
 ```
@@ -123,7 +123,7 @@ const pipeline = new IngestPipeline<UserEvent>("user_pipeline", {
 Creates a materialized view in ClickHouse.
 ```ts
 // Basic usage
-const view = new MaterializedView<UserStatistics>({
+export const view = new MaterializedView<UserStatistics>({
   selectStatement: "SELECT user_id, COUNT(*) as event_count FROM user_events GROUP BY user_id",
   tableName: "user_events",
   materializedViewName: "user_statistics",
@@ -179,7 +179,7 @@ enum ClickHouseEngines {
 A class that represents a single task within a workflow system.
 ```ts
 // No input, no output
-const task1 = new Task<null, void>("task1", {
+export const task1 = new Task<null, void>("task1", {
   run: async () => {
     console.log("No input/output");
   },
@@ -188,7 +188,7 @@ const task1 = new Task<null, void>("task1", {
 });
 
 // With input and output
-const task2 = new Task<InputType, OutputType>("task2", {
+export const task2 = new Task<InputType, OutputType>("task2", {
   run: async (input: InputType) => {
     return process(input);
   },
@@ -230,6 +230,7 @@ const myWorkflow = new Workflow("getData", {
   timeout: "1h",
   retries: 3
 });
+
 ```
 
 ### `WorkflowConfig`
@@ -250,4 +251,23 @@ interface WorkflowConfig {
 }
 ```
 
+---
+
+<ExportRequirement 
+  primitive="Infrastructure Components" 
+  example="export { myTable, myStream, myApi, myWorkflow, myTask, myPipeline, myView }" 
+/>
+
+**Important:** The following components must be exported from your `app/index.ts` file for Moose to detect them:
+
+- `OlapTable` instances
+- `Stream` instances  
+- `IngestApi` instances
+- `Api` instances
+- `IngestPipeline` instances
+- `MaterializedView` instances
+- `Task` instances
+- `Workflow` instances
+
+**Configuration objects and utilities** (like `DeadLetterQueue`, `Key`, `sql`) do not need to be exported as they are used as dependencies of the main components.
 

@@ -3,7 +3,7 @@ title: Moose Workflows
 description: Build ETL pipelines, scheduled jobs, and long-running tasks with orchestration
 ---
 
-import { Callout, LanguageSwitcher, BulletPointsCard, TypeScript, Python, CTACards, CTACard } from "@/components";
+import { Callout, LanguageSwitcher, BulletPointsCard, TypeScript, Python, CTACards, CTACard, ExportRequirement } from "@/components";
 import { FileTree } from "nextra/components";
 
 # Moose Workflows
@@ -14,6 +14,8 @@ import { FileTree } from "nextra/components";
 The Workflows module provides standalone task orchestration and automation. You can use this capability independently to build ETL pipelines, run scheduled jobs, trigger background tasks, and manage long-running tasks without requiring other MooseStack components like databases or streams.
 
 ### Basic Usage
+
+<ExportRequirement primitive="Workflow and Task" example="export { myworkflow, task1, task2 }" />
 
 <TypeScript>
 ```typescript filename="DataFlow.ts" copy
@@ -49,6 +51,7 @@ export const task2 = new Task<Bar, void>("task2", {
 export const myworkflow = new Workflow("myworkflow", {
   startingTask: task1
 });
+
 ```
 </TypeScript>
 
@@ -89,6 +92,9 @@ task2 = Task[Bar, None](
 myworkflow = Workflow(
     name="myworkflow",
     config=WorkflowConfig(starting_task=task1)
+)
+
+# No export needed - Python modules are automatically discovered
 ```
 </Python>
 

@@ -11,8 +11,7 @@ import { Readable } from "node:stream";
 import { createHash } from "node:crypto";
 import type { ConfigurationRegistry } from "../../config/runtime";
 import { LifeCycle } from "./lifeCycle";
-import { IdentifierBrandedString } from "../../sqlHelpers";
-import { quoteIdentifier } from "../../utilities";
+import { IdentifierBrandedString, quoteIdentifier } from "../../sqlHelpers";
 
 /**
  * Represents a failed record during insertion with error details

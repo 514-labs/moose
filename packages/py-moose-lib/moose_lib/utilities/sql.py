@@ -3,9 +3,8 @@ def quote_identifier(name: str) -> str:
 
     Backticks allow special characters (e.g., hyphens) in identifiers.
     """
-    trimmed = name.strip()
-    if trimmed.startswith("`") and trimmed.endswith("`"):
-        return trimmed
-    return f"`{trimmed}`"
+    if name.startswith("`") and name.endswith("`"):
+        return name
+    return f"`{name}`"
 
 

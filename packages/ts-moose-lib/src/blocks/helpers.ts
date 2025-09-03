@@ -1,4 +1,4 @@
-import { quoteIdentifier } from "../utilities";
+import { quoteIdentifier } from "../sqlHelpers";
 
 interface AggregationCreateOptions {
   tableCreateOptions: TableCreateOptions;

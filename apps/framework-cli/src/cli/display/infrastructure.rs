@@ -404,9 +404,7 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
         OlapChange::Table(TableChange::Updated {
             name,
             column_changes,
-            order_by_change,
-            before,
-            after,
+            ..
         }) => {
             let mut details = Vec::new();
 
@@ -508,58 +506,6 @@ pub fn show_olap_changes(olap_changes: &[OlapChange]) {
                     };
                     details.push(change_line);
                 }
-            }
-
-            // Check for primary key changes (causes table recreation)
-            let before_pk: Vec<String> = before
-                .primary_key_columns()
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect();
-            let after_pk: Vec<String> = after
-                .primary_key_columns()
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect();
-
-            if before_pk != after_pk {
-                details.push("Primary key changes (requires table recreation):".to_string());
-                details.push(format!(
-                    "  - {}",
-                    if before_pk.is_empty() {
-                        "(none)".to_string()
-                    } else {
-                        before_pk.join(", ")
-                    }
-                ));
-                details.push(format!(
-                    "  + {}",
-                    if after_pk.is_empty() {
-                        "(none)".to_string()
-                    } else {
-                        after_pk.join(", ")
-                    }
-                ));
-            }
-
-            if order_by_change.before != order_by_change.after {
-                details.push("Order by changes (requires table recreation):".to_string());
-                details.push(format!(
-                    "  - {}",
-                    if order_by_change.before.is_empty() {
-                        "(none)".to_string()
-                    } else {
-                        order_by_change.before.join(", ")
-                    }
-                ));
-                details.push(format!(
-                    "  + {}",
-                    if order_by_change.after.is_empty() {
-                        "(none)".to_string()
-                    } else {
-                        order_by_change.after.join(", ")
-                    }
-                ));
             }
 
             infra_updated_detailed(&format!("Table: {name}"), &details);

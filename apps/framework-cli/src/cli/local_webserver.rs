@@ -81,15 +81,18 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::TcpListener;
+use tokio::process::Command;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
 use crate::framework::core::infrastructure::table::Table;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::utilities::constants;
 
 /// Request wrapper for router handling.
 /// This struct combines the HTTP request with the route table for processing.
@@ -139,6 +142,9 @@ pub struct LocalWebserverConfig {
     /// Maximum request body size in bytes (default: 10MB)
     #[serde(default = "default_max_request_body_size")]
     pub max_request_body_size: usize,
+    /// Script to run after dev server is ready
+    #[serde(default)]
+    pub post_dev_server_ready_script: Option<String>,
 }
 
 pub fn default_proxy_port() -> u16 {
@@ -169,6 +175,58 @@ impl LocalWebserverConfig {
             }
         })
     }
+
+    pub async fn run_dev_ready_script(&self) -> () {
+        if let Some(ref script) = self.post_dev_server_ready_script {
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+
+            let child = Command::new(shell)
+                .arg("-c")
+                .arg(script)
+                .stdin(Stdio::null())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn();
+            match child {
+                Ok(mut child) => {
+                    match child.wait().await {
+                        Ok(status) if status.success() => {
+                            show_message!(MessageType::Success, {
+                                Message {
+                                    action: "Ran".to_string(),
+                                    details: "script for dev server ready".to_string(),
+                                }
+                            });
+                        }
+                        Ok(status) => {
+                            show_message!(MessageType::Error, {
+                                Message {
+                                    action: "Fail".to_string(),
+                                    details: format!("script for dev server ready: {status}"),
+                                }
+                            });
+                        }
+                        Err(e) => {
+                            show_message!(MessageType::Error, {
+                                Message {
+                                    action: "Failed".to_string(),
+                                    details: format!("to wait for script for dev server\n{e:?}"),
+                                }
+                            });
+                        }
+                    };
+                }
+                Err(e) => {
+                    show_message!(MessageType::Error, {
+                        Message {
+                            action: "Failed".to_string(),
+                            details: format!("to spawn post_dev_server_ready_script:\n{e:?}"),
+                        }
+                    });
+                }
+            }
+        }
+    }
 }
 
 impl Default for LocalWebserverConfig {
@@ -180,6 +238,7 @@ impl Default for LocalWebserverConfig {
             proxy_port: default_proxy_port(),
             path_prefix: None,
             max_request_body_size: default_max_request_body_size(),
+            post_dev_server_ready_script: None,
         }
     }
 }
@@ -1345,7 +1404,9 @@ async fn management_router<I: InfraMapProvider>(
                 }
             }
         }
-        (&hyper::Method::GET, "openapi.yaml") => openapi_route(is_prod, openapi_path).await,
+        (&hyper::Method::GET, constants::OPENAPI_FILE) => {
+            openapi_route(is_prod, openapi_path).await
+        }
         _ => route_not_found_response(),
     };
 
@@ -1541,6 +1602,14 @@ impl Webserver {
                     details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
+
+            let project_clone = project.clone();
+            tokio::spawn(async move {
+                project_clone
+                    .http_server_config
+                    .run_dev_ready_script()
+                    .await;
+            });
         }
 
         let mut sigterm =

@@ -45,42 +45,10 @@ export enum ClickHouseEngines {
 }
 
 /**
- * Drops an aggregation's view & underlying table.
- */
-export function dropAggregation(options: AggregationDropOptions): string[] {
-  return [dropView(options.viewName), dropTable(options.tableName)];
-}
-
-/**
- * Drops an existing table if it exists.
- */
-export function dropTable(name: string): string {
-  return `DROP TABLE IF EXISTS ${quoteIdentifier(name)}`.trim();
-}
-
-/**
  * Drops an existing view if it exists.
  */
 export function dropView(name: string): string {
   return `DROP VIEW IF EXISTS ${quoteIdentifier(name)}`.trim();
-}
-
-/**
- * Creates an aggregation which includes a table, materialized view, and initial data load.
- */
-export function createAggregation(options: AggregationCreateOptions): string[] {
-  return [
-    createTable(options.tableCreateOptions),
-    createMaterializedView({
-      name: options.materializedViewName,
-      destinationTable: options.tableCreateOptions.name,
-      select: options.select,
-    }),
-    populateTable({
-      destinationTable: options.tableCreateOptions.name,
-      select: options.select,
-    }),
-  ];
 }
 
 /**
@@ -92,28 +60,6 @@ export function createMaterializedView(
   return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${quoteIdentifier(options.name)}
         TO ${quoteIdentifier(options.destinationTable)}
         AS ${options.select}`.trim();
-}
-
-/**
- * Creates a new table with default MergeTree engine.
- */
-export function createTable(options: TableCreateOptions): string {
-  const columnDefinitions = Object.entries(options.columns)
-    .map(([name, type]) => `${quoteIdentifier(name)} ${type}`)
-    .join(",\n");
-
-  const orderByClause = options.orderBy ? `ORDER BY ${options.orderBy}` : "";
-
-  const engine = options.engine || ClickHouseEngines.MergeTree;
-
-  return `
-    CREATE TABLE IF NOT EXISTS ${quoteIdentifier(options.name)}
-    (
-      ${columnDefinitions}
-    )
-    ENGINE = ${engine}()
-    ${orderByClause}
-  `.trim();
 }
 
 /**

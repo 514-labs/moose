@@ -81,7 +81,6 @@ const apiHandler = async (
 ) => {
   const apis = isDmv2 ? await getApis() : new Map();
   return async (req: http.IncomingMessage, res: http.ServerResponse) => {
-
     try {
       const url = new URL(req.url || "", "http://localhost");
       const fileName = url.pathname;

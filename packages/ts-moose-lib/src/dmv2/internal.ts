@@ -12,13 +12,7 @@
  *           Its API might change without notice.
  */
 import process from "process";
-import {
-  Api,
-  IngestApi,
-  SqlResource,
-  Task,
-  Workflow,
-} from "./index";
+import { Api, IngestApi, SqlResource, Task, Workflow } from "./index";
 import { IJsonSchemaCollection } from "typia/src/schemas/json/IJsonSchemaCollection";
 import { Column } from "../dataModels/dataModelTypes";
 import { ClickHouseEngines, ApiUtil } from "../index";

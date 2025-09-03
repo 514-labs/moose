@@ -209,9 +209,14 @@ parser.add_argument('--security_protocol', type=str, help='The security protocol
 parser.add_argument('--dmv2', action=argparse.BooleanOptionalAction, type=bool,
                     help='Whether to use the DMV2 format for the streaming function')
 
-args = parser.parse_args()
+args: argparse.Namespace = parser.parse_args()
 
-print(args)
+for arg in vars(args):
+    value = getattr(args, arg)
+    if 'password' in arg and value is not None:
+        value = '******'
+    print(arg, value)
+
 source_topic = KafkaTopicConfig(**json.loads(args.source_topic_json))
 target_topic = KafkaTopicConfig(**json.loads(args.target_topic_json)) if args.target_topic_json else None
 function_file_dir = args.function_file_dir

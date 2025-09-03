@@ -1,3 +1,5 @@
+import { quoteIdentifier } from "../utilities";
+
 interface AggregationCreateOptions {
   tableCreateOptions: TableCreateOptions;
   materializedViewName: string;
@@ -53,14 +55,14 @@ export function dropAggregation(options: AggregationDropOptions): string[] {
  * Drops an existing table if it exists.
  */
 export function dropTable(name: string): string {
-  return `DROP TABLE IF EXISTS ${name}`.trim();
+  return `DROP TABLE IF EXISTS ${quoteIdentifier(name)}`.trim();
 }
 
 /**
  * Drops an existing view if it exists.
  */
 export function dropView(name: string): string {
-  return `DROP VIEW IF EXISTS ${name}`.trim();
+  return `DROP VIEW IF EXISTS ${quoteIdentifier(name)}`.trim();
 }
 
 /**
@@ -87,8 +89,8 @@ export function createAggregation(options: AggregationCreateOptions): string[] {
 export function createMaterializedView(
   options: MaterializedViewCreateOptions,
 ): string {
-  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
-        TO ${options.destinationTable}
+  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${quoteIdentifier(options.name)}
+        TO ${quoteIdentifier(options.destinationTable)}
         AS ${options.select}`.trim();
 }
 
@@ -97,7 +99,7 @@ export function createMaterializedView(
  */
 export function createTable(options: TableCreateOptions): string {
   const columnDefinitions = Object.entries(options.columns)
-    .map(([name, type]) => `${name} ${type}`)
+    .map(([name, type]) => `${quoteIdentifier(name)} ${type}`)
     .join(",\n");
 
   const orderByClause = options.orderBy ? `ORDER BY ${options.orderBy}` : "";
@@ -105,7 +107,7 @@ export function createTable(options: TableCreateOptions): string {
   const engine = options.engine || ClickHouseEngines.MergeTree;
 
   return `
-    CREATE TABLE IF NOT EXISTS ${options.name} 
+    CREATE TABLE IF NOT EXISTS ${quoteIdentifier(options.name)}
     (
       ${columnDefinitions}
     )
@@ -118,6 +120,6 @@ export function createTable(options: TableCreateOptions): string {
  * Populates a table with data.
  */
 export function populateTable(options: PopulateTableOptions): string {
-  return `INSERT INTO ${options.destinationTable}
+  return `INSERT INTO ${quoteIdentifier(options.destinationTable)}
           ${options.select}`.trim();
 }

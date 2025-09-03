@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import type { ConfigurationRegistry } from "../../config/runtime";
 import { LifeCycle } from "./lifeCycle";
 import { IdentifierBrandedString } from "../../sqlHelpers";
+import { quoteIdentifier } from "../../utilities";
 
 /**
  * Represents a failed record during insertion with error details
@@ -414,7 +415,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
 
       try {
         await client.insert({
-          table: tableName,
+          table: quoteIdentifier(tableName),
           values: batch,
           format: "JSONEachRow",
           clickhouse_settings: {
@@ -431,7 +432,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
           const record = batch[j];
           try {
             await client.insert({
-              table: tableName,
+              table: quoteIdentifier(tableName),
               values: [record],
               format: "JSONEachRow",
               clickhouse_settings: {
@@ -623,7 +624,7 @@ export class OlapTable<T> extends TypedBase<T, OlapConfig<T>> {
     options?: InsertOptions,
   ): any {
     const insertOptions: any = {
-      table: tableName,
+      table: quoteIdentifier(tableName),
       format: "JSONEachRow",
       clickhouse_settings: {
         date_time_input_format: "best_effort",

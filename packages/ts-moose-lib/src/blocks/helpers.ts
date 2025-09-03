@@ -25,6 +25,7 @@ interface TableCreateOptions {
   columns: Record<string, string>;
   engine?: ClickHouseEngines;
   orderBy?: string;
+  dedupBy?: string;
 }
 
 export interface Blocks {
@@ -103,13 +104,17 @@ export function createTable(options: TableCreateOptions): string {
   const orderByClause = options.orderBy ? `ORDER BY ${options.orderBy}` : "";
 
   const engine = options.engine || ClickHouseEngines.MergeTree;
+  const engineExpr =
+    engine === ClickHouseEngines.ReplacingMergeTree && options.dedupBy ?
+      `ReplacingMergeTree(${options.dedupBy})`
+    : `${engine}()`;
 
   return `
     CREATE TABLE IF NOT EXISTS ${options.name} 
     (
       ${columnDefinitions}
     )
-    ENGINE = ${engine}()
+    ENGINE = ${engineExpr}
     ${orderByClause}
   `.trim();
 }

@@ -33,6 +33,47 @@ MooseStack is designed for:
 - [Moose **APIs**](https://docs.fiveonefour.com/moose/apis): Type‑safe ingestion and query endpoints with auto‑generated OpenAPI docs.
 - MooseStack Tooling: [Moose **Deploy**](https://docs.fiveonefour.com/moose/deploying), [Moose **Migrate**](https://docs.fiveonefour.com/moose/migrate), [Moose **Observability**](https://docs.fiveonefour.com/moose/metrics)
 
+## Quickstart
+
+Also available in the Docs: [5-minute Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+
+Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/from-clickhouse)
+
+### Install the CLI
+
+```bash
+bash -i <(curl -fsSL https://fiveonefour.com/install.sh) moose
+```
+
+### Create a project
+
+```bash
+# typescript
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language typescript
+
+# python
+moose init my-project --from-remote <YOUR_CLICKHOUSE_CONNECTION_STRING> --language python
+```
+
+### Run locally
+
+```bash
+cd my-project
+moose dev
+```
+
+MooseStack will start ClickHouse, Redpanda, Temporal, and Redis; the CLI validates each component.
+
+## Deploy with Boreal
+
+The easiest way to deploy your MooseStack Applications is to use [Boreal](https://www.fiveonefour.com/boreal) from 514 Labs, the creators of Moose. Boreal provides zero-config deployments, automatic scaling, managed or BYO infrastructure, monitoring and observability integrations.
+
+[Get started with Boreal →](https://www.fiveonefour.com/boreal)
+
+## Deploy Yourself
+
+Moose is open source and can be self-hosted. For detailed self-hosting instructions, see our [deployment documentation](https://docs.fiveonefour.com/moose/deploying).
+
 ## Examples
 
 ### TypeScript 

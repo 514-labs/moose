@@ -37,7 +37,7 @@ MooseStack is designed for:
 
 Also available in the Docs: [5-minute Quickstart](https://docs.fiveonefour.com/moose/getting-started/quickstart)
 
-Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/quickstart)
+Already running Clickhouse: [Getting Started with Existing Clickhouse](https://docs.fiveonefour.com/moose/getting-started/from-clickhouse)
 
 ### Install the CLI
 

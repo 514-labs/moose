@@ -64,7 +64,7 @@ services:
   {{/if}}
   {{#if storage}}
   clickhousedb:
-    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-24.12}
+    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.6}
     volumes:
       {{#if clickhouse_host_data_path}}
       - "{{clickhouse_host_data_path}}:/var/lib/clickhouse/"

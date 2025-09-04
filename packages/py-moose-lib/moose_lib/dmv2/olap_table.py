@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Any, Literal, Union, Tuple, TypeVar, Generic, Iterator
 from moose_lib import ClickHouseEngines
 from ..config.runtime import RuntimeClickHouseConfig
+from ..utilities.sql import quote_identifier
 from .types import TypedMooseResource, T
 from ._registry import _tables
 from ..data_models import Column, is_array_nested_type, is_nested_type, _to_columns
@@ -462,7 +463,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
                 settings["input_format_allow_errors_ratio"] = options.allow_errors_ratio
 
         if is_stream:
-            return table_name, data, settings
+            return quote_identifier(table_name), data, settings
 
         if not isinstance(validated_data, list):
             validated_data = [validated_data]
@@ -475,9 +476,9 @@ class OlapTable(TypedMooseResource, Generic[T]):
             preprocessed_record = self._map_to_clickhouse_record(record_dict)
             dict_data.append(preprocessed_record)
         if not dict_data:
-            return table_name, b"", settings
+            return quote_identifier(table_name), b"", settings
         json_lines = self._to_json_each_row(dict_data)
-        return table_name, json_lines, settings
+        return quote_identifier(table_name), json_lines, settings
 
     def _create_success_result(
         self,
@@ -536,7 +537,7 @@ class OlapTable(TypedMooseResource, Generic[T]):
     ) -> InsertResult[T]:
         successful: List[T] = []
         failed: List[FailedRecord[T]] = []
-        table_name = self._generate_table_name()
+        table_name = quote_identifier(self._generate_table_name())
         records_dict = []
         for record in records:
             if hasattr(record, 'model_dump'):
@@ -685,7 +686,8 @@ class OlapTable(TypedMooseResource, Generic[T]):
 
                 if len(batch) >= 1000:  # Batch size
                     json_lines = self._to_json_each_row(batch)
-                    sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
+                    quoted = quote_identifier(table_name)
+                    sql = f"INSERT INTO {quoted} FORMAT JSONEachRow"
                     # Add wait_end_of_query to batch settings using helper function
                     batch_settings = self._with_wait_end_settings(settings)
                     client.command(sql, data=json_lines, settings=batch_settings)
@@ -694,7 +696,8 @@ class OlapTable(TypedMooseResource, Generic[T]):
 
             if batch:  # Insert any remaining records
                 json_lines = self._to_json_each_row(batch)
-                sql = f"INSERT INTO {table_name} FORMAT JSONEachRow"
+                quoted = quote_identifier(table_name)
+                sql = f"INSERT INTO {quoted} FORMAT JSONEachRow"
                 # Add wait_end_of_query to final batch settings using helper function
                 final_settings = self._with_wait_end_settings(settings)
                 client.command(sql, data=json_lines, settings=final_settings)

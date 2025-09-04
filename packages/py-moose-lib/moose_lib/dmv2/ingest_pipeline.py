@@ -89,7 +89,7 @@ class IngestPipeline(TypedMooseResource, Generic[T]):
             raise ValueError("Stream was not configured for this pipeline")
         return self.stream
 
-    def get_dead_letter_queue(self) -> Stream[T]:
+    def get_dead_letter_queue(self) -> DeadLetterQueue[T]:
         """Retrieves the pipeline's dead letter queue.
 
         Raises:

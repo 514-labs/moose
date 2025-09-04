@@ -4,6 +4,14 @@ import { OlapTable } from "./dmv2";
 
 import { AggregationFunction } from "./dataModels/typeConvert";
 
+/**
+ * Quote a ClickHouse identifier with backticks if not already quoted.
+ * Backticks allow special characters (e.g., hyphens) in identifiers.
+ */
+export const quoteIdentifier = (name: string): string => {
+  return name.startsWith("`") && name.endsWith("`") ? name : `\`${name}\``;
+};
+
 const isTable = (
   value: RawValue | Column | OlapTable<any>,
 ): value is OlapTable<any> =>

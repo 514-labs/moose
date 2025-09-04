@@ -20,7 +20,6 @@ use routines::auth::generate_hash_token;
 use routines::build::build_package;
 use routines::clean::clean_project;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
-use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::peek::peek;
 use routines::ps::show_processes;
@@ -764,14 +763,7 @@ pub async fn top_command_handler(
 
             result
         }
-        Commands::Ls {
-            version,
-            limit,
-            streaming,
-            _type,
-            name,
-            json,
-        } => {
+        Commands::Ls { _type, name, json } => {
             info!("Running ls command");
 
             let project = load_project()?;
@@ -787,10 +779,11 @@ pub async fn top_command_handler(
 
             let res = if project_arc.features.data_model_v2 {
                 ls_dmv2(&project_arc, _type.as_deref(), name.as_deref(), *json).await
-            } else if *streaming {
-                list_streaming(project_arc, limit).await
             } else {
-                list_db(project_arc, version, limit).await
+                Err(RoutineFailure::error(Message {
+                    action: "List".to_string(),
+                    details: "Please upgrade to Moose Data Model v2".to_string(),
+                }))
             };
 
             wait_for_usage_capture(capture_handle).await;

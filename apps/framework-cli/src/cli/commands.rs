@@ -116,18 +116,6 @@ pub enum Commands {
     Ps {},
     /// View Moose primitives & infrastructure
     Ls {
-        /// Limit output to a specific number of data models
-        #[arg(short, long, default_value = "10", hide = true)]
-        limit: u16,
-
-        /// View a specific version of data models & database infrastructure (default: latest)
-        #[arg(short, long, hide = true)]
-        version: Option<String>,
-
-        /// View streaming topics
-        #[arg(short, long, default_value = "false", hide = true)]
-        streaming: bool,
-
         /// Filter by infrastructure type (tables, streams, ingestion, sql_resource, consumption)
         #[arg(long)]
         _type: Option<String>,

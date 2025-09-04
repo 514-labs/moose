@@ -199,7 +199,7 @@ export interface StreamingFunctionArgs {
   sourceTopic: TopicConfig;
   targetTopic?: TopicConfig;
   functionFilePath: string;
-  broker: string;
+  broker: string; // Comma-separated list of Kafka broker addresses (e.g., "broker1:9092,broker2:9092")
   maxSubscriberCount: number;
   isDmv2: boolean;
   saslUsername?: string;
@@ -872,7 +872,7 @@ export const runStreamingFunctions = async (
 
       const kafka = new Kafka({
         clientId: processId,
-        brokers: [args.broker],
+        brokers: args.broker.split(','),
         ssl: args.securityProtocol === "SASL_SSL",
         sasl: buildSaslConfig(logger, args),
         retry: {

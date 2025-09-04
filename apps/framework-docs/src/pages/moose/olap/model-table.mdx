@@ -234,6 +234,60 @@ class Order(BaseModel):
 ```
 </Python>
 
+### Default values
+
+Use defaults instead of nullable columns to keep queries fast and schemas simple. You can specify defaults at the column level so Moose generates ClickHouse defaults in your table DDL.
+
+<TypeScript>
+```ts filename="Defaults.ts" copy
+import { OlapTable, Key, ClickHouseDefault, ClickHouseDecimal } from "@514labs/moose-lib";
+
+interface Event {
+  id: Key<string>;
+  // Static defaults (ClickHouse expression as a string literal)
+  status: string & ClickHouseDefault<"'pending'">;   // DEFAULT 'pending'
+  retries: number & ClickHouseDefault<"0">;          // DEFAULT 0
+  // Server-side timestamps
+  createdAt: Date & ClickHouseDefault<"now()">;      // DEFAULT now()
+  // Decimal with default
+  amount: (string & ClickHouseDecimal<10, 2> & ClickHouseDefault<"0">);
+}
+
+export const events = new OlapTable<Event>("events", {
+  orderByFields: ["id", "createdAt"],
+});
+```
+
+The value passed into the `ClickHouseDefault<"">` tag can either be a string literal or a stringified ClickHouse SQL expression. If you run into typing issues specifically on `Date` fields with `ClickHouseDefault`, use `WithDefault<Date, "now()">` as a fallback workaround.
+</TypeScript>
+
+<Python>
+```py filename="Defaults.py" copy
+from typing import Annotated
+from pydantic import BaseModel
+from moose_lib import OlapTable, Key, clickhouse_default, clickhouse_decimal
+from datetime import datetime
+
+class Event(BaseModel):
+    id: Key[str]
+    # Static defaults
+    status: Annotated[str, clickhouse_default("'pending'")]  # DEFAULT 'pending'
+    retries: Annotated[int, clickhouse_default("0")]         # DEFAULT 0
+    # Server-side timestamps
+    created_at: Annotated[datetime, clickhouse_default("now()")]
+    # Decimal with default
+    amount: Annotated[float, clickhouse_decimal(10, 2)] = 0
+
+events = OlapTable[Event]("events", {
+    "orderByFields": ["id", "created_at"],
+})
+```
+The value passed into the `clickhouse_default` function can either be a string literal or a stringified ClickHouse SQL expression.
+
+</Python>
+
+
+
 ### Primary Keys and Sorting
 
 You must configure table indexing using one of these approaches:

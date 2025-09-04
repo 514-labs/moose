@@ -1,5 +1,6 @@
 use crate::cli::commands::SeedSubcommands;
 use crate::cli::display::Message;
+use crate::cli::display::{self, MessageType};
 use crate::cli::routines::RoutineFailure;
 use crate::cli::routines::RoutineSuccess;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
@@ -9,6 +10,8 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::project::Project;
 use crate::utilities::clickhouse_url::convert_http_to_clickhouse;
 use log::{debug, info};
+use tokio::signal;
+use tokio::sync::watch;
 
 fn parse_clickhouse_connection_string(
     conn_str: &str,
@@ -60,11 +63,16 @@ pub async fn handle_seed_command(
         Some(SeedSubcommands::Clickhouse {
             connection_string,
             limit,
+            all,
             table,
         }) => {
             info!(
-                "Running seed clickhouse command with connection string: {}",
-                connection_string
+                "Running seed clickhouse command (source: {})",
+                if connection_string.is_some() {
+                    "--connection-string flag"
+                } else {
+                    "MOOSE_SEED_CLICKHOUSE_URL env"
+                }
             );
 
             let infra_map = if project.features.data_model_v2 {
@@ -86,8 +94,19 @@ pub async fn handle_seed_command(
                 InfrastructureMap::new(project, primitive_map)
             };
 
-            let (mut remote_config, db_name) =
-                parse_clickhouse_connection_string(connection_string).map_err(|e| {
+            // Pull connection string from flag or env var
+            let conn_str = connection_string
+                .clone()
+                .or_else(|| std::env::var("MOOSE_SEED_CLICKHOUSE_URL").ok())
+                .ok_or_else(|| {
+                    RoutineFailure::error(Message::new(
+                        "SeedClickhouse".to_string(),
+                        "Provide --connection-string or set MOOSE_SEED_CLICKHOUSE_URL".to_string(),
+                    ))
+                })?;
+
+            let (mut remote_config, db_name) = parse_clickhouse_connection_string(&conn_str)
+                .map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
                         format!("Invalid connection string: {e}"),
@@ -95,8 +114,8 @@ pub async fn handle_seed_command(
                 })?;
 
             if db_name.is_none() {
-                let mut client = clickhouse::Client::default().with_url(connection_string);
-                let url = convert_http_to_clickhouse(connection_string).map_err(|e| {
+                let mut client = clickhouse::Client::default().with_url(&conn_str);
+                let url = convert_http_to_clickhouse(&conn_str).map_err(|e| {
                     RoutineFailure::error(Message::new(
                         "SeedClickhouse".to_string(),
                         format!("Failed to parse connection string: {e}"),
@@ -146,7 +165,7 @@ pub async fn handle_seed_command(
                 &local_clickhouse,
                 &remote_config,
                 table.clone(),
-                *limit,
+                if *all { None } else { Some(*limit) },
             )
             .await?;
 
@@ -168,7 +187,7 @@ pub async fn seed_clickhouse_tables(
     local_clickhouse: &ClickHouseClient,
     remote_config: &ClickHouseConfig,
     table_name: Option<String>,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<Vec<String>, RoutineFailure> {
     let remote_host = &remote_config.host;
     let remote_db = &remote_config.db_name;
@@ -198,18 +217,266 @@ pub async fn seed_clickhouse_tables(
     let remote_host_and_port = format!("{remote_host}:{remote_port}");
 
     for table_name in tables {
-        let sql = format!(
-            "INSERT INTO `{local_db}`.`{table_name}` SELECT * FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT {limit}"
-        );
+        if let Some(l) = limit {
+            // Always batch when limit is large to avoid remote caps and memory pressure
+            let batch_size: usize = 50_000;
+            display::show_message_wrapper(
+                MessageType::Info,
+                Message::new(
+                    "Seed".to_string(),
+                    format!("{table_name}: total rows to copy = {l}"),
+                ),
+            );
 
-        debug!("Executing SQL: {}", sql);
-
-        match local_clickhouse.execute_sql(&sql).await {
-            Ok(_) => {
-                summary.push(format!("✓ {table_name}: copied from remote"));
+            // Preflight remote access
+            let preflight = format!(
+                "SELECT 1 FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT 1"
+            );
+            if let Err(e) = local_clickhouse.execute_sql(&preflight).await {
+                summary.push(format!("✗ {table_name}: remote access failed - {e}"));
+                continue;
             }
-            Err(e) => {
-                summary.push(format!("✗ {table_name}: failed to copy - {e}"));
+
+            // Graceful cancel (finish current batch)
+            let (cancel_tx, cancel_rx) = watch::channel(false);
+            {
+                let table_for_sig = table_name.clone();
+                tokio::spawn(async move {
+                    if signal::ctrl_c().await.is_ok() {
+                        let _ = cancel_tx.send(true);
+                        display::show_message_wrapper(
+                            MessageType::Highlight,
+                            Message::new(
+                                "Seed".to_string(),
+                                format!("{table_for_sig}: cancellation requested; finishing current batch"),
+                            ),
+                        );
+                    }
+                });
+            }
+
+            let mut copied_total: usize = 0;
+            let mut batches_copied: usize = 0;
+            let mut had_error: bool = false;
+            let mut last_error: Option<String> = None;
+            while copied_total < l {
+                if *cancel_rx.borrow() {
+                    break;
+                }
+                let this_batch = std::cmp::min(batch_size, l - copied_total);
+                let sql = format!(
+                    "INSERT INTO `{local_db}`.`{table_name}` SELECT * FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT {this_batch} OFFSET {copied_total}"
+                );
+
+                debug!(
+                    "Executing SQL (limited batch): table={}, offset={}, batch={}",
+                    table_name, copied_total, this_batch
+                );
+
+                match local_clickhouse.execute_sql(&sql).await {
+                    Ok(_) => {
+                        copied_total += this_batch;
+                        batches_copied += 1;
+                        display::show_message_wrapper(
+                            MessageType::Info,
+                            Message::new(
+                                "Seed".to_string(),
+                                format!(
+                                    "{table_name}: copied batch ~{} ({} / {} rows)",
+                                    this_batch, copied_total, l
+                                ),
+                            ),
+                        );
+
+                        if copied_total >= l {
+                            break;
+                        }
+
+                        // Probe if any rows remain beyond current offset in remote
+                        let probe_sql = format!(
+                            "SELECT 1 FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT 1 OFFSET {copied_total}"
+                        );
+                        if let Ok(body) = local_clickhouse.execute_sql(&probe_sql).await {
+                            if body.trim().is_empty() {
+                                break;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        had_error = true;
+                        last_error = Some(e.to_string());
+                        break;
+                    }
+                }
+            }
+
+            let final_copied = std::cmp::min(copied_total, l);
+            if batches_copied > 0 && !had_error {
+                summary.push(format!(
+                    "✓ {table_name}: copied {} row(s) in {} batch(es)",
+                    final_copied, batches_copied
+                ));
+            } else if batches_copied > 0 && had_error {
+                summary.push(format!(
+                    "! {table_name}: copied {} row(s) partially in {} batch(es); encountered errors",
+                    final_copied, batches_copied
+                ));
+            } else {
+                let detail = last_error.unwrap_or_else(|| "unknown error".to_string());
+                summary.push(format!(
+                    "✗ {table_name}: failed to copy — no batches completed ({detail})"
+                ));
+            }
+        } else {
+            // Copy entire table in batches to avoid remote row limits and memory-heavy sorting
+            // Use a conservative batch size and avoid ORDER BY on the remote to prevent full-table sorts
+            let batch_size: usize = 50_000;
+            let order_by_clause = String::new();
+
+            // Compute total rows up front, to report progress and exact totals
+            let count_sql = format!(
+                "SELECT count() FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}')"
+            );
+            let total_rows: Option<u64> = match local_clickhouse.execute_sql(&count_sql).await {
+                Ok(body) => body.trim().parse::<u64>().ok(),
+                Err(_) => None,
+            };
+            display::show_message_wrapper(
+                MessageType::Info,
+                Message::new(
+                    "Seed".to_string(),
+                    match total_rows {
+                        Some(n) => format!("{table_name}: total rows to copy = {}", n),
+                        None => {
+                            format!("{table_name}: total rows to copy = unknown (count failed)")
+                        }
+                    },
+                ),
+            );
+
+            // Set up graceful cancellation: finish current batch, then stop
+            let (cancel_tx, cancel_rx) = watch::channel(false);
+            {
+                let table_for_sig = table_name.clone();
+                tokio::spawn(async move {
+                    if signal::ctrl_c().await.is_ok() {
+                        let _ = cancel_tx.send(true);
+                        display::show_message_wrapper(
+                            MessageType::Highlight,
+                            Message::new(
+                                "Seed".to_string(),
+                                format!("{table_for_sig}: cancellation requested; finishing current batch"),
+                            ),
+                        );
+                    }
+                });
+            }
+
+            // Preflight: verify remote table is accessible
+            let preflight = format!(
+                "SELECT 1 FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}'){order_by_clause} LIMIT 1"
+            );
+            if let Err(e) = local_clickhouse.execute_sql(&preflight).await {
+                summary.push(format!("✗ {table_name}: remote access failed - {e}"));
+                continue;
+            }
+
+            let mut copied_total: usize = 0;
+            let mut batches_copied: usize = 0;
+            let mut had_error: bool = false;
+            let mut last_error: Option<String> = None;
+            loop {
+                // Stop before starting next batch if cancellation requested
+                if *cancel_rx.borrow() {
+                    break;
+                }
+                let sql = format!(
+                    "INSERT INTO `{local_db}`.`{table_name}` SELECT * FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT {batch_size} OFFSET {copied_total}"
+                );
+
+                debug!(
+                    "Executing SQL (batch): table={}, offset={}, batch={}",
+                    table_name, copied_total, batch_size
+                );
+
+                match local_clickhouse.execute_sql(&sql).await {
+                    Ok(_) => {
+                        // We cannot easily know how many rows were inserted from the response,
+                        // assume full batch unless next iteration returns 0.
+                        copied_total += batch_size;
+                        batches_copied += 1;
+                        let copied_so_far = match total_rows {
+                            Some(t) => std::cmp::min(copied_total as u64, t),
+                            None => copied_total as u64,
+                        };
+                        display::show_message_wrapper(
+                            MessageType::Info,
+                            Message::new(
+                                "Seed".to_string(),
+                                match total_rows {
+                                    Some(t) => format!(
+                                        "{table_name}: copied batch ~{} ({} / {} rows)",
+                                        batch_size, copied_so_far, t
+                                    ),
+                                    None => format!(
+                                        "{table_name}: copied batch ~{} (offset {})",
+                                        batch_size, copied_total
+                                    ),
+                                },
+                            ),
+                        );
+                        // If we know total rows, stop when reached
+                        if let Some(t) = total_rows {
+                            if copied_total as u64 >= t {
+                                break;
+                            }
+                        }
+                        // Heuristic: try a probe with LIMIT 1 OFFSET copied_total; if no more rows, break.
+                        let probe_sql = format!(
+                            "SELECT 1 FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT 1 OFFSET {copied_total}"
+                        );
+                        match local_clickhouse.execute_sql(&probe_sql).await {
+                            Ok(body) => {
+                                if body.trim().is_empty() {
+                                    // No more rows
+                                    break;
+                                }
+                            }
+                            Err(_) => {
+                                // Probe failed; proceed to next iteration to fail safe or finish
+                            }
+                        }
+                        // If probe succeeded, continue loop
+                    }
+                    Err(e) => {
+                        // If we received an error due to no more rows or remote limits,
+                        // stop the loop and report partial success
+                        debug!("Batch copy ended for {}: {}", table_name, e);
+                        had_error = true;
+                        last_error = Some(e.to_string());
+                        break;
+                    }
+                }
+            }
+            let final_copied = match total_rows {
+                Some(t) => std::cmp::min(copied_total as u64, t),
+                None => copied_total as u64,
+            };
+            if batches_copied > 0 && !had_error {
+                summary.push(format!(
+                    "✓ {table_name}: copied {} row(s) in {} batch(es)",
+                    final_copied, batches_copied
+                ));
+            } else if batches_copied > 0 && had_error {
+                summary.push(format!(
+                    "! {table_name}: copied {} row(s) partially in {} batch(es); encountered errors",
+                    final_copied, batches_copied
+                ));
+            } else {
+                let detail = last_error.unwrap_or_else(|| "unknown error".to_string());
+                summary.push(format!(
+                    "✗ {table_name}: failed to copy — no batches completed ({detail})"
+                ));
             }
         }
     }

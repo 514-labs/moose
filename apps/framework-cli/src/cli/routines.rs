@@ -122,6 +122,49 @@ use crate::utilities::constants::{
     MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
 };
 
+async fn maybe_warmup_connections(project: &Project, redis_client: &Arc<RedisClient>) {
+    if std::env::var("MOOSE_CONNECTION_POOL_WARMUP").is_ok() {
+        // ClickHouse
+        if project.features.olap {
+            let client = create_client(project.clickhouse_config.clone());
+            let _ = check_ready(&client).await;
+        }
+
+        // Redis
+        {
+            let mut cm = redis_client.connection_manager.clone();
+            let _ = cm.ping().await;
+        }
+
+        // Kafka/Redpanda
+        if project.features.streaming_engine {
+            let _ = fetch_topics(&project.redpanda_config).await;
+        }
+
+        // Temporal (if workflows feature enabled)
+        if project.features.workflows {
+            if let Ok(manager) = TemporalClientManager::new_validate(&project.temporal_config, true)
+            {
+                let namespace = project.temporal_config.namespace.clone();
+                let _ = manager
+                    .execute(move |mut c| async move {
+                        c.list_workflow_executions(
+                            temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
+                                namespace,
+                                query: "WorkflowType!='__warmup__'".to_string(),
+                                page_size: 1,
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .map(|_| ())
+                    })
+                    .await;
+            }
+        }
+    }
+}
+
 pub mod auth;
 pub mod build;
 pub mod clean;
@@ -358,48 +401,7 @@ pub async fn start_development_mode(
         .await;
 
     let (_, plan) = plan_changes(&redis_client, &project).await?;
-
-    // Optional connection pool warm-up on startup
-    if std::env::var("MOOSE_CONNECTION_POOL_WARMUP").is_ok() {
-        // ClickHouse
-        if project.features.olap {
-            let client = create_client(project.clickhouse_config.clone());
-            let _ = check_ready(&client).await; // best-effort warmup
-        }
-
-        // Redis
-        {
-            let mut cm = redis_client.connection_manager.clone();
-            let _ = cm.ping().await; // best-effort
-        }
-
-        // Kafka/Redpanda
-        if project.features.streaming_engine {
-            let _ = fetch_topics(&project.redpanda_config).await; // metadata call warms connection
-        }
-
-        // Temporal (if workflows feature enabled)
-        if project.features.workflows {
-            if let Ok(manager) = TemporalClientManager::new_validate(&project.temporal_config, true)
-            {
-                let namespace = project.temporal_config.namespace.clone();
-                let _ = manager
-                    .execute(move |mut c| async move {
-                        c.list_workflow_executions(
-                            temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
-                                namespace,
-                                query: "WorkflowType!='__warmup__'".to_string(),
-                                page_size: 1,
-                                ..Default::default()
-                            },
-                        )
-                        .await
-                        .map(|_| ())
-                    })
-                    .await;
-            }
-        }
-    }
+    maybe_warmup_connections(&project, &redis_client).await;
 
     plan_validator::validate(&project, &plan)?;
 
@@ -505,48 +507,7 @@ pub async fn start_production_mode(
         Box::leak(Box::new(RwLock::new(route_table)));
 
     let (current_state, plan) = plan_changes(&redis_client, &project).await?;
-
-    // Optional connection pool warm-up on startup
-    if std::env::var("MOOSE_CONNECTION_POOL_WARMUP").is_ok() {
-        // ClickHouse
-        if project.features.olap {
-            let client = create_client(project.clickhouse_config.clone());
-            let _ = check_ready(&client).await;
-        }
-
-        // Redis
-        {
-            let mut cm = redis_client.connection_manager.clone();
-            let _ = cm.ping().await;
-        }
-
-        // Kafka/Redpanda
-        if project.features.streaming_engine {
-            let _ = fetch_topics(&project.redpanda_config).await;
-        }
-
-        // Temporal (if workflows feature enabled)
-        if project.features.workflows {
-            if let Ok(manager) = TemporalClientManager::new_validate(&project.temporal_config, true)
-            {
-                let namespace = project.temporal_config.namespace.clone();
-                let _ = manager
-                    .execute(move |mut c| async move {
-                        c.list_workflow_executions(
-                            temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
-                                namespace,
-                                query: "WorkflowType!='__warmup__'".to_string(),
-                                page_size: 1,
-                                ..Default::default()
-                            },
-                        )
-                        .await
-                        .map(|_| ())
-                    })
-                    .await;
-            }
-        }
-    }
+    maybe_warmup_connections(&project, &redis_client).await;
 
     let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
 

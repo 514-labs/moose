@@ -77,7 +77,7 @@ def run_task1(ctx: TaskContext[Foo]) -> Bar:
     )
 
 def run_task2(ctx: TaskContext[Bar]) -> None:
-    print(f"{input.greeting} (count: {input.counter})")
+    print(f"{ctx.input.greeting} (count: {ctx.input.counter})")
 
 task1 = Task[Foo, Bar](
     name="task1",

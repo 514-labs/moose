@@ -5,7 +5,7 @@ import {
   populateTable,
 } from "../../blocks/helpers";
 import { Sql, toStaticQuery } from "../../sqlHelpers";
-import { OlapTable } from "./olapTable";
+import { OlapConfig, OlapTable } from "./olapTable";
 import { SqlResource } from "./sqlResource";
 import { View } from "./view";
 import { IJsonSchemaCollection } from "typia";
@@ -108,8 +108,10 @@ export class MaterializedView<TargetTable> extends SqlResource {
           {
             orderByFields:
               options.targetTable?.orderByFields ?? options.orderByFields,
-            engine: options.targetTable?.engine ?? options.engine,
-          },
+            engine: (options.targetTable?.engine ??
+              options.engine ??
+              ClickHouseEngines.MergeTree) as ClickHouseEngines.MergeTree,
+          } as OlapConfig<TargetTable>,
           targetSchema,
           targetColumns,
         );

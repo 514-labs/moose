@@ -584,15 +584,15 @@ async fn ready_route(
         }
     }
 
-    // Temporal: if enabled, perform a lightweight list call
+    // Temporal: if enabled, perform a namespace describe probe
     if let Some(manager) =
         crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(
             project,
         )
     {
-        let namespace = project.temporal_config.namespace.clone();
-        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal(
-            &manager, namespace, "ready",
+        let namespace = project.temporal_config.get_temporal_namespace();
+        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal_namespace(
+            &manager, namespace,
         )
         .await;
         match res {

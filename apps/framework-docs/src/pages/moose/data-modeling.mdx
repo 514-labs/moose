@@ -807,15 +807,15 @@ interface TaskOutput {
 const exampleTask = new Task<TaskInput, TaskOutput>(
   "example-task",
   {
-    run: async (input) => {
+    run: async (ctx) => {
       // Process data based on task type
       const output: TaskOutput = {
-        id: input.id,
+        id: ctx.input.id,
         processedAt: new Date()
       };
       
-      if (input.taskType === "typeA") {
-        output.resultA = await processTypeA(input);
+      if (ctx.input.taskType === "typeA") {
+        output.resultA = await processTypeA(ctx.input);
       }
       
       return output;
@@ -830,7 +830,7 @@ const exampleTask = new Task<TaskInput, TaskOutput>(
 
 <Python>
 ```python filename="app/workflows/task_example.py"
-from moose_lib import Task
+from moose_lib import Task, TaskContext
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
@@ -869,15 +869,15 @@ class TaskOutput(BaseModel):
     result_c: Optional[ResultC] = None
 
 # Create workflow task
-async def run_task(input_data: TaskInput) -> TaskOutput:
+async def run_task(ctx: TaskContext[TaskInput]) -> TaskOutput:
     # Process data based on task type
     output = TaskOutput(
-        id=input_data.id,
+        id=ctx.input.id,
         processed_at=datetime.now()
     )
     
-    if input_data.task_type == "typeA":
-        output.result_a = await process_type_a(input_data)
+    if ctx.input.task_type == "typeA":
+        output.result_a = await process_type_a(ctx.input)
     
     return output
 

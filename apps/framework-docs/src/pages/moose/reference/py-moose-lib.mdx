@@ -208,7 +208,7 @@ class ClickHouseEngines(Enum):
 A class that represents a single task within a workflow system, with typed input and output.
 
 ```python
-from moose_lib import Task, TaskConfig
+from moose_lib import Task, TaskConfig, TaskContext
 from pydantic import BaseModel
 
 # Define input and output models
@@ -220,9 +220,9 @@ class OutputData(BaseModel):
     status: bool
 
 # Task with input and output
-def process_user(user_data: InputData) -> OutputData:
+def process_user(ctx: TaskContext[InputData]) -> OutputData:
     # Process the user data
-    return OutputData(result=f"Processed {user_data.user_id}", status=True)
+    return OutputData(result=f"Processed {ctx.input.user_id}", status=True)
 
 user_task = Task[InputData, OutputData](
     name="process_user",
@@ -234,7 +234,7 @@ user_task = Task[InputData, OutputData](
 )
 
 # Task with no input, but with output
-def fetch_data() -> OutputData:
+def fetch_data(ctx: TaskContext[None]) -> OutputData:
     return OutputData(result="Fetched data", status=True)
     
 fetch_task = Task[None, OutputData](
@@ -243,8 +243,8 @@ fetch_task = Task[None, OutputData](
 )
 
 # Task with input but no output
-def log_event(data: InputData) -> None:
-    print(f"Event logged for: {data.user_id}")
+def log_event(ctx: TaskContext[InputData]) -> None:
+    print(f"Event logged for: {ctx.input.user_id}")
 
 log_task = Task[InputData, None](
     name="log_event",
@@ -252,7 +252,7 @@ log_task = Task[InputData, None](
 )
 
 # Task with neither input nor output
-def cleanup() -> None:
+def cleanup(ctx: TaskContext[None]) -> None:
     print("Cleanup complete")
 
 cleanup_task = Task[None, None](
@@ -273,8 +273,11 @@ class TaskConfig(Generic[T, U]):
     
     # Optional list of tasks to run after this task completes
     on_complete: Optional[list[Task[U, Any]]] = None
+
+    # Optional function that is called when the task is cancelled
+    on_cancel: Optional[Callable[[TaskContext[T_none]], Union[None, Awaitable[None]]]] = None
     
-    # Optional timeout string (e.g. "5m", "1h")
+    # Optional timeout string (e.g. "5m", "1h", "never")
     timeout: Optional[str] = None
     
     # Optional number of retry attempts

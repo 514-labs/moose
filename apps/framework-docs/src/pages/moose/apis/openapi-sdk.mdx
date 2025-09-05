@@ -69,6 +69,60 @@ openapi-generator-cli generate \
   -o ./generated-client
 ```
 
+## Automate SDK Generation on Reload
+
+Keep your SDKs continuously up to date by configuring Moose to regenerate them automatically after each dev server reload. Use the new `on_reload_complete_script` hook in your `moose.config.toml`.
+
+### Configure hooks in `moose.config.toml`
+
+```toml filename="moose.config.toml" copy
+[http_server_config]
+# Runs once when the dev server starts (good place to ensure tools are installed)
+on_first_start_script = "command -v openapi-generator-cli >/dev/null 2>&1 || npm i -g @openapitools/openapi-generator-cli"
+
+# Runs after each dev server reload (infra or code changes fully applied)
+# Regenerate SDKs for multiple targets as needed
+on_reload_complete_script = "\
+  openapi-generator-cli generate -i .moose/openapi.yaml -g typescript-fetch -o ./generated/ts && \
+  openapi-generator-cli generate -i .moose/openapi.yaml -g python -o ./generated/python\
+"
+```
+
+Notes:
+- The script runs in your project root using your `$SHELL` (falls back to `/bin/sh`).
+- Paths like `.moose/openapi.yaml` and `./generated/...` are relative to the project root.
+- Combine multiple generators with `&&` (as shown) or split into a shell script if preferred.
+
+### Example: TypeScript on reload
+
+```toml filename="moose.config.toml" copy
+[http_server]
+on_reload_complete_script = "openapi-generator-cli generate -i .moose/openapi.yaml -g typescript-fetch -o ./generated/ts"
+```
+
+### Example: Python on reload
+
+```toml filename="moose.config.toml" copy
+[http_server]
+on_reload_complete_script = "openapi-generator-cli generate -i .moose/openapi.yaml -g python -o ./generated/python"
+```
+
+### One-time setup hook (optional)
+
+Use `on_first_start_script` for one-time setup, like installing the generator or cleaning the output directory:
+
+```toml filename="moose.config.toml" copy
+[http_server]
+on_first_start_script = "\
+  (command -v openapi-generator-cli >/dev/null 2>&1 || npm i -g @openapitools/openapi-generator-cli) && \
+  rm -rf ./generated/ts ./generated/python\
+"
+```
+
+<Callout type="info">
+These hooks only affect local development (`moose dev`). The reload hook runs after Moose finishes applying your changes, ensuring `.moose/openapi.yaml` is fresh before regeneration.
+</Callout>
+
 ## Integration Examples
 
 ### TypeScript Integration

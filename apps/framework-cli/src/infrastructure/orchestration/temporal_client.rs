@@ -183,6 +183,31 @@ pub fn manager_from_project_if_enabled(project: &Project) -> Option<TemporalClie
     TemporalClientManager::new_validate(&project.temporal_config, true).ok()
 }
 
+/// Perform a lightweight probe against Temporal to establish/validate readiness.
+/// The `label` is embedded in the query to allow distinguishing warmup vs ready calls.
+pub async fn probe_temporal(
+    manager: &TemporalClientManager,
+    namespace: String,
+    label: &str,
+) -> Result<()> {
+    let query = format!("WorkflowType!='__{}__'", label);
+    manager
+        .execute(move |mut c| async move {
+            c
+                .list_workflow_executions(
+                    ListWorkflowExecutionsRequest {
+                        namespace,
+                        query,
+                        page_size: 1,
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map(|_| ())
+        })
+        .await
+}
+
 impl TemporalClient {
     pub async fn start_workflow_execution(
         &mut self,

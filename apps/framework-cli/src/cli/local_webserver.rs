@@ -589,20 +589,7 @@ async fn ready_route(
     // Temporal: if enabled, perform a lightweight list call
     if let Some(manager) = crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(project) {
         let namespace = project.temporal_config.namespace.clone();
-        let res = manager
-            .execute(move |mut c| async move {
-                c.list_workflow_executions(
-                    temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
-                        namespace,
-                        query: "WorkflowType!='__ready__'".to_string(),
-                        page_size: 1,
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map(|_| ())
-            })
-            .await;
+        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal(&manager, namespace, "ready").await;
         match res {
             Ok(_) => healthy.push("Temporal"),
             Err(e) => {

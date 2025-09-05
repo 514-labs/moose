@@ -189,18 +189,17 @@ export const task1 = new Task<null, void>("task1", {
 
 // With input and output
 export const task2 = new Task<InputType, OutputType>("task2", {
-  run: async (input: InputType) => {
-    return process(input);
+  run: async (ctx) => {
+    return process(ctx.input);
   },
   onComplete: [nextTask]
 });
 ```
 
-### `TaskHandler<T, R>`
-A function type that handles task execution.
+### `TaskContext<T>`
+A context object that includes input & state passed between the task's run/cancel functions.
 ```ts
-type TaskHandler<T, R> =
-  T extends null ? () => Promise<R> : (input: T) => Promise<R>;
+export type TaskContext<T> = T extends null ? { state: any; input?: null } : { state: any; input: T };
 ```
 
 ### `TaskConfig<T, R>`
@@ -208,12 +207,15 @@ Configuration options for tasks.
 ```ts
 interface TaskConfig<T, R> {
   // The main function that executes the task logic
-  run: TaskHandler<T, R>;
+  run: (context: TaskContext<T>) => Promise<R>;
   
   // Optional array of tasks to execute after this task completes
   onComplete?: (Task<R extends void ? null : R, any> | Task<R extends void ? null : R, void>)[];
+
+  // Optional function that is called when the task is cancelled.
+  onCancel?: (context: TaskContext<T>) => Promise<void>;
   
-  // Optional timeout duration (e.g., "30s", "5m")
+  // Optional timeout duration (e.g., "30s", "5m", "never")
   timeout?: string;
   
   // Optional number of retry attempts
@@ -243,7 +245,7 @@ interface WorkflowConfig {
   // Optional number of retry attempts
   retries?: number;
   
-  // Optional timeout duration (e.g., "10m", "1h")
+  // Optional timeout duration (e.g., "10m", "1h", "never")
   timeout?: string;
   
   // Optional cron-style schedule string

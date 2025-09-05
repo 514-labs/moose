@@ -301,7 +301,7 @@ pub struct SeedCommands {
 pub enum SeedSubcommands {
     /// Seed ClickHouse tables with data
     Clickhouse {
-        /// ClickHouse connection string (e.g. clickhouse://user:pass@host:port/db)
+        /// ClickHouse connection string (e.g. 'clickhouse://explorer@play.clickhouse.com:9440/default')
         #[arg(long, value_name = "CONNECTION_STRING")]
         connection_string: String,
         /// Limit the number of rows to copy per table (default: 1000)

@@ -250,8 +250,8 @@ pub async fn seed_clickhouse_tables(
                     break 'table_batches;
                 }
             }
-            summary.push(format!("✓ {table_name}: copied from remote"));
         }
+        summary.push(format!("✓ {table_name}: copied from remote"));
     }
 
     info!("ClickHouse seeding completed");

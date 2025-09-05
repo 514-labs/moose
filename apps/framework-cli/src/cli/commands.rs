@@ -302,9 +302,8 @@ pub enum SeedSubcommands {
     /// Seed ClickHouse tables with data
     Clickhouse {
         /// ClickHouse connection string (e.g. clickhouse://user:pass@host:port/db)
-        /// If omitted, the command will read MOOSE_SEED_CLICKHOUSE_URL from the environment
         #[arg(long, value_name = "CONNECTION_STRING")]
-        connection_string: Option<String>,
+        connection_string: String,
         /// Limit the number of rows to copy per table (default: 1000)
         #[arg(
             long,

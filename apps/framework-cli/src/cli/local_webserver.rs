@@ -587,29 +587,27 @@ async fn ready_route(
     }
 
     // Temporal: if enabled, perform a lightweight list call
-    if project.features.workflows {
-        if let Ok(manager) = crate::infrastructure::orchestration::temporal_client::TemporalClientManager::new_validate(&project.temporal_config, true) {
-            let namespace = project.temporal_config.namespace.clone();
-            let res = manager
-                .execute(move |mut c| async move {
-                    c.list_workflow_executions(
-                        temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
-                            namespace,
-                            query: "WorkflowType!='__ready__'".to_string(),
-                            page_size: 1,
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .map(|_| ())
-                })
-                .await;
-            match res {
-                Ok(_) => healthy.push("Temporal"),
-                Err(e) => {
-                    warn!("Ready check: Temporal not ready: {:?}", e);
-                    unhealthy.push("Temporal")
-                }
+    if let Some(manager) = crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(project) {
+        let namespace = project.temporal_config.namespace.clone();
+        let res = manager
+            .execute(move |mut c| async move {
+                c.list_workflow_executions(
+                    temporal_sdk_core_protos::temporal::api::workflowservice::v1::ListWorkflowExecutionsRequest {
+                        namespace,
+                        query: "WorkflowType!='__ready__'".to_string(),
+                        page_size: 1,
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map(|_| ())
+            })
+            .await;
+        match res {
+            Ok(_) => healthy.push("Temporal"),
+            Err(e) => {
+                warn!("Ready check: Temporal not ready: {:?}", e);
+                unhealthy.push("Temporal")
             }
         }
     }

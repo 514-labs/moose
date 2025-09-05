@@ -88,7 +88,6 @@ async fn delete_last_n_rows(
             .query(&create_stmt_query)
             .fetch_one::<String>()
             .await
-            .map(|row| row)
             .unwrap_or_else(|_| "".to_string());
 
         // Fallback to single `timestamp` if we cannot parse; otherwise parse ORDER BY(...)

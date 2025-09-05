@@ -1,5 +1,6 @@
 use crate::cli::commands::SeedSubcommands;
-use crate::cli::display::Message;
+use crate::cli::display;
+use crate::cli::display::{Message, MessageType};
 use crate::cli::routines::RoutineFailure;
 use crate::cli::routines::RoutineSuccess;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
@@ -220,7 +221,9 @@ pub async fn seed_clickhouse_tables(
             None => remote_total,
             Some(l) => min(remote_total, l),
         };
+        let mut i: usize = 0;
         'table_batches: while copied_total < total_rows {
+            i += 1;
             let limit = match limit {
                 None => batch_size,
                 Some(l) => min(l - copied_total, batch_size),
@@ -229,20 +232,25 @@ pub async fn seed_clickhouse_tables(
                 "INSERT INTO `{local_db}`.`{table_name}` SELECT * FROM remoteSecure('{remote_host_and_port}', '{remote_db}', '{table_name}', '{remote_user}', '{remote_password}') LIMIT {limit} OFFSET {copied_total}"
             );
 
-            debug!(
-                "Executing SQL (batch): table={}, offset={}, limit={}",
-                table_name, copied_total, limit
-            );
+            debug!("Executing SQL: table={table_name}, offset={copied_total}, limit={limit}");
 
             match local_clickhouse.execute_sql(&sql).await {
-                Ok(output) => {
+                Ok(_) => {
                     copied_total += batch_size;
+                    display::show_message_wrapper(
+                        MessageType::Info,
+                        Message::new(
+                            "Seed".to_string(),
+                            format!("{table_name}: copied batch {i}"),
+                        ),
+                    );
                 }
                 Err(e) => {
                     summary.push(format!("✗ {table_name}: failed to copy - {e}"));
                     break 'table_batches;
                 }
             }
+            summary.push(format!("✓ {table_name}: copied from remote"));
         }
     }
 

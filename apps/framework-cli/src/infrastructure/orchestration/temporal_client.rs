@@ -13,6 +13,7 @@ use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Uri};
 
 use crate::infrastructure::orchestration::temporal::{InvalidTemporalSchemeError, TemporalConfig};
+use crate::project::Project;
 
 pub struct TemporalClientManager {
     config: TemporalConfig,
@@ -171,6 +172,37 @@ Is the Moose development server running? Start it with `moose dev`."#
 
         Ok(client)
     }
+}
+
+/// Convenience constructor to create a TemporalClientManager from a Project if workflows are enabled.
+/// Returns None when workflows are disabled or config is invalid.
+pub fn manager_from_project_if_enabled(project: &Project) -> Option<TemporalClientManager> {
+    if !project.features.workflows {
+        return None;
+    }
+    TemporalClientManager::new_validate(&project.temporal_config, true).ok()
+}
+
+/// Perform a lightweight probe against Temporal to establish/validate readiness.
+/// The `label` is embedded in the query to allow distinguishing warmup vs ready calls.
+pub async fn probe_temporal(
+    manager: &TemporalClientManager,
+    namespace: String,
+    label: &str,
+) -> Result<()> {
+    let query = format!("WorkflowType!='__{}__'", label);
+    manager
+        .execute(move |mut c| async move {
+            c.list_workflow_executions(ListWorkflowExecutionsRequest {
+                namespace,
+                query,
+                page_size: 1,
+                ..Default::default()
+            })
+            .await
+            .map(|_| ())
+        })
+        .await
 }
 
 impl TemporalClient {

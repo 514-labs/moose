@@ -176,7 +176,7 @@ impl LocalWebserverConfig {
         })
     }
 
-    pub async fn run_dev_ready_script(&self) -> () {
+    pub async fn run_dev_ready_script(&self) {
         if let Some(ref script) = self.post_dev_server_ready_script {
             let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 
@@ -530,6 +530,86 @@ async fn health_route(
     } else {
         StatusCode::SERVICE_UNAVAILABLE
     };
+    let json_response = serde_json::to_string_pretty(&serde_json::json!({
+        "healthy": healthy,
+        "unhealthy": unhealthy
+    }))
+    .unwrap_or_else(|_| String::from("{\"error\":\"Failed to serialize response\"}"));
+
+    Response::builder()
+        .status(status)
+        .header("Content-Type", "application/json")
+        .body(Full::new(Bytes::from(json_response)))
+}
+
+async fn ready_route(
+    project: &Project,
+    redis_client: &Arc<RedisClient>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // This endpoint validates that backing services are not only reachable but their
+    // connections are warmed/ready for immediate use.
+
+    let mut healthy = Vec::new();
+    let mut unhealthy = Vec::new();
+
+    // Redis: explicit PING via connection manager
+    let mut cm = redis_client.connection_manager.clone();
+    if cm.ping().await {
+        healthy.push("Redis")
+    } else {
+        unhealthy.push("Redis")
+    }
+
+    // Redpanda/Kafka: simple metadata probe that is Send-safe
+    if project.features.streaming_engine {
+        match crate::infrastructure::stream::kafka::client::health_check(&project.redpanda_config)
+            .await
+        {
+            Ok(true) => healthy.push("Redpanda"),
+            Ok(false) | Err(_) => unhealthy.push("Redpanda"),
+        }
+    }
+
+    // ClickHouse: run a small query using the configured client (ensures HTTP pool is ready)
+    if project.features.olap {
+        let ch = crate::infrastructure::olap::clickhouse::create_client(
+            project.clickhouse_config.clone(),
+        );
+        match crate::infrastructure::olap::clickhouse::check_ready(&ch).await {
+            Ok(_) => healthy.push("ClickHouse"),
+            Err(e) => {
+                warn!("Ready check: ClickHouse not ready: {}", e);
+                unhealthy.push("ClickHouse")
+            }
+        }
+    }
+
+    // Temporal: if enabled, perform a lightweight list call
+    if let Some(manager) =
+        crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(
+            project,
+        )
+    {
+        let namespace = project.temporal_config.namespace.clone();
+        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal(
+            &manager, namespace, "ready",
+        )
+        .await;
+        match res {
+            Ok(_) => healthy.push("Temporal"),
+            Err(e) => {
+                warn!("Ready check: Temporal not ready: {:?}", e);
+                unhealthy.push("Temporal")
+            }
+        }
+    }
+
+    let status = if unhealthy.is_empty() {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+
     let json_response = serde_json::to_string_pretty(&serde_json::json!({
         "healthy": healthy,
         "unhealthy": unhealthy
@@ -1257,6 +1337,7 @@ async fn router(
             }
         }
         (_, &hyper::Method::GET, ["health"]) => health_route(&project, &redis_client).await,
+        (_, &hyper::Method::GET, ["ready"]) => ready_route(&project, &redis_client).await,
         (_, &hyper::Method::GET, ["admin", "reality-check"]) => {
             admin_reality_check_route(
                 req,

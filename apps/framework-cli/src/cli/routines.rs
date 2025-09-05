@@ -116,9 +116,40 @@ use crate::framework::core::plan::plan_changes;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::olap::clickhouse::{check_ready, create_client};
+use crate::infrastructure::orchestration::temporal_client::{
+    manager_from_project_if_enabled, probe_temporal,
+};
+use crate::infrastructure::stream::kafka::client::fetch_topics;
 use crate::utilities::constants::{
     MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,
 };
+
+async fn maybe_warmup_connections(project: &Project, redis_client: &Arc<RedisClient>) {
+    if std::env::var("MOOSE_CONNECTION_POOL_WARMUP").is_ok() {
+        // ClickHouse
+        if project.features.olap {
+            let client = create_client(project.clickhouse_config.clone());
+            let _ = check_ready(&client).await;
+        }
+
+        // Redis
+        {
+            let mut cm = redis_client.connection_manager.clone();
+            let _ = cm.ping().await;
+        }
+
+        // Kafka/Redpanda
+        if project.features.streaming_engine {
+            let _ = fetch_topics(&project.redpanda_config).await;
+        }
+
+        // Temporal (if workflows feature enabled)
+        if let Some(manager) = manager_from_project_if_enabled(project) {
+            let namespace = project.temporal_config.namespace.clone();
+            let _ = probe_temporal(&manager, namespace, "warmup").await;
+        }
+    }
+}
 
 pub mod auth;
 pub mod build;
@@ -356,6 +387,7 @@ pub async fn start_development_mode(
         .await;
 
     let (_, plan) = plan_changes(&redis_client, &project).await?;
+    maybe_warmup_connections(&project, &redis_client).await;
 
     plan_validator::validate(&project, &plan)?;
 
@@ -461,6 +493,7 @@ pub async fn start_production_mode(
         Box::leak(Box::new(RwLock::new(route_table)));
 
     let (current_state, plan) = plan_changes(&redis_client, &project).await?;
+    maybe_warmup_connections(&project, &redis_client).await;
 
     let execute_migration_yaml = project.features.ddl_plan && std::fs::exists(MIGRATION_FILE)?;
 

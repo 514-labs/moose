@@ -146,13 +146,13 @@ pub struct LocalWebserverConfig {
     /// Script to run after dev server reload completes for code/infrastructure changes
     #[serde(
         default,
-        alias = "after_change_script",
+        alias = "on_change_script",
         alias = "post_dev_server_ready_script"
     )]
-    pub after_dev_server_reload_script: Option<String>,
+    pub on_reload_complete_script: Option<String>,
     /// Script to run once when the dev server first starts (never repeats in this process)
     #[serde(default, alias = "post_dev_server_start_script")]
-    pub on_start_script_once: Option<String>,
+    pub on_first_start_script: Option<String>,
 }
 
 pub fn default_proxy_port() -> u16 {
@@ -185,7 +185,7 @@ impl LocalWebserverConfig {
     }
 
     pub async fn run_after_dev_server_reload_script(&self) {
-        if let Some(ref script) = self.after_dev_server_reload_script {
+        if let Some(ref script) = self.on_reload_complete_script {
             let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 
             let child = Command::new(shell)
@@ -230,7 +230,7 @@ impl LocalWebserverConfig {
                     show_message!(MessageType::Error, {
                         Message {
                             action: "Failed".to_string(),
-                            details: format!("to spawn after_dev_server_reload_script:\n{e:?}"),
+                            details: format!("to spawn on_reload_complete_script:\n{e:?}"),
                         }
                     });
                 }
@@ -248,7 +248,7 @@ impl LocalWebserverConfig {
             return;
         }
 
-        if let Some(ref script) = self.on_start_script_once {
+        if let Some(ref script) = self.on_first_start_script {
             let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 
             let child = Command::new(shell)
@@ -293,7 +293,7 @@ impl LocalWebserverConfig {
                     show_message!(MessageType::Error, {
                         Message {
                             action: "Failed".to_string(),
-                            details: format!("to spawn on_start_script_once:\n{e:?}"),
+                            details: format!("to spawn on_first_start_script:\n{e:?}"),
                         }
                     });
                 }
@@ -311,8 +311,8 @@ impl Default for LocalWebserverConfig {
             proxy_port: default_proxy_port(),
             path_prefix: None,
             max_request_body_size: default_max_request_body_size(),
-            after_dev_server_reload_script: None,
-            on_start_script_once: None,
+            on_reload_complete_script: None,
+            on_first_start_script: None,
         }
     }
 }

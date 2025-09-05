@@ -193,17 +193,14 @@ pub async fn probe_temporal(
     let query = format!("WorkflowType!='__{}__'", label);
     manager
         .execute(move |mut c| async move {
-            c
-                .list_workflow_executions(
-                    ListWorkflowExecutionsRequest {
-                        namespace,
-                        query,
-                        page_size: 1,
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map(|_| ())
+            c.list_workflow_executions(ListWorkflowExecutionsRequest {
+                namespace,
+                query,
+                page_size: 1,
+                ..Default::default()
+            })
+            .await
+            .map(|_| ())
         })
         .await
 }

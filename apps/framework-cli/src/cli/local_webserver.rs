@@ -176,7 +176,7 @@ impl LocalWebserverConfig {
         })
     }
 
-    pub async fn run_dev_ready_script(&self) -> () {
+    pub async fn run_dev_ready_script(&self) {
         if let Some(ref script) = self.post_dev_server_ready_script {
             let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 
@@ -566,9 +566,7 @@ async fn ready_route(
             .await
         {
             Ok(true) => healthy.push("Redpanda"),
-            Ok(false) | Err(_) => {
-                unhealthy.push("Redpanda")
-            }
+            Ok(false) | Err(_) => unhealthy.push("Redpanda"),
         }
     }
 
@@ -587,9 +585,16 @@ async fn ready_route(
     }
 
     // Temporal: if enabled, perform a lightweight list call
-    if let Some(manager) = crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(project) {
+    if let Some(manager) =
+        crate::infrastructure::orchestration::temporal_client::manager_from_project_if_enabled(
+            project,
+        )
+    {
         let namespace = project.temporal_config.namespace.clone();
-        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal(&manager, namespace, "ready").await;
+        let res = crate::infrastructure::orchestration::temporal_client::probe_temporal(
+            &manager, namespace, "ready",
+        )
+        .await;
         match res {
             Ok(_) => healthy.push("Temporal"),
             Err(e) => {

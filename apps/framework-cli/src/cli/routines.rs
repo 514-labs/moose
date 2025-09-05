@@ -116,7 +116,9 @@ use crate::framework::core::plan::plan_changes;
 use crate::framework::core::plan::InfraPlan;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::olap::clickhouse::{check_ready, create_client};
-use crate::infrastructure::orchestration::temporal_client::{manager_from_project_if_enabled, probe_temporal};
+use crate::infrastructure::orchestration::temporal_client::{
+    manager_from_project_if_enabled, probe_temporal,
+};
 use crate::infrastructure::stream::kafka::client::fetch_topics;
 use crate::utilities::constants::{
     MIGRATION_AFTER_STATE_FILE, MIGRATION_BEFORE_STATE_FILE, MIGRATION_FILE,

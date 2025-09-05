@@ -82,6 +82,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::TcpListener;
@@ -142,9 +143,16 @@ pub struct LocalWebserverConfig {
     /// Maximum request body size in bytes (default: 10MB)
     #[serde(default = "default_max_request_body_size")]
     pub max_request_body_size: usize,
-    /// Script to run after dev server is ready
-    #[serde(default)]
-    pub post_dev_server_ready_script: Option<String>,
+    /// Script to run after dev server reload completes for code/infrastructure changes
+    #[serde(
+        default,
+        alias = "on_change_script",
+        alias = "post_dev_server_ready_script"
+    )]
+    pub on_reload_complete_script: Option<String>,
+    /// Script to run once when the dev server first starts (never repeats in this process)
+    #[serde(default, alias = "post_dev_server_start_script")]
+    pub on_first_start_script: Option<String>,
 }
 
 pub fn default_proxy_port() -> u16 {
@@ -176,8 +184,8 @@ impl LocalWebserverConfig {
         })
     }
 
-    pub async fn run_dev_ready_script(&self) {
-        if let Some(ref script) = self.post_dev_server_ready_script {
+    pub async fn run_after_dev_server_reload_script(&self) {
+        if let Some(ref script) = self.on_reload_complete_script {
             let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 
             let child = Command::new(shell)
@@ -194,7 +202,7 @@ impl LocalWebserverConfig {
                             show_message!(MessageType::Success, {
                                 Message {
                                     action: "Ran".to_string(),
-                                    details: "script for dev server ready".to_string(),
+                                    details: "script after dev server reload".to_string(),
                                 }
                             });
                         }
@@ -202,7 +210,7 @@ impl LocalWebserverConfig {
                             show_message!(MessageType::Error, {
                                 Message {
                                     action: "Fail".to_string(),
-                                    details: format!("script for dev server ready: {status}"),
+                                    details: format!("script after dev server reload: {status}"),
                                 }
                             });
                         }
@@ -210,7 +218,9 @@ impl LocalWebserverConfig {
                             show_message!(MessageType::Error, {
                                 Message {
                                     action: "Failed".to_string(),
-                                    details: format!("to wait for script for dev server\n{e:?}"),
+                                    details: format!(
+                                        "to wait for script after dev server reload\n{e:?}"
+                                    ),
                                 }
                             });
                         }
@@ -220,7 +230,70 @@ impl LocalWebserverConfig {
                     show_message!(MessageType::Error, {
                         Message {
                             action: "Failed".to_string(),
-                            details: format!("to spawn post_dev_server_ready_script:\n{e:?}"),
+                            details: format!("to spawn on_reload_complete_script:\n{e:?}"),
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    pub async fn run_dev_start_script_once(&self) {
+        static START_SCRIPT_RAN: AtomicBool = AtomicBool::new(false);
+
+        if START_SCRIPT_RAN
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+
+        if let Some(ref script) = self.on_first_start_script {
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+
+            let child = Command::new(shell)
+                .arg("-c")
+                .arg(script)
+                .stdin(Stdio::null())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn();
+            match child {
+                Ok(mut child) => {
+                    match child.wait().await {
+                        Ok(status) if status.success() => {
+                            show_message!(MessageType::Success, {
+                                Message {
+                                    action: "Ran".to_string(),
+                                    details: "script for dev server start".to_string(),
+                                }
+                            });
+                        }
+                        Ok(status) => {
+                            show_message!(MessageType::Error, {
+                                Message {
+                                    action: "Fail".to_string(),
+                                    details: format!("script for dev server start: {status}"),
+                                }
+                            });
+                        }
+                        Err(e) => {
+                            show_message!(MessageType::Error, {
+                                Message {
+                                    action: "Failed".to_string(),
+                                    details: format!(
+                                        "to wait for script for dev server start\n{e:?}"
+                                    ),
+                                }
+                            });
+                        }
+                    };
+                }
+                Err(e) => {
+                    show_message!(MessageType::Error, {
+                        Message {
+                            action: "Failed".to_string(),
+                            details: format!("to spawn on_first_start_script:\n{e:?}"),
                         }
                     });
                 }
@@ -238,7 +311,8 @@ impl Default for LocalWebserverConfig {
             proxy_port: default_proxy_port(),
             path_prefix: None,
             max_request_body_size: default_max_request_body_size(),
-            post_dev_server_ready_script: None,
+            on_reload_complete_script: None,
+            on_first_start_script: None,
         }
     }
 }
@@ -1676,6 +1750,17 @@ impl Webserver {
         );
 
         if !project.is_production {
+            // Fire once-only startup script as soon as server starts
+            {
+                let project_clone = project.clone();
+                tokio::spawn(async move {
+                    project_clone
+                        .http_server_config
+                        .run_dev_start_script_once()
+                        .await;
+                });
+            }
+
             show_message!(
                 MessageType::Highlight,
                 Message {
@@ -1684,13 +1769,7 @@ impl Webserver {
                 }
             );
 
-            let project_clone = project.clone();
-            tokio::spawn(async move {
-                project_clone
-                    .http_server_config
-                    .run_dev_ready_script()
-                    .await;
-            });
+            // Do not run after_dev_server_reload_script at initial start; it's intended for reloads only.
         }
 
         let mut sigterm =

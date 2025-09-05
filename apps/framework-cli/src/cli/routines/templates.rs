@@ -208,15 +208,39 @@ pub async fn get_template_manifest(template_version: &str) -> anyhow::Result<Val
         let manifest: Value = toml::from_str(&content)?;
         Ok(manifest)
     } else {
-        let res = reqwest::get(format!(
-            "{TEMPLATE_REGISTRY_URL}/{template_version}/manifest.toml"
-        ))
-        .await?
-        .error_for_status()?;
+        // Try remote registry first
+        let remote_result: anyhow::Result<Value> = async {
+            let res = reqwest::get(format!(
+                "{TEMPLATE_REGISTRY_URL}/{template_version}/manifest.toml"
+            ))
+            .await?
+            .error_for_status()?;
 
-        let content = res.text().await?;
-        let manifest: Value = toml::from_str(&content)?;
-        Ok(manifest)
+            let content = res.text().await?;
+            let manifest: Value = toml::from_str(&content)?;
+            Ok(manifest)
+        }
+        .await;
+
+        match remote_result {
+            Ok(m) => Ok(m),
+            Err(_e) => {
+                // Fallback to local manifest if available (use current working directory)
+                let local_path = std::env::current_dir()
+                    .unwrap_or_else(|_| std::path::PathBuf::from("."))
+                    .join(LOCAL_TEMPLATE_DIR)
+                    .join("manifest.toml");
+
+                if local_path.exists() {
+                    let content = std::fs::read_to_string(&local_path)?;
+                    let manifest: Value = toml::from_str(&content)?;
+                    Ok(manifest)
+                } else {
+                    // Surface the original remote error if no local fallback exists
+                    Err(_e)
+                }
+            }
+        }
     }
 }
 
